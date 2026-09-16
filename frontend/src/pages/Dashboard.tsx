@@ -77,36 +77,60 @@ export default function Dashboard() {
         <div className="grid">
           {profile && rank && (
             <div className="panel ornate">
-              <div className="row" style={{ gap: 12 }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-                  background: 'linear-gradient(180deg, var(--gold-bright), var(--gold))',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 18, fontWeight: 700, color: '#1a1206',
-                }}>
-                  {profile.username[0]?.toUpperCase()}
+              <div className="row" style={{ gap: 14 }}>
+                <div className="avatar-ring">
+                  <div style={{
+                    width: 44, height: 44, borderRadius: '50%',
+                    background: 'var(--bg-panel)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18, fontWeight: 700, color: 'var(--gold-bright)',
+                  }}>
+                    {profile.username[0]?.toUpperCase()}
+                  </div>
                 </div>
                 <div>
-                  <strong>{['ADMIN', 'OWNER', 'MODERATOR'].includes(profile.role) ? '👑 ' : ''}{profile.username}</strong>
+                  <strong>{profile.username}</strong>{' '}
+                  {['ADMIN', 'OWNER', 'MODERATOR'].includes(profile.role) && '👑'}
                   <div className="muted">{rank.title}</div>
                 </div>
               </div>
-              <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-                <div><div className="muted">Ratio</div><strong>{profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong></div>
-                <div><div className="muted">Points</div><strong>{formatNumber(Math.round(profile.bonusPoints))}</strong></div>
-                <div><div className="muted">Upload</div><strong>{formatBytes(profile.uploaded)}</strong></div>
-                <div><div className="muted">Téléchargé</div><strong>{formatBytes(profile.downloaded)}</strong></div>
+
+              <div className="ornate-divider" />
+
+              <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <span className="stat-trend up">▲</span>
+                  <div className="muted">RATIO</div>
+                  <strong style={{ color: 'var(--gold-bright)' }}>{profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong>
+                </div>
+                <div>
+                  <span className="stat-trend up">▲</span>
+                  <div className="muted">POINTS</div>
+                  <strong style={{ color: 'var(--gold-bright)' }}>{formatNumber(Math.round(profile.bonusPoints))}</strong>
+                </div>
+                <div>
+                  <span className="stat-trend up">▲</span>
+                  <div className="muted">UPLOAD</div>
+                  <strong style={{ color: 'var(--gold-bright)' }}>{formatBytes(profile.uploaded)}</strong>
+                </div>
+                <div>
+                  <span className="stat-trend down">▼</span>
+                  <div className="muted">TÉLÉCHARGÉ</div>
+                  <strong style={{ color: 'var(--gold-bright)' }}>{formatBytes(profile.downloaded)}</strong>
+                </div>
               </div>
+
               {rank.next && (
-                <div style={{ marginTop: 14 }}>
+                <>
+                  <div className="ornate-divider" />
                   <div className="row" style={{ justifyContent: 'space-between' }}>
                     <span className="muted">Prochain rang : {rank.next}</span>
-                    <span className="muted">{rank.progressPercent}%</span>
+                    <span style={{ color: 'var(--gold-bright)', fontWeight: 700 }}>{rank.progressPercent}%</span>
                   </div>
                   <div className="rank-progress">
                     <div className="rank-progress-fill" style={{ width: `${rank.progressPercent}%` }} />
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
