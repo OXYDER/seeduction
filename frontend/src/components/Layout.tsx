@@ -183,7 +183,7 @@ export default function Layout() {
 
       <div className="container">
         <div className="dashboard-grid">
-          <div className="grid">
+          <div className="grid col-left">
             {profile && rank && (
               <div className="panel ornate">
                 <div className="row" style={{ gap: 14 }}>
@@ -264,11 +264,11 @@ export default function Layout() {
             </div>
           </div>
 
-          <div>
+          <div className="col-center">
             <Outlet context={{ profile, categories } satisfies LayoutContext} />
           </div>
 
-          <div className="grid">
+          <div className="grid col-right">
             <div className="panel">
               <div className="panel-title"><span className="title-icon">📯</span>Annonces</div>
               {announcements.length === 0 && <p className="muted">Aucune annonce pour l'instant.</p>}
