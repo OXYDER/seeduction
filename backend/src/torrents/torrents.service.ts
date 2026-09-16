@@ -62,7 +62,14 @@ export class TorrentsService {
 
   async list(params: { categoryId?: string; search?: string; uploaderId?: string; page: number; pageSize: number }) {
     const where: any = { status: 'APPROVED' };
-    if (params.categoryId) where.categoryId = params.categoryId;
+    if (params.categoryId) {
+      // Choisir une catégorie parente inclut aussi ses sous-catégories.
+      const ids = await this.prisma.category.findMany({
+        where: { OR: [{ id: params.categoryId }, { parentId: params.categoryId }] },
+        select: { id: true },
+      });
+      where.categoryId = { in: ids.map((c) => c.id) };
+    }
     if (params.search) where.name = { contains: params.search, mode: 'insensitive' };
     if (params.uploaderId) where.uploaderId = params.uploaderId;
 

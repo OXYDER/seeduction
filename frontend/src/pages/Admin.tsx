@@ -145,7 +145,7 @@ function AnnouncementsAdmin() {
 function TorrentCategoriesAdmin() {
   const [categories, setCategories] = useState<any[]>([]);
   const [name, setName] = useState('');
-  const [editing, setEditing] = useState<Record<string, string>>({});
+  const [parentId, setParentId] = useState('');
   const [error, setError] = useState('');
 
   function refresh() { api.get('/categories').then((r) => setCategories(r.data)); }
@@ -153,12 +153,12 @@ function TorrentCategoriesAdmin() {
 
   async function create() {
     if (!name.trim()) return;
-    await api.post('/categories', { name });
-    setName('');
+    await api.post('/categories', { name, parentId: parentId || undefined });
+    setName(''); setParentId('');
     refresh();
   }
-  async function rename(id: string) {
-    const newName = editing[id];
+  async function rename(id: string, currentName: string) {
+    const newName = prompt('Nouveau nom', currentName);
     if (!newName?.trim()) return;
     await api.patch(`/categories/${id}`, { name: newName });
     refresh();
@@ -175,33 +175,36 @@ function TorrentCategoriesAdmin() {
 
   return (
     <div className="panel">
-      <h3>Catégories de torrents</h3>
+      <h3>Catégories &amp; sous-catégories de torrents</h3>
       <div className="row" style={{ marginBottom: 16 }}>
-        <input placeholder="Nouvelle catégorie" value={name} onChange={(e) => setName(e.target.value)} />
+        <input placeholder="Nom de la catégorie" value={name} onChange={(e) => setName(e.target.value)} />
+        <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
+          <option value="">— Catégorie principale —</option>
+          {categories.map((c) => <option key={c.id} value={c.id}>Sous-catégorie de : {c.name}</option>)}
+        </select>
         <button onClick={create}>Ajouter</button>
       </div>
       {error && <div className="muted" style={{ color: 'var(--danger)', marginBottom: 8 }}>{error}</div>}
-      <table>
-        <thead><tr><th>Nom</th><th>Torrents</th><th></th></tr></thead>
-        <tbody>
-          {categories.map((c) => (
-            <tr key={c.id}>
-              <td>
-                <input
-                  value={editing[c.id] ?? c.name}
-                  onChange={(e) => setEditing({ ...editing, [c.id]: e.target.value })}
-                  style={{ width: 200 }}
-                />
-              </td>
-              <td className="muted">{c._count?.torrents ?? 0}</td>
-              <td className="row" style={{ justifyContent: 'flex-end' }}>
-                <button className="secondary" onClick={() => rename(c.id)}>Renommer</button>
-                <button className="danger" onClick={() => remove(c.id)}>Supprimer</button>
-              </td>
-            </tr>
+      {categories.map((c) => (
+        <div key={c.id} style={{ marginBottom: 12 }}>
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <strong>{c.name} <span className="muted">({c._count?.torrents ?? 0} torrents)</span></strong>
+            <div className="row">
+              <button className="secondary" onClick={() => rename(c.id, c.name)}>Renommer</button>
+              <button className="danger" onClick={() => remove(c.id)}>Supprimer</button>
+            </div>
+          </div>
+          {c.children?.map((sub: any) => (
+            <div key={sub.id} className="row" style={{ justifyContent: 'space-between', marginLeft: 24, marginTop: 6 }}>
+              <span className="muted">↳ {sub.name} ({sub._count?.torrents ?? 0} torrents)</span>
+              <div className="row">
+                <button className="secondary" onClick={() => rename(sub.id, sub.name)}>Renommer</button>
+                <button className="danger" onClick={() => remove(sub.id)}>Supprimer</button>
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      ))}
     </div>
   );
 }
@@ -213,7 +216,13 @@ function TorrentsAdmin() {
 
   function refresh() {
     api.get('/admin/torrents', { params: { search } }).then((r) => setTorrents(r.data));
-    api.get('/categories').then((r) => setCategories(r.data));
+    api.get('/categories').then((r) => {
+      const flat = r.data.flatMap((c: any) => [
+        { id: c.id, name: c.name },
+        ...(c.children ?? []).map((sub: any) => ({ id: sub.id, name: `↳ ${sub.name}` })),
+      ]);
+      setCategories(flat);
+    });
   }
   useEffect(() => { refresh(); }, [search]);
 

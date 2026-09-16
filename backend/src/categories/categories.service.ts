@@ -33,13 +33,20 @@ export class CategoriesService implements OnModuleInit {
 
   list() {
     return this.prisma.category.findMany({
+      where: { parentId: null },
       orderBy: { name: 'asc' },
-      include: { _count: { select: { torrents: true } } },
+      include: {
+        _count: { select: { torrents: true } },
+        children: {
+          orderBy: { name: 'asc' },
+          include: { _count: { select: { torrents: true } } },
+        },
+      },
     });
   }
 
-  create(name: string) {
-    return this.prisma.category.create({ data: { name, slug: slugify(name) } });
+  create(name: string, parentId?: string) {
+    return this.prisma.category.create({ data: { name, slug: slugify(name), parentId: parentId || null } });
   }
 
   update(id: string, name: string) {
@@ -47,9 +54,15 @@ export class CategoriesService implements OnModuleInit {
   }
 
   async delete(id: string) {
-    const count = await this.prisma.torrent.count({ where: { categoryId: id } });
-    if (count > 0) {
-      throw new BadRequestException(`Impossible : ${count} torrent(s) utilisent encore cette catégorie`);
+    const [torrentCount, childCount] = await Promise.all([
+      this.prisma.torrent.count({ where: { categoryId: id } }),
+      this.prisma.category.count({ where: { parentId: id } }),
+    ]);
+    if (torrentCount > 0) {
+      throw new BadRequestException(`Impossible : ${torrentCount} torrent(s) utilisent encore cette catégorie`);
+    }
+    if (childCount > 0) {
+      throw new BadRequestException(`Impossible : ${childCount} sous-catégorie(s) à supprimer d'abord`);
     }
     return this.prisma.category.delete({ where: { id } });
   }

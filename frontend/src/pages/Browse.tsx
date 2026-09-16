@@ -13,6 +13,7 @@ export default function Browse() {
 
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
+  const [categories, setCategories] = useState<any[]>([]);
 
   useEffect(() => {
     api.get('/torrents', { params: { search, categoryId, uploaderId, page, pageSize: 25 } }).then((r) => {
@@ -20,6 +21,15 @@ export default function Browse() {
       setTotal(r.data.total);
     });
   }, [search, categoryId, uploaderId, page]);
+
+  useEffect(() => {
+    api.get('/categories').then((r) => setCategories(r.data));
+  }, []);
+
+  // Retrouve la catégorie active (parente ou sous-catégorie) pour afficher
+  // ses sous-catégories comme filtres supplémentaires.
+  const activeParent = categories.find((c) => c.id === categoryId)
+    ?? categories.find((c) => c.children?.some((sub: any) => sub.id === categoryId));
 
   function updateParam(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -49,6 +59,25 @@ export default function Browse() {
         <button className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => updateParam('uploaderId', '')}>
           ← Voir tous les torrents
         </button>
+      )}
+      {activeParent && activeParent.children?.length > 0 && (
+        <div className="category-chips" style={{ marginTop: 0 }}>
+          <a
+            onClick={() => updateParam('categoryId', activeParent.id)}
+            style={{ cursor: 'pointer', borderColor: categoryId === activeParent.id ? 'var(--gold)' : undefined }}
+          >
+            Tout {activeParent.name}
+          </a>
+          {activeParent.children.map((sub: any) => (
+            <a
+              key={sub.id}
+              onClick={() => updateParam('categoryId', sub.id)}
+              style={{ cursor: 'pointer', borderColor: categoryId === sub.id ? 'var(--gold)' : undefined }}
+            >
+              {sub.name}
+            </a>
+          ))}
+        </div>
       )}
       <div className="panel">
         <table>

@@ -102,9 +102,12 @@ enum TorrentStatus {
 }
 
 model Category {
-  id       String    @id @default(uuid())
-  name     String    @unique
-  slug     String    @unique
+  id       String     @id @default(uuid())
+  name     String     @unique
+  slug     String     @unique
+  parent   Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId String?
+  children Category[] @relation("SubCategories")
   torrents Torrent[]
 }
 
