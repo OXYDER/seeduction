@@ -35,8 +35,8 @@ services:
       - backend
     networks:
       - tracker_net
-    expose:
-      - "80"
+    ports:
+      - "9098:80"
 
 networks:
   tracker_net:
