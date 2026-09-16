@@ -143,39 +143,102 @@ function AnnouncementsAdmin() {
 }
 
 function TorrentCategoriesAdmin() {
+  return (
+    <CategoryManager
+      endpoint="/categories"
+      title="Catégories & sous-catégories de torrents"
+      renderCount={(c) => ` (${c._count?.torrents ?? 0} torrents)`}
+    />
+  );
+}
+
+/**
+ * CRUD complet (créer, éditer nom + parent, supprimer) pour une hiérarchie
+ * à deux niveaux de catégories — partagé entre torrents et forum, qui ont
+ * exactement la même forme (findMany top-level + `children` imbriqués).
+ */
+function CategoryManager({ endpoint, title, renderCount }: { endpoint: string; title: string; renderCount?: (item: any) => string }) {
   const [categories, setCategories] = useState<any[]>([]);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editParentId, setEditParentId] = useState('');
+  const [editError, setEditError] = useState('');
 
-  function refresh() { api.get('/categories').then((r) => setCategories(r.data)); }
-  useEffect(() => { refresh(); }, []);
+  function refresh() { api.get(endpoint).then((r) => setCategories(r.data)); }
+  useEffect(() => { refresh(); }, [endpoint]);
 
   async function create() {
     if (!name.trim()) return;
-    await api.post('/categories', { name, parentId: parentId || undefined });
+    await api.post(endpoint, { name, parentId: parentId || undefined });
     setName(''); setParentId('');
     refresh();
   }
-  async function rename(id: string, currentName: string) {
-    const newName = prompt('Nouveau nom', currentName);
-    if (!newName?.trim()) return;
-    await api.patch(`/categories/${id}`, { name: newName });
-    refresh();
+
+  function startEdit(item: any) {
+    setEditingId(item.id);
+    setEditName(item.name);
+    setEditParentId(item.parentId ?? '');
+    setEditError('');
   }
+
+  async function saveEdit(id: string) {
+    setEditError('');
+    try {
+      await api.patch(`${endpoint}/${id}`, { name: editName, parentId: editParentId || null });
+      setEditingId(null);
+      refresh();
+    } catch (err: any) {
+      setEditError(err.response?.data?.message ?? 'Erreur de mise à jour');
+    }
+  }
+
   async function remove(id: string) {
     setError('');
     try {
-      await api.delete(`/categories/${id}`);
+      await api.delete(`${endpoint}/${id}`);
       refresh();
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Erreur de suppression');
     }
   }
 
+  function renderRow(item: any, isSub: boolean) {
+    const isEditing = editingId === item.id;
+    return (
+      <div key={item.id} className="row" style={{ justifyContent: 'space-between', marginLeft: isSub ? 24 : 0, marginTop: isSub ? 6 : 0, flexWrap: 'wrap' }}>
+        {isEditing ? (
+          <>
+            <input value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: 180 }} />
+            <select value={editParentId} onChange={(e) => setEditParentId(e.target.value)}>
+              <option value="">— Catégorie principale —</option>
+              {categories.filter((c) => c.id !== item.id).map((c) => (
+                <option key={c.id} value={c.id}>Sous-catégorie de : {c.name}</option>
+              ))}
+            </select>
+            <div className="row">
+              <button onClick={() => saveEdit(item.id)}>Enregistrer</button>
+              <button className="secondary" onClick={() => setEditingId(null)}>Annuler</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <span>{isSub ? '↳ ' : ''}<strong>{item.name}</strong>{renderCount && <span className="muted">{renderCount(item)}</span>}</span>
+            <div className="row">
+              <button className="secondary" onClick={() => startEdit(item)}>Éditer</button>
+              <button className="danger" onClick={() => remove(item.id)}>Supprimer</button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="panel">
-      <h3>Catégories &amp; sous-catégories de torrents</h3>
+      <h3>{title}</h3>
       <div className="row" style={{ marginBottom: 16 }}>
         <input placeholder="Nom de la catégorie" value={name} onChange={(e) => setName(e.target.value)} />
         <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
@@ -185,24 +248,11 @@ function TorrentCategoriesAdmin() {
         <button onClick={create}>Ajouter</button>
       </div>
       {error && <div className="muted" style={{ color: 'var(--danger)', marginBottom: 8 }}>{error}</div>}
+      {editError && <div className="muted" style={{ color: 'var(--danger)', marginBottom: 8 }}>{editError}</div>}
       {categories.map((c) => (
         <div key={c.id} style={{ marginBottom: 12 }}>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <strong>{c.name} <span className="muted">({c._count?.torrents ?? 0} torrents)</span></strong>
-            <div className="row">
-              <button className="secondary" onClick={() => rename(c.id, c.name)}>Renommer</button>
-              <button className="danger" onClick={() => remove(c.id)}>Supprimer</button>
-            </div>
-          </div>
-          {c.children?.map((sub: any) => (
-            <div key={sub.id} className="row" style={{ justifyContent: 'space-between', marginLeft: 24, marginTop: 6 }}>
-              <span className="muted">↳ {sub.name} ({sub._count?.torrents ?? 0} torrents)</span>
-              <div className="row">
-                <button className="secondary" onClick={() => rename(sub.id, sub.name)}>Renommer</button>
-                <button className="danger" onClick={() => remove(sub.id)}>Supprimer</button>
-              </div>
-            </div>
-          ))}
+          {renderRow(c, false)}
+          {c.children?.map((sub: any) => renderRow(sub, true))}
         </div>
       ))}
     </div>
@@ -278,68 +328,11 @@ function TorrentsAdmin() {
 }
 
 function ForumAdmin() {
-  const [categories, setCategories] = useState<any[]>([]);
-  const [name, setName] = useState('');
-  const [parentId, setParentId] = useState('');
-  const [error, setError] = useState('');
-
-  function refresh() { api.get('/forum/categories').then((r) => setCategories(r.data)); }
-  useEffect(() => { refresh(); }, []);
-
-  async function create() {
-    if (!name.trim()) return;
-    await api.post('/forum/categories', { name, parentId: parentId || undefined });
-    setName(''); setParentId('');
-    refresh();
-  }
-  async function rename(id: string, currentName: string) {
-    const newName = prompt('Nouveau nom', currentName);
-    if (!newName?.trim()) return;
-    await api.patch(`/forum/categories/${id}`, { name: newName });
-    refresh();
-  }
-  async function remove(id: string) {
-    setError('');
-    try {
-      await api.delete(`/forum/categories/${id}`);
-      refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message ?? 'Erreur de suppression');
-    }
-  }
-
   return (
-    <div className="panel">
-      <h3>Catégories &amp; sous-catégories de forum</h3>
-      <div className="row" style={{ marginBottom: 16 }}>
-        <input placeholder="Nom de la catégorie" value={name} onChange={(e) => setName(e.target.value)} />
-        <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
-          <option value="">— Catégorie principale —</option>
-          {categories.map((c) => <option key={c.id} value={c.id}>Sous-catégorie de : {c.name}</option>)}
-        </select>
-        <button onClick={create}>Ajouter</button>
-      </div>
-      {error && <div className="muted" style={{ color: 'var(--danger)', marginBottom: 8 }}>{error}</div>}
-      {categories.map((c) => (
-        <div key={c.id} style={{ marginBottom: 12 }}>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <strong>{c.name}</strong>
-            <div className="row">
-              <button className="secondary" onClick={() => rename(c.id, c.name)}>Renommer</button>
-              <button className="danger" onClick={() => remove(c.id)}>Supprimer</button>
-            </div>
-          </div>
-          {c.children?.map((sub: any) => (
-            <div key={sub.id} className="row" style={{ justifyContent: 'space-between', marginLeft: 24, marginTop: 6 }}>
-              <span className="muted">↳ {sub.name}</span>
-              <div className="row">
-                <button className="secondary" onClick={() => rename(sub.id, sub.name)}>Renommer</button>
-                <button className="danger" onClick={() => remove(sub.id)}>Supprimer</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
+    <CategoryManager
+      endpoint="/forum/categories"
+      title="Catégories & sous-catégories de forum"
+      renderCount={(c) => ` (${c.topics?.length ?? 0} sujets)`}
+    />
   );
 }

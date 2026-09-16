@@ -20,8 +20,24 @@ export class ForumService {
     return this.prisma.forumCategory.create({ data: { name, parentId: parentId || null } });
   }
 
-  updateCategory(id: string, name: string) {
-    return this.prisma.forumCategory.update({ where: { id }, data: { name } });
+  async updateCategory(id: string, data: { name?: string; parentId?: string | null }) {
+    const payload: any = {};
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.parentId !== undefined) {
+      const newParentId = data.parentId || null;
+      if (newParentId === id) throw new BadRequestException('Une catégorie ne peut pas être son propre parent');
+      if (newParentId) {
+        const hasChildren = await this.prisma.forumCategory.count({ where: { parentId: id } });
+        if (hasChildren > 0) {
+          throw new BadRequestException('Cette catégorie a des sous-catégories : elle ne peut pas devenir elle-même une sous-catégorie');
+        }
+        const parent = await this.prisma.forumCategory.findUnique({ where: { id: newParentId } });
+        if (!parent) throw new BadRequestException('Catégorie parente introuvable');
+        if (parent.parentId) throw new BadRequestException('Impossible de créer plus de deux niveaux de catégories');
+      }
+      payload.parentId = newParentId;
+    }
+    return this.prisma.forumCategory.update({ where: { id }, data: payload });
   }
 
   async deleteCategory(id: string) {

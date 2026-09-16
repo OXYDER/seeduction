@@ -23,8 +23,8 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Patch(':id')
-  update(@Param('id') id: string, @Body('name') name: string) {
-    return this.categoriesService.update(id, name);
+  update(@Param('id') id: string, @Body() body: { name?: string; parentId?: string | null }) {
+    return this.categoriesService.update(id, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -23,8 +23,8 @@ export class ForumController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Patch('categories/:id')
-  updateCategory(@Param('id') id: string, @Body('name') name: string) {
-    return this.forumService.updateCategory(id, name);
+  updateCategory(@Param('id') id: string, @Body() body: { name?: string; parentId?: string | null }) {
+    return this.forumService.updateCategory(id, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
