@@ -596,3 +596,29 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
   .auth-split { flex-direction: column; }
   .auth-art { flex: none; padding: 30px; border-right: none; border-bottom: 1px solid var(--border-gold); }
 }
+
+/* -------------------------------------------------------------------- */
+/* Pages "contenu + formulaire latéral" (Envoyer, Demandes...)           */
+/* -------------------------------------------------------------------- */
+
+.split-2 {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .split-2 { grid-template-columns: 1fr; }
+}
+
+/* Comme .split-2, mais colonne principale à gauche (un formulaire qui ne
+   doit pas s'étirer) et contenu secondaire à droite. */
+.split-2-reverse {
+  display: grid;
+  grid-template-columns: minmax(320px, 560px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .split-2-reverse { grid-template-columns: 1fr; }
+}

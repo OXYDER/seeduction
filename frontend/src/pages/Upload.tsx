@@ -37,28 +37,50 @@ export default function Upload() {
   }
 
   return (
-    <div style={{ maxWidth: 520 }} className="panel">
-      <h2>Uploader un torrent</h2>
-      <form onSubmit={submit} className="grid">
-        <input type="file" accept=".torrent" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
-        <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
-        <textarea placeholder="Description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-          <option value="">— Choisir une catégorie —</option>
-          {categories.map((c) => (
-            <optgroup key={c.id} label={c.name}>
-              <option value={c.id}>{c.name}</option>
-              {c.children?.map((sub: any) => (
-                <option key={sub.id} value={sub.id}>↳ {sub.name}</option>
+    <div className="grid">
+      <h1>Uploader un torrent</h1>
+      <div className="split-2-reverse">
+        <div className="panel">
+          <form onSubmit={submit} className="grid">
+            <input type="file" accept=".torrent" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
+            <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
+            <textarea placeholder="Description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
+              <option value="">— Choisir une catégorie —</option>
+              {categories.map((c) => (
+                <optgroup key={c.id} label={c.name}>
+                  <option value={c.id}>{c.name}</option>
+                  {c.children?.map((sub: any) => (
+                    <option key={sub.id} value={sub.id}>↳ {sub.name}</option>
+                  ))}
+                </optgroup>
               ))}
-            </optgroup>
-          ))}
-        </select>
-        <input placeholder="Tags (séparés par virgule)" value={tags} onChange={(e) => setTags(e.target.value)} />
-        <label className="row"><input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} style={{ width: 'auto' }} /> Upload anonyme</label>
-        {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
-        <button type="submit">Uploader</button>
-      </form>
+            </select>
+            <input placeholder="Tags (séparés par virgule)" value={tags} onChange={(e) => setTags(e.target.value)} />
+            <label className="row"><input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} style={{ width: 'auto' }} /> Upload anonyme</label>
+            {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
+            <button type="submit">Uploader</button>
+          </form>
+        </div>
+
+        <div className="panel ornate">
+          <div className="panel-title"><span className="title-icon">📜</span>À savoir avant d'uploader</div>
+          <div className="grid" style={{ gap: 12 }}>
+            <div>
+              <strong>Un seul upload par contenu</strong>
+              <p className="muted" style={{ margin: '4px 0 0' }}>Vérifie qu'il n'existe pas déjà via Parcourir avant d'envoyer.</p>
+            </div>
+            <div>
+              <strong>Bonne catégorie</strong>
+              <p className="muted" style={{ margin: '4px 0 0' }}>Choisis la sous-catégorie la plus précise si elle existe.</p>
+            </div>
+            <div>
+              <strong>Modération</strong>
+              <p className="muted" style={{ margin: '4px 0 0' }}>Ton torrent reste en attente jusqu'à l'approbation du staff.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
