@@ -1,0 +1,317 @@
+// ===========================================================================
+// SCHEMA PRISMA - MEGA TRACKER PRIVÉ
+// ===========================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// USERS & AUTH
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  USER
+  UPLOADER
+  MODERATOR
+  ADMIN
+  OWNER
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  DISABLED
+  PENDING_INVITE
+}
+
+model User {
+  id               String     @id @default(uuid())
+  username         String     @unique
+  email            String     @unique
+  passwordHash     String
+  passkey          String     @unique @default(uuid()) // clé unique injectée dans l'URL announce
+  role             UserRole   @default(USER)
+  status           UserStatus @default(ACTIVE)
+
+  // 2FA
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean    @default(false)
+
+  // Ratio / stats globales (dénormalisées pour perf, recalculées via les Announces)
+  uploaded         BigInt     @default(0)
+  downloaded       BigInt     @default(0)
+  bonusPoints      Float      @default(0)
+
+  // Parrainage
+  invitedById      String?
+  invitedBy        User?      @relation("Invites", fields: [invitedById], references: [id])
+  invitees         User[]     @relation("Invites")
+  inviteCodesOwned InviteCode[]
+
+  // Relations
+  torrentsUploaded Torrent[]  @relation("Uploader")
+  peers            Peer[]
+  snapshots        RatioSnapshot[]
+  requests         TorrentRequest[]
+  requestFills     TorrentRequest[] @relation("RequestFiller")
+  forumPosts       ForumPost[]
+  forumTopics      ForumTopic[]
+  messagesSent     PrivateMessage[] @relation("Sender")
+  messagesReceived PrivateMessage[] @relation("Recipient")
+  reports          Report[]         @relation("Reporter")
+  warnings         Warning[]
+  bans             Ban[]
+  activityLogs     ActivityLog[]
+
+  minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
+  createdAt        DateTime   @default(now())
+  lastSeenAt       DateTime?
+  lastIp           String?
+
+  @@index([status])
+}
+
+model InviteCode {
+  id         String    @id @default(uuid())
+  code       String    @unique
+  createdBy  User      @relation(fields: [createdById], references: [id])
+  createdById String
+  usedByEmail String?
+  used       Boolean   @default(false)
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// TORRENTS
+// ---------------------------------------------------------------------------
+
+enum TorrentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DEAD
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  slug     String    @unique
+  torrents Torrent[]
+}
+
+model Torrent {
+  id             String        @id @default(uuid())
+  infoHash       String        @unique // sha1 hex du dict "info" du .torrent
+  name           String
+  description    String?       @db.Text
+  nfo            String?       @db.Text
+  filePath       String        // chemin de stockage du .torrent sur disque/S3
+  size           BigInt
+  fileList       Json          // liste des fichiers contenus [{path, size}]
+
+  category       Category      @relation(fields: [categoryId], references: [id])
+  categoryId     String
+
+  uploader       User          @relation("Uploader", fields: [uploaderId], references: [id])
+  uploaderId     String
+  anonymousUpload Boolean      @default(false)
+
+  status         TorrentStatus @default(PENDING)
+  freeleech      Boolean       @default(false)
+  doubleUpload   Boolean       @default(false)
+
+  seeders        Int           @default(0)
+  leechers       Int           @default(0)
+  completedCount Int           @default(0) // nb total de "snatch" (téléchargement complet)
+
+  peers          Peer[]
+  snatches       Snatch[]
+  requestFilled  TorrentRequest?
+
+  tags           String[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status])
+  @@index([categoryId])
+}
+
+// ---------------------------------------------------------------------------
+// TRACKER ENGINE (announce / scrape)
+// ---------------------------------------------------------------------------
+
+enum PeerEvent {
+  STARTED
+  STOPPED
+  COMPLETED
+  NONE
+}
+
+// Etat courant d'un peer pour un torrent donné (mis à jour à chaque announce)
+model Peer {
+  id            String    @id @default(uuid())
+  torrent       Torrent   @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId     String
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String
+
+  peerId        String    // peer_id envoyé par le client BitTorrent
+  ip            String
+  port          Int
+
+  uploaded      BigInt    @default(0) // cumulé pour CE torrent
+  downloaded    BigInt    @default(0)
+  left          BigInt    @default(0) // octets restants -> 0 = seeder
+
+  isSeeder      Boolean   @default(false)
+  lastEvent     PeerEvent @default(NONE)
+  lastAnnounceAt DateTime @default(now())
+
+  @@unique([torrentId, userId, peerId])
+  @@index([torrentId, isSeeder])
+}
+
+// Historique des cycles complets de téléchargement (pour stats + anti-cheat)
+model Snatch {
+  id         String   @id @default(uuid())
+  torrent    Torrent  @relation(fields: [torrentId], references: [id])
+  torrentId  String
+  userId     String
+  completedAt DateTime @default(now())
+}
+
+// Snapshot périodique du ratio d'un user (pour graphiques d'évolution)
+model RatioSnapshot {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  uploaded   BigInt
+  downloaded BigInt
+  takenAt    DateTime @default(now())
+
+  @@index([userId, takenAt])
+}
+
+// ---------------------------------------------------------------------------
+// REQUESTS (demandes de torrents par la communauté)
+// ---------------------------------------------------------------------------
+
+model TorrentRequest {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  bounty      Float    @default(0) // bonus points offerts
+
+  requestedBy User     @relation(fields: [requestedById], references: [id])
+  requestedById String
+
+  filledBy    User?    @relation("RequestFiller", fields: [filledById], references: [id])
+  filledById  String?
+  filledTorrent Torrent? @relation(fields: [filledTorrentId], references: [id])
+  filledTorrentId String? @unique
+
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// COMMUNAUTÉ : forums + messagerie privée
+// ---------------------------------------------------------------------------
+
+model ForumCategory {
+  id     String       @id @default(uuid())
+  name   String
+  topics ForumTopic[]
+}
+
+model ForumTopic {
+  id         String        @id @default(uuid())
+  title      String
+  category   ForumCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+  author     User          @relation(fields: [authorId], references: [id])
+  authorId   String
+  locked     Boolean       @default(false)
+  posts      ForumPost[]
+  createdAt  DateTime      @default(now())
+}
+
+model ForumPost {
+  id        String     @id @default(uuid())
+  topic     ForumTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topicId   String
+  author    User       @relation(fields: [authorId], references: [id])
+  authorId  String
+  content   String     @db.Text
+  createdAt DateTime   @default(now())
+}
+
+model PrivateMessage {
+  id          String   @id @default(uuid())
+  sender      User     @relation("Sender", fields: [senderId], references: [id])
+  senderId    String
+  recipient   User     @relation("Recipient", fields: [recipientId], references: [id])
+  recipientId String
+  subject     String
+  content     String   @db.Text
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// MODÉRATION
+// ---------------------------------------------------------------------------
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
+  reporterId  String
+  targetType  String       // "torrent" | "user" | "forumPost"
+  targetId    String
+  reason      String       @db.Text
+  status      ReportStatus @default(OPEN)
+  createdAt   DateTime     @default(now())
+}
+
+model Warning {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  reason    String
+  issuedBy  String
+  createdAt DateTime @default(now())
+}
+
+model Ban {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  reason    String
+  issuedBy  String
+  expiresAt DateTime? // null = permanent
+  createdAt DateTime  @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  action    String   // "LOGIN" | "UPLOAD" | "DELETE_TORRENT" | ...
+  meta      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([action])
+}

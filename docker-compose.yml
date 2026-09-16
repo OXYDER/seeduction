@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tracker
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: tracker
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - tracker_net
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    env_file:
+      - ./backend/.env
+    volumes:
+      - torrent_storage:/app/storage/torrents
+    networks:
+      - tracker_net
+    # Pas de port exposé publiquement ici — passe par Nginx Proxy Manager
+    expose:
+      - "3000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - tracker_net
+    expose:
+      - "80"
+
+networks:
+  tracker_net:
+    driver: bridge
+
+volumes:
+  pg_data:
+  torrent_storage:
