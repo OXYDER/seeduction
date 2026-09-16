@@ -69,6 +69,7 @@ model User {
   warnings         Warning[]
   bans             Ban[]
   activityLogs     ActivityLog[]
+  announcements    Announcement[]
 
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
   createdAt        DateTime   @default(now())
@@ -303,6 +304,18 @@ model Ban {
   issuedBy  String
   expiresAt DateTime? // null = permanent
   createdAt DateTime  @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text
+  pinned    Boolean  @default(false)
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  createdAt DateTime @default(now())
+
+  @@index([pinned, createdAt])
 }
 
 model ActivityLog {

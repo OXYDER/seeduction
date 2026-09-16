@@ -16,4 +16,8 @@ COPY --from=build /app/prisma ./prisma
 COPY package.json ./
 RUN mkdir -p /app/storage/torrents
 EXPOSE 3000
-CMD ["node", "dist/main"]
+# `db push` (plutôt que `migrate deploy`) car ce projet n'a pas de dossier de
+# migrations versionné — il synchronise le schéma directement, sans jamais
+# supprimer de données silencieusement (il refuse et log si une perte de
+# données serait nécessaire, au lieu de l'appliquer).
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/main"]

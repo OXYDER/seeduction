@@ -16,14 +16,18 @@ export class StatsService {
       this.prisma.snatch.count(),
     ]);
     const totalSizeAgg = await this.prisma.torrent.aggregate({ _sum: { size: true } });
+    const trafficAgg = await this.prisma.user.aggregate({ _sum: { uploaded: true, downloaded: true } });
+    const totalTraffic = (trafficAgg._sum.uploaded ?? 0n) + (trafficAgg._sum.downloaded ?? 0n);
 
     return {
       totalUsers,
       totalTorrents,
       totalSeeders,
       totalLeechers,
+      totalPeers: totalSeeders + totalLeechers,
       totalCompleted,
       totalSize: totalSizeAgg._sum.size ?? 0n,
+      totalTraffic,
     };
   }
 

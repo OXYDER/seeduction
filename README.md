@@ -24,9 +24,9 @@ cp backend/.env.example backend/.env
 # docker-compose le construit lui-même à partir du .env racine)
 
 docker compose up -d --build
-
-# Première fois seulement : appliquer le schéma Prisma
-docker compose exec backend npx prisma migrate deploy
+# Le schéma Prisma se synchronise automatiquement au démarrage du backend
+# (`prisma db push` dans le Dockerfile) — aucune commande manuelle requise,
+# ni au premier démarrage ni après une modification du schéma.
 ```
 
 Frontend sur le port 80 du conteneur `frontend`, backend sur le port 3000 du

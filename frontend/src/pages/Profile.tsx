@@ -38,10 +38,10 @@ export default function Profile() {
           <h3>Évolution du ratio (30 jours)</h3>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={chartData}>
-              <XAxis dataKey="date" stroke="#8b8f9c" fontSize={12} />
-              <YAxis stroke="#8b8f9c" fontSize={12} />
-              <Tooltip contentStyle={{ background: '#171a23', border: '1px solid #2a2e3a' }} />
-              <Line type="monotone" dataKey="ratio" stroke="#5b8cff" strokeWidth={2} dot={false} />
+              <XAxis dataKey="date" stroke="#8fa896" fontSize={12} />
+              <YAxis stroke="#8fa896" fontSize={12} />
+              <Tooltip contentStyle={{ background: '#0c1912', border: '1px solid #1f3d2a' }} />
+              <Line type="monotone" dataKey="ratio" stroke="#e0b84a" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

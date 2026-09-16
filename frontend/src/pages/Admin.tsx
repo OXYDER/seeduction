@@ -5,11 +5,16 @@ export default function Admin() {
   const [stats, setStats] = useState<any>(null);
   const [pending, setPending] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [annTitle, setAnnTitle] = useState('');
+  const [annContent, setAnnContent] = useState('');
+  const [annPinned, setAnnPinned] = useState(false);
 
   function refresh() {
     api.get('/admin/stats').then((r) => setStats(r.data));
     api.get('/admin/torrents/pending').then((r) => setPending(r.data));
     api.get('/admin/reports').then((r) => setReports(r.data));
+    api.get('/announcements', { params: { limit: 20 } }).then((r) => setAnnouncements(r.data));
   }
 
   useEffect(() => { refresh(); }, []);
@@ -19,6 +24,13 @@ export default function Admin() {
   async function resolveReport(id: string, status: 'RESOLVED' | 'DISMISSED') {
     await api.post(`/admin/reports/${id}/resolve`, { status }); refresh();
   }
+  async function publishAnnouncement() {
+    if (!annTitle.trim() || !annContent.trim()) return;
+    await api.post('/announcements', { title: annTitle, content: annContent, pinned: annPinned });
+    setAnnTitle(''); setAnnContent(''); setAnnPinned(false);
+    refresh();
+  }
+  async function deleteAnnouncement(id: string) { await api.delete(`/announcements/${id}`); refresh(); }
 
   return (
     <div className="grid">
@@ -42,6 +54,31 @@ export default function Admin() {
                 <td className="row" style={{ justifyContent: 'flex-end' }}>
                   <button onClick={() => approve(t.id)}>Approuver</button>
                   <button className="danger" onClick={() => reject(t.id)}>Rejeter</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="panel">
+        <h3>Annonces</h3>
+        <div className="grid" style={{ gap: 8 }}>
+          <input placeholder="Titre" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} />
+          <textarea placeholder="Contenu" value={annContent} onChange={(e) => setAnnContent(e.target.value)} rows={3} />
+          <label className="row muted" style={{ gap: 6 }}>
+            <input type="checkbox" style={{ width: 'auto' }} checked={annPinned} onChange={(e) => setAnnPinned(e.target.checked)} />
+            Épingler
+          </label>
+          <button style={{ alignSelf: 'flex-start' }} onClick={publishAnnouncement}>Publier</button>
+        </div>
+        <table style={{ marginTop: 16 }}>
+          <tbody>
+            {announcements.map((a) => (
+              <tr key={a.id}>
+                <td>{a.pinned ? '🔥 ' : ''}{a.title}</td>
+                <td className="row" style={{ justifyContent: 'flex-end' }}>
+                  <button className="danger" onClick={() => deleteAnnouncement(a.id)}>Supprimer</button>
                 </td>
               </tr>
             ))}

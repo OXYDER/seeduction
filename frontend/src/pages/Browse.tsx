@@ -1,34 +1,54 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
-
-function formatSize(bytes: number | string) {
-  const b = Number(bytes);
-  const units = ['o', 'Ko', 'Mo', 'Go', 'To'];
-  let i = 0, n = b;
-  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
-  return `${n.toFixed(2)} ${units[i]}`;
-}
+import { formatBytes as formatSize } from '../lib/format';
 
 export default function Browse() {
+  const [params, setParams] = useSearchParams();
+  const search = params.get('search') ?? '';
+  const categoryId = params.get('categoryId') ?? '';
+  const uploaderId = params.get('uploaderId') ?? '';
+  const page = parseInt(params.get('page') ?? '1', 10);
+
   const [items, setItems] = useState<any[]>([]);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    api.get('/torrents', { params: { search, page, pageSize: 25 } }).then((r) => {
+    api.get('/torrents', { params: { search, categoryId, uploaderId, page, pageSize: 25 } }).then((r) => {
       setItems(r.data.items);
       setTotal(r.data.total);
     });
-  }, [search, page]);
+  }, [search, categoryId, uploaderId, page]);
+
+  function updateParam(key: string, value: string) {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value); else next.delete(key);
+    next.delete('page');
+    setParams(next);
+  }
+
+  function goToPage(p: number) {
+    const next = new URLSearchParams(params);
+    next.set('page', String(p));
+    setParams(next);
+  }
 
   return (
     <div className="grid">
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1>Parcourir</h1>
-        <input placeholder="Rechercher..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} style={{ width: 260 }} />
+        <h1>{uploaderId ? 'Mes uploads' : 'Parcourir'}</h1>
+        <input
+          placeholder="Rechercher..."
+          value={search}
+          onChange={(e) => updateParam('search', e.target.value)}
+          style={{ width: 260 }}
+        />
       </div>
+      {uploaderId && (
+        <button className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => updateParam('uploaderId', '')}>
+          ← Voir tous les torrents
+        </button>
+      )}
       <div className="panel">
         <table>
           <thead>
@@ -54,9 +74,9 @@ export default function Browse() {
         <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
           <span className="muted">{total} résultat(s)</span>
           <div className="row">
-            <button className="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Préc.</button>
+            <button className="secondary" disabled={page <= 1} onClick={() => goToPage(page - 1)}>← Préc.</button>
             <span className="muted">Page {page}</span>
-            <button className="secondary" disabled={page * 25 >= total} onClick={() => setPage(page + 1)}>Suiv. →</button>
+            <button className="secondary" disabled={page * 25 >= total} onClick={() => goToPage(page + 1)}>Suiv. →</button>
           </div>
         </div>
       </div>

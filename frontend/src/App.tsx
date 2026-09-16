@@ -13,6 +13,7 @@ import Forum from './pages/Forum';
 import ForumTopic from './pages/ForumTopic';
 import Messages from './pages/Messages';
 import Requests from './pages/Requests';
+import Rules from './pages/Rules';
 import { useAuthStore } from './store/auth';
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/forum/topics/:id" element={<ForumTopic />} />
           <Route path="/messages" element={<RequireAuth><Messages /></RequireAuth>} />
           <Route path="/requests" element={<Requests />} />
+          <Route path="/rules" element={<Rules />} />
         </Route>
       </Routes>
     </BrowserRouter>

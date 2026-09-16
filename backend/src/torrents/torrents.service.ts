@@ -60,10 +60,11 @@ export class TorrentsService {
     return rewriteTorrentForUser(original, announceUrl);
   }
 
-  async list(params: { categoryId?: string; search?: string; page: number; pageSize: number }) {
+  async list(params: { categoryId?: string; search?: string; uploaderId?: string; page: number; pageSize: number }) {
     const where: any = { status: 'APPROVED' };
     if (params.categoryId) where.categoryId = params.categoryId;
     if (params.search) where.name = { contains: params.search, mode: 'insensitive' };
+    if (params.uploaderId) where.uploaderId = params.uploaderId;
 
     const [items, total] = await Promise.all([
       this.prisma.torrent.findMany({

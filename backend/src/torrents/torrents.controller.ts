@@ -13,9 +13,10 @@ export class TorrentsController {
 
   @Get()
   list(@Query('categoryId') categoryId?: string, @Query('search') search?: string,
+       @Query('uploaderId') uploaderId?: string,
        @Query('page') page = '1', @Query('pageSize') pageSize = '25') {
     return this.torrentsService.list({
-      categoryId, search, page: parseInt(page, 10), pageSize: parseInt(pageSize, 10),
+      categoryId, search, uploaderId, page: parseInt(page, 10), pageSize: parseInt(pageSize, 10),
     });
   }
 
