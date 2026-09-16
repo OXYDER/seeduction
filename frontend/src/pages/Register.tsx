@@ -26,12 +26,15 @@ export default function Register() {
         <img src="/logo-full.png" alt="Seeduction" width={120} height={120} />
       </div>
       <h2 style={{ textAlign: 'center' }}>Inscription</h2>
-      <p className="muted">Un code d'invitation valide est requis — le tracker est fermé.</p>
+      <p className="muted">
+        Un code d'invitation valide est requis — le tracker est fermé.
+        (Le tout premier compte créé devient automatiquement administrateur, sans invitation.)
+      </p>
       {done ? (
         <p style={{ color: 'var(--success)' }}>Compte créé ! Redirection...</p>
       ) : (
         <form onSubmit={submit} className="grid">
-          <input placeholder="Code d'invitation" value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value })} required />
+          <input placeholder="Code d'invitation (inutile pour le 1er compte)" value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value })} />
           <input placeholder="Nom d'utilisateur" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
           <input placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           <input placeholder="Mot de passe" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />

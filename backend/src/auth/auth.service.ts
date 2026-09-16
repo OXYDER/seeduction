@@ -8,15 +8,27 @@ import { PrismaService } from '../common/prisma.service';
 export class AuthService {
   constructor(private prisma: PrismaService, private jwt: JwtService) {}
 
-  /** Inscription : nécessite un code d'invitation valide et non utilisé. */
+  /**
+   * Inscription : nécessite un code d'invitation valide et non utilisé —
+   * SAUF pour le tout premier compte du tracker (base vide), qui devient
+   * automatiquement ADMIN sans invitation, pour amorcer le premier accès.
+   */
   async register(inviteCode: string, username: string, email: string, password: string) {
+    const isFirstUser = (await this.prisma.user.count()) === 0;
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    if (isFirstUser) {
+      const created = await this.prisma.user.create({
+        data: { username, email, passwordHash, role: 'ADMIN' },
+      });
+      return { id: created.id, username: created.username, passkey: created.passkey };
+    }
+
     const invite = await this.prisma.inviteCode.findUnique({ where: { code: inviteCode } });
     if (!invite || invite.used) throw new BadRequestException('Code d\'invitation invalide ou déjà utilisé');
     if (invite.expiresAt && invite.expiresAt < new Date()) {
       throw new BadRequestException('Code d\'invitation expiré');
     }
-
-    const passwordHash = await bcrypt.hash(password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({

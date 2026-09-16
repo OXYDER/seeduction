@@ -81,7 +81,7 @@ export default function Dashboard() {
               <div className="row" style={{ gap: 14 }}>
                 <div className="avatar-ring">
                   <div style={{
-                    width: 44, height: 44, borderRadius: '50%',
+                    width: 44, height: 44, borderRadius: 4,
                     background: 'var(--bg-panel)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 18, fontWeight: 700, color: 'var(--gold-bright)',
