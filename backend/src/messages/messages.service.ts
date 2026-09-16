@@ -24,9 +24,9 @@ export class MessagesService {
   send(senderId: string, recipientUsername: string, subject: string, content: string) {
     return this.prisma.privateMessage.create({
       data: {
-        senderId,
         subject,
         content,
+        sender: { connect: { id: senderId } },
         recipient: { connect: { username: recipientUsername } },
       },
     });
