@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: tracker
-      POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: tracker
+      POSTGRES_USER: ${POSTGRES_USER:-tracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-tracker}
     volumes:
       - pg_data:/var/lib/postgresql/data
     networks:
@@ -20,6 +20,12 @@ services:
       - postgres
     env_file:
       - ./backend/.env
+    environment:
+      # Dérivé des mêmes variables que le service postgres ci-dessus, pour
+      # qu'il soit impossible que les deux divergent (source du bug P1000
+      # "Authentication failed" : deux fichiers .env différents avaient
+      # chacun leur propre mot de passe codé en dur).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tracker}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-tracker}?schema=public
     volumes:
       - torrent_storage:/app/storage/torrents
     networks:

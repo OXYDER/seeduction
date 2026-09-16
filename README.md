@@ -15,8 +15,13 @@ Stack : **NestJS + Prisma + PostgreSQL** (backend) / **React + Vite** (frontend)
 ## Démarrage rapide
 
 ```bash
+cp .env.example .env
+# édite .env à la racine : mot de passe Postgres (source unique, partagée
+# automatiquement avec le backend par docker-compose.yml)
+
 cp backend/.env.example backend/.env
-# édite backend/.env : DATABASE_URL, JWT_SECRET, ANNOUNCE_BASE_URL
+# édite backend/.env : JWT_SECRET, ANNOUNCE_BASE_URL (ignore DATABASE_URL,
+# docker-compose le construit lui-même à partir du .env racine)
 
 docker compose up -d --build
 
