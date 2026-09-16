@@ -17,6 +17,23 @@ export class AdminService {
     return this.prisma.torrent.findMany({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' } });
   }
 
+  allTorrents(search?: string) {
+    return this.prisma.torrent.findMany({
+      where: search ? { name: { contains: search, mode: 'insensitive' } } : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: { category: true, uploader: { select: { username: true } } },
+    });
+  }
+
+  updateTorrent(id: string, data: { name?: string; categoryId?: string; freeleech?: boolean; doubleUpload?: boolean; status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEAD' }) {
+    return this.prisma.torrent.update({ where: { id }, data });
+  }
+
+  deleteTorrent(id: string) {
+    return this.prisma.torrent.delete({ where: { id } });
+  }
+
   warnUser(userId: string, reason: string, issuedBy: string) {
     return this.prisma.warning.create({ data: { userId, reason, issuedBy } });
   }

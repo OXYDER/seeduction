@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -18,6 +18,21 @@ export class AdminController {
   @Get('torrents/pending')
   pending() {
     return this.adminService.pendingTorrents();
+  }
+
+  @Get('torrents')
+  allTorrents(@Query('search') search?: string) {
+    return this.adminService.allTorrents(search);
+  }
+
+  @Patch('torrents/:id')
+  updateTorrent(@Param('id') id: string, @Body() body: any) {
+    return this.adminService.updateTorrent(id, body);
+  }
+
+  @Delete('torrents/:id')
+  deleteTorrent(@Param('id') id: string) {
+    return this.adminService.deleteTorrent(id);
   }
 
   @Post('torrents/:id/approve')

@@ -460,3 +460,65 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
 }
 .footer-stats .n { font-family: var(--font-display); color: var(--gold-bright); font-size: 18px; line-height: 1.1; }
 .footer-stats .l { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* -------------------------------------------------------------------- */
+/* Auth (login / register) — écran scindé                                */
+/* -------------------------------------------------------------------- */
+
+.auth-split {
+  display: flex;
+  min-height: 100vh;
+}
+.auth-art {
+  position: relative;
+  flex: 1.1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 40px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(46, 139, 70, 0.25), transparent 55%),
+    radial-gradient(circle at 70% 70%, rgba(212, 175, 55, 0.18), transparent 55%),
+    linear-gradient(160deg, #0b1a10, #030805 80%);
+  border-right: 1px solid var(--border-gold);
+}
+.auth-art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(rgba(245, 214, 122, 0.5) 1px, transparent 1px),
+    radial-gradient(rgba(245, 214, 122, 0.3) 1px, transparent 1px);
+  background-size: 140px 140px, 90px 90px;
+  background-position: 0 0, 45px 60px;
+}
+.auth-art-logo {
+  position: relative;
+  z-index: 1;
+  width: min(280px, 60%);
+  filter: drop-shadow(0 0 40px rgba(212, 175, 55, 0.4));
+}
+.auth-art-caption {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 340px;
+}
+.auth-art-caption strong { font-family: var(--font-display); color: var(--gold-bright); font-size: 20px; display: block; margin-bottom: 6px; }
+.auth-art-caption p { color: var(--text-dim); margin: 0; }
+.auth-form-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+@media (max-width: 800px) {
+  .auth-split { flex-direction: column; }
+  .auth-art { flex: none; padding: 30px; border-right: none; border-bottom: 1px solid var(--border-gold); }
+}

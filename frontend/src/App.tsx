@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -14,12 +14,6 @@ import ForumTopic from './pages/ForumTopic';
 import Messages from './pages/Messages';
 import Requests from './pages/Requests';
 import Rules from './pages/Rules';
-import { useAuthStore } from './store/auth';
-
-function RequireAuth({ children }: { children: JSX.Element }) {
-  const token = useAuthStore((s) => s.accessToken);
-  return token ? children : <Navigate to="/login" replace />;
-}
 
 export default function App() {
   return (
@@ -27,18 +21,20 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        {/* Layout redirige vers /login si aucune session valide : le site
+            entier est privé, rien n'est visible aux non-membres. */}
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/browse" element={<Browse />} />
           <Route path="/torrents/:id" element={<TorrentDetail />} />
-          <Route path="/upload" element={<RequireAuth><Upload /></RequireAuth>} />
-          <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+          <Route path="/upload" element={<Upload />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/users/:id" element={<Profile />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/forum" element={<Forum />} />
           <Route path="/forum/topics/:id" element={<ForumTopic />} />
-          <Route path="/messages" element={<RequireAuth><Messages /></RequireAuth>} />
+          <Route path="/messages" element={<Messages />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/rules" element={<Rules />} />
         </Route>

@@ -183,7 +183,7 @@ model Peer {
 // Historique des cycles complets de téléchargement (pour stats + anti-cheat)
 model Snatch {
   id         String   @id @default(uuid())
-  torrent    Torrent  @relation(fields: [torrentId], references: [id])
+  torrent    Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
   torrentId  String
   userId     String
   completedAt DateTime @default(now())
@@ -216,7 +216,7 @@ model TorrentRequest {
 
   filledBy    User?    @relation("RequestFiller", fields: [filledById], references: [id])
   filledById  String?
-  filledTorrent Torrent? @relation(fields: [filledTorrentId], references: [id])
+  filledTorrent Torrent? @relation(fields: [filledTorrentId], references: [id], onDelete: SetNull)
   filledTorrentId String? @unique
 
   createdAt   DateTime @default(now())
@@ -227,9 +227,13 @@ model TorrentRequest {
 // ---------------------------------------------------------------------------
 
 model ForumCategory {
-  id     String       @id @default(uuid())
-  name   String
-  topics ForumTopic[]
+  id       String         @id @default(uuid())
+  name     String
+  position Int            @default(0)
+  parent   ForumCategory? @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId String?
+  children ForumCategory[] @relation("SubCategories")
+  topics   ForumTopic[]
 }
 
 model ForumTopic {

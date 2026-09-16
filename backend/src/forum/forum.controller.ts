@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { ForumService } from './forum.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('forum')
 export class ForumController {
@@ -9,6 +11,27 @@ export class ForumController {
   @Get('categories')
   categories() {
     return this.forumService.listCategories();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Post('categories')
+  createCategory(@Body() body: { name: string; parentId?: string }) {
+    return this.forumService.createCategory(body.name, body.parentId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Patch('categories/:id')
+  updateCategory(@Param('id') id: string, @Body('name') name: string) {
+    return this.forumService.updateCategory(id, name);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Delete('categories/:id')
+  deleteCategory(@Param('id') id: string) {
+    return this.forumService.deleteCategory(id);
   }
 
   @Get('categories/:id/topics')
