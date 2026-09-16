@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/auth';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { getRankInfo } from '../lib/rank';
-import type { LayoutContext } from '../components/Layout';
+import { CATEGORY_STYLE, type LayoutContext } from '../components/Layout';
 
 interface GlobalStats {
   totalUsers: number;
@@ -53,11 +53,12 @@ export default function Dashboard() {
 
   return (
     <div className="grid">
-      <div className="hero">
+      <div className="hero ornate-frame">
         <div className="hero-top">
           <div className="hero-content">
             <div className="hero-eyebrow">REJOIGNEZ</div>
             <h2>LA LÉGENDE</h2>
+            <div className="ornate-divider" style={{ maxWidth: 260 }} />
             <p>Le tracker privé le plus élite jamais créé.</p>
             <Link to={user ? '/browse' : '/register'}>
               <button className="hero-cta">{user ? 'Parcourir les torrents' : 'Devenir légendaire'}</button>
@@ -158,18 +159,27 @@ export default function Dashboard() {
         </div>
 
         <div className="panel">
-          <div className="panel-title">🏆 Torrents en vedette</div>
+          <div className="panel-title"><span className="title-icon">🏆</span>Torrents en vedette</div>
           <table>
             <thead>
               <tr><th>Nom</th><th>Catégorie</th><th>Taille</th><th>Ajouté</th><th>Seed</th><th>Leech</th></tr>
             </thead>
             <tbody>
-              {torrents.map((t) => (
+              {torrents.map((t) => {
+                const catStyle = t.category?.slug ? CATEGORY_STYLE[t.category.slug] : undefined;
+                return (
                 <tr key={t.id}>
                   <td>
-                    <Link to={`/torrents/${t.id}`}>{t.name}</Link>{' '}
-                    {timeAgo(t.createdAt) === "à l'instant" && <span className="badge new">NEW</span>}{' '}
-                    {t.freeleech && <span className="badge freeleech">FREELEECH</span>}
+                    <div className="row" style={{ gap: 10 }}>
+                      <span className="category-swatch" style={{ background: `${(catStyle?.color ?? '#e0b84a')}26` }}>
+                        {catStyle?.icon ?? '📦'}
+                      </span>
+                      <span>
+                        <Link to={`/torrents/${t.id}`}>{t.name}</Link>{' '}
+                        {timeAgo(t.createdAt) === "à l'instant" && <span className="badge new">NEW</span>}{' '}
+                        {t.freeleech && <span className="badge freeleech">FREELEECH</span>}
+                      </span>
+                    </div>
                   </td>
                   <td className="muted">{t.category?.name}</td>
                   <td className="muted">{formatBytes(t.size)}</td>
@@ -177,7 +187,8 @@ export default function Dashboard() {
                   <td style={{ color: 'var(--success)' }}>{t.seeders}</td>
                   <td style={{ color: 'var(--danger)' }}>{t.leechers}</td>
                 </tr>
-              ))}
+                );
+              })}
               {torrents.length === 0 && (
                 <tr><td colSpan={6} className="muted">Aucun torrent pour l'instant.</td></tr>
               )}
@@ -190,7 +201,7 @@ export default function Dashboard() {
 
         <div className="grid">
           <div className="panel">
-            <div className="panel-title">📯 Annonces</div>
+            <div className="panel-title"><span className="title-icon">📯</span>Annonces</div>
             {announcements.length === 0 && <p className="muted">Aucune annonce pour l'instant.</p>}
             {announcements.map((a) => (
               <div key={a.id} style={{ marginBottom: 14 }}>
@@ -202,11 +213,11 @@ export default function Dashboard() {
           </div>
 
           <div className="panel">
-            <div className="panel-title">👑 Top uploaders</div>
+            <div className="panel-title"><span className="title-icon">👑</span>Top uploaders</div>
             {topUploaders.map((u, i) => (
               <div key={u.id} className="row" style={{ justifyContent: 'space-between', padding: '6px 0' }}>
                 <span className="row" style={{ gap: 8 }}>
-                  <span className={`rank-badge ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}`}>{i + 1}</span>
+                  <span className={`rank-badge ${i === 0 ? 'gold' : ''}`}>{i + 1}</span>
                   <Link to={`/users/${u.id}`}>{u.username}</Link>
                 </span>
                 <span className="muted">{formatBytes(u.uploaded)}</span>
@@ -221,7 +232,7 @@ export default function Dashboard() {
       </div>
 
       {stats && (
-        <div className="footer-stats">
+        <div className="footer-stats ornate-frame">
           <div className="item"><div className="icon">👥</div><div className="n">{formatNumber(stats.totalUsers)}</div><div className="l">Utilisateurs</div></div>
           <div className="item"><div className="icon">📦</div><div className="n">{formatNumber(stats.totalTorrents)}</div><div className="l">Torrents</div></div>
           <div className="item"><div className="icon">🌱</div><div className="n">{formatNumber(stats.totalSeeders)}</div><div className="l">Seeders</div></div>

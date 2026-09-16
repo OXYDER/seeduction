@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes as formatSize } from '../lib/format';
+import { CATEGORY_STYLE } from '../components/Layout';
 
 export default function Browse() {
   const [params, setParams] = useSearchParams();
@@ -55,12 +56,21 @@ export default function Browse() {
             <tr><th>Nom</th><th>Catégorie</th><th>Taille</th><th>S</th><th>L</th><th>Uploader</th></tr>
           </thead>
           <tbody>
-            {items.map((t) => (
+            {items.map((t) => {
+              const catStyle = t.category?.slug ? CATEGORY_STYLE[t.category.slug] : undefined;
+              return (
               <tr key={t.id}>
                 <td>
-                  <Link to={`/torrents/${t.id}`}>{t.name}</Link>{' '}
-                  {t.freeleech && <span className="badge freeleech">FL</span>}{' '}
-                  {t.doubleUpload && <span className="badge double">2x</span>}
+                  <div className="row" style={{ gap: 10 }}>
+                    <span className="category-swatch" style={{ background: `${(catStyle?.color ?? '#e0b84a')}26` }}>
+                      {catStyle?.icon ?? '📦'}
+                    </span>
+                    <span>
+                      <Link to={`/torrents/${t.id}`}>{t.name}</Link>{' '}
+                      {t.freeleech && <span className="badge freeleech">FL</span>}{' '}
+                      {t.doubleUpload && <span className="badge double">2x</span>}
+                    </span>
+                  </div>
                 </td>
                 <td className="muted">{t.category?.name}</td>
                 <td className="muted">{formatSize(t.size)}</td>
@@ -68,7 +78,8 @@ export default function Browse() {
                 <td style={{ color: 'var(--danger)' }}>{t.leechers}</td>
                 <td className="muted">{t.anonymousUpload ? 'Anonyme' : t.uploader?.username}</td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
         <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>

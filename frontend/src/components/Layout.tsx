@@ -27,7 +27,7 @@ export interface LayoutContext {
   categories: Category[];
 }
 
-const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
+export const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
   films: { icon: '🎬', color: '#7aa0ff' },
   'series-tv': { icon: '📺', color: '#c084fc' },
   musique: { icon: '🎵', color: '#f472b6' },
