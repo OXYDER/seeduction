@@ -14,7 +14,10 @@ set -e
 cd "$(dirname "$0")"
 
 echo "→ Récupération des dernières modifications..."
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
+# git clean respecte déjà .gitignore (storage/, .env, node_modules/, dist/ ne sont jamais touchés)
+git clean -fd
 
 echo "→ Reconstruction et redémarrage des conteneurs..."
 docker compose up -d --build
