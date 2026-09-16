@@ -27,6 +27,17 @@ export interface LayoutContext {
   categories: Category[];
 }
 
+const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
+  films: { icon: '🎬', color: '#7aa0ff' },
+  'series-tv': { icon: '📺', color: '#c084fc' },
+  musique: { icon: '🎵', color: '#f472b6' },
+  jeux: { icon: '🎮', color: '#4caf50' },
+  applications: { icon: '💻', color: '#e0b84a' },
+  animes: { icon: '🌸', color: '#ef6c4a' },
+  livres: { icon: '📚', color: '#2dd4bf' },
+  xxx: { icon: '🔞', color: '#9fb8a0' },
+};
+
 export default function Layout() {
   const { user, accessToken, logout } = useAuthStore();
   const navigate = useNavigate();
@@ -108,18 +119,18 @@ export default function Layout() {
       <div className="mainnav">
         <div className="nav-links">
           <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
-            <span className="icon">🏠</span>Accueil
+            <span className="nav-icon c-home">🏠</span>Accueil
           </Link>
           <Link to="/browse" className={location.pathname === '/browse' ? 'active' : ''}>
-            <span className="icon">🔍</span>Parcourir
+            <span className="nav-icon c-search">🔍</span>Parcourir
           </Link>
           {user && (
-            <Link to="/upload"><span className="icon">⬆️</span>Envoyer</Link>
+            <Link to="/upload"><span className="nav-icon c-upload">⬆️</span>Envoyer</Link>
           )}
-          <Link to="/requests"><span className="icon">💬</span>Demandes</Link>
-          <Link to="/forum"><span className="icon">👥</span>Forums</Link>
-          <Link to="/rules"><span className="icon">🛡️</span>Règles</Link>
-          {isStaff && <Link to="/admin"><span className="icon">👑</span>Staff</Link>}
+          <Link to="/requests"><span className="nav-icon c-chat">💬</span>Demandes</Link>
+          <Link to="/forum"><span className="nav-icon c-forum">👥</span>Forums</Link>
+          <Link to="/rules"><span className="nav-icon c-rules">🛡️</span>Règles</Link>
+          {isStaff && <Link to="/admin"><span className="nav-icon c-staff">👑</span>Staff</Link>}
         </div>
 
         <form className="search-row" onSubmit={submitSearch}>
@@ -133,9 +144,15 @@ export default function Layout() {
 
         {categories.length > 0 && (
           <div className="category-chips">
-            {categories.map((c) => (
-              <Link key={c.id} to={`/browse?categoryId=${c.id}`}>{c.name}</Link>
-            ))}
+            {categories.map((c) => {
+              const style = CATEGORY_STYLE[c.slug];
+              return (
+                <Link key={c.id} to={`/browse?categoryId=${c.id}`}>
+                  {style ? <span>{style.icon}</span> : <span className="dot" style={{ background: 'var(--gold)' }} />}
+                  {c.name}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

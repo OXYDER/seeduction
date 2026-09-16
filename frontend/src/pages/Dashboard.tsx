@@ -54,20 +54,22 @@ export default function Dashboard() {
   return (
     <div className="grid">
       <div className="hero">
-        <div className="hero-emblem"><img src="/logo-full.png" alt="" width={280} height={280} /></div>
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div className="muted" style={{ letterSpacing: '0.15em', fontSize: 12 }}>REJOIGNEZ</div>
-          <h2>LA LÉGENDE</h2>
-          <p>Le tracker privé le plus élite jamais créé.</p>
-          <Link to={user ? '/browse' : '/register'}>
-            <button>{user ? 'Parcourir les torrents' : 'Devenir légendaire'}</button>
-          </Link>
-          <div className="hero-features">
-            <div className="hero-feature"><strong>👥 Communauté d'élite</strong>Membres triés sur le volet</div>
-            <div className="hero-feature"><strong>⚡ Rapide &amp; sécurisé</strong>Haute vitesse &amp; chiffrement</div>
-            <div className="hero-feature"><strong>🎬 Contenu exclusif</strong>Ce que les autres n'ont pas</div>
-            <div className="hero-feature"><strong>🛡️ Tolérance zéro</strong>Pour leechers &amp; tricheurs</div>
+        <div className="hero-top">
+          <div className="hero-content">
+            <div className="hero-eyebrow">REJOIGNEZ</div>
+            <h2>LA LÉGENDE</h2>
+            <p>Le tracker privé le plus élite jamais créé.</p>
+            <Link to={user ? '/browse' : '/register'}>
+              <button className="hero-cta">{user ? 'Parcourir les torrents' : 'Devenir légendaire'}</button>
+            </Link>
           </div>
+          <div className="hero-logo"><img src="/logo-full.png" alt="Seeduction" /></div>
+        </div>
+        <div className="hero-features">
+          <div className="hero-feature"><span className="hero-feature-icon">👥</span><div><strong>Communauté d'élite</strong>Membres triés sur le volet</div></div>
+          <div className="hero-feature"><span className="hero-feature-icon">⚡</span><div><strong>Rapide &amp; sécurisé</strong>Haute vitesse &amp; chiffrement</div></div>
+          <div className="hero-feature"><span className="hero-feature-icon">🎬</span><div><strong>Contenu exclusif</strong>Ce que les autres n'ont pas</div></div>
+          <div className="hero-feature"><span className="hero-feature-icon">🛡️</span><div><strong>Tolérance zéro</strong>Pour leechers &amp; tricheurs</div></div>
         </div>
       </div>
 
@@ -75,9 +77,19 @@ export default function Dashboard() {
         <div className="grid">
           {profile && rank && (
             <div className="panel ornate">
-              <div className="row" style={{ justifyContent: 'space-between' }}>
-                <strong>{profile.username}</strong>
-                <span className="muted">{rank.title}</span>
+              <div className="row" style={{ gap: 12 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                  background: 'linear-gradient(180deg, var(--gold-bright), var(--gold))',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 18, fontWeight: 700, color: '#1a1206',
+                }}>
+                  {profile.username[0]?.toUpperCase()}
+                </div>
+                <div>
+                  <strong>{['ADMIN', 'OWNER', 'MODERATOR'].includes(profile.role) ? '👑 ' : ''}{profile.username}</strong>
+                  <div className="muted">{rank.title}</div>
+                </div>
               </div>
               <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
                 <div><div className="muted">Ratio</div><strong>{profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong></div>
@@ -102,19 +114,21 @@ export default function Dashboard() {
           <div className="panel">
             <div className="panel-title">Menu principal</div>
             <div className="sidebar-menu">
-              <Link to="/">Tableau de bord</Link>
-              <Link to="/browse">Torrents</Link>
-              <Link to="/requests">Demandes</Link>
-              <Link to="/forum">Forums</Link>
-              <Link to="/leaderboard">Top 100</Link>
-              {user && <Link to="/profile">Mon profil</Link>}
-              {user && <Link to={`/browse?uploaderId=${user.id}`}>Mes uploads</Link>}
+              <Link to="/"><span className="icon">🏠</span><span className="label">Tableau de bord</span></Link>
+              <Link to="/browse"><span className="icon">📦</span><span className="label">Torrents</span></Link>
+              <Link to="/requests"><span className="icon">💬</span><span className="label">Demandes</span></Link>
+              <Link to="/forum"><span className="icon">👥</span><span className="label">Forums</span></Link>
+              <Link to="/leaderboard"><span className="icon">🏆</span><span className="label">Top 100</span></Link>
+              {user && <Link to="/profile"><span className="icon">👤</span><span className="label">Mon profil</span></Link>}
+              {user && <Link to={`/browse?uploaderId=${user.id}`}><span className="icon">⬆️</span><span className="label">Mes uploads</span></Link>}
               {user && (
                 <Link to="/profile">
-                  Invitations {profile && <span className="pill">{profile._count.invitees}</span>}
+                  <span className="icon">✉️</span>
+                  <span className="label">Invitations</span>
+                  {profile && <span className="pill">{profile._count.invitees}</span>}
                 </Link>
               )}
-              <Link to="/rules">Règles</Link>
+              <Link to="/rules"><span className="icon">🛡️</span><span className="label">Règles</span></Link>
             </div>
           </div>
         </div>
@@ -167,10 +181,14 @@ export default function Dashboard() {
             <div className="panel-title">👑 Top uploaders</div>
             {topUploaders.map((u, i) => (
               <div key={u.id} className="row" style={{ justifyContent: 'space-between', padding: '6px 0' }}>
-                <span>{i + 1}. <Link to={`/users/${u.id}`}>{u.username}</Link></span>
+                <span className="row" style={{ gap: 8 }}>
+                  <span className={`rank-badge ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}`}>{i + 1}</span>
+                  <Link to={`/users/${u.id}`}>{u.username}</Link>
+                </span>
                 <span className="muted">{formatBytes(u.uploaded)}</span>
               </div>
             ))}
+            {topUploaders.length === 0 && <p className="muted">Aucun membre pour l'instant.</p>}
             <div className="row" style={{ justifyContent: 'center', marginTop: 12 }}>
               <Link to="/leaderboard"><button className="secondary">Voir le classement</button></Link>
             </div>
@@ -180,12 +198,12 @@ export default function Dashboard() {
 
       {stats && (
         <div className="footer-stats">
-          <div className="item"><div className="n">{formatNumber(stats.totalUsers)}</div><div className="l">Utilisateurs</div></div>
-          <div className="item"><div className="n">{formatNumber(stats.totalTorrents)}</div><div className="l">Torrents</div></div>
-          <div className="item"><div className="n">{formatNumber(stats.totalSeeders)}</div><div className="l">Seeders</div></div>
-          <div className="item"><div className="n">{formatNumber(stats.totalLeechers)}</div><div className="l">Leechers</div></div>
-          <div className="item"><div className="n">{formatNumber(stats.totalPeers)}</div><div className="l">Pairs</div></div>
-          <div className="item"><div className="n">{formatBytes(stats.totalTraffic)}</div><div className="l">Trafic total</div></div>
+          <div className="item"><div className="icon">👥</div><div className="n">{formatNumber(stats.totalUsers)}</div><div className="l">Utilisateurs</div></div>
+          <div className="item"><div className="icon">📦</div><div className="n">{formatNumber(stats.totalTorrents)}</div><div className="l">Torrents</div></div>
+          <div className="item"><div className="icon">🌱</div><div className="n">{formatNumber(stats.totalSeeders)}</div><div className="l">Seeders</div></div>
+          <div className="item"><div className="icon">📥</div><div className="n">{formatNumber(stats.totalLeechers)}</div><div className="l">Leechers</div></div>
+          <div className="item"><div className="icon">🔗</div><div className="n">{formatNumber(stats.totalPeers)}</div><div className="l">Pairs</div></div>
+          <div className="item"><div className="icon">📊</div><div className="n">{formatBytes(stats.totalTraffic)}</div><div className="l">Trafic total</div></div>
         </div>
       )}
     </div>
