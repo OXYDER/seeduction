@@ -69,6 +69,10 @@ button.danger { background: var(--danger); color: white; }
 button:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
 
 .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px; }
+/* Grands moniteurs (1440p/4K) : le site profite d'un peu plus de place
+   sans aller bord à bord (les lignes de texte deviendraient trop longues). */
+@media (min-width: 1600px) { .container { max-width: 1500px; } }
+@media (min-width: 2000px) { .container { max-width: 1760px; } }
 
 .panel {
   background: linear-gradient(180deg, var(--bg-panel-raised), var(--bg-panel));
@@ -296,6 +300,9 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
   gap: 20px;
   align-items: start;
 }
+@media (min-width: 1600px) {
+  .dashboard-grid { grid-template-columns: 300px 1fr 340px; gap: 28px; }
+}
 .col-left { grid-area: left; }
 .col-center { grid-area: center; min-width: 0; }
 .col-right { grid-area: right; }
@@ -502,25 +509,26 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
-  padding: 20px 28px;
-  background: #030805;
+  padding: 26px 32px;
+  background: linear-gradient(180deg, var(--bg-panel-raised), #030805);
   border: 1px solid var(--border-gold);
   border-radius: 14px;
   margin-top: 24px;
 }
-.footer-stats .item { display: flex; align-items: center; gap: 10px; text-align: left; }
+.footer-stats .item { display: flex; align-items: center; gap: 12px; text-align: left; }
 .footer-stats .icon {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  border-radius: 4px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 6px;
   border: 1px solid var(--border-gold);
+  background: rgba(224, 184, 74, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 18px;
 }
-.footer-stats .n { font-family: var(--font-display); color: var(--gold-bright); font-size: 18px; line-height: 1.1; }
+.footer-stats .n { font-family: var(--font-display); color: var(--gold-bright); font-size: 22px; line-height: 1.1; }
 @media (max-width: 700px) {
   .footer-stats { justify-content: flex-start; padding: 16px; gap: 14px 10px; }
   .footer-stats .item { flex: 1 1 28%; flex-direction: column; text-align: center; gap: 4px; }
