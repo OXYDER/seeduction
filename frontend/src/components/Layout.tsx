@@ -3,7 +3,6 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
 import { formatBytes, formatNumber } from '../lib/format';
-import Emblem from './Emblem';
 
 export interface Profile {
   id: string;
@@ -59,7 +58,7 @@ export default function Layout() {
     <div>
       <div className="topbar">
         <Link to="/" className="row" style={{ gap: 8 }}>
-          <Emblem size={22} />
+          <img src="/logo-icon.png" alt="" width={26} height={26} />
           <span className="topbar-brand">Seeduction Tracker</span>
         </Link>
         {profile ? (

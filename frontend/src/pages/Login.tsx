@@ -26,8 +26,11 @@ export default function Login() {
   }
 
   return (
-    <div style={{ maxWidth: 380, margin: '60px auto' }} className="panel">
-      <h2>Connexion</h2>
+    <div style={{ maxWidth: 380, margin: '60px auto' }} className="panel ornate">
+      <div style={{ textAlign: 'center' }}>
+        <img src="/logo-full.png" alt="Seeduction" width={120} height={120} />
+      </div>
+      <h2 style={{ textAlign: 'center' }}>Connexion</h2>
       <form onSubmit={submit} className="grid">
         <input placeholder="Nom d'utilisateur ou email" value={usernameOrEmail} onChange={(e) => setUsernameOrEmail(e.target.value)} required />
         <input placeholder="Mot de passe" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />

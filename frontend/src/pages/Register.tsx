@@ -21,8 +21,11 @@ export default function Register() {
   }
 
   return (
-    <div style={{ maxWidth: 380, margin: '60px auto' }} className="panel">
-      <h2>Inscription</h2>
+    <div style={{ maxWidth: 380, margin: '60px auto' }} className="panel ornate">
+      <div style={{ textAlign: 'center' }}>
+        <img src="/logo-full.png" alt="Seeduction" width={120} height={120} />
+      </div>
+      <h2 style={{ textAlign: 'center' }}>Inscription</h2>
       <p className="muted">Un code d'invitation valide est requis — le tracker est fermé.</p>
       {done ? (
         <p style={{ color: 'var(--success)' }}>Compte créé ! Redirection...</p>

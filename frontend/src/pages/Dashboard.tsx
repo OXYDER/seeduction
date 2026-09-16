@@ -6,7 +6,6 @@ import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { getRankInfo } from '../lib/rank';
 import type { LayoutContext } from '../components/Layout';
-import Emblem from '../components/Emblem';
 
 interface GlobalStats {
   totalUsers: number;
@@ -55,7 +54,7 @@ export default function Dashboard() {
   return (
     <div className="grid">
       <div className="hero">
-        <div className="hero-emblem"><Emblem size={220} /></div>
+        <div className="hero-emblem"><img src="/logo-full.png" alt="" width={280} height={280} /></div>
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div className="muted" style={{ letterSpacing: '0.15em', fontSize: 12 }}>REJOIGNEZ</div>
           <h2>LA LÉGENDE</h2>
