@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Seeduction</title>
+    <script>
+      // Applique le thème choisi avant le premier rendu, pour éviter un flash du thème par défaut.
+      (function () {
+        try {
+          var theme = localStorage.getItem('seeduction-theme');
+          if (theme) document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {}
+      })();
+    </script>
     <link rel="icon" type="image/png" href="/logo-icon.png" />
     <link rel="apple-touch-icon" href="/logo-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
