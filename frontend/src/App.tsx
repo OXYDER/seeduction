@@ -14,6 +14,8 @@ import ForumTopic from './pages/ForumTopic';
 import Messages from './pages/Messages';
 import Requests from './pages/Requests';
 import Rules from './pages/Rules';
+import Collections from './pages/Collections';
+import CollectionDetail from './pages/CollectionDetail';
 
 export default function App() {
   return (
@@ -36,6 +38,8 @@ export default function App() {
           <Route path="/forum/topics/:id" element={<ForumTopic />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/requests" element={<Requests />} />
+          <Route path="/collections" element={<Collections />} />
+          <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/rules" element={<Rules />} />
         </Route>
       </Routes>

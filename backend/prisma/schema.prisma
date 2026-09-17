@@ -72,6 +72,9 @@ model User {
   announcements    Announcement[]
   descriptionTemplates DescriptionTemplate[]
   notifications    Notification[]
+  collections      Collection[]           @relation("CollectionOwner")
+  collectionItemsAdded CollectionItem[]    @relation("CollectionItemAdder")
+  collectionCollaborations CollectionCollaborator[] @relation("CollectionCollaborator")
 
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
   createdAt        DateTime   @default(now())
@@ -141,6 +144,7 @@ model Torrent {
   peers          Peer[]
   snatches       Snatch[]
   requestFilled  TorrentRequest?
+  collectionItems CollectionItem[]
 
   tags           String[]
 
@@ -408,4 +412,55 @@ model Notification {
   createdAt DateTime         @default(now())
 
   @@index([userId, read])
+}
+
+// ---------------------------------------------------------------------------
+// COLLECTIONS
+// ---------------------------------------------------------------------------
+
+enum CollectionVisibility {
+  PRIVATE       // visible et modifiable par le propriétaire uniquement
+  PUBLIC        // visible par tous, modifiable par le propriétaire uniquement
+  COLLABORATIVE // visible par tous, modifiable par le propriétaire + les collaborateurs
+}
+
+model Collection {
+  id            String                   @id @default(uuid())
+  name          String
+  description   String?                  @db.Text
+  visibility    CollectionVisibility     @default(PRIVATE)
+  owner         User                     @relation("CollectionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId       String
+  items         CollectionItem[]
+  collaborators CollectionCollaborator[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@index([ownerId])
+  @@index([visibility])
+}
+
+model CollectionItem {
+  id           String     @id @default(uuid())
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  collectionId String
+  torrent      Torrent    @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId    String
+  addedBy      User       @relation("CollectionItemAdder", fields: [addedById], references: [id], onDelete: Cascade)
+  addedById    String
+  note         String?
+  addedAt      DateTime   @default(now())
+
+  @@unique([collectionId, torrentId])
+}
+
+model CollectionCollaborator {
+  id           String     @id @default(uuid())
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  collectionId String
+  user         User       @relation("CollectionCollaborator", fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  addedAt      DateTime   @default(now())
+
+  @@unique([collectionId, userId])
 }

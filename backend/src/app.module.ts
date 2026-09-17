@@ -14,6 +14,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { TemplatesModule } from './templates/templates.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CollectionsModule } from './collections/collections.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     AnnouncementsModule,
     TemplatesModule,
     NotificationsModule,
+    CollectionsModule,
   ],
 })
 export class AppModule {}

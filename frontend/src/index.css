@@ -214,6 +214,7 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
 .nav-icon.c-chat { background: rgba(192, 132, 252, 0.2); }
 .nav-icon.c-forum { background: rgba(45, 212, 191, 0.2); }
 .nav-icon.c-rules { background: rgba(160, 196, 84, 0.2); }
+.nav-icon.c-collections { background: rgba(224, 122, 95, 0.2); }
 .nav-icon.c-staff { background: rgba(224, 184, 74, 0.28); }
 
 .search-row {
