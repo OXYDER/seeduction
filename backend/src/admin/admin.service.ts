@@ -1,16 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService) {}
 
-  approveTorrent(id: string) {
-    return this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED' } });
+  async approveTorrent(id: string) {
+    const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED' } });
+    await this.notifications.notify({
+      userId: torrent.uploaderId,
+      type: 'TORRENT_APPROVED',
+      title: 'Ton torrent a été approuvé',
+      body: torrent.name,
+      link: `/torrents/${torrent.id}`,
+    });
+    return torrent;
   }
 
-  rejectTorrent(id: string) {
-    return this.prisma.torrent.update({ where: { id }, data: { status: 'REJECTED' } });
+  async rejectTorrent(id: string) {
+    const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'REJECTED' } });
+    await this.notifications.notify({
+      userId: torrent.uploaderId,
+      type: 'TORRENT_REJECTED',
+      title: 'Ton torrent a été rejeté',
+      body: torrent.name,
+    });
+    return torrent;
   }
 
   pendingTorrents() {

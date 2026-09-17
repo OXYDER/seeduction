@@ -3,6 +3,7 @@ import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-d
 import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
 import { formatBytes, formatNumber } from '../lib/format';
+import NotificationsBell from './NotificationsBell';
 
 export interface Profile {
   id: string;
@@ -102,6 +103,7 @@ export default function Layout() {
           </div>
         )}
         <div className="row">
+          <NotificationsBell />
           <Link to="/messages">Messages</Link>
           <Link to="/profile">{user?.username}</Link>
           <button className="secondary" onClick={() => { logout(); navigate('/login'); }}>

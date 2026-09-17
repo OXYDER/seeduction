@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ForumService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService) {}
 
   listCategories() {
     return this.prisma.forumCategory.findMany({
@@ -77,7 +78,18 @@ export class ForumService {
     });
   }
 
-  reply(topicId: string, authorId: string, content: string) {
-    return this.prisma.forumPost.create({ data: { topicId, authorId, content } });
+  async reply(topicId: string, authorId: string, content: string) {
+    const post = await this.prisma.forumPost.create({ data: { topicId, authorId, content } });
+    const topic = await this.prisma.forumTopic.findUnique({ where: { id: topicId } });
+    if (topic && topic.authorId !== authorId) {
+      await this.notifications.notify({
+        userId: topic.authorId,
+        type: 'FORUM_REPLY',
+        title: 'Nouvelle réponse à ton sujet',
+        body: topic.title,
+        link: `/forum/topics/${topicId}`,
+      });
+    }
+    return post;
   }
 }

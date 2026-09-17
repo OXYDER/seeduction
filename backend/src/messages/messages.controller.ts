@@ -24,7 +24,7 @@ export class MessagesController {
 
   @Post('send')
   send(@Body() body: { recipientUsername: string; subject: string; content: string }, @Request() req: any) {
-    return this.messagesService.send(req.user.userId, body.recipientUsername, body.subject, body.content);
+    return this.messagesService.send(req.user.userId, req.user.username, body.recipientUsername, body.subject, body.content);
   }
 
   @Post(':id/read')

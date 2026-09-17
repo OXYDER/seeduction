@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MessagesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService) {}
 
   inbox(userId: string) {
     return this.prisma.privateMessage.findMany({
@@ -21,8 +22,8 @@ export class MessagesService {
     });
   }
 
-  send(senderId: string, recipientUsername: string, subject: string, content: string) {
-    return this.prisma.privateMessage.create({
+  async send(senderId: string, senderUsername: string, recipientUsername: string, subject: string, content: string) {
+    const message = await this.prisma.privateMessage.create({
       data: {
         subject,
         content,
@@ -30,6 +31,14 @@ export class MessagesService {
         recipient: { connect: { username: recipientUsername } },
       },
     });
+    await this.notifications.notify({
+      userId: message.recipientId,
+      type: 'MESSAGE',
+      title: `Nouveau message de ${senderUsername}`,
+      body: subject,
+      link: '/messages',
+    });
+    return message;
   }
 
   markRead(messageId: string, userId: string) {

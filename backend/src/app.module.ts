@@ -13,6 +13,7 @@ import { AdminModule } from './admin/admin.module';
 import { CategoriesModule } from './categories/categories.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { TemplatesModule } from './templates/templates.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { TemplatesModule } from './templates/templates.module';
     CategoriesModule,
     AnnouncementsModule,
     TemplatesModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

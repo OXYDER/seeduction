@@ -71,6 +71,7 @@ model User {
   activityLogs     ActivityLog[]
   announcements    Announcement[]
   descriptionTemplates DescriptionTemplate[]
+  notifications    Notification[]
 
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
   createdAt        DateTime   @default(now())
@@ -383,4 +384,28 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   @@index([action])
+}
+
+enum NotificationType {
+  MESSAGE
+  FORUM_REPLY
+  REQUEST_FILLED
+  TORRENT_APPROVED
+  TORRENT_REJECTED
+  ANNOUNCEMENT
+  INVITE_USED
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  link      String?          // route frontend à ouvrir au clic, ex: /forum/topics/xxx
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
 }

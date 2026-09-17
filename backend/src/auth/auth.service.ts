@@ -3,10 +3,11 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as speakeasy from 'speakeasy';
 import { PrismaService } from '../common/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwt: JwtService) {}
+  constructor(private prisma: PrismaService, private jwt: JwtService, private notifications: NotificationsService) {}
 
   /**
    * Inscription : nécessite un code d'invitation valide et non utilisé —
@@ -44,6 +45,14 @@ export class AuthService {
         data: { used: true, usedByEmail: email },
       });
       return created;
+    });
+
+    await this.notifications.notify({
+      userId: invite.createdById,
+      type: 'INVITE_USED',
+      title: `${user.username} a rejoint le tracker`,
+      body: 'Ton invitation a été utilisée',
+      link: `/users/${user.id}`,
     });
 
     return { id: user.id, username: user.username, passkey: user.passkey };
