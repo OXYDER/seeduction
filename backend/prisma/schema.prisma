@@ -76,6 +76,7 @@ model User {
   collectionItemsAdded CollectionItem[]    @relation("CollectionItemAdder")
   collectionCollaborations CollectionCollaborator[] @relation("CollectionCollaborator")
   badges           UserBadge[]
+  apiKeys          ApiKey[]
 
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
   createdAt        DateTime   @default(now())
@@ -481,5 +482,26 @@ model UserBadge {
   awardedAt DateTime @default(now())
 
   @@unique([userId, code])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// API PUBLIQUE
+// ---------------------------------------------------------------------------
+
+// Seul le hash SHA-256 de la clé est stocké — la valeur en clair n'est
+// affichée qu'une fois, à la création, jamais persistée ni récupérable.
+model ApiKey {
+  id         String    @id @default(uuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  label      String
+  keyHash    String    @unique
+  keyPrefix  String    // affiché dans la liste pour identifier la clé sans exposer le secret
+  scopes     String[]
+  lastUsedAt DateTime?
+  revoked    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
   @@index([userId])
 }

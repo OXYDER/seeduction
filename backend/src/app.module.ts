@@ -16,6 +16,8 @@ import { TemplatesModule } from './templates/templates.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CollectionsModule } from './collections/collections.module';
 import { BadgesModule } from './badges/badges.module';
+import { ApiKeysModule } from './api-keys/api-keys.module';
+import { PublicApiModule } from './public-api/public-api.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { BadgesModule } from './badges/badges.module';
     NotificationsModule,
     CollectionsModule,
     BadgesModule,
+    ApiKeysModule,
+    PublicApiModule,
   ],
 })
 export class AppModule {}

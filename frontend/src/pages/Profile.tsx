@@ -11,6 +11,11 @@ export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [badges, setBadges] = useState<any[]>([]);
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [availableScopes, setAvailableScopes] = useState<string[]>([]);
+  const [newKeyLabel, setNewKeyLabel] = useState('');
+  const [newKeyScopes, setNewKeyScopes] = useState<string[]>([]);
+  const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!targetId) return;
@@ -18,6 +23,34 @@ export default function Profile() {
     if (!id) api.get('/users/me/ratio-history').then((r) => setHistory(r.data));
     api.get(`/badges/user/${targetId}`).then((r) => setBadges(r.data)).catch(() => {});
   }, [id, targetId]);
+
+  function refreshKeys() {
+    api.get('/keys').then((r) => setApiKeys(r.data)).catch(() => {});
+  }
+  useEffect(() => {
+    if (id) return;
+    refreshKeys();
+    api.get('/keys/scopes').then((r) => setAvailableScopes(r.data)).catch(() => {});
+  }, [id]);
+
+  function toggleNewKeyScope(scope: string) {
+    setNewKeyScopes((prev) => (prev.includes(scope) ? prev.filter((s) => s !== scope) : [...prev, scope]));
+  }
+
+  async function createKey(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newKeyLabel.trim() || newKeyScopes.length === 0) return;
+    const { data } = await api.post('/keys', { label: newKeyLabel, scopes: newKeyScopes });
+    setJustCreatedKey(data.rawKey);
+    setNewKeyLabel('');
+    setNewKeyScopes([]);
+    refreshKeys();
+  }
+
+  async function revokeKey(keyId: string) {
+    await api.delete(`/keys/${keyId}`);
+    setApiKeys((prev) => prev.map((k) => (k.id === keyId ? { ...k, revoked: true } : k)));
+  }
 
   if (!profile) return <p className="muted">Chargement...</p>;
 
@@ -67,6 +100,52 @@ export default function Profile() {
         <div className="panel">
           <div className="muted">Ta passkey (garde-la secrète — elle est dans l'URL announce de tes .torrent) :</div>
           <code>{profile.passkey}</code>
+        </div>
+      )}
+      {!id && (
+        <div className="panel">
+          <h3>Clés API</h3>
+          <p className="muted" style={{ fontSize: 12 }}>
+            Pour tes scripts et intégrations (flux RSS, automatisation...). Chaque clé n'a que les portées que tu lui donnes.
+            Endpoints : <code>GET /api/public/torrents</code>, <code>/torrents/:id</code>, <code>/me</code>, <code>/stats</code>,{' '}
+            <code>/rss/torrents.xml</code> — clé à passer en en-tête <code>X-Api-Key</code> (ou <code>?key=</code> pour le flux RSS).
+          </p>
+
+          {justCreatedKey && (
+            <div className="panel ornate" style={{ margin: '10px 0' }}>
+              <div className="muted" style={{ fontSize: 12 }}>Copie cette clé maintenant — elle ne sera plus jamais affichée :</div>
+              <code style={{ wordBreak: 'break-all', display: 'block', margin: '6px 0' }}>{justCreatedKey}</code>
+              <button className="secondary" onClick={() => setJustCreatedKey(null)}>J'ai copié la clé</button>
+            </div>
+          )}
+
+          <table>
+            <thead><tr><th>Label</th><th>Clé</th><th>Portées</th><th>Dernière utilisation</th><th></th></tr></thead>
+            <tbody>
+              {apiKeys.map((k) => (
+                <tr key={k.id} style={{ opacity: k.revoked ? 0.5 : 1 }}>
+                  <td>{k.label}</td>
+                  <td className="muted">{k.keyPrefix}…</td>
+                  <td className="muted">{k.scopes.join(', ')}</td>
+                  <td className="muted">{k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString() : 'Jamais'}</td>
+                  <td>{!k.revoked && <button className="secondary" onClick={() => revokeKey(k.id)}>Révoquer</button>}</td>
+                </tr>
+              ))}
+              {apiKeys.length === 0 && <tr><td className="muted">Aucune clé API pour l'instant.</td></tr>}
+            </tbody>
+          </table>
+
+          <form onSubmit={createKey} className="grid" style={{ marginTop: 10 }}>
+            <input placeholder="Label (ex : Sonarr, script perso...)" value={newKeyLabel} onChange={(e) => setNewKeyLabel(e.target.value)} />
+            <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
+              {availableScopes.map((s) => (
+                <label key={s} className="row muted" style={{ gap: 4 }}>
+                  <input type="checkbox" style={{ width: 'auto' }} checked={newKeyScopes.includes(s)} onChange={() => toggleNewKeyScope(s)} /> {s}
+                </label>
+              ))}
+            </div>
+            <button type="submit" style={{ alignSelf: 'flex-start' }}>Générer une clé</button>
+          </form>
         </div>
       )}
     </div>
