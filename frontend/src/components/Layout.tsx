@@ -126,6 +126,7 @@ export default function Layout() {
           <Link to="/upload"><span className="nav-icon c-upload">⬆️</span>Envoyer</Link>
           <Link to="/requests"><span className="nav-icon c-chat">💬</span>Demandes</Link>
           <Link to="/collections"><span className="nav-icon c-collections">📚</span>Collections</Link>
+          <Link to="/chat"><span className="nav-icon c-livechat">🗨️</span>Chat</Link>
           <Link to="/forum"><span className="nav-icon c-forum">👥</span>Forums</Link>
           <Link to="/rules"><span className="nav-icon c-rules">🛡️</span>Règles</Link>
           {isStaff && <Link to="/admin"><span className="nav-icon c-staff">👑</span>Staff</Link>}

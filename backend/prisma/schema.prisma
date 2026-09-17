@@ -77,6 +77,7 @@ model User {
   collectionCollaborations CollectionCollaborator[] @relation("CollectionCollaborator")
   badges           UserBadge[]
   apiKeys          ApiKey[]
+  chatMessages     ChatMessage[]
 
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
   createdAt        DateTime   @default(now())
@@ -504,4 +505,20 @@ model ApiKey {
   createdAt  DateTime  @default(now())
 
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// CHAT EN DIRECT
+// ---------------------------------------------------------------------------
+
+// Chatroom globale unique (pas de canaux) — diffusion temps réel via
+// ChatGateway (WebSocket), historique servi en REST pour le chargement initial.
+model ChatMessage {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

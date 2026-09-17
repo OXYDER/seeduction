@@ -18,6 +18,7 @@ import { CollectionsModule } from './collections/collections.module';
 import { BadgesModule } from './badges/badges.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { PublicApiModule } from './public-api/public-api.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { PublicApiModule } from './public-api/public-api.module';
     BadgesModule,
     ApiKeysModule,
     PublicApiModule,
+    ChatModule,
   ],
 })
 export class AppModule {}
