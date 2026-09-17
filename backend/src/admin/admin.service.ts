@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BadgesService } from '../badges/badges.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService) {}
 
   async approveTorrent(id: string) {
     const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED' } });
@@ -15,6 +16,7 @@ export class AdminService {
       body: torrent.name,
       link: `/torrents/${torrent.id}`,
     });
+    await this.badges.checkAndAward(torrent.uploaderId);
     return torrent;
   }
 

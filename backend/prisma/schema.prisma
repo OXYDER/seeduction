@@ -75,6 +75,7 @@ model User {
   collections      Collection[]           @relation("CollectionOwner")
   collectionItemsAdded CollectionItem[]    @relation("CollectionItemAdder")
   collectionCollaborations CollectionCollaborator[] @relation("CollectionCollaborator")
+  badges           UserBadge[]
 
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
   createdAt        DateTime   @default(now())
@@ -398,6 +399,7 @@ enum NotificationType {
   TORRENT_REJECTED
   ANNOUNCEMENT
   INVITE_USED
+  BADGE_EARNED
 }
 
 model Notification {
@@ -463,4 +465,21 @@ model CollectionCollaborator {
   addedAt      DateTime   @default(now())
 
   @@unique([collectionId, userId])
+}
+
+// ---------------------------------------------------------------------------
+// BADGES & RÉPUTATION
+// ---------------------------------------------------------------------------
+
+// Le catalogue des badges (nom/icône/condition) est défini en code
+// (common/utils/badges.ts), pas en base — seule l'obtention est persistée ici.
+model UserBadge {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  code      String
+  awardedAt DateTime @default(now())
+
+  @@unique([userId, code])
+  @@index([userId])
 }

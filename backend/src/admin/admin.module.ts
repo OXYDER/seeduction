@@ -3,9 +3,10 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { BadgesModule } from '../badges/badges.module';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, BadgesModule],
   controllers: [AdminController],
   providers: [AdminService, PrismaService],
 })

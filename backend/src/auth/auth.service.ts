@@ -4,10 +4,16 @@ import * as bcrypt from 'bcrypt';
 import * as speakeasy from 'speakeasy';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BadgesService } from '../badges/badges.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwt: JwtService, private notifications: NotificationsService) {}
+  constructor(
+    private prisma: PrismaService,
+    private jwt: JwtService,
+    private notifications: NotificationsService,
+    private badges: BadgesService,
+  ) {}
 
   /**
    * Inscription : nécessite un code d'invitation valide et non utilisé —
@@ -54,6 +60,7 @@ export class AuthService {
       body: 'Ton invitation a été utilisée',
       link: `/users/${user.id}`,
     });
+    await this.badges.checkAndAward(invite.createdById);
 
     return { id: user.id, username: user.username, passkey: user.passkey };
   }

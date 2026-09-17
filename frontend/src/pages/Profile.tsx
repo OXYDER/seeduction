@@ -10,11 +10,13 @@ export default function Profile() {
   const targetId = id ?? me?.id;
   const [profile, setProfile] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [badges, setBadges] = useState<any[]>([]);
 
   useEffect(() => {
     if (!targetId) return;
     api.get(id ? `/users/${id}` : '/users/me').then((r) => setProfile(r.data));
     if (!id) api.get('/users/me/ratio-history').then((r) => setHistory(r.data));
+    api.get(`/badges/user/${targetId}`).then((r) => setBadges(r.data)).catch(() => {});
   }, [id, targetId]);
 
   if (!profile) return <p className="muted">Chargement...</p>;
@@ -32,6 +34,21 @@ export default function Profile() {
         <Card label="Upload" value={`${(Number(profile.uploaded) / 1e9).toFixed(2)} Go`} />
         <Card label="Download" value={`${(Number(profile.downloaded) / 1e9).toFixed(2)} Go`} />
         <Card label="Bonus points" value={profile.bonusPoints?.toFixed(0) ?? 0} />
+      </div>
+      <div className="panel">
+        <h3>Badges {badges.length > 0 && `(${badges.length})`}</h3>
+        {badges.length === 0 && <p className="muted">Aucun badge obtenu pour l'instant.</p>}
+        <div className="row" style={{ flexWrap: 'wrap', gap: 14 }}>
+          {badges.map((b) => (
+            <div key={b.code} className="row" style={{ gap: 8, alignItems: 'center' }} title={b.description}>
+              <span style={{ fontSize: 22 }}>{b.icon}</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{b.name}</div>
+                <div className="muted" style={{ fontSize: 11 }}>{b.description}</div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
       {!id && chartData.length > 0 && (
         <div className="panel">

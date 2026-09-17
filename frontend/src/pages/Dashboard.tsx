@@ -143,6 +143,7 @@ export default function Dashboard() {
               <Link to="/requests"><span className="icon">💬</span><span className="label">Demandes</span></Link>
               <Link to="/forum"><span className="icon">👥</span><span className="label">Forums</span></Link>
               <Link to="/leaderboard"><span className="icon">🏆</span><span className="label">Top 100</span></Link>
+              <Link to="/hall-of-fame"><span className="icon">🎖️</span><span className="label">Hall of Fame</span></Link>
               <Link to="/profile"><span className="icon">👤</span><span className="label">Mon profil</span></Link>
               {user && <Link to={`/browse?uploaderId=${user.id}`}><span className="icon">⬆️</span><span className="label">Mes uploads</span></Link>}
               <Link to="/profile">

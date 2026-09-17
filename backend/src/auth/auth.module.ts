@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { BadgesModule } from '../badges/badges.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       signOptions: { expiresIn: '7d' },
     }),
     NotificationsModule,
+    BadgesModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, PrismaService],

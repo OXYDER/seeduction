@@ -1,10 +1,11 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BadgesService } from '../badges/badges.service';
 
 @Injectable()
 export class RequestsService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService) {}
 
   list() {
     return this.prisma.torrentRequest.findMany({
@@ -44,6 +45,7 @@ export class RequestsService {
         link: `/torrents/${torrentId}`,
       });
     }
+    await this.badges.checkAndAward(fillerUserId);
 
     return result;
   }

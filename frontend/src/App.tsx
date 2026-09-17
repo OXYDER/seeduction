@@ -16,6 +16,7 @@ import Requests from './pages/Requests';
 import Rules from './pages/Rules';
 import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
+import HallOfFame from './pages/HallOfFame';
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/users/:id" element={<Profile />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/hall-of-fame" element={<HallOfFame />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/forum" element={<Forum />} />
           <Route path="/forum/topics/:id" element={<ForumTopic />} />
