@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 
-const TABS = ['Vue d\'ensemble', 'Annonces', 'Catégories torrents', 'Torrents', 'Forum'] as const;
+const TABS = ['Vue d\'ensemble', 'Annonces', 'Catégories torrents', 'Torrents', 'Forum', 'Templates'] as const;
 type Tab = typeof TABS[number];
 
 export default function Admin() {
@@ -21,6 +21,7 @@ export default function Admin() {
       {tab === 'Catégories torrents' && <TorrentCategoriesAdmin />}
       {tab === 'Torrents' && <TorrentsAdmin />}
       {tab === 'Forum' && <ForumAdmin />}
+      {tab === 'Templates' && <TemplatesAdmin />}
     </div>
   );
 }
@@ -334,5 +335,80 @@ function ForumAdmin() {
       title="Catégories & sous-catégories de forum"
       renderCount={(c) => ` (${c.topics?.length ?? 0} sujets)`}
     />
+  );
+}
+
+const TEMPLATE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'JEU', 'LOGICIEL', 'LIVRE', 'DOCUMENT', 'ARCHIVE', 'PERSONNALISE'];
+
+function TemplatesAdmin() {
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState('FILM');
+  const [content, setContent] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+
+  function refresh() { api.get('/templates').then((r) => setTemplates(r.data.filter((t: any) => t.isGlobal))); }
+  useEffect(() => { refresh(); }, []);
+
+  async function create() {
+    if (!name.trim() || !content.trim()) return;
+    await api.post('/templates', { name, kind, content, global: true });
+    setName(''); setContent('');
+    refresh();
+  }
+  async function saveEdit(id: string) {
+    await api.patch(`/templates/${id}`, { content: editContent });
+    setEditingId(null);
+    refresh();
+  }
+  async function remove(id: string) {
+    if (!confirm('Supprimer ce template ?')) return;
+    await api.delete(`/templates/${id}`);
+    refresh();
+  }
+
+  return (
+    <div className="grid">
+      <div className="panel">
+        <h3>Nouveau template global</h3>
+        <div className="grid" style={{ gap: 8 }}>
+          <div className="row">
+            <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 1 }} />
+            <select value={kind} onChange={(e) => setKind(e.target.value)}>
+              {TEMPLATE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </div>
+          <textarea placeholder="Contenu BBCode avec {variables}" rows={6} value={content} onChange={(e) => setContent(e.target.value)} style={{ fontFamily: 'monospace', fontSize: 12 }} />
+          <button style={{ alignSelf: 'flex-start' }} onClick={create}>Créer</button>
+        </div>
+      </div>
+
+      {templates.map((t) => (
+        <div key={t.id} className="panel">
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <strong>{t.name} <span className="muted">({t.kind})</span></strong>
+            <div className="row">
+              {editingId === t.id ? (
+                <>
+                  <button onClick={() => saveEdit(t.id)}>Enregistrer</button>
+                  <button className="secondary" onClick={() => setEditingId(null)}>Annuler</button>
+                </>
+              ) : (
+                <>
+                  <button className="secondary" onClick={() => { setEditingId(t.id); setEditContent(t.content); }}>Éditer</button>
+                  <button className="danger" onClick={() => remove(t.id)}>Supprimer</button>
+                </>
+              )}
+            </div>
+          </div>
+          {editingId === t.id ? (
+            <textarea rows={6} value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 8, width: '100%' }} />
+          ) : (
+            <pre className="muted" style={{ marginTop: 8, whiteSpace: 'pre-wrap', fontSize: 12 }}>{t.content}</pre>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

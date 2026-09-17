@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/auth';
+import DescriptionGenerator from '../components/DescriptionGenerator';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -12,6 +14,17 @@ export default function Upload() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+
+  const selectedCategory = categories.flatMap((c) => [c, ...(c.children ?? [])]).find((c) => c.id === categoryId);
+  const generatorKnownValues = {
+    titre: name,
+    catégorie: selectedCategory?.name ?? '',
+    // La taille réelle du contenu n'est connue qu'après analyse du .torrent
+    // côté serveur (à l'upload) — la taille du fichier .torrent lui-même
+    // n'a aucun rapport, donc on ne la pré-remplit pas.
+    auteur: anonymous ? 'Anonyme' : (user?.username ?? ''),
+  };
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
@@ -45,6 +58,7 @@ export default function Upload() {
             <input type="file" accept=".torrent" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
             <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
             <textarea placeholder="Description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <DescriptionGenerator knownValues={generatorKnownValues} onUse={setDescription} />
             <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
               <option value="">— Choisir une catégorie —</option>
               {categories.map((c) => (

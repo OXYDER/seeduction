@@ -70,6 +70,7 @@ model User {
   bans             Ban[]
   activityLogs     ActivityLog[]
   announcements    Announcement[]
+  descriptionTemplates DescriptionTemplate[]
 
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
   createdAt        DateTime   @default(now())
@@ -146,6 +147,37 @@ model Torrent {
 
   @@index([status])
   @@index([categoryId])
+}
+
+// ---------------------------------------------------------------------------
+// GÉNÉRATEUR DE DESCRIPTION
+// ---------------------------------------------------------------------------
+
+enum TemplateKind {
+  FILM
+  SERIE
+  MUSIQUE
+  JEU
+  LOGICIEL
+  LIVRE
+  DOCUMENT
+  ARCHIVE
+  PERSONNALISE
+}
+
+// Stocké en BBCode (format canonique) — Markdown/HTML/texte brut sont
+// dérivés à la volée au moment de l'export, jamais persistés.
+model DescriptionTemplate {
+  id        String       @id @default(uuid())
+  name      String
+  kind      TemplateKind
+  content   String       @db.Text
+  isGlobal  Boolean      @default(false) // true = template admin partagé à tous
+  owner     User?        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId   String?
+  createdAt DateTime     @default(now())
+
+  @@index([kind])
 }
 
 // ---------------------------------------------------------------------------
