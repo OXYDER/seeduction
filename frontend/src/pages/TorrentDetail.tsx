@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
+import { bbcodeToHtml } from '../lib/bbcode';
 
 export default function TorrentDetail() {
   const { id } = useParams();
@@ -23,12 +24,20 @@ export default function TorrentDetail() {
 
   if (!torrent) return <p className="muted">Chargement...</p>;
 
+  const meta = [
+    torrent.year, torrent.resolution, torrent.hdr ? 'HDR' : null, torrent.codec,
+    torrent.audio, torrent.source, torrent.containerFormat, torrent.language,
+    torrent.fps ? `${torrent.fps} fps` : null,
+    torrent.durationMinutes ? `${torrent.durationMinutes} min` : null,
+  ].filter(Boolean);
+
   return (
     <div className="grid">
       <h1>{torrent.name}</h1>
-      <div className="row">
+      <div className="row" style={{ flexWrap: 'wrap' }}>
         {torrent.freeleech && <span className="badge freeleech">FREELEECH</span>}
         {torrent.doubleUpload && <span className="badge double">DOUBLE UPLOAD</span>}
+        {meta.map((m, i) => <span key={i} className="badge new">{m}</span>)}
       </div>
       <div className="panel grid">
         <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -39,7 +48,9 @@ export default function TorrentDetail() {
           </div>
           {user && <button onClick={download}>⬇ Télécharger le .torrent</button>}
         </div>
-        {torrent.description && <p>{torrent.description}</p>}
+        {torrent.description && (
+          <div dangerouslySetInnerHTML={{ __html: bbcodeToHtml(torrent.description) }} />
+        )}
       </div>
       <div className="panel">
         <h3>Fichiers</h3>

@@ -142,11 +142,27 @@ model Torrent {
   requestFilled  TorrentRequest?
 
   tags           String[]
+
+  // Métadonnées techniques (facultatives — pertinentes selon la catégorie,
+  // remplies à l'upload, utilisées par la recherche avancée).
+  year            Int?
+  language        String?
+  resolution      String?
+  codec           String?
+  hdr             Boolean       @default(false)
+  audio           String?
+  source          String?
+  containerFormat String?
+  fps             Int?
+  durationMinutes Int?
+
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   @@index([status])
   @@index([categoryId])
+  @@index([year])
+  @@index([resolution])
 }
 
 // ---------------------------------------------------------------------------

@@ -19,6 +19,16 @@ export class TorrentsService {
     categoryId: string;
     tags: string[];
     anonymous: boolean;
+    year?: number;
+    language?: string;
+    resolution?: string;
+    codec?: string;
+    hdr?: boolean;
+    audio?: string;
+    source?: string;
+    containerFormat?: string;
+    fps?: number;
+    durationMinutes?: number;
   }) {
     const parsed = parseTorrentFile(params.fileBuffer);
 
@@ -41,6 +51,16 @@ export class TorrentsService {
         uploaderId: params.userId,
         anonymousUpload: params.anonymous,
         tags: params.tags,
+        year: params.year,
+        language: params.language,
+        resolution: params.resolution,
+        codec: params.codec,
+        hdr: params.hdr ?? false,
+        audio: params.audio,
+        source: params.source,
+        containerFormat: params.containerFormat,
+        fps: params.fps,
+        durationMinutes: params.durationMinutes,
       },
     });
 
@@ -60,7 +80,13 @@ export class TorrentsService {
     return rewriteTorrentForUser(original, announceUrl);
   }
 
-  async list(params: { categoryId?: string; search?: string; uploaderId?: string; page: number; pageSize: number }) {
+  async list(params: {
+    categoryId?: string; search?: string; uploaderId?: string; page: number; pageSize: number;
+    sort?: string;
+    minSize?: number; maxSize?: number; minSeeders?: number;
+    year?: number; language?: string; resolution?: string; codec?: string;
+    hdr?: boolean; audio?: string; source?: string; containerFormat?: string;
+  }) {
     const where: any = { status: 'APPROVED' };
     if (params.categoryId) {
       // Choisir une catégorie parente inclut aussi ses sous-catégories.
@@ -72,11 +98,33 @@ export class TorrentsService {
     }
     if (params.search) where.name = { contains: params.search, mode: 'insensitive' };
     if (params.uploaderId) where.uploaderId = params.uploaderId;
+    if (params.minSize != null || params.maxSize != null) {
+      where.size = {};
+      if (params.minSize != null) where.size.gte = BigInt(Math.round(params.minSize));
+      if (params.maxSize != null) where.size.lte = BigInt(Math.round(params.maxSize));
+    }
+    if (params.minSeeders != null) where.seeders = { gte: params.minSeeders };
+    if (params.year != null) where.year = params.year;
+    if (params.language) where.language = { equals: params.language, mode: 'insensitive' };
+    if (params.resolution) where.resolution = { equals: params.resolution, mode: 'insensitive' };
+    if (params.codec) where.codec = { equals: params.codec, mode: 'insensitive' };
+    if (params.hdr) where.hdr = true;
+    if (params.audio) where.audio = { equals: params.audio, mode: 'insensitive' };
+    if (params.source) where.source = { equals: params.source, mode: 'insensitive' };
+    if (params.containerFormat) where.containerFormat = { equals: params.containerFormat, mode: 'insensitive' };
+
+    const orderBy: any = {
+      date: { createdAt: 'desc' },
+      taille: { size: 'desc' },
+      seeders: { seeders: 'desc' },
+      popularite: { completedCount: 'desc' },
+      activite: { updatedAt: 'desc' },
+    }[params.sort ?? 'date'] ?? { createdAt: 'desc' };
 
     const [items, total] = await Promise.all([
       this.prisma.torrent.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
         include: { category: true, uploader: { select: { username: true } } },

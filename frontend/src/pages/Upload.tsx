@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import DescriptionGenerator from '../components/DescriptionGenerator';
+import { RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -16,14 +17,29 @@ export default function Upload() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
+  const [showMeta, setShowMeta] = useState(false);
+  const [year, setYear] = useState('');
+  const [language, setLanguage] = useState('');
+  const [resolution, setResolution] = useState('');
+  const [codec, setCodec] = useState('');
+  const [hdr, setHdr] = useState(false);
+  const [audio, setAudio] = useState('');
+  const [source, setSource] = useState('');
+  const [containerFormat, setContainerFormat] = useState('');
+  const [fps, setFps] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState('');
+
   const selectedCategory = categories.flatMap((c) => [c, ...(c.children ?? [])]).find((c) => c.id === categoryId);
   const generatorKnownValues = {
     titre: name,
     catégorie: selectedCategory?.name ?? '',
-    // La taille réelle du contenu n'est connue qu'après analyse du .torrent
-    // côté serveur (à l'upload) — la taille du fichier .torrent lui-même
-    // n'a aucun rapport, donc on ne la pré-remplit pas.
     auteur: anonymous ? 'Anonyme' : (user?.username ?? ''),
+    année: year,
+    langue: language,
+    vidéo: [resolution, codec].filter(Boolean).join(' '),
+    audio,
+    source,
+    sous_titres: language === 'VOSTFR' ? 'Français' : '',
   };
 
   useEffect(() => {
@@ -41,6 +57,16 @@ export default function Upload() {
     form.append('categoryId', categoryId);
     form.append('tags', tags);
     form.append('anonymous', String(anonymous));
+    if (year) form.append('year', year);
+    if (language) form.append('language', language);
+    if (resolution) form.append('resolution', resolution);
+    if (codec) form.append('codec', codec);
+    form.append('hdr', String(hdr));
+    if (audio) form.append('audio', audio);
+    if (source) form.append('source', source);
+    if (containerFormat) form.append('containerFormat', containerFormat);
+    if (fps) form.append('fps', fps);
+    if (durationMinutes) form.append('durationMinutes', durationMinutes);
     try {
       const { data } = await api.post('/torrents/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
       navigate(`/torrents/${data.id}`);
@@ -71,6 +97,45 @@ export default function Upload() {
               ))}
             </select>
             <input placeholder="Tags (séparés par virgule)" value={tags} onChange={(e) => setTags(e.target.value)} />
+
+            <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setShowMeta((v) => !v)}>
+              {showMeta ? 'Masquer' : '+ Métadonnées techniques (optionnel)'}
+            </button>
+            {showMeta && (
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
+                <input type="number" placeholder="Année" value={year} onChange={(e) => setYear(e.target.value)} />
+                <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+                  <option value="">Langue</option>
+                  {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+                <select value={resolution} onChange={(e) => setResolution(e.target.value)}>
+                  <option value="">Résolution</option>
+                  {RESOLUTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+                <select value={codec} onChange={(e) => setCodec(e.target.value)}>
+                  <option value="">Codec</option>
+                  {CODECS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select value={audio} onChange={(e) => setAudio(e.target.value)}>
+                  <option value="">Audio</option>
+                  {AUDIO_FORMATS.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+                <select value={source} onChange={(e) => setSource(e.target.value)}>
+                  <option value="">Source</option>
+                  {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select value={containerFormat} onChange={(e) => setContainerFormat(e.target.value)}>
+                  <option value="">Format</option>
+                  {CONTAINERS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <input type="number" placeholder="FPS" value={fps} onChange={(e) => setFps(e.target.value)} />
+                <input type="number" placeholder="Durée (min)" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
+                <label className="row muted" style={{ gap: 6 }}>
+                  <input type="checkbox" style={{ width: 'auto' }} checked={hdr} onChange={(e) => setHdr(e.target.checked)} /> HDR
+                </label>
+              </div>
+            )}
+
             <label className="row"><input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} style={{ width: 'auto' }} /> Upload anonyme</label>
             {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
             <button type="submit">Uploader</button>
@@ -87,6 +152,10 @@ export default function Upload() {
             <div>
               <strong>Bonne catégorie</strong>
               <p className="muted" style={{ margin: '4px 0 0' }}>Choisis la sous-catégorie la plus précise si elle existe.</p>
+            </div>
+            <div>
+              <strong>Métadonnées</strong>
+              <p className="muted" style={{ margin: '4px 0 0' }}>Année, résolution, langue... aident les autres membres à filtrer leur recherche.</p>
             </div>
             <div>
               <strong>Modération</strong>

@@ -12,11 +12,25 @@ export class TorrentsController {
   constructor(private torrentsService: TorrentsService) {}
 
   @Get()
-  list(@Query('categoryId') categoryId?: string, @Query('search') search?: string,
-       @Query('uploaderId') uploaderId?: string,
-       @Query('page') page = '1', @Query('pageSize') pageSize = '25') {
+  list(@Query() query: Record<string, string>) {
     return this.torrentsService.list({
-      categoryId, search, uploaderId, page: parseInt(page, 10), pageSize: parseInt(pageSize, 10),
+      categoryId: query.categoryId,
+      search: query.search,
+      uploaderId: query.uploaderId,
+      page: parseInt(query.page ?? '1', 10),
+      pageSize: parseInt(query.pageSize ?? '25', 10),
+      sort: query.sort,
+      minSize: query.minSize ? Number(query.minSize) : undefined,
+      maxSize: query.maxSize ? Number(query.maxSize) : undefined,
+      minSeeders: query.minSeeders ? Number(query.minSeeders) : undefined,
+      year: query.year ? Number(query.year) : undefined,
+      language: query.language,
+      resolution: query.resolution,
+      codec: query.codec,
+      hdr: query.hdr === 'true' ? true : undefined,
+      audio: query.audio,
+      source: query.source,
+      containerFormat: query.containerFormat,
     });
   }
 
@@ -30,7 +44,7 @@ export class TorrentsController {
   @UseInterceptors(FileInterceptor('torrentFile'))
   upload(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { name: string; description?: string; categoryId: string; tags?: string; anonymous?: string },
+    @Body() body: Record<string, string>,
     @Request() req: any,
   ) {
     return this.torrentsService.upload({
@@ -41,6 +55,16 @@ export class TorrentsController {
       categoryId: body.categoryId,
       tags: body.tags ? body.tags.split(',').map((t) => t.trim()) : [],
       anonymous: body.anonymous === 'true',
+      year: body.year ? Number(body.year) : undefined,
+      language: body.language || undefined,
+      resolution: body.resolution || undefined,
+      codec: body.codec || undefined,
+      hdr: body.hdr === 'true',
+      audio: body.audio || undefined,
+      source: body.source || undefined,
+      containerFormat: body.containerFormat || undefined,
+      fps: body.fps ? Number(body.fps) : undefined,
+      durationMinutes: body.durationMinutes ? Number(body.durationMinutes) : undefined,
     });
   }
 
