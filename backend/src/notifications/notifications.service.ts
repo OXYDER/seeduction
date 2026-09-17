@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { NotificationType } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 
+// Dérivé du enum Prisma plutôt que retapé à la main : sinon un nouveau type de
+// notification (comme BADGE_EARNED) compile côté schema mais casse ici en silence.
 type NotifyInput = {
   userId: string;
-  type: 'MESSAGE' | 'FORUM_REPLY' | 'REQUEST_FILLED' | 'TORRENT_APPROVED' | 'TORRENT_REJECTED' | 'ANNOUNCEMENT' | 'INVITE_USED';
+  type: NotificationType;
   title: string;
   body?: string;
   link?: string;
