@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import DescriptionGenerator from '../components/DescriptionGenerator';
-import { RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
+import { RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName } from '../lib/searchParser';
+import { parseTorrentInfo } from '../lib/bencode';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -28,6 +29,8 @@ export default function Upload() {
   const [containerFormat, setContainerFormat] = useState('');
   const [fps, setFps] = useState('');
   const [durationMinutes, setDurationMinutes] = useState('');
+  const [autoDetected, setAutoDetected] = useState<Set<string>>(new Set());
+  const [fileList, setFileList] = useState<{ path: string; size: number }[]>([]);
 
   const selectedCategory = categories.flatMap((c) => [c, ...(c.children ?? [])]).find((c) => c.id === categoryId);
   const generatorKnownValues = {
@@ -45,6 +48,46 @@ export default function Upload() {
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
   }, []);
+
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    setFile(f);
+    setFileList([]);
+    setAutoDetected(new Set());
+    if (!f) return;
+
+    try {
+      const parsed = await parseTorrentInfo(f);
+      setFileList(parsed.files);
+      if (!name.trim()) setName(parsed.name);
+
+      const detected = detectFromReleaseName([parsed.name, ...parsed.files.map((x) => x.path)].join(' '));
+      const newlyDetected = new Set<string>();
+
+      if (detected.year && !year) { setYear(String(detected.year)); newlyDetected.add('year'); }
+      if (detected.resolution && !resolution) { setResolution(detected.resolution); newlyDetected.add('resolution'); }
+      if (detected.language && !language) { setLanguage(detected.language); newlyDetected.add('language'); }
+      if (detected.source && !source) { setSource(detected.source); newlyDetected.add('source'); }
+      if (detected.codec && !codec) { setCodec(detected.codec); newlyDetected.add('codec'); }
+      if (detected.audio && !audio) { setAudio(detected.audio); newlyDetected.add('audio'); }
+      if (detected.hdr && !hdr) { setHdr(true); newlyDetected.add('hdr'); }
+
+      // Format de conteneur : extension majoritaire des fichiers, plus fiable que le texte du nom.
+      if (!containerFormat) {
+        const extCounts: Record<string, number> = {};
+        for (const entry of parsed.files) {
+          const ext = entry.path.split('.').pop()?.toUpperCase();
+          if (ext && CONTAINERS.includes(ext)) extCounts[ext] = (extCounts[ext] ?? 0) + 1;
+        }
+        const topExt = Object.entries(extCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+        if (topExt) { setContainerFormat(topExt); newlyDetected.add('containerFormat'); }
+      }
+
+      if (newlyDetected.size > 0) { setAutoDetected(newlyDetected); setShowMeta(true); }
+    } catch {
+      // Fichier .torrent illisible : on laisse la saisie 100% manuelle, silencieusement.
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -81,7 +124,13 @@ export default function Upload() {
       <div className="split-2-reverse">
         <div className="panel">
           <form onSubmit={submit} className="grid">
-            <input type="file" accept=".torrent" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
+            <input type="file" accept=".torrent" onChange={onFileChange} required />
+            {fileList.length > 0 && (
+              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                🔍 {fileList.length} fichier{fileList.length > 1 ? 's' : ''} détecté{fileList.length > 1 ? 's' : ''} dans le .torrent
+                {autoDetected.size > 0 && ` — métadonnées techniques préremplies automatiquement`}
+              </p>
+            )}
             <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
             <textarea placeholder="Description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
             <DescriptionGenerator knownValues={generatorKnownValues} onUse={setDescription} />
@@ -155,7 +204,7 @@ export default function Upload() {
             </div>
             <div>
               <strong>Métadonnées</strong>
-              <p className="muted" style={{ margin: '4px 0 0' }}>Année, résolution, langue... aident les autres membres à filtrer leur recherche.</p>
+              <p className="muted" style={{ margin: '4px 0 0' }}>Année, résolution, langue... aident les autres membres à filtrer leur recherche. Elles sont préremplies automatiquement à partir du nom des fichiers du .torrent quand c'est possible — vérifie-les avant d'envoyer.</p>
             </div>
             <div>
               <strong>Modération</strong>

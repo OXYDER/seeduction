@@ -18,8 +18,8 @@ alias(['1080p', 'fhd', 'fullhd'], 'resolution', '1080p');
 alias(['720p', 'hd'], 'resolution', '720p');
 alias(['480p', 'sd'], 'resolution', '480p');
 alias(['vostfr', 'vost'], 'language', 'VOSTFR');
-alias(['vf'], 'language', 'VF');
-alias(['vff'], 'language', 'VFF');
+alias(['vf', 'french'], 'language', 'VF');
+alias(['vff', 'truefrench'], 'language', 'VFF');
 alias(['vo'], 'language', 'VO');
 alias(['multi'], 'language', 'MULTI');
 alias(['bluray', 'blu-ray', 'bdrip'], 'source', 'BluRay');
@@ -75,5 +75,27 @@ export function parseNaturalQuery(query: string): ParsedQuery {
   }
 
   result.name = remaining.join(' ');
+  return result;
+}
+
+/**
+ * Détecte les mêmes tags techniques que parseNaturalQuery mais à partir d'un
+ * nom de fichier "scene" (points/underscores/crochets comme séparateurs, et
+ * suffixe -GROUPE fréquent sur le dernier tag) — utilisé par l'upload
+ * intelligent pour préremplir les métadonnées depuis le contenu du .torrent.
+ */
+export function detectFromReleaseName(text: string): ParsedQuery {
+  const result: ParsedQuery = { name: '' };
+  const rawTokens = text.replace(/\.torrent$/i, '').split(/[.\_\[\]()\s]+/).filter(Boolean);
+
+  for (const raw of rawTokens) {
+    const yearMatch = raw.match(/^(19|20)\d{2}$/);
+    if (yearMatch) { result.year = Number(raw); continue; }
+
+    for (const candidate of [raw, ...raw.split('-')]) {
+      const match = ALIASES[candidate.toLowerCase()];
+      if (match) { (result as any)[match.field] = match.value; break; }
+    }
+  }
   return result;
 }
