@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
 import { formatBytes, formatNumber } from '../lib/format';
 import NotificationsBell from './NotificationsBell';
+import InstallPrompt from './InstallPrompt';
 
 export interface Profile {
   id: string;
@@ -155,6 +156,8 @@ export default function Layout() {
       <div className="container">
         <Outlet context={{ profile, categories } satisfies LayoutContext} />
       </div>
+
+      <InstallPrompt />
     </div>
   );
 }

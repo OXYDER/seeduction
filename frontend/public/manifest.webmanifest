@@ -1,0 +1,15 @@
+{
+  "name": "Seeduction Tracker",
+  "short_name": "Seeduction",
+  "description": "Tracker BitTorrent privé Seeduction",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#060d09",
+  "theme_color": "#060d09",
+  "lang": "fr",
+  "icons": [
+    { "src": "/logo-icon.png", "sizes": "497x497", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-icon.png", "sizes": "497x497", "type": "image/png", "purpose": "maskable" }
+  ]
+}
