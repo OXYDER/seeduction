@@ -20,6 +20,7 @@ import { ApiKeysModule } from './api-keys/api-keys.module';
 import { PublicApiModule } from './public-api/public-api.module';
 import { ChatModule } from './chat/chat.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     PublicApiModule,
     ChatModule,
     MonitoringModule,
+    AiModule,
   ],
 })
 export class AppModule {}

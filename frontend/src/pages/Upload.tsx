@@ -45,9 +45,33 @@ export default function Upload() {
     sous_titres: language === 'VOSTFR' ? 'Français' : '',
   };
 
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
+    api.get('/ai/status').then((r) => setAiEnabled(r.data.enabled)).catch(() => {});
   }, []);
+
+  async function suggestDescription() {
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const { data } = await api.post('/ai/suggest-description', {
+        name,
+        category: selectedCategory?.name,
+        tags,
+        files: fileList.map((f) => f.path),
+        meta: { année: year, langue: language, résolution: resolution, codec, audio, source, format: containerFormat, HDR: hdr },
+      });
+      setDescription(data.description);
+    } catch (err: any) {
+      setAiError(err.response?.data?.message ?? "L'assistant IA est indisponible");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
@@ -133,6 +157,17 @@ export default function Upload() {
             )}
             <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
             <textarea placeholder="Description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+            {aiEnabled && (
+              <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                <button type="button" className="secondary" disabled={aiLoading || !name.trim()} onClick={suggestDescription}>
+                  {aiLoading ? 'Rédaction...' : '✨ Suggérer une description (IA)'}
+                </button>
+                <span className="muted" style={{ fontSize: 12 }}>
+                  Remplace le texte ci-dessus par un brouillon à relire — l'IA peut se tromper.
+                </span>
+              </div>
+            )}
+            {aiError && <div style={{ color: 'var(--danger)' }} className="muted">{aiError}</div>}
             <DescriptionGenerator knownValues={generatorKnownValues} onUse={setDescription} />
             <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
               <option value="">— Choisir une catégorie —</option>
