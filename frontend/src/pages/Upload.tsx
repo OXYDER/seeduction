@@ -51,33 +51,9 @@ export default function Upload() {
     sous_titres: language === 'VOSTFR' ? 'Français' : '',
   };
 
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState('');
-
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
-    api.get('/ai/status').then((r) => setAiEnabled(r.data.enabled)).catch(() => {});
   }, []);
-
-  async function suggestDescription() {
-    setAiLoading(true);
-    setAiError('');
-    try {
-      const { data } = await api.post('/ai/suggest-description', {
-        name,
-        category: selectedCategory?.name,
-        tags,
-        files: fileList.map((f) => f.path),
-        meta: { année: year, langue: language, résolution: resolution, codec, audio, source, format: containerFormat, HDR: hdr },
-      });
-      setDescription(data.description);
-    } catch (err: any) {
-      setAiError(err.response?.data?.message ?? "L'assistant IA est indisponible");
-    } finally {
-      setAiLoading(false);
-    }
-  }
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
@@ -168,128 +144,118 @@ export default function Upload() {
   return (
     <div className="grid">
       <h1>Uploader un torrent</h1>
-      <div className="split-2-reverse">
-        <div className="panel">
-          <form onSubmit={submit} className="grid">
-            <input type="file" accept=".torrent" onChange={onFileChange} required />
-            {fileList.length > 0 && (
-              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-                🔍 {fileList.length} fichier{fileList.length > 1 ? 's' : ''} détecté{fileList.length > 1 ? 's' : ''} dans le .torrent
-                {autoDetected.size > 0 && ` — métadonnées techniques préremplies automatiquement`}
-              </p>
-            )}
-            <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
-            <textarea placeholder="Description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
-            {aiEnabled && (
-              <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                <button type="button" className="secondary" disabled={aiLoading || !name.trim()} onClick={suggestDescription}>
-                  {aiLoading ? 'Rédaction...' : '✨ Suggérer une description (IA)'}
-                </button>
-                <span className="muted" style={{ fontSize: 12 }}>
-                  Remplace le texte ci-dessus par un brouillon à relire — l'IA peut se tromper.
-                </span>
-              </div>
-            )}
-            {aiError && <div style={{ color: 'var(--danger)' }} className="muted">{aiError}</div>}
-            <DescriptionGenerator knownValues={generatorKnownValues} defaultKind={defaultKind} onUse={setDescription} onCoverChange={setCoverImage} />
 
-            <div>
-              <div className="muted" style={{ marginBottom: 6 }}>Pochette / affiche (optionnelle)</div>
-              <div className="row" style={{ alignItems: 'center', gap: 10 }}>
-                {coverImage
-                  ? <img src={coverImage} alt="" style={{ width: 60, height: 84, objectFit: 'cover', borderRadius: 4 }} />
-                  : <div style={{ width: 60, height: 84, background: 'var(--bg-panel-raised)', borderRadius: 4 }} />}
-                <div className="grid" style={{ gap: 6 }}>
-                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onCoverFileChange} disabled={coverUploading} />
-                  {coverImage && (
-                    <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setCoverImage('')}>
-                      Retirer la pochette
-                    </button>
-                  )}
-                </div>
-              </div>
-              <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                Remplie automatiquement en choisissant un résultat dans le générateur de description ci-dessus, ou envoie ta propre image. Toujours sauvegardée sur Seeduction.
-              </p>
-            </div>
-            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-              <option value="">— Choisir une catégorie —</option>
-              {categories.map((c) => (
-                <optgroup key={c.id} label={c.name}>
-                  <option value={c.id}>{c.name}</option>
-                  {c.children?.map((sub: any) => (
-                    <option key={sub.id} value={sub.id}>↳ {sub.name}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-            <input placeholder="Tags (séparés par virgule)" value={tags} onChange={(e) => setTags(e.target.value)} />
-
-            <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setShowMeta((v) => !v)}>
-              {showMeta ? 'Masquer' : '+ Métadonnées techniques (optionnel)'}
-            </button>
-            {showMeta && (
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
-                <input type="number" placeholder="Année" value={year} onChange={(e) => setYear(e.target.value)} />
-                <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-                  <option value="">Langue</option>
-                  {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <select value={resolution} onChange={(e) => setResolution(e.target.value)}>
-                  <option value="">Résolution</option>
-                  {RESOLUTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
-                <select value={codec} onChange={(e) => setCodec(e.target.value)}>
-                  <option value="">Codec</option>
-                  {CODECS.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <select value={audio} onChange={(e) => setAudio(e.target.value)}>
-                  <option value="">Audio</option>
-                  {AUDIO_FORMATS.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-                <select value={source} onChange={(e) => setSource(e.target.value)}>
-                  <option value="">Source</option>
-                  {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select value={containerFormat} onChange={(e) => setContainerFormat(e.target.value)}>
-                  <option value="">Format</option>
-                  {CONTAINERS.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <input type="number" placeholder="FPS" value={fps} onChange={(e) => setFps(e.target.value)} />
-                <input type="number" placeholder="Durée (min)" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
-                <label className="row muted" style={{ gap: 6 }}>
-                  <input type="checkbox" style={{ width: 'auto' }} checked={hdr} onChange={(e) => setHdr(e.target.checked)} /> HDR
-                </label>
-              </div>
-            )}
-
-            <label className="row"><input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} style={{ width: 'auto' }} /> Upload anonyme</label>
-            {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
-            <button type="submit">Uploader</button>
-          </form>
-        </div>
-
-        <div className="panel ornate">
-          <div className="panel-title"><span className="title-icon">📜</span>À savoir avant d'uploader</div>
-          <div className="grid" style={{ gap: 12 }}>
-            <div>
-              <strong>Un seul upload par contenu</strong>
-              <p className="muted" style={{ margin: '4px 0 0' }}>Vérifie qu'il n'existe pas déjà via Parcourir avant d'envoyer.</p>
-            </div>
-            <div>
-              <strong>Bonne catégorie</strong>
-              <p className="muted" style={{ margin: '4px 0 0' }}>Choisis la sous-catégorie la plus précise si elle existe.</p>
-            </div>
-            <div>
-              <strong>Métadonnées</strong>
-              <p className="muted" style={{ margin: '4px 0 0' }}>Année, résolution, langue... aident les autres membres à filtrer leur recherche. Elles sont préremplies automatiquement à partir du nom des fichiers du .torrent quand c'est possible — vérifie-les avant d'envoyer.</p>
-            </div>
-            <div>
-              <strong>Modération</strong>
-              <p className="muted" style={{ margin: '4px 0 0' }}>Ton torrent reste en attente jusqu'à l'approbation du staff.</p>
-            </div>
+      <div className="panel ornate">
+        <div className="panel-title"><span className="title-icon">📜</span>À savoir avant d'uploader</div>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+          <div>
+            <strong>Un seul upload par contenu</strong>
+            <p className="muted" style={{ margin: '4px 0 0' }}>Vérifie qu'il n'existe pas déjà via Parcourir avant d'envoyer.</p>
+          </div>
+          <div>
+            <strong>Bonne catégorie</strong>
+            <p className="muted" style={{ margin: '4px 0 0' }}>Choisis la sous-catégorie la plus précise si elle existe.</p>
+          </div>
+          <div>
+            <strong>Tout est automatique</strong>
+            <p className="muted" style={{ margin: '4px 0 0' }}>Choisis ton fichier .torrent et ta catégorie : nom, métadonnées, description et pochette se préremplissent tout seuls. Vérifie avant d'envoyer.</p>
+          </div>
+          <div>
+            <strong>Modération</strong>
+            <p className="muted" style={{ margin: '4px 0 0' }}>Ton torrent reste en attente jusqu'à l'approbation du staff.</p>
           </div>
         </div>
+      </div>
+
+      <div className="panel">
+        <form onSubmit={submit} className="grid">
+          <input type="file" accept=".torrent" onChange={onFileChange} required />
+          {fileList.length > 0 && (
+            <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+              🔍 {fileList.length} fichier{fileList.length > 1 ? 's' : ''} détecté{fileList.length > 1 ? 's' : ''} dans le .torrent
+              {autoDetected.size > 0 && ` — métadonnées techniques préremplies automatiquement`}
+            </p>
+          )}
+          <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
+            <option value="">— Choisir une catégorie —</option>
+            {categories.map((c) => (
+              <optgroup key={c.id} label={c.name}>
+                <option value={c.id}>{c.name}</option>
+                {c.children?.map((sub: any) => (
+                  <option key={sub.id} value={sub.id}>↳ {sub.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+
+          <textarea placeholder="Description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+          <DescriptionGenerator knownValues={generatorKnownValues} defaultKind={defaultKind} onUse={setDescription} onCoverChange={setCoverImage} />
+
+          <div>
+            <div className="muted" style={{ marginBottom: 6 }}>Pochette / affiche (optionnelle)</div>
+            <div className="row" style={{ alignItems: 'center', gap: 10 }}>
+              {coverImage
+                ? <img src={coverImage} alt="" style={{ width: 60, height: 84, objectFit: 'cover', borderRadius: 4 }} />
+                : <div style={{ width: 60, height: 84, background: 'var(--bg-panel-raised)', borderRadius: 4 }} />}
+              <div className="grid" style={{ gap: 6 }}>
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onCoverFileChange} disabled={coverUploading} />
+                {coverImage && (
+                  <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setCoverImage('')}>
+                    Retirer la pochette
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+              Remplie automatiquement en choisissant un résultat dans le générateur de description ci-dessus, ou envoie ta propre image. Toujours sauvegardée sur Seeduction.
+            </p>
+          </div>
+
+          <input placeholder="Tags (séparés par virgule)" value={tags} onChange={(e) => setTags(e.target.value)} />
+
+          <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setShowMeta((v) => !v)}>
+            {showMeta ? 'Masquer' : '+ Métadonnées techniques (optionnel)'}
+          </button>
+          {showMeta && (
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
+              <input type="number" placeholder="Année" value={year} onChange={(e) => setYear(e.target.value)} />
+              <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+                <option value="">Langue</option>
+                {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <select value={resolution} onChange={(e) => setResolution(e.target.value)}>
+                <option value="">Résolution</option>
+                {RESOLUTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <select value={codec} onChange={(e) => setCodec(e.target.value)}>
+                <option value="">Codec</option>
+                {CODECS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select value={audio} onChange={(e) => setAudio(e.target.value)}>
+                <option value="">Audio</option>
+                {AUDIO_FORMATS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <select value={source} onChange={(e) => setSource(e.target.value)}>
+                <option value="">Source</option>
+                {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select value={containerFormat} onChange={(e) => setContainerFormat(e.target.value)}>
+                <option value="">Format</option>
+                {CONTAINERS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <input type="number" placeholder="FPS" value={fps} onChange={(e) => setFps(e.target.value)} />
+              <input type="number" placeholder="Durée (min)" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
+              <label className="row muted" style={{ gap: 6 }}>
+                <input type="checkbox" style={{ width: 'auto' }} checked={hdr} onChange={(e) => setHdr(e.target.checked)} /> HDR
+              </label>
+            </div>
+          )}
+
+          <label className="row"><input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} style={{ width: 'auto' }} /> Upload anonyme</label>
+          {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
+          <button type="submit">Uploader</button>
+        </form>
       </div>
     </div>
   );

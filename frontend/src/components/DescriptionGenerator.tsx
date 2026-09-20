@@ -88,6 +88,14 @@ export default function DescriptionGenerator({
     if (defaultKind) setKind(defaultKind);
   }, [defaultKind]);
 
+  // Dès qu'un nom et une catégorie sont connus (fichier .torrent choisi +
+  // catégorie sélectionnée), on ouvre automatiquement le générateur et sa
+  // pré-recherche plutôt que d'attendre un clic — "le plus facile possible".
+  useEffect(() => {
+    if (!open && defaultKind && knownValues.titre?.trim()) setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultKind, knownValues.titre]);
+
   async function runSearch() {
     if (!searchQuery.trim() || !searchSupported) return;
     setSearchLoading(true);
