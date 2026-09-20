@@ -13,8 +13,8 @@ export class MetadataController {
   }
 
   @Get('search')
-  search(@Query('kind') kind: string, @Query('query') query: string) {
-    return this.metadataService.search(kind, query);
+  search(@Query('kind') kind: string, @Query('query') query: string, @Query('year') year?: string) {
+    return this.metadataService.search(kind, query, year);
   }
 
   @Get('detail')

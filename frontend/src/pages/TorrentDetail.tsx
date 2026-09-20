@@ -90,7 +90,7 @@ export default function TorrentDetail() {
           )}
         </div>
         {torrent.description && (
-          <div dangerouslySetInnerHTML={{ __html: bbcodeToHtml(torrent.description) }} />
+          <div className="bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(torrent.description) }} />
         )}
       </div>
       <div className="panel">

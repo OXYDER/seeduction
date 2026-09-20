@@ -56,14 +56,14 @@ export class MetadataService {
     }
   }
 
-  async search(kind: string, query: string): Promise<SearchResult[]> {
+  async search(kind: string, query: string, year?: string): Promise<SearchResult[]> {
     if (!query?.trim()) throw new BadRequestException('Requête de recherche vide');
     this.assertSearchable(kind);
     switch (kind) {
       case 'FILM':
-        return this.searchTmdb('movie', query);
+        return this.searchTmdb('movie', query, year);
       case 'SERIE':
-        return this.searchTmdb('tv', query);
+        return this.searchTmdb('tv', query, year);
       case 'MUSIQUE':
         return this.searchDeezer(query);
       case 'LIVRE':
@@ -90,8 +90,9 @@ export class MetadataService {
     }
   }
 
-  private async searchTmdb(type: 'movie' | 'tv', query: string): Promise<SearchResult[]> {
-    const url = `https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(query)}&language=fr-FR&api_key=${this.tmdbKey}`;
+  private async searchTmdb(type: 'movie' | 'tv', query: string, year?: string): Promise<SearchResult[]> {
+    const yearParam = year && /^\d{4}$/.test(year) ? `&${type === 'movie' ? 'year' : 'first_air_date_year'}=${year}` : '';
+    const url = `https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(query)}&language=fr-FR${yearParam}&api_key=${this.tmdbKey}`;
     const res = await this.fetchJson(url, 'TMDB');
     return (res.results ?? []).slice(0, 12).map((r: any) => ({
       id: String(r.id),

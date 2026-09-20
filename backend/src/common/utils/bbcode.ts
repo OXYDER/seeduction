@@ -36,29 +36,68 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Applique `render` sur chaque paire [tag]...[/tag] en commençant par les plus
+ * internes, pour qu'un même tag imbriqué dans lui-même (ex : [center] dans un
+ * [center]) soit converti correctement au lieu de laisser des balises orphelines.
+ */
+function replacePairs(text: string, tag: string, render: (inner: string, arg?: string) => string, argPattern?: string): string {
+  const open = argPattern ? `\\[${tag}=(${argPattern})\\]` : `\\[${tag}\\]`;
+  const re = new RegExp(`${open}((?:(?!\\[${tag}[\\]=])[\\s\\S])*?)\\[\\/${tag}\\]`, 'gi');
+  let out = text;
+  for (let i = 0; i < 20; i++) {
+    const next = out.replace(re, (...m: any[]) => (argPattern ? render(m[2], m[1]) : render(m[1])));
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
+// Seules les URL http(s) et les chemins du site sont autorisés (pas de javascript:).
+const SAFE_URL = '(?:https?:\\/\\/|\\/)[^\\]\\s]*';
+
 /** BBCode -> HTML sécurisé (le texte hors balises est échappé avant conversion des balises). */
 export function bbcodeToHtml(bbcode: string): string {
-  const escaped = escapeHtml(bbcode);
-  return escaped
-    .replace(/\[center\]([\s\S]*?)\[\/center\]/gi, '<div style="text-align:center">$1</div>')
-    .replace(/\[size=(\d+)\]([\s\S]*?)\[\/size\]/gi, (_, n, inner) => `<span style="font-size:${Math.min(Number(n), 7) * 4 + 8}px">${inner}</span>`)
-    .replace(/\[b\]([\s\S]*?)\[\/b\]/gi, '<strong>$1</strong>')
-    .replace(/\[i\]([\s\S]*?)\[\/i\]/gi, '<em>$1</em>')
-    .replace(/\[u\]([\s\S]*?)\[\/u\]/gi, '<u>$1</u>')
-    .replace(/\[url=(.*?)\]([\s\S]*?)\[\/url\]/gi, '<a href="$1" rel="noopener noreferrer">$2</a>')
-    .replace(/\[img\](.*?)\[\/img\]/gi, '<img src="$1" alt="" />')
-    .replace(/^• (.*)$/gm, '<li>$1</li>')
+  let html = escapeHtml(bbcode);
+
+  // Listes à puces : lignes consécutives "• xxx" regroupées dans un <ul>.
+  html = html.replace(/(?:^• .*(?:\n|$))+/gm, (block) =>
+    `<ul>${block.replace(/\n$/, '').split('\n').map((l) => `<li>${l.slice(2)}</li>`).join('')}</ul>`,
+  );
+
+  for (const align of ['center', 'right', 'left']) {
+    html = replacePairs(html, align, (inner) => `<div style="text-align:${align}">${inner}</div>`);
+  }
+  html = replacePairs(html, 'quote', (inner) => `<blockquote>${inner}</blockquote>`);
+  html = replacePairs(html, 'code', (inner) => `<pre>${inner}</pre>`);
+  html = replacePairs(html, 'size', (inner, n) => `<span style="font-size:${Math.min(Number(n), 7) * 4 + 8}px">${inner}</span>`, '\\d+');
+  html = replacePairs(html, 'color', (inner, c) => `<span style="color:${c}">${inner}</span>`, '#[0-9a-fA-F]{3,8}|[a-zA-Z]+');
+  html = replacePairs(html, 'b', (inner) => `<strong>${inner}</strong>`);
+  html = replacePairs(html, 'i', (inner) => `<em>${inner}</em>`);
+  html = replacePairs(html, 'u', (inner) => `<u>${inner}</u>`);
+  html = replacePairs(html, 's', (inner) => `<s>${inner}</s>`);
+  html = replacePairs(html, 'url', (inner, href) => `<a href="${href}" rel="noopener noreferrer" target="_blank">${inner}</a>`, SAFE_URL);
+
+  return html
+    .replace(new RegExp(`\\[img\\](${SAFE_URL})\\[\\/img\\]`, 'gi'), '<img src="$1" alt="" />')
+    .replace(/\[hr\]/gi, '<hr />')
+    // Un saut de ligne juste après un bloc est déjà rendu par le bloc lui-même.
+    .replace(/(<\/div>|<\/blockquote>|<\/pre>|<hr \/>)\n/g, '$1')
     .replace(/\n/g, '<br />');
 }
 
 /** BBCode -> Markdown (best-effort ; les balises sans équivalent direct sont simplement retirées). */
 export function bbcodeToMarkdown(bbcode: string): string {
   return bbcode
-    .replace(/\[center\]([\s\S]*?)\[\/center\]/gi, '$1')
-    .replace(/\[size=\d+\]([\s\S]*?)\[\/size\]/gi, '**$1**')
-    .replace(/\[b\]([\s\S]*?)\[\/b\]/gi, '**$1**')
-    .replace(/\[i\]([\s\S]*?)\[\/i\]/gi, '_$1_')
-    .replace(/\[u\]([\s\S]*?)\[\/u\]/gi, '$1')
+    .replace(/\[\/?(?:center|right|left|u)\]/gi, '')
+    .replace(/\[color=[^\]]*\]|\[\/color\]/gi, '')
+    .replace(/\[size=\d+\]|\[\/size\]/gi, '**')
+    .replace(/\[\/?b\]/gi, '**')
+    .replace(/\[\/?i\]/gi, '_')
+    .replace(/\[\/?s\]/gi, '~~')
+    .replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, (_, inner: string) => inner.trim().split('\n').map((l) => `> ${l}`).join('\n'))
+    .replace(/\[code\]([\s\S]*?)\[\/code\]/gi, '```\n$1\n```')
+    .replace(/\[hr\]/gi, '\n---\n')
     .replace(/\[url=(.*?)\]([\s\S]*?)\[\/url\]/gi, '[$2]($1)')
     .replace(/\[img\](.*?)\[\/img\]/gi, '![]($1)')
     .replace(/^• (.*)$/gm, '- $1');

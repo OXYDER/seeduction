@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import DescriptionGenerator from '../components/DescriptionGenerator';
-import { RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName } from '../lib/searchParser';
+import WysiwygEditor from '../components/WysiwygEditor';
+import { RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName, cleanTitleForSearch } from '../lib/searchParser';
 import { parseTorrentInfo } from '../lib/bencode';
 
 export default function Upload() {
@@ -33,12 +34,24 @@ export default function Upload() {
   const [fileList, setFileList] = useState<{ path: string; size: number }[]>([]);
   const [coverImage, setCoverImage] = useState('');
   const [coverUploading, setCoverUploading] = useState(false);
+  const autoName = useRef('');
+  const [sessionKey, setSessionKey] = useState('');
 
   const selectedCategory = categories.flatMap((c) => [c, ...(c.children ?? [])]).find((c) => c.id === categoryId);
-  const SLUG_TO_KIND: Record<string, string> = {
-    films: 'FILM', 'series-tv': 'SERIE', animes: 'SERIE', musique: 'MUSIQUE', jeux: 'JEU', applications: 'LOGICIEL', livres: 'LIVRE',
-  };
-  const defaultKind = SLUG_TO_KIND[selectedCategory?.slug ?? ''];
+  // Le type de contenu du générateur se déduit (sans rigidité) de la catégorie ou de sa catégorie parente ;
+  // s'il n'est pas reconnu, le générateur garde son choix par défaut, modifiable à la main.
+  const parentCategory = categories.find((c) => c.children?.some((sub: any) => sub.id === categoryId));
+  const KIND_PATTERNS: [RegExp, string][] = [
+    [/anime|s[eé]rie|series|tv/i, 'SERIE'],
+    [/film|movie|cin[eé]ma/i, 'FILM'],
+    [/musi|audio|album/i, 'MUSIQUE'],
+    [/jeu|game/i, 'JEU'],
+    [/appli|logiciel|soft|app/i, 'LOGICIEL'],
+    [/livre|book|ebook/i, 'LIVRE'],
+  ];
+  const categoryHint = [selectedCategory?.slug, selectedCategory?.name, parentCategory?.slug, parentCategory?.name].filter(Boolean).join(' ');
+  const defaultKind = KIND_PATTERNS.find(([re]) => re.test(categoryHint))?.[1];
+  const searchInfo = cleanTitleForSearch(name);
   const generatorKnownValues = {
     titre: name,
     catégorie: selectedCategory?.name ?? '',
@@ -60,12 +73,13 @@ export default function Upload() {
     setFile(f);
     setFileList([]);
     setAutoDetected(new Set());
-    if (!f) return;
+    if (!f) { setSessionKey(''); return; }
 
     try {
       const parsed = await parseTorrentInfo(f);
       setFileList(parsed.files);
-      if (!name.trim()) setName(parsed.name);
+      // Le nom se remplit depuis le fichier, sauf si l'utilisateur l'a déjà personnalisé.
+      if (!name.trim() || name === autoName.current) { setName(parsed.name); autoName.current = parsed.name; }
 
       const detected = detectFromReleaseName([parsed.name, ...parsed.files.map((x) => x.path)].join(' '));
       const newlyDetected = new Set<string>();
@@ -92,6 +106,9 @@ export default function Upload() {
       if (newlyDetected.size > 0) { setAutoDetected(newlyDetected); setShowMeta(true); }
     } catch {
       // Fichier .torrent illisible : on laisse la saisie 100% manuelle, silencieusement.
+    } finally {
+      // Change seulement une fois le nom rempli, pour que la recherche auto parte du bon titre.
+      setSessionKey(`${f.name}:${f.size}`);
     }
   }
 
@@ -189,8 +206,22 @@ export default function Upload() {
             ))}
           </select>
 
-          <textarea placeholder="Description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
-          <DescriptionGenerator knownValues={generatorKnownValues} defaultKind={defaultKind} onUse={setDescription} onCoverChange={setCoverImage} />
+          <DescriptionGenerator
+            knownValues={generatorKnownValues}
+            defaultKind={defaultKind}
+            searchTitle={searchInfo.title}
+            searchYear={year || searchInfo.year}
+            autoStart={!!file && !!categoryId && !!name.trim()}
+            sessionKey={sessionKey}
+            currentDescription={description}
+            onGenerate={setDescription}
+            onCoverChange={setCoverImage}
+          />
+
+          <div>
+            <div className="muted" style={{ marginBottom: 6 }}>Description</div>
+            <WysiwygEditor value={description} onChange={setDescription} minHeight={320} />
+          </div>
 
           <div>
             <div className="muted" style={{ marginBottom: 6 }}>Pochette / affiche (optionnelle)</div>
@@ -208,7 +239,7 @@ export default function Upload() {
               </div>
             </div>
             <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-              Remplie automatiquement en choisissant un résultat dans le générateur de description ci-dessus, ou envoie ta propre image. Toujours sauvegardée sur Seeduction.
+              Remplie automatiquement en choisissant un résultat dans le générateur ci-dessus, ou envoie ta propre image. Toujours sauvegardée sur Seeduction.
             </p>
           </div>
 

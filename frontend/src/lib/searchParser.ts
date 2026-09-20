@@ -99,3 +99,35 @@ export function detectFromReleaseName(text: string): ParsedQuery {
   }
   return result;
 }
+
+// Étiquettes techniques ou de sortie qui ne font pas partie du titre d'une oeuvre.
+const NON_TITLE_TOKEN = /^(s\d{1,2}(e\d{1,3})?|saison\d*|complete|complet|integrale|intégrale|discographie|repack|proper|extended|unrated|remastered|multi|truefrench|french|vff|vfq|vostfr|subforced|dvdrip|bdrip|brrip|webrip|web-dl|webdl|hdlight|4klight|hdr10?|dv|x26[45]|h26[45]|hevc|aac|ac3|dts|flac|mp3|\d{3,4}p|\d+kbps|\d+k)$/i;
+
+/**
+ * Nettoie un nom de release ("Dune.Part.Two.2024.MULTI.1080p.WEB-DL.x264-GRP")
+ * pour en tirer un titre lisible ("Dune Part Two") et l'année, afin de lancer
+ * la recherche de métadonnées de façon tolérante — le nom exact du fichier
+ * torrent est presque toujours trop "sale" pour une recherche telle quelle.
+ */
+export function cleanTitleForSearch(raw: string): { title: string; year?: string } {
+  const noExt = raw.replace(/\.torrent$/i, '');
+  const year = noExt.match(/(?:^|[^\d])((?:19|20)\d{2})(?:[^\d]|$)/)?.[1];
+
+  const tokens = noExt
+    .replace(/\[[^\]]*\]|\([^)]*\)/g, ' ')
+    .replace(/[._]+/g, ' ')
+    .replace(/\s+-\s+/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t && t !== '-');
+
+  const kept: string[] = [];
+  for (const token of tokens) {
+    const isYear = /^(19|20)\d{2}$/.test(token);
+    const isTag = NON_TITLE_TOKEN.test(token) || !!ALIASES[token.toLowerCase()] || token.split('-').some((p) => !!ALIASES[p.toLowerCase()] && token.includes('-'));
+    if ((isYear || isTag) && kept.length > 0) break;
+    if (!isYear && !isTag) kept.push(token);
+  }
+
+  const title = (kept.length > 0 ? kept : tokens.filter((t) => !NON_TITLE_TOKEN.test(t))).join(' ').trim();
+  return { title: title || noExt.replace(/[._]+/g, ' ').trim(), year };
+}

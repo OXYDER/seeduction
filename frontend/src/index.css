@@ -655,3 +655,61 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
 @media (max-width: 800px) {
   .split-2-reverse { grid-template-columns: 1fr; }
 }
+
+/* ---- Éditeur WYSIWYG + rendu des descriptions BBCode ---- */
+.bbcode-content { line-height: 1.55; word-wrap: break-word; }
+.bbcode-content img { max-width: 100%; height: auto; }
+.bbcode-content blockquote {
+  border-left: 3px solid var(--gold);
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.03);
+}
+.bbcode-content pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  overflow: auto;
+  font-family: monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.bbcode-content hr { border: 0; border-top: 1px solid var(--border-gold); margin: 12px 0; }
+.bbcode-content ul { margin: 6px 0; padding-left: 22px; }
+.bbcode-content a { text-decoration: underline; }
+
+.wysiwyg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
+.wysiwyg-toolbar .tb-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: 28px;
+  line-height: 1.4;
+}
+.wysiwyg-toolbar select.tb-btn { width: auto; }
+.wysiwyg-toolbar .tb-color { position: relative; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel-raised); color: var(--gold); font-weight: 700; }
+.wysiwyg-toolbar .tb-color input[type="color"] { width: 22px; height: 18px; padding: 0; border: none; background: none; cursor: pointer; }
+.wysiwyg-toolbar .tb-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 2px; }
+.wysiwyg-area {
+  padding: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+  outline: none;
+  font-size: 14px;
+  overflow: auto;
+  resize: vertical;
+}
+.wysiwyg-area:focus { border-color: var(--border-gold); }
+.wysiwyg-area:empty::before { content: attr(data-placeholder); color: var(--text-dim); }
