@@ -37,3 +37,21 @@ export function bbcodeToHtml(bbcode: string): string {
     .replace(/^• (.*)$/gm, '<li>$1</li>')
     .replace(/\n/g, '<br />');
 }
+
+/** BBCode -> Markdown (best-effort ; miroir du backend). */
+export function bbcodeToMarkdown(bbcode: string): string {
+  return bbcode
+    .replace(/\[center\]([\s\S]*?)\[\/center\]/gi, '$1')
+    .replace(/\[size=\d+\]([\s\S]*?)\[\/size\]/gi, '**$1**')
+    .replace(/\[b\]([\s\S]*?)\[\/b\]/gi, '**$1**')
+    .replace(/\[i\]([\s\S]*?)\[\/i\]/gi, '_$1_')
+    .replace(/\[u\]([\s\S]*?)\[\/u\]/gi, '$1')
+    .replace(/\[url=(.*?)\]([\s\S]*?)\[\/url\]/gi, '[$2]($1)')
+    .replace(/\[img\](.*?)\[\/img\]/gi, '![]($1)')
+    .replace(/^• (.*)$/gm, '- $1');
+}
+
+/** BBCode -> texte brut (toutes les balises retirées). */
+export function bbcodeToText(bbcode: string): string {
+  return bbcode.replace(/\[\/?[a-z]+(=[^\]]*)?\]/gi, '');
+}

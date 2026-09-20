@@ -148,9 +148,13 @@ export default function Browse() {
                 <tr key={t.id}>
                   <td>
                     <div className="row" style={{ gap: 10 }}>
-                      <span className="category-swatch" style={{ background: `${(catStyle?.color ?? '#e0b84a')}26` }}>
-                        {catStyle?.icon ?? '📦'}
-                      </span>
+                      {t.coverImage ? (
+                        <img src={t.coverImage} alt="" style={{ width: 32, height: 44, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
+                      ) : (
+                        <span className="category-swatch" style={{ background: `${(catStyle?.color ?? '#e0b84a')}26` }}>
+                          {catStyle?.icon ?? '📦'}
+                        </span>
+                      )}
                       <span>
                         <Link to={`/torrents/${t.id}`}>{t.name}</Link>{' '}
                         {t.freeleech && <span className="badge freeleech">FL</span>}{' '}

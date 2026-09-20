@@ -28,6 +28,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracker}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-tracker}?schema=public
     volumes:
       - torrent_storage:/app/storage/torrents
+      - cover_storage:/app/storage/covers
     networks:
       - tracker_net
     # Pas de port exposé publiquement ici — passe par Nginx Proxy Manager
@@ -51,3 +52,4 @@ networks:
 volumes:
   pg_data:
   torrent_storage:
+  cover_storage:

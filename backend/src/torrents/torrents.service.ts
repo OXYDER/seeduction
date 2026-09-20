@@ -19,6 +19,7 @@ export class TorrentsService {
     categoryId: string;
     tags: string[];
     anonymous: boolean;
+    coverImage?: string;
     year?: number;
     language?: string;
     resolution?: string;
@@ -50,6 +51,7 @@ export class TorrentsService {
         categoryId: params.categoryId,
         uploaderId: params.userId,
         anonymousUpload: params.anonymous,
+        coverImage: params.coverImage || null,
         tags: params.tags,
         year: params.year,
         language: params.language,

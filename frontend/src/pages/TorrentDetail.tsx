@@ -46,11 +46,18 @@ export default function TorrentDetail() {
 
   return (
     <div className="grid">
-      <h1>{torrent.name}</h1>
-      <div className="row" style={{ flexWrap: 'wrap' }}>
-        {torrent.freeleech && <span className="badge freeleech">FREELEECH</span>}
-        {torrent.doubleUpload && <span className="badge double">DOUBLE UPLOAD</span>}
-        {meta.map((m, i) => <span key={i} className="badge new">{m}</span>)}
+      <div className="row" style={{ alignItems: 'flex-start', gap: 16 }}>
+        {torrent.coverImage && (
+          <img src={torrent.coverImage} alt="" style={{ width: 100, height: 140, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+        )}
+        <div>
+          <h1>{torrent.name}</h1>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            {torrent.freeleech && <span className="badge freeleech">FREELEECH</span>}
+            {torrent.doubleUpload && <span className="badge double">DOUBLE UPLOAD</span>}
+            {meta.map((m, i) => <span key={i} className="badge new">{m}</span>)}
+          </div>
+        </div>
       </div>
       <div className="panel grid">
         <div className="row" style={{ justifyContent: 'space-between' }}>

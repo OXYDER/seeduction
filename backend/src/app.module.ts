@@ -21,6 +21,8 @@ import { PublicApiModule } from './public-api/public-api.module';
 import { ChatModule } from './chat/chat.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { AiModule } from './ai/ai.module';
+import { CoversModule } from './covers/covers.module';
+import { MetadataModule } from './metadata/metadata.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { AiModule } from './ai/ai.module';
     ChatModule,
     MonitoringModule,
     AiModule,
+    CoversModule,
+    MetadataModule,
   ],
 })
 export class AppModule {}

@@ -31,8 +31,14 @@ export default function Upload() {
   const [durationMinutes, setDurationMinutes] = useState('');
   const [autoDetected, setAutoDetected] = useState<Set<string>>(new Set());
   const [fileList, setFileList] = useState<{ path: string; size: number }[]>([]);
+  const [coverImage, setCoverImage] = useState('');
+  const [coverUploading, setCoverUploading] = useState(false);
 
   const selectedCategory = categories.flatMap((c) => [c, ...(c.children ?? [])]).find((c) => c.id === categoryId);
+  const SLUG_TO_KIND: Record<string, string> = {
+    films: 'FILM', 'series-tv': 'SERIE', animes: 'SERIE', musique: 'MUSIQUE', jeux: 'JEU', applications: 'LOGICIEL', livres: 'LIVRE',
+  };
+  const defaultKind = SLUG_TO_KIND[selectedCategory?.slug ?? ''];
   const generatorKnownValues = {
     titre: name,
     catégorie: selectedCategory?.name ?? '',
@@ -113,6 +119,22 @@ export default function Upload() {
     }
   }
 
+  async function onCoverFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    if (!f) return;
+    setCoverUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', f);
+      const { data } = await api.post('/covers/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setCoverImage(data.url);
+    } catch (err: any) {
+      setError(err.response?.data?.message ?? "Erreur d'envoi de la pochette");
+    } finally {
+      setCoverUploading(false);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) { setError('Sélectionne un fichier .torrent'); return; }
@@ -124,6 +146,7 @@ export default function Upload() {
     form.append('categoryId', categoryId);
     form.append('tags', tags);
     form.append('anonymous', String(anonymous));
+    if (coverImage) form.append('coverImage', coverImage);
     if (year) form.append('year', year);
     if (language) form.append('language', language);
     if (resolution) form.append('resolution', resolution);
@@ -168,7 +191,27 @@ export default function Upload() {
               </div>
             )}
             {aiError && <div style={{ color: 'var(--danger)' }} className="muted">{aiError}</div>}
-            <DescriptionGenerator knownValues={generatorKnownValues} onUse={setDescription} />
+            <DescriptionGenerator knownValues={generatorKnownValues} defaultKind={defaultKind} onUse={setDescription} onCoverChange={setCoverImage} />
+
+            <div>
+              <div className="muted" style={{ marginBottom: 6 }}>Pochette / affiche (optionnelle)</div>
+              <div className="row" style={{ alignItems: 'center', gap: 10 }}>
+                {coverImage
+                  ? <img src={coverImage} alt="" style={{ width: 60, height: 84, objectFit: 'cover', borderRadius: 4 }} />
+                  : <div style={{ width: 60, height: 84, background: 'var(--bg-panel-raised)', borderRadius: 4 }} />}
+                <div className="grid" style={{ gap: 6 }}>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onCoverFileChange} disabled={coverUploading} />
+                  {coverImage && (
+                    <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setCoverImage('')}>
+                      Retirer la pochette
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                Remplie automatiquement en choisissant un résultat dans le générateur de description ci-dessus, ou envoie ta propre image. Toujours sauvegardée sur Seeduction.
+              </p>
+            </div>
             <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
               <option value="">— Choisir une catégorie —</option>
               {categories.map((c) => (

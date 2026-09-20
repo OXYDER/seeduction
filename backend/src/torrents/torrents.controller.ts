@@ -55,6 +55,7 @@ export class TorrentsController {
       categoryId: body.categoryId,
       tags: body.tags ? body.tags.split(',').map((t) => t.trim()) : [],
       anonymous: body.anonymous === 'true',
+      coverImage: body.coverImage || undefined,
       year: body.year ? Number(body.year) : undefined,
       language: body.language || undefined,
       resolution: body.resolution || undefined,

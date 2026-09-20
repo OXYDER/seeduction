@@ -44,7 +44,7 @@ export class AdminService {
     });
   }
 
-  updateTorrent(id: string, data: { name?: string; categoryId?: string; freeleech?: boolean; doubleUpload?: boolean; status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEAD' }) {
+  updateTorrent(id: string, data: { name?: string; categoryId?: string; freeleech?: boolean; doubleUpload?: boolean; coverImage?: string | null; status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEAD' }) {
     return this.prisma.torrent.update({ where: { id }, data });
   }
 

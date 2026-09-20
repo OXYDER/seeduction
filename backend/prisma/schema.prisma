@@ -125,6 +125,10 @@ model Torrent {
   name           String
   description    String?       @db.Text
   nfo            String?       @db.Text
+  // Chemin public (ex: /api/covers/xxx.jpg) vers une pochette/affiche
+  // téléchargée et sauvegardée sur Seeduction — jamais un lien direct vers un
+  // service externe, pour ne pas dépendre de sa disponibilité.
+  coverImage     String?
   filePath       String        // chemin de stockage du .torrent sur disque/S3
   size           BigInt
   fileList       Json          // liste des fichiers contenus [{path, size}]
