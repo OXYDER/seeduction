@@ -32,6 +32,20 @@ interface SearchResult {
 
 const squash = (s: string) => s.replace(/\s+/g, '');
 
+/**
+ * Met à jour les valeurs "connues" (issues du torrent : taille, fichiers,
+ * sous-titres...) sans écraser ce que l'utilisateur ou une fiche trouvée a
+ * modifié : une valeur n'est remplacée que si elle est vide ou identique à
+ * l'ancienne valeur connue.
+ */
+function syncKnown(values: Record<string, string>, prevKnown: Record<string, string>, known: Record<string, string>) {
+  const next = { ...values };
+  for (const [k, v] of Object.entries(known)) {
+    if (next[k] === undefined || next[k] === '' || next[k] === (prevKnown[k] ?? '')) next[k] = v;
+  }
+  return next;
+}
+
 interface Props {
   knownValues?: Record<string, string>;
   /** Type de contenu déduit de la catégorie (facultatif : sinon Film, modifiable à la main). */
@@ -106,15 +120,12 @@ export default function DescriptionGenerator({
 
   const variables = useMemo(() => extractVariables(content), [content]);
 
+  const prevKnown = useRef<Record<string, string>>({});
+  const knownKey = JSON.stringify(knownValues);
   useEffect(() => {
-    setValues((prev) => {
-      const next = { ...prev };
-      for (const v of variables) {
-        if (next[v] === undefined) next[v] = knownValues[v] ?? '';
-      }
-      return next;
-    });
-  }, [variables]); // eslint-disable-line react-hooks/exhaustive-deps
+    setValues((prev) => syncKnown(prev, prevKnown.current, knownValues));
+    prevKnown.current = knownValues;
+  }, [knownKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Recherche tolérante : si la requête exacte ne donne rien, on retire
@@ -160,6 +171,12 @@ export default function DescriptionGenerator({
     if (!newSession && lastAuto.current.kind === kind) return;
     lastAuto.current = { session: sessionKey, kind };
 
+    // Nouveau fichier : on repart des infos de CE torrent (pas de synopsis/pochette de l'ancien).
+    if (newSession) {
+      setValues(syncKnown({}, {}, knownValues));
+      prevKnown.current = knownValues;
+    }
+
     const q = newSession || !searchQuery.trim() ? searchTitle : searchQuery;
     const y = newSession ? (searchYear ?? '') : searchYearInput;
     setSearchQuery(q);
@@ -170,7 +187,21 @@ export default function DescriptionGenerator({
     else setSearchResults([]);
   }, [autoStart, sessionKey, kind, supportedKinds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function generate(v: Record<string, string> = values) {
+  // Dès que le contenu du torrent est analysé et que la description est vide, on
+  // en génère une base tout de suite (taille, liste de fichiers, sous-titres...),
+  // sans attendre le choix d'un résultat de recherche.
+  const baseDone = useRef('');
+  useEffect(() => {
+    if (!autoStart || !content || !sessionKey || baseDone.current === sessionKey) return;
+    if (defaultKind && kind !== defaultKind) return;
+    if (!templatesForKind.some((t) => t.id === templateId)) return;
+    baseDone.current = sessionKey;
+    const untouched = !currentDescription.trim() || squash(currentDescription) === squash(lastGenerated.current);
+    if (!untouched) return;
+    generate(syncKnown({}, {}, knownValues), true);
+  }, [autoStart, content, sessionKey, kind, defaultKind, templateId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function generate(v: Record<string, string> = values, auto = false) {
     setError('');
     if (!content) {
       setError('Aucun modèle disponible pour ce type de contenu.');
@@ -188,7 +219,9 @@ export default function DescriptionGenerator({
       lastGenerated.current = out;
       onGenerate(out);
       setNotice(
-        data.missingVariables.length > 0
+        auto
+          ? '✓ Base de description générée à partir du contenu du torrent (taille, fichiers, sous-titres...) — choisis un résultat ci-dessus pour ajouter synopsis et pochette.'
+          : data.missingVariables.length > 0
           ? `✓ Description générée dans l'éditeur ci-dessous (champs restés vides : ${data.missingVariables.join(', ')}).`
           : "✓ Description générée dans l'éditeur ci-dessous — modifie-la comme tu veux.",
       );
@@ -205,6 +238,8 @@ export default function DescriptionGenerator({
       const next = { ...values };
       for (const v of variables) if (next[v] === undefined) next[v] = knownValues[v] ?? '';
       for (const [k, val] of Object.entries(data)) {
+        // La liste de fichiers réelle du torrent prime sur celle d'une base externe (ex : pistes Deezer).
+        if (k === 'fichiers' && knownValues.fichiers) continue;
         if (typeof val === 'string' && val) next[k] = val;
       }
       setValues(next);

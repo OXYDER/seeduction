@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -6,6 +6,7 @@ import DescriptionGenerator from '../components/DescriptionGenerator';
 import WysiwygEditor from '../components/WysiwygEditor';
 import { RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName, cleanTitleForSearch } from '../lib/searchParser';
 import { parseTorrentInfo } from '../lib/bencode';
+import { summarizeTorrent } from '../lib/torrentSummary';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -52,16 +53,25 @@ export default function Upload() {
   const categoryHint = [selectedCategory?.slug, selectedCategory?.name, parentCategory?.slug, parentCategory?.name].filter(Boolean).join(' ');
   const defaultKind = KIND_PATTERNS.find(([re]) => re.test(categoryHint))?.[1];
   const searchInfo = cleanTitleForSearch(name);
-  const generatorKnownValues = {
-    titre: name,
+  const summary = useMemo(() => summarizeTorrent(fileList), [fileList]);
+  // "Artiste - Album" : la partie avant le premier " - " sert d'artiste pour les modèles musique.
+  const artist = /\s-\s/.test(name) ? name.split(/\s-\s/)[0].replace(/[._]+/g, ' ').trim() : '';
+  const generatorKnownValues: Record<string, string> = {
+    titre: searchInfo.title || name,
     catégorie: selectedCategory?.name ?? '',
     auteur: anonymous ? 'Anonyme' : (user?.username ?? ''),
+    artiste: artist,
     année: year,
     langue: language,
     vidéo: [resolution, codec].filter(Boolean).join(' '),
     audio,
     source,
-    sous_titres: language === 'VOSTFR' ? 'Français' : '',
+    format: containerFormat || summary.mainFormat,
+    sous_titres: summary.subtitlesText || (language === 'VOSTFR' ? 'Français' : ''),
+    // Tiré directement du contenu du .torrent (jamais la taille du fichier .torrent lui-même).
+    taille: fileList.length > 0 ? summary.totalSizeText : '',
+    nb_fichiers: fileList.length > 0 ? String(summary.fileCount) : '',
+    fichiers: summary.filesText,
   };
 
   useEffect(() => {
@@ -74,6 +84,7 @@ export default function Upload() {
     setFileList([]);
     setAutoDetected(new Set());
     if (!f) { setSessionKey(''); return; }
+    setCoverImage('');
 
     try {
       const parsed = await parseTorrentInfo(f);
@@ -189,7 +200,9 @@ export default function Upload() {
           <input type="file" accept=".torrent" onChange={onFileChange} required />
           {fileList.length > 0 && (
             <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-              🔍 {fileList.length} fichier{fileList.length > 1 ? 's' : ''} détecté{fileList.length > 1 ? 's' : ''} dans le .torrent
+              🔍 {summary.fileCount} fichier{summary.fileCount > 1 ? 's' : ''} · {summary.totalSizeText}
+              {summary.mainFormat && ` · ${summary.mainFormat}`}
+              {summary.subtitlesText && ` · sous-titres : ${summary.subtitlesText}`}
               {autoDetected.size > 0 && ` — métadonnées techniques préremplies automatiquement`}
             </p>
           )}
