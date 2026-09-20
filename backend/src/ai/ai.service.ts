@@ -16,6 +16,8 @@ export interface SuggestDescriptionInput {
   meta?: Record<string, string | number | boolean | undefined>;
 }
 
+type AiProvider = 'claude' | 'gemini';
+
 const HOURLY_LIMIT_PER_USER = 10;
 const MAX_FILES_SENT = 30;
 
@@ -29,17 +31,31 @@ Rédige en français une description courte (3 à 6 phrases, texte brut, sans ba
 
 @Injectable()
 export class AiService {
-  private client: Anthropic | null;
-  private model: string;
+  private provider: AiProvider;
+
+  private claudeClient: Anthropic | null;
+  private claudeModel: string;
+
+  private geminiApiKey: string | null;
+  private geminiModel: string;
+
   private usage = new Map<string, number[]>();
 
   constructor() {
-    this.client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
-    this.model = process.env.ANTHROPIC_MODEL ?? 'claude-opus-5';
+    this.geminiApiKey = process.env.GEMINI_API_KEY || null;
+    this.geminiModel = process.env.GEMINI_MODEL ?? 'gemini-flash-latest';
+
+    this.claudeClient = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
+    this.claudeModel = process.env.ANTHROPIC_MODEL ?? 'claude-opus-5';
+
+    // Choix explicite via AI_PROVIDER, sinon déduit : gemini si sa clé est
+    // présente (c'est l'option gratuite), sinon claude.
+    const explicit = process.env.AI_PROVIDER as AiProvider | undefined;
+    this.provider = explicit ?? (this.geminiApiKey ? 'gemini' : 'claude');
   }
 
   get enabled() {
-    return this.client !== null;
+    return this.provider === 'gemini' ? this.geminiApiKey !== null : this.claudeClient !== null;
   }
 
   private checkRateLimit(userId: string) {
@@ -56,7 +72,7 @@ export class AiService {
   }
 
   async suggestDescription(userId: string, input: SuggestDescriptionInput) {
-    if (!this.client) throw new ServiceUnavailableException("L'assistant IA n'est pas activé sur ce tracker.");
+    if (!this.enabled) throw new ServiceUnavailableException("L'assistant IA n'est pas activé sur ce tracker.");
     if (!input.name?.trim()) throw new BadRequestException('Le nom du torrent est requis');
     this.checkRateLimit(userId);
 
@@ -75,9 +91,14 @@ export class AiService {
       .filter(Boolean)
       .join('\n\n');
 
+    const description = this.provider === 'gemini' ? await this.suggestViaGemini(userMessage) : await this.suggestViaClaude(userMessage);
+    return { description };
+  }
+
+  private async suggestViaClaude(userMessage: string): Promise<string> {
     try {
-      const response = await this.client.messages.create({
-        model: this.model,
+      const response = await this.claudeClient!.messages.create({
+        model: this.claudeModel,
         max_tokens: 1500,
         output_config: { effort: 'low' },
         system: SYSTEM_PROMPT,
@@ -93,7 +114,7 @@ export class AiService {
         .join('\n')
         .trim();
       if (!text) throw new BadGatewayException("L'assistant n'a renvoyé aucun texte.");
-      return { description: text };
+      return text;
     } catch (err) {
       if (err instanceof HttpException) throw err;
       if (err instanceof Anthropic.RateLimitError) {
@@ -104,5 +125,52 @@ export class AiService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Appel REST direct (pas de SDK) : l'API Gemini est un simple POST JSON et
+   * Node 20 a fetch en natif, ce qui évite d'ajouter une dépendance npm
+   * supplémentaire que je ne peux pas installer/valider dans cet environnement.
+   */
+  private async suggestViaGemini(userMessage: string): Promise<string> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`;
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+          generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
+        }),
+      });
+    } catch {
+      throw new BadGatewayException("Impossible de joindre l'API Gemini.");
+    }
+
+    if (res.status === 429) {
+      throw new HttpException(
+        "L'assistant est momentanément saturé (quota gratuit Gemini atteint), réessaie plus tard.",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    if (!res.ok) {
+      throw new BadGatewayException(`Erreur de l'assistant IA (Gemini ${res.status}).`);
+    }
+
+    const data: any = await res.json();
+    const candidate = data.candidates?.[0];
+    if (candidate?.finishReason === 'SAFETY' || candidate?.finishReason === 'PROHIBITED_CONTENT') {
+      throw new BadRequestException("L'assistant n'a pas pu traiter ce contenu.");
+    }
+
+    const text = (candidate?.content?.parts ?? [])
+      .map((p: any) => p.text ?? '')
+      .join('')
+      .trim();
+    if (!text) throw new BadGatewayException("L'assistant n'a renvoyé aucun texte.");
+    return text;
   }
 }
