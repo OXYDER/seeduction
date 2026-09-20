@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/auth';
 
-const TABS = ['Vue d\'ensemble', 'Annonces', 'Catégories torrents', 'Torrents', 'Forum', 'Templates'] as const;
-type Tab = typeof TABS[number];
+const BASE_TABS = ['Vue d\'ensemble', 'Annonces', 'Catégories torrents', 'Torrents', 'Forum', 'Templates'] as const;
+type Tab = typeof BASE_TABS[number] | 'Monitoring';
 
 export default function Admin() {
+  const role = useAuthStore((s) => s.user?.role);
   const [tab, setTab] = useState<Tab>('Vue d\'ensemble');
+  // Le monitoring expose des détails d'infrastructure : réservé ADMIN/OWNER (les modérateurs voient le reste).
+  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Monitoring'] : [...BASE_TABS];
 
   return (
     <div className="grid">
@@ -22,6 +27,91 @@ export default function Admin() {
       {tab === 'Torrents' && <TorrentsAdmin />}
       {tab === 'Forum' && <ForumAdmin />}
       {tab === 'Templates' && <TemplatesAdmin />}
+      {tab === 'Monitoring' && <MonitoringAdmin />}
+    </div>
+  );
+}
+
+function formatUptime(seconds: number) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return [d > 0 ? `${d} j` : null, h > 0 || d > 0 ? `${h} h` : null, `${m} min`].filter(Boolean).join(' ');
+}
+
+function StatTile({ label, value, tone }: { label: string; value: string | number; tone?: 'ok' | 'bad' }) {
+  const color = tone === 'ok' ? 'var(--success)' : tone === 'bad' ? 'var(--danger)' : undefined;
+  return (
+    <div className="panel">
+      <div className="muted">{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
+    </div>
+  );
+}
+
+function MonitoringAdmin() {
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    function load() {
+      api.get('/admin/monitoring')
+        .then((r) => { if (!cancelled) { setData(r.data); setError(''); } })
+        .catch((e) => { if (!cancelled) setError(e.response?.data?.message ?? 'Impossible de récupérer les métriques'); });
+    }
+    load();
+    const interval = setInterval(load, 10_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  if (error) return <p className="muted">{error}</p>;
+  if (!data) return <p className="muted">Chargement...</p>;
+
+  const { process: proc, database, counts, series } = data;
+  const lastHour = series.reduce(
+    (acc: any, p: any) => ({ requests: acc.requests + p.requests, errors: acc.errors + p.errors, announces: acc.announces + p.announces }),
+    { requests: 0, errors: 0, announces: 0 },
+  );
+
+  return (
+    <div className="grid">
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        <StatTile label="Base de données" value={database.ok ? `OK (${database.latencyMs} ms)` : 'INJOIGNABLE'} tone={database.ok ? 'ok' : 'bad'} />
+        <StatTile label="Uptime backend" value={formatUptime(proc.uptimeSeconds)} />
+        <StatTile label="Mémoire (RSS)" value={`${proc.rssMB} Mo`} />
+        <StatTile label="Heap utilisé" value={`${proc.heapUsedMB} / ${proc.heapTotalMB} Mo`} />
+        <StatTile label="Node" value={proc.nodeVersion} />
+      </div>
+
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        <StatTile label="Membres" value={counts.users} />
+        <StatTile label="Torrents approuvés" value={counts.approvedTorrents} />
+        <StatTile label="En attente de modération" value={counts.pendingTorrents} />
+        <StatTile label="Seeders / Leechers" value={`${counts.seeders} / ${counts.leechers}`} />
+        <StatTile label="Reports ouverts" value={counts.openReports} tone={counts.openReports > 0 ? 'bad' : undefined} />
+        <StatTile label="Messages chat (24 h)" value={counts.chatMessages24h} />
+      </div>
+
+      <div className="panel">
+        <h3>Trafic — dernière heure</h3>
+        <p className="muted" style={{ fontSize: 12 }}>
+          {lastHour.requests} requêtes · {lastHour.announces} announces BitTorrent ·{' '}
+          <span style={{ color: lastHour.errors > 0 ? 'var(--danger)' : undefined }}>{lastHour.errors} erreurs 5xx</span>
+          {' '}— compteurs en mémoire, remis à zéro à chaque redémarrage du backend. Rafraîchi toutes les 10 s.
+        </p>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={series}>
+            <XAxis dataKey="time" stroke="#8fa896" fontSize={11} interval={9} />
+            <YAxis stroke="#8fa896" fontSize={11} allowDecimals={false} />
+            <Tooltip contentStyle={{ background: '#0c1912', border: '1px solid #1f3d2a' }} />
+            <Legend />
+            <Bar dataKey="requests" name="Requêtes" fill="#e0b84a" />
+            <Bar dataKey="announces" name="Announces" fill="#4caf50" />
+            <Bar dataKey="errors" name="Erreurs 5xx" fill="#e05a5a" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

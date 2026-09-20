@@ -19,6 +19,7 @@ import { BadgesModule } from './badges/badges.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { PublicApiModule } from './public-api/public-api.module';
 import { ChatModule } from './chat/chat.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ChatModule } from './chat/chat.module';
     ApiKeysModule,
     PublicApiModule,
     ChatModule,
+    MonitoringModule,
   ],
 })
 export class AppModule {}
