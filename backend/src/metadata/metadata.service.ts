@@ -84,7 +84,7 @@ export class MetadataService {
       case 'MUSIQUE':
         return this.detailDeezer(id);
       case 'LIVRE':
-        return this.detailBooks(id);
+        return id.startsWith('ol:') ? this.detailOpenLibrary(id.slice(3)) : this.detailBooks(id);
       default:
         return {};
     }
@@ -144,19 +144,62 @@ export class MetadataService {
     };
   }
 
+  /**
+   * Google Books d'abord (meilleur en français) ; sa recherche anonyme est
+   * limitée par un quota partagé qui renvoie souvent 429, donc en cas d'échec
+   * on bascule sur Open Library (gratuit, sans clé). Une clé gratuite
+   * GOOGLE_BOOKS_API_KEY supprime pratiquement le problème côté Google.
+   */
   private async searchBooks(query: string): Promise<SearchResult[]> {
-    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=12&langRestrict=fr`;
-    const res = await this.fetchJson(url, 'Google Books');
-    return (res.items ?? []).map((b: any) => ({
-      id: b.id,
-      title: b.volumeInfo?.title ?? 'Sans titre',
-      subtitle: [b.volumeInfo?.authors?.[0], b.volumeInfo?.publishedDate?.slice(0, 4)].filter(Boolean).join(' — '),
-      thumbnail: b.volumeInfo?.imageLinks?.thumbnail ?? null,
+    try {
+      const keyParam = process.env.GOOGLE_BOOKS_API_KEY ? `&key=${process.env.GOOGLE_BOOKS_API_KEY}` : '';
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=12&langRestrict=fr${keyParam}`;
+      const res = await this.fetchJson(url, 'Google Books');
+      const results: SearchResult[] = (res.items ?? []).map((b: any) => ({
+        id: b.id,
+        title: b.volumeInfo?.title ?? 'Sans titre',
+        subtitle: [b.volumeInfo?.authors?.[0], b.volumeInfo?.publishedDate?.slice(0, 4)].filter(Boolean).join(' — '),
+        thumbnail: b.volumeInfo?.imageLinks?.thumbnail ?? null,
+      }));
+      if (results.length > 0) return results;
+    } catch {
+      // Quota/erreur Google : on tente Open Library ci-dessous.
+    }
+    return this.searchOpenLibrary(query);
+  }
+
+  private async searchOpenLibrary(query: string): Promise<SearchResult[]> {
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=12&fields=key,title,author_name,first_publish_year,cover_i`;
+    const res = await this.fetchJson(url, 'Open Library');
+    return (res.docs ?? []).map((d: any) => ({
+      id: `ol:${String(d.key).replace('/works/', '')}`,
+      title: d.title ?? 'Sans titre',
+      subtitle: [d.author_name?.[0], d.first_publish_year].filter(Boolean).join(' — '),
+      thumbnail: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
     }));
   }
 
+  private async detailOpenLibrary(workId: string): Promise<MetadataDetail> {
+    const work = await this.fetchJson(`https://openlibrary.org/works/${encodeURIComponent(workId)}.json`, 'Open Library');
+    const authorKeys: string[] = (work.authors ?? []).map((a: any) => a.author?.key).filter(Boolean).slice(0, 3);
+    const authors = await Promise.all(
+      authorKeys.map((k) => this.fetchJson(`https://openlibrary.org${k}.json`, 'Open Library').then((a) => a.name as string).catch(() => '')),
+    );
+    const description = typeof work.description === 'string' ? work.description : (work.description?.value ?? '');
+    const year = String(work.first_publish_date ?? '').match(/\d{4}/)?.[0] ?? '';
+    return {
+      titre: work.title ?? '',
+      auteur: authors.filter(Boolean).join(', '),
+      année: year,
+      genre: (work.subjects ?? []).slice(0, 5).join(', '),
+      description,
+      affiche: await this.saveCover(work.covers?.[0] ? `https://covers.openlibrary.org/b/id/${work.covers[0]}-L.jpg` : null),
+    };
+  }
+
   private async detailBooks(id: string): Promise<MetadataDetail> {
-    const url = `https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(id)}`;
+    const keyParam = process.env.GOOGLE_BOOKS_API_KEY ? `?key=${process.env.GOOGLE_BOOKS_API_KEY}` : '';
+    const url = `https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(id)}${keyParam}`;
     const b = await this.fetchJson(url, 'Google Books');
     const info = b.volumeInfo ?? {};
     return {
