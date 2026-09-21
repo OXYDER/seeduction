@@ -11,7 +11,7 @@ export interface TorrentSummary {
   totalSizeText: string;
   /** Extension (en majuscules) qui pèse le plus lourd — le format principal du contenu. */
   mainFormat: string;
-  /** Liste des fichiers prête pour la description (une puce "• nom (taille)" par ligne, tronquée). */
+  /** Liste des fichiers prête pour la description (une ligne "nom (taille)" par fichier, tronquée). */
   filesText: string;
   /** Langues des sous-titres trouvés dans les fichiers, ex : "Français, Anglais". */
   subtitlesText: string;
@@ -64,8 +64,8 @@ export function summarizeTorrent(files: TorrentFile[]): TorrentSummary {
     : subFiles.length > 0 ? `${subFiles.length} fichier${subFiles.length > 1 ? 's' : ''} de sous-titres` : '';
 
   const sorted = [...visible].sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
-  const lines = sorted.slice(0, MAX_LISTED).map((f) => `• ${f.path} (${formatBytes(f.size)})`);
-  if (sorted.length > MAX_LISTED) lines.push(`• … et ${sorted.length - MAX_LISTED} autres fichiers`);
+  const lines = sorted.slice(0, MAX_LISTED).map((f) => `${f.path} (${formatBytes(f.size)})`);
+  if (sorted.length > MAX_LISTED) lines.push(`… et ${sorted.length - MAX_LISTED} autres fichiers`);
 
   return {
     fileCount: visible.length,

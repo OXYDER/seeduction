@@ -222,7 +222,7 @@ export default function DescriptionGenerator({
         auto
           ? '✓ Base de description générée à partir du contenu du torrent (taille, fichiers, sous-titres...) — choisis un résultat ci-dessus pour ajouter synopsis et pochette.'
           : data.missingVariables.length > 0
-          ? `✓ Description générée dans l'éditeur ci-dessous (champs restés vides : ${data.missingVariables.join(', ')}).`
+          ? `✓ Description générée dans l'éditeur ci-dessous (non renseignés, donc omis : ${data.missingVariables.join(', ')}).`
           : "✓ Description générée dans l'éditeur ci-dessous — modifie-la comme tu veux.",
       );
     } catch (err: any) {

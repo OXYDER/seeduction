@@ -54,6 +54,7 @@ export function bbcodeToHtml(bbcode: string): string {
   for (const align of ['center', 'right', 'left']) {
     html = replacePairs(html, align, (inner) => `<div style="text-align:${align}">${inner}</div>`);
   }
+  html = replacePairs(html, 'block', (inner) => `<div style="display:inline-block;text-align:left">${inner.replace(/^\n+|\n+$/g, '')}</div>`);
   html = replacePairs(html, 'quote', (inner) => `<blockquote>${inner}</blockquote>`);
   html = replacePairs(html, 'code', (inner) => `<pre>${inner}</pre>`);
   html = replacePairs(html, 'size', (inner, n) => `<span style="font-size:${Math.min(Number(n), 7) * 4 + 8}px">${inner}</span>`, '\\d+');

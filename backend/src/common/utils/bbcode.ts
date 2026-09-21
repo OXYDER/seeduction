@@ -68,6 +68,8 @@ export function bbcodeToHtml(bbcode: string): string {
   for (const align of ['center', 'right', 'left']) {
     html = replacePairs(html, align, (inner) => `<div style="text-align:${align}">${inner}</div>`);
   }
+  // Bloc centré dont les lignes restent alignées à gauche entre elles (ex : "Année : 2025" / "Catégorie : Films").
+  html = replacePairs(html, 'block', (inner) => `<div style="display:inline-block;text-align:left">${inner.replace(/^\n+|\n+$/g, '')}</div>`);
   html = replacePairs(html, 'quote', (inner) => `<blockquote>${inner}</blockquote>`);
   html = replacePairs(html, 'code', (inner) => `<pre>${inner}</pre>`);
   html = replacePairs(html, 'size', (inner, n) => `<span style="font-size:${Math.min(Number(n), 7) * 4 + 8}px">${inner}</span>`, '\\d+');
@@ -86,10 +88,43 @@ export function bbcodeToHtml(bbcode: string): string {
     .replace(/\n/g, '<br />');
 }
 
+const HEADER_LINE = /^\s*\[b\](?:\[color=[^\]]+\])?[^\[\]{}]+(?:\[\/color\])?\[\/b\]\s*$/i;
+const LABEL_THEN_VAR = /:\s*(?:\[\/[a-z]+\])*\s*\{[^{}]+\}\s*(?:\[\/[a-z]+\])*\s*$/i;
+
+/**
+ * Retire d'un modèle les lignes dont la valeur est vide ("Source : {source}"
+ * sans source, ou une ligne "{description}" sans description) puis les titres de
+ * section qui se retrouvent sans contenu — pour qu'une présentation ne montre
+ * jamais de champs vides.
+ */
+export function pruneEmptyLines(content: string, values: Record<string, string>): string {
+  const normalized = new Map(Object.entries(values).map(([k, v]) => [normalizeKey(k), v]));
+  const isEmpty = (name: string) => !(normalized.get(normalizeKey(name)) ?? '').trim();
+
+  const kept = content.split('\n').filter((line) => {
+    const vars = [...line.matchAll(VARIABLE_PATTERN)].map((m) => m[1]);
+    if (vars.length === 0 || !vars.every(isEmpty)) return true;
+    const onlyPlaceholders = line.replace(VARIABLE_PATTERN, '').replace(/\[\/?[a-z]+(?:=[^\]]*)?\]/gi, '').replace(/[\s•]/g, '') === '';
+    return !(onlyPlaceholders || LABEL_THEN_VAR.test(line));
+  });
+
+  const lines = kept.join('\n').replace(/\[block\]\s*\[\/block\]\n?/gi, '').split('\n');
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (HEADER_LINE.test(lines[i])) {
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim() === '') j++;
+      if (j >= lines.length || HEADER_LINE.test(lines[j])) continue;
+    }
+    out.push(lines[i]);
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
 /** BBCode -> Markdown (best-effort ; les balises sans équivalent direct sont simplement retirées). */
 export function bbcodeToMarkdown(bbcode: string): string {
   return bbcode
-    .replace(/\[\/?(?:center|right|left|u)\]/gi, '')
+    .replace(/\[\/?(?:center|right|left|block|u)\]/gi, '')
     .replace(/\[color=[^\]]*\]|\[\/color\]/gi, '')
     .replace(/\[size=\d+\]|\[\/size\]/gi, '**')
     .replace(/\[\/?b\]/gi, '**')
