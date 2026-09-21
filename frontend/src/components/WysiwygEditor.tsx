@@ -12,6 +12,8 @@ interface WysiwygEditorProps {
 }
 
 const SIZES = [1, 2, 3, 4, 5, 6, 7]; // même échelle que le BBCode : n*4+8 px
+const PALETTE = ['#ffffff', '#e9f2ea', '#bdbdbd', '#808080', '#000000', '#e0b84a', '#f5d67a', '#c2410c',
+  '#ff5a5a', '#ff8a3d', '#ffd23d', '#4caf50', '#2dd4bf', '#5b8cff', '#a78bfa', '#f472b6'];
 const EMOJIS = ['😀', '😍', '👍', '🔥', '⭐', '❤️', '🎬', '🎵', '📀', '🎮', '📚', '✅', '⚠️', '🆕', '🏆', '👑'];
 
 // Les boutons ne doivent pas voler le focus/la sélection à la zone éditable.
@@ -30,6 +32,16 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
   const savedRange = useRef<Range | null>(null);
   const [sourceMode, setSourceMode] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const colorWrap = useRef<HTMLDivElement>(null);
+  const [colorOpen, setColorOpen] = useState(false);
+  const [hexInput, setHexInput] = useState('');
+  // Dernière couleur utilisée + récentes, mémorisées pour les réappliquer en un clic.
+  const [lastColor, setLastColor] = useState(() => {
+    try { return localStorage.getItem('wysiwyg-color') || '#e0b84a'; } catch { return '#e0b84a'; }
+  });
+  const [recentColors, setRecentColors] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('wysiwyg-recent-colors') || '[]'); } catch { return []; }
+  });
 
   // Charge le BBCode dans la zone éditable uniquement quand la valeur change de
   // l'extérieur (nouvelle génération...) — pas à chaque frappe, sinon le curseur saute.
@@ -52,6 +64,14 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
     return () => document.removeEventListener('selectionchange', save);
   }, []);
 
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (colorWrap.current && !colorWrap.current.contains(e.target as Node)) setColorOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
   function sync() {
     if (!ref.current) return;
     const bbcode = htmlToBbcode(ref.current.innerHTML);
@@ -68,6 +88,29 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
     }
     document.execCommand(command, false, arg);
     sync();
+  }
+
+  function applyColor(raw: string) {
+    const color = raw.toLowerCase();
+    exec('foreColor', color);
+    const recent = [color, ...recentColors.filter((c) => c !== color)].slice(0, 8);
+    setLastColor(color);
+    setRecentColors(recent);
+    setColorOpen(false);
+    try {
+      localStorage.setItem('wysiwyg-color', color);
+      localStorage.setItem('wysiwyg-recent-colors', JSON.stringify(recent));
+    } catch {
+      // Stockage indisponible : la couleur reste utilisable pour cette session.
+    }
+  }
+
+  function applyHex() {
+    const v = hexInput.trim();
+    if (/^#?[0-9a-f]{6}$/i.test(v)) {
+      applyColor(v.startsWith('#') ? v : `#${v}`);
+      setHexInput('');
+    }
   }
 
   function applySize(n: number) {
@@ -131,10 +174,43 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
           <option value="">Taille</option>
           {SIZES.map((n) => <option key={n} value={n}>{n * 4 + 8} px</option>)}
         </select>
-        <label className="tb-btn tb-color" title="Couleur du texte">
-          A
-          <input type="color" defaultValue="#e0b84a" onChange={(e) => exec('foreColor', e.target.value)} />
-        </label>
+        <div className="tb-color-wrap" ref={colorWrap}>
+          <Btn title={`Appliquer la dernière couleur (${lastColor}) à la sélection`} onClick={() => applyColor(lastColor)}>
+            <span style={{ fontWeight: 700, borderBottom: `3px solid ${lastColor}`, padding: '0 2px' }}>A</span>
+          </Btn>
+          <Btn title="Choisir une autre couleur" onClick={() => setColorOpen((v) => !v)}>▾</Btn>
+          {colorOpen && (
+            <div className="color-pop">
+              {recentColors.length > 0 && (
+                <>
+                  <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Récentes</div>
+                  <div className="swatches">
+                    {recentColors.map((c) => (
+                      <button key={c} type="button" className="swatch" title={c} style={{ background: c }} onMouseDown={(e) => e.preventDefault()} onClick={() => applyColor(c)} />
+                    ))}
+                  </div>
+                </>
+              )}
+              <div className="muted" style={{ fontSize: 11, margin: '8px 0 4px' }}>Palette</div>
+              <div className="swatches">
+                {PALETTE.map((c) => (
+                  <button key={c} type="button" className="swatch" title={c} style={{ background: c }} onMouseDown={(e) => e.preventDefault()} onClick={() => applyColor(c)} />
+                ))}
+              </div>
+              <div className="row" style={{ marginTop: 8, gap: 6 }}>
+                <input type="color" title="Couleur personnalisée (puis OK)" value={/^#[0-9a-f]{6}$/i.test(hexInput) ? hexInput : lastColor} onChange={(e) => setHexInput(e.target.value)} className="color-native" />
+                <input
+                  placeholder="#e0b84a"
+                  value={hexInput}
+                  onChange={(e) => setHexInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyHex(); } }}
+                  style={{ width: 90, padding: '4px 6px', fontSize: 12 }}
+                />
+                <Btn title="Appliquer ce code couleur" onClick={applyHex}>OK</Btn>
+              </div>
+            </div>
+          )}
+        </div>
         <span className="tb-sep" />
         <Btn title="Aligner à gauche" onClick={() => exec('justifyLeft')}>⇤</Btn>
         <Btn title="Centrer" onClick={() => exec('justifyCenter')}>↔</Btn>
