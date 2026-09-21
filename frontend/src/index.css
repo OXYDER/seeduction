@@ -713,3 +713,13 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
 }
 .wysiwyg-area:focus { border-color: var(--border-gold); }
 .wysiwyg-area:empty::before { content: attr(data-placeholder); color: var(--text-dim); }
+
+/* Dans un bloc centré ou aligné à droite, la puce doit suivre le texte : avec la
+   puce "à l'extérieur" elle restait collée au bord gauche, loin du texte centré. */
+.bbcode-content [style*="text-align:center"] ul,
+.bbcode-content [style*="text-align: center"] ul,
+.bbcode-content [style*="text-align:right"] ul,
+.bbcode-content [style*="text-align: right"] ul {
+  list-style-position: inside;
+  padding-left: 0;
+}
