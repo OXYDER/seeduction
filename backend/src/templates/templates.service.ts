@@ -149,8 +149,6 @@ const V1_GENERIC = [
   '{notes}',
 ].join('\n');
 
-const PERSONNALISE_TEMPLATE = `${TITLE}\n\n{description}`;
-
 const FILM_SERIE_TEMPLATE = [
   TITLE,
   '',
