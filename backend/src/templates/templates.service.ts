@@ -68,7 +68,7 @@ const TITLE = '[size=6][b][color=#e0b84a]{titre}[/color][/b][/size]';
 const H = (name: string) => `[b][color=#e0b84a]${name}[/color][/b]`;
 const L = (label: string, variable: string) => `[color=#a89253]${label} :[/color] {${variable}}`;
 
-const FILM_SERIE_TEMPLATE = [
+const V1_FILM_SERIE = [
   TITLE,
   '',
   H('Informations'),
@@ -102,7 +102,7 @@ const FILM_SERIE_TEMPLATE = [
   '{notes}',
 ].join('\n');
 
-const MUSIQUE_TEMPLATE = [
+const V1_MUSIQUE = [
   TITLE,
   '',
   H('Informations'),
@@ -125,7 +125,7 @@ const MUSIQUE_TEMPLATE = [
   '{description}',
 ].join('\n');
 
-const GENERIC_TEMPLATE = [
+const V1_GENERIC = [
   TITLE,
   '',
   H('Informations'),
@@ -151,16 +151,112 @@ const GENERIC_TEMPLATE = [
 
 const PERSONNALISE_TEMPLATE = `${TITLE}\n\n{description}`;
 
-const DEFAULT_TEMPLATES: { name: string; kind: string; content: string; legacy: string }[] = [
-  { name: 'Film (par défaut)', kind: 'FILM', content: FILM_SERIE_TEMPLATE, legacy: LEGACY_FILM_SERIE },
-  { name: 'Série (par défaut)', kind: 'SERIE', content: FILM_SERIE_TEMPLATE, legacy: LEGACY_FILM_SERIE },
-  { name: 'Musique (par défaut)', kind: 'MUSIQUE', content: MUSIQUE_TEMPLATE, legacy: LEGACY_MUSIQUE },
-  { name: 'Jeu (par défaut)', kind: 'JEU', content: GENERIC_TEMPLATE, legacy: LEGACY_GENERIC },
-  { name: 'Logiciel (par défaut)', kind: 'LOGICIEL', content: GENERIC_TEMPLATE, legacy: LEGACY_GENERIC },
-  { name: 'Livre (par défaut)', kind: 'LIVRE', content: GENERIC_TEMPLATE, legacy: LEGACY_GENERIC },
-  { name: 'Document (par défaut)', kind: 'DOCUMENT', content: GENERIC_TEMPLATE, legacy: LEGACY_GENERIC },
-  { name: 'Archive (par défaut)', kind: 'ARCHIVE', content: GENERIC_TEMPLATE, legacy: LEGACY_GENERIC },
-  { name: 'Personnalisé (vierge)', kind: 'PERSONNALISE', content: PERSONNALISE_TEMPLATE, legacy: LEGACY_PERSONNALISE },
+const FILM_SERIE_TEMPLATE = [
+  TITLE,
+  '',
+  H('Informations'),
+  '[block]',
+  L('Titre original', 'titre_original'),
+  L('Année', 'année'),
+  L('Genre', 'genre'),
+  L('Durée', 'durée'),
+  L('Note', 'note'),
+  L('Catégorie', 'catégorie'),
+  L('Taille', 'taille'),
+  L('Fichiers', 'nb_fichiers'),
+  L('Langue', 'langue'),
+  '[/block]',
+  '',
+  H('Équipe'),
+  '[block]',
+  L('Réalisation', 'réalisateur'),
+  L('Acteurs', 'acteurs'),
+  L('Studio', 'studio'),
+  '[/block]',
+  '',
+  H('Spécifications'),
+  '[block]',
+  L('Vidéo', 'vidéo'),
+  L('Audio', 'audio'),
+  L('Source', 'source'),
+  L('Format', 'format'),
+  L('Sous-titres', 'sous_titres'),
+  '[/block]',
+  '',
+  H('Synopsis'),
+  '{description}',
+  '',
+  H('Contenu'),
+  '{fichiers}',
+  '',
+  H('Notes'),
+  '{notes}',
+].join('\n');
+
+const MUSIQUE_TEMPLATE = [
+  TITLE,
+  '',
+  H('Informations'),
+  '[block]',
+  L('Artiste', 'artiste'),
+  L('Label', 'label'),
+  L('Année', 'année'),
+  L('Genre', 'genre'),
+  L('Durée', 'durée'),
+  L('Catégorie', 'catégorie'),
+  L('Taille', 'taille'),
+  L('Fichiers', 'nb_fichiers'),
+  L('Format', 'format'),
+  '[/block]',
+  '',
+  H('Tracklist'),
+  '{fichiers}',
+  '',
+  H('Description'),
+  '{description}',
+].join('\n');
+
+const GENERIC_TEMPLATE = [
+  TITLE,
+  '',
+  H('Informations'),
+  '[block]',
+  L('Année', 'année'),
+  L('Genre', 'genre'),
+  L('Auteur', 'auteur'),
+  L('Développeur', 'développeur'),
+  L('Éditeur', 'éditeur'),
+  L('Plateformes', 'plateformes'),
+  L('Pages', 'pages'),
+  L('Note', 'note'),
+  L('Catégorie', 'catégorie'),
+  L('Taille', 'taille'),
+  L('Fichiers', 'nb_fichiers'),
+  L('Format', 'format'),
+  '[/block]',
+  '',
+  H('Contenu'),
+  '{fichiers}',
+  '',
+  H('Description'),
+  '{description}',
+  '',
+  H('Notes'),
+  '{notes}',
+].join('\n');
+
+const PERSONNALISE_TEMPLATE = `${TITLE}\n\n{description}`;
+
+const DEFAULT_TEMPLATES: { name: string; kind: string; content: string; legacy: string[] }[] = [
+  { name: 'Film (par défaut)', kind: 'FILM', content: FILM_SERIE_TEMPLATE, legacy: [LEGACY_FILM_SERIE, V1_FILM_SERIE] },
+  { name: 'Série (par défaut)', kind: 'SERIE', content: FILM_SERIE_TEMPLATE, legacy: [LEGACY_FILM_SERIE, V1_FILM_SERIE] },
+  { name: 'Musique (par défaut)', kind: 'MUSIQUE', content: MUSIQUE_TEMPLATE, legacy: [LEGACY_MUSIQUE, V1_MUSIQUE] },
+  { name: 'Jeu (par défaut)', kind: 'JEU', content: GENERIC_TEMPLATE, legacy: [LEGACY_GENERIC, V1_GENERIC] },
+  { name: 'Logiciel (par défaut)', kind: 'LOGICIEL', content: GENERIC_TEMPLATE, legacy: [LEGACY_GENERIC, V1_GENERIC] },
+  { name: 'Livre (par défaut)', kind: 'LIVRE', content: GENERIC_TEMPLATE, legacy: [LEGACY_GENERIC, V1_GENERIC] },
+  { name: 'Document (par défaut)', kind: 'DOCUMENT', content: GENERIC_TEMPLATE, legacy: [LEGACY_GENERIC, V1_GENERIC] },
+  { name: 'Archive (par défaut)', kind: 'ARCHIVE', content: GENERIC_TEMPLATE, legacy: [LEGACY_GENERIC, V1_GENERIC] },
+  { name: 'Personnalisé (vierge)', kind: 'PERSONNALISE', content: PERSONNALISE_TEMPLATE, legacy: [LEGACY_PERSONNALISE] },
 ];
 
 @Injectable()
@@ -179,7 +275,7 @@ export class TemplatesService implements OnModuleInit {
     // (ceux qu'un admin a modifiés ne sont jamais touchés).
     for (const t of DEFAULT_TEMPLATES) {
       await this.prisma.descriptionTemplate.updateMany({
-        where: { isGlobal: true, name: t.name, content: t.legacy },
+        where: { isGlobal: true, name: t.name, content: { in: t.legacy } },
         data: { content: t.content },
       });
     }

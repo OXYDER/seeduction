@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { parseTorrentFile, rewriteTorrentForUser, sanitizeTorrentForUpload } from '../common/utils/torrent-file';
+import { MetadataService } from '../metadata/metadata.service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -9,7 +10,7 @@ const ANNOUNCE_BASE_URL = process.env.ANNOUNCE_BASE_URL ?? 'https://tracker.exam
 
 @Injectable()
 export class TorrentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private metadata: MetadataService) {}
 
   async upload(params: {
     userId: string;
@@ -20,6 +21,8 @@ export class TorrentsService {
     tags: string[];
     anonymous: boolean;
     coverImage?: string;
+    metaKind?: string;
+    metaId?: string;
     year?: number;
     language?: string;
     resolution?: string;
@@ -75,6 +78,15 @@ export class TorrentsService {
       },
     });
 
+    // Fiche complète (acteurs, studios, genres...) : ne doit jamais faire échouer l'upload.
+    if (params.metaKind && params.metaId) {
+      try {
+        await this.metadata.attach(torrent.id, params.metaKind, params.metaId);
+      } catch {
+        // La fiche pourra être rattachée plus tard ; le torrent lui-même est déjà enregistré.
+      }
+    }
+
     return torrent;
   }
 
@@ -97,6 +109,7 @@ export class TorrentsService {
     minSize?: number; maxSize?: number; minSeeders?: number;
     year?: number; language?: string; resolution?: string; codec?: string;
     hdr?: boolean; audio?: string; source?: string; containerFormat?: string;
+    entityId?: string; role?: string;
   }) {
     const where: any = { status: 'APPROVED' };
     if (params.categoryId) {
@@ -109,6 +122,7 @@ export class TorrentsService {
     }
     if (params.search) where.name = { contains: params.search, mode: 'insensitive' };
     if (params.uploaderId) where.uploaderId = params.uploaderId;
+    if (params.entityId) where.entities = { some: { entityId: params.entityId, ...(params.role ? { role: params.role } : {}) } };
     if (params.minSize != null || params.maxSize != null) {
       where.size = {};
       if (params.minSize != null) where.size.gte = BigInt(Math.round(params.minSize));
@@ -149,7 +163,11 @@ export class TorrentsService {
   async findOne(id: string) {
     const torrent = await this.prisma.torrent.findUnique({
       where: { id },
-      include: { category: true, uploader: { select: { username: true } } },
+      include: {
+        category: true,
+        uploader: { select: { username: true } },
+        entities: { include: { entity: true }, orderBy: [{ role: 'asc' }, { position: 'asc' }] },
+      },
     });
     if (!torrent) throw new NotFoundException('Torrent introuvable');
     return torrent;

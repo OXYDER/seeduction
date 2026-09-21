@@ -22,6 +22,7 @@ import { ChatModule } from './chat/chat.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { CoversModule } from './covers/covers.module';
 import { MetadataModule } from './metadata/metadata.module';
+import { EntitiesModule } from './entities/entities.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { MetadataModule } from './metadata/metadata.module';
     MonitoringModule,
     CoversModule,
     MetadataModule,
+    EntitiesModule,
   ],
 })
 export class AppModule {}

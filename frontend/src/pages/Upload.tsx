@@ -35,6 +35,7 @@ export default function Upload() {
   const [fileList, setFileList] = useState<{ path: string; size: number }[]>([]);
   const [foundTrackers, setFoundTrackers] = useState<string[]>([]);
   const [coverImage, setCoverImage] = useState('');
+  const [meta, setMeta] = useState<{ kind: string; id: string } | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const autoName = useRef('');
   const [sessionKey, setSessionKey] = useState('');
@@ -60,7 +61,7 @@ export default function Upload() {
   const generatorKnownValues: Record<string, string> = {
     titre: searchInfo.title || name,
     catégorie: selectedCategory?.name ?? '',
-    auteur: anonymous ? 'Anonyme' : (user?.username ?? ''),
+    uploader: anonymous ? 'Anonyme' : (user?.username ?? ''),
     artiste: artist,
     année: year,
     langue: language,
@@ -87,6 +88,7 @@ export default function Upload() {
     setAutoDetected(new Set());
     if (!f) { setSessionKey(''); return; }
     setCoverImage('');
+    setMeta(null);
 
     try {
       const parsed = await parseTorrentInfo(f);
@@ -154,6 +156,7 @@ export default function Upload() {
     form.append('tags', tags);
     form.append('anonymous', String(anonymous));
     if (coverImage) form.append('coverImage', coverImage);
+    if (meta) { form.append('metaKind', meta.kind); form.append('metaId', meta.id); }
     if (year) form.append('year', year);
     if (language) form.append('language', language);
     if (resolution) form.append('resolution', resolution);
@@ -240,6 +243,7 @@ export default function Upload() {
             currentDescription={description}
             onGenerate={setDescription}
             onCoverChange={setCoverImage}
+            onMetaChange={setMeta}
           />
 
           <div>

@@ -60,6 +60,8 @@ interface Props {
   currentDescription: string;
   onGenerate: (bbcode: string) => void;
   onCoverChange?: (url: string) => void;
+  /** Fiche choisie (source + identifiant) : le serveur en tire acteurs, studios, genres... à l'envoi. */
+  onMetaChange?: (meta: { kind: string; id: string } | null) => void;
 }
 
 export default function DescriptionGenerator({
@@ -72,6 +74,7 @@ export default function DescriptionGenerator({
   currentDescription,
   onGenerate,
   onCoverChange,
+  onMetaChange,
 }: Props) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [kind, setKind] = useState(defaultKind || 'FILM');
@@ -244,6 +247,7 @@ export default function DescriptionGenerator({
       }
       setValues(next);
       if (data.affiche) onCoverChange?.(data.affiche);
+      onMetaChange?.({ kind, id: result.id });
       setSearchResults([]);
       setSearchNote('');
       await generate(next);

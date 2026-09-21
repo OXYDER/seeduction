@@ -129,6 +129,12 @@ model Torrent {
   // téléchargée et sauvegardée sur Seeduction — jamais un lien direct vers un
   // service externe, pour ne pas dépendre de sa disponibilité.
   coverImage     String?
+  // Fiche complète issue de la base externe choisie à l'upload (TMDB, Deezer...) :
+  // durée, note, bande-annonce, titre original, etc. Les personnes/studios/genres
+  // qui en découlent sont dans Entity/TorrentEntity, pour être navigables.
+  metaSource     String?
+  metaExternalId String?
+  metadata       Json?
   filePath       String        // chemin de stockage du .torrent sur disque/S3
   size           BigInt
   fileList       Json          // liste des fichiers contenus [{path, size}]
@@ -149,6 +155,7 @@ model Torrent {
   completedCount Int           @default(0) // nb total de "snatch" (téléchargement complet)
 
   peers          Peer[]
+  entities       TorrentEntity[]
   snatches       Snatch[]
   requestFilled  TorrentRequest?
   collectionItems CollectionItem[]
@@ -525,4 +532,45 @@ model ChatMessage {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// ENTITÉS INTERCONNECTÉES (acteurs, studios, genres, artistes, éditeurs...)
+// ---------------------------------------------------------------------------
+
+enum EntityType {
+  PERSON   // acteurs, réalisateurs, producteurs, artistes, auteurs...
+  COMPANY  // studios, labels, éditeurs, développeurs, chaînes
+  GENRE
+  PLATFORM
+}
+
+// Une même entité (ex : un acteur, un studio, un genre) est partagée par tous
+// les torrents qui la référencent — cliquer dessus liste tous ces torrents.
+model Entity {
+  id         String          @id @default(uuid())
+  type       EntityType
+  name       String
+  source     String          // tmdb | deezer | rawg | seeduction (nom normalisé)
+  externalId String
+  imageUrl   String?         // sauvegardée sur Seeduction, jamais un lien externe
+  torrents   TorrentEntity[]
+  createdAt  DateTime        @default(now())
+
+  @@unique([type, source, externalId])
+  @@index([type, name])
+}
+
+model TorrentEntity {
+  id        String  @id @default(uuid())
+  torrent   Torrent @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId String
+  entity    Entity  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  entityId  String
+  role      String  // ACTOR | DIRECTOR | PRODUCER | WRITER | CREATOR | ARTIST | AUTHOR | STUDIO | LABEL | PUBLISHER | DEVELOPER | NETWORK | GENRE | PLATFORM
+  detail    String? // ex : le personnage joué
+  position  Int     @default(0)
+
+  @@unique([torrentId, entityId, role])
+  @@index([entityId, role])
 }

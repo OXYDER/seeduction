@@ -86,6 +86,8 @@ function serializeNode(node: ChildNode): string {
       return color ? wrap(inner, `[color=${color}]`, '[/color]') : inner;
     }
     case 'SPAN': {
+      // Bloc "[block]" : inline, donc sans saut de ligne ajouté (les <br> autour font le travail).
+      if (el.style.display === 'inline-block') return wrap(inner.replace(/\n+$/, ''), '[block]', '[/block]');
       let out = inner;
       const s = el.style;
       const color = s.color ? toHexColor(s.color) : null;
@@ -118,9 +120,6 @@ function serializeNode(node: ChildNode): string {
     case 'H4':
     case 'H5':
     case 'H6': {
-      if (el.style.display === 'inline-block') {
-        return `${wrap(inner.replace(/\n+$/, ''), '[block]', '[/block]')}\n`;
-      }
       const align = el.style.textAlign;
       let body = inner;
       if (align === 'center') body = wrap(inner, '[center]', '[/center]');

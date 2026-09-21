@@ -31,6 +31,8 @@ export class TorrentsController {
       audio: query.audio,
       source: query.source,
       containerFormat: query.containerFormat,
+      entityId: query.entityId,
+      role: query.role,
     });
   }
 
@@ -56,6 +58,8 @@ export class TorrentsController {
       tags: body.tags ? body.tags.split(',').map((t) => t.trim()) : [],
       anonymous: body.anonymous === 'true',
       coverImage: body.coverImage || undefined,
+      metaKind: body.metaKind || undefined,
+      metaId: body.metaId || undefined,
       year: body.year ? Number(body.year) : undefined,
       language: body.language || undefined,
       resolution: body.resolution || undefined,

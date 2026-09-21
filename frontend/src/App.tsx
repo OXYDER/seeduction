@@ -18,6 +18,7 @@ import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
 import HallOfFame from './pages/HallOfFame';
 import Chat from './pages/Chat';
+import EntityPage from './pages/EntityPage';
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/hall-of-fame" element={<HallOfFame />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/entities/:id" element={<EntityPage />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/forum" element={<Forum />} />
           <Route path="/forum/topics/:id" element={<ForumTopic />} />

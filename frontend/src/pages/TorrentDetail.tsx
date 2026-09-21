@@ -3,6 +3,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
+import TorrentHero from '../components/TorrentHero';
 
 export default function TorrentDetail() {
   const { id } = useParams();
@@ -70,6 +71,7 @@ export default function TorrentDetail() {
           </div>
         </div>
       </div>
+      <TorrentHero torrent={torrent} />
       <div className="panel grid">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div>
