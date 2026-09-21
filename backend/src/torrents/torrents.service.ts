@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
-import { parseTorrentFile, rewriteTorrentForUser } from '../common/utils/torrent-file';
+import { parseTorrentFile, rewriteTorrentForUser, sanitizeTorrentForUpload } from '../common/utils/torrent-file';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -31,14 +31,23 @@ export class TorrentsService {
     fps?: number;
     durationMinutes?: number;
   }) {
-    const parsed = parseTorrentFile(params.fileBuffer);
+    // On stocke (et on calcule l'info_hash sur) la version nettoyée : trackers
+    // externes retirés, flag private forcé — voir sanitizeTorrentForUpload.
+    let cleanBuffer: Buffer;
+    let parsed: ReturnType<typeof parseTorrentFile>;
+    try {
+      cleanBuffer = sanitizeTorrentForUpload(params.fileBuffer);
+      parsed = parseTorrentFile(cleanBuffer);
+    } catch {
+      throw new BadRequestException('Fichier .torrent invalide ou illisible');
+    }
 
     const existing = await this.prisma.torrent.findUnique({ where: { infoHash: parsed.infoHash } });
     if (existing) throw new BadRequestException('Ce torrent existe déjà sur le tracker (dupe)');
 
     await fs.mkdir(STORAGE_DIR, { recursive: true });
     const storedPath = path.join(STORAGE_DIR, `${parsed.infoHash}.torrent`);
-    await fs.writeFile(storedPath, params.fileBuffer);
+    await fs.writeFile(storedPath, cleanBuffer);
 
     const torrent = await this.prisma.torrent.create({
       data: {

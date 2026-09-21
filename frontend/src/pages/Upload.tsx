@@ -33,6 +33,7 @@ export default function Upload() {
   const [durationMinutes, setDurationMinutes] = useState('');
   const [autoDetected, setAutoDetected] = useState<Set<string>>(new Set());
   const [fileList, setFileList] = useState<{ path: string; size: number }[]>([]);
+  const [foundTrackers, setFoundTrackers] = useState<string[]>([]);
   const [coverImage, setCoverImage] = useState('');
   const [coverUploading, setCoverUploading] = useState(false);
   const autoName = useRef('');
@@ -82,6 +83,7 @@ export default function Upload() {
     const f = e.target.files?.[0] ?? null;
     setFile(f);
     setFileList([]);
+    setFoundTrackers([]);
     setAutoDetected(new Set());
     if (!f) { setSessionKey(''); return; }
     setCoverImage('');
@@ -89,6 +91,7 @@ export default function Upload() {
     try {
       const parsed = await parseTorrentInfo(f);
       setFileList(parsed.files);
+      setFoundTrackers(parsed.trackers);
       // Le nom se remplit depuis le fichier, sauf si l'utilisateur l'a déjà personnalisé.
       if (!name.trim() || name === autoName.current) { setName(parsed.name); autoName.current = parsed.name; }
 
@@ -163,7 +166,7 @@ export default function Upload() {
     if (durationMinutes) form.append('durationMinutes', durationMinutes);
     try {
       const { data } = await api.post('/torrents/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-      navigate(`/torrents/${data.id}`);
+      navigate(`/torrents/${data.id}`, { state: { justUploaded: true } });
     } catch (err: any) {
       setError(err.response?.data?.message ?? "Erreur d'upload");
     }
@@ -204,6 +207,14 @@ export default function Upload() {
               {summary.mainFormat && ` · ${summary.mainFormat}`}
               {summary.subtitlesText && ` · sous-titres : ${summary.subtitlesText}`}
               {autoDetected.size > 0 && ` — métadonnées techniques préremplies automatiquement`}
+            </p>
+          )}
+          {fileList.length > 0 && (
+            <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+              🧹 {foundTrackers.length > 0
+                ? `${foundTrackers.length} tracker${foundTrackers.length > 1 ? 's' : ''} externe${foundTrackers.length > 1 ? 's' : ''} détecté${foundTrackers.length > 1 ? 's' : ''} (${foundTrackers.map((t) => { try { return new URL(t).host; } catch { return t; } }).join(', ')}) : ${foundTrackers.length > 1 ? 'ils seront retirés' : 'il sera retiré'}`
+                : 'Aucun tracker externe dans ce fichier'}
+              {' '}— Seeduction y ajoute automatiquement son announce avec la passkey de chaque membre au téléchargement.
             </p>
           )}
           <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />

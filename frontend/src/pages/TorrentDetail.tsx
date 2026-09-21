@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
 
 export default function TorrentDetail() {
   const { id } = useParams();
+  const justUploaded = (useLocation().state as { justUploaded?: boolean } | null)?.justUploaded;
   const [torrent, setTorrent] = useState<any>(null);
   const user = useAuthStore((s) => s.user);
   const [myCollections, setMyCollections] = useState<any[]>([]);
@@ -46,6 +47,16 @@ export default function TorrentDetail() {
 
   return (
     <div className="grid">
+      {justUploaded && (
+        <div className="panel ornate">
+          <strong>✅ Torrent envoyé — en attente d'approbation du staff.</strong>
+          <p className="muted" style={{ margin: '6px 0 0' }}>
+            Seeduction a nettoyé ton fichier : trackers externes retirés, torrent marqué privé. L'empreinte du torrent a changé,
+            donc <strong>télécharge-le ci-dessous depuis Seeduction</strong> (il contient ton announce avec ta passkey) et ajoute-le
+            à ton client pour le seeder — ton fichier .torrent d'origine ne fonctionnera pas ici.
+          </p>
+        </div>
+      )}
       <div className="row" style={{ alignItems: 'flex-start', gap: 16 }}>
         {torrent.coverImage && (
           <img src={torrent.coverImage} alt="" style={{ width: 100, height: 140, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />

@@ -57,6 +57,8 @@ export interface TorrentFileEntry {
 export interface ParsedTorrent {
   name: string;
   files: TorrentFileEntry[];
+  /** Adresses de trackers trouvées dans le fichier (announce + announce-list), sans doublons. */
+  trackers: string[];
 }
 
 export async function parseTorrentInfo(file: File): Promise<ParsedTorrent> {
@@ -73,5 +75,11 @@ export async function parseTorrentInfo(file: File): Promise<ParsedTorrent> {
       }))
     : [{ path: name, size: info.length }];
 
-  return { name, files };
+  const trackers = new Set<string>();
+  if (decoded.announce) trackers.add(bytesToText(decoded.announce));
+  for (const tier of decoded['announce-list'] ?? []) {
+    for (const url of Array.isArray(tier) ? tier : [tier]) trackers.add(bytesToText(url));
+  }
+
+  return { name, files, trackers: [...trackers].filter(Boolean) };
 }
