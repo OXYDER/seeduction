@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
 import TorrentHero from '../components/TorrentHero';
+import TorrentRelated from '../components/TorrentRelated';
 
 export default function TorrentDetail() {
   const { id } = useParams();
@@ -72,6 +73,9 @@ export default function TorrentDetail() {
         </div>
       </div>
       <TorrentHero torrent={torrent} />
+      {torrent.metaSource === 'tmdb' && (
+        <TorrentRelated torrentId={torrent.id} seriesTitle={torrent.metadata?.originalTitle ?? torrent.name} />
+      )}
       <div className="panel grid">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div>

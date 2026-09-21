@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { MetadataService } from './metadata.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -15,6 +15,11 @@ export class MetadataController {
   @Get('search')
   search(@Query('kind') kind: string, @Query('query') query: string, @Query('year') year?: string) {
     return this.metadataService.search(kind, query, year);
+  }
+
+  @Get('tv/:id/season/:n')
+  seasonEpisodes(@Param('id') id: string, @Param('n') n: string) {
+    return this.metadataService.seasonEpisodes(id, Number(n));
   }
 
   @Get('detail')

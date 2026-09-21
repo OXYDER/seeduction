@@ -238,6 +238,28 @@ export class MetadataService {
     const networks: any[] = (r.networks ?? []).slice(0, 3);
     const genres: string[] = (r.genres ?? []).map((g: any) => g.name);
 
+    // Saga (suites/préquelles) : liste des films de la collection TMDB.
+    let collection: { id: number; name: string; parts: { tmdbId: number; title: string; releaseDate: string | null; year: string | null }[] } | null = null;
+    if (isMovie && r.belongs_to_collection?.id) {
+      try {
+        const c = await this.fetchJson(`https://api.themoviedb.org/3/collection/${r.belongs_to_collection.id}?language=fr-FR&api_key=${this.tmdbKey}`, 'TMDB');
+        collection = {
+          id: c.id,
+          name: c.name,
+          parts: (c.parts ?? [])
+            .map((p: any) => ({ tmdbId: p.id, title: p.title, releaseDate: p.release_date || null, year: p.release_date ? String(p.release_date).slice(0, 4) : null }))
+            .sort((a: any, b: any) => String(a.releaseDate ?? '9999').localeCompare(String(b.releaseDate ?? '9999'))),
+        };
+      } catch {
+        collection = { id: r.belongs_to_collection.id, name: r.belongs_to_collection.name, parts: [] };
+      }
+    }
+    const seasonList = isMovie
+      ? null
+      : (r.seasons ?? [])
+          .filter((s: any) => s.season_number > 0)
+          .map((s: any) => ({ number: s.season_number, name: s.name, episodeCount: s.episode_count ?? null, airDate: s.air_date ?? null }));
+
     const yt: any[] = (r.videos?.results ?? []).filter((v: any) => v.site === 'YouTube');
     const trailer = yt.find((v) => v.type === 'Trailer' && v.official) ?? yt.find((v) => v.type === 'Trailer') ?? yt.find((v) => v.type === 'Teaser') ?? null;
 
@@ -293,6 +315,8 @@ export class MetadataService {
         seasons: r.number_of_seasons ?? null,
         episodes: r.number_of_episodes ?? null,
         overview: r.overview || null,
+        collection,
+        seasonList,
         trailer: trailer ? { site: 'YouTube', key: trailer.key, name: trailer.name } : null,
       },
       entities,
@@ -450,6 +474,19 @@ export class MetadataService {
       coverUrl: g.background_image ?? null,
       backdropUrl: g.background_image_additional ?? null,
     };
+  }
+
+  /** Épisodes d'une saison (titre, date) — pour lister lesquels sont disponibles sur Seeduction. */
+  async seasonEpisodes(tmdbId: string, season: number) {
+    if (!this.tmdbKey) throw new ServiceUnavailableException("La recherche Film/Série n'est pas configurée (clé TMDB manquante).");
+    if (!/^\d+$/.test(tmdbId) || !Number.isInteger(season) || season < 0) throw new BadRequestException('Paramètres invalides');
+    const r = await this.fetchJson(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${season}?language=fr-FR&api_key=${this.tmdbKey}`, 'TMDB');
+    return (r.episodes ?? []).map((e: any) => ({
+      number: e.episode_number,
+      name: e.name || `Épisode ${e.episode_number}`,
+      airDate: e.air_date || null,
+      runtime: e.runtime || null,
+    }));
   }
 
   // ------------------------------------------------------- rattachement au torrent

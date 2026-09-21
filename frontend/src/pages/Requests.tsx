@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 
 export default function Requests() {
   const [requests, setRequests] = useState<any[]>([]);
-  const [form, setForm] = useState({ title: '', description: '', bounty: 0 });
+  // ?title=... : lien "faire une demande" depuis la page d'un film/une série (suite ou saison manquante).
+  const [searchParams] = useSearchParams();
+  const [form, setForm] = useState({ title: searchParams.get('title') ?? '', description: '', bounty: 0 });
   const user = useAuthStore((s) => s.user);
 
   function refresh() {

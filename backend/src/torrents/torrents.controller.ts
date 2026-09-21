@@ -36,6 +36,11 @@ export class TorrentsController {
     });
   }
 
+  @Get(':id/related')
+  related(@Param('id') id: string) {
+    return this.torrentsService.related(id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.torrentsService.findOne(id);

@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../common/prisma.service';
 import { parseTorrentFile, rewriteTorrentForUser, sanitizeTorrentForUpload } from '../common/utils/torrent-file';
 import { MetadataService } from '../metadata/metadata.service';
+import { parseCoverage } from '../common/utils/coverage';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -158,6 +159,51 @@ export class TorrentsService {
     ]);
 
     return { items, total, page: params.page, pageSize: params.pageSize };
+  }
+
+  /**
+   * Films de la même saga / saisons et épisodes de la même série, avec ce qui
+   * est disponible sur Seeduction (torrents approuvés liés à la même fiche TMDB).
+   */
+  async related(id: string) {
+    const t = await this.prisma.torrent.findUnique({ where: { id }, select: { metaSource: true, metaExternalId: true, metadata: true } });
+    if (!t || t.metaSource !== 'tmdb' || !t.metaExternalId) return { kind: null };
+    const info = (t.metadata ?? {}) as any;
+    const card = { id: true, name: true, size: true, year: true, resolution: true, language: true, seeders: true, leechers: true, coverImage: true };
+
+    if (info.kind === 'movie') {
+      const parts: any[] = info.collection?.parts ?? [];
+      const ids = parts.map((p) => String(p.tmdbId));
+      const found = ids.length
+        ? await this.prisma.torrent.findMany({
+            where: { status: 'APPROVED', metaSource: 'tmdb', metaExternalId: { in: ids }, metadata: { path: ['kind'], equals: 'movie' } },
+            select: { ...card, metaExternalId: true },
+            orderBy: { seeders: 'desc' },
+          })
+        : [];
+      return {
+        kind: 'movie',
+        collection: info.collection ? { id: info.collection.id, name: info.collection.name } : null,
+        currentTmdbId: t.metaExternalId,
+        parts: parts.map((p) => ({ ...p, torrents: found.filter((f) => f.metaExternalId === String(p.tmdbId)) })),
+      };
+    }
+
+    if (info.kind === 'tv') {
+      const same = await this.prisma.torrent.findMany({
+        where: { status: 'APPROVED', metaSource: 'tmdb', metaExternalId: t.metaExternalId, metadata: { path: ['kind'], equals: 'tv' } },
+        select: { ...card, fileList: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      return {
+        kind: 'tv',
+        tmdbId: t.metaExternalId,
+        seasons: info.seasonList ?? [],
+        torrents: same.map(({ fileList, ...rest }) => ({ ...rest, coverage: parseCoverage(rest.name, (fileList as any[]) ?? []) })),
+      };
+    }
+
+    return { kind: null };
   }
 
   async findOne(id: string) {
