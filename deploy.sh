@@ -19,6 +19,10 @@ git reset --hard origin/main
 # git clean respecte déjà .gitignore (storage/, .env, node_modules/, dist/ ne sont jamais touchés)
 git clean -fd
 
+# Docker (surtout sur Synology) refuse de monter un dossier hôte qui n'existe pas :
+# les sauvegardes automatiques écrivent dans ./backups.
+mkdir -p backups/db backups/files
+
 echo "→ Reconstruction et redémarrage des conteneurs..."
 docker compose up -d --build
 
