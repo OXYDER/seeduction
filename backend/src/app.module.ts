@@ -16,6 +16,8 @@ import { TemplatesModule } from './templates/templates.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CollectionsModule } from './collections/collections.module';
 import { FavoritesModule } from './favorites/favorites.module';
+import { CommentsModule } from './comments/comments.module';
+import { ReportsModule } from './reports/reports.module';
 import { BadgesModule } from './badges/badges.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { PublicApiModule } from './public-api/public-api.module';
@@ -44,6 +46,8 @@ import { EntitiesModule } from './entities/entities.module';
     NotificationsModule,
     CollectionsModule,
     FavoritesModule,
+    CommentsModule,
+    ReportsModule,
     BadgesModule,
     ApiKeysModule,
     PublicApiModule,

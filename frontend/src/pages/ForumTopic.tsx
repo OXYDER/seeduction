@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/auth';
 import UserLink from '../components/UserLink';
 import WysiwygEditor from '../components/WysiwygEditor';
 import { Breadcrumb, Pagination } from '../components/ForumBits';
+import ReportButton from '../components/ReportButton';
 import { ROLE_LABEL } from '../components/StaffUserPanel';
 import { bbcodeToHtml } from '../lib/bbcode';
 
@@ -170,6 +171,7 @@ export default function ForumTopic() {
                 {user && data.canReply && <button type="button" className="secondary" onClick={() => quote(p)}>❝ Citer</button>}
                 {canEdit && editingId !== p.id && <button type="button" className="secondary" onClick={() => { setEditingId(p.id); setEditText(p.content); }}>✏️ Modifier</button>}
                 {canDelete && <button type="button" className="secondary" onClick={() => removePost(p)}>🗑️ Supprimer</button>}
+                {user && p.authorId !== user.id && <ReportButton targetType="forumPost" targetId={p.id} compact label="🚩 Signaler" />}
               </div>
             </div>
           </div>

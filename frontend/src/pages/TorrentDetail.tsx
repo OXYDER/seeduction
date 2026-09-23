@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import UserLink from '../components/UserLink';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
+import TorrentComments from '../components/TorrentComments';
+import ReportButton from '../components/ReportButton';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
@@ -100,6 +102,7 @@ export default function TorrentDetail() {
             <div className="row" style={{ gap: 8, position: 'relative' }}>
               <button onClick={download}>⬇ Télécharger le .torrent</button>
               <button className="secondary" onClick={() => setAddOpen((v) => !v)}>📚 Ajouter à une collection</button>
+              {torrent.uploader?.id !== user.id && <ReportButton targetType="torrent" targetId={torrent.id} />}
               {addOpen && (
                 <div className="panel ornate" style={{ position: 'absolute', right: 0, top: '110%', width: 260, zIndex: 30, padding: 10 }}>
                   {myCollections.length === 0 && <p className="muted" style={{ margin: 0 }}>Crée d'abord une collection.</p>}
@@ -123,6 +126,7 @@ export default function TorrentDetail() {
           <div className="bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(torrent.description) }} />
         )}
       </div>
+      <TorrentComments torrentId={torrent.id} />
       <div className="panel">
         <h3>Fichiers</h3>
         <table>

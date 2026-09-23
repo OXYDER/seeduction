@@ -173,7 +173,13 @@ function Overview() {
           <tbody>
             {reports.map((r) => (
               <tr key={r.id}>
-                <td>{r.targetType} — {r.reason}</td>
+                <td>
+                  <div>
+                    <span className="badge double">{r.targetType}</span>{' '}
+                    {r.link ? <a href={r.link} target="_blank" rel="noreferrer">{r.label}</a> : r.label}
+                  </div>
+                  <div className="muted" style={{ fontSize: 12 }}>« {r.reason} » — signalé par {r.reporter?.username ?? '?'}</div>
+                </td>
                 <td className="row" style={{ justifyContent: 'flex-end' }}>
                   <button onClick={() => resolveReport(r.id, 'RESOLVED')}>Résoudre</button>
                   <button className="secondary" onClick={() => resolveReport(r.id, 'DISMISSED')}>Ignorer</button>

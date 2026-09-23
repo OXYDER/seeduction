@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import StaffUserPanel, { ROLE_LABEL } from '../components/StaffUserPanel';
+import ReportButton from '../components/ReportButton';
 
 export default function Profile() {
   const { id } = useParams();
@@ -75,6 +76,7 @@ export default function Profile() {
         {id && (
           <Link to={`/browse?uploaderId=${profile.id}`} className="muted">Voir ses torrents →</Link>
         )}
+        {id && me && id !== me.id && <ReportButton targetType="user" targetId={id} compact />}
       </div>
       {id && me && ['MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && (
         <StaffUserPanel targetId={id} myRole={me.role} myId={me.id} onChanged={() => setReloadKey((k) => k + 1)} />

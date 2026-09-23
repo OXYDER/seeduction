@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
+import { ReportsService } from '../reports/reports.service';
 
 const ROLE_RANK: Record<string, number> = { USER: 0, UPLOADER: 1, MODERATOR: 2, ADMIN: 3, OWNER: 4 };
 const TORRENT_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'DEAD'];
@@ -10,7 +11,7 @@ export interface Actor { userId: string; username: string; role: string }
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService) {}
 
   async approveTorrent(id: string) {
     const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED' } });
@@ -159,7 +160,7 @@ export class AdminService {
   }
 
   listReports(status: 'OPEN' | 'RESOLVED' | 'DISMISSED' = 'OPEN') {
-    return this.prisma.report.findMany({ where: { status }, orderBy: { createdAt: 'desc' } });
+    return this.reports.listForStaff(status);
   }
 
   resolveReport(id: string, status: 'RESOLVED' | 'DISMISSED') {

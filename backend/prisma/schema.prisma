@@ -59,6 +59,7 @@ model User {
   torrentsUploaded Torrent[]  @relation("Uploader")
   favorites        Favorite[] @relation("UserFavorites")
   forumReads       ForumTopicRead[] @relation("ForumReads")
+  torrentComments  TorrentComment[] @relation("CommentAuthor")
   peers            Peer[]
   snapshots        RatioSnapshot[]
   requests         TorrentRequest[]
@@ -164,6 +165,7 @@ model Torrent {
   peers          Peer[]
   entities       TorrentEntity[]
   favoritedBy    Favorite[]     @relation("TorrentFavorites")
+  comments       TorrentComment[]
   snatches       Snatch[]
   requestFilled  TorrentRequest?
   collectionItems CollectionItem[]
@@ -389,7 +391,7 @@ model Report {
   id          String       @id @default(uuid())
   reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
   reporterId  String
-  targetType  String       // "torrent" | "user" | "forumPost"
+  targetType  String       // "torrent" | "user" | "forumPost" | "comment"
   targetId    String
   reason      String       @db.Text
   status      ReportStatus @default(OPEN)
@@ -448,6 +450,7 @@ enum NotificationType {
   ANNOUNCEMENT
   INVITE_USED
   BADGE_EARNED
+  TORRENT_COMMENT
 }
 
 model Notification {
@@ -620,4 +623,18 @@ model Favorite {
 
   @@id([userId, torrentId])
   @@index([userId, createdAt])
+}
+
+// Commentaires sous un torrent.
+model TorrentComment {
+  id        String   @id @default(uuid())
+  torrent   Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId String
+  author    User     @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  editedAt  DateTime?
+
+  @@index([torrentId, createdAt])
 }
