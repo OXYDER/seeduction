@@ -81,6 +81,7 @@ export default function DescriptionGenerator({
   const [templateId, setTemplateId] = useState('');
   const [expertMode, setExpertMode] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showKindOverride, setShowKindOverride] = useState(false);
   const [content, setContent] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
   const [saveName, setSaveName] = useState('');
@@ -106,7 +107,7 @@ export default function DescriptionGenerator({
   }, []);
 
   useEffect(() => {
-    if (defaultKind) setKind(defaultKind);
+    if (defaultKind) { setKind(defaultKind); setShowKindOverride(false); }
   }, [defaultKind]);
 
   const templatesForKind = templates.filter((t) => t.kind === kind);
@@ -280,14 +281,25 @@ export default function DescriptionGenerator({
         )}
 
         <div>
-          <div className="muted" style={{ marginBottom: 6 }}>Type de contenu (modifiable)</div>
-          <div className="category-chips" style={{ marginTop: 0 }}>
-            {KINDS.map((k) => (
-              <a key={k.value} onClick={() => setKind(k.value)} style={{ cursor: 'pointer', borderColor: kind === k.value ? 'var(--gold)' : undefined }}>
-                {k.label}{supportedKinds.includes(k.value) ? ' 🔍' : ''}
-              </a>
-            ))}
-          </div>
+          {/* Le type de contenu vient de la catégorie choisie (voir Administration > Catégories
+              torrents) — un uploader n'a normalement pas besoin d'y toucher. La liste ne
+              s'affiche donc que si la catégorie n'a pas de type configuré, ou sur demande. */}
+          {defaultKind && !showKindOverride ? (
+            <button type="button" className="secondary" style={{ fontSize: 12 }} onClick={() => setShowKindOverride(true)}>
+              Type de contenu : {KINDS.find((k) => k.value === kind)?.label ?? kind} — pas le bon ? Changer
+            </button>
+          ) : (
+            <>
+              <div className="muted" style={{ marginBottom: 6 }}>Type de contenu{defaultKind ? '' : ' (déduit de la catégorie si elle est configurée)'}</div>
+              <div className="category-chips" style={{ marginTop: 0 }}>
+                {KINDS.map((k) => (
+                  <a key={k.value} onClick={() => setKind(k.value)} style={{ cursor: 'pointer', borderColor: kind === k.value ? 'var(--gold)' : undefined }}>
+                    {k.label}{supportedKinds.includes(k.value) ? ' 🔍' : ''}
+                  </a>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {searchSupported ? (

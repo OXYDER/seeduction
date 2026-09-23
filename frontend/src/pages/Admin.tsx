@@ -233,12 +233,29 @@ function AnnouncementsAdmin() {
   );
 }
 
+// Doit correspondre à l'enum Prisma TemplateKind — c'est ce que choisit le
+// générateur de description (et sa recherche automatique) selon la catégorie.
+const CONTENT_KINDS = [
+  { value: '', label: '— Aucun (pas de recherche automatique) —' },
+  { value: 'FILM', label: 'Film' },
+  { value: 'SERIE', label: 'Série' },
+  { value: 'MUSIQUE', label: 'Musique' },
+  { value: 'JEU', label: 'Jeu' },
+  { value: 'LOGICIEL', label: 'Logiciel' },
+  { value: 'LIVRE', label: 'Livre' },
+  { value: 'DOCUMENT', label: 'Document' },
+  { value: 'ARCHIVE', label: 'Archive' },
+  { value: 'PERSONNALISE', label: 'Personnalisé' },
+];
+const CONTENT_KIND_LABEL = Object.fromEntries(CONTENT_KINDS.map((k) => [k.value, k.label]));
+
 function TorrentCategoriesAdmin() {
   return (
     <CategoryManager
       endpoint="/categories"
       title="Catégories & sous-catégories de torrents"
       renderCount={(c) => ` (${c._count?.torrents ?? 0} torrents)`}
+      showContentKind
     />
   );
 }
@@ -247,15 +264,20 @@ function TorrentCategoriesAdmin() {
  * CRUD complet (créer, éditer nom + parent, supprimer) pour une hiérarchie
  * à deux niveaux de catégories — partagé entre torrents et forum, qui ont
  * exactement la même forme (findMany top-level + `children` imbriqués).
+ * `showContentKind` n'a de sens que pour les catégories de torrents : c'est
+ * ce que le générateur de description utilise pour savoir quoi rechercher,
+ * sans que l'uploader ait à le choisir lui-même.
  */
-function CategoryManager({ endpoint, title, renderCount }: { endpoint: string; title: string; renderCount?: (item: any) => string }) {
+function CategoryManager({ endpoint, title, renderCount, showContentKind }: { endpoint: string; title: string; renderCount?: (item: any) => string; showContentKind?: boolean }) {
   const [categories, setCategories] = useState<any[]>([]);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
+  const [contentKind, setContentKind] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editParentId, setEditParentId] = useState('');
+  const [editContentKind, setEditContentKind] = useState('');
   const [editError, setEditError] = useState('');
 
   function refresh() { api.get(endpoint).then((r) => setCategories(r.data)); }
@@ -263,8 +285,8 @@ function CategoryManager({ endpoint, title, renderCount }: { endpoint: string; t
 
   async function create() {
     if (!name.trim()) return;
-    await api.post(endpoint, { name, parentId: parentId || undefined });
-    setName(''); setParentId('');
+    await api.post(endpoint, { name, parentId: parentId || undefined, contentKind: contentKind || undefined });
+    setName(''); setParentId(''); setContentKind('');
     refresh();
   }
 
@@ -272,13 +294,14 @@ function CategoryManager({ endpoint, title, renderCount }: { endpoint: string; t
     setEditingId(item.id);
     setEditName(item.name);
     setEditParentId(item.parentId ?? '');
+    setEditContentKind(item.contentKind ?? '');
     setEditError('');
   }
 
   async function saveEdit(id: string) {
     setEditError('');
     try {
-      await api.patch(`${endpoint}/${id}`, { name: editName, parentId: editParentId || null });
+      await api.patch(`${endpoint}/${id}`, { name: editName, parentId: editParentId || null, contentKind: editContentKind || null });
       setEditingId(null);
       refresh();
     } catch (err: any) {
@@ -309,6 +332,11 @@ function CategoryManager({ endpoint, title, renderCount }: { endpoint: string; t
                 <option key={c.id} value={c.id}>Sous-catégorie de : {c.name}</option>
               ))}
             </select>
+            {showContentKind && (
+              <select value={editContentKind} onChange={(e) => setEditContentKind(e.target.value)}>
+                {CONTENT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+              </select>
+            )}
             <div className="row">
               <button onClick={() => saveEdit(item.id)}>Enregistrer</button>
               <button className="secondary" onClick={() => setEditingId(null)}>Annuler</button>
@@ -316,7 +344,14 @@ function CategoryManager({ endpoint, title, renderCount }: { endpoint: string; t
           </>
         ) : (
           <>
-            <span>{isSub ? '↳ ' : ''}<strong>{item.name}</strong>{renderCount && <span className="muted">{renderCount(item)}</span>}</span>
+            <span>
+              {isSub ? '↳ ' : ''}<strong>{item.name}</strong>{renderCount && <span className="muted">{renderCount(item)}</span>}
+              {showContentKind && (
+                <span className="muted">
+                  {' '}— {item.contentKind ? CONTENT_KIND_LABEL[item.contentKind] ?? item.contentKind : (isSub ? 'hérite de la catégorie principale' : 'aucun type de contenu')}
+                </span>
+              )}
+            </span>
             <div className="row">
               <button className="secondary" onClick={() => startEdit(item)}>Éditer</button>
               <button className="danger" onClick={() => remove(item.id)}>Supprimer</button>

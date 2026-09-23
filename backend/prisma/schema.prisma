@@ -117,6 +117,9 @@ model Category {
   parentId String?
   children Category[] @relation("SubCategories")
   torrents Torrent[]
+  // Type de contenu (Film/Série/Musique/...) pour le générateur de description :
+  // une sous-catégorie sans valeur hérite de celle de sa catégorie parente.
+  contentKind TemplateKind?
 }
 
 model Torrent {

@@ -7,6 +7,7 @@ import WysiwygEditor from '../components/WysiwygEditor';
 import { RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName, cleanTitleForSearch } from '../lib/searchParser';
 import { parseTorrentInfo } from '../lib/bencode';
 import { summarizeTorrent } from '../lib/torrentSummary';
+import { resolveContentKind } from '../lib/categoryKind';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -41,19 +42,11 @@ export default function Upload() {
   const [sessionKey, setSessionKey] = useState('');
 
   const selectedCategory = categories.flatMap((c) => [c, ...(c.children ?? [])]).find((c) => c.id === categoryId);
-  // Le type de contenu du générateur se déduit (sans rigidité) de la catégorie ou de sa catégorie parente ;
-  // s'il n'est pas reconnu, le générateur garde son choix par défaut, modifiable à la main.
+  // Le type de contenu du générateur vient de la catégorie choisie (configuré dans
+  // Administration > Catégories torrents), avec repli sur la catégorie parente —
+  // l'uploader n'a plus à le choisir lui-même.
   const parentCategory = categories.find((c) => c.children?.some((sub: any) => sub.id === categoryId));
-  const KIND_PATTERNS: [RegExp, string][] = [
-    [/anime|s[eé]rie|series|tv/i, 'SERIE'],
-    [/film|movie|cin[eé]ma/i, 'FILM'],
-    [/musi|audio|album/i, 'MUSIQUE'],
-    [/jeu|game/i, 'JEU'],
-    [/appli|logiciel|soft|app/i, 'LOGICIEL'],
-    [/livre|book|ebook/i, 'LIVRE'],
-  ];
-  const categoryHint = [selectedCategory?.slug, selectedCategory?.name, parentCategory?.slug, parentCategory?.name].filter(Boolean).join(' ');
-  const defaultKind = KIND_PATTERNS.find(([re]) => re.test(categoryHint))?.[1];
+  const defaultKind = resolveContentKind(selectedCategory, parentCategory);
   const searchInfo = cleanTitleForSearch(name);
   const summary = useMemo(() => summarizeTorrent(fileList), [fileList]);
   // "Artiste - Album" : la partie avant le premier " - " sert d'artiste pour les modèles musique.

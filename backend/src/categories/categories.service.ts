@@ -2,13 +2,13 @@ import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 
 const DEFAULT_CATEGORIES = [
-  { name: 'Films', slug: 'films' },
-  { name: 'Séries TV', slug: 'series-tv' },
-  { name: 'Musique', slug: 'musique' },
-  { name: 'Jeux', slug: 'jeux' },
-  { name: 'Applications', slug: 'applications' },
-  { name: 'Animes', slug: 'animes' },
-  { name: 'Livres', slug: 'livres' },
+  { name: 'Films', slug: 'films', contentKind: 'FILM' as const },
+  { name: 'Séries TV', slug: 'series-tv', contentKind: 'SERIE' as const },
+  { name: 'Musique', slug: 'musique', contentKind: 'MUSIQUE' as const },
+  { name: 'Jeux', slug: 'jeux', contentKind: 'JEU' as const },
+  { name: 'Applications', slug: 'applications', contentKind: 'LOGICIEL' as const },
+  { name: 'Animes', slug: 'animes', contentKind: 'SERIE' as const },
+  { name: 'Livres', slug: 'livres', contentKind: 'LIVRE' as const },
   { name: 'XXX', slug: 'xxx' },
 ];
 
@@ -32,6 +32,10 @@ export class CategoriesService implements OnModuleInit {
   }
 
   list() {
+    // contentKind est renvoyé tel quel (non hérité) : une sous-catégorie sans
+    // valeur propre doit rester "vide" pour l'admin (édition) — c'est au
+    // consommateur (page Envoyer) de retomber sur celui de la catégorie
+    // parente si besoin, voir lib/categoryKind.ts côté frontend.
     return this.prisma.category.findMany({
       where: { parentId: null },
       orderBy: { name: 'asc' },
@@ -45,16 +49,19 @@ export class CategoriesService implements OnModuleInit {
     });
   }
 
-  create(name: string, parentId?: string) {
-    return this.prisma.category.create({ data: { name, slug: slugify(name), parentId: parentId || null } });
+  create(name: string, parentId?: string, contentKind?: string | null) {
+    return this.prisma.category.create({
+      data: { name, slug: slugify(name), parentId: parentId || null, contentKind: (contentKind as any) || null },
+    });
   }
 
-  async update(id: string, data: { name?: string; parentId?: string | null }) {
+  async update(id: string, data: { name?: string; parentId?: string | null; contentKind?: string | null }) {
     const payload: any = {};
     if (data.name !== undefined) {
       payload.name = data.name;
       payload.slug = slugify(data.name);
     }
+    if (data.contentKind !== undefined) payload.contentKind = data.contentKind || null;
     if (data.parentId !== undefined) {
       const newParentId = data.parentId || null;
       if (newParentId === id) throw new BadRequestException('Une catégorie ne peut pas être son propre parent');

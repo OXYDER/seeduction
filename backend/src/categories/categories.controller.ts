@@ -16,14 +16,14 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Post()
-  create(@Body() body: { name: string; parentId?: string }) {
-    return this.categoriesService.create(body.name, body.parentId);
+  create(@Body() body: { name: string; parentId?: string; contentKind?: string | null }) {
+    return this.categoriesService.create(body.name, body.parentId, body.contentKind);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: { name?: string; parentId?: string | null }) {
+  update(@Param('id') id: string, @Body() body: { name?: string; parentId?: string | null; contentKind?: string | null }) {
     return this.categoriesService.update(id, body);
   }
 
