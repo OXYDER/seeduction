@@ -1,11 +1,22 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 
 @Injectable()
-export class ForumService {
+export class ForumService implements OnModuleInit {
   constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService) {}
+
+  /**
+   * Avant la distinction catégorie / forum, un forum principal pouvait avoir des
+   * sous-forums : ceux qui en ont (et sans sujets propres) deviennent des catégories.
+   */
+  async onModuleInit() {
+    await this.prisma.forumCategory.updateMany({
+      where: { parentId: null, isCategory: false, children: { some: {} }, topics: { none: {} } },
+      data: { isCategory: true },
+    });
+  }
 
   listCategories() {
     return this.prisma.forumCategory.findMany({
@@ -18,27 +29,47 @@ export class ForumService {
     });
   }
 
-  createCategory(name: string, parentId?: string) {
-    return this.prisma.forumCategory.create({ data: { name, parentId: parentId || null } });
+  /** Règles : une catégorie est toujours au premier niveau ; un forum est seul ou dans une catégorie, et n'a pas de sous-forums. */
+  private async assertPlacement(id: string | null, isCategory: boolean, parentId: string | null) {
+    if (isCategory) {
+      if (parentId) throw new BadRequestException('Une catégorie ne peut pas être placée dans une autre catégorie');
+      return;
+    }
+    if (parentId) {
+      if (parentId === id) throw new BadRequestException('Un forum ne peut pas être son propre parent');
+      const parent = await this.prisma.forumCategory.findUnique({ where: { id: parentId } });
+      if (!parent) throw new BadRequestException('Catégorie introuvable');
+      if (!parent.isCategory) throw new BadRequestException('Un forum ne peut être placé que dans une catégorie (pas dans un autre forum)');
+    }
+    if (id) {
+      const children = await this.prisma.forumCategory.count({ where: { parentId: id } });
+      if (children > 0) throw new BadRequestException("Ce forum contient des sous-éléments : déplace-les ou supprime-les d'abord");
+    }
   }
 
-  async updateCategory(id: string, data: { name?: string; parentId?: string | null }) {
+  async createCategory(name: string, parentId?: string, isCategory = false) {
+    await this.assertPlacement(null, isCategory, parentId || null);
+    return this.prisma.forumCategory.create({ data: { name, parentId: parentId || null, isCategory } });
+  }
+
+  async updateCategory(id: string, data: { name?: string; parentId?: string | null; isCategory?: boolean }) {
+    const current = await this.prisma.forumCategory.findUnique({ where: { id } });
+    if (!current) throw new BadRequestException('Introuvable');
     const payload: any = {};
     if (data.name !== undefined) payload.name = data.name;
-    if (data.parentId !== undefined) {
-      const newParentId = data.parentId || null;
-      if (newParentId === id) throw new BadRequestException('Une catégorie ne peut pas être son propre parent');
-      if (newParentId) {
-        const hasChildren = await this.prisma.forumCategory.count({ where: { parentId: id } });
-        if (hasChildren > 0) {
-          throw new BadRequestException('Cette catégorie a des sous-catégories : elle ne peut pas devenir elle-même une sous-catégorie');
-        }
-        const parent = await this.prisma.forumCategory.findUnique({ where: { id: newParentId } });
-        if (!parent) throw new BadRequestException('Catégorie parente introuvable');
-        if (parent.parentId) throw new BadRequestException('Impossible de créer plus de deux niveaux de catégories');
-      }
-      payload.parentId = newParentId;
+    const isCategory = data.isCategory ?? current.isCategory;
+    const parentId = data.parentId !== undefined ? data.parentId || null : current.parentId;
+    if (isCategory && !current.isCategory) {
+      const topics = await this.prisma.forumTopic.count({ where: { categoryId: id } });
+      if (topics > 0) throw new BadRequestException(`Impossible : ce forum contient ${topics} sujet(s) — une catégorie ne peut pas en avoir`);
     }
+    if (!isCategory && current.isCategory) {
+      const children = await this.prisma.forumCategory.count({ where: { parentId: id } });
+      if (children > 0) throw new BadRequestException("Cette catégorie contient des forums : déplace-les ou supprime-les d'abord");
+    }
+    await this.assertPlacement(id, isCategory, parentId);
+    payload.isCategory = isCategory;
+    payload.parentId = parentId;
     return this.prisma.forumCategory.update({ where: { id }, data: payload });
   }
 
@@ -61,6 +92,9 @@ export class ForumService {
   }
 
   async createTopic(categoryId: string, authorId: string, title: string, firstPostContent: string) {
+    const forum = await this.prisma.forumCategory.findUnique({ where: { id: categoryId }, select: { isCategory: true } });
+    if (!forum) throw new BadRequestException('Forum introuvable');
+    if (forum.isCategory) throw new BadRequestException('Cette catégorie ne contient pas de sujets : choisis un de ses forums');
     const topic = await this.prisma.forumTopic.create({
       data: {
         categoryId,

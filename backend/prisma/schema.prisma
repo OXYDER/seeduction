@@ -312,6 +312,8 @@ model ForumCategory {
   parentId String?
   children ForumCategory[] @relation("SubCategories")
   topics   ForumTopic[]
+  // true = « catégorie » (simple regroupement de forums, sans sujets) ; false = « forum » (contient des sujets).
+  isCategory Boolean       @default(false)
 }
 
 model ForumTopic {

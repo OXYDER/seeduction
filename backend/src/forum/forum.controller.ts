@@ -16,14 +16,14 @@ export class ForumController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Post('categories')
-  createCategory(@Body() body: { name: string; parentId?: string }) {
-    return this.forumService.createCategory(body.name, body.parentId);
+  createCategory(@Body() body: { name: string; parentId?: string; isCategory?: boolean }) {
+    return this.forumService.createCategory(body.name, body.parentId, !!body.isCategory);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Patch('categories/:id')
-  updateCategory(@Param('id') id: string, @Body() body: { name?: string; parentId?: string | null }) {
+  updateCategory(@Param('id') id: string, @Body() body: { name?: string; parentId?: string | null; isCategory?: boolean }) {
     return this.forumService.updateCategory(id, body);
   }
 

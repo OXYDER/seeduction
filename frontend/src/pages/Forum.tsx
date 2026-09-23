@@ -75,44 +75,38 @@ export default function Forum() {
     });
   }, []);
 
-  return (
-    <div className="grid" style={{ width: '100%' }}>
-      <h1>Forum</h1>
-      {categories.map((c) => (
-        // Un forum = un seul panneau : ses sujets, puis ses sous-forums juste en dessous.
-        <div key={c.id} className="panel ornate" style={{ width: '100%' }}>
-          <div className="panel-title">
-            <span className="title-icon">💬</span>{c.name}
-            <span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)' }}>
-              {(topicsByCategory[c.id] ?? []).length} sujet(s)
-            </span>
-          </div>
-          <TopicRows topics={topicsByCategory[c.id]} />
-          <NewTopic categoryId={c.id} />
+  const forumPanel = (f: any) => (
+    <div key={f.id} className="panel ornate" style={{ width: '100%' }}>
+      <div className="panel-title">
+        <span className="title-icon">💬</span>{f.name}
+        <span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)' }}>
+          {(topicsByCategory[f.id] ?? []).length} sujet(s)
+        </span>
+      </div>
+      <TopicRows topics={topicsByCategory[f.id]} />
+      <NewTopic categoryId={f.id} />
+    </div>
+  );
 
-          {c.children?.length > 0 && (
-            <div style={{ marginTop: 14 }}>
-              <div className="muted" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 11, marginBottom: 6 }}>
-                Sous-forums
-              </div>
-              <div className="grid" style={{ gap: 10 }}>
-                {c.children.map((sub: any) => (
-                  <div key={sub.id} style={{ borderLeft: '2px solid var(--border-gold)', paddingLeft: 14, background: 'rgba(0,0,0,0.12)', borderRadius: 4 }}>
-                    <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold-bright)', padding: '8px 0 2px' }}>
-                      ↳ {sub.name}
-                      <span className="muted" style={{ marginLeft: 10, fontFamily: 'var(--font-body)' }}>
-                        {(topicsByCategory[sub.id] ?? []).length} sujet(s)
-                      </span>
-                    </div>
-                    <TopicRows topics={topicsByCategory[sub.id]} />
-                    <div style={{ paddingBottom: 8 }}><NewTopic categoryId={sub.id} /></div>
-                  </div>
-                ))}
-              </div>
+  return (
+    <div className="grid" style={{ width: '100%', gap: 22 }}>
+      <h1>Forum</h1>
+      {categories.map((c) =>
+        c.isCategory ? (
+          // Catégorie : simple en-tête qui regroupe ses forums.
+          <section key={c.id} className="grid" style={{ gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border-gold)', paddingBottom: 6 }}>
+              <span className="title-icon">🗂️</span>
+              <h2 style={{ margin: 0, color: 'var(--gold-bright)' }}>{c.name}</h2>
             </div>
-          )}
-        </div>
-      ))}
+            {c.children?.length > 0
+              ? c.children.map(forumPanel)
+              : <p className="muted" style={{ margin: 0 }}>Aucun forum dans cette catégorie pour l'instant.</p>}
+          </section>
+        ) : (
+          forumPanel(c)
+        ),
+      )}
     </div>
   );
 }
