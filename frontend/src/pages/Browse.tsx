@@ -1,17 +1,38 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes as formatSize } from '../lib/format';
 import { CATEGORY_STYLE } from '../components/Layout';
+import { timeAgo } from '../lib/time';
 import { parseNaturalQuery, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
 
 const SORTS = [
   { value: 'date', label: 'Date' },
-  { value: 'seeders', label: 'Seeders' },
+  { value: 'nom', label: 'Nom' },
   { value: 'taille', label: 'Taille' },
+  { value: 'seeders', label: 'Seeders' },
+  { value: 'leechers', label: 'Leechers' },
   { value: 'popularite', label: 'Popularité' },
   { value: 'activite', label: 'Activité' },
 ];
+
+// Colonnes triables : titre affiché -> champ de tri côté serveur.
+const COLUMNS: { label: string; sort: string }[] = [
+  { label: 'Nom', sort: 'nom' },
+  { label: 'Catégorie', sort: 'categorie' },
+  { label: 'Ajouté', sort: 'date' },
+  { label: 'Taille', sort: 'taille' },
+  { label: 'S', sort: 'seeders' },
+  { label: 'L', sort: 'leechers' },
+  { label: 'Uploader', sort: 'uploader' },
+];
+
+// Sens par défaut au premier clic (comme côté serveur) : texte A→Z, chiffres du plus grand au plus petit.
+const DEFAULT_DIR: Record<string, 'asc' | 'desc'> = {
+  date: 'desc', nom: 'asc', taille: 'desc', seeders: 'desc', leechers: 'desc', popularite: 'desc', activite: 'desc', categorie: 'asc', uploader: 'asc',
+};
+
+interface Tip { t: any; x: number; y: number }
 
 export default function Browse() {
   const [params, setParams] = useSearchParams();
@@ -20,6 +41,7 @@ export default function Browse() {
   const uploaderId = params.get('uploaderId') ?? '';
   const page = parseInt(params.get('page') ?? '1', 10);
   const sort = params.get('sort') ?? 'date';
+  const order: 'asc' | 'desc' = params.get('order') === 'asc' ? 'asc' : params.get('order') === 'desc' ? 'desc' : (DEFAULT_DIR[sort] ?? 'desc');
 
   // Recherche en langage naturel : "Dune 2024 4K HDR VOSTFR" devient
   // automatiquement { name: "Dune", year: 2024, resolution: "4K/2160p",
@@ -41,11 +63,16 @@ export default function Browse() {
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showSort, setShowSort] = useState(false);
+  const [tip, setTip] = useState<Tip | null>(null);
+  const tipTimer = useRef<number | undefined>(undefined);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api.get('/torrents', {
       params: {
-        search: parsed.name, categoryId, uploaderId, page, pageSize: 25, sort,
+        search: parsed.name, categoryId, uploaderId, page, pageSize: 25, sort, order,
         year: year || undefined, resolution: resolution || undefined, language: language || undefined,
         source: source || undefined, codec: codec || undefined, audio: audio || undefined,
         containerFormat: containerFormat || undefined, hdr: hdr || undefined,
@@ -57,11 +84,20 @@ export default function Browse() {
       setItems(r.data.items);
       setTotal(r.data.total);
     });
-  }, [parsed.name, categoryId, uploaderId, page, sort, year, resolution, language, source, codec, audio, containerFormat, hdr, minSizeGo, maxSizeGo, minSeeders]);
+  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, hdr, minSizeGo, maxSizeGo, minSeeders]);
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
   }, []);
+
+  useEffect(() => {
+    if (!showSort) return;
+    const close = (e: MouseEvent) => {
+      if (!sortMenuRef.current?.contains(e.target as Node)) setShowSort(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [showSort]);
 
   // Retrouve la catégorie active (parente ou sous-catégorie) pour afficher
   // ses sous-catégories comme filtres supplémentaires.
@@ -85,22 +121,107 @@ export default function Browse() {
     const next = new URLSearchParams();
     if (rawSearch) next.set('search', rawSearch);
     if (categoryId) next.set('categoryId', categoryId);
+    if (params.get('sort')) next.set('sort', params.get('sort')!);
+    if (params.get('order')) next.set('order', params.get('order')!);
     setParams(next);
   }
 
-  const hasAdvancedFilters = year || resolution || language || source || codec || audio || containerFormat || hdr || minSizeGo || maxSizeGo || minSeeders;
+  function setSort(field: string, dir?: 'asc' | 'desc') {
+    const next = new URLSearchParams(params);
+    next.set('sort', field);
+    next.set('order', dir ?? DEFAULT_DIR[field] ?? 'desc');
+    next.delete('page');
+    setParams(next);
+  }
+
+  // Cliquer sur un titre de colonne : tri par cette colonne, puis inverse le sens à chaque clic.
+  function clickColumn(field: string) {
+    setSort(field, sort === field ? (order === 'asc' ? 'desc' : 'asc') : undefined);
+  }
+
+  function showTip(t: any, e: React.MouseEvent) {
+    window.clearTimeout(tipTimer.current);
+    const { clientX, clientY } = e;
+    tipTimer.current = window.setTimeout(() => setTip({ t, x: clientX, y: clientY }), 250);
+  }
+  function moveTip(e: React.MouseEvent) {
+    const { clientX, clientY } = e;
+    setTip((prev) => (prev ? { ...prev, x: clientX, y: clientY } : prev));
+  }
+  function hideTip() {
+    window.clearTimeout(tipTimer.current);
+    setTip(null);
+  }
+
+  const activeFilters = ([
+    year && { key: 'year', label: `Année ${year}` },
+    resolution && { key: 'resolution', label: resolution },
+    language && { key: 'language', label: language },
+    source && { key: 'source', label: source },
+    codec && { key: 'codec', label: codec },
+    audio && { key: 'audio', label: audio },
+    containerFormat && { key: 'containerFormat', label: containerFormat },
+    hdr && { key: 'hdr', label: 'HDR' },
+    minSizeGo && { key: 'minSize', label: `≥ ${minSizeGo} Go` },
+    maxSizeGo && { key: 'maxSize', label: `≤ ${maxSizeGo} Go` },
+    minSeeders && { key: 'minSeeders', label: `≥ ${minSeeders} seeders` },
+  ] as (false | '' | { key: string; label: string })[]).filter(Boolean) as { key: string; label: string }[];
+  const hasAdvancedFilters = activeFilters.length > 0;
+  const currentSortLabel = SORTS.find((s) => s.value === sort)?.label ?? 'Date';
+
+  // Infobulle : reste dans l'écran près des bords.
+  const tipStyle = tip
+    ? {
+        left: Math.max(8, Math.min(tip.x + 18, window.innerWidth - 384)),
+        top: Math.max(8, Math.min(tip.y + 18, window.innerHeight - 200)),
+      }
+    : undefined;
+
+  const field = (label: string, control: React.ReactNode) => (
+    <div>
+      <div className="muted" style={{ marginBottom: 4 }}>{label}</div>
+      {control}
+    </div>
+  );
+  const full = { width: '100%' };
 
   return (
     <div className="grid">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <h1>{uploaderId ? 'Mes uploads' : 'Parcourir'}</h1>
-        <input
-          placeholder="Rechercher... (ex: Dune 2024 4K HDR VOSTFR)"
-          value={rawSearch}
-          onChange={(e) => updateParam('search', e.target.value)}
-          style={{ width: 320 }}
-        />
+        <div className="list-toolbar">
+          <input
+            placeholder="Rechercher... (ex: Dune 2024 4K HDR VOSTFR)"
+            value={rawSearch}
+            onChange={(e) => updateParam('search', e.target.value)}
+            style={{ width: 320, maxWidth: '100%' }}
+          />
+          <button type="button" className={`icon-btn${showFilters ? ' active' : ''}`} onClick={() => setShowFilters((v) => !v)} title="Filtres">
+            <span>🔎</span> Filtres {hasAdvancedFilters && <span className="count">{activeFilters.length}</span>}
+          </button>
+          <div style={{ position: 'relative' }} ref={sortMenuRef}>
+            <button type="button" className={`icon-btn${showSort ? ' active' : ''}`} onClick={() => setShowSort((v) => !v)} title="Trier">
+              <span>⇅</span> {currentSortLabel} {order === 'asc' ? '▲' : '▼'}
+            </button>
+            {showSort && (
+              <div className="sort-menu">
+                {SORTS.map((s) => (
+                  <button
+                    key={s.value}
+                    type="button"
+                    className={sort === s.value ? 'on' : ''}
+                    onClick={() => { clickColumn(s.value); setShowSort(false); }}
+                  >
+                    <span>{s.label}</span>
+                    {sort === s.value && <span>{order === 'asc' ? '▲ croissant' : '▼ décroissant'}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
       {uploaderId && (
         <button className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => updateParam('uploaderId', '')}>
           ← Voir tous les torrents
@@ -126,20 +247,83 @@ export default function Browse() {
         </div>
       )}
 
-      <div className="split-2">
-        <div className="panel">
-          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
-            <span className="muted">{total} résultat(s)</span>
-            <div className="row">
-              <span className="muted">Trier par</span>
-              <select value={sort} onChange={(e) => updateParam('sort', e.target.value)}>
-                {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+      {showFilters && (
+        <div className="panel ornate">
+          <div className="filter-grid">
+            {field('Année', <input type="number" placeholder="2024" value={year} onChange={(e) => updateParam('year', e.target.value)} style={full} />)}
+            {field('Résolution', (
+              <select value={resolution} onChange={(e) => updateParam('resolution', e.target.value)} style={full}>
+                <option value="">Toutes</option>
+                {RESOLUTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
-            </div>
+            ))}
+            {field('Langue', (
+              <select value={language} onChange={(e) => updateParam('language', e.target.value)} style={full}>
+                <option value="">Toutes</option>
+                {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+            ))}
+            {field('Source', (
+              <select value={source} onChange={(e) => updateParam('source', e.target.value)} style={full}>
+                <option value="">Toutes</option>
+                {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            ))}
+            {field('Codec', (
+              <select value={codec} onChange={(e) => updateParam('codec', e.target.value)} style={full}>
+                <option value="">Tous</option>
+                {CODECS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            ))}
+            {field('Audio', (
+              <select value={audio} onChange={(e) => updateParam('audio', e.target.value)} style={full}>
+                <option value="">Tous</option>
+                {AUDIO_FORMATS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            ))}
+            {field('Format', (
+              <select value={containerFormat} onChange={(e) => updateParam('containerFormat', e.target.value)} style={full}>
+                <option value="">Tous</option>
+                {CONTAINERS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            ))}
+            {field('Taille min (Go)', <input type="number" value={minSizeGo} onChange={(e) => updateParam('minSize', e.target.value)} style={full} />)}
+            {field('Taille max (Go)', <input type="number" value={maxSizeGo} onChange={(e) => updateParam('maxSize', e.target.value)} style={full} />)}
+            {field('Seeders minimum', <input type="number" value={minSeeders} onChange={(e) => updateParam('minSeeders', e.target.value)} style={full} />)}
+            <label className="row muted" style={{ gap: 6, paddingBottom: 8 }}>
+              <input type="checkbox" style={{ width: 'auto' }} checked={hdr} onChange={(e) => updateParam('hdr', e.target.checked ? 'true' : 'false')} />
+              HDR uniquement
+            </label>
           </div>
+        </div>
+      )}
+
+      {hasAdvancedFilters && (
+        <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+          {activeFilters.map((f) => (
+            <span key={f.key} className="filter-chip" onClick={() => updateParam(f.key, '')} title="Retirer ce filtre">{f.label} ✕</span>
+          ))}
+          <button type="button" className="secondary" style={{ padding: '2px 10px', fontSize: 12 }} onClick={resetFilters}>Tout réinitialiser</button>
+        </div>
+      )}
+
+      <div className="panel">
+        <div className="muted" style={{ marginBottom: 8 }}>{total} résultat(s)</div>
+        <div style={{ overflowX: 'auto' }}>
           <table>
             <thead>
-              <tr><th>Nom</th><th>Catégorie</th><th>Taille</th><th>S</th><th>L</th><th>Uploader</th></tr>
+              <tr>
+                {COLUMNS.map((c) => (
+                  <th
+                    key={c.sort}
+                    className={`sortable${sort === c.sort ? ' sorted' : ''}`}
+                    onClick={() => clickColumn(c.sort)}
+                    title={`Trier par ${c.label.toLowerCase()}`}
+                  >
+                    {c.label}<span className="sort-arrow">{sort === c.sort ? (order === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                  </th>
+                ))}
+              </tr>
             </thead>
             <tbody>
               {items.map((t) => {
@@ -156,7 +340,7 @@ export default function Browse() {
                         </span>
                       )}
                       <span>
-                        <Link to={`/torrents/${t.id}`}>{t.name}</Link>{' '}
+                        <Link to={`/torrents/${t.id}`} onMouseEnter={(e) => showTip(t, e)} onMouseMove={moveTip} onMouseLeave={hideTip}>{t.name}</Link>{' '}
                         {t.freeleech && <span className="badge freeleech">FL</span>}{' '}
                         {t.doubleUpload && <span className="badge double">2x</span>}{' '}
                         {t.resolution && <span className="badge new">{t.resolution}</span>}{' '}
@@ -169,8 +353,13 @@ export default function Browse() {
                       </span>
                     </div>
                   </td>
-                  <td className="muted">{t.category?.name}</td>
-                  <td className="muted">{formatSize(t.size)}</td>
+                  <td className="muted">
+                    {t.category?.imageUrl
+                      ? <img src={t.category.imageUrl} alt={t.category.name} title={t.category.name} style={{ height: 22, maxWidth: 80, objectFit: 'contain' }} />
+                      : t.category?.name}
+                  </td>
+                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{timeAgo(t.createdAt)}</td>
+                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatSize(t.size)}</td>
                   <td style={{ color: 'var(--success)' }}>{t.seeders}</td>
                   <td style={{ color: 'var(--danger)' }}>{t.leechers}</td>
                   <td className="muted">{t.anonymousUpload ? 'Anonyme' : t.uploader?.username}</td>
@@ -178,92 +367,37 @@ export default function Browse() {
                 );
               })}
               {items.length === 0 && (
-                <tr><td colSpan={6} className="muted">Aucun résultat.</td></tr>
+                <tr><td colSpan={COLUMNS.length} className="muted">Aucun résultat.</td></tr>
               )}
             </tbody>
           </table>
-          <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
-            <span className="muted">Page {page}</span>
-            <div className="row">
-              <button className="secondary" disabled={page <= 1} onClick={() => goToPage(page - 1)}>← Préc.</button>
-              <button className="secondary" disabled={page * 25 >= total} onClick={() => goToPage(page + 1)}>Suiv. →</button>
-            </div>
-          </div>
         </div>
-
-        <div className="panel ornate">
-          <div className="panel-title"><span className="title-icon">🔎</span>Filtres avancés</div>
-          <div className="grid" style={{ gap: 10 }}>
-            <div>
-              <div className="muted" style={{ marginBottom: 4 }}>Année</div>
-              <input type="number" placeholder="2024" value={year} onChange={(e) => updateParam('year', e.target.value)} />
-            </div>
-            <div>
-              <div className="muted" style={{ marginBottom: 4 }}>Résolution</div>
-              <select value={resolution} onChange={(e) => updateParam('resolution', e.target.value)}>
-                <option value="">Toutes</option>
-                {RESOLUTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-            <div>
-              <div className="muted" style={{ marginBottom: 4 }}>Langue</div>
-              <select value={language} onChange={(e) => updateParam('language', e.target.value)}>
-                <option value="">Toutes</option>
-                {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
-              </select>
-            </div>
-            <div>
-              <div className="muted" style={{ marginBottom: 4 }}>Source</div>
-              <select value={source} onChange={(e) => updateParam('source', e.target.value)}>
-                <option value="">Toutes</option>
-                {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <div className="muted" style={{ marginBottom: 4 }}>Codec</div>
-              <select value={codec} onChange={(e) => updateParam('codec', e.target.value)}>
-                <option value="">Tous</option>
-                {CODECS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <div className="muted" style={{ marginBottom: 4 }}>Audio</div>
-              <select value={audio} onChange={(e) => updateParam('audio', e.target.value)}>
-                <option value="">Tous</option>
-                {AUDIO_FORMATS.map((a) => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-            <div>
-              <div className="muted" style={{ marginBottom: 4 }}>Format</div>
-              <select value={containerFormat} onChange={(e) => updateParam('containerFormat', e.target.value)}>
-                <option value="">Tous</option>
-                {CONTAINERS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <label className="row muted" style={{ gap: 6 }}>
-              <input type="checkbox" style={{ width: 'auto' }} checked={hdr} onChange={(e) => updateParam('hdr', e.target.checked ? 'true' : 'false')} />
-              HDR uniquement
-            </label>
-            <div className="row">
-              <div style={{ flex: 1 }}>
-                <div className="muted" style={{ marginBottom: 4 }}>Taille min (Go)</div>
-                <input type="number" value={minSizeGo} onChange={(e) => updateParam('minSize', e.target.value)} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div className="muted" style={{ marginBottom: 4 }}>Taille max (Go)</div>
-                <input type="number" value={maxSizeGo} onChange={(e) => updateParam('maxSize', e.target.value)} />
-              </div>
-            </div>
-            <div>
-              <div className="muted" style={{ marginBottom: 4 }}>Seeders minimum</div>
-              <input type="number" value={minSeeders} onChange={(e) => updateParam('minSeeders', e.target.value)} />
-            </div>
-            {hasAdvancedFilters && (
-              <button className="secondary" onClick={resetFilters}>Réinitialiser les filtres</button>
-            )}
+        <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
+          <span className="muted">Page {page} / {Math.max(1, Math.ceil(total / 25))}</span>
+          <div className="row">
+            <button className="secondary" disabled={page <= 1} onClick={() => goToPage(page - 1)}>← Préc.</button>
+            <button className="secondary" disabled={page * 25 >= total} onClick={() => goToPage(page + 1)}>Suiv. →</button>
           </div>
         </div>
       </div>
+
+      {tip && (
+        <div className="torrent-tip" style={tipStyle}>
+          {tip.t.coverImage && <img src={tip.t.coverImage} alt="" />}
+          <div style={{ minWidth: 0 }}>
+            <div className="tip-title">{tip.t.name}</div>
+            <div className="tip-meta">
+              {[tip.t.category?.name, tip.t.year, tip.t.resolution, tip.t.language, formatSize(tip.t.size)].filter(Boolean).join(' · ')}
+            </div>
+            <div className="tip-meta">
+              <span style={{ color: 'var(--success)' }}>▲ {tip.t.seeders}</span> · <span style={{ color: 'var(--danger)' }}>▼ {tip.t.leechers}</span> · {timeAgo(tip.t.createdAt)}
+            </div>
+            <div className="tip-synopsis">
+              {tip.t.synopsis ?? <span className="muted">Pas de synopsis pour ce torrent.</span>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

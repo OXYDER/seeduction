@@ -23,6 +23,7 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  imageUrl?: string | null;
 }
 
 export interface LayoutContext {
@@ -146,9 +147,15 @@ export default function Layout() {
             {categories.map((c) => {
               const style = CATEGORY_STYLE[c.slug];
               return (
-                <Link key={c.id} to={`/browse?categoryId=${c.id}`}>
-                  {style ? <span>{style.icon}</span> : <span className="dot" style={{ background: 'var(--gold)' }} />}
-                  {c.name}
+                <Link key={c.id} to={`/browse?categoryId=${c.id}`} title={c.name} className={c.imageUrl ? 'has-image' : undefined}>
+                  {c.imageUrl ? (
+                    <img src={c.imageUrl} alt={c.name} className="category-img" />
+                  ) : (
+                    <>
+                      {style ? <span>{style.icon}</span> : <span className="dot" style={{ background: 'var(--gold)' }} />}
+                      {c.name}
+                    </>
+                  )}
                 </Link>
               );
             })}

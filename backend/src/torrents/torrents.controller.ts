@@ -20,6 +20,7 @@ export class TorrentsController {
       page: parseInt(query.page ?? '1', 10),
       pageSize: parseInt(query.pageSize ?? '25', 10),
       sort: query.sort,
+      order: query.order === 'asc' ? 'asc' : query.order === 'desc' ? 'desc' : undefined,
       minSize: query.minSize ? Number(query.minSize) : undefined,
       maxSize: query.maxSize ? Number(query.maxSize) : undefined,
       minSeeders: query.minSeeders ? Number(query.minSeeders) : undefined,

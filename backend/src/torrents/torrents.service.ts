@@ -107,6 +107,7 @@ export class TorrentsService {
   async list(params: {
     categoryId?: string; search?: string; uploaderId?: string; page: number; pageSize: number;
     sort?: string;
+    order?: 'asc' | 'desc';
     minSize?: number; maxSize?: number; minSeeders?: number;
     year?: number; language?: string; resolution?: string; codec?: string;
     hdr?: boolean; audio?: string; source?: string; containerFormat?: string;
@@ -139,13 +140,20 @@ export class TorrentsService {
     if (params.source) where.source = { equals: params.source, mode: 'insensitive' };
     if (params.containerFormat) where.containerFormat = { equals: params.containerFormat, mode: 'insensitive' };
 
-    const orderBy: any = {
-      date: { createdAt: 'desc' },
-      taille: { size: 'desc' },
-      seeders: { seeders: 'desc' },
-      popularite: { completedCount: 'desc' },
-      activite: { updatedAt: 'desc' },
-    }[params.sort ?? 'date'] ?? { createdAt: 'desc' };
+    // Champ de tri + sens par défaut (cliquer sur un titre de colonne inverse le sens).
+    const SORTS: Record<string, { build: (dir: 'asc' | 'desc') => any; dir: 'asc' | 'desc' }> = {
+      date: { build: (d) => ({ createdAt: d }), dir: 'desc' },
+      taille: { build: (d) => ({ size: d }), dir: 'desc' },
+      seeders: { build: (d) => ({ seeders: d }), dir: 'desc' },
+      leechers: { build: (d) => ({ leechers: d }), dir: 'desc' },
+      popularite: { build: (d) => ({ completedCount: d }), dir: 'desc' },
+      activite: { build: (d) => ({ updatedAt: d }), dir: 'desc' },
+      nom: { build: (d) => ({ name: d }), dir: 'asc' },
+      categorie: { build: (d) => ({ category: { name: d } }), dir: 'asc' },
+      uploader: { build: (d) => ({ uploader: { username: d } }), dir: 'asc' },
+    };
+    const sortDef = SORTS[params.sort ?? 'date'] ?? SORTS.date;
+    const orderBy: any = sortDef.build(params.order ?? sortDef.dir);
 
     const [items, total] = await Promise.all([
       this.prisma.torrent.findMany({
@@ -158,7 +166,14 @@ export class TorrentsService {
       this.prisma.torrent.count({ where }),
     ]);
 
-    return { items, total, page: params.page, pageSize: params.pageSize };
+    // Extrait du synopsis pour l'infobulle de la liste (le JSON complet reste sur la fiche).
+    const rows = items.map(({ metadata, ...t }) => {
+      const overview = (metadata as any)?.overview;
+      const synopsis = typeof overview === 'string' && overview.trim() ? overview.trim().replace(/\s+/g, ' ') : null;
+      return { ...t, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
+    });
+
+    return { items: rows, total, page: params.page, pageSize: params.pageSize };
   }
 
   /**

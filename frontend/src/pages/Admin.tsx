@@ -280,6 +280,19 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
   const [editParentId, setEditParentId] = useState('');
   const [editContentKind, setEditContentKind] = useState('');
   const [editError, setEditError] = useState('');
+  const [editImage, setEditImage] = useState('');
+
+  async function uploadImage(file: File | undefined) {
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const { data } = await api.post('/covers/upload', form);
+      setEditImage(data.url);
+    } catch (err: any) {
+      setEditError(err.response?.data?.message ?? "Échec du téléversement de l'image");
+    }
+  }
 
   function refresh() { api.get(endpoint).then((r) => setCategories(r.data)); }
   useEffect(() => { refresh(); }, [endpoint]);
@@ -296,13 +309,14 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
     setEditName(item.name);
     setEditParentId(item.parentId ?? '');
     setEditContentKind(item.contentKind ?? '');
+    setEditImage(item.imageUrl ?? '');
     setEditError('');
   }
 
   async function saveEdit(id: string) {
     setEditError('');
     try {
-      await api.patch(`${endpoint}/${id}`, { name: editName, parentId: editParentId || null, contentKind: editContentKind || null });
+      await api.patch(`${endpoint}/${id}`, { name: editName, parentId: editParentId || null, contentKind: editContentKind || null, ...(showContentKind ? { imageUrl: editImage || null } : {}) });
       setEditingId(null);
       refresh();
     } catch (err: any) {
@@ -338,6 +352,16 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
                 {CONTENT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
               </select>
             )}
+            {showContentKind && (
+              <div className="row" style={{ gap: 8 }}>
+                {editImage && <img src={editImage} alt="" style={{ height: 28, maxWidth: 90, objectFit: 'contain' }} />}
+                <label className="secondary" style={{ cursor: 'pointer', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13 }}>
+                  🖼️ {editImage ? "Changer l'image" : 'Ajouter une image'}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => uploadImage(e.target.files?.[0])} />
+                </label>
+                {editImage && <button type="button" className="secondary" onClick={() => setEditImage('')}>Retirer</button>}
+              </div>
+            )}
             <div className="row">
               <button onClick={() => saveEdit(item.id)}>Enregistrer</button>
               <button className="secondary" onClick={() => setEditingId(null)}>Annuler</button>
@@ -346,7 +370,7 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
         ) : (
           <>
             <span>
-              {isSub ? '↳ ' : ''}<strong>{item.name}</strong>{renderCount && <span className="muted">{renderCount(item)}</span>}
+              {isSub ? '↳ ' : ''}{showContentKind && item.imageUrl && <img src={item.imageUrl} alt="" style={{ height: 20, maxWidth: 60, objectFit: 'contain', verticalAlign: 'middle', marginRight: 6 }} />}<strong>{item.name}</strong>{renderCount && <span className="muted">{renderCount(item)}</span>}
               {showContentKind && (
                 <span className="muted">
                   {' '}— {item.contentKind ? CONTENT_KIND_LABEL[item.contentKind] ?? item.contentKind : (isSub ? 'hérite de la catégorie principale' : 'aucun type de contenu')}

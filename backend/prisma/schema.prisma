@@ -120,6 +120,8 @@ model Category {
   // Type de contenu (Film/Série/Musique/...) pour le générateur de description :
   // une sous-catégorie sans valeur hérite de celle de sa catégorie parente.
   contentKind TemplateKind?
+  // Image affichée à la place de l'icône dans la barre des catégories (téléversée depuis l'administration).
+  imageUrl    String?
 }
 
 model Torrent {

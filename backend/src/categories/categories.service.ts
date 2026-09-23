@@ -49,19 +49,20 @@ export class CategoriesService implements OnModuleInit {
     });
   }
 
-  create(name: string, parentId?: string, contentKind?: string | null) {
+  create(name: string, parentId?: string, contentKind?: string | null, imageUrl?: string | null) {
     return this.prisma.category.create({
-      data: { name, slug: slugify(name), parentId: parentId || null, contentKind: (contentKind as any) || null },
+      data: { name, slug: slugify(name), parentId: parentId || null, contentKind: (contentKind as any) || null, imageUrl: imageUrl || null },
     });
   }
 
-  async update(id: string, data: { name?: string; parentId?: string | null; contentKind?: string | null }) {
+  async update(id: string, data: { name?: string; parentId?: string | null; contentKind?: string | null; imageUrl?: string | null }) {
     const payload: any = {};
     if (data.name !== undefined) {
       payload.name = data.name;
       payload.slug = slugify(data.name);
     }
     if (data.contentKind !== undefined) payload.contentKind = data.contentKind || null;
+    if (data.imageUrl !== undefined) payload.imageUrl = data.imageUrl || null;
     if (data.parentId !== undefined) {
       const newParentId = data.parentId || null;
       if (newParentId === id) throw new BadRequestException('Une catégorie ne peut pas être son propre parent');
