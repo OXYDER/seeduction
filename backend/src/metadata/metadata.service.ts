@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { CoversService } from '../covers/covers.service';
 import { PrismaService } from '../common/prisma.service';
+import { TranslateService } from './translate.service';
 
 export interface SearchResult {
   id: string;
@@ -65,7 +66,7 @@ export class MetadataService {
   private tmdbKey = process.env.TMDB_API_KEY || null;
   private rawgKey = process.env.RAWG_API_KEY || null;
 
-  constructor(private coversService: CoversService, private prisma: PrismaService) {}
+  constructor(private coversService: CoversService, private prisma: PrismaService, private translate: TranslateService) {}
 
   get supportedKinds(): string[] {
     const kinds: string[] = ['MUSIQUE', 'LIVRE'];
@@ -195,7 +196,18 @@ export class MetadataService {
     return { ...rich.variables, affiche: await this.saveCover(rich.coverUrl) };
   }
 
-  private rich(kind: string, id: string): Promise<RichMetadata> {
+  /** Fiche complète, avec le synopsis traduit en français s'il ne l'est pas déjà. */
+  private async rich(kind: string, id: string): Promise<RichMetadata> {
+    const rich = await this.richRaw(kind, id);
+    const description = rich.variables?.description;
+    if (typeof description === 'string' && description) {
+      const translated = await this.translate.toFrench(description);
+      if (translated) rich.variables.description = translated.text;
+    }
+    return rich;
+  }
+
+  private richRaw(kind: string, id: string): Promise<RichMetadata> {
     switch (kind) {
       case 'FILM':
         return this.richTmdb('movie', id);
