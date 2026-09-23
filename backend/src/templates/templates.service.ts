@@ -248,6 +248,7 @@ const PERSONNALISE_TEMPLATE = `${TITLE}\n\n{description}`;
 const DEFAULT_TEMPLATES: { name: string; kind: string; content: string; legacy: string[] }[] = [
   { name: 'Film (par défaut)', kind: 'FILM', content: FILM_SERIE_TEMPLATE, legacy: [LEGACY_FILM_SERIE, V1_FILM_SERIE] },
   { name: 'Série (par défaut)', kind: 'SERIE', content: FILM_SERIE_TEMPLATE, legacy: [LEGACY_FILM_SERIE, V1_FILM_SERIE] },
+  { name: 'XXX (par défaut)', kind: 'XXX', content: FILM_SERIE_TEMPLATE, legacy: [] },
   { name: 'Musique (par défaut)', kind: 'MUSIQUE', content: MUSIQUE_TEMPLATE, legacy: [LEGACY_MUSIQUE, V1_MUSIQUE] },
   { name: 'Jeu (par défaut)', kind: 'JEU', content: GENERIC_TEMPLATE, legacy: [LEGACY_GENERIC, V1_GENERIC] },
   { name: 'Logiciel (par défaut)', kind: 'LOGICIEL', content: GENERIC_TEMPLATE, legacy: [LEGACY_GENERIC, V1_GENERIC] },

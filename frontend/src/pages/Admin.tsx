@@ -243,6 +243,7 @@ const CONTENT_KINDS = [
   { value: 'JEU', label: 'Jeu' },
   { value: 'LOGICIEL', label: 'Logiciel' },
   { value: 'LIVRE', label: 'Livre' },
+  { value: 'XXX', label: 'XXX' },
   { value: 'DOCUMENT', label: 'Document' },
   { value: 'ARCHIVE', label: 'Archive' },
   { value: 'PERSONNALISE', label: 'Personnalisé' },
@@ -463,7 +464,7 @@ function ForumAdmin() {
   );
 }
 
-const TEMPLATE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'JEU', 'LOGICIEL', 'LIVRE', 'DOCUMENT', 'ARCHIVE', 'PERSONNALISE'];
+const TEMPLATE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'JEU', 'LOGICIEL', 'LIVRE', 'XXX', 'DOCUMENT', 'ARCHIVE', 'PERSONNALISE'];
 
 function TemplatesAdmin() {
   const [templates, setTemplates] = useState<any[]>([]);

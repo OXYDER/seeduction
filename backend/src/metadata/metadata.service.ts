@@ -37,7 +37,7 @@ interface RichMetadata {
 }
 
 const TMDB_IMG = 'https://image.tmdb.org/t/p';
-const SEARCHABLE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU'] as const;
+const SEARCHABLE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'] as const;
 
 const slugify = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -65,6 +65,7 @@ export class MetadataService {
   private readonly logger = new Logger(MetadataService.name);
   private tmdbKey = process.env.TMDB_API_KEY || null;
   private rawgKey = process.env.RAWG_API_KEY || null;
+  private porndbKey = process.env.THEPORNDB_API_KEY || null;
 
   constructor(private coversService: CoversService, private prisma: PrismaService, private translate: TranslateService) {}
 
@@ -72,6 +73,7 @@ export class MetadataService {
     const kinds: string[] = ['MUSIQUE', 'LIVRE'];
     if (this.tmdbKey) kinds.push('FILM', 'SERIE');
     if (this.rawgKey) kinds.push('JEU');
+    if (this.porndbKey) kinds.push('XXX');
     return kinds;
   }
 
@@ -90,6 +92,9 @@ export class MetadataService {
     }
     if ((kind === 'FILM' || kind === 'SERIE') && !this.tmdbKey) {
       throw new ServiceUnavailableException("La recherche Film/Série n'est pas configurée (clé TMDB manquante).");
+    }
+    if (kind === 'XXX' && !this.porndbKey) {
+      throw new ServiceUnavailableException("La recherche XXX n'est pas configurée (clé ThePornDB manquante).");
     }
     if (kind === 'JEU' && !this.rawgKey) {
       throw new ServiceUnavailableException("La recherche de jeux n'est pas configurée (clé RAWG manquante).");
@@ -112,6 +117,8 @@ export class MetadataService {
         return this.searchBooks(query);
       case 'JEU':
         return this.searchRawg(query);
+      case 'XXX':
+        return this.searchPorndb(query);
       default:
         return [];
     }
@@ -219,6 +226,8 @@ export class MetadataService {
         return id.startsWith('ol:') ? this.richOpenLibrary(id.slice(3)) : this.richBooks(id);
       case 'JEU':
         return this.richRawg(id);
+      case 'XXX':
+        return this.richPorndb(id);
       default:
         throw new BadRequestException(`Recherche non disponible pour la catégorie ${kind}`);
     }
@@ -488,6 +497,79 @@ export class MetadataService {
     };
   }
 
+  // ------------------------------------------------------------ ThePornDB (XXX)
+
+  private porndbHeaders() {
+    return { Authorization: `Bearer ${this.porndbKey}`, Accept: 'application/json' };
+  }
+
+  /** Scènes et films : les ids sont préfixés "scene:" / "movie:" pour savoir où aller chercher la fiche. */
+  private async searchPorndb(query: string): Promise<SearchResult[]> {
+    const q = encodeURIComponent(query);
+    const call = (type: 'scenes' | 'movies') =>
+      this.fetchJson(`https://api.theporndb.net/${type}?q=${q}&per_page=10`, 'ThePornDB', this.porndbHeaders()).then((r) => (r.data ?? []) as any[]);
+    const [scenes, movies] = await Promise.allSettled([call('scenes'), call('movies')]);
+    if (scenes.status === 'rejected' && movies.status === 'rejected') throw scenes.reason;
+
+    const toResult = (type: 'scene' | 'movie') => (r: any): SearchResult => ({
+      id: `${type}:${r.id}`,
+      title: r.title ?? '',
+      subtitle: [type === 'movie' ? 'Film' : 'Scène', r.site?.name, r.date ? String(r.date).slice(0, 4) : ''].filter(Boolean).join(' · '),
+      thumbnail: r.poster || r.image || r.posters?.small || null,
+    });
+    return [
+      ...(movies.status === 'fulfilled' ? movies.value.slice(0, 6).map(toResult('movie')) : []),
+      ...(scenes.status === 'fulfilled' ? scenes.value.slice(0, 8).map(toResult('scene')) : []),
+    ];
+  }
+
+  private async richPorndb(id: string): Promise<RichMetadata> {
+    const [type, rawId] = id.includes(':') ? (id.split(':') as [string, string]) : ['scene', id];
+    const path = type === 'movie' ? 'movies' : 'scenes';
+    const res = await this.fetchJson(`https://api.theporndb.net/${path}/${encodeURIComponent(rawId)}`, 'ThePornDB', this.porndbHeaders());
+    const g = res.data ?? res;
+
+    const performers: any[] = (g.performers ?? []).map((p: any) => p.parent ?? p).filter((p: any) => p?.name).slice(0, 12);
+    const tags: string[] = (g.tags ?? []).map((t: any) => t.name).filter(Boolean);
+    const site = g.site ?? g.studio ?? null;
+    const seconds = Number(g.duration) || 0;
+    const date: string = g.date ? String(g.date) : '';
+
+    const entities: EntityDraft[] = [
+      ...performers.map((p, i): EntityDraft => ({
+        type: 'PERSON', role: 'ACTOR', name: p.name, source: 'theporndb', externalId: String(p.id), imageUrl: p.image || p.face || null, position: i,
+      })),
+      ...(site?.name
+        ? [{ type: 'COMPANY', role: 'STUDIO', name: site.name, source: 'theporndb', externalId: String(site.uuid ?? site.id ?? slugify(site.name)), imageUrl: site.logo || null, position: 0 } as EntityDraft]
+        : []),
+      ...genreDrafts(tags),
+    ];
+
+    return {
+      source: 'theporndb',
+      variables: {
+        titre: g.title ?? '',
+        année: date.slice(0, 4),
+        description: g.description ?? '',
+        genre: tags.slice(0, 10).join(', '),
+        durée: seconds ? formatMinutes(Math.round(seconds / 60)) : '',
+        acteurs: performers.slice(0, 8).map((p) => p.name).join(', '),
+        studio: site?.name ?? '',
+      },
+      info: {
+        kind: type === 'movie' ? 'movie' : 'scene',
+        releaseDate: date || null,
+        runtime: seconds ? Math.round(seconds / 60) : null,
+        overview: g.description || null,
+        website: g.url || null,
+        porndbId: g.id ?? rawId,
+      },
+      entities,
+      coverUrl: g.poster || g.image || g.posters?.large || null,
+      backdropUrl: g.background?.large || g.background?.full || null,
+    };
+  }
+
   /** Épisodes d'une saison (titre, date) — pour lister lesquels sont disponibles sur Seeduction. */
   async seasonEpisodes(tmdbId: string, season: number) {
     if (!this.tmdbKey) throw new ServiceUnavailableException("La recherche Film/Série n'est pas configurée (clé TMDB manquante).");
@@ -554,10 +636,10 @@ export class MetadataService {
     }
   }
 
-  private async fetchJson(url: string, sourceName: string): Promise<any> {
+  private async fetchJson(url: string, sourceName: string, headers?: Record<string, string>): Promise<any> {
     let res: Response;
     try {
-      res = await fetch(url);
+      res = await fetch(url, headers ? { headers } : undefined);
     } catch {
       throw new ServiceUnavailableException(`Impossible de joindre ${sourceName}.`);
     }

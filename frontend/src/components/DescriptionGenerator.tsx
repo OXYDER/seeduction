@@ -9,6 +9,7 @@ const KINDS: { value: string; label: string }[] = [
   { value: 'JEU', label: 'Jeu' },
   { value: 'LOGICIEL', label: 'Logiciel' },
   { value: 'LIVRE', label: 'Livre' },
+  { value: 'XXX', label: 'XXX' },
   { value: 'DOCUMENT', label: 'Document' },
   { value: 'ARCHIVE', label: 'Archive' },
   { value: 'PERSONNALISE', label: 'Personnalisé' },
