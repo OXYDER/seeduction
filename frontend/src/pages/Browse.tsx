@@ -4,6 +4,8 @@ import { api } from '../api/client';
 import { formatBytes as formatSize } from '../lib/format';
 import { CATEGORY_STYLE } from '../components/Layout';
 import { timeAgo } from '../lib/time';
+import { useFavorites } from '../lib/favorites';
+import { FavoriteStar, HealthDot } from '../components/TorrentBits';
 import { parseNaturalQuery, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
 
 const SORTS = [
@@ -63,6 +65,14 @@ export default function Browse() {
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
+  const favorites = useFavorites();
+  const [view, setViewState] = useState<'list' | 'grid'>(() => {
+    try { return localStorage.getItem('browseView') === 'grid' ? 'grid' : 'list'; } catch { return 'list'; }
+  });
+  function setView(v: 'list' | 'grid') {
+    setViewState(v);
+    try { localStorage.setItem('browseView', v); } catch { /* stockage indisponible : le choix vaut pour cette visite */ }
+  }
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [tip, setTip] = useState<Tip | null>(null);
@@ -196,6 +206,10 @@ export default function Browse() {
             onChange={(e) => updateParam('search', e.target.value)}
             style={{ width: 320, maxWidth: '100%' }}
           />
+          <div className="view-toggle">
+            <button type="button" className={view === 'list' ? 'on' : ''} onClick={() => setView('list')} title="Vue liste">☰</button>
+            <button type="button" className={view === 'grid' ? 'on' : ''} onClick={() => setView('grid')} title="Vue affiches">▦</button>
+          </div>
           <button type="button" className={`icon-btn${showFilters ? ' active' : ''}`} onClick={() => setShowFilters((v) => !v)} title="Filtres">
             <span>🔎</span> Filtres {hasAdvancedFilters && <span className="count">{activeFilters.length}</span>}
           </button>
@@ -309,6 +323,46 @@ export default function Browse() {
 
       <div className="panel">
         <div className="muted" style={{ marginBottom: 8 }}>{total} résultat(s)</div>
+        {view === 'grid' ? (
+          <div className="poster-grid">
+            {items.map((t) => {
+              const catStyle = t.category?.slug ? CATEGORY_STYLE[t.category.slug] : undefined;
+              return (
+                <Link
+                  key={t.id}
+                  to={`/torrents/${t.id}`}
+                  className="poster-card"
+                  onMouseEnter={(e) => showTip(t, e)}
+                  onMouseMove={moveTip}
+                  onMouseLeave={hideTip}
+                >
+                  {t.coverImage
+                    ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
+                    : <div className="poster-fallback">{catStyle?.icon ?? '📦'}</div>}
+                  <div className="poster-badges">
+                    {t.freeleech && <span className="badge freeleech">FL</span>}
+                    {t.doubleUpload && <span className="badge double">2x</span>}
+                    {t.resolution && <span className="badge new">{t.resolution}</span>}
+                  </div>
+                  {favorites.enabled && (
+                    <div className="poster-fav">
+                      <FavoriteStar active={favorites.ids.has(t.id)} onToggle={() => favorites.toggle(t.id)} />
+                    </div>
+                  )}
+                  <div className="poster-body">
+                    <div className="poster-title">{t.name}</div>
+                    <div className="muted" style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center' }}>
+                      <HealthDot seeders={t.seeders} />
+                      <span style={{ color: 'var(--success)' }}>{t.seeders}</span>&nbsp;/&nbsp;<span style={{ color: 'var(--danger)' }}>{t.leechers}</span>
+                      <span style={{ marginLeft: 'auto' }}>{formatSize(t.size)}</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+            {items.length === 0 && <div className="muted">Aucun résultat.</div>}
+          </div>
+        ) : (
         <div style={{ overflowX: 'auto' }}>
           <table>
             <thead>
@@ -332,6 +386,7 @@ export default function Browse() {
                 <tr key={t.id}>
                   <td>
                     <div className="row" style={{ gap: 10 }}>
+                      {favorites.enabled && <FavoriteStar active={favorites.ids.has(t.id)} onToggle={() => favorites.toggle(t.id)} />}
                       {t.coverImage ? (
                         <img src={t.coverImage} alt="" style={{ width: 32, height: 44, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
                       ) : (
@@ -360,7 +415,7 @@ export default function Browse() {
                   </td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{timeAgo(t.createdAt)}</td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatSize(t.size)}</td>
-                  <td style={{ color: 'var(--success)' }}>{t.seeders}</td>
+                  <td style={{ color: 'var(--success)', whiteSpace: 'nowrap' }}><HealthDot seeders={t.seeders} />{t.seeders}</td>
                   <td style={{ color: 'var(--danger)' }}>{t.leechers}</td>
                   <td className="muted">{t.anonymousUpload ? 'Anonyme' : t.uploader?.username}</td>
                 </tr>
@@ -372,6 +427,7 @@ export default function Browse() {
             </tbody>
           </table>
         </div>
+        )}
         <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
           <span className="muted">Page {page} / {Math.max(1, Math.ceil(total / 25))}</span>
           <div className="row">

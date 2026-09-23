@@ -5,12 +5,15 @@ import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
 import TorrentHero from '../components/TorrentHero';
 import TorrentRelated from '../components/TorrentRelated';
+import { FavoriteStar, HealthDot } from '../components/TorrentBits';
+import { useFavorites } from '../lib/favorites';
 
 export default function TorrentDetail() {
   const { id } = useParams();
   const justUploaded = (useLocation().state as { justUploaded?: boolean } | null)?.justUploaded;
   const [torrent, setTorrent] = useState<any>(null);
   const user = useAuthStore((s) => s.user);
+  const favorites = useFavorites();
   const [myCollections, setMyCollections] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addedTo, setAddedTo] = useState<Set<string>>(new Set());
@@ -64,7 +67,10 @@ export default function TorrentDetail() {
           <img src={torrent.coverImage} alt="" style={{ width: 100, height: 140, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
         )}
         <div>
-          <h1>{torrent.name}</h1>
+          <h1>
+            {favorites.enabled && <FavoriteStar active={favorites.ids.has(torrent.id)} onToggle={() => favorites.toggle(torrent.id)} size={26} />}
+            {torrent.name}
+          </h1>
           <div className="row" style={{ flexWrap: 'wrap' }}>
             {torrent.freeleech && <span className="badge freeleech">FREELEECH</span>}
             {torrent.doubleUpload && <span className="badge double">DOUBLE UPLOAD</span>}
@@ -81,7 +87,7 @@ export default function TorrentDetail() {
           <div>
             <div className="muted">Catégorie : {torrent.category?.name}</div>
             <div className="muted">Uploader : {torrent.anonymousUpload ? 'Anonyme' : torrent.uploader?.username}</div>
-            <div className="muted">Seeders {torrent.seeders} / Leechers {torrent.leechers} / Complétés {torrent.completedCount}</div>
+            <div className="muted"><HealthDot seeders={torrent.seeders} />Seeders {torrent.seeders} / Leechers {torrent.leechers} / Complétés {torrent.completedCount}</div>
           </div>
           {user && (
             <div className="row" style={{ gap: 8, position: 'relative' }}>

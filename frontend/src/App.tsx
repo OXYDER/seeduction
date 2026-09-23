@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Browse from './pages/Browse';
+import Favorites from './pages/Favorites';
 import TorrentDetail from './pages/TorrentDetail';
 import Upload from './pages/Upload';
 import Profile from './pages/Profile';
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/collections" element={<Collections />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/rules" element={<Rules />} />
+          <Route path="/favorites" element={<Favorites />} />
         </Route>
       </Routes>
     </BrowserRouter>

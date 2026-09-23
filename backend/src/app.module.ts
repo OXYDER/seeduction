@@ -15,6 +15,7 @@ import { AnnouncementsModule } from './announcements/announcements.module';
 import { TemplatesModule } from './templates/templates.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CollectionsModule } from './collections/collections.module';
+import { FavoritesModule } from './favorites/favorites.module';
 import { BadgesModule } from './badges/badges.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { PublicApiModule } from './public-api/public-api.module';
@@ -42,6 +43,7 @@ import { EntitiesModule } from './entities/entities.module';
     TemplatesModule,
     NotificationsModule,
     CollectionsModule,
+    FavoritesModule,
     BadgesModule,
     ApiKeysModule,
     PublicApiModule,

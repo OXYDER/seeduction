@@ -821,3 +821,23 @@ th.sorted .sort-arrow { opacity: 1; }
 .torrent-tip .tip-meta { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
 .torrent-tip .tip-synopsis { font-size: 12.5px; line-height: 1.45; margin-top: 8px; }
 @media (hover: none) { .torrent-tip { display: none; } }
+
+/* ---- Favoris, santé, vue en grille ---- */
+.fav-star { background: none; border: 0; padding: 0 4px; line-height: 1; cursor: pointer; font-weight: 400; }
+.fav-star:hover { filter: none; color: var(--gold-bright) !important; transform: scale(1.15); }
+.view-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+.view-toggle button { background: var(--bg-panel); color: var(--text-dim); border: 0; border-radius: 0; padding: 7px 10px; font-weight: 400; }
+.view-toggle button.on { background: var(--bg-panel-raised); color: var(--gold-bright); box-shadow: inset 0 -2px 0 var(--gold); }
+.poster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.poster-card {
+  position: relative; display: flex; flex-direction: column; overflow: hidden; color: var(--text);
+  background: var(--bg-panel-raised); border: 1px solid var(--border); border-radius: 8px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.poster-card:hover { border-color: var(--gold); transform: translateY(-2px); color: var(--text); }
+.poster-card .poster { aspect-ratio: 2 / 3; width: 100%; object-fit: cover; display: block; background: var(--bg-panel); }
+.poster-card .poster-fallback { aspect-ratio: 2 / 3; display: flex; align-items: center; justify-content: center; font-size: 44px; background: var(--bg-panel); }
+.poster-card .poster-body { padding: 8px 10px 10px; }
+.poster-card .poster-title { font-size: 13px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.poster-card .poster-fav { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.55); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+.poster-card .poster-badges { position: absolute; top: 6px; left: 6px; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
