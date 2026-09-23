@@ -120,6 +120,48 @@ function Card({ label, value }: { label: string; value: number }) {
   return <div className="panel"><div className="muted">{label}</div><div style={{ fontSize: 22, fontWeight: 700 }}>{value}</div></div>;
 }
 
+function GlobalFreeleechControl() {
+  const [until, setUntil] = useState<string | null>(null);
+  const [hours, setHours] = useState('24');
+  const [error, setError] = useState('');
+
+  function load() { api.get('/bonus/freeleech').then((r) => setUntil(r.data.until)).catch(() => {}); }
+  useEffect(load, []);
+
+  async function apply(h: number | null) {
+    setError('');
+    try {
+      const { data } = await api.post('/bonus/freeleech', { hours: h });
+      setUntil(data.freeleechUntil);
+    } catch (err: any) {
+      setError(err.response?.data?.message ?? 'Erreur');
+    }
+  }
+
+  return (
+    <div className="panel">
+      <h3>🎉 Freeleech global</h3>
+      <p className="muted">Pendant un événement freeleech, les téléchargements de tous les membres ne comptent pas dans leur ratio (l'upload compte toujours).</p>
+      {until ? (
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <strong style={{ color: 'var(--success)' }}>Actif jusqu'au {new Date(until).toLocaleString('fr-FR')}</strong>
+          <button type="button" className="danger" onClick={() => apply(null)}>Arrêter maintenant</button>
+        </div>
+      ) : (
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <span className="muted">Inactif.</span>
+          <input type="number" min="1" max="720" value={hours} onChange={(e) => setHours(e.target.value)} style={{ width: 90 }} />
+          <span className="muted">heure(s)</span>
+          <button type="button" onClick={() => apply(Number(hours))}>Activer</button>
+          <button type="button" className="secondary" onClick={() => apply(48)}>48 h</button>
+          <button type="button" className="secondary" onClick={() => apply(72)}>Week-end (72 h)</button>
+        </div>
+      )}
+      {error && <div className="muted" style={{ color: 'var(--danger)', marginTop: 6 }}>{error}</div>}
+    </div>
+  );
+}
+
 function Overview() {
   const [stats, setStats] = useState<any>(null);
   const [pending, setPending] = useState<any[]>([]);
@@ -148,6 +190,8 @@ function Overview() {
           <Card label="Reports ouverts" value={stats.openReports} />
         </div>
       )}
+
+      <GlobalFreeleechControl />
 
       <div className="panel">
         <h3>Torrents en attente ({pending.length})</h3>

@@ -49,6 +49,11 @@ export default function Layout() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
+  const [freeleechUntil, setFreeleechUntil] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get('/bonus/freeleech').then((r) => setFreeleechUntil(r.data.until)).catch(() => {});
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -95,10 +100,10 @@ export default function Layout() {
               <span className="label">Téléchargé :</span>
               <span className="value">{formatBytes(profile.downloaded)}</span>
             </div>
-            <div className="topbar-stat">
+            <Link to="/bonus" className="topbar-stat" title="Boutique bonus et règle du seed">
               <span className="label">Points Seed :</span>
               <span className="value">{formatNumber(Math.round(profile.bonusPoints))}</span>
-            </div>
+            </Link>
             <div className="topbar-stat">
               <span className="label">Invitations :</span>
               <span className="value">{profile._count.invitees}</span>
@@ -115,6 +120,12 @@ export default function Layout() {
           </button>
         </div>
       </div>
+
+      {freeleechUntil && (
+        <div style={{ background: 'linear-gradient(90deg, rgba(74,222,128,0.18), rgba(224,184,74,0.18))', borderBottom: '1px solid var(--border-gold)', textAlign: 'center', padding: '6px 12px', fontSize: 13 }}>
+          🎉 <strong>Freeleech global</strong> jusqu'au {new Date(freeleechUntil).toLocaleString('fr-FR')} : les téléchargements ne comptent pas dans le ratio !
+        </div>
+      )}
 
       <div className="mainnav">
         <div className="nav-links">

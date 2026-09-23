@@ -43,6 +43,7 @@ model User {
   // 2FA
   twoFactorSecret  String?
   twoFactorEnabled Boolean    @default(false)
+  twoFactorRecovery String[]  // codes de secours (hachés), à usage unique
 
   // Ratio / stats globales (dénormalisées pour perf, recalculées via les Announces)
   uploaded         BigInt     @default(0)
@@ -83,6 +84,8 @@ model User {
   chatMessages     ChatMessage[]
 
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
+  memberClass      MemberClass @default(NOUVEAU) // rang automatique (ancienneté, upload, ratio)
+  freeleechTokens  Int        @default(0)
   createdAt        DateTime   @default(now())
   lastSeenAt       DateTime?
   lastIp           String?
@@ -268,6 +271,14 @@ model Snatch {
   torrentId  String
   userId     String
   completedAt DateTime @default(now())
+  // Suivi du seed (règle « hit & run »)
+  seedSeconds Int      @default(0)
+  lastSeedAt  DateTime?
+  satisfied   Boolean  @default(false) // temps de seed ou ratio sur ce torrent atteint
+  hnr         Boolean  @default(false) // a arrêté de seeder trop tôt (avertissement envoyé)
+
+  @@index([userId, torrentId])
+  @@index([satisfied, hnr, completedAt])
 }
 
 // Snapshot périodique du ratio d'un user (pour graphiques d'évolution)
@@ -439,6 +450,8 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   @@index([action])
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 enum NotificationType {
@@ -451,6 +464,7 @@ enum NotificationType {
   INVITE_USED
   BADGE_EARNED
   TORRENT_COMMENT
+  SYSTEM
 }
 
 model Notification {
@@ -637,4 +651,41 @@ model TorrentComment {
   editedAt  DateTime?
 
   @@index([torrentId, createdAt])
+}
+
+enum MemberClass {
+  NOUVEAU
+  MEMBRE
+  POWER_USER
+  ELITE
+  VETERAN
+}
+
+// Jeton freeleech dépensé sur un torrent : ses téléchargements ne comptent pas dans le ratio de ce membre.
+model PersonalFreeleech {
+  userId    String
+  torrentId String
+  expiresAt DateTime
+
+  @@id([userId, torrentId])
+  @@index([expiresAt])
+}
+
+// Réglages du site modifiables sans redéploiement (ex : freeleech global).
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// Lien de réinitialisation de mot de passe émis par le staff (à usage unique, court).
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }

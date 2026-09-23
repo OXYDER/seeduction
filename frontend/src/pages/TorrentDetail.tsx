@@ -23,10 +23,27 @@ export default function TorrentDetail() {
   const [myCollections, setMyCollections] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addedTo, setAddedTo] = useState<Set<string>>(new Set());
+  const [tokenUntil, setTokenUntil] = useState<string | null>(null);
+  const [tokenMsg, setTokenMsg] = useState('');
 
   useEffect(() => {
     api.get(`/torrents/${id}`).then((r) => setTorrent(r.data));
   }, [id]);
+
+  useEffect(() => {
+    if (!user || !id) return;
+    api.get(`/bonus/token/${id}`).then((r) => setTokenUntil(r.data.activeUntil)).catch(() => {});
+  }, [user, id]);
+
+  async function spendToken() {
+    setTokenMsg('');
+    try {
+      const { data } = await api.post(`/bonus/token/${id}`);
+      setTokenUntil(data.expiresAt);
+    } catch (err: any) {
+      setTokenMsg(err.response?.data?.message ?? 'Impossible d\'utiliser un jeton');
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -101,6 +118,9 @@ export default function TorrentDetail() {
           {user && (
             <div className="row" style={{ gap: 8, position: 'relative' }}>
               <button onClick={download}>⬇ Télécharger le .torrent</button>
+              {!torrent.freeleech && (tokenUntil
+                ? <span className="badge freeleech" title="Jeton freeleech actif">🎟️ Freeleech pour toi jusqu'au {new Date(tokenUntil).toLocaleDateString('fr-FR')}</span>
+                : <button className="secondary" onClick={spendToken} title="Son téléchargement ne compte pas dans ton ratio pendant 7 jours">🎟️ Utiliser un jeton</button>)}
               <button className="secondary" onClick={() => setAddOpen((v) => !v)}>📚 Ajouter à une collection</button>
               {torrent.uploader?.id !== user.id && <ReportButton targetType="torrent" targetId={torrent.id} />}
               {addOpen && (
@@ -126,6 +146,7 @@ export default function TorrentDetail() {
           <div className="bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(torrent.description) }} />
         )}
       </div>
+      {tokenMsg && <div className="muted" style={{ color: 'var(--danger)' }}>{tokenMsg} — <a href="/bonus">boutique bonus</a></div>}
       <TorrentComments torrentId={torrent.id} />
       <div className="panel">
         <h3>Fichiers</h3>

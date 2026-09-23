@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Browse from './pages/Browse';
 import Favorites from './pages/Favorites';
+import Bonus from './pages/Bonus';
 import ForumView from './pages/ForumView';
 import { ForumLatest, ForumSearch } from './pages/ForumMisc';
 import TorrentDetail from './pages/TorrentDetail';
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/rules" element={<Rules />} />
           <Route path="/favorites" element={<Favorites />} />
+          <Route path="/bonus" element={<Bonus />} />
         </Route>
       </Routes>
     </BrowserRouter>
