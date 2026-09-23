@@ -773,5 +773,5 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
   border: 1px solid var(--border-gold); border-radius: 3px; font-size: 12px; line-height: 14px;
 }
 .bbcode-content details[open] > summary::before { content: '−'; }
-.bbcode-content details > :not(summary) { margin-left: 22px; }
-.bbcode-content details > details, .bbcode-content details > div { display: block; }
+.bbcode-content details, .bbcode-content details > summary, .bbcode-content details .spoiler-body { text-align: left; }
+.bbcode-content details > .spoiler-body { margin: 2px 0 4px 8px; padding-left: 14px; border-left: 1px solid var(--border-gold); }

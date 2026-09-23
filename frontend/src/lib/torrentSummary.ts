@@ -43,6 +43,23 @@ interface FolderNode {
   files: { name: string; size: number }[];
 }
 
+const ICONS: [Set<string>, string][] = [
+  [new Set(['MKV', 'MP4', 'AVI', 'MOV', 'WMV', 'M4V', 'MPG', 'MPEG', 'TS', 'M2TS', 'WEBM', 'FLV']), '🎬'],
+  [new Set(['MP3', 'FLAC', 'WAV', 'AAC', 'M4A', 'OGG', 'OPUS', 'WMA', 'APE', 'ALAC']), '🎵'],
+  [new Set(['SRT', 'ASS', 'SSA', 'SUB', 'IDX', 'VTT', 'SUP']), '💬'],
+  [new Set(['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'BMP']), '🖼️'],
+  [new Set(['ISO', 'BIN', 'CUE', 'IMG', 'MDF']), '💿'],
+  [new Set(['ZIP', 'RAR', '7Z', 'TAR', 'GZ', 'PART01']), '📦'],
+  [new Set(['EXE', 'MSI', 'DMG', 'APK', 'PKG', 'DEB', 'APPIMAGE']), '⚙️'],
+  [new Set(['PDF', 'EPUB', 'MOBI', 'AZW3', 'CBZ', 'CBR', 'DJVU']), '📖'],
+  [new Set(['NFO', 'TXT', 'MD', 'DOC', 'DOCX']), '📝'],
+];
+
+function iconFor(name: string): string {
+  const ext = extensionOf(name);
+  return ICONS.find(([set]) => set.has(ext))?.[1] ?? '📄';
+}
+
 const naturalCompare = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
 // Les crochets casseraient la syntaxe [spoiler=Titre].
 const safeName = (s: string) => s.replace(/[[\]]/g, (c) => (c === '[' ? '(' : ')'));
@@ -70,7 +87,7 @@ function renderFolder(node: FolderNode, budget: { left: number }): string[] {
   for (const f of [...node.files].sort((a, b) => naturalCompare(a.name, b.name))) {
     if (budget.left <= 0) break;
     budget.left--;
-    lines.push(`${f.name} (${formatBytes(f.size)})`);
+    lines.push(`${iconFor(f.name)} ${f.name} (${formatBytes(f.size)})`);
   }
   return lines;
 }
