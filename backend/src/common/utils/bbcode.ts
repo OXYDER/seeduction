@@ -70,6 +70,8 @@ export function bbcodeToHtml(bbcode: string): string {
   }
   // Bloc centré dont les lignes restent alignées à gauche entre elles (ex : "Année : 2025" / "Catégorie : Films").
   html = replacePairs(html, 'block', (inner) => `<span style="display:inline-block;width:460px;max-width:100%;text-align:left;vertical-align:top">${inner.replace(/^\n+|\n+$/g, '')}</span>`);
+  // Dossier repliable : [spoiler=Titre]...[/spoiler] -> <details> (le + / - est dessiné en CSS).
+  html = replacePairs(html, 'spoiler', (inner, title) => `<details><summary>${title}</summary>${inner.replace(/^\n+|\n+$/g, '')}</details>`, '[^\\]\\[]+');
   html = replacePairs(html, 'quote', (inner) => `<blockquote>${inner}</blockquote>`);
   html = replacePairs(html, 'code', (inner) => `<pre>${inner}</pre>`);
   html = replacePairs(html, 'size', (inner, n) => `<span style="font-size:${Math.min(Number(n), 7) * 4 + 8}px">${inner}</span>`, '\\d+');
@@ -84,7 +86,7 @@ export function bbcodeToHtml(bbcode: string): string {
     .replace(new RegExp(`\\[img\\](${SAFE_URL})\\[\\/img\\]`, 'gi'), '<img src="$1" alt="" />')
     .replace(/\[hr\]/gi, '<hr />')
     // Un saut de ligne juste après un bloc est déjà rendu par le bloc lui-même.
-    .replace(/(<\/div>|<\/blockquote>|<\/pre>|<hr \/>)\n/g, '$1')
+    .replace(/(<\/div>|<\/blockquote>|<\/pre>|<\/details>|<hr \/>)\n/g, '$1')
     .replace(/\n/g, '<br />');
 }
 
@@ -132,6 +134,8 @@ export function bbcodeToMarkdown(bbcode: string): string {
     .replace(/\[\/?s\]/gi, '~~')
     .replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, (_, inner: string) => inner.trim().split('\n').map((l) => `> ${l}`).join('\n'))
     .replace(/\[code\]([\s\S]*?)\[\/code\]/gi, '```\n$1\n```')
+    .replace(/\[spoiler=([^\]]*)\]/gi, '**$1**\n')
+    .replace(/\[\/spoiler\]/gi, '')
     .replace(/\[hr\]/gi, '\n---\n')
     .replace(/\[url=(.*?)\]([\s\S]*?)\[\/url\]/gi, '[$2]($1)')
     .replace(/\[img\](.*?)\[\/img\]/gi, '![]($1)')

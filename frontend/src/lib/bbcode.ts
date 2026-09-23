@@ -55,6 +55,8 @@ export function bbcodeToHtml(bbcode: string): string {
     html = replacePairs(html, align, (inner) => `<div style="text-align:${align}">${inner}</div>`);
   }
   html = replacePairs(html, 'block', (inner) => `<span style="display:inline-block;width:460px;max-width:100%;text-align:left;vertical-align:top">${inner.replace(/^\n+|\n+$/g, '')}</span>`);
+  // Dossier repliable : [spoiler=Titre]...[/spoiler] -> <details> (le + / - est dessiné en CSS).
+  html = replacePairs(html, 'spoiler', (inner, title) => `<details><summary>${title}</summary>${inner.replace(/^\n+|\n+$/g, '')}</details>`, '[^\\]\\[]+');
   html = replacePairs(html, 'quote', (inner) => `<blockquote>${inner}</blockquote>`);
   html = replacePairs(html, 'code', (inner) => `<pre>${inner}</pre>`);
   html = replacePairs(html, 'size', (inner, n) => `<span style="font-size:${Math.min(Number(n), 7) * 4 + 8}px">${inner}</span>`, '\\d+');
@@ -68,6 +70,6 @@ export function bbcodeToHtml(bbcode: string): string {
   return html
     .replace(new RegExp(`\\[img\\](${SAFE_URL})\\[\\/img\\]`, 'gi'), '<img src="$1" alt="" />')
     .replace(/\[hr\]/gi, '<hr />')
-    .replace(/(<\/div>|<\/blockquote>|<\/pre>|<hr \/>)\n/g, '$1')
+    .replace(/(<\/div>|<\/blockquote>|<\/pre>|<\/details>|<hr \/>)\n/g, '$1')
     .replace(/\n/g, '<br />');
 }

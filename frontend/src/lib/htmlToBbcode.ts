@@ -5,7 +5,7 @@
  * reste est simplement déplié en texte (le collage est d'ailleurs forcé en
  * texte brut), pas de conversion HTML arbitraire.
  */
-const BLOCK_TAGS = new Set(['DIV', 'P', 'BLOCKQUOTE', 'PRE', 'UL', 'OL', 'HR', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+const BLOCK_TAGS = new Set(['DIV', 'P', 'BLOCKQUOTE', 'PRE', 'UL', 'OL', 'DETAILS', 'HR', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
 
 function toHexColor(color: string): string | null {
   const c = color.trim().toLowerCase();
@@ -100,6 +100,14 @@ function serializeNode(node: ChildNode): string {
       if (color) out = wrap(out, `[color=${color}]`, '[/color]');
       return out;
     }
+    case 'DETAILS': {
+      const summary = Array.from(el.children).find((c) => c.tagName === 'SUMMARY');
+      const title = (summary ? plainText(summary) : 'Dossier').replace(/[[\]\n]/g, ' ').trim() || 'Dossier';
+      const body = Array.from(el.childNodes).filter((c) => c !== summary).map(serializeNode).join('');
+      return `[spoiler=${title}]\n${body.replace(/^\n+|\n+$/g, '')}\n[/spoiler]\n`;
+    }
+    case 'SUMMARY':
+      return inner;
     case 'UL':
     case 'OL':
       return Array.from(el.children)

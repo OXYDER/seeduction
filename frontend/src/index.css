@@ -763,3 +763,15 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
 .entity-card-name { font-size: 12px; font-weight: 600; line-height: 1.25; }
 .trailer-frame { position: relative; width: 100%; max-width: 860px; aspect-ratio: 16 / 9; margin-top: 12px; }
 .trailer-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* ---- Dossiers repliables ([spoiler=Titre]) : "+" fermé, "−" ouvert ---- */
+.bbcode-content details { margin: 2px 0; }
+.bbcode-content details > summary { list-style: none; cursor: pointer; color: var(--gold-bright); }
+.bbcode-content details > summary::-webkit-details-marker { display: none; }
+.bbcode-content details > summary::before {
+  content: '+'; display: inline-block; width: 16px; margin-right: 6px; text-align: center;
+  border: 1px solid var(--border-gold); border-radius: 3px; font-size: 12px; line-height: 14px;
+}
+.bbcode-content details[open] > summary::before { content: '−'; }
+.bbcode-content details > :not(summary) { margin-left: 22px; }
+.bbcode-content details > details, .bbcode-content details > div { display: block; }

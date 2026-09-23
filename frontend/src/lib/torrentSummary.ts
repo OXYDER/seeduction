@@ -19,7 +19,7 @@ export interface TorrentSummary {
 
 const JUNK = /(^|\/)(thumbs\.db|\.ds_store|desktop\.ini)$/i;
 const SUB_EXT = new Set(['SRT', 'ASS', 'SSA', 'SUB', 'IDX', 'VTT', 'SUP']);
-const MAX_LISTED = 40;
+const MAX_LISTED = 300;
 
 const SUB_LANGS: [RegExp, string][] = [
   [/(^|[^a-z])(fr|fre|fra|french|francais|français)([^a-z]|$)/i, 'Français'],
@@ -36,6 +36,71 @@ function extensionOf(path: string): string {
   const base = path.split('/').pop() ?? path;
   const dot = base.lastIndexOf('.');
   return dot > 0 ? base.slice(dot + 1).toUpperCase() : '';
+}
+
+interface FolderNode {
+  folders: Map<string, FolderNode>;
+  files: { name: string; size: number }[];
+}
+
+const naturalCompare = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+// Les crochets casseraient la syntaxe [spoiler=Titre].
+const safeName = (s: string) => s.replace(/[[\]]/g, (c) => (c === '[' ? '(' : ')'));
+
+function countFiles(node: FolderNode): { count: number; size: number } {
+  let count = node.files.length;
+  let size = node.files.reduce((sum, f) => sum + f.size, 0);
+  for (const child of node.folders.values()) {
+    const sub = countFiles(child);
+    count += sub.count;
+    size += sub.size;
+  }
+  return { count, size };
+}
+
+function renderFolder(node: FolderNode, budget: { left: number }): string[] {
+  const lines: string[] = [];
+  for (const name of [...node.folders.keys()].sort(naturalCompare)) {
+    const child = node.folders.get(name)!;
+    const { count, size } = countFiles(child);
+    lines.push(`[spoiler=📁 ${safeName(name)} — ${count} fichier${count > 1 ? 's' : ''}, ${formatBytes(size)}]`);
+    lines.push(...renderFolder(child, budget));
+    lines.push('[/spoiler]');
+  }
+  for (const f of [...node.files].sort((a, b) => naturalCompare(a.name, b.name))) {
+    if (budget.left <= 0) break;
+    budget.left--;
+    lines.push(`${f.name} (${formatBytes(f.size)})`);
+  }
+  return lines;
+}
+
+/**
+ * Liste des fichiers pour la description : les dossiers deviennent des blocs
+ * repliables ([spoiler=…], un "+" pour les ouvrir) contenant leurs fichiers.
+ * Un torrent qui n'a qu'un dossier racine l'affiche directement ouvert (déjà
+ * nommé par le titre de la présentation).
+ */
+function buildFilesText(files: TorrentFile[]): string {
+  const root: FolderNode = { folders: new Map(), files: [] };
+  for (const f of files) {
+    const parts = f.path.split('/').filter(Boolean);
+    let node = root;
+    for (const dir of parts.slice(0, -1)) {
+      if (!node.folders.has(dir)) node.folders.set(dir, { folders: new Map(), files: [] });
+      node = node.folders.get(dir)!;
+    }
+    node.files.push({ name: parts[parts.length - 1] ?? f.path, size: Number(f.size) || 0 });
+  }
+  let top = root;
+  while (top.files.length === 0 && top.folders.size === 1) top = [...top.folders.values()][0];
+
+  const budget = { left: MAX_LISTED };
+  const lines = renderFolder(top, budget);
+  const total = files.length;
+  const shown = MAX_LISTED - budget.left;
+  if (total > shown) lines.push(`… et ${total - shown} autres fichiers`);
+  return lines.join('\n');
 }
 
 /**
@@ -63,16 +128,12 @@ export function summarizeTorrent(files: TorrentFile[]): TorrentSummary {
     ? [...langs].join(', ')
     : subFiles.length > 0 ? `${subFiles.length} fichier${subFiles.length > 1 ? 's' : ''} de sous-titres` : '';
 
-  const sorted = [...visible].sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
-  const lines = sorted.slice(0, MAX_LISTED).map((f) => `${f.path} (${formatBytes(f.size)})`);
-  if (sorted.length > MAX_LISTED) lines.push(`… et ${sorted.length - MAX_LISTED} autres fichiers`);
-
   return {
     fileCount: visible.length,
     totalSize,
     totalSizeText: formatBytes(totalSize),
     mainFormat,
-    filesText: lines.join('\n'),
+    filesText: buildFilesText(visible),
     subtitlesText,
   };
 }
