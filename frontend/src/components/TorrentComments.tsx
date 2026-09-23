@@ -9,6 +9,7 @@ import { ROLE_LABEL } from './StaffUserPanel';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { timeAgo } from '../lib/time';
 import { displayRank } from '../lib/memberClass';
+import Avatar from './Avatar';
 
 /** Commentaires sous un torrent : écrire, citer, modifier, supprimer, signaler. */
 export default function TorrentComments({ torrentId }: { torrentId: string }) {
@@ -83,7 +84,7 @@ export default function TorrentComments({ torrentId }: { torrentId: string }) {
         {data?.items.map((c) => (
           <div key={c.id} className="forum-post panel" style={{ background: 'var(--bg-panel)' }}>
             <div className="forum-post-author">
-              <div className="forum-avatar" style={{ width: 44, height: 44, fontSize: 20 }}>{c.author.username[0]?.toUpperCase()}</div>
+              <Avatar user={c.author} size={44} />
               <div style={{ fontWeight: 700 }}><UserLink user={c.author} /></div>
               <div className="badge double" style={{ marginTop: 4 }}>{displayRank(c.author, ROLE_LABEL)}</div>
             </div>

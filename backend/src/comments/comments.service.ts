@@ -19,7 +19,7 @@ export class CommentsService {
         orderBy: { createdAt: 'asc' },
         skip: (safePage - 1) * PER_PAGE,
         take: PER_PAGE,
-        include: { author: { select: { id: true, username: true, role: true, memberClass: true, createdAt: true } } },
+        include: { author: { select: { id: true, username: true, role: true, memberClass: true, avatarUrl: true, createdAt: true } } },
       }),
     ]);
     return { items, total, page: safePage, pageSize: PER_PAGE };

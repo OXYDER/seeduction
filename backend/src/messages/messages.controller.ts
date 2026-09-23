@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -20,6 +20,26 @@ export class MessagesController {
   @Get('unread-count')
   unreadCount(@Request() req: any) {
     return this.messagesService.unreadCount(req.user.userId);
+  }
+
+  @Get('threads')
+  threads(@Request() req: any) {
+    return this.messagesService.threads(req.user.userId);
+  }
+
+  @Get('thread/:threadId')
+  thread(@Param('threadId') threadId: string, @Request() req: any) {
+    return this.messagesService.thread(threadId, req.user.userId);
+  }
+
+  @Post('thread/:threadId/reply')
+  reply(@Param('threadId') threadId: string, @Body('content') content: string, @Request() req: any) {
+    return this.messagesService.reply(threadId, req.user.userId, req.user.username, content);
+  }
+
+  @Delete('thread/:threadId')
+  deleteThread(@Param('threadId') threadId: string, @Request() req: any) {
+    return this.messagesService.deleteThread(threadId, req.user.userId);
   }
 
   @Post('send')

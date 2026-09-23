@@ -887,3 +887,19 @@ th.sorted .sort-arrow { opacity: 1; }
   .forum-post-author { display: flex; align-items: center; gap: 10px; text-align: left; border-right: 0; border-bottom: 1px solid var(--border); padding: 8px 12px; }
   .forum-avatar { margin: 0; width: 40px; height: 40px; font-size: 18px; }
 }
+
+/* ---- Messagerie en conversations ---- */
+.msg-layout { display: grid; grid-template-columns: 320px 1fr; gap: 14px; align-items: start; }
+.msg-list { padding: 8px; max-height: 70vh; overflow-y: auto; }
+.msg-item { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+.msg-item:hover { background: var(--bg-panel-raised); }
+.msg-item.active { border-color: var(--border-gold); background: var(--bg-panel-raised); }
+.msg-item.unread strong, .msg-item.unread > div > div:nth-child(2) { color: var(--gold-bright); font-weight: 700; }
+.msg-item .forum-avatar { margin: 0; flex-shrink: 0; }
+.msg-thread { display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto; padding-right: 4px; }
+.msg-bubble { max-width: 82%; padding: 10px 14px; border-radius: 10px; background: var(--bg-panel-raised); border: 1px solid var(--border); align-self: flex-start; }
+.msg-bubble.mine { align-self: flex-end; background: rgba(224,184,74,0.10); border-color: var(--border-gold); }
+@media (max-width: 760px) { .msg-layout { grid-template-columns: 1fr; } .msg-bubble { max-width: 100%; } }
+
+/* ---- Signature de forum ---- */
+.forum-signature { margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 12px; color: var(--text-dim); }

@@ -9,6 +9,7 @@ import ReportButton from '../components/ReportButton';
 import { ROLE_LABEL } from '../components/StaffUserPanel';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { displayRank } from '../lib/memberClass';
+import Avatar from '../components/Avatar';
 
 const isStaffRole = (role?: string) => ['MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
 
@@ -141,7 +142,7 @@ export default function ForumTopic() {
         return (
           <div key={p.id} id={`post-${p.id}`} className="forum-post panel ornate">
             <div className="forum-post-author">
-              <div className="forum-avatar">{p.author?.username?.[0]?.toUpperCase() ?? '?'}</div>
+              <Avatar user={p.author} size={64} />
               <div style={{ fontWeight: 700 }}><UserLink user={p.author} fallback="Membre supprimé" /></div>
               {p.author && <div className="badge double" style={{ marginTop: 4 }}>{displayRank(p.author, ROLE_LABEL)}</div>}
               {p.author && (
@@ -168,6 +169,7 @@ export default function ForumTopic() {
                 <div className="bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(p.content) }} />
               )}
               {p.editedAt && <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Modifié le {new Date(p.editedAt).toLocaleString('fr-FR')}</div>}
+              {p.author?.signature && <div className="forum-signature bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(p.author.signature) }} />}
               <div className="forum-post-actions">
                 {user && data.canReply && <button type="button" className="secondary" onClick={() => quote(p)}>❝ Citer</button>}
                 {canEdit && editingId !== p.id && <button type="button" className="secondary" onClick={() => { setEditingId(p.id); setEditText(p.content); }}>✏️ Modifier</button>}

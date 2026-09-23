@@ -88,6 +88,8 @@ model User {
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
   memberClass      MemberClass @default(NOUVEAU) // rang automatique (ancienneté, upload, ratio)
   freeleechTokens  Int        @default(0)
+  avatarUrl        String?
+  signature        String?    @db.Text
   createdAt        DateTime   @default(now())
   lastSeenAt       DateTime?
   lastIp           String?
@@ -390,6 +392,13 @@ model PrivateMessage {
   content     String   @db.Text
   read        Boolean  @default(false)
   createdAt   DateTime @default(now())
+  // Fil de discussion : tous les messages d'une conversation partagent le même threadId (vide = ancien message isolé).
+  threadId    String?
+  deletedBySender    Boolean @default(false)
+  deletedByRecipient Boolean @default(false)
+
+  @@index([threadId])
+  @@index([recipientId, read])
 }
 
 // ---------------------------------------------------------------------------

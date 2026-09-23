@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Browse from './pages/Browse';
 import Favorites from './pages/Favorites';
 import Bonus from './pages/Bonus';
+import Stats from './pages/Stats';
 import ResetPassword from './pages/ResetPassword';
 import ForumView from './pages/ForumView';
 import { ForumLatest, ForumSearch } from './pages/ForumMisc';
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/rules" element={<Rules />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/bonus" element={<Bonus />} />
+          <Route path="/stats" element={<Stats />} />
         </Route>
       </Routes>
     </BrowserRouter>

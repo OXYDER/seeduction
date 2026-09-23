@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class UsersService {
       select: {
         id: true, username: true, email: true, role: true, uploaded: true,
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
-        lastSeenAt: true, passkey: true, status: true, memberClass: true,
+        lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
@@ -31,6 +31,25 @@ export class UsersService {
       ...(isSelf ? { email, passkey, minRatio } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
+  }
+
+  /** Avatar (image téléversée sur Seeduction, jamais un lien externe) et signature affichée sous les messages du forum. */
+  async updateProfile(userId: string, data: { avatarUrl?: string | null; signature?: string | null }) {
+    const payload: { avatarUrl?: string | null; signature?: string | null } = {};
+    if (data.avatarUrl !== undefined) {
+      if (data.avatarUrl && !/^\/api\/covers\/[\w.-]+$/.test(data.avatarUrl)) {
+        throw new BadRequestException("L'avatar doit être une image téléversée sur Seeduction");
+      }
+      payload.avatarUrl = data.avatarUrl || null;
+    }
+    if (data.signature !== undefined) {
+      const signature = (data.signature ?? '').trim();
+      if (signature.length > 500) throw new BadRequestException('Signature trop longue (500 caractères maximum)');
+      payload.signature = signature || null;
+    }
+    if (Object.keys(payload).length === 0) throw new BadRequestException('Aucune modification');
+    await this.prisma.user.update({ where: { id: userId }, data: payload });
+    return payload;
   }
 
   async getRatioHistory(userId: string, days = 30) {

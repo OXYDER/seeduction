@@ -6,6 +6,8 @@ import { useAuthStore } from '../store/auth';
 import StaffUserPanel, { ROLE_LABEL } from '../components/StaffUserPanel';
 import ReportButton from '../components/ReportButton';
 import SecurityPanel from '../components/SecurityPanel';
+import ProfileEditor from '../components/ProfileEditor';
+import Avatar from '../components/Avatar';
 import { displayRank } from '../lib/memberClass';
 
 export default function Profile() {
@@ -67,6 +69,7 @@ export default function Profile() {
   return (
     <div className="grid">
       <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
+        <Avatar user={profile} size={56} />
         <h1 style={{ margin: 0 }}>{profile.username}</h1>
         {profile.role && <span className="badge double">{displayRank(profile, ROLE_LABEL)}</span>}
         {profile.status === 'BANNED' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>Banni</span>}
@@ -78,6 +81,7 @@ export default function Profile() {
         {id && (
           <Link to={`/browse?uploaderId=${profile.id}`} className="muted">Voir ses torrents →</Link>
         )}
+        {id && me && id !== me.id && <Link to={`/messages?to=${encodeURIComponent(profile.username)}`} className="icon-btn">✉️ Message</Link>}
         {id && me && id !== me.id && <ReportButton targetType="user" targetId={id} compact />}
       </div>
       {id && me && ['MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && (
@@ -117,6 +121,7 @@ export default function Profile() {
           </ResponsiveContainer>
         </div>
       )}
+      {!id && <ProfileEditor key={profile.avatarUrl ?? 'none'} profile={profile} onSaved={() => setReloadKey((k) => k + 1)} />}
       {!id && <SecurityPanel />}
       {!id && (
         <div className="panel">
