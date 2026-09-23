@@ -87,18 +87,20 @@ export class TranslateService {
 
   /** MyMemory limite chaque requête à ~500 caractères : on traduit paragraphe par paragraphe, phrase par phrase. */
   private async viaMyMemory(text: string, sourceLang: string): Promise<string> {
-    const paragraphs = text.split('\n');
-    const out: string[] = [];
-    for (const paragraph of paragraphs) {
-      if (!paragraph.trim()) {
-        out.push('');
-        continue;
+    const paragraphs = text.split('\n').map((p) => (p.trim() ? this.chunk(p, 450) : []));
+    const jobs = paragraphs.flat();
+    const results: string[] = new Array(jobs.length);
+    // Quelques requêtes en parallèle : bien plus rapide qu'une par une, sans marteler le service.
+    let next = 0;
+    const worker = async () => {
+      while (next < jobs.length) {
+        const i = next++;
+        results[i] = await this.myMemoryChunk(jobs[i], sourceLang);
       }
-      const translated: string[] = [];
-      for (const chunk of this.chunk(paragraph, 450)) translated.push(await this.myMemoryChunk(chunk, sourceLang));
-      out.push(translated.join(' '));
-    }
-    return out.join('\n');
+    };
+    await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
+    let cursor = 0;
+    return paragraphs.map((chunks) => chunks.map(() => results[cursor++]).join(' ')).join('\n');
   }
 
   private chunk(paragraph: string, max: number): string[] {

@@ -95,6 +95,7 @@ export default function DescriptionGenerator({
   const [searchError, setSearchError] = useState('');
   const [searchNote, setSearchNote] = useState('');
   const [searched, setSearched] = useState(false);
+  const [progress, setProgress] = useState<{ pct: number; label: string } | null>(null);
 
   const searchSupported = supportedKinds.includes(kind);
   const lastGenerated = useRef('');
@@ -233,11 +234,28 @@ export default function DescriptionGenerator({
     }
   }
 
+  /**
+   * La récupération d'une fiche (avec traduction) est un seul appel serveur sans
+   * progression réelle : le pourcentage est estimé (il ralentit en approchant de
+   * 90 %) puis complété aux étapes suivantes.
+   */
+  function startProgress(label: string) {
+    setProgress({ pct: 3, label });
+    const timer = window.setInterval(() => {
+      setProgress((p) => (p && p.pct < 90 ? { ...p, pct: Math.min(90, p.pct + Math.max(0.4, (90 - p.pct) * 0.05)) } : p));
+    }, 250);
+    return () => window.clearInterval(timer);
+  }
+
   async function selectResult(result: SearchResult) {
+    if (searchLoading) return;
     setSearchLoading(true);
     setSearchError('');
+    const stopProgress = startProgress('Récupération de la fiche, de la pochette et traduction éventuelle…');
     try {
       const { data } = await api.get('/metadata/detail', { params: { kind, id: result.id } });
+      stopProgress();
+      setProgress({ pct: 92, label: 'Génération de la description…' });
       const next = { ...values };
       for (const v of variables) if (next[v] === undefined) next[v] = knownValues[v] ?? '';
       for (const [k, val] of Object.entries(data)) {
@@ -251,9 +269,13 @@ export default function DescriptionGenerator({
       setSearchResults([]);
       setSearchNote('');
       await generate(next);
+      setProgress({ pct: 100, label: 'Terminé' });
+      await new Promise((resolve) => setTimeout(resolve, 400));
     } catch (err: any) {
       setSearchError(err.response?.data?.message ?? 'Impossible de récupérer cette fiche');
     } finally {
+      stopProgress();
+      setProgress(null);
       setSearchLoading(false);
     }
   }
@@ -295,6 +317,18 @@ export default function DescriptionGenerator({
                 {searchLoading ? 'Recherche...' : '🔍 Rechercher'}
               </button>
             </div>
+
+            {progress && (
+              <div style={{ marginTop: 8 }}>
+                <div className="row" style={{ justifyContent: 'space-between', fontSize: 12 }}>
+                  <span className="muted">{progress.label}</span>
+                  <strong style={{ color: 'var(--gold-bright)' }}>{Math.round(progress.pct)} %</strong>
+                </div>
+                <div style={{ height: 8, marginTop: 4, background: 'var(--bg-panel-raised)', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: `${progress.pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--gold), var(--gold-bright))', transition: 'width 0.25s ease' }} />
+                </div>
+              </div>
+            )}
 
             {searchNote && <div className="muted" style={{ marginTop: 6, color: 'var(--gold-bright)' }}>{searchNote}</div>}
             {searchError && <div className="muted" style={{ color: 'var(--danger)', marginTop: 6 }}>{searchError}</div>}
