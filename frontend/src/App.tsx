@@ -5,6 +5,8 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Browse from './pages/Browse';
 import Favorites from './pages/Favorites';
+import ForumView from './pages/ForumView';
+import { ForumLatest, ForumSearch } from './pages/ForumMisc';
 import TorrentDetail from './pages/TorrentDetail';
 import Upload from './pages/Upload';
 import Profile from './pages/Profile';
@@ -42,6 +44,9 @@ export default function App() {
           <Route path="/entities/:id" element={<EntityPage />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/forum" element={<Forum />} />
+          <Route path="/forum/f/:id" element={<ForumView />} />
+          <Route path="/forum/latest" element={<ForumLatest />} />
+          <Route path="/forum/search" element={<ForumSearch />} />
           <Route path="/forum/topics/:id" element={<ForumTopic />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/requests" element={<Requests />} />

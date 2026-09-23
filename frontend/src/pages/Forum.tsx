@@ -1,112 +1,105 @@
 import { useEffect, useState } from 'react';
-import UserLink from '../components/UserLink';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/auth';
+import UserLink from '../components/UserLink';
+import { LastPostCell } from '../components/ForumBits';
 
-function TopicRows({ topics }: { topics: any[] | undefined }) {
-  if (!topics) return <p className="muted" style={{ margin: '6px 0' }}>Chargement...</p>;
-  if (topics.length === 0) return <p className="muted" style={{ margin: '6px 0' }}>Aucun sujet pour l'instant.</p>;
+function ForumRow({ f }: { f: any }) {
   return (
-    <table>
-      <tbody>
-        {topics.map((t) => (
-          <tr key={t.id}>
-            <td><Link to={`/forum/topics/${t.id}`}>{t.title}</Link></td>
-            <td className="muted"><UserLink user={t.author} /></td>
-            <td className="muted" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{t._count?.posts} réponses</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <tr className={f.unread ? 'forum-unread' : undefined}>
+      <td className="forum-icon" title={f.unread ? 'Nouveaux messages' : 'Aucun nouveau message'}>{f.icon || (f.unread ? '🟡' : '💬')}</td>
+      <td>
+        <Link to={`/forum/f/${f.id}`} className="forum-name">{f.name}</Link>
+        {f.staffOnly && <span className="badge double" style={{ marginLeft: 6 }}>Staff</span>}
+        {f.locked && <span title="Verrouillé" style={{ marginLeft: 6 }}>🔒</span>}
+        {f.description && <div className="muted forum-desc">{f.description}</div>}
+        {f.subforums.length > 0 && (
+          <div className="forum-subs">
+            <span className="muted">Sous-forums : </span>
+            {f.subforums.map((s: any, i: number) => (
+              <span key={s.id}>
+                {i > 0 && ', '}
+                <Link to={`/forum/f/${s.id}`} className={s.unread ? 'forum-sub-unread' : undefined}>{s.name}</Link>
+              </span>
+            ))}
+          </div>
+        )}
+      </td>
+      <td className="forum-num">{f.topics}</td>
+      <td className="forum-num">{f.posts}</td>
+      <td className="forum-last"><LastPostCell lastPost={f.lastPost} /></td>
+    </tr>
   );
 }
 
-/** Bouton « Nouveau sujet » qui déplie un petit formulaire sous le forum concerné. */
-function NewTopic({ categoryId }: { categoryId: string }) {
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
-    setBusy(true);
-    setError('');
-    try {
-      const { data } = await api.post(`/forum/categories/${categoryId}/topics`, { title: title.trim(), content });
-      navigate(`/forum/topics/${data.id}`);
-    } catch (err: any) {
-      setError(err.response?.data?.message ?? 'Impossible de créer le sujet');
-      setBusy(false);
-    }
-  }
-
-  if (!open) {
-    return <button type="button" className="secondary" style={{ marginTop: 8, padding: '4px 12px', fontSize: 13 }} onClick={() => setOpen(true)}>＋ Nouveau sujet</button>;
-  }
+function ForumTable({ title, forums, isSection }: { title: string; forums: any[]; isSection?: boolean }) {
   return (
-    <form onSubmit={submit} className="grid" style={{ gap: 8, marginTop: 8 }}>
-      <input placeholder="Titre du sujet" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} style={{ width: '100%' }} autoFocus />
-      <textarea placeholder="Ton message..." rows={5} value={content} onChange={(e) => setContent(e.target.value)} style={{ width: '100%' }} />
-      {error && <div className="muted" style={{ color: 'var(--danger)' }}>{error}</div>}
-      <div className="row">
-        <button type="submit" disabled={busy || !title.trim() || !content.trim()}>{busy ? 'Publication...' : 'Publier'}</button>
-        <button type="button" className="secondary" onClick={() => setOpen(false)}>Annuler</button>
+    <div className="forum-table panel ornate">
+      <div className="forum-table-head">
+        <span>{isSection ? '🗂️ ' : ''}{title}</span>
+        <span className="forum-col">Sujets</span>
+        <span className="forum-col">Messages</span>
+        <span className="forum-col-last">Dernier message</span>
       </div>
-    </form>
+      <table>
+        <tbody>
+          {forums.map((f) => <ForumRow key={f.id} f={f} />)}
+          {forums.length === 0 && <tr><td className="muted" style={{ padding: 14 }}>Aucun forum dans cette catégorie pour l'instant.</td></tr>}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 export default function Forum() {
-  const [categories, setCategories] = useState<any[]>([]);
-  const [topicsByCategory, setTopicsByCategory] = useState<Record<string, any[]>>({});
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const [data, setData] = useState<any>(null);
+  const [q, setQ] = useState('');
 
-  useEffect(() => {
-    api.get('/forum/categories').then((r) => {
-      setCategories(r.data);
-      const all = r.data.flatMap((c: any) => [c, ...(c.children ?? [])]);
-      all.forEach((c: any) => {
-        api.get(`/forum/categories/${c.id}/topics`).then((res) =>
-          setTopicsByCategory((prev) => ({ ...prev, [c.id]: res.data })),
-        );
-      });
-    });
-  }, []);
+  function load() {
+    api.get('/forum/index').then((r) => setData(r.data)).catch(() => setData({ roots: [], stats: null }));
+  }
+  useEffect(load, []);
 
-  const forumPanel = (f: any) => (
-    <div key={f.id} className="panel ornate" style={{ width: '100%' }}>
-      <div className="panel-title">
-        <span className="title-icon">💬</span>{f.name}
-        <span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)' }}>
-          {(topicsByCategory[f.id] ?? []).length} sujet(s)
-        </span>
-      </div>
-      <TopicRows topics={topicsByCategory[f.id]} />
-      <NewTopic categoryId={f.id} />
-    </div>
-  );
+  async function markRead() {
+    await api.post('/forum/mark-read').catch(() => {});
+    load();
+  }
+
+  if (!data) return <p className="muted">Chargement...</p>;
+
+  // Forums de premier niveau (sans catégorie) regroupés dans un seul tableau ; chaque catégorie a le sien.
+  const loose = data.roots.filter((r: any) => !r.isCategory);
 
   return (
-    <div className="grid" style={{ width: '100%', gap: 22 }}>
-      <h1>Forum</h1>
-      {categories.map((c) =>
-        c.isCategory ? (
-          // Catégorie : simple en-tête qui regroupe ses forums.
-          <section key={c.id} className="grid" style={{ gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border-gold)', paddingBottom: 6 }}>
-              <span className="title-icon">🗂️</span>
-              <h2 style={{ margin: 0, color: 'var(--gold-bright)' }}>{c.name}</h2>
-            </div>
-            {c.children?.length > 0
-              ? c.children.map(forumPanel)
-              : <p className="muted" style={{ margin: 0 }}>Aucun forum dans cette catégorie pour l'instant.</p>}
-          </section>
-        ) : (
-          forumPanel(c)
-        ),
+    <div className="grid" style={{ width: '100%', gap: 18 }}>
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <h1>Forum</h1>
+        <form
+          className="row"
+          onSubmit={(e) => { e.preventDefault(); if (q.trim().length >= 2) navigate(`/forum/search?q=${encodeURIComponent(q.trim())}`); }}
+        >
+          <input placeholder="Rechercher dans le forum..." value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 260 }} />
+          <button type="submit" className="secondary">🔍</button>
+          <Link to="/forum/latest" className="icon-btn">🕒 Derniers messages</Link>
+          {user && <button type="button" className="secondary" onClick={markRead}>✓ Tout marquer comme lu</button>}
+        </form>
+      </div>
+
+      {data.roots.filter((r: any) => r.isCategory).map((c: any) => (
+        <ForumTable key={c.id} title={c.name} forums={c.subforums} isSection />
+      ))}
+      {loose.length > 0 && <ForumTable title="Forums" forums={loose} />}
+      {data.roots.length === 0 && <p className="muted">Aucun forum pour l'instant.</p>}
+
+      {data.stats && (
+        <div className="panel muted" style={{ fontSize: 13 }}>
+          <strong style={{ color: 'var(--gold-bright)' }}>Statistiques</strong> — {data.stats.posts} message(s) · {data.stats.topics} sujet(s) · {data.stats.members} membre(s)
+          {data.stats.newestMember && <> · Dernier inscrit : <UserLink user={data.stats.newestMember} /></>}
+          <div style={{ marginTop: 6 }}>🟡 nouveaux messages · 💬 aucun nouveau message · 🔒 verrouillé</div>
+        </div>
       )}
     </div>
   );

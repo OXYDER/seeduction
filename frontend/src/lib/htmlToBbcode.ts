@@ -116,8 +116,12 @@ function serializeNode(node: ChildNode): string {
         .join('');
     case 'LI':
       return `• ${inner.trim()}\n`;
-    case 'BLOCKQUOTE':
-      return `${wrap(inner.trim(), '[quote]', '[/quote]')}\n`;
+    case 'CITE':
+      return '';
+    case 'BLOCKQUOTE': {
+      const author = (el.getAttribute('data-author') ?? '').replace(/[[\]]/g, '').trim();
+      return `${wrap(inner.trim(), author ? `[quote=${author}]` : '[quote]', '[/quote]')}\n`;
+    }
     case 'PRE':
       return `[code]${plainText(el).replace(/\n+$/, '')}[/code]\n`;
     case 'DIV':

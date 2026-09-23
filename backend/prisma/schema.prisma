@@ -58,6 +58,7 @@ model User {
   // Relations
   torrentsUploaded Torrent[]  @relation("Uploader")
   favorites        Favorite[] @relation("UserFavorites")
+  forumReads       ForumTopicRead[] @relation("ForumReads")
   peers            Peer[]
   snapshots        RatioSnapshot[]
   requests         TorrentRequest[]
@@ -314,6 +315,10 @@ model ForumCategory {
   topics   ForumTopic[]
   // true = « catégorie » (simple regroupement de forums, sans sujets) ; false = « forum » (contient des sujets).
   isCategory Boolean       @default(false)
+  description String?      @db.Text
+  icon        String?      // emoji affiché devant le forum
+  staffOnly   Boolean      @default(false) // visible et utilisable uniquement par le staff
+  locked      Boolean      @default(false) // plus de nouveaux sujets (sauf staff)
 }
 
 model ForumTopic {
@@ -324,8 +329,25 @@ model ForumTopic {
   author     User          @relation(fields: [authorId], references: [id])
   authorId   String
   locked     Boolean       @default(false)
+  sticky     Boolean       @default(false) // épinglé en haut de la liste
+  viewCount  Int           @default(0)
+  lastPostAt DateTime      @default(now())
   posts      ForumPost[]
+  reads      ForumTopicRead[]
   createdAt  DateTime      @default(now())
+
+  @@index([categoryId, sticky, lastPostAt])
+}
+
+/** Dernier passage d'un membre dans un sujet : sert à repérer les sujets non lus. */
+model ForumTopicRead {
+  user    User       @relation("ForumReads", fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+  topic   ForumTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topicId String
+  readAt  DateTime   @default(now())
+
+  @@id([userId, topicId])
 }
 
 model ForumPost {
@@ -336,6 +358,9 @@ model ForumPost {
   authorId  String
   content   String     @db.Text
   createdAt DateTime   @default(now())
+  editedAt  DateTime?
+
+  @@index([topicId, createdAt])
 }
 
 model PrivateMessage {

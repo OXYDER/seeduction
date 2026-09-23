@@ -72,7 +72,11 @@ export function bbcodeToHtml(bbcode: string): string {
   html = replacePairs(html, 'block', (inner) => `<span style="display:inline-block;width:460px;max-width:100%;text-align:left;vertical-align:top">${inner.replace(/^\n+|\n+$/g, '')}</span>`);
   // Dossier repliable : [spoiler=Titre]...[/spoiler] -> <details> (le + / - est dessiné en CSS).
   html = replacePairs(html, 'spoiler', (inner, title) => `<details><summary>${title}</summary><div class="spoiler-body">${inner.replace(/^\n+|\n+$/g, '')}</div></details>`, '[^\\]\\[]+');
-  html = replacePairs(html, 'quote', (inner) => `<blockquote>${inner}</blockquote>`);
+  // [quote=Pseudo]...[/quote] (citation attribuée, comme sur un forum) puis [quote] simple ; deux passes pour les citations imbriquées.
+  for (let pass = 0; pass < 3; pass++) {
+    html = replacePairs(html, 'quote', (inner, who) => `<blockquote data-author="${who}"><cite>${who} a écrit :</cite>${inner.replace(/^\n+/, '')}</blockquote>`, '[^\\]\\[]+');
+    html = replacePairs(html, 'quote', (inner) => `<blockquote>${inner}</blockquote>`);
+  }
   html = replacePairs(html, 'code', (inner) => `<pre>${inner}</pre>`);
   html = replacePairs(html, 'size', (inner, n) => `<span style="font-size:${Math.min(Number(n), 7) * 4 + 8}px">${inner}</span>`, '\\d+');
   html = replacePairs(html, 'color', (inner, c) => `<span style="color:${c}">${inner}</span>`, '#[0-9a-fA-F]{3,8}|[a-zA-Z]+');

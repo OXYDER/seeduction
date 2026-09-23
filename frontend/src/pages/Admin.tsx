@@ -479,31 +479,46 @@ function TorrentsAdmin() {
 }
 
 /**
- * Forums : une « catégorie » regroupe des forums (sans sujets propres) ; un
- * « forum » contient les sujets, seul ou rangé dans une catégorie.
+ * Forums façon phpBB : une « catégorie » regroupe des forums ; un « forum »
+ * contient les sujets et peut lui-même avoir des sous-forums (trois niveaux max).
  */
 function ForumAdmin() {
   const [items, setItems] = useState<any[]>([]);
+  const [error, setError] = useState('');
   const [name, setName] = useState('');
   const [isCategory, setIsCategory] = useState(false);
   const [parentId, setParentId] = useState('');
-  const [error, setError] = useState('');
+  const [icon, setIcon] = useState('');
+  const [description, setDescription] = useState('');
+  const [staffOnly, setStaffOnly] = useState(false);
+  const [locked, setLocked] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editParentId, setEditParentId] = useState('');
+  const [edit, setEdit] = useState<any>({});
 
   function refresh() { api.get('/forum/categories').then((r) => setItems(r.data)); }
   useEffect(() => { refresh(); }, []);
 
-  const sections = items.filter((c) => c.isCategory);
   const fail = (err: any) => setError(err.response?.data?.message ?? 'Erreur');
+
+  // Parents possibles pour un forum : une catégorie, ou un forum qui n'est pas déjà un sous-forum.
+  const parentOptions: { id: string; label: string }[] = [];
+  for (const c of items) {
+    if (c.isCategory) parentOptions.push({ id: c.id, label: `Dans la catégorie : ${c.name}` });
+    else parentOptions.push({ id: c.id, label: `Sous-forum de : ${c.name}` });
+    for (const f of c.children ?? []) {
+      if (c.isCategory && !f.isCategory) parentOptions.push({ id: f.id, label: `Sous-forum de : ${c.name} › ${f.name}` });
+    }
+  }
 
   async function create() {
     if (!name.trim()) return;
     setError('');
     try {
-      await api.post('/forum/categories', { name, isCategory, parentId: isCategory ? undefined : parentId || undefined });
-      setName(''); setParentId('');
+      await api.post('/forum/categories', {
+        name, isCategory, parentId: isCategory ? undefined : parentId || undefined,
+        icon: icon || undefined, description: description || undefined, staffOnly, locked,
+      });
+      setName(''); setIcon(''); setDescription(''); setParentId(''); setStaffOnly(false); setLocked(false);
       refresh();
     } catch (err) { fail(err); }
   }
@@ -511,10 +526,18 @@ function ForumAdmin() {
   async function saveEdit(item: any) {
     setError('');
     try {
-      await api.patch(`/forum/categories/${item.id}`, { name: editName, ...(item.isCategory ? {} : { parentId: editParentId || null }) });
+      await api.patch(`/forum/categories/${item.id}`, {
+        name: edit.name, icon: edit.icon, description: edit.description, staffOnly: edit.staffOnly, locked: edit.locked,
+        ...(item.isCategory ? {} : { parentId: edit.parentId || null }),
+      });
       setEditingId(null);
       refresh();
     } catch (err) { fail(err); }
+  }
+
+  async function move(id: string, direction: 'up' | 'down') {
+    setError('');
+    try { await api.post(`/forum/categories/${id}/move`, { direction }); refresh(); } catch (err) { fail(err); }
   }
 
   async function remove(id: string) {
@@ -522,38 +545,57 @@ function ForumAdmin() {
     try { await api.delete(`/forum/categories/${id}`); refresh(); } catch (err) { fail(err); }
   }
 
-  function row(item: any, indented: boolean) {
+  function row(item: any, depth: number) {
     const editing = editingId === item.id;
     return (
-      <div key={item.id} className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', marginLeft: indented ? 24 : 0, marginTop: indented ? 6 : 0 }}>
+      <div key={item.id} style={{ marginLeft: depth * 24, marginTop: depth ? 6 : 0 }}>
         {editing ? (
-          <>
-            <input value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: 200 }} />
-            {!item.isCategory && (
-              <select value={editParentId} onChange={(e) => setEditParentId(e.target.value)}>
-                <option value="">— Forum seul (sans catégorie) —</option>
-                {sections.map((s) => <option key={s.id} value={s.id}>Dans la catégorie : {s.name}</option>)}
-              </select>
-            )}
-            <div className="row">
+          <div className="grid" style={{ gap: 8, padding: 10, border: '1px solid var(--border-gold)', borderRadius: 6 }}>
+            <div className="row" style={{ flexWrap: 'wrap' }}>
+              <input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} style={{ width: 220 }} placeholder="Nom" />
+              {!item.isCategory && <input value={edit.icon} onChange={(e) => setEdit({ ...edit, icon: e.target.value })} style={{ width: 70 }} placeholder="Icône" maxLength={4} />}
+              {!item.isCategory && (
+                <select value={edit.parentId} onChange={(e) => setEdit({ ...edit, parentId: e.target.value })}>
+                  <option value="">— Forum de premier niveau —</option>
+                  {parentOptions.filter((o) => o.id !== item.id).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+              )}
+            </div>
+            <textarea rows={2} placeholder="Description (affichée sous le nom du forum)" value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} />
+            <div className="row" style={{ flexWrap: 'wrap' }}>
+              <label className="row muted" style={{ gap: 6 }}><input type="checkbox" style={{ width: 'auto' }} checked={edit.staffOnly} onChange={(e) => setEdit({ ...edit, staffOnly: e.target.checked })} /> Réservé au staff</label>
+              {!item.isCategory && <label className="row muted" style={{ gap: 6 }}><input type="checkbox" style={{ width: 'auto' }} checked={edit.locked} onChange={(e) => setEdit({ ...edit, locked: e.target.checked })} /> Verrouillé (pas de nouveaux sujets)</label>}
               <button onClick={() => saveEdit(item)}>Enregistrer</button>
               <button className="secondary" onClick={() => setEditingId(null)}>Annuler</button>
             </div>
-          </>
+          </div>
         ) : (
-          <>
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
             <span>
-              {indented ? '↳ ' : ''}{item.isCategory ? '🗂️ ' : '💬 '}<strong>{item.name}</strong>{' '}
+              {depth ? '↳ ' : ''}{item.isCategory ? '🗂️' : item.icon || '💬'} <strong>{item.name}</strong>{' '}
               <span className="muted">
                 {item.isCategory ? `(catégorie — ${item.children?.length ?? 0} forum(s))` : `(forum — ${item.topics?.length ?? 0} sujet(s))`}
+                {item.staffOnly && ' · 🛡️ staff'}{item.locked && ' · 🔒'}
               </span>
             </span>
-            <div className="row">
-              <button className="secondary" onClick={() => { setEditingId(item.id); setEditName(item.name); setEditParentId(item.parentId ?? ''); setError(''); }}>Éditer</button>
+            <div className="row" style={{ gap: 6 }}>
+              <button className="secondary" title="Monter" onClick={() => move(item.id, 'up')}>▲</button>
+              <button className="secondary" title="Descendre" onClick={() => move(item.id, 'down')}>▼</button>
+              <button
+                className="secondary"
+                onClick={() => {
+                  setEditingId(item.id);
+                  setEdit({ name: item.name, icon: item.icon ?? '', description: item.description ?? '', staffOnly: !!item.staffOnly, locked: !!item.locked, parentId: item.parentId ?? '' });
+                  setError('');
+                }}
+              >
+                Éditer
+              </button>
               <button className="danger" onClick={() => remove(item.id)}>Supprimer</button>
             </div>
-          </>
+          </div>
         )}
+        {item.children?.map((child: any) => row(child, depth + 1))}
       </div>
     );
   }
@@ -562,30 +604,34 @@ function ForumAdmin() {
     <div className="panel">
       <h3>Forums</h3>
       <p className="muted">
-        Une <strong>catégorie</strong> sert à regrouper des forums (elle ne contient pas de sujets). Un <strong>forum</strong> contient les sujets ;
-        il peut être placé dans une catégorie ou rester seul.
+        Une <strong>catégorie</strong> est un en-tête qui regroupe des forums (pas de sujets). Un <strong>forum</strong> contient les sujets ;
+        il peut être rangé dans une catégorie, rester seul, ou être un <strong>sous-forum</strong> d'un autre forum.
+        Utilise ▲ ▼ pour l'ordre d'affichage.
       </p>
-      <div className="row" style={{ marginBottom: 16, flexWrap: 'wrap' }}>
-        <select value={isCategory ? 'category' : 'forum'} onChange={(e) => setIsCategory(e.target.value === 'category')}>
-          <option value="forum">💬 Forum</option>
-          <option value="category">🗂️ Catégorie</option>
-        </select>
-        <input placeholder={isCategory ? 'Nom de la catégorie' : 'Nom du forum'} value={name} onChange={(e) => setName(e.target.value)} />
-        {!isCategory && (
-          <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
-            <option value="">— Forum seul (sans catégorie) —</option>
-            {sections.map((s) => <option key={s.id} value={s.id}>Dans la catégorie : {s.name}</option>)}
+      <div className="grid" style={{ gap: 8, marginBottom: 16 }}>
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <select value={isCategory ? 'category' : 'forum'} onChange={(e) => setIsCategory(e.target.value === 'category')}>
+            <option value="forum">💬 Forum</option>
+            <option value="category">🗂️ Catégorie</option>
           </select>
-        )}
-        <button onClick={create}>Ajouter</button>
+          <input placeholder={isCategory ? 'Nom de la catégorie' : 'Nom du forum'} value={name} onChange={(e) => setName(e.target.value)} />
+          {!isCategory && <input placeholder="Icône" value={icon} onChange={(e) => setIcon(e.target.value)} style={{ width: 70 }} maxLength={4} />}
+          {!isCategory && (
+            <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
+              <option value="">— Forum de premier niveau —</option>
+              {parentOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          )}
+        </div>
+        <textarea rows={2} placeholder="Description (facultatif)" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <label className="row muted" style={{ gap: 6 }}><input type="checkbox" style={{ width: 'auto' }} checked={staffOnly} onChange={(e) => setStaffOnly(e.target.checked)} /> Réservé au staff</label>
+          {!isCategory && <label className="row muted" style={{ gap: 6 }}><input type="checkbox" style={{ width: 'auto' }} checked={locked} onChange={(e) => setLocked(e.target.checked)} /> Verrouillé</label>}
+          <button onClick={create}>Ajouter</button>
+        </div>
       </div>
       {error && <div className="muted" style={{ color: 'var(--danger)', marginBottom: 8 }}>{error}</div>}
-      {items.map((c) => (
-        <div key={c.id} style={{ marginBottom: 12 }}>
-          {row(c, false)}
-          {c.children?.map((sub: any) => row(sub, true))}
-        </div>
-      ))}
+      <div className="grid" style={{ gap: 12 }}>{items.map((c) => row(c, 0))}</div>
     </div>
   );
 }
