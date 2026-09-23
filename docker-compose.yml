@@ -13,6 +13,45 @@ services:
     networks:
       - tracker_net
 
+  # Sauvegarde quotidienne de la base PostgreSQL (dans ./backups/ sur le NAS) :
+  # 7 jours, 4 semaines et 6 mois conservés.
+  db-backup:
+    image: prodrigestivill/postgres-backup-local:16
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-tracker}
+      POSTGRES_USER: ${POSTGRES_USER:-tracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+    volumes:
+      - ./backups/db:/backups
+    networks:
+      - tracker_net
+
+  # Sauvegarde quotidienne des fichiers .torrent et des pochettes (14 jours conservés).
+  files-backup:
+    image: alpine:3.20
+    restart: unless-stopped
+    volumes:
+      - torrent_storage:/data/torrents:ro
+      - cover_storage:/data/covers:ro
+      - ./backups/files:/backups
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          tar czf /backups/files-$$(date +%F).tar.gz -C /data torrents covers
+          find /backups -name 'files-*.tar.gz' -mtime +14 -delete
+          sleep 86400
+        done
+
   backend:
     build: ./backend
     restart: unless-stopped
