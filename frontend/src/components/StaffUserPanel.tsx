@@ -20,6 +20,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
   const [banUntil, setBanUntil] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [resetLink, setResetLink] = useState('');
 
   function load() {
     api.get(`/admin/users/${targetId}`).then((r) => {
@@ -54,7 +55,6 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
     }
   }
 
-  const [resetLink, setResetLink] = useState('');
   async function makeResetLink() {
     setError(''); setMessage('');
     try {
