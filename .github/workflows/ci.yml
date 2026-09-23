@@ -1,0 +1,57 @@
+name: CI
+
+# Compile le backend et le frontend à chaque push : une erreur de code se voit ici
+# (onglet Actions de GitHub) au lieu d'apparaître au déploiement sur le NAS.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - name: Valider et générer le client Prisma
+        run: |
+          npx prisma validate 2>&1 | sed -E 's/^(.*)$/\1/' | tee /tmp/prisma.log; test ${PIPESTATUS[0]} -eq 0 || { echo "::error file=backend/prisma/schema.prisma::$(tr '\n' ' ' < /tmp/prisma.log | cut -c1-500)"; exit 1; }
+          npx prisma generate
+      - name: Compiler (tsc)
+        run: |
+          set +e
+          npx tsc --noEmit -p tsconfig.json > /tmp/tsc.log 2>&1
+          status=$?
+          cat /tmp/tsc.log
+          sed -E -n 's#^(.+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+): (.*)$#::error file=backend/\1,line=\2::\4 \5#p' /tmp/tsc.log
+          exit $status
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - name: Vérifier les types (tsc)
+        run: |
+          set +e
+          npx tsc --noEmit --jsx react-jsx --target es2020 --lib es2020,dom,dom.iterable --module esnext --moduleResolution bundler --skipLibCheck --allowSyntheticDefaultImports --esModuleInterop --types vite/client src/main.tsx > /tmp/tsc.log 2>&1
+          status=$?
+          cat /tmp/tsc.log
+          sed -E -n 's#^(.+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+): (.*)$#::error file=frontend/\1,line=\2::\4 \5#p' /tmp/tsc.log
+          exit $status
+      - name: Construire (vite)
+        run: npm run build
