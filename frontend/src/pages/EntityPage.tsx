@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { ROLE_LABEL, TYPE_LABEL } from '../lib/entityLabels';
+import FollowButton from '../components/FollowButton';
 
 const PAGE_SIZE = 24;
 
@@ -40,6 +41,7 @@ export default function EntityPage() {
         <div>
           <div className="muted">{TYPE_LABEL[entity.type] ?? entity.type}</div>
           <h1>{entity.name}</h1>
+          <FollowButton entityId={entity.id} />
           <div className="row" style={{ flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
             <button className={role === '' ? '' : 'secondary'} onClick={() => { setRole(''); setPage(1); }}>
               Tous ({entity.roles.reduce((n: number, r: any) => n + r.count, 0)})

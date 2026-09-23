@@ -61,6 +61,8 @@ model User {
   favorites        Favorite[] @relation("UserFavorites")
   forumReads       ForumTopicRead[] @relation("ForumReads")
   torrentComments  TorrentComment[] @relation("CommentAuthor")
+  torrentLikes     TorrentLike[]
+  entityFollows    EntityFollow[]
   peers            Peer[]
   snapshots        RatioSnapshot[]
   requests         TorrentRequest[]
@@ -169,6 +171,8 @@ model Torrent {
   entities       TorrentEntity[]
   favoritedBy    Favorite[]     @relation("TorrentFavorites")
   comments       TorrentComment[]
+  likes          TorrentLike[]
+  reseedRequestedAt DateTime?
   snatches       Snatch[]
   requestFilled  TorrentRequest?
   collectionItems CollectionItem[]
@@ -465,6 +469,8 @@ enum NotificationType {
   BADGE_EARNED
   TORRENT_COMMENT
   SYSTEM
+  FOLLOW
+  RESEED_REQUEST
 }
 
 model Notification {
@@ -607,6 +613,7 @@ model Entity {
   externalId String
   imageUrl   String?         // sauvegardée sur Seeduction, jamais un lien externe
   torrents   TorrentEntity[]
+  followers  EntityFollow[]
   createdAt  DateTime        @default(now())
 
   @@unique([type, source, externalId])
@@ -688,4 +695,28 @@ model PasswordReset {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+// « Merci » / « J'aime » sur un torrent (un par membre).
+model TorrentLike {
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  torrent   Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId String
+  createdAt DateTime @default(now())
+
+  @@id([userId, torrentId])
+  @@index([torrentId])
+}
+
+// Abonnement à un acteur, studio, genre, artiste... : notification à chaque nouveau torrent approuvé.
+model EntityFollow {
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  entity    Entity   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  entityId  String
+  createdAt DateTime @default(now())
+
+  @@id([userId, entityId])
+  @@index([entityId])
 }

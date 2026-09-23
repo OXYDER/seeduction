@@ -104,6 +104,20 @@ export class TorrentsService {
     return rewriteTorrentForUser(original, announceUrl);
   }
 
+  /** Torrents déjà présents qui ressemblent à celui qu'on s'apprête à envoyer (même fiche de métadonnées, ou même nom). */
+  async findDuplicates(metaId?: string, name?: string) {
+    const or: any[] = [];
+    if (metaId) or.push({ metaExternalId: metaId });
+    if (name && name.trim().length >= 4) or.push({ name: { equals: name.trim(), mode: 'insensitive' } });
+    if (or.length === 0) return [];
+    return this.prisma.torrent.findMany({
+      where: { status: { in: ['APPROVED', 'PENDING'] }, OR: or },
+      orderBy: { createdAt: 'desc' },
+      take: 8,
+      select: { id: true, name: true, size: true, year: true, resolution: true, language: true, seeders: true, status: true, coverImage: true },
+    });
+  }
+
   async list(params: {
     categoryId?: string; search?: string; uploaderId?: string; page: number; pageSize: number;
     sort?: string;

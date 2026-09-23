@@ -8,6 +8,7 @@ import { RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, det
 import { parseTorrentInfo } from '../lib/bencode';
 import { summarizeTorrent } from '../lib/torrentSummary';
 import { resolveContentKind } from '../lib/categoryKind';
+import DuplicateWarning from '../components/DuplicateWarning';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -214,6 +215,7 @@ export default function Upload() {
             </p>
           )}
           <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
+          <DuplicateWarning name={name} metaId={meta?.id} />
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
             <option value="">— Choisir une catégorie —</option>
             {categories.map((c) => (

@@ -3,6 +3,7 @@ import UserLink from '../components/UserLink';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import TorrentComments from '../components/TorrentComments';
+import TorrentSocial from '../components/TorrentSocial';
 import ReportButton from '../components/ReportButton';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -118,6 +119,7 @@ export default function TorrentDetail() {
           {user && (
             <div className="row" style={{ gap: 8, position: 'relative' }}>
               <button onClick={download}>⬇ Télécharger le .torrent</button>
+              <TorrentSocial torrentId={torrent.id} seeders={torrent.seeders} isUploader={torrent.uploader?.id === user.id} />
               {!torrent.freeleech && (tokenUntil
                 ? <span className="badge freeleech" title="Jeton freeleech actif">🎟️ Freeleech pour toi jusqu'au {new Date(tokenUntil).toLocaleDateString('fr-FR')}</span>
                 : <button className="secondary" onClick={spendToken} title="Son téléchargement ne compte pas dans ton ratio pendant 7 jours">🎟️ Utiliser un jeton</button>)}

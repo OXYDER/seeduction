@@ -42,6 +42,11 @@ export class TorrentsController {
     });
   }
 
+  @Get('duplicates')
+  duplicates(@Query('metaId') metaId?: string, @Query('name') name?: string) {
+    return this.torrentsService.findDuplicates(metaId, name);
+  }
+
   @Get(':id/related')
   related(@Param('id') id: string) {
     return this.torrentsService.related(id);

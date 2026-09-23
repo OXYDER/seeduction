@@ -20,6 +20,7 @@ import { CommentsModule } from './comments/comments.module';
 import { SettingsModule } from './settings/settings.service';
 import { AuditModule } from './audit/audit.service';
 import { EconomyModule } from './economy/economy.module';
+import { SocialModule } from './social/social.module';
 import { ReportsModule } from './reports/reports.module';
 import { BadgesModule } from './badges/badges.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
@@ -53,6 +54,7 @@ import { EntitiesModule } from './entities/entities.module';
     SettingsModule,
     AuditModule,
     EconomyModule,
+    SocialModule,
     ReportsModule,
     BadgesModule,
     ApiKeysModule,

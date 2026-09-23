@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 import { ReportsService } from '../reports/reports.service';
+import { SocialService } from '../social/social.service';
 
 import { createHash, randomBytes } from 'crypto';
 
@@ -13,7 +14,7 @@ export interface Actor { userId: string; username: string; role: string }
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService, private social: SocialService) {}
 
   async approveTorrent(id: string) {
     const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED' } });
@@ -25,6 +26,8 @@ export class AdminService {
       link: `/torrents/${torrent.id}`,
     });
     await this.badges.checkAndAward(torrent.uploaderId);
+    // Les abonnés à un acteur, studio, genre... de ce torrent sont prévenus (sans jamais bloquer l'approbation).
+    await this.social.notifyFollowers(torrent.id).catch(() => undefined);
     return torrent;
   }
 
