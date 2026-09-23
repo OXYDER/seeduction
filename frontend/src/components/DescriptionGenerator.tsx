@@ -81,7 +81,6 @@ export default function DescriptionGenerator({
   const [templateId, setTemplateId] = useState('');
   const [expertMode, setExpertMode] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showKindOverride, setShowKindOverride] = useState(false);
   const [content, setContent] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
   const [saveName, setSaveName] = useState('');
@@ -107,7 +106,7 @@ export default function DescriptionGenerator({
   }, []);
 
   useEffect(() => {
-    if (defaultKind) { setKind(defaultKind); setShowKindOverride(false); }
+    if (defaultKind) setKind(defaultKind);
   }, [defaultKind]);
 
   const templatesForKind = templates.filter((t) => t.kind === kind);
@@ -274,37 +273,8 @@ export default function DescriptionGenerator({
       <div className="panel-title"><span className="title-icon">✨</span>Générateur de description</div>
 
       <div className="grid" style={{ gap: 14 }}>
-        {!autoStart && (
-          <p className="muted" style={{ margin: 0 }}>
-            Choisis ton fichier .torrent et une catégorie : la recherche des informations (titre, synopsis, pochette...) se lance toute seule.
-          </p>
-        )}
-
-        <div>
-          {/* Le type de contenu vient de la catégorie choisie (voir Administration > Catégories
-              torrents) — un uploader n'a normalement pas besoin d'y toucher. La liste ne
-              s'affiche donc que si la catégorie n'a pas de type configuré, ou sur demande. */}
-          {defaultKind && !showKindOverride ? (
-            <button type="button" className="secondary" style={{ fontSize: 12 }} onClick={() => setShowKindOverride(true)}>
-              Type de contenu : {KINDS.find((k) => k.value === kind)?.label ?? kind} — pas le bon ? Changer
-            </button>
-          ) : (
-            <>
-              <div className="muted" style={{ marginBottom: 6 }}>Type de contenu{defaultKind ? '' : ' (déduit de la catégorie si elle est configurée)'}</div>
-              <div className="category-chips" style={{ marginTop: 0 }}>
-                {KINDS.map((k) => (
-                  <a key={k.value} onClick={() => setKind(k.value)} style={{ cursor: 'pointer', borderColor: kind === k.value ? 'var(--gold)' : undefined }}>
-                    {k.label}{supportedKinds.includes(k.value) ? ' 🔍' : ''}
-                  </a>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
         {searchSupported ? (
           <div>
-            <div className="muted" style={{ marginBottom: 6 }}>Recherche des informations — choisis le bon résultat, la description se génère toute seule</div>
             <div className="row">
               <input
                 style={{ flex: 1 }}
@@ -330,7 +300,7 @@ export default function DescriptionGenerator({
             {searchError && <div className="muted" style={{ color: 'var(--danger)', marginTop: 6 }}>{searchError}</div>}
             {searched && !searchLoading && searchResults.length === 0 && !searchError && (
               <div className="muted" style={{ marginTop: 6 }}>
-                Aucun résultat. Modifie le titre (ou retire l'année) puis relance la recherche, ou génère sans fiche ci-dessous.
+                Aucun résultat. Modifie le titre (ou retire l'année) puis relance la recherche, ou ouvre les options avancées pour générer sans fiche.
               </div>
             )}
 
@@ -358,7 +328,7 @@ export default function DescriptionGenerator({
         ) : (
           supportedKinds.length > 0 && (
             <p className="muted" style={{ margin: 0 }}>
-              Pas de recherche automatique pour ce type de contenu : complète les champs ci-dessous, ou écris directement ta description dans l'éditeur.
+              Pas de recherche automatique pour ce type de contenu : ouvre les options avancées pour compléter les champs, ou écris directement ta description dans l'éditeur.
             </p>
           )
         )}
@@ -366,15 +336,23 @@ export default function DescriptionGenerator({
         {notice && <div style={{ color: 'var(--success)' }} className="muted">{notice}</div>}
         {error && <div className="muted" style={{ color: 'var(--danger)' }}>{error}</div>}
 
-        <div className="row" style={{ flexWrap: 'wrap' }}>
-          <button type="button" className="secondary" onClick={() => generate()}>Générer sans choisir de résultat</button>
-          <button type="button" className="secondary" onClick={() => setShowAdvanced((v) => !v)}>
-            {showAdvanced ? 'Masquer les options' : 'Options avancées (modèle, champs)'}
-          </button>
-        </div>
+        <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setShowAdvanced((v) => !v)}>
+          {showAdvanced ? 'Masquer les options' : 'Options avancées (type, modèle, champs)'}
+        </button>
 
         {advancedVisible && (
           <div className="grid" style={{ gap: 12 }}>
+            <div>
+              <div className="muted" style={{ marginBottom: 6 }}>Type de contenu{defaultKind ? ' (déduit de la catégorie — change-le seulement si elle est mal configurée)' : ' (déduit de la catégorie si elle est configurée)'}</div>
+              <div className="category-chips" style={{ marginTop: 0 }}>
+                {KINDS.map((k) => (
+                  <a key={k.value} onClick={() => setKind(k.value)} style={{ cursor: 'pointer', borderColor: kind === k.value ? 'var(--gold)' : undefined }}>
+                    {k.label}{supportedKinds.includes(k.value) ? ' 🔍' : ''}
+                  </a>
+                ))}
+              </div>
+            </div>
+
             <div>
               <div className="muted" style={{ marginBottom: 6 }}>Modèle</div>
               <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
@@ -404,7 +382,7 @@ export default function DescriptionGenerator({
             )}
 
             <div className="row" style={{ flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => generate()}>Générer avec ces champs</button>
+              <button type="button" onClick={() => generate()}>Générer sans choisir de résultat</button>
               <input placeholder="Nom du modèle à sauvegarder" value={saveName} onChange={(e) => setSaveName(e.target.value)} style={{ width: 220 }} />
               <button type="button" className="secondary" onClick={saveAsTemplate}>Sauvegarder comme modèle</button>
             </div>
