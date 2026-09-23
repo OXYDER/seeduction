@@ -54,6 +54,17 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
     }
   }
 
+  const [resetLink, setResetLink] = useState('');
+  async function makeResetLink() {
+    setError(''); setMessage('');
+    try {
+      const { data } = await api.post(`/admin/users/${targetId}/reset-link`);
+      setResetLink(`${window.location.origin}/reset-password?token=${data.token}`);
+    } catch (err: any) {
+      setError(err.response?.data?.message ?? 'Action refusée');
+    }
+  }
+
   const save = () => run(
     () => api.patch(`/admin/users/${targetId}`, {
       username: username !== detail.username ? username : undefined,
@@ -130,6 +141,19 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
               >
                 🚫 Bannir
               </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {outranks && (
+        <div style={{ marginTop: 12 }}>
+          <button type="button" className="secondary" onClick={makeResetLink}>🔗 Générer un lien de réinitialisation du mot de passe</button>
+          {resetLink && (
+            <div className="panel ornate" style={{ marginTop: 8 }}>
+              <div className="muted">Transmets ce lien au membre (valable 1 heure, usage unique) :</div>
+              <code style={{ wordBreak: 'break-all', display: 'block', margin: '6px 0' }}>{resetLink}</code>
+              <button type="button" className="secondary" onClick={() => navigator.clipboard?.writeText(resetLink)}>Copier</button>
             </div>
           )}
         </div>

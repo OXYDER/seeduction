@@ -45,11 +45,12 @@ export default function Login() {
             <input placeholder="Nom d'utilisateur ou email" value={usernameOrEmail} onChange={(e) => setUsernameOrEmail(e.target.value)} required />
             <input placeholder="Mot de passe" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             {need2FA && (
-              <input placeholder="Code 2FA" value={totpToken} onChange={(e) => setTotpToken(e.target.value)} required />
+              <input placeholder="Code 2FA ou code de secours" value={totpToken} onChange={(e) => setTotpToken(e.target.value)} required />
             )}
             {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
             <button type="submit">Connexion</button>
             <Link to="/register"><button type="button" className="secondary" style={{ width: '100%' }}>Créer un compte</button></Link>
+            <div className="muted" style={{ fontSize: 12, textAlign: 'center' }}>Mot de passe oublié ? Demande un lien de réinitialisation au staff.</div>
           </form>
 
           <div className="ornate-divider" />

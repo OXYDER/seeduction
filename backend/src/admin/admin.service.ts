@@ -4,6 +4,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 import { ReportsService } from '../reports/reports.service';
 
+import { createHash, randomBytes } from 'crypto';
+
 const ROLE_RANK: Record<string, number> = { USER: 0, UPLOADER: 1, MODERATOR: 2, ADMIN: 3, OWNER: 4 };
 const TORRENT_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'DEAD'];
 
@@ -137,6 +139,16 @@ export class AdminService {
 
   deleteTorrent(id: string) {
     return this.prisma.torrent.delete({ where: { id } });
+  }
+
+  /** Lien de réinitialisation de mot de passe (1 h, usage unique) à transmettre au membre. */
+  async issueResetLink(actor: Actor, userId: string) {
+    this.assertOutranks(actor, await this.loadTarget(userId));
+    await this.prisma.passwordReset.deleteMany({ where: { userId, usedAt: null } });
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 3600_000);
+    await this.prisma.passwordReset.create({ data: { userId, tokenHash: createHash('sha256').update(token).digest('hex'), expiresAt } });
+    return { token, expiresAt };
   }
 
   async warnUser(actor: Actor, userId: string, reason: string) {

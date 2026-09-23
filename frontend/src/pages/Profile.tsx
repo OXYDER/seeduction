@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import StaffUserPanel, { ROLE_LABEL } from '../components/StaffUserPanel';
 import ReportButton from '../components/ReportButton';
+import SecurityPanel from '../components/SecurityPanel';
 import { displayRank } from '../lib/memberClass';
 
 export default function Profile() {
@@ -116,6 +117,7 @@ export default function Profile() {
           </ResponsiveContainer>
         </div>
       )}
+      {!id && <SecurityPanel />}
       {!id && (
         <div className="panel">
           <div className="muted">Ta passkey (garde-la secrète — elle est dans l'URL announce de tes .torrent) :</div>

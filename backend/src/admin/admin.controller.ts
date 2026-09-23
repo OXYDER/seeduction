@@ -88,6 +88,13 @@ export class AdminController {
     return result;
   }
 
+  @Post('users/:id/reset-link')
+  async resetLink(@Param('id') id: string, @Request() req: any) {
+    const result = await this.adminService.issueResetLink(this.actor(req), id);
+    await this.audit.log(req.user.userId, 'RESET_LINK_ISSUED', { targetId: id }, this.ip(req));
+    return result;
+  }
+
   @Post('users/:id/warn')
   async warn(@Param('id') id: string, @Body('reason') reason: string, @Request() req: any) {
     const result = await this.adminService.warnUser(this.actor(req), id, reason);
