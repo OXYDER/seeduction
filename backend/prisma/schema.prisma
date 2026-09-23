@@ -339,7 +339,7 @@ model ForumTopic {
   @@index([categoryId, sticky, lastPostAt])
 }
 
-/** Dernier passage d'un membre dans un sujet : sert à repérer les sujets non lus. */
+/// Dernier passage d'un membre dans un sujet : sert à repérer les sujets non lus.
 model ForumTopicRead {
   user    User       @relation("ForumReads", fields: [userId], references: [id], onDelete: Cascade)
   userId  String
