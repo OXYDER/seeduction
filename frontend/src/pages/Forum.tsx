@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 
 function TopicRows({ topics }: { topics: any[] | undefined }) {
@@ -17,6 +17,45 @@ function TopicRows({ topics }: { topics: any[] | undefined }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** Bouton « Nouveau sujet » qui déplie un petit formulaire sous le forum concerné. */
+function NewTopic({ categoryId }: { categoryId: string }) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || !content.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      const { data } = await api.post(`/forum/categories/${categoryId}/topics`, { title: title.trim(), content });
+      navigate(`/forum/topics/${data.id}`);
+    } catch (err: any) {
+      setError(err.response?.data?.message ?? 'Impossible de créer le sujet');
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return <button type="button" className="secondary" style={{ marginTop: 8, padding: '4px 12px', fontSize: 13 }} onClick={() => setOpen(true)}>＋ Nouveau sujet</button>;
+  }
+  return (
+    <form onSubmit={submit} className="grid" style={{ gap: 8, marginTop: 8 }}>
+      <input placeholder="Titre du sujet" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} style={{ width: '100%' }} autoFocus />
+      <textarea placeholder="Ton message..." rows={5} value={content} onChange={(e) => setContent(e.target.value)} style={{ width: '100%' }} />
+      {error && <div className="muted" style={{ color: 'var(--danger)' }}>{error}</div>}
+      <div className="row">
+        <button type="submit" disabled={busy || !title.trim() || !content.trim()}>{busy ? 'Publication...' : 'Publier'}</button>
+        <button type="button" className="secondary" onClick={() => setOpen(false)}>Annuler</button>
+      </div>
+    </form>
   );
 }
 
@@ -49,6 +88,7 @@ export default function Forum() {
             </span>
           </div>
           <TopicRows topics={topicsByCategory[c.id]} />
+          <NewTopic categoryId={c.id} />
 
           {c.children?.length > 0 && (
             <div style={{ marginTop: 14 }}>
@@ -65,6 +105,7 @@ export default function Forum() {
                       </span>
                     </div>
                     <TopicRows topics={topicsByCategory[sub.id]} />
+                    <div style={{ paddingBottom: 8 }}><NewTopic categoryId={sub.id} /></div>
                   </div>
                 ))}
               </div>
