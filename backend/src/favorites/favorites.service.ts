@@ -9,7 +9,7 @@ export class FavoritesService {
     const rows = await this.prisma.favorite.findMany({
       where: { userId, torrent: { status: 'APPROVED' } },
       orderBy: { createdAt: 'desc' },
-      include: { torrent: { include: { category: true, uploader: { select: { username: true } } } } },
+      include: { torrent: { include: { category: true, uploader: { select: { id: true, username: true } } } } },
     });
     return rows.map(({ torrent: { metadata, ...t }, createdAt }) => ({ ...t, favoritedAt: createdAt }));
   }

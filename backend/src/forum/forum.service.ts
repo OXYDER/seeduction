@@ -87,7 +87,7 @@ export class ForumService implements OnModuleInit {
     return this.prisma.forumTopic.findMany({
       where: { categoryId },
       orderBy: { createdAt: 'desc' },
-      include: { author: { select: { username: true } }, _count: { select: { posts: true } } },
+      include: { author: { select: { id: true, username: true } }, _count: { select: { posts: true } } },
     });
   }
 
@@ -111,7 +111,7 @@ export class ForumService implements OnModuleInit {
   getTopic(topicId: string) {
     return this.prisma.forumTopic.findUnique({
       where: { id: topicId },
-      include: { posts: { include: { author: { select: { username: true } } }, orderBy: { createdAt: 'asc' } } },
+      include: { posts: { include: { author: { select: { id: true, username: true } } }, orderBy: { createdAt: 'asc' } } },
     });
   }
 

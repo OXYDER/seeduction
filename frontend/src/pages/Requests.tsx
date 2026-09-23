@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import UserLink from '../components/UserLink';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -33,7 +34,7 @@ export default function Requests() {
               {requests.map((r) => (
                 <tr key={r.id}>
                   <td>{r.title}<div className="muted">{r.description}</div></td>
-                  <td className="muted">{r.requestedBy?.username}</td>
+                  <td className="muted"><UserLink user={r.requestedBy} /></td>
                   <td>{r.bounty} pts</td>
                 </tr>
               ))}

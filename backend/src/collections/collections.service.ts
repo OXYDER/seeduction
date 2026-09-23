@@ -20,7 +20,7 @@ export class CollectionsService {
       where: { OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }] },
       orderBy: { updatedAt: 'desc' },
       include: {
-        owner: { select: { username: true } },
+        owner: { select: { id: true, username: true } },
         _count: { select: { items: true, collaborators: true } },
       },
     });
@@ -31,7 +31,7 @@ export class CollectionsService {
       where: { visibility: { in: ['PUBLIC', 'COLLABORATIVE'] } },
       orderBy: { updatedAt: 'desc' },
       include: {
-        owner: { select: { username: true } },
+        owner: { select: { id: true, username: true } },
         _count: { select: { items: true, collaborators: true } },
       },
     });
@@ -47,7 +47,7 @@ export class CollectionsService {
           orderBy: { addedAt: 'desc' },
           include: {
             torrent: { select: TORRENT_CARD_SELECT },
-            addedBy: { select: { username: true } },
+            addedBy: { select: { id: true, username: true } },
           },
         },
       },

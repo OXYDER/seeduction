@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 
 @Controller('users')
 export class UsersController {
@@ -9,7 +10,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@Request() req: any) {
-    return this.usersService.getProfile(req.user.userId);
+    return this.usersService.getProfile(req.user.userId, req.user);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -23,8 +24,9 @@ export class UsersController {
     return this.usersService.leaderboard(parseInt(limit, 10));
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
-  profile(@Param('id') id: string) {
-    return this.usersService.getProfile(id);
+  profile(@Param('id') id: string, @Request() req: any) {
+    return this.usersService.getProfile(id, req.user);
   }
 }

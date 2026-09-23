@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import UserLink from '../components/UserLink';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes as formatSize } from '../lib/format';
 import { CATEGORY_STYLE } from '../components/Layout';
 import { timeAgo } from '../lib/time';
+import { useAuthStore } from '../store/auth';
 import { useFavorites } from '../lib/favorites';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
 import { parseNaturalQuery, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
@@ -66,6 +68,9 @@ export default function Browse() {
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
   const favorites = useFavorites();
+  const authUser = useAuthStore((s) => s.user);
+  const currentUserId = authUser?.id;
+  const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(authUser?.role ?? '');
   const [view, setViewState] = useState<'list' | 'grid'>(() => {
     try { return localStorage.getItem('browseView') === 'grid' ? 'grid' : 'list'; } catch { return 'list'; }
   });
@@ -198,7 +203,7 @@ export default function Browse() {
   return (
     <div className="grid">
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
-        <h1>{uploaderId ? 'Mes uploads' : 'Parcourir'}</h1>
+        <h1>{uploaderId ? (uploaderId === currentUserId ? 'Mes uploads' : 'Torrents de ce membre') : 'Parcourir'}</h1>
         <div className="list-toolbar">
           <input
             placeholder="Rechercher... (ex: Dune 2024 4K HDR VOSTFR)"
@@ -395,6 +400,7 @@ export default function Browse() {
                         </span>
                       )}
                       <span>
+                        {isStaff && <Link to={`/torrents/${t.id}?edit=1`} title="Modifier / supprimer (staff)" style={{ marginRight: 6 }}>✏️</Link>}
                         <Link to={`/torrents/${t.id}`} onMouseEnter={(e) => showTip(t, e)} onMouseMove={moveTip} onMouseLeave={hideTip}>{t.name}</Link>{' '}
                         {t.freeleech && <span className="badge freeleech">FL</span>}{' '}
                         {t.doubleUpload && <span className="badge double">2x</span>}{' '}
@@ -417,7 +423,7 @@ export default function Browse() {
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatSize(t.size)}</td>
                   <td style={{ color: 'var(--success)', whiteSpace: 'nowrap' }}><HealthDot seeders={t.seeders} />{t.seeders}</td>
                   <td style={{ color: 'var(--danger)' }}>{t.leechers}</td>
-                  <td className="muted">{t.anonymousUpload ? 'Anonyme' : t.uploader?.username}</td>
+                  <td className="muted">{t.anonymousUpload ? 'Anonyme' : <UserLink user={t.uploader} />}</td>
                 </tr>
                 );
               })}

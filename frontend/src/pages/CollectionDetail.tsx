@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import UserLink from '../components/UserLink';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -73,7 +74,7 @@ export default function CollectionDetail() {
         <span className="badge new">{VISIBILITY_LABEL[collection.visibility]}</span>
       </div>
       {collection.description && <p className="muted">{collection.description}</p>}
-      <div className="muted">Par {collection.owner.username}</div>
+      <div className="muted">Par <UserLink user={collection.owner} /></div>
 
       <div className="split-2">
         <div className="panel">
@@ -89,7 +90,7 @@ export default function CollectionDetail() {
                   </td>
                   <td className="muted">{formatBytes(item.torrent.size)}</td>
                   <td className="muted">{item.torrent.seeders}</td>
-                  <td className="muted">{item.addedBy.username}</td>
+                  <td className="muted"><UserLink user={item.addedBy} /></td>
                   {canEditItems && (
                     <td><button className="secondary" onClick={() => removeItem(item.torrent.id)}>Retirer</button></td>
                   )}
@@ -128,7 +129,7 @@ export default function CollectionDetail() {
                 <div className="grid" style={{ gap: 6 }}>
                   {collection.collaborators.map((c: any) => (
                     <div key={c.id} className="row" style={{ justifyContent: 'space-between' }}>
-                      <span>{c.user.username}</span>
+                      <span><UserLink user={c.user} /></span>
                       <button className="secondary" onClick={() => removeCollaborator(c.user.id)}>Retirer</button>
                     </div>
                   ))}

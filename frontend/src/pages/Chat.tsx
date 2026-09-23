@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import UserLink from '../components/UserLink';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -73,7 +74,7 @@ export default function Chat() {
           {messages.map((m) => (
             <div key={m.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <strong style={{ color: 'var(--gold)' }}>{m.user.username}</strong>
+                <strong style={{ color: 'var(--gold)' }}><UserLink user={m.user} /></strong>
                 <span className="muted" style={{ fontSize: 11, marginLeft: 6 }}>
                   {new Date(m.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                 </span>

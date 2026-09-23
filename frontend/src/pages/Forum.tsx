@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import UserLink from '../components/UserLink';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 
@@ -11,7 +12,7 @@ function TopicRows({ topics }: { topics: any[] | undefined }) {
         {topics.map((t) => (
           <tr key={t.id}>
             <td><Link to={`/forum/topics/${t.id}`}>{t.title}</Link></td>
-            <td className="muted">{t.author?.username}</td>
+            <td className="muted"><UserLink user={t.author} /></td>
             <td className="muted" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{t._count?.posts} réponses</td>
           </tr>
         ))}

@@ -5,20 +5,32 @@ import { PrismaService } from '../common/prisma.service';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async getProfile(userId: string) {
+  /**
+   * Profil complet pour soi-même ; le staff voit en plus l'e-mail ; les autres
+   * n'ont que les infos publiques (jamais la passkey ni l'e-mail).
+   */
+  async getProfile(userId: string, viewer?: { userId: string; role: string }) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true, username: true, email: true, role: true, uploaded: true,
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
-        lastSeenAt: true, passkey: true,
+        lastSeenAt: true, passkey: true, status: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
 
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
-    return { ...user, ratio };
+    const isSelf = viewer?.userId === user.id;
+    const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
+    const { email, passkey, minRatio, ...publicInfo } = user;
+    return {
+      ...publicInfo,
+      ratio,
+      ...(isSelf ? { email, passkey, minRatio } : {}),
+      ...(isStaff && !isSelf ? { email } : {}),
+    };
   }
 
   async getRatioHistory(userId: string, days = 30) {

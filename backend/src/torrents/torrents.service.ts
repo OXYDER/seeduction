@@ -111,7 +111,7 @@ export class TorrentsService {
     minSize?: number; maxSize?: number; minSeeders?: number;
     year?: number; language?: string; resolution?: string; codec?: string;
     hdr?: boolean; audio?: string; source?: string; containerFormat?: string;
-    entityId?: string; role?: string;
+    entityId?: string; role?: string; hideAnonymous?: boolean;
   }) {
     const where: any = { status: 'APPROVED' };
     if (params.categoryId) {
@@ -124,6 +124,7 @@ export class TorrentsService {
     }
     if (params.search) where.name = { contains: params.search, mode: 'insensitive' };
     if (params.uploaderId) where.uploaderId = params.uploaderId;
+    if (params.hideAnonymous) where.anonymousUpload = false;
     if (params.entityId) where.entities = { some: { entityId: params.entityId, ...(params.role ? { role: params.role } : {}) } };
     if (params.minSize != null || params.maxSize != null) {
       where.size = {};
@@ -161,7 +162,7 @@ export class TorrentsService {
         orderBy,
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
-        include: { category: true, uploader: { select: { username: true } } },
+        include: { category: true, uploader: { select: { id: true, username: true } } },
       }),
       this.prisma.torrent.count({ where }),
     ]);
@@ -226,7 +227,7 @@ export class TorrentsService {
       where: { id },
       include: {
         category: true,
-        uploader: { select: { username: true } },
+        uploader: { select: { id: true, username: true } },
         entities: { include: { entity: true }, orderBy: [{ role: 'asc' }, { position: 'asc' }] },
       },
     });

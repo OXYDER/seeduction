@@ -11,7 +11,7 @@ export class RequestsService {
     return this.prisma.torrentRequest.findMany({
       where: { filledById: null },
       orderBy: { bounty: 'desc' },
-      include: { requestedBy: { select: { username: true } } },
+      include: { requestedBy: { select: { id: true, username: true } } },
     });
   }
 

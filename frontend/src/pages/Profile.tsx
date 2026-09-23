@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
+import StaffUserPanel, { ROLE_LABEL } from '../components/StaffUserPanel';
 
 export default function Profile() {
   const { id } = useParams();
@@ -16,13 +17,14 @@ export default function Profile() {
   const [newKeyLabel, setNewKeyLabel] = useState('');
   const [newKeyScopes, setNewKeyScopes] = useState<string[]>([]);
   const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!targetId) return;
     api.get(id ? `/users/${id}` : '/users/me').then((r) => setProfile(r.data));
     if (!id) api.get('/users/me/ratio-history').then((r) => setHistory(r.data));
     api.get(`/badges/user/${targetId}`).then((r) => setBadges(r.data)).catch(() => {});
-  }, [id, targetId]);
+  }, [id, targetId, reloadKey]);
 
   function refreshKeys() {
     api.get('/keys').then((r) => setApiKeys(r.data)).catch(() => {});
@@ -61,7 +63,22 @@ export default function Profile() {
 
   return (
     <div className="grid">
-      <h1>{profile.username}</h1>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
+        <h1 style={{ margin: 0 }}>{profile.username}</h1>
+        {profile.role && <span className="badge double">{ROLE_LABEL[profile.role] ?? profile.role}</span>}
+        {profile.status === 'BANNED' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>Banni</span>}
+        <span className="muted">
+          Membre depuis le {new Date(profile.createdAt).toLocaleDateString('fr-FR')}
+          {profile.lastSeenAt && ` · vu ${new Date(profile.lastSeenAt).toLocaleDateString('fr-FR')}`}
+          {profile._count && ` · ${profile._count.torrentsUploaded} torrent(s) envoyé(s)`}
+        </span>
+        {id && (
+          <Link to={`/browse?uploaderId=${profile.id}`} className="muted">Voir ses torrents →</Link>
+        )}
+      </div>
+      {id && me && ['MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && (
+        <StaffUserPanel targetId={id} myRole={me.role} myId={me.id} onChanged={() => setReloadKey((k) => k + 1)} />
+      )}
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         <Card label="Ratio" value={profile.ratio ? profile.ratio.toFixed(2) : '∞'} />
         <Card label="Upload" value={`${(Number(profile.uploaded) / 1e9).toFixed(2)} Go`} />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import UserLink from '../components/UserLink';
 import { api } from '../api/client';
 
 export default function Messages() {
@@ -25,7 +26,7 @@ export default function Messages() {
           <tbody>
             {inbox.map((m) => (
               <tr key={m.id} style={{ fontWeight: m.read ? 400 : 700 }}>
-                <td>{m.sender?.username}</td>
+                <td><UserLink user={m.sender} /></td>
                 <td>{m.subject}</td>
                 <td className="muted">{new Date(m.createdAt).toLocaleDateString()}</td>
               </tr>

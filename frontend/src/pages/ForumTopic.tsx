@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import UserLink from '../components/UserLink';
 import { useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -29,7 +30,7 @@ export default function ForumTopic() {
       <h1>{topic.title}</h1>
       {topic.posts.map((p: any) => (
         <div key={p.id} className="panel">
-          <div className="muted">{p.author?.username} — {new Date(p.createdAt).toLocaleString()}</div>
+          <div className="muted"><UserLink user={p.author} /> — {new Date(p.createdAt).toLocaleString()}</div>
           <p>{p.content}</p>
         </div>
       ))}

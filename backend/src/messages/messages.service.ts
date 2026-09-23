@@ -10,7 +10,7 @@ export class MessagesService {
     return this.prisma.privateMessage.findMany({
       where: { recipientId: userId },
       orderBy: { createdAt: 'desc' },
-      include: { sender: { select: { username: true } } },
+      include: { sender: { select: { id: true, username: true } } },
     });
   }
 
@@ -18,7 +18,7 @@ export class MessagesService {
     return this.prisma.privateMessage.findMany({
       where: { senderId: userId },
       orderBy: { createdAt: 'desc' },
-      include: { recipient: { select: { username: true } } },
+      include: { recipient: { select: { id: true, username: true } } },
     });
   }
 

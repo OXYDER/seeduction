@@ -6,14 +6,19 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { TorrentsService } from './torrents.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 
 @Controller('torrents')
 export class TorrentsController {
   constructor(private torrentsService: TorrentsService) {}
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get()
-  list(@Query() query: Record<string, string>) {
+  list(@Query() query: Record<string, string>, @Request() req: any) {
+    // Les uploads anonymes d'un membre ne se retrouvent que par lui-même ou par le staff.
+    const seesAnonymous = !!req.user && (req.user.userId === query.uploaderId || ['MODERATOR', 'ADMIN', 'OWNER'].includes(req.user.role));
     return this.torrentsService.list({
+      hideAnonymous: !!query.uploaderId && !seesAnonymous,
       categoryId: query.categoryId,
       search: query.search,
       uploaderId: query.uploaderId,

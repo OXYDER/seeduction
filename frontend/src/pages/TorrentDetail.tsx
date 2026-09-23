@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import UserLink from '../components/UserLink';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
@@ -14,6 +16,8 @@ export default function TorrentDetail() {
   const [torrent, setTorrent] = useState<any>(null);
   const user = useAuthStore((s) => s.user);
   const favorites = useFavorites();
+  const [searchParams] = useSearchParams();
+  const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
   const [myCollections, setMyCollections] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addedTo, setAddedTo] = useState<Set<string>>(new Set());
@@ -78,6 +82,9 @@ export default function TorrentDetail() {
           </div>
         </div>
       </div>
+      {isStaff && (
+        <StaffTorrentPanel key={torrent.id} torrent={torrent} startOpen={searchParams.get('edit') === '1'} onSaved={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} />
+      )}
       <TorrentHero torrent={torrent} />
       {torrent.metaSource === 'tmdb' && (
         <TorrentRelated torrentId={torrent.id} seriesTitle={torrent.metadata?.originalTitle ?? torrent.name} />
@@ -86,7 +93,7 @@ export default function TorrentDetail() {
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div>
             <div className="muted">Catégorie : {torrent.category?.name}</div>
-            <div className="muted">Uploader : {torrent.anonymousUpload ? 'Anonyme' : torrent.uploader?.username}</div>
+            <div className="muted">Uploader : {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</div>
             <div className="muted"><HealthDot seeders={torrent.seeders} />Seeders {torrent.seeders} / Leechers {torrent.leechers} / Complétés {torrent.completedCount}</div>
           </div>
           {user && (
