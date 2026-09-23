@@ -4,12 +4,13 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { AuditService } from '../audit/audit.service';
 
 const viewerOf = (req: any) => (req.user ? { userId: req.user.userId, role: req.user.role } : undefined);
 
 @Controller('forum')
 export class ForumController {
-  constructor(private forumService: ForumService) {}
+  constructor(private forumService: ForumService, private audit: AuditService) {}
 
   // ---------------------------------------------------------------- lecture
 
@@ -80,15 +81,19 @@ export class ForumController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Post('topics/:id/moderate')
-  moderate(@Param('id') id: string, @Body() body: { action: string; forumId?: string }) {
-    return this.forumService.moderateTopic(id, body.action, body.forumId);
+  async moderate(@Param('id') id: string, @Body() body: { action: string; forumId?: string }, @Request() req: any) {
+    const result = await this.forumService.moderateTopic(id, body.action, body.forumId);
+    await this.audit.log(req.user.userId, `FORUM_TOPIC_${String(body.action).toUpperCase()}`, { topicId: id, title: result.title, forumId: body.forumId }, null);
+    return result;
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Delete('topics/:id')
-  deleteTopic(@Param('id') id: string) {
-    return this.forumService.deleteTopic(id);
+  async deleteTopic(@Param('id') id: string, @Request() req: any) {
+    const result = await this.forumService.deleteTopic(id);
+    await this.audit.log(req.user.userId, 'FORUM_TOPIC_DELETE', { topicId: id, title: result.title }, null);
+    return result;
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -106,8 +111,10 @@ export class ForumController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Post('categories')
-  createCategory(@Body() body: { name: string; parentId?: string; isCategory?: boolean; description?: string; icon?: string; staffOnly?: boolean; locked?: boolean }) {
-    return this.forumService.createCategory(body.name, body.parentId, !!body.isCategory, body);
+  async createCategory(@Body() body: { name: string; parentId?: string; isCategory?: boolean; description?: string; icon?: string; staffOnly?: boolean; locked?: boolean }, @Request() req: any) {
+    const result = await this.forumService.createCategory(body.name, body.parentId, !!body.isCategory, body);
+    await this.audit.log(req.user.userId, 'FORUM_STRUCTURE_CREATE', { name: body.name, isCategory: !!body.isCategory }, null);
+    return result;
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -130,7 +137,9 @@ export class ForumController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Delete('categories/:id')
-  deleteCategory(@Param('id') id: string) {
-    return this.forumService.deleteCategory(id);
+  async deleteCategory(@Param('id') id: string, @Request() req: any) {
+    const result = await this.forumService.deleteCategory(id);
+    await this.audit.log(req.user.userId, 'FORUM_STRUCTURE_DELETE', { name: result.name }, null);
+    return result;
   }
 }

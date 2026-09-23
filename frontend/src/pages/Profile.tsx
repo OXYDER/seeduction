@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import StaffUserPanel, { ROLE_LABEL } from '../components/StaffUserPanel';
 import ReportButton from '../components/ReportButton';
+import { displayRank } from '../lib/memberClass';
 
 export default function Profile() {
   const { id } = useParams();
@@ -66,7 +67,7 @@ export default function Profile() {
     <div className="grid">
       <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
         <h1 style={{ margin: 0 }}>{profile.username}</h1>
-        {profile.role && <span className="badge double">{ROLE_LABEL[profile.role] ?? profile.role}</span>}
+        {profile.role && <span className="badge double">{displayRank(profile, ROLE_LABEL)}</span>}
         {profile.status === 'BANNED' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>Banni</span>}
         <span className="muted">
           Membre depuis le {new Date(profile.createdAt).toLocaleDateString('fr-FR')}

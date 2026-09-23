@@ -15,7 +15,7 @@ export class UsersService {
       select: {
         id: true, username: true, email: true, role: true, uploaded: true,
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
-        lastSeenAt: true, passkey: true, status: true,
+        lastSeenAt: true, passkey: true, status: true, memberClass: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });

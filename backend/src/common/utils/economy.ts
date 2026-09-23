@@ -24,6 +24,21 @@ export const ECONOMY = {
 
 export const ANNOUNCE_INTERVAL_SECONDS = 1800;
 
+/** Rangs automatiques, du plus élevé au plus bas ; le premier dont toutes les conditions sont remplies s'applique. */
+export const MEMBER_CLASSES = [
+  { id: 'VETERAN', weeks: 26, uploadGb: 2000, ratio: 2 },
+  { id: 'ELITE', weeks: 12, uploadGb: 500, ratio: 1.5 },
+  { id: 'POWER_USER', weeks: 4, uploadGb: 50, ratio: 1.05 },
+  { id: 'MEMBRE', weeks: 1, uploadGb: 0, ratio: 0.5 },
+] as const;
+
+export const CLASS_LABELS: Record<string, string> = {
+  NOUVEAU: 'Nouveau', MEMBRE: 'Membre', POWER_USER: 'Power User', ELITE: 'Élite', VETERAN: 'Vétéran',
+};
+
+/** Invitations ouvertes en même temps, selon le rang (le staff n'a pas de limite). */
+export const INVITE_QUOTA: Record<string, number> = { NOUVEAU: 0, MEMBRE: 0, POWER_USER: 2, ELITE: 5, VETERAN: 10 };
+
 /** Boutique bonus : coût en points et effet. */
 export const SHOP_ITEMS = [
   { id: 'upload_5gb', label: '5 Go d\'upload', cost: 500, description: 'Ajoute 5 Go à ton upload.' },

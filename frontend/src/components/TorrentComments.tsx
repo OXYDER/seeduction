@@ -8,6 +8,7 @@ import { Pagination } from './ForumBits';
 import { ROLE_LABEL } from './StaffUserPanel';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { timeAgo } from '../lib/time';
+import { displayRank } from '../lib/memberClass';
 
 /** Commentaires sous un torrent : écrire, citer, modifier, supprimer, signaler. */
 export default function TorrentComments({ torrentId }: { torrentId: string }) {
@@ -84,7 +85,7 @@ export default function TorrentComments({ torrentId }: { torrentId: string }) {
             <div className="forum-post-author">
               <div className="forum-avatar" style={{ width: 44, height: 44, fontSize: 20 }}>{c.author.username[0]?.toUpperCase()}</div>
               <div style={{ fontWeight: 700 }}><UserLink user={c.author} /></div>
-              <div className="badge double" style={{ marginTop: 4 }}>{ROLE_LABEL[c.author.role] ?? c.author.role}</div>
+              <div className="badge double" style={{ marginTop: 4 }}>{displayRank(c.author, ROLE_LABEL)}</div>
             </div>
             <div className="forum-post-body">
               <div className="forum-post-head muted">

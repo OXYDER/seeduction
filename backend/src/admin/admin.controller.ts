@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AdminService, Actor } from './admin.service';
+import { AuditService } from '../audit/audit.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -8,7 +9,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 @Roles('MODERATOR', 'ADMIN', 'OWNER')
 @Controller('admin')
 export class AdminController {
-  constructor(private adminService: AdminService) {}
+  constructor(private adminService: AdminService, private audit: AuditService) {}
 
   @Get('stats')
   stats() {
@@ -26,23 +27,38 @@ export class AdminController {
   }
 
   @Patch('torrents/:id')
-  updateTorrent(@Param('id') id: string, @Body() body: any) {
-    return this.adminService.updateTorrent(id, body);
+  async updateTorrent(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    const result = await this.adminService.updateTorrent(id, body);
+    await this.audit.log(req.user.userId, 'TORRENT_EDIT', { torrentId: id, name: result.name, fields: Object.keys(body ?? {}) }, this.ip(req));
+    return result;
   }
 
   @Delete('torrents/:id')
-  deleteTorrent(@Param('id') id: string) {
-    return this.adminService.deleteTorrent(id);
+  async deleteTorrent(@Param('id') id: string, @Request() req: any) {
+    const result = await this.adminService.deleteTorrent(id);
+    await this.audit.log(req.user.userId, 'TORRENT_DELETE', { torrentId: id, name: result.name }, this.ip(req));
+    return result;
   }
 
   @Post('torrents/:id/approve')
-  approve(@Param('id') id: string) {
-    return this.adminService.approveTorrent(id);
+  async approve(@Param('id') id: string, @Request() req: any) {
+    const result = await this.adminService.approveTorrent(id);
+    await this.audit.log(req.user.userId, 'TORRENT_APPROVE', { torrentId: id, name: result.name }, this.ip(req));
+    return result;
   }
 
   @Post('torrents/:id/reject')
-  reject(@Param('id') id: string) {
-    return this.adminService.rejectTorrent(id);
+  async reject(@Param('id') id: string, @Request() req: any) {
+    const result = await this.adminService.rejectTorrent(id);
+    await this.audit.log(req.user.userId, 'TORRENT_REJECT', { torrentId: id, name: result.name }, this.ip(req));
+    return result;
+  }
+
+  /** Journal d'audit : réservé aux administrateurs. */
+  @Roles('ADMIN', 'OWNER')
+  @Get('audit')
+  auditLog(@Query('page') page?: string, @Query('action') action?: string, @Query('userId') userId?: string) {
+    return this.audit.list({ page: parseInt(page ?? '1', 10), action: action || undefined, userId: userId || undefined });
   }
 
   private actor(req: any): Actor {
@@ -54,24 +70,43 @@ export class AdminController {
     return this.adminService.userDetail(id);
   }
 
+  private ip(req: any): string | null {
+    return (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? null;
+  }
+
   @Patch('users/:id')
-  updateUser(@Param('id') id: string, @Body() body: any, @Request() req: any) {
-    return this.adminService.updateUser(this.actor(req), id, body ?? {});
+  async updateUser(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    const before = await this.adminService.userDetail(id);
+    const result = await this.adminService.updateUser(this.actor(req), id, body ?? {});
+    const changes: Record<string, any> = {};
+    if (result.role !== before.role) changes.role = { from: before.role, to: result.role };
+    if (result.username !== before.username) changes.username = { from: before.username, to: result.username };
+    if (String(result.uploaded) !== String(before.uploaded)) changes.uploaded = { from: String(before.uploaded), to: String(result.uploaded) };
+    if (String(result.downloaded) !== String(before.downloaded)) changes.downloaded = { from: String(before.downloaded), to: String(result.downloaded) };
+    if (result.bonusPoints !== before.bonusPoints) changes.bonusPoints = { from: before.bonusPoints, to: result.bonusPoints };
+    await this.audit.log(req.user.userId, 'USER_EDIT', { targetId: id, target: before.username, changes }, this.ip(req));
+    return result;
   }
 
   @Post('users/:id/warn')
-  warn(@Param('id') id: string, @Body('reason') reason: string, @Request() req: any) {
-    return this.adminService.warnUser(this.actor(req), id, reason);
+  async warn(@Param('id') id: string, @Body('reason') reason: string, @Request() req: any) {
+    const result = await this.adminService.warnUser(this.actor(req), id, reason);
+    await this.audit.log(req.user.userId, 'USER_WARN', { targetId: id, reason }, this.ip(req));
+    return result;
   }
 
   @Post('users/:id/ban')
-  ban(@Param('id') id: string, @Body() body: { reason: string; expiresAt?: string }, @Request() req: any) {
-    return this.adminService.banUser(this.actor(req), id, body.reason, body.expiresAt ? new Date(body.expiresAt) : undefined);
+  async ban(@Param('id') id: string, @Body() body: { reason: string; expiresAt?: string }, @Request() req: any) {
+    const result = await this.adminService.banUser(this.actor(req), id, body.reason, body.expiresAt ? new Date(body.expiresAt) : undefined);
+    await this.audit.log(req.user.userId, 'USER_BAN', { targetId: id, reason: body.reason, expiresAt: body.expiresAt ?? null }, this.ip(req));
+    return result;
   }
 
   @Post('users/:id/unban')
-  unban(@Param('id') id: string, @Request() req: any) {
-    return this.adminService.unbanUser(this.actor(req), id);
+  async unban(@Param('id') id: string, @Request() req: any) {
+    const result = await this.adminService.unbanUser(this.actor(req), id);
+    await this.audit.log(req.user.userId, 'USER_UNBAN', { targetId: id }, this.ip(req));
+    return result;
   }
 
   @Get('reports')

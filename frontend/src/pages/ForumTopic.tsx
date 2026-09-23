@@ -8,6 +8,7 @@ import { Breadcrumb, Pagination } from '../components/ForumBits';
 import ReportButton from '../components/ReportButton';
 import { ROLE_LABEL } from '../components/StaffUserPanel';
 import { bbcodeToHtml } from '../lib/bbcode';
+import { displayRank } from '../lib/memberClass';
 
 const isStaffRole = (role?: string) => ['MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
 
@@ -142,7 +143,7 @@ export default function ForumTopic() {
             <div className="forum-post-author">
               <div className="forum-avatar">{p.author?.username?.[0]?.toUpperCase() ?? '?'}</div>
               <div style={{ fontWeight: 700 }}><UserLink user={p.author} fallback="Membre supprimé" /></div>
-              {p.author && <div className="badge double" style={{ marginTop: 4 }}>{ROLE_LABEL[p.author.role] ?? p.author.role}</div>}
+              {p.author && <div className="badge double" style={{ marginTop: 4 }}>{displayRank(p.author, ROLE_LABEL)}</div>}
               {p.author && (
                 <div className="muted" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.6 }}>
                   Messages : {p.author.postCount}<br />

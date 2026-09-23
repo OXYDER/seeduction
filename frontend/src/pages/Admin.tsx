@@ -4,13 +4,13 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 
 const BASE_TABS = ['Vue d\'ensemble', 'Annonces', 'Catégories torrents', 'Torrents', 'Forum', 'Templates'] as const;
-type Tab = typeof BASE_TABS[number] | 'Monitoring';
+type Tab = typeof BASE_TABS[number] | 'Monitoring' | 'Journal';
 
 export default function Admin() {
   const role = useAuthStore((s) => s.user?.role);
   const [tab, setTab] = useState<Tab>('Vue d\'ensemble');
   // Le monitoring expose des détails d'infrastructure : réservé ADMIN/OWNER (les modérateurs voient le reste).
-  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Monitoring'] : [...BASE_TABS];
+  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Journal', 'Monitoring'] : [...BASE_TABS];
 
   return (
     <div className="grid">
@@ -27,7 +27,92 @@ export default function Admin() {
       {tab === 'Torrents' && <TorrentsAdmin />}
       {tab === 'Forum' && <ForumAdmin />}
       {tab === 'Templates' && <TemplatesAdmin />}
+      {tab === 'Journal' && <AuditAdmin />}
       {tab === 'Monitoring' && <MonitoringAdmin />}
+    </div>
+  );
+}
+
+const AUDIT_LABELS: Record<string, string> = {
+  TORRENT_EDIT: '✏️ Torrent modifié', TORRENT_DELETE: '🗑️ Torrent supprimé', TORRENT_APPROVE: '✅ Torrent approuvé', TORRENT_REJECT: '⛔ Torrent rejeté',
+  USER_EDIT: '👤 Membre modifié', USER_WARN: '⚠️ Avertissement', USER_BAN: '🚫 Bannissement', USER_UNBAN: '✅ Débannissement',
+  FORUM_TOPIC_DELETE: '🗑️ Sujet supprimé', FORUM_TOPIC_LOCK: '🔒 Sujet verrouillé', FORUM_TOPIC_UNLOCK: '🔓 Sujet déverrouillé',
+  FORUM_TOPIC_STICKY: '📌 Sujet épinglé', FORUM_TOPIC_UNSTICKY: 'Sujet désépinglé', FORUM_TOPIC_MOVE: '➜ Sujet déplacé',
+  FORUM_STRUCTURE_CREATE: '🗂️ Forum créé', FORUM_STRUCTURE_DELETE: '🗂️ Forum supprimé', FREELEECH_GLOBAL: '🎉 Freeleech global',
+  LOGIN: '🔑 Connexion', LOGIN_FAILED: '❌ Connexion échouée', PASSWORD_CHANGE: '🔐 Mot de passe changé', PASSWORD_RESET: '🔐 Mot de passe réinitialisé',
+  TWO_FACTOR_ENABLED: '🛡️ 2FA activée', TWO_FACTOR_DISABLED: '🛡️ 2FA désactivée', RESET_LINK_ISSUED: '🔗 Lien de réinitialisation émis',
+};
+
+/** Journal d'audit : qui a fait quoi, quand (administrateurs). */
+function AuditAdmin() {
+  const [data, setData] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setError('');
+    api.get('/admin/audit', { params: { page, action: filter || undefined } })
+      .then((r) => setData(r.data))
+      .catch((err) => setError(err.response?.data?.message ?? 'Impossible de charger le journal'));
+  }, [page, filter]);
+
+  if (error) return <p className="muted">{error}</p>;
+  if (!data) return <p className="muted">Chargement...</p>;
+
+  const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
+  const summary = (meta: any) => {
+    if (!meta) return '';
+    const parts: string[] = [];
+    if (meta.name) parts.push(`« ${meta.name} »`);
+    if (meta.title) parts.push(`« ${meta.title} »`);
+    if (meta.target) parts.push(meta.target);
+    if (meta.reason) parts.push(`motif : ${meta.reason}`);
+    if (meta.changes) parts.push(Object.entries(meta.changes).map(([k, v]: any) => `${k}: ${v.from} → ${v.to}`).join(', '));
+    if (meta.hours !== undefined) parts.push(meta.hours ? `${meta.hours} h` : 'arrêt');
+    if (meta.username) parts.push(meta.username);
+    return parts.join(' · ');
+  };
+
+  return (
+    <div className="panel">
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <h3>Journal d'audit ({data.total})</h3>
+        <select value={filter} onChange={(e) => { setPage(1); setFilter(e.target.value); }}>
+          <option value="">Toutes les actions</option>
+          <option value="~TORRENT">Torrents</option>
+          <option value="~USER">Membres</option>
+          <option value="~FORUM">Forum</option>
+          <option value="LOGIN">Connexions</option>
+          <option value="LOGIN_FAILED">Connexions échouées</option>
+          <option value="~PASSWORD">Mots de passe</option>
+          <option value="~TWO_FACTOR">2FA</option>
+        </select>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table>
+          <thead><tr><th>Date</th><th>Qui</th><th>Action</th><th>Détails</th><th>IP</th></tr></thead>
+          <tbody>
+            {data.items.map((l: any) => (
+              <tr key={l.id}>
+                <td className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(l.createdAt).toLocaleString('fr-FR')}</td>
+                <td>{l.user ? <a href={`/users/${l.user.id}`}>{l.user.username}</a> : <span className="muted">{l.meta?.username ?? '—'}</span>}</td>
+                <td>{AUDIT_LABELS[l.action] ?? l.action}</td>
+                <td className="muted" style={{ fontSize: 12 }}>{summary(l.meta)}</td>
+                <td className="muted">{l.ip ?? ''}</td>
+              </tr>
+            ))}
+            {data.items.length === 0 && <tr><td colSpan={5} className="muted">Aucune entrée.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
+        <span className="muted">Page {page} / {pages}</span>
+        <div className="row">
+          <button className="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Préc.</button>
+          <button className="secondary" disabled={page >= pages} onClick={() => setPage(page + 1)}>Suiv. →</button>
+        </div>
+      </div>
     </div>
   );
 }

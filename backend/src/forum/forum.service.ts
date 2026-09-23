@@ -332,7 +332,7 @@ export class ForumService implements OnModuleInit {
 
   private async postAuthorInfo(authorIds: string[]) {
     const [users, counts] = await Promise.all([
-      this.prisma.user.findMany({ where: { id: { in: authorIds } }, select: { id: true, username: true, role: true, createdAt: true } }),
+      this.prisma.user.findMany({ where: { id: { in: authorIds } }, select: { id: true, username: true, role: true, memberClass: true, createdAt: true } }),
       this.prisma.forumPost.groupBy({ by: ['authorId'], where: { authorId: { in: authorIds } }, _count: { _all: true } }),
     ]);
     const countById = new Map(counts.map((c) => [c.authorId, c._count._all]));
@@ -448,7 +448,7 @@ export class ForumService implements OnModuleInit {
   async deleteTopic(topicId: string) {
     const topic = await this.loadTopic(topicId);
     await this.prisma.forumTopic.delete({ where: { id: topicId } });
-    return { forumId: topic.categoryId };
+    return { forumId: topic.categoryId, title: topic.title };
   }
 
   /** Liste plate de tous les forums (où on peut écrire) — pour déplacer un sujet. */

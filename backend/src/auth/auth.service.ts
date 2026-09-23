@@ -5,6 +5,7 @@ import * as speakeasy from 'speakeasy';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
+import { CLASS_LABELS, INVITE_QUOTA } from '../common/utils/economy';
 
 @Injectable()
 export class AuthService {
@@ -109,6 +110,17 @@ export class AuthService {
 
   /** Génère un nouveau code d'invitation pour un user (limité par son rôle / quota). */
   async createInvite(userId: string, expiresInDays = 7) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, memberClass: true } });
+    if (!user) throw new UnauthorizedException();
+    const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(user.role);
+    if (!isStaff) {
+      const quota = INVITE_QUOTA[user.memberClass] ?? 0;
+      const open = await this.prisma.inviteCode.count({ where: { createdById: userId, used: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });
+      if (quota === 0) {
+        throw new BadRequestException(`Ton rang (${CLASS_LABELS[user.memberClass]}) ne permet pas encore de créer des invitations : monte en rang, ou achète-en une dans la boutique bonus.`);
+      }
+      if (open >= quota) throw new BadRequestException(`Tu as déjà ${open} invitation(s) ouverte(s) (maximum ${quota} pour ton rang).`);
+    }
     const code = await this.prisma.inviteCode.create({
       data: {
         code: cryptoRandom(),
