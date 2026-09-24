@@ -331,6 +331,7 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
   const [editError, setEditError] = useState('');
   const [editImage, setEditImage] = useState('');
   const [adult, setAdult] = useState(false);
+  const [installMsg, setInstallMsg] = useState('');
   const [editAdult, setEditAdult] = useState(false);
 
   async function uploadImage(file: File | undefined) {
@@ -447,6 +448,33 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
   return (
     <div className="panel">
       <h3>{title}</h3>
+      {showContentKind && (
+        <div className="panel" style={{ marginBottom: 16, background: 'rgba(255,255,255,0.03)' }}>
+          <strong>📥 Catégories recommandées (FR / QC)</strong>
+          <p className="muted" style={{ margin: '4px 0 8px' }}>
+            Ajoute d'un coup une arborescence complète pour un tracker francophone : Films (HD, 4K, Remux, québécois, français…), Séries, Animes, Jeunesse,
+            Spectacles et humour, Sports (hockey, soccer, UFC…), Musique, Jeux, Applications, Livres, Formations, Autres, et XXX (masqué par défaut).
+            Seules les catégories absentes sont créées : rien n'est renommé ni supprimé.
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!window.confirm('Ajouter les catégories recommandées manquantes ?')) return;
+              setError('');
+              try {
+                const { data } = await api.post(`${endpoint}/install-recommended`);
+                setInstallMsg(`✓ ${data.created} catégorie(s) créée(s), ${data.skipped} déjà présente(s)`);
+                refresh();
+              } catch (err: any) {
+                setError(err.response?.data?.message ?? "Installation impossible");
+              }
+            }}
+          >
+            Ajouter les catégories recommandées
+          </button>
+          {installMsg && <span style={{ color: 'var(--success)', marginLeft: 12 }}>{installMsg}</span>}
+        </div>
+      )}
       <div className="row" style={{ marginBottom: 16 }}>
         <input placeholder="Nom de la catégorie" value={name} onChange={(e) => setName(e.target.value)} />
         <select value={parentId} onChange={(e) => setParentId(e.target.value)}>

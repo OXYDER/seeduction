@@ -46,6 +46,11 @@ export const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
   animes: { icon: '🌸', color: '#ef6c4a' },
   livres: { icon: '📚', color: '#2dd4bf' },
   xxx: { icon: '🔞', color: '#9fb8a0' },
+  jeunesse: { icon: '🧸', color: '#facc15' },
+  'spectacles-et-humour': { icon: '🎭', color: '#fb923c' },
+  sports: { icon: '🏆', color: '#38bdf8' },
+  'formations-et-cours': { icon: '🎓', color: '#a3e635' },
+  autres: { icon: '📁', color: '#94a3b8' },
 };
 
 interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; staffOnly?: boolean }

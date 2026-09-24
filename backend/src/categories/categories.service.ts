@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
 import { SettingsService } from '../settings/settings.service';
+import { RECOMMENDED_CATEGORIES } from './recommended';
 
 const DEFAULT_CATEGORIES = [
   { name: 'Films', slug: 'films', contentKind: 'FILM' as const },
@@ -38,6 +39,36 @@ export class CategoriesService implements OnModuleInit {
       await this.settings.set('xxxMarkedAdult', true);
       this.adult.invalidate();
     }
+  }
+
+  /**
+   * Ajoute l'arborescence recommandée (FR / QC) : seules les catégories absentes sont créées.
+   * Une catégorie est considérée présente si son nom OU son identifiant d'adresse existe déjà.
+   */
+  async installRecommended() {
+    let created = 0;
+    let skipped = 0;
+    const exists = async (name: string) =>
+      !!(await this.prisma.category.findFirst({ where: { OR: [{ name: { equals: name, mode: 'insensitive' } }, { slug: slugify(name) }] }, select: { id: true } }));
+
+    for (const top of RECOMMENDED_CATEGORIES) {
+      let parent = await this.prisma.category.findFirst({ where: { OR: [{ name: { equals: top.name, mode: 'insensitive' } }, { slug: slugify(top.name) }] } });
+      if (!parent) {
+        parent = await this.prisma.category.create({ data: { name: top.name, slug: slugify(top.name), contentKind: (top.kind as any) ?? null, adult: !!top.adult } });
+        created++;
+      } else {
+        skipped++;
+        // Une catégorie existante sans type de contenu reçoit celui recommandé (la recherche automatique en dépend).
+        if (!parent.contentKind && top.kind) await this.prisma.category.update({ where: { id: parent.id }, data: { contentKind: top.kind as any } });
+      }
+      for (const child of top.children) {
+        if (await exists(child.name)) { skipped++; continue; }
+        await this.prisma.category.create({ data: { name: child.name, slug: slugify(child.name), parentId: parent.id, contentKind: (child.kind as any) ?? null } });
+        created++;
+      }
+    }
+    this.adult.invalidate();
+    return { created, skipped };
   }
 
   async list(viewer?: { userId: string; role: string }, includeAdult = false) {

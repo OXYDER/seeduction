@@ -17,6 +17,13 @@ export class CategoriesController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Post('install-recommended')
+  installRecommended() {
+    return this.categoriesService.installRecommended();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Post()
   create(@Body() body: { name: string; parentId?: string; contentKind?: string | null; imageUrl?: string | null; adult?: boolean }) {
     return this.categoriesService.create(body.name, body.parentId, body.contentKind, body.imageUrl, body.adult);
