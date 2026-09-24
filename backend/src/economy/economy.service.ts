@@ -189,14 +189,76 @@ export class EconomyService {
 
   // ------------------------------------------------------------------ freeleech global (staff)
 
-  async setGlobalFreeleech(hours: number | null) {
-    if (hours === null || hours <= 0) {
+  /** Lance (ou arrête) un freeleech immédiat : soit pour N heures, soit jusqu'à une date précise. */
+  async setGlobalFreeleech(input: { hours?: number | null; until?: string | null }) {
+    const stopping = (input.hours === null || input.hours === undefined || input.hours <= 0) && !input.until;
+    if (stopping) {
       await this.settings.set('freeleechUntil', null);
       return { freeleechUntil: null };
     }
-    if (hours > 24 * 30) throw new BadRequestException('Durée maximale : 30 jours');
-    const until = new Date(Date.now() + hours * 3600_000);
+    const until = input.until ? new Date(input.until) : new Date(Date.now() + Number(input.hours) * 3600_000);
+    if (Number.isNaN(until.getTime())) throw new BadRequestException('Date invalide');
+    if (until.getTime() <= Date.now()) throw new BadRequestException('La fin doit être dans le futur');
+    if (until.getTime() - Date.now() > 31 * 86400_000) throw new BadRequestException('Durée maximale : 31 jours');
     await this.settings.set('freeleechUntil', until.toISOString());
     return { freeleechUntil: until };
+  }
+
+  // ------------------------------------------------------------------ événements freeleech programmés
+
+  private parseEventDates(startsAt: string, endsAt: string) {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) throw new BadRequestException('Dates invalides');
+    if (end <= start) throw new BadRequestException('La fin doit être après le début');
+    if (end.getTime() - start.getTime() > 31 * 86400_000) throw new BadRequestException("Un événement dure 31 jours au maximum");
+    return { start, end };
+  }
+
+  listEvents() {
+    const from = new Date(Date.now() - 60 * 86400_000);
+    return this.prisma.freeleechEvent.findMany({ where: { endsAt: { gt: from } }, orderBy: { startsAt: 'asc' }, take: 300 });
+  }
+
+  async createEvent(userId: string, data: { title: string; message?: string; startsAt: string; endsAt: string; announce?: boolean }) {
+    const title = data.title?.trim();
+    if (!title) throw new BadRequestException('Titre requis');
+    const { start, end } = this.parseEventDates(data.startsAt, data.endsAt);
+    if (end.getTime() <= Date.now()) throw new BadRequestException("Cet événement est déjà terminé");
+    const event = await this.prisma.freeleechEvent.create({
+      data: { title: title.slice(0, 120), message: data.message?.trim() || null, startsAt: start, endsAt: end, createdById: userId },
+    });
+    this.settings.invalidateFreeleech();
+
+    if (data.announce) {
+      const fmt = (d: Date) => d.toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/Toronto' });
+      const content = `[b]Du ${fmt(start)}\nau ${fmt(end)}[/b]\n\n${event.message ?? 'Les téléchargements ne comptent pas dans ton ratio pendant cet événement !'}`;
+      await this.prisma.announcement.create({ data: { title: `🎉 ${event.title}`, content, pinned: false, authorId: userId } });
+      await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `🎉 ${event.title}`, body: `Freeleech du ${fmt(start)} au ${fmt(end)}`, link: '/news' });
+    }
+    return event;
+  }
+
+  async updateEvent(id: string, data: { title?: string; message?: string | null; startsAt?: string; endsAt?: string }) {
+    const current = await this.prisma.freeleechEvent.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException('Événement introuvable');
+    const { start, end } = this.parseEventDates(data.startsAt ?? current.startsAt.toISOString(), data.endsAt ?? current.endsAt.toISOString());
+    const updated = await this.prisma.freeleechEvent.update({
+      where: { id },
+      data: {
+        title: data.title?.trim() ? data.title.trim().slice(0, 120) : current.title,
+        message: data.message !== undefined ? data.message?.trim() || null : current.message,
+        startsAt: start, endsAt: end,
+      },
+    });
+    this.settings.invalidateFreeleech();
+    return updated;
+  }
+
+  async deleteEvent(id: string) {
+    const removed = await this.prisma.freeleechEvent.delete({ where: { id } }).catch(() => null);
+    if (!removed) throw new NotFoundException('Événement introuvable');
+    this.settings.invalidateFreeleech();
+    return removed;
   }
 }

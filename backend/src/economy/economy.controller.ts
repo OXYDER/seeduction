@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
 import { EconomyService } from './economy.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -13,7 +13,8 @@ export class EconomyController {
   /** Public : sert à afficher le bandeau « freeleech global » à tout le monde. */
   @Get('freeleech')
   async freeleech() {
-    return { until: await this.settings.freeleechUntil() };
+    const state = await this.settings.freeleechState();
+    return { until: state.until, event: state.event, upcoming: state.upcoming };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -43,9 +44,43 @@ export class EconomyController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Post('freeleech')
-  async setFreeleech(@Body('hours') hours: number | null, @Request() req: any) {
-    const result = await this.economy.setGlobalFreeleech(hours === null || hours === undefined ? null : Number(hours));
-    await this.audit.log(req.user.userId, 'FREELEECH_GLOBAL', { hours });
+  async setFreeleech(@Body() body: { hours?: number | null; until?: string | null }, @Request() req: any) {
+    const result = await this.economy.setGlobalFreeleech({ hours: body?.hours === undefined || body?.hours === null ? null : Number(body.hours), until: body?.until ?? null });
+    await this.audit.log(req.user.userId, 'FREELEECH_GLOBAL', { hours: body?.hours ?? null, until: body?.until ?? null });
     return result;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Get('events')
+  events() {
+    return this.economy.listEvents();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Post('events')
+  async createEvent(@Body() body: { title: string; message?: string; startsAt: string; endsAt: string; announce?: boolean }, @Request() req: any) {
+    const event = await this.economy.createEvent(req.user.userId, body);
+    await this.audit.log(req.user.userId, 'FREELEECH_EVENT_CREATE', { title: event.title, startsAt: event.startsAt, endsAt: event.endsAt });
+    return event;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Patch('events/:id')
+  async updateEvent(@Param('id') id: string, @Body() body: { title?: string; message?: string | null; startsAt?: string; endsAt?: string }, @Request() req: any) {
+    const event = await this.economy.updateEvent(id, body);
+    await this.audit.log(req.user.userId, 'FREELEECH_EVENT_EDIT', { title: event.title });
+    return event;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Delete('events/:id')
+  async deleteEvent(@Param('id') id: string, @Request() req: any) {
+    const event = await this.economy.deleteEvent(id);
+    await this.audit.log(req.user.userId, 'FREELEECH_EVENT_DELETE', { title: event.title });
+    return event;
   }
 }

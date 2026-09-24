@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
+import NewsPanel from '../components/NewsPanel';
 import { getRankInfo } from '../lib/rank';
 import { CATEGORY_STYLE, type LayoutContext } from '../components/Layout';
 
@@ -34,7 +35,6 @@ export default function Dashboard() {
   const { profile } = useOutletContext<LayoutContext>();
   const user = useAuthStore((s) => s.user);
   const [torrents, setTorrents] = useState<any[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [topUploaders, setTopUploaders] = useState<TopUploader[]>([]);
   const [stats, setStats] = useState<GlobalStats | null>(null);
 
@@ -43,7 +43,6 @@ export default function Dashboard() {
       const sorted = [...r.data.items].sort((a, b) => b.seeders - a.seeders);
       setTorrents(sorted.slice(0, 5));
     });
-    api.get('/announcements', { params: { limit: 3 } }).then((r) => setAnnouncements(r.data)).catch(() => {});
     api.get('/users/leaderboard', { params: { limit: 5 } }).then((r) => setTopUploaders(r.data)).catch(() => {});
     api.get('/stats/global').then((r) => setStats(r.data)).catch(() => {});
   }, []);
@@ -140,6 +139,7 @@ export default function Dashboard() {
             <div className="sidebar-menu">
               <Link to="/"><span className="icon">🏠</span><span className="label">Tableau de bord</span></Link>
               <Link to="/browse"><span className="icon">📦</span><span className="label">Torrents</span></Link>
+              <Link to="/news"><span className="icon">📰</span><span className="label">Nouvelles</span></Link>
               <Link to="/requests"><span className="icon">💬</span><span className="label">Demandes</span></Link>
               <Link to="/forum"><span className="icon">👥</span><span className="label">Forums</span></Link>
               <Link to="/leaderboard"><span className="icon">🏆</span><span className="label">Top 100</span></Link>
@@ -156,7 +156,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="col-center panel">
+        <div className="col-center grid" style={{ gap: 16, alignContent: 'start' }}>
+          <NewsPanel limit={3} />
+          <div className="panel">
           <div className="panel-title"><span className="title-icon">🏆</span>Torrents en vedette</div>
           <table>
             <thead>
@@ -195,21 +197,10 @@ export default function Dashboard() {
           <div className="row" style={{ justifyContent: 'center', marginTop: 12 }}>
             <Link to="/browse"><button className="secondary">Voir tous les torrents</button></Link>
           </div>
+          </div>
         </div>
 
         <div className="grid col-right">
-          <div className="panel">
-            <div className="panel-title"><span className="title-icon">📯</span>Annonces</div>
-            {announcements.length === 0 && <p className="muted">Aucune annonce pour l'instant.</p>}
-            {announcements.map((a) => (
-              <div key={a.id} style={{ marginBottom: 14 }}>
-                <strong>{a.pinned ? '🔥 ' : ''}{a.title}</strong>
-                <p className="muted" style={{ margin: '4px 0' }}>{a.content}</p>
-                <span className="muted" style={{ fontSize: 11 }}>{timeAgo(a.createdAt)}</span>
-              </div>
-            ))}
-          </div>
-
           <div className="panel">
             <div className="panel-title"><span className="title-icon">👑</span>Top uploaders</div>
             {topUploaders.map((u, i) => (

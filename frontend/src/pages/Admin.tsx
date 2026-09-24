@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
+import { NewsAdmin, FreeleechAdmin } from '../components/AdminNewsFreeleech';
 
-const BASE_TABS = ['Vue d\'ensemble', 'Annonces', 'Catégories torrents', 'Torrents', 'Forum', 'Templates'] as const;
+const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates'] as const;
 type Tab = typeof BASE_TABS[number] | 'Monitoring' | 'Journal';
 
 export default function Admin() {
@@ -22,7 +23,8 @@ export default function Admin() {
       </div>
 
       {tab === 'Vue d\'ensemble' && <Overview />}
-      {tab === 'Annonces' && <AnnouncementsAdmin />}
+      {tab === 'Nouvelles' && <NewsAdmin />}
+      {tab === 'Freeleech' && <FreeleechAdmin />}
       {tab === 'Catégories torrents' && <TorrentCategoriesAdmin />}
       {tab === 'Torrents' && <TorrentsAdmin />}
       {tab === 'Forum' && <ForumAdmin />}
@@ -38,6 +40,7 @@ const AUDIT_LABELS: Record<string, string> = {
   USER_EDIT: '👤 Membre modifié', USER_WARN: '⚠️ Avertissement', USER_BAN: '🚫 Bannissement', USER_UNBAN: '✅ Débannissement',
   FORUM_TOPIC_DELETE: '🗑️ Sujet supprimé', FORUM_TOPIC_LOCK: '🔒 Sujet verrouillé', FORUM_TOPIC_UNLOCK: '🔓 Sujet déverrouillé',
   FORUM_TOPIC_STICKY: '📌 Sujet épinglé', FORUM_TOPIC_UNSTICKY: 'Sujet désépinglé', FORUM_TOPIC_MOVE: '➜ Sujet déplacé',
+  FREELEECH_EVENT_CREATE: '🗓️ Événement freeleech programmé', FREELEECH_EVENT_EDIT: '🗓️ Événement freeleech modifié', FREELEECH_EVENT_DELETE: '🗓️ Événement freeleech supprimé',
   FORUM_STRUCTURE_CREATE: '🗂️ Forum créé', FORUM_STRUCTURE_DELETE: '🗂️ Forum supprimé', FREELEECH_GLOBAL: '🎉 Freeleech global',
   LOGIN: '🔑 Connexion', LOGIN_FAILED: '❌ Connexion échouée', PASSWORD_CHANGE: '🔐 Mot de passe changé', PASSWORD_RESET: '🔐 Mot de passe réinitialisé',
   TWO_FACTOR_ENABLED: '🛡️ 2FA activée', TWO_FACTOR_DISABLED: '🛡️ 2FA désactivée', RESET_LINK_ISSUED: '🔗 Lien de réinitialisation émis',
@@ -205,48 +208,6 @@ function Card({ label, value }: { label: string; value: number }) {
   return <div className="panel"><div className="muted">{label}</div><div style={{ fontSize: 22, fontWeight: 700 }}>{value}</div></div>;
 }
 
-function GlobalFreeleechControl() {
-  const [until, setUntil] = useState<string | null>(null);
-  const [hours, setHours] = useState('24');
-  const [error, setError] = useState('');
-
-  function load() { api.get('/bonus/freeleech').then((r) => setUntil(r.data.until)).catch(() => {}); }
-  useEffect(load, []);
-
-  async function apply(h: number | null) {
-    setError('');
-    try {
-      const { data } = await api.post('/bonus/freeleech', { hours: h });
-      setUntil(data.freeleechUntil);
-    } catch (err: any) {
-      setError(err.response?.data?.message ?? 'Erreur');
-    }
-  }
-
-  return (
-    <div className="panel">
-      <h3>🎉 Freeleech global</h3>
-      <p className="muted">Pendant un événement freeleech, les téléchargements de tous les membres ne comptent pas dans leur ratio (l'upload compte toujours).</p>
-      {until ? (
-        <div className="row" style={{ flexWrap: 'wrap' }}>
-          <strong style={{ color: 'var(--success)' }}>Actif jusqu'au {new Date(until).toLocaleString('fr-FR')}</strong>
-          <button type="button" className="danger" onClick={() => apply(null)}>Arrêter maintenant</button>
-        </div>
-      ) : (
-        <div className="row" style={{ flexWrap: 'wrap' }}>
-          <span className="muted">Inactif.</span>
-          <input type="number" min="1" max="720" value={hours} onChange={(e) => setHours(e.target.value)} style={{ width: 90 }} />
-          <span className="muted">heure(s)</span>
-          <button type="button" onClick={() => apply(Number(hours))}>Activer</button>
-          <button type="button" className="secondary" onClick={() => apply(48)}>48 h</button>
-          <button type="button" className="secondary" onClick={() => apply(72)}>Week-end (72 h)</button>
-        </div>
-      )}
-      {error && <div className="muted" style={{ color: 'var(--danger)', marginTop: 6 }}>{error}</div>}
-    </div>
-  );
-}
-
 function Overview() {
   const [stats, setStats] = useState<any>(null);
   const [pending, setPending] = useState<any[]>([]);
@@ -275,8 +236,6 @@ function Overview() {
           <Card label="Reports ouverts" value={stats.openReports} />
         </div>
       )}
-
-      <GlobalFreeleechControl />
 
       <div className="panel">
         <h3>Torrents en attente ({pending.length})</h3>
@@ -319,51 +278,6 @@ function Overview() {
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-function AnnouncementsAdmin() {
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [pinned, setPinned] = useState(false);
-
-  function refresh() { api.get('/announcements', { params: { limit: 20 } }).then((r) => setAnnouncements(r.data)); }
-  useEffect(() => { refresh(); }, []);
-
-  async function publish() {
-    if (!title.trim() || !content.trim()) return;
-    await api.post('/announcements', { title, content, pinned });
-    setTitle(''); setContent(''); setPinned(false);
-    refresh();
-  }
-  async function remove(id: string) { await api.delete(`/announcements/${id}`); refresh(); }
-
-  return (
-    <div className="panel">
-      <h3>Annonces</h3>
-      <div className="grid" style={{ gap: 8 }}>
-        <input placeholder="Titre" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <textarea placeholder="Contenu" value={content} onChange={(e) => setContent(e.target.value)} rows={3} />
-        <label className="row muted" style={{ gap: 6 }}>
-          <input type="checkbox" style={{ width: 'auto' }} checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
-          Épingler
-        </label>
-        <button style={{ alignSelf: 'flex-start' }} onClick={publish}>Publier</button>
-      </div>
-      <table style={{ marginTop: 16 }}>
-        <tbody>
-          {announcements.map((a) => (
-            <tr key={a.id}>
-              <td>{a.pinned ? '🔥 ' : ''}{a.title}</td>
-              <td className="row" style={{ justifyContent: 'flex-end' }}>
-                <button className="danger" onClick={() => remove(a.id)}>Supprimer</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

@@ -449,6 +449,7 @@ model Announcement {
   author    User     @relation(fields: [authorId], references: [id])
   authorId  String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([pinned, createdAt])
 }
@@ -728,4 +729,17 @@ model EntityFollow {
 
   @@id([userId, entityId])
   @@index([entityId])
+}
+
+// Événement freeleech programmé (dates de début et de fin, message affiché aux membres).
+model FreeleechEvent {
+  id          String   @id @default(uuid())
+  title       String
+  message     String?  @db.Text
+  startsAt    DateTime
+  endsAt      DateTime
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([startsAt, endsAt])
 }

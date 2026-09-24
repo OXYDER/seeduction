@@ -7,6 +7,7 @@ import NotificationsBell from './NotificationsBell';
 import InstallPrompt from './InstallPrompt';
 import ThemeSwitcher from './ThemeSwitcher';
 import SearchBox from './SearchBox';
+import FreeleechBanner from './FreeleechBanner';
 
 export interface Profile {
   id: string;
@@ -50,11 +51,6 @@ export default function Layout() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
-  const [freeleechUntil, setFreeleechUntil] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.get('/bonus/freeleech').then((r) => setFreeleechUntil(r.data.until)).catch(() => {});
-  }, [location.pathname]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -126,11 +122,7 @@ export default function Layout() {
         </div>
       </div>
 
-      {freeleechUntil && (
-        <div style={{ background: 'linear-gradient(90deg, rgba(74,222,128,0.18), rgba(224,184,74,0.18))', borderBottom: '1px solid var(--border-gold)', textAlign: 'center', padding: '6px 12px', fontSize: 13 }}>
-          🎉 <strong>Freeleech global</strong> jusqu'au {new Date(freeleechUntil).toLocaleString('fr-FR')} : les téléchargements ne comptent pas dans le ratio !
-        </div>
-      )}
+      <FreeleechBanner />
 
       <div className="mainnav">
         <div className="nav-links">
@@ -140,6 +132,7 @@ export default function Layout() {
           <Link to="/browse" className={location.pathname === '/browse' ? 'active' : ''}>
             <span className="nav-icon c-search">🔍</span>Parcourir
           </Link>
+          <Link to="/news" className={location.pathname.startsWith('/news') ? 'active' : ''}><span className="nav-icon c-rules">📰</span>Nouvelles</Link>
           <Link to="/upload"><span className="nav-icon c-upload">⬆️</span>Envoyer</Link>
           <Link to="/requests"><span className="nav-icon c-chat">💬</span>Demandes</Link>
           <Link to="/favorites"><span className="nav-icon c-collections">⭐</span>Favoris</Link>

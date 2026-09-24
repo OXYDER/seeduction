@@ -7,6 +7,7 @@ import Browse from './pages/Browse';
 import Favorites from './pages/Favorites';
 import Bonus from './pages/Bonus';
 import Stats from './pages/Stats';
+import News from './pages/News';
 import ResetPassword from './pages/ResetPassword';
 import ForgotPassword from './pages/ForgotPassword';
 import ForumView from './pages/ForumView';
@@ -62,6 +63,8 @@ export default function App() {
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/bonus" element={<Bonus />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/news" element={<News />} />
+          <Route path="/news/:id" element={<News />} />
         </Route>
       </Routes>
     </BrowserRouter>
