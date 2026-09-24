@@ -9,6 +9,27 @@ import { bencode } from '../common/utils/bencode';
  * bon Content-Type. Le passkey identifie l'utilisateur (path param, jamais
  * en query pour ne pas fuiter dans les logs de proxy).
  */
+/**
+ * Décode un paramètre BitTorrent encodé en pourcentage vers des octets, puis en hexadécimal.
+ * L'info_hash est du binaire (20 octets) : `decodeURIComponent` le lirait comme de l'UTF-8 et
+ * lèverait « URI malformed » dès qu'un octet n'est pas du texte valide (cas de la plupart des torrents).
+ */
+function percentDecodedToHex(raw: string): string {
+  const bytes: number[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    if (c === '%' && /^[0-9a-fA-F]{2}$/.test(raw.slice(i + 1, i + 3))) {
+      bytes.push(parseInt(raw.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else if (c === '+') {
+      bytes.push(0x20);
+    } else {
+      bytes.push(raw.charCodeAt(i) & 0xff);
+    }
+  }
+  return Buffer.from(bytes).toString('hex');
+}
+
 @Controller('tracker/:passkey')
 export class TrackerController {
   constructor(private trackerService: TrackerService) {}
@@ -17,7 +38,7 @@ export class TrackerController {
   async announce(@Param('passkey') passkey: string, @Query() query: any, @Req() req: Request, @Res() res: Response) {
     try {
       const infoHashRaw = req.url.match(/info_hash=([^&]+)/)?.[1] ?? '';
-      const infoHash = Buffer.from(decodeURIComponent(infoHashRaw), 'binary').toString('hex');
+      const infoHash = percentDecodedToHex(infoHashRaw);
 
       const result = await this.trackerService.announce({
         infoHash,
@@ -33,8 +54,12 @@ export class TrackerController {
         compact: query.compact === '1',
       });
 
+      // Format compact IPv4 (6 octets par peer) : les peers IPv6 sont ignorés au lieu de faire échouer l'announce.
+      const ipv4Peers = result.peers
+        .map((p) => ({ ...p, ip: p.ip.replace(/^::ffff:/i, '') }))
+        .filter((p) => /^(\d{1,3}\.){3}\d{1,3}$/.test(p.ip) && p.port > 0 && p.port < 65536);
       const peersCompact = Buffer.concat(
-        result.peers.map((p) => {
+        ipv4Peers.map((p) => {
           const parts = p.ip.split('.').map(Number);
           const buf = Buffer.alloc(6);
           parts.forEach((n, i) => buf.writeUInt8(n, i));
@@ -60,9 +85,9 @@ export class TrackerController {
   }
 
   @Get('scrape')
-  async scrape(@Query() query: any, @Res() res: Response) {
-    const raw = Array.isArray(query.info_hash) ? query.info_hash : [query.info_hash];
-    const hashes = raw.filter(Boolean).map((h: string) => Buffer.from(decodeURIComponent(h), 'binary').toString('hex'));
+  async scrape(@Req() req: Request, @Res() res: Response) {
+    // Lu dans l'URL brute : l'info_hash est du binaire encodé en %XX, pas du texte UTF-8.
+    const hashes = [...req.url.matchAll(/info_hash=([^&]+)/g)].map((m) => percentDecodedToHex(m[1]));
 
     const torrents = await this.trackerService.scrape(hashes);
     const files: Record<string, any> = {};
