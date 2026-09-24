@@ -1461,3 +1461,16 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 @media (max-width: 980px) { :root[data-theme="prestige"] .shell .container { padding: 8px 14px 96px; } }
 /* Pages surtout textuelles : colonne de lecture confortable, centree */
 .page-narrow { max-width: 1240px; margin-left: auto; margin-right: auto; width: 100%; }
+
+/* ---- Menu lateral : bouton reduire / agrandir toujours visible en haut (le choix est memorise) ---- */
+.side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.side-head .side-brand { padding: 4px 6px; min-width: 0; }
+:root[data-theme="prestige"] .side-collapse {
+  display: inline-flex; align-items: center; justify-content: center; align-self: auto; margin: 0; flex-shrink: 0;
+  width: 30px; height: 30px; padding: 0; border-radius: 10px; font-size: 13px; color: var(--text-dim);
+}
+:root[data-theme="prestige"] .side-collapse:hover { color: #fff; background: rgba(var(--acc-rgb), 0.35); border-color: var(--acc1); }
+@media (min-width: 981px) {
+  .shell.collapsed .side-head { flex-direction: column; gap: 10px; }
+  .shell.collapsed .side-head .side-brand { padding: 4px 0; }
+}

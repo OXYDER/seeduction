@@ -133,11 +133,22 @@ export default function Layout() {
       <div className={`shell${collapsed ? ' collapsed' : ''}`}>
         {drawer && <div className="shell-overlay" onClick={() => setDrawer(false)} />}
         <aside className={`side-nav${drawer ? ' open' : ''}`}>
-          <Link to="/" className="side-brand">
-            <img src="/logo-icon.png" alt="" width={34} height={34} />
-            <span>SEEDUCTION</span>
-          </Link>
-          <button type="button" className="secondary side-collapse" onClick={toggleCollapsed} title={collapsed ? 'Agrandir le menu' : 'Réduire le menu'} aria-label="Réduire ou agrandir le menu">{collapsed ? '»' : '«'}</button>
+          <div className="side-head">
+            <Link to="/" className="side-brand" title="Accueil">
+              <img src="/logo-icon.png" alt="" width={34} height={34} />
+              <span>SEEDUCTION</span>
+            </Link>
+            <button
+              type="button"
+              className="secondary side-collapse"
+              onClick={toggleCollapsed}
+              title={collapsed ? 'Agrandir le menu' : 'Réduire le menu (icônes seules)'}
+              aria-label={collapsed ? 'Agrandir le menu' : 'Réduire le menu'}
+              aria-expanded={!collapsed}
+            >
+              {collapsed ? '❯' : '❮'}
+            </button>
+          </div>
 
           <div className="side-user">
             <Link to="/profile" className="side-user-card">
