@@ -1,6 +1,6 @@
 export default function Rules() {
   return (
-    <div className="grid">
+    <div className="grid page-narrow">
       <h1>Règles du tracker</h1>
       <div className="panel ornate grid">
         <section>

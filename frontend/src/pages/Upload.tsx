@@ -170,7 +170,7 @@ export default function Upload() {
   }
 
   return (
-    <div className="grid">
+    <div className="grid page-narrow">
       <h1>Uploader un torrent</h1>
 
       <div className="panel ornate">

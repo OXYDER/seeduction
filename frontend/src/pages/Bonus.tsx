@@ -35,7 +35,7 @@ export default function Bonus() {
   const { rules } = data;
 
   return (
-    <div className="grid" style={{ gap: 16 }}>
+    <div className="grid page-narrow" style={{ gap: 16 }}>
       <h1>🎁 Points bonus</h1>
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>

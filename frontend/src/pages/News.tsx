@@ -46,7 +46,7 @@ export default function News() {
   if (id) {
     if (!single) return <p className="muted">Chargement...</p>;
     return (
-      <div className="grid" style={{ gap: 14 }}>
+      <div className="grid page-narrow" style={{ gap: 14 }}>
         <div className="forum-crumbs"><Link to="/">Accueil</Link> › <Link to="/news">Nouvelles</Link> › <strong>{single.title}</strong></div>
         <Post n={single} full />
         <Link to="/news">← Toutes les nouvelles</Link>
@@ -56,7 +56,7 @@ export default function News() {
 
   if (!feed) return <p className="muted">Chargement...</p>;
   return (
-    <div className="grid" style={{ gap: 16 }}>
+    <div className="grid page-narrow" style={{ gap: 16 }}>
       <h1>📰 Nouvelles</h1>
       {feed.items.length === 0 && <p className="muted">Aucune nouvelle pour l'instant.</p>}
       {feed.items.map((n: any) => <Post key={n.id} n={n} />)}
