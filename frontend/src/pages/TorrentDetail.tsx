@@ -12,12 +12,14 @@ import TorrentHero from '../components/TorrentHero';
 import TorrentRelated from '../components/TorrentRelated';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
 import { useFavorites } from '../lib/favorites';
+import { usePageBackdrop } from '../lib/backdrop';
 
 export default function TorrentDetail() {
   const { id } = useParams();
   const justUploaded = (useLocation().state as { justUploaded?: boolean } | null)?.justUploaded;
   const [torrent, setTorrent] = useState<any>(null);
   const [loadError, setLoadError] = useState('');
+  usePageBackdrop(torrent ? (torrent.metadata?.backdrop ?? torrent.coverImage ?? null) : null);
   const user = useAuthStore((s) => s.user);
   const favorites = useFavorites();
   const [searchParams] = useSearchParams();

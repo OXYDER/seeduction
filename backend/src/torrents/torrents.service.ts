@@ -204,7 +204,8 @@ export class TorrentsService {
     const rows = items.map(({ metadata, ...t }) => {
       const overview = (metadata as any)?.overview;
       const synopsis = typeof overview === 'string' && overview.trim() ? overview.trim().replace(/\s+/g, ' ') : null;
-      return { ...t, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
+      const backdrop = (metadata as any)?.backdrop;
+      return { ...t, backdrop: typeof backdrop === 'string' ? backdrop : null, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
     });
 
     return { items: rows, total, page: params.page, pageSize: params.pageSize };

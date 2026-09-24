@@ -16,9 +16,9 @@ export default function Admin() {
   return (
     <div className="grid">
       <h1>Administration</h1>
-      <div className="row" style={{ flexWrap: 'wrap' }}>
+      <div className="row tabs" style={{ flexWrap: 'wrap' }}>
         {TABS.map((t) => (
-          <button key={t} className={tab === t ? '' : 'secondary'} onClick={() => setTab(t)}>{t}</button>
+          <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t}</button>
         ))}
       </div>
 

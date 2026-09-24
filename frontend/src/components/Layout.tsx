@@ -129,6 +129,16 @@ export default function Layout() {
             <span>SEEDUCTION</span>
           </Link>
 
+          <div className="side-user">
+            <Link to="/profile" className="side-user-card">
+              <Avatar user={{ username: user?.username, avatarUrl: profile?.avatarUrl }} size={38} />
+              <div style={{ minWidth: 0 }}>
+                <div className="side-user-name">{user?.username}</div>
+                <div className="side-user-sub">Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</div>
+              </div>
+            </Link>
+            <button className="secondary side-logout" onClick={() => { logout(); navigate('/login'); }} title="Se déconnecter">⎋</button>
+          </div>
           <nav className="side-links">
             {visibleNav.map((item) => {
               const active = item.match(location.pathname);
@@ -159,16 +169,6 @@ export default function Layout() {
             </div>
           )}
 
-          <div className="side-user">
-            <Link to="/profile" className="side-user-card">
-              <Avatar user={{ username: user?.username, avatarUrl: profile?.avatarUrl }} size={38} />
-              <div style={{ minWidth: 0 }}>
-                <div className="side-user-name">{user?.username}</div>
-                <div className="side-user-sub">Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</div>
-              </div>
-            </Link>
-            <button className="secondary side-logout" onClick={() => { logout(); navigate('/login'); }} title="Se déconnecter">⎋</button>
-          </div>
         </aside>
 
         <div className="shell-main">
