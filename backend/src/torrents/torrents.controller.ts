@@ -19,6 +19,7 @@ export class TorrentsController {
     const seesAnonymous = !!req.user && (req.user.userId === query.uploaderId || ['MODERATOR', 'ADMIN', 'OWNER'].includes(req.user.role));
     return this.torrentsService.list({
       hideAnonymous: !!query.uploaderId && !seesAnonymous,
+      viewerId: req.user?.userId,
       state: query.state === 'dead' ? 'dead' : query.state === 'noseeders' ? 'noseeders' : undefined,
       categoryId: query.categoryId,
       search: query.search,
@@ -43,9 +44,10 @@ export class TorrentsController {
     });
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('duplicates')
-  duplicates(@Query('metaId') metaId?: string, @Query('name') name?: string) {
-    return this.torrentsService.findDuplicates(metaId, name);
+  duplicates(@Query('metaId') metaId: string | undefined, @Query('name') name: string | undefined, @Request() req: any) {
+    return this.torrentsService.findDuplicates(metaId, name, req.user?.userId);
   }
 
   @Get(':id/related')
@@ -53,9 +55,10 @@ export class TorrentsController {
     return this.torrentsService.related(id);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.torrentsService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.torrentsService.findOne(id, req.user);
   }
 
   @UseGuards(JwtAuthGuard)

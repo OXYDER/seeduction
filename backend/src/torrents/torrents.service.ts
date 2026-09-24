@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { AdultService } from '../adult/adult.service';
 import { PrismaService } from '../common/prisma.service';
 import { parseTorrentFile, rewriteTorrentForUser, sanitizeTorrentForUpload } from '../common/utils/torrent-file';
 import { MetadataService } from '../metadata/metadata.service';
@@ -11,7 +12,7 @@ const ANNOUNCE_BASE_URL = process.env.ANNOUNCE_BASE_URL ?? 'https://tracker.exam
 
 @Injectable()
 export class TorrentsService {
-  constructor(private prisma: PrismaService, private metadata: MetadataService) {}
+  constructor(private prisma: PrismaService, private metadata: MetadataService, private adult: AdultService) {}
 
   async upload(params: {
     userId: string;
@@ -98,6 +99,9 @@ export class TorrentsService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
+    if (!['MODERATOR', 'ADMIN', 'OWNER'].includes(user.role) && (await this.adult.hiddenFor(userId)).includes(torrent.categoryId)) {
+      throw new ForbiddenException('Ce contenu est réservé aux adultes : active-le dans ton profil.');
+    }
 
     const original = await fs.readFile(torrent.filePath);
     const announceUrl = `${ANNOUNCE_BASE_URL}/${user.passkey}/announce`;
@@ -105,13 +109,14 @@ export class TorrentsService {
   }
 
   /** Torrents déjà présents qui ressemblent à celui qu'on s'apprête à envoyer (même fiche de métadonnées, ou même nom). */
-  async findDuplicates(metaId?: string, name?: string) {
+  async findDuplicates(metaId?: string, name?: string, viewerId?: string) {
+    const hiddenCategories = await this.adult.hiddenFor(viewerId);
     const or: any[] = [];
     if (metaId) or.push({ metaExternalId: metaId });
     if (name && name.trim().length >= 4) or.push({ name: { equals: name.trim(), mode: 'insensitive' } });
     if (or.length === 0) return [];
     return this.prisma.torrent.findMany({
-      where: { status: { in: ['APPROVED', 'PENDING'] }, OR: or },
+      where: { status: { in: ['APPROVED', 'PENDING'] }, OR: or, ...(hiddenCategories.length ? { categoryId: { notIn: hiddenCategories } } : {}) },
       orderBy: { createdAt: 'desc' },
       take: 8,
       select: { id: true, name: true, size: true, year: true, resolution: true, language: true, seeders: true, status: true, coverImage: true },
@@ -125,12 +130,15 @@ export class TorrentsService {
     minSize?: number; maxSize?: number; minSeeders?: number;
     year?: number; language?: string; resolution?: string; codec?: string;
     hdr?: boolean; audio?: string; source?: string; containerFormat?: string;
-    entityId?: string; role?: string; hideAnonymous?: boolean;
+    entityId?: string; role?: string; hideAnonymous?: boolean; viewerId?: string;
     /** all = torrents actifs (défaut) ; noseeders = approuvés sans seeder ; dead = retirés des listes après une longue inactivité. */
     state?: 'noseeders' | 'dead';
   }) {
     const where: any = { status: params.state === 'dead' ? 'DEAD' : 'APPROVED' };
     if (params.state === 'noseeders') where.seeders = 0;
+    // Catégories adultes : invisibles tant que le membre n'a pas activé l'option dans son compte.
+    const hiddenCategories = await this.adult.hiddenFor(params.viewerId);
+    if (hiddenCategories.length) where.AND = [...(where.AND ?? []), { categoryId: { notIn: hiddenCategories } }];
     if (params.categoryId) {
       // Choisir une catégorie parente inclut aussi ses sous-catégories.
       const ids = await this.prisma.category.findMany({
@@ -247,7 +255,7 @@ export class TorrentsService {
     return { kind: null };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, viewer?: { userId: string; role: string }) {
     const torrent = await this.prisma.torrent.findUnique({
       where: { id },
       include: {
@@ -257,6 +265,13 @@ export class TorrentsService {
       },
     });
     if (!torrent) throw new NotFoundException('Torrent introuvable');
+    // Le staff garde l'accès (modération) ; les autres doivent avoir activé le contenu adulte.
+    if (!['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '')) {
+      const hidden = await this.adult.hiddenFor(viewer?.userId);
+      if (hidden.includes(torrent.categoryId)) {
+        throw new ForbiddenException('Ce contenu est réservé aux adultes : active l\'affichage du contenu pour adultes dans ton profil pour y accéder.');
+      }
+    }
     return torrent;
   }
 }

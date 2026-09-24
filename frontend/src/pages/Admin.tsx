@@ -330,6 +330,8 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
   const [editContentKind, setEditContentKind] = useState('');
   const [editError, setEditError] = useState('');
   const [editImage, setEditImage] = useState('');
+  const [adult, setAdult] = useState(false);
+  const [editAdult, setEditAdult] = useState(false);
 
   async function uploadImage(file: File | undefined) {
     if (!file) return;
@@ -343,13 +345,13 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
     }
   }
 
-  function refresh() { api.get(endpoint).then((r) => setCategories(r.data)); }
+  function refresh() { api.get(endpoint, { params: showContentKind ? { includeAdult: 1 } : undefined }).then((r) => setCategories(r.data)); }
   useEffect(() => { refresh(); }, [endpoint]);
 
   async function create() {
     if (!name.trim()) return;
-    await api.post(endpoint, { name, parentId: parentId || undefined, contentKind: contentKind || undefined });
-    setName(''); setParentId(''); setContentKind('');
+    await api.post(endpoint, { name, parentId: parentId || undefined, contentKind: contentKind || undefined, ...(showContentKind ? { adult } : {}) });
+    setName(''); setParentId(''); setContentKind(''); setAdult(false);
     refresh();
   }
 
@@ -359,13 +361,14 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
     setEditParentId(item.parentId ?? '');
     setEditContentKind(item.contentKind ?? '');
     setEditImage(item.imageUrl ?? '');
+    setEditAdult(!!item.adult);
     setEditError('');
   }
 
   async function saveEdit(id: string) {
     setEditError('');
     try {
-      await api.patch(`${endpoint}/${id}`, { name: editName, parentId: editParentId || null, contentKind: editContentKind || null, ...(showContentKind ? { imageUrl: editImage || null } : {}) });
+      await api.patch(`${endpoint}/${id}`, { name: editName, parentId: editParentId || null, contentKind: editContentKind || null, ...(showContentKind ? { imageUrl: editImage || null, adult: editAdult } : {}) });
       setEditingId(null);
       refresh();
     } catch (err: any) {
@@ -402,6 +405,11 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
               </select>
             )}
             {showContentKind && (
+              <label className="row muted" style={{ gap: 6 }} title="Masquée pour les membres qui n'ont pas activé le contenu adulte dans leur compte">
+                <input type="checkbox" style={{ width: 'auto' }} checked={editAdult} onChange={(e) => setEditAdult(e.target.checked)} /> 🔞 Contenu adulte
+              </label>
+            )}
+            {showContentKind && (
               <div className="row" style={{ gap: 8 }}>
                 {editImage && <img src={editImage} alt="" style={{ height: 28, maxWidth: 90, objectFit: 'contain' }} />}
                 <label className="secondary" style={{ cursor: 'pointer', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13 }}>
@@ -419,7 +427,7 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
         ) : (
           <>
             <span>
-              {isSub ? '↳ ' : ''}{showContentKind && item.imageUrl && <img src={item.imageUrl} alt="" style={{ height: 20, maxWidth: 60, objectFit: 'contain', verticalAlign: 'middle', marginRight: 6 }} />}<strong>{item.name}</strong>{renderCount && <span className="muted">{renderCount(item)}</span>}
+              {isSub ? '↳ ' : ''}{showContentKind && item.imageUrl && <img src={item.imageUrl} alt="" style={{ height: 20, maxWidth: 60, objectFit: 'contain', verticalAlign: 'middle', marginRight: 6 }} />}<strong>{item.name}</strong>{showContentKind && item.adult && <span className="badge" style={{ marginLeft: 6, background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>🔞 Adulte</span>}{renderCount && <span className="muted">{renderCount(item)}</span>}
               {showContentKind && (
                 <span className="muted">
                   {' '}— {item.contentKind ? CONTENT_KIND_LABEL[item.contentKind] ?? item.contentKind : (isSub ? 'hérite de la catégorie principale' : 'aucun type de contenu')}
@@ -445,6 +453,11 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
           <option value="">— Catégorie principale —</option>
           {categories.map((c) => <option key={c.id} value={c.id}>Sous-catégorie de : {c.name}</option>)}
         </select>
+        {showContentKind && (
+          <label className="row muted" style={{ gap: 6 }} title="Masquée par défaut : chaque membre doit activer le contenu adulte dans son compte">
+            <input type="checkbox" style={{ width: 'auto' }} checked={adult} onChange={(e) => setAdult(e.target.checked)} /> 🔞 Contenu adulte
+          </label>
+        )}
         <button onClick={create}>Ajouter</button>
       </div>
       {error && <div className="muted" style={{ color: 'var(--danger)', marginBottom: 8 }}>{error}</div>}
@@ -466,7 +479,7 @@ function TorrentsAdmin() {
 
   function refresh() {
     api.get('/admin/torrents', { params: { search } }).then((r) => setTorrents(r.data));
-    api.get('/categories').then((r) => {
+    api.get('/categories', { params: { includeAdult: 1 } }).then((r) => {
       const flat = r.data.flatMap((c: any) => [
         { id: c.id, name: c.name },
         ...(c.children ?? []).map((sub: any) => ({ id: sub.id, name: `↳ ${sub.name}` })),

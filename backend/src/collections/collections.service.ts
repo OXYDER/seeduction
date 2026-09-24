@@ -1,8 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { AdultService } from '../adult/adult.service';
 
 const TORRENT_CARD_SELECT = {
   id: true,
+  categoryId: true,
   name: true,
   size: true,
   seeders: true,
@@ -12,7 +14,7 @@ const TORRENT_CARD_SELECT = {
 
 @Injectable()
 export class CollectionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private adult: AdultService) {}
 
   /** Mes collections (propriétaire) + celles où je suis collaborateur. */
   mine(userId: string) {
@@ -59,6 +61,9 @@ export class CollectionsService {
         userId && (collection.ownerId === userId || collection.collaborators.some((c) => c.userId === userId));
       if (!isOwnerOrCollaborator) throw new ForbiddenException('Cette collection est privée');
     }
+    // Les torrents adultes n'apparaissent que pour un membre qui a activé l'option.
+    const hidden = await this.adult.hiddenFor(userId);
+    if (hidden.length) collection.items = collection.items.filter((i) => !hidden.includes(i.torrent.categoryId));
     return collection;
   }
 

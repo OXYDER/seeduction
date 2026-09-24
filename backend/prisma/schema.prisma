@@ -89,6 +89,8 @@ model User {
   memberClass      MemberClass @default(NOUVEAU) // rang automatique (ancienneté, upload, ratio)
   freeleechTokens  Int        @default(0)
   avatarUrl        String?
+  showAdult        Boolean    @default(false) // a activé l'affichage du contenu pour adultes (18+)
+  adultAcceptedAt  DateTime?
   signature        String?    @db.Text
   createdAt        DateTime   @default(now())
   lastSeenAt       DateTime?
@@ -132,6 +134,8 @@ model Category {
   contentKind TemplateKind?
   // Image affichée à la place de l'icône dans la barre des catégories (téléversée depuis l'administration).
   imageUrl    String?
+  // Contenu pour adultes : masqué pour les membres qui n'ont pas activé l'option dans leur compte (les sous-catégories héritent).
+  adult       Boolean    @default(false)
 }
 
 model Torrent {

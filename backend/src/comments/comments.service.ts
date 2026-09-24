@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AdultService } from '../adult/adult.service';
 
 const PER_PAGE = 20;
 const STAFF = ['MODERATOR', 'ADMIN', 'OWNER'];
@@ -8,9 +9,14 @@ const MAX_LENGTH = 5000;
 
 @Injectable()
 export class CommentsService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private adult: AdultService) {}
 
-  async list(torrentId: string, page: number) {
+  async list(torrentId: string, page: number, viewerId?: string) {
+    const hidden = await this.adult.hiddenFor(viewerId);
+    if (hidden.length) {
+      const torrent = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { categoryId: true } });
+      if (torrent && hidden.includes(torrent.categoryId)) return { items: [], total: 0, page: 1, pageSize: PER_PAGE };
+    }
     const safePage = Math.max(1, page || 1);
     const [total, items] = await Promise.all([
       this.prisma.torrentComment.count({ where: { torrentId } }),

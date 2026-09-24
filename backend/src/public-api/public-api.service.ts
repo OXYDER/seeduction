@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { AdultService } from '../adult/adult.service';
 
 function escapeXml(text: string) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -27,13 +28,15 @@ const TORRENT_LIST_SELECT = {
 
 @Injectable()
 export class PublicApiService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private adult: AdultService) {}
 
-  listTorrents(params: { search?: string; categoryId?: string; limit?: number }) {
+  async listTorrents(params: { search?: string; categoryId?: string; limit?: number }) {
     const limit = Math.min(Math.max(params.limit ?? 25, 1), 100);
+    const hidden = await this.adult.adultCategoryIds(); // l'API publique et le flux RSS n'exposent jamais le contenu adulte
     return this.prisma.torrent.findMany({
       where: {
         status: 'APPROVED',
+        ...(hidden.length ? { categoryId: { notIn: hidden } } : {}),
         ...(params.categoryId ? { categoryId: params.categoryId } : {}),
         ...(params.search ? { name: { contains: params.search, mode: 'insensitive' as const } } : {}),
       },
@@ -44,8 +47,9 @@ export class PublicApiService {
   }
 
   async torrentDetail(id: string) {
+    const hidden = await this.adult.adultCategoryIds();
     const torrent = await this.prisma.torrent.findFirst({
-      where: { id, status: 'APPROVED' },
+      where: { id, status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) },
       select: {
         id: true, name: true, description: true, size: true, seeders: true, leechers: true,
         completedCount: true, createdAt: true, tags: true,

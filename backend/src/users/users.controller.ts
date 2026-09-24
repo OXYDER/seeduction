@@ -20,6 +20,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/adult')
+  setAdult(@Body() body: { enabled: boolean; confirmAge?: boolean }, @Request() req: any) {
+    return this.usersService.setAdultPreference(req.user.userId, !!body?.enabled, !!body?.confirmAge);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('me/ratio-history')
   ratioHistory(@Request() req: any, @Query('days') days = '30') {
     return this.usersService.getRatioHistory(req.user.userId, parseInt(days, 10));

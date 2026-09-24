@@ -1,17 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { AdultService } from '../adult/adult.service';
 
 @Injectable()
 export class EntitiesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private adult: AdultService) {}
 
   /** Fiche d'une entité (acteur, studio, genre...) + combien de torrents approuvés la référencent, par rôle. */
-  async get(id: string) {
+  async get(id: string, viewerId?: string) {
+    const hidden = await this.adult.hiddenFor(viewerId);
     const entity = await this.prisma.entity.findUnique({ where: { id } });
     if (!entity) throw new NotFoundException('Introuvable');
     const grouped = await this.prisma.torrentEntity.groupBy({
       by: ['role'],
-      where: { entityId: id, torrent: { status: 'APPROVED' } },
+      where: { entityId: id, torrent: { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
       _count: { _all: true },
     });
     return {

@@ -1,14 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { CommentsService } from './comments.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 
 @Controller('comments')
 export class CommentsController {
   constructor(private commentsService: CommentsService) {}
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('torrent/:torrentId')
-  list(@Param('torrentId') torrentId: string, @Query('page') page?: string) {
-    return this.commentsService.list(torrentId, parseInt(page ?? '1', 10));
+  list(@Param('torrentId') torrentId: string, @Query('page') page: string | undefined, @Request() req: any) {
+    return this.commentsService.list(torrentId, parseInt(page ?? '1', 10), req.user?.userId);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -1,13 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { AdultService } from '../adult/adult.service';
 
 @Injectable()
 export class FavoritesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private adult: AdultService) {}
 
   async list(userId: string) {
+    const hidden = await this.adult.hiddenFor(userId);
     const rows = await this.prisma.favorite.findMany({
-      where: { userId, torrent: { status: 'APPROVED' } },
+      where: { userId, torrent: { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
       orderBy: { createdAt: 'desc' },
       include: { torrent: { include: { category: true, uploader: { select: { id: true, username: true } } } } },
     });

@@ -11,6 +11,6 @@ export class SearchController {
   @Get('suggest')
   suggest(@Query('q') q: string, @Query('scopes') scopes: string, @Request() req: any) {
     const requested = String(scopes ?? '').split(',').map((s) => s.trim()).filter((s): s is (typeof SUGGEST_SCOPES)[number] => (SUGGEST_SCOPES as readonly string[]).includes(s));
-    return this.search.suggest(String(q ?? ''), requested.length ? requested : ['torrents', 'users', 'categories'], req.user.role);
+    return this.search.suggest(String(q ?? ''), requested.length ? requested : ['torrents', 'users', 'categories'], req.user.role, req.user.userId);
   }
 }

@@ -23,6 +23,7 @@ import { EconomyModule } from './economy/economy.module';
 import { SocialModule } from './social/social.module';
 import { MailModule } from './mail/mail.service';
 import { SearchModule } from './search/search.module';
+import { AdultModule } from './adult/adult.service';
 import { ReportsModule } from './reports/reports.module';
 import { BadgesModule } from './badges/badges.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
@@ -59,6 +60,7 @@ import { EntitiesModule } from './entities/entities.module';
     SocialModule,
     MailModule,
     SearchModule,
+    AdultModule,
     ReportsModule,
     BadgesModule,
     ApiKeysModule,

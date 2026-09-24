@@ -7,6 +7,7 @@ import StaffUserPanel, { ROLE_LABEL } from '../components/StaffUserPanel';
 import ReportButton from '../components/ReportButton';
 import SecurityPanel from '../components/SecurityPanel';
 import ProfileEditor from '../components/ProfileEditor';
+import AdultPreference from '../components/AdultPreference';
 import Avatar from '../components/Avatar';
 import { displayRank } from '../lib/memberClass';
 
@@ -122,6 +123,7 @@ export default function Profile() {
         </div>
       )}
       {!id && <ProfileEditor key={profile.avatarUrl ?? 'none'} profile={profile} onSaved={() => setReloadKey((k) => k + 1)} />}
+      {!id && <AdultPreference enabled={!!profile.showAdult} />}
       {!id && <SecurityPanel />}
       {!id && (
         <div className="panel">

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { AdultService } from '../adult/adult.service';
 
 const STAFF = ['MODERATOR', 'ADMIN', 'OWNER'];
 export const SUGGEST_SCOPES = ['torrents', 'users', 'categories', 'entities', 'topics'] as const;
@@ -8,7 +9,7 @@ type Scope = (typeof SUGGEST_SCOPES)[number];
 /** Pré-résultats de recherche (auto-complétion) : quelques correspondances par type, avec image. */
 @Injectable()
 export class SearchService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private adult: AdultService) {}
 
   /** Forums que ce visiteur ne peut pas voir (forums réservés au staff et tout ce qu'ils contiennent). */
   private async hiddenForumIds(role: string): Promise<string[]> {
@@ -20,18 +21,21 @@ export class SearchService {
     return all.filter(hidden).map((c) => c.id);
   }
 
-  async suggest(q: string, scopes: Scope[], role: string) {
+  async suggest(q: string, scopes: Scope[], role: string, userId?: string) {
     const term = q.trim();
     if (term.length < 2) return {};
     const contains = { contains: term, mode: 'insensitive' as const };
     const plain = term.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const wanted = new Set(scopes);
+    const hiddenCategories = await this.adult.hiddenFor(userId);
+    const notHidden = hiddenCategories.length ? { categoryId: { notIn: hiddenCategories } } : {};
     const result: Record<string, any[]> = {};
 
     await Promise.all([
       wanted.has('torrents') && this.prisma.torrent.findMany({
         where: {
           status: 'APPROVED',
+          ...notHidden,
           OR: [
             { name: contains },
             { searchTitles: contains },
@@ -60,14 +64,15 @@ export class SearchService {
       }).then((r) => { result.users = r; }),
 
       wanted.has('categories') && this.prisma.category.findMany({
-        where: { name: contains },
+        where: { name: contains, ...(hiddenCategories.length ? { id: { notIn: hiddenCategories } } : {}) },
         orderBy: { name: 'asc' },
         take: 5,
         select: { id: true, name: true, slug: true, imageUrl: true, parent: { select: { name: true } } },
       }).then((r) => { result.categories = r; }),
 
       wanted.has('entities') && this.prisma.entity.findMany({
-        where: { name: contains },
+        // Sans contenu adulte activé, les fiches issues de la source adulte (ThePornDB) ne sont pas proposées.
+        where: { name: contains, ...(hiddenCategories.length ? { source: { not: 'theporndb' } } : {}) },
         orderBy: { name: 'asc' },
         take: 5,
         select: { id: true, name: true, type: true, imageUrl: true },

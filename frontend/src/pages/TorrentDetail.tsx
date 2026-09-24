@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import UserLink from '../components/UserLink';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import TorrentComments from '../components/TorrentComments';
 import TorrentSocial from '../components/TorrentSocial';
@@ -17,6 +17,7 @@ export default function TorrentDetail() {
   const { id } = useParams();
   const justUploaded = (useLocation().state as { justUploaded?: boolean } | null)?.justUploaded;
   const [torrent, setTorrent] = useState<any>(null);
+  const [loadError, setLoadError] = useState('');
   const user = useAuthStore((s) => s.user);
   const favorites = useFavorites();
   const [searchParams] = useSearchParams();
@@ -28,7 +29,8 @@ export default function TorrentDetail() {
   const [tokenMsg, setTokenMsg] = useState('');
 
   useEffect(() => {
-    api.get(`/torrents/${id}`).then((r) => setTorrent(r.data));
+    setLoadError('');
+    api.get(`/torrents/${id}`).then((r) => setTorrent(r.data)).catch((err) => setLoadError(err.response?.data?.message ?? 'Torrent introuvable'));
   }, [id]);
 
   useEffect(() => {
@@ -65,6 +67,15 @@ export default function TorrentDetail() {
     a.click();
   }
 
+  if (loadError) {
+    return (
+      <div className="panel">
+        <p>{loadError}</p>
+        <Link to="/profile"><button type="button">Aller à mon profil</button></Link>{' '}
+        <Link to="/browse" className="muted">← Retour à Parcourir</Link>
+      </div>
+    );
+  }
   if (!torrent) return <p className="muted">Chargement...</p>;
 
   const meta = [

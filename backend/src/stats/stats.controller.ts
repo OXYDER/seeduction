@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { StatsService } from './stats.service';
 
@@ -13,8 +13,8 @@ export class StatsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('overview')
-  overview() {
-    return this.statsService.overview();
+  overview(@Request() req: any) {
+    return this.statsService.overview(req.user.userId);
   }
 
   @Get('top-torrents')

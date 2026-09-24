@@ -15,7 +15,7 @@ export class UsersService {
       select: {
         id: true, username: true, email: true, role: true, uploaded: true,
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
-        lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true,
+        lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
@@ -24,11 +24,11 @@ export class UsersService {
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
     const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
-    const { email, passkey, minRatio, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, ...publicInfo } = user;
     return {
       ...publicInfo,
       ratio,
-      ...(isSelf ? { email, passkey, minRatio } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
   }
@@ -50,6 +50,16 @@ export class UsersService {
     if (Object.keys(payload).length === 0) throw new BadRequestException('Aucune modification');
     await this.prisma.user.update({ where: { id: userId }, data: payload });
     return payload;
+  }
+
+  /** Affichage du contenu pour adultes : désactivé par défaut, à activer explicitement (avec confirmation d'âge). */
+  async setAdultPreference(userId: string, enabled: boolean, confirmAge: boolean) {
+    if (enabled && !confirmAge) throw new BadRequestException('Tu dois confirmer avoir 18 ans ou plus pour afficher ce contenu');
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: enabled ? { showAdult: true, adultAcceptedAt: new Date() } : { showAdult: false },
+    });
+    return { showAdult: enabled };
   }
 
   async getRatioHistory(userId: string, days = 30) {

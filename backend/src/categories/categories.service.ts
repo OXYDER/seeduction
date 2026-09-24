@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { AdultService } from '../adult/adult.service';
+import { SettingsService } from '../settings/settings.service';
 
 const DEFAULT_CATEGORIES = [
   { name: 'Films', slug: 'films', contentKind: 'FILM' as const },
@@ -22,26 +24,37 @@ function slugify(name: string) {
 
 @Injectable()
 export class CategoriesService implements OnModuleInit {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private adult: AdultService, private settings: SettingsService) {}
 
   /** Crée les catégories par défaut si la table est vide (idempotent, sûr à chaque redémarrage). */
   async onModuleInit() {
     const count = await this.prisma.category.count();
-    if (count > 0) return;
-    await this.prisma.category.createMany({ data: DEFAULT_CATEGORIES, skipDuplicates: true });
+    if (count === 0) {
+      await this.prisma.category.createMany({ data: DEFAULT_CATEGORIES.map((c) => (c.slug === 'xxx' ? { ...c, adult: true } : c)), skipDuplicates: true });
+    }
+    // Une seule fois : la catégorie XXX existante devient « contenu adulte » (le staff peut ensuite changer ce réglage).
+    if (!(await this.settings.get('xxxMarkedAdult'))) {
+      await this.prisma.category.updateMany({ where: { slug: 'xxx' }, data: { adult: true } });
+      await this.settings.set('xxxMarkedAdult', true);
+      this.adult.invalidate();
+    }
   }
 
-  list() {
+  async list(viewer?: { userId: string; role: string }, includeAdult = false) {
+    // Le staff peut demander toutes les catégories (pour les gérer) ; sinon les catégories adultes sont masquées.
+    const staff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
+    const hidden = includeAdult && staff ? [] : await this.adult.hiddenFor(viewer?.userId);
     // contentKind est renvoyé tel quel (non hérité) : une sous-catégorie sans
     // valeur propre doit rester "vide" pour l'admin (édition) — c'est au
     // consommateur (page Envoyer) de retomber sur celui de la catégorie
     // parente si besoin, voir lib/categoryKind.ts côté frontend.
     return this.prisma.category.findMany({
-      where: { parentId: null },
+      where: { parentId: null, ...(hidden.length ? { id: { notIn: hidden } } : {}) },
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { torrents: true } },
         children: {
+          where: hidden.length ? { id: { notIn: hidden } } : undefined,
           orderBy: { name: 'asc' },
           include: { _count: { select: { torrents: true } } },
         },
@@ -49,14 +62,17 @@ export class CategoriesService implements OnModuleInit {
     });
   }
 
-  create(name: string, parentId?: string, contentKind?: string | null, imageUrl?: string | null) {
+  create(name: string, parentId?: string, contentKind?: string | null, imageUrl?: string | null, adult = false) {
+    this.adult.invalidate();
     return this.prisma.category.create({
-      data: { name, slug: slugify(name), parentId: parentId || null, contentKind: (contentKind as any) || null, imageUrl: imageUrl || null },
+      data: { name, slug: slugify(name), parentId: parentId || null, contentKind: (contentKind as any) || null, imageUrl: imageUrl || null, adult: !!adult },
     });
   }
 
-  async update(id: string, data: { name?: string; parentId?: string | null; contentKind?: string | null; imageUrl?: string | null }) {
+  async update(id: string, data: { name?: string; parentId?: string | null; contentKind?: string | null; imageUrl?: string | null; adult?: boolean }) {
+    this.adult.invalidate();
     const payload: any = {};
+    if (typeof data.adult === 'boolean') payload.adult = data.adult;
     if (data.name !== undefined) {
       payload.name = data.name;
       payload.slug = slugify(data.name);

@@ -1,4 +1,5 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 import { EntitiesService } from './entities.service';
 
 @Controller('entities')
@@ -10,8 +11,9 @@ export class EntitiesController {
     return this.entitiesService.search(query, type);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
-  get(@Param('id') id: string) {
-    return this.entitiesService.get(id);
+  get(@Param('id') id: string, @Request() req: any) {
+    return this.entitiesService.get(id, req.user?.userId);
   }
 }
