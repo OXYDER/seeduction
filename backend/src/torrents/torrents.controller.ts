@@ -45,6 +45,18 @@ export class TorrentsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('mine/followed')
+  followed(@Request() req: any) {
+    return this.torrentsService.followedFeed(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('mine/recommended')
+  recommended(@Request() req: any) {
+    return this.torrentsService.recommended(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('mine/active')
   active(@Request() req: any) {
     return this.torrentsService.activeForUser(req.user.userId);

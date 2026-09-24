@@ -100,6 +100,8 @@ export default function HomeStreaming() {
   const [stats, setStats] = useState<any>(null);
   const [topics, setTopics] = useState<any[]>([]);
   const [active, setActive] = useState<any[]>([]);
+  const [followed, setFollowed] = useState<any[]>([]);
+  const [recommended, setRecommended] = useState<any[]>([]);
   const [loadedLatest, setLoadedLatest] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
@@ -108,6 +110,8 @@ export default function HomeStreaming() {
     api.get('/torrents', { params: { pageSize: 18, sort: 'seeders' } }).then((r) => setPopular(r.data.items)).catch(() => {});
     api.get('/torrents', { params: { pageSize: 18, sort: 'date' } }).then((r) => setLatest(r.data.items)).catch(() => {}).finally(() => setLoadedLatest(true));
     api.get('/torrents/mine/active').then((r) => setActive(r.data)).catch(() => {});
+    api.get('/torrents/mine/followed').then((r) => setFollowed(r.data)).catch(() => {});
+    api.get('/torrents/mine/recommended').then((r) => setRecommended(r.data)).catch(() => {});
     api.get('/users/leaderboard', { params: { limit: 5 } }).then((r) => setTopUploaders(r.data)).catch(() => {});
     api.get('/stats/global').then((r) => setStats(r.data)).catch(() => {});
     api.get('/forum/latest').then((r) => setTopics(r.data.slice(0, 8))).catch(() => {});
@@ -192,6 +196,8 @@ export default function HomeStreaming() {
               <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
             </section>
           )}
+          <Rail title="De tes abonnements" to="/favorites" items={followed} />
+          <Rail title="Recommandé pour toi" to="/browse" items={recommended} />
           <Rail title="Nouveautés" to="/browse?sort=date" items={latest} loading={!loadedLatest} />
           <Rail title="Les plus seedés cette semaine" to="/browse?sort=seeders" items={popular} />
           {byCategory.map((row) => (

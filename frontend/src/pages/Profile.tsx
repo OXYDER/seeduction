@@ -24,6 +24,7 @@ export default function Profile() {
   const [newKeyScopes, setNewKeyScopes] = useState<string[]>([]);
   const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [tab, setTab] = useState<'overview' | 'account' | 'security' | 'dev'>('overview');
 
   useEffect(() => {
     if (!targetId) return;
@@ -62,6 +63,10 @@ export default function Profile() {
 
   if (!profile) return <p className="muted">Chargement...</p>;
 
+  // Sur son propre profil, les réglages sont rangés en onglets ; sur celui d'un autre membre, on ne voit que l'aperçu.
+  const own = !id;
+  const showTab = (t: string) => (own ? tab === t : t === 'overview');
+
   const chartData = history.map((h) => ({
     date: new Date(h.takenAt).toLocaleDateString(),
     ratio: Number(h.downloaded) > 0 ? Number(h.uploaded) / Number(h.downloaded) : 0,
@@ -88,7 +93,16 @@ export default function Profile() {
       {id && me && ['MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && (
         <StaffUserPanel targetId={id} myRole={me.role} myId={me.id} onChanged={() => setReloadKey((k) => k + 1)} />
       )}
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      {own && (
+        <nav className="tabs" aria-label="Sections du profil">
+          {([['overview', 'Aperçu'], ['account', 'Compte'], ['security', 'Sécurité'], ['dev', 'Développeur']] as const).map(([key, label]) => (
+            <button key={key} type="button" className={tab === key ? 'on' : ''} onClick={() => setTab(key)}>{label}</button>
+          ))}
+        </nav>
+      )}
+      {showTab('overview') && (
+        <>
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
         <Card label="Ratio" value={profile.ratio ? profile.ratio.toFixed(2) : '∞'} />
         <Card label="Upload" value={`${(Number(profile.uploaded) / 1e9).toFixed(2)} Go`} />
         <Card label="Download" value={`${(Number(profile.downloaded) / 1e9).toFixed(2)} Go`} />
@@ -122,16 +136,18 @@ export default function Profile() {
           </ResponsiveContainer>
         </div>
       )}
-      {!id && <ProfileEditor key={profile.avatarUrl ?? 'none'} profile={profile} onSaved={() => setReloadKey((k) => k + 1)} />}
-      {!id && <AdultPreference enabled={!!profile.showAdult} />}
-      {!id && <SecurityPanel />}
-      {!id && (
+        </>
+      )}
+      {showTab('account') && <ProfileEditor key={profile.avatarUrl ?? 'none'} profile={profile} onSaved={() => setReloadKey((k) => k + 1)} />}
+      {showTab('account') && <AdultPreference enabled={!!profile.showAdult} />}
+      {showTab('security') && <SecurityPanel />}
+      {showTab('dev') && (
         <div className="panel">
           <div className="muted">Ta passkey (garde-la secrète — elle est dans l'URL announce de tes .torrent) :</div>
           <code>{profile.passkey}</code>
         </div>
       )}
-      {!id && (
+      {showTab('dev') && (
         <div className="panel">
           <h3>Clés API</h3>
           <p className="muted" style={{ fontSize: 12 }}>

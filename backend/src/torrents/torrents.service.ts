@@ -256,6 +256,63 @@ export class TorrentsService {
     return { kind: null };
   }
 
+  private readonly cardSelect = {
+    id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true,
+    seeders: true, leechers: true, freeleech: true, doubleUpload: true, createdAt: true, category: { select: { name: true, slug: true } },
+  } as const;
+
+  /** Nouveaux torrents (30 jours) liés à des acteurs, studios, genres... auxquels le membre est abonné. */
+  async followedFeed(userId: string) {
+    const [hidden, follows] = await Promise.all([
+      this.adult.hiddenFor(userId),
+      this.prisma.entityFollow.findMany({ where: { userId }, select: { entityId: true } }),
+    ]);
+    if (follows.length === 0) return [];
+    return this.prisma.torrent.findMany({
+      where: {
+        status: 'APPROVED',
+        createdAt: { gt: new Date(Date.now() - 30 * 86400_000) },
+        entities: { some: { entityId: { in: follows.map((f) => f.entityId) } } },
+        ...(hidden.length ? { categoryId: { notIn: hidden } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 16,
+      select: this.cardSelect,
+    });
+  }
+
+  /**
+   * Recommandations : torrents qui partagent des acteurs, studios, artistes, genres... avec ce que le membre a
+   * déjà complété (les plus proches d'abord), en excluant ce qu'il a déjà.
+   */
+  async recommended(userId: string) {
+    const [hidden, snatches] = await Promise.all([
+      this.adult.hiddenFor(userId),
+      this.prisma.snatch.findMany({ where: { userId }, orderBy: { completedAt: 'desc' }, take: 25, select: { torrentId: true } }),
+    ]);
+    const owned = snatches.map((s) => s.torrentId);
+    if (owned.length === 0) return [];
+    const links = await this.prisma.torrentEntity.findMany({ where: { torrentId: { in: owned } }, select: { entityId: true } });
+    const entityIds = [...new Set(links.map((l) => l.entityId))].slice(0, 80);
+    if (entityIds.length === 0) return [];
+
+    const ranked = await this.prisma.torrentEntity.groupBy({
+      by: ['torrentId'],
+      where: {
+        entityId: { in: entityIds },
+        torrentId: { notIn: owned },
+        torrent: { status: 'APPROVED', uploaderId: { not: userId }, ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) },
+      },
+      _count: { _all: true },
+      orderBy: { _count: { torrentId: 'desc' } },
+      take: 16,
+    });
+    if (ranked.length === 0) return [];
+    const torrents = await this.prisma.torrent.findMany({ where: { id: { in: ranked.map((r) => r.torrentId) } }, select: this.cardSelect });
+    const order = new Map(ranked.map((r, i) => [r.torrentId, i]));
+    return torrents.sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
+  }
+
   /** Torrents que le membre télécharge ou seede en ce moment (d'après ses derniers announces), avec leur avancement. */
   async activeForUser(userId: string) {
     const hidden = await this.adult.hiddenFor(userId);

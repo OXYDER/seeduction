@@ -1419,3 +1419,6 @@ a.pill:hover { background: rgba(139, 92, 246,0.12); color: var(--gold-bright); }
 .skeleton-poster { aspect-ratio: 2 / 3; }
 .skeleton-line { height: 12px; margin-top: 10px; width: 70%; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---- Prestige : entete de profil plus grande ---- */
+:root[data-theme="prestige"] .grid > .row > h1 { letter-spacing: -0.03em; }
