@@ -77,6 +77,12 @@ export class TorrentsController {
     return this.torrentsService.preview(id, req.user);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get(':id/versions')
+  versions(@Param('id') id: string, @Request() req: any) {
+    return this.torrentsService.versions(id, req.user);
+  }
+
   @Get(':id/related')
   related(@Param('id') id: string) {
     return this.torrentsService.related(id);

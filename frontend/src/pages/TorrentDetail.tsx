@@ -9,6 +9,7 @@ import ReportButton from '../components/ReportButton';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
+import TorrentVersions from '../components/TorrentVersions';
 import NfoPanel from '../components/NfoPanel';
 import TorrentHero from '../components/TorrentHero';
 import TorrentRelated from '../components/TorrentRelated';
@@ -239,6 +240,7 @@ export default function TorrentDetail() {
         {tab === 'overview' && (
           <div className="grid" style={{ gap: 18 }}>
             <TorrentHero torrent={torrent} />
+            <TorrentVersions torrentId={torrent.id} />
             {descriptionPanel}
             <NfoPanel torrentId={torrent.id} />
           </div>
@@ -288,6 +290,7 @@ export default function TorrentDetail() {
         )}
       </div>
       {tokenError}
+      <TorrentVersions torrentId={torrent.id} />
       <NfoPanel torrentId={torrent.id} />
       <TorrentComments torrentId={torrent.id} />
       {filesPanel}

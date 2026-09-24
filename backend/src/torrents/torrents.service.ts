@@ -234,6 +234,33 @@ export class TorrentsService {
   }
 
   /**
+   * Autres versions du même contenu sur le site (même fiche TMDB / Deezer / etc., et même saison / épisode pour une série) :
+   * qualité, source, codec, taille, uploader... La version affichée est incluse et marquée.
+   */
+  async versions(id: string, viewer?: { userId: string; role: string }) {
+    const t = await this.prisma.torrent.findUnique({ where: { id }, select: { metaSource: true, metaExternalId: true, season: true, episode: true, categoryId: true } });
+    if (!t || !t.metaSource || !t.metaExternalId) return [];
+    if (!['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '') && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) return [];
+    const rows = await this.prisma.torrent.findMany({
+      where: {
+        OR: [
+          { id },
+          { status: 'APPROVED', metaSource: t.metaSource, metaExternalId: t.metaExternalId, ...(t.season ? { season: t.season, episode: t.episode } : {}) },
+        ],
+      },
+      select: {
+        id: true, name: true, size: true, resolution: true, source: true, codec: true, audio: true, language: true, hdr: true, containerFormat: true,
+        seeders: true, leechers: true, freeleech: true, createdAt: true, anonymousUpload: true, uploader: { select: { id: true, username: true } },
+      },
+      take: 60,
+    });
+    const rank = (r?: string | null) => (r?.startsWith('4K') ? 4 : r === '1080p' ? 3 : r === '720p' ? 2 : r ? 1 : 0);
+    return rows
+      .sort((a, b) => rank(b.resolution) - rank(a.resolution) || Number(b.size) - Number(a.size))
+      .map((r) => ({ ...r, uploader: r.anonymousUpload ? null : r.uploader, current: r.id === id }));
+  }
+
+  /**
    * Films de la même saga / saisons et épisodes de la même série, avec ce qui
    * est disponible sur Seeduction (torrents approuvés liés à la même fiche TMDB).
    */
