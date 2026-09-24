@@ -112,7 +112,7 @@ export default function SearchBox({
             {d.coverImage ? <img src={d.coverImage} alt="" className="sb-thumb" /> : <span className="sb-thumb sb-icon">🎬</span>}
             <span className="sb-text">
               <span className="sb-title">{d.name}</span>
-              <span className="sb-sub">{[d.category?.name, d.year, d.resolution, `${d.seeders} S`].filter(Boolean).join(' · ')}</span>
+              <span className="sb-sub">{[d.matchedTitle ? `aussi : ${d.matchedTitle}` : '', d.category?.name, d.year, d.resolution, `${d.seeders} S`].filter(Boolean).join(' · ')}</span>
             </span>
           </>
         );

@@ -175,6 +175,8 @@ model Torrent {
   comments       TorrentComment[]
   likes          TorrentLike[]
   reseedRequestedAt DateTime?
+  // Titres du film / de la série dans plusieurs langues et régions (une ligne par titre), pour retrouver un torrent quel que soit le titre cherché.
+  searchTitles   String?       @db.Text
   snatches       Snatch[]
   requestFilled  TorrentRequest?
   collectionItems CollectionItem[]

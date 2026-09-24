@@ -24,16 +24,33 @@ export class SearchService {
     const term = q.trim();
     if (term.length < 2) return {};
     const contains = { contains: term, mode: 'insensitive' as const };
+    const plain = term.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const wanted = new Set(scopes);
     const result: Record<string, any[]> = {};
 
     await Promise.all([
       wanted.has('torrents') && this.prisma.torrent.findMany({
-        where: { status: 'APPROVED', name: contains },
+        where: {
+          status: 'APPROVED',
+          OR: [
+            { name: contains },
+            { searchTitles: contains },
+            ...(plain !== term ? [{ searchTitles: { contains: plain, mode: 'insensitive' as const } }] : []),
+          ],
+        },
         orderBy: [{ seeders: 'desc' }, { createdAt: 'desc' }],
         take: 6,
-        select: { id: true, name: true, coverImage: true, year: true, resolution: true, seeders: true, category: { select: { name: true } } },
-      }).then((r) => { result.torrents = r; }),
+        select: { id: true, name: true, coverImage: true, year: true, resolution: true, seeders: true, searchTitles: true, category: { select: { name: true } } },
+      }).then((r) => {
+        // Si le torrent est trouvé par un autre titre que son nom, on l'indique (« aussi connu sous : ... »).
+        const needle = term.toLowerCase();
+        const needlePlain = plain.toLowerCase();
+        result.torrents = r.map(({ searchTitles, ...t }) => {
+          const nameHit = t.name.toLowerCase().includes(needle);
+          const alt = nameHit ? null : (searchTitles ?? '').split('\n').find((l) => l.toLowerCase().includes(needle) || l.toLowerCase().includes(needlePlain)) ?? null;
+          return { ...t, matchedTitle: alt };
+        });
+      }),
 
       wanted.has('users') && this.prisma.user.findMany({
         where: { username: contains, status: 'ACTIVE' },

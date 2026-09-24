@@ -139,7 +139,15 @@ export class TorrentsService {
       });
       where.categoryId = { in: ids.map((c) => c.id) };
     }
-    if (params.search) where.name = { contains: params.search, mode: 'insensitive' };
+    if (params.search) {
+      // Cherche dans le nom du torrent ET dans les titres du film / de la série en plusieurs langues (avec ou sans accents).
+      const plain = params.search.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      where.OR = [
+        { name: { contains: params.search, mode: 'insensitive' } },
+        { searchTitles: { contains: params.search, mode: 'insensitive' } },
+        ...(plain !== params.search ? [{ searchTitles: { contains: plain, mode: 'insensitive' } }, { name: { contains: plain, mode: 'insensitive' } }] : []),
+      ];
+    }
     if (params.uploaderId) where.uploaderId = params.uploaderId;
     if (params.hideAnonymous) where.anonymousUpload = false;
     if (params.entityId) where.entities = { some: { entityId: params.entityId, ...(params.role ? { role: params.role } : {}) } };

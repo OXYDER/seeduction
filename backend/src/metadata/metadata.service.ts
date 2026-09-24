@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { CoversService } from '../covers/covers.service';
 import { PrismaService } from '../common/prisma.service';
 import { TranslateService } from './translate.service';
@@ -34,10 +35,15 @@ interface RichMetadata {
   entities: EntityDraft[];
   coverUrl: string | null;
   backdropUrl: string | null;
+  /** Titres dans plusieurs langues / régions, un par ligne (recherche). */
+  searchTitles?: string;
 }
 
 const TMDB_IMG = 'https://image.tmdb.org/t/p';
 const SEARCHABLE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'] as const;
+
+/** Retire les accents : « Amélie » devient « Amelie » (pour retrouver un titre saisi sans accents). */
+export const deaccent = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 const slugify = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -126,14 +132,43 @@ export class MetadataService {
 
   private async searchTmdb(type: 'movie' | 'tv', query: string, year?: string): Promise<SearchResult[]> {
     const yearParam = year && /^\d{4}$/.test(year) ? `&${type === 'movie' ? 'year' : 'first_air_date_year'}=${year}` : '';
-    const url = `https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(query)}&language=fr-FR${yearParam}&api_key=${this.tmdbKey}`;
-    const res = await this.fetchJson(url, 'TMDB');
-    return (res.results ?? []).slice(0, 12).map((r: any) => ({
-      id: String(r.id),
-      title: (type === 'movie' ? r.title : r.name) || 'Sans titre',
-      subtitle: (type === 'movie' ? r.release_date : r.first_air_date)?.slice(0, 4) || '',
-      thumbnail: r.poster_path ? `${TMDB_IMG}/w342${r.poster_path}` : null,
-    }));
+    // Trois langues en parallèle (français canadien, français, anglais) : un film cherché sous son titre
+    // québécois, français, anglais ou original sort dans tous les cas. Les résultats sont fusionnés par fiche.
+    const languages = ['fr-CA', 'fr-FR', 'en-US'];
+    const responses = await Promise.allSettled(
+      languages.map((language) =>
+        this.fetchJson(`https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(query)}&language=${language}${yearParam}&api_key=${this.tmdbKey}`, 'TMDB'),
+      ),
+    );
+    if (responses.every((r) => r.status === 'rejected')) throw (responses[0] as PromiseRejectedResult).reason;
+
+    const titleOf = (r: any): string => ((type === 'movie' ? r.title : r.name) ?? '').trim();
+    const originalOf = (r: any): string => ((type === 'movie' ? r.original_title : r.original_name) ?? '').trim();
+    const merged = new Map<string, any>();
+    const titles = new Map<string, string[]>();
+
+    for (const res of responses) {
+      if (res.status !== 'fulfilled') continue;
+      for (const r of res.value.results ?? []) {
+        const id = String(r.id);
+        if (!merged.has(id)) merged.set(id, r); // l'ordre de pertinence est celui de la première langue qui trouve la fiche
+        const list = titles.get(id) ?? [];
+        for (const t of [titleOf(r), originalOf(r)]) if (t && !list.includes(t)) list.push(t);
+        titles.set(id, list);
+      }
+    }
+
+    return [...merged.entries()].slice(0, 14).map(([id, r]) => {
+      const main = titleOf(r) || originalOf(r) || 'Sans titre';
+      const others = (titles.get(id) ?? []).filter((t) => t !== main).slice(0, 3);
+      const yearText = (type === 'movie' ? r.release_date : r.first_air_date)?.slice(0, 4) || '';
+      return {
+        id,
+        title: main,
+        subtitle: [yearText, others.length ? `aussi : ${others.join(' / ')}` : ''].filter(Boolean).join(' · '),
+        thumbnail: r.poster_path ? `${TMDB_IMG}/w342${r.poster_path}` : null,
+      };
+    });
   }
 
   private async searchDeezer(query: string): Promise<SearchResult[]> {
@@ -236,7 +271,7 @@ export class MetadataService {
   private async richTmdb(type: 'movie' | 'tv', id: string): Promise<RichMetadata> {
     const url =
       `https://api.themoviedb.org/3/${type}/${encodeURIComponent(id)}?language=fr-FR` +
-      `&append_to_response=credits,videos,external_ids&include_video_language=fr,en,null&api_key=${this.tmdbKey}`;
+      `&append_to_response=credits,videos,external_ids,alternative_titles,translations&include_video_language=fr,en,null&api_key=${this.tmdbKey}`;
     const r = await this.fetchJson(url, 'TMDB');
     if (r.success === false) throw new NotFoundException('Fiche introuvable sur TMDB');
 
@@ -302,6 +337,21 @@ export class MetadataService {
       ...genreDrafts(genres),
     ];
 
+    // Tous les titres connus (traductions + titres alternatifs par région) : sert à retrouver le torrent quel que soit le titre cherché.
+    const titleEntries: { title: string; lang: string }[] = [];
+    const pushTitle = (t: unknown, lang: string) => {
+      const v = typeof t === 'string' ? t.trim() : '';
+      if (v) titleEntries.push({ title: v, lang });
+    };
+    pushTitle(title, 'fr');
+    pushTitle(original, 'original');
+    for (const tr of r.translations?.translations ?? []) {
+      pushTitle(isMovie ? tr.data?.title : tr.data?.name, `${tr.iso_639_1 ?? ''}${tr.iso_3166_1 ? `-${tr.iso_3166_1}` : ''}`);
+    }
+    for (const alt of (isMovie ? r.alternative_titles?.titles : r.alternative_titles?.results) ?? []) pushTitle(alt.title, alt.iso_3166_1 ?? '');
+    const knownTitles = unique(titleEntries, (e) => e.title.toLowerCase()).slice(0, 60);
+    const searchTitles = this.buildSearchTitles(knownTitles.map((t) => t.title));
+
     const rating = typeof r.vote_average === 'number' && r.vote_count > 0 ? r.vote_average : null;
     const names = (list: any[]) => list.map((p) => p.name).join(', ');
 
@@ -338,12 +388,20 @@ export class MetadataService {
         overview: r.overview || null,
         collection,
         seasonList,
+        titles: knownTitles.slice(0, 40),
         trailer: trailer ? { site: 'YouTube', key: trailer.key, name: trailer.name } : null,
       },
       entities,
       coverUrl: img(r.poster_path, 'w500'),
       backdropUrl: img(r.backdrop_path, 'w1280'),
+      searchTitles,
     };
+  }
+
+  /** Une ligne par titre, plus une variante sans accents (« Amélie » et « Amelie »), pour la recherche. */
+  private buildSearchTitles(titles: string[]): string {
+    const lines = unique(titles.flatMap((t) => [t, deaccent(t)]), (t) => t.toLowerCase());
+    return lines.join('\n').slice(0, 6000);
   }
 
   private async richDeezer(id: string): Promise<RichMetadata> {
@@ -597,7 +655,7 @@ export class MetadataService {
 
     await this.prisma.torrent.update({
       where: { id: torrentId },
-      data: { metaSource: rich.source, metaExternalId: id, metadata: rich.info as any },
+      data: { metaSource: rich.source, metaExternalId: id, metadata: rich.info as any, ...(rich.searchTitles !== undefined ? { searchTitles: rich.searchTitles } : {}) },
     });
 
     const pendingImages: { entityId: string; url: string }[] = [];
@@ -618,6 +676,34 @@ export class MetadataService {
     void this.downloadImages(torrentId, pendingImages, rich.backdropUrl).catch((err) =>
       this.logger.warn(`Téléchargement des images de la fiche échoué : ${err?.message ?? err}`),
     );
+  }
+
+  /**
+   * Les torrents envoyés avant l'arrivée des titres multilingues n'ont pas de liste de titres : on les
+   * complète petit à petit (quelques-uns toutes les 10 minutes, sans dépasser les limites de TMDB).
+   */
+  @Cron('*/10 * * * *')
+  async backfillSearchTitles() {
+    if (!this.tmdbKey) return;
+    const torrents = await this.prisma.torrent.findMany({
+      where: { metaSource: 'tmdb', metaExternalId: { not: null }, searchTitles: null },
+      select: { id: true, metaExternalId: true, metadata: true },
+      take: 10,
+    });
+    for (const t of torrents) {
+      try {
+        const kind = (t.metadata as any)?.kind === 'tv' ? 'tv' : 'movie';
+        const rich = await this.richTmdb(kind, t.metaExternalId!);
+        await this.prisma.torrent.update({
+          where: { id: t.id },
+          data: { searchTitles: rich.searchTitles ?? '', metadata: { ...((t.metadata as object) ?? {}), titles: rich.info.titles ?? [] } as any },
+        });
+      } catch (err: any) {
+        // Fiche disparue de TMDB ou service indisponible : on marque « fait » si la fiche n'existe plus, sinon on réessaiera.
+        if (err instanceof NotFoundException) await this.prisma.torrent.update({ where: { id: t.id }, data: { searchTitles: '' } });
+        else this.logger.warn(`Titres multilingues : ${err?.message ?? err}`);
+      }
+    }
   }
 
   private async downloadImages(torrentId: string, images: { entityId: string; url: string }[], backdropUrl: string | null) {
