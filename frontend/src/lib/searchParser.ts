@@ -100,6 +100,8 @@ export function detectFromReleaseName(text: string): ParsedQuery {
       if (match) { (result as any)[match.field] = match.value; break; }
     }
   }
+  // « WEB » seul (ex : 1080p.WEB.EAC3) est courant dans un nom de release ; on ne l'accepte pas dans une recherche (« web design »).
+  if (!result.source && rawTokens.some((t) => t.toLowerCase() === 'web')) result.source = 'WEB-DL';
   return result;
 }
 

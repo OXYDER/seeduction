@@ -43,6 +43,25 @@ export function detectEpisodeInfo(text: string): { season?: string; episode?: st
   return {};
 }
 
+/**
+ * Saison / épisode d'une release : le nom du torrent prime (« S01 » sans épisode = saison complète), sinon on regarde les
+ * fichiers — plusieurs épisodes distincts = saison complète, un seul = cet épisode.
+ */
+export function detectEpisodeFromRelease(name: string, filePaths: string[]): { season?: string; episode?: string } {
+  const fromName = detectEpisodeInfo(name);
+  if (fromName.season && fromName.episode) return fromName;
+  const episodes = new Set<string>();
+  let season = fromName.season;
+  for (const path of filePaths) {
+    const m = path.match(/S(\d{1,2})[ ._-]?E(\d{1,3})/i);
+    if (m) { season = season ?? String(Number(m[1])); episodes.add(String(Number(m[2]))); }
+  }
+  if (!season) return fromName;
+  if (episodes.size === 1) return { season, episode: [...episodes][0] };
+  if (episodes.size > 1) return { season, episode: 'Saison complète' };
+  return fromName;
+}
+
 export function detectVideoType(text: string): string | undefined {
   if (/\b(fsbs|full[ ._-]?sbs|3d[ ._-]?fsbs)\b/i.test(text)) return '3D FSBS';
   if (/\b(hsbs|half[ ._-]?sbs|h[ ._-]?sbs|3d[ ._-]?hsbs)\b/i.test(text)) return '3D HSBS';

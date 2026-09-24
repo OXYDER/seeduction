@@ -9,7 +9,7 @@ import { parseTorrentInfo } from '../lib/bencode';
 import { summarizeTorrent } from '../lib/torrentSummary';
 import { resolveContentKind } from '../lib/categoryKind';
 import DuplicateWarning from '../components/DuplicateWarning';
-import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeInfo, detectVideoType, matchGenres } from '../lib/uploadMeta';
+import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeFromRelease, detectVideoType, matchGenres } from '../lib/uploadMeta';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -104,7 +104,7 @@ export default function Upload() {
   // Remplissage automatique (nom, fichiers, NFO) : ne touche jamais à un champ déjà rempli.
   useEffect(() => {
     const text = [name, ...fileList.slice(0, 60).map((f) => f.path)].join(' ');
-    const ep = detectEpisodeInfo(text);
+    const ep = detectEpisodeFromRelease(name, fileList.map((f) => f.path));
     const nfo = parseNfo(nfoText);
     if (!season && (ep.season ?? nfo.season)) setSeason((ep.season ?? nfo.season) as string);
     if (!episode && (ep.episode ?? nfo.episode)) setEpisode((ep.episode ?? nfo.episode) as string);
