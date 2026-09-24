@@ -111,7 +111,7 @@ export default function ForumTopic() {
   const pager = <Pagination page={data.page} total={data.total} pageSize={data.pageSize} onPage={(p) => setParams({ page: String(p) })} />;
 
   return (
-    <div className="grid page-narrow" style={{ width: '100%', gap: 14 }}>
+    <div className="grid" style={{ width: '100%', gap: 14 }}>
       <Breadcrumb crumbs={breadcrumb} last={topic.title} />
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <h1>{topic.sticky && '📌 '}{topic.locked && '🔒 '}{topic.title}</h1>
