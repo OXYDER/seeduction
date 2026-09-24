@@ -940,3 +940,8 @@ th.sorted .sort-arrow { opacity: 1; }
 .cal-event { font-size: 11px; padding: 1px 5px; margin-bottom: 2px; border-radius: 3px; background: rgba(74,222,128,0.22); color: var(--gold-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .cal-event:hover { background: rgba(74,222,128,0.4); }
 @media (max-width: 760px) { .cal-day { min-height: 56px; } .cal-event { font-size: 9px; } }
+
+/* ---- Liens de torrent (pochette) et infobulles de membres ---- */
+.torrent-link { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
+.torrent-link-thumb { width: 26px; height: 36px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
+.torrent-tip img.forum-avatar { width: 64px; height: 64px; border-radius: 50%; margin: 0; }

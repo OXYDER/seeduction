@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import HoverCard from './HoverCard';
+import { TorrentPreview } from './TorrentLink';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
@@ -37,6 +39,7 @@ function ranges(nums: number[]): string {
 
 function TorrentChip({ t, current, label }: { t: Card; current: boolean; label?: string }) {
   return (
+    <HoverCard cacheKey={`torrent:${t.id}`} load={() => api.get(`/torrents/${t.id}/preview`).then((r) => r.data)} render={(d: any) => <TorrentPreview t={d} />}>
     <Link
       to={`/torrents/${t.id}`}
       className="entity-chip"
@@ -47,6 +50,7 @@ function TorrentChip({ t, current, label }: { t: Card; current: boolean; label?:
       <span className="muted">· {t.seeders} S</span>
       {label && <span className="muted">· {label}</span>}
     </Link>
+    </HoverCard>
   );
 }
 

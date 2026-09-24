@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../api/client';
 import { formatBytes, formatNumber } from '../lib/format';
+import TorrentLink from '../components/TorrentLink';
 
 const COLORS = ['#e0b84a', '#4caf50', '#7aa0ff', '#c084fc', '#f472b6', '#2dd4bf', '#ef6c4a', '#9fb8a0'];
 const tooltipStyle = { background: '#0c1912', border: '1px solid #1f3d2a' };
@@ -98,7 +99,7 @@ export default function Stats() {
             <tbody>
               {data.topCompleted.map((t: any) => (
                 <tr key={t.id}>
-                  <td><Link to={`/torrents/${t.id}`}>{t.name}</Link></td>
+                  <td><TorrentLink torrent={t} /></td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{t.completedCount} ✓ · {t.seeders} S</td>
                 </tr>
               ))}
@@ -113,7 +114,7 @@ export default function Stats() {
             <tbody>
               {data.dead.map((t: any) => (
                 <tr key={t.id}>
-                  <td><Link to={`/torrents/${t.id}`}>{t.name}</Link></td>
+                  <td><TorrentLink torrent={t} /></td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{t.completedCount} ✓</td>
                 </tr>
               ))}

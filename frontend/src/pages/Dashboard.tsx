@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/auth';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import NewsPanel from '../components/NewsPanel';
+import TorrentLink from '../components/TorrentLink';
 import { getRankInfo } from '../lib/rank';
 import { CATEGORY_STYLE, type LayoutContext } from '../components/Layout';
 
@@ -175,7 +176,7 @@ export default function Dashboard() {
                         {catStyle?.icon ?? '📦'}
                       </span>
                       <span>
-                        <Link to={`/torrents/${t.id}`}>{t.name}</Link>{' '}
+                        <TorrentLink torrent={t} thumb={false} />{' '}
                         {timeAgo(t.createdAt) === "à l'instant" && <span className="badge new">NEW</span>}{' '}
                         {t.freeleech && <span className="badge freeleech">FREELEECH</span>}
                       </span>

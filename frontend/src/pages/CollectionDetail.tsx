@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import UserLink from '../components/UserLink';
+import TorrentLink from '../components/TorrentLink';
 import SearchBox from '../components/SearchBox';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
@@ -86,7 +87,7 @@ export default function CollectionDetail() {
               {collection.items.map((item: any) => (
                 <tr key={item.id}>
                   <td>
-                    <Link to={`/torrents/${item.torrent.id}`}>{item.torrent.name}</Link>
+                    <TorrentLink torrent={item.torrent} />
                     {item.note && <div className="muted" style={{ fontSize: 12 }}>{item.note}</div>}
                   </td>
                   <td className="muted">{formatBytes(item.torrent.size)}</td>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import TorrentLink from '../components/TorrentLink';
 
 /** Points bonus, boutique, jetons freeleech et suivi des « hit & run ». */
 export default function Bonus() {
@@ -82,7 +83,7 @@ export default function Bonus() {
             <tbody>
               {data.unresolved.map((u: any) => (
                 <tr key={u.id}>
-                  <td><Link to={`/torrents/${u.torrentId}`}>{u.name}</Link></td>
+                  <td><TorrentLink torrent={{ id: u.torrentId, name: u.name }} /></td>
                   <td className="muted">{u.seedHours} h / {rules.hnrSeedHours} h</td>
                   <td className="muted">{new Date(u.completedAt).toLocaleDateString('fr-FR')}</td>
                 </tr>

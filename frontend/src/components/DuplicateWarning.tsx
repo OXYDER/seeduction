@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
+import TorrentLink from './TorrentLink';
 
 /** Avertit, avant l'envoi, que le même film / album / jeu (ou le même nom) existe déjà sur le tracker. */
 export default function DuplicateWarning({ name, metaId }: { name: string; metaId?: string }) {
@@ -29,7 +30,7 @@ export default function DuplicateWarning({ name, metaId }: { name: string; metaI
         <div key={t.id} className="row" style={{ padding: '4px 0', gap: 10 }}>
           {t.coverImage && <img src={t.coverImage} alt="" style={{ width: 28, height: 40, objectFit: 'cover', borderRadius: 3 }} />}
           <div style={{ minWidth: 0 }}>
-            <Link to={`/torrents/${t.id}`} target="_blank">{t.name}</Link>
+            <TorrentLink torrent={t} thumb={false} />
             <div className="muted" style={{ fontSize: 12 }}>
               {[t.year, t.resolution, t.language, formatBytes(t.size)].filter(Boolean).join(' · ')} — {t.seeders} seeder(s){t.status === 'PENDING' ? ' · en attente de validation' : ''}
             </div>

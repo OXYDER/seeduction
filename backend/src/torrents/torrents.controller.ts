@@ -50,6 +50,12 @@ export class TorrentsController {
     return this.torrentsService.findDuplicates(metaId, name, req.user?.userId);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get(':id/preview')
+  preview(@Param('id') id: string, @Request() req: any) {
+    return this.torrentsService.preview(id, req.user);
+  }
+
   @Get(':id/related')
   related(@Param('id') id: string) {
     return this.torrentsService.related(id);

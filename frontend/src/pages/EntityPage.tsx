@@ -4,6 +4,8 @@ import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { ROLE_LABEL, TYPE_LABEL } from '../lib/entityLabels';
 import FollowButton from '../components/FollowButton';
+import HoverCard from '../components/HoverCard';
+import { TorrentPreview } from '../components/TorrentLink';
 
 const PAGE_SIZE = 24;
 
@@ -59,7 +61,8 @@ export default function EntityPage() {
         <div className="muted" style={{ marginBottom: 12 }}>{total} torrent{total > 1 ? 's' : ''}</div>
         <div className="entity-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
           {items.map((t) => (
-            <Link key={t.id} to={`/torrents/${t.id}`} className="entity-card">
+            <HoverCard key={t.id} cacheKey={`torrent:${t.id}`} inline={false} load={() => api.get(`/torrents/${t.id}/preview`).then((r) => r.data)} render={(d: any) => <TorrentPreview t={d} />}>
+            <Link to={`/torrents/${t.id}`} className="entity-card">
               {t.coverImage
                 ? <img src={t.coverImage} alt="" style={{ width: '100%', aspectRatio: '2 / 3', objectFit: 'cover', borderRadius: 4 }} />
                 : <div className="entity-initial" style={{ width: '100%', aspectRatio: '2 / 3' }}>{t.name.slice(0, 1).toUpperCase()}</div>}
@@ -72,6 +75,7 @@ export default function EntityPage() {
                 <span style={{ color: 'var(--danger)' }}>{t.leechers} L</span>
               </div>
             </Link>
+            </HoverCard>
           ))}
         </div>
         {items.length === 0 && <p className="muted">Aucun torrent approuvé pour l'instant.</p>}

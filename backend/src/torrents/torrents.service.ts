@@ -255,6 +255,25 @@ export class TorrentsService {
     return { kind: null };
   }
 
+  /** Infos légères pour l'infobulle d'un torrent (pochette, détails de base, extrait du synopsis). */
+  async preview(id: string, viewer?: { userId: string; role: string }) {
+    const t = await this.prisma.torrent.findUnique({
+      where: { id },
+      select: {
+        id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true, seeders: true, leechers: true,
+        createdAt: true, status: true, categoryId: true, category: { select: { name: true } }, metadata: true,
+      },
+    });
+    const staff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
+    if (!t || (t.status !== 'APPROVED' && !staff)) throw new NotFoundException('Torrent introuvable');
+    if (!staff && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) throw new ForbiddenException('Contenu masqué');
+
+    const { metadata, categoryId, status, ...rest } = t;
+    const overview = (metadata as any)?.overview;
+    const synopsis = typeof overview === 'string' && overview.trim() ? overview.trim().replace(/\s+/g, ' ') : null;
+    return { ...rest, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
+  }
+
   async findOne(id: string, viewer?: { userId: string; role: string }) {
     const torrent = await this.prisma.torrent.findUnique({
       where: { id },

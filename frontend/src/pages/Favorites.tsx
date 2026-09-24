@@ -5,6 +5,7 @@ import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { HealthDot, FavoriteStar } from '../components/TorrentBits';
 import { TYPE_LABEL } from '../lib/entityLabels';
+import TorrentLink from '../components/TorrentLink';
 
 export default function Favorites() {
   const [items, setItems] = useState<any[] | null>(null);
@@ -54,7 +55,7 @@ export default function Favorites() {
                     <td>
                       <div className="row" style={{ gap: 10 }}>
                         {t.coverImage && <img src={t.coverImage} alt="" style={{ width: 32, height: 44, objectFit: 'cover', borderRadius: 3 }} />}
-                        <Link to={`/torrents/${t.id}`}>{t.name}</Link>
+                        <TorrentLink torrent={t} thumb={false} />
                       </div>
                     </td>
                     <td className="muted">{t.category?.name}</td>
