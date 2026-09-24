@@ -1,5 +1,37 @@
+# ---------------------------------------------------------------------------
+# Serveur « tracker seul » (port 8081, publié sur 9099) : à utiliser pour l'adresse
+# publique du tracker (ex : venus.seeduction.org). Il ne sert QUE /tracker/ ;
+# tout le reste (le site, l'API, le chat) y répond 404, quel que soit le nom de
+# domaine utilisé pour l'atteindre.
+# ---------------------------------------------------------------------------
 server {
-    listen 80;
+    listen 8081;
+    resolver 127.0.0.11 valid=10s;
+
+    include /etc/nginx/snippets/tracker-location.conf;
+
+    location / {
+        return 404;
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Détection du nom de domaine du tracker sur le serveur principal : si l'adresse du
+# tracker est aussi branchée sur le port du site (9098), le site reste inaccessible
+# depuis ce nom. Le nom vient de TRACKER_HOST (docker-compose.yml). On regarde aussi
+# X-Forwarded-Host, au cas où le proxy inverse remplacerait l'en-tête Host.
+# ---------------------------------------------------------------------------
+map $host $host_is_tracker {
+    default 0;
+    ${TRACKER_HOST} 1;
+}
+map $http_x_forwarded_host $xfh_is_tracker {
+    default 0;
+    ${TRACKER_HOST} 1;
+}
+
+server {
+    listen 80 default_server;
     root /usr/share/nginx/html;
     index index.html;
     client_max_body_size 20m;
@@ -10,21 +42,20 @@ server {
     # encore prêt/résolvable au moment où nginx charge sa config.
     resolver 127.0.0.11 valid=10s;
 
+    # Depuis l'adresse du tracker, on ne sert que /tracker/ (voir plus haut).
+    set $tracker_only 0;
+    if ($host_is_tracker) { set $tracker_only 1; }
+    if ($xfh_is_tracker) { set $tracker_only 1; }
+
+    # Le tracker BitTorrent (partagé avec le serveur « tracker seul »).
+    include /etc/nginx/snippets/tracker-location.conf;
+
     location /api/ {
+        if ($tracker_only) { return 404; }
         # Pas de chemin après $backend_upstream : avec une variable, nginx
         # n'applique pas la réécriture "remplace le préfixe du location" —
         # il faut un passthrough intégral de l'URI d'origine (ce qu'on veut
         # de toute façon, vu que le backend répond déjà sur /api/...).
-        set $backend_upstream http://backend:3000;
-        proxy_pass $backend_upstream;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /tracker/ {
         set $backend_upstream http://backend:3000;
         proxy_pass $backend_upstream;
         proxy_http_version 1.1;
@@ -39,6 +70,7 @@ server {
     # Upgrade/Connection, la connexion WebSocket échoue silencieusement en
     # production (elle passait inaperçue en dev via le proxy de Vite).
     location /socket.io/ {
+        if ($tracker_only) { return 404; }
         set $backend_upstream http://backend:3000;
         proxy_pass $backend_upstream;
         proxy_http_version 1.1;
@@ -54,11 +86,13 @@ server {
     # obsolète, sinon les mises à jour de l'app-shell mettent une éternité à
     # se propager aux clients déjà installés.
     location = /sw.js {
+        if ($tracker_only) { return 404; }
         add_header Cache-Control "no-cache";
         try_files $uri =404;
     }
 
     location / {
+        if ($tracker_only) { return 404; }
         try_files $uri /index.html;
     }
 }

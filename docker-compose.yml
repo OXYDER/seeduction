@@ -79,10 +79,14 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      # Nom de domaine public du tracker (ex : venus.seeduction.org) : depuis ce nom, le site n'est jamais servi.
+      TRACKER_HOST: ${TRACKER_HOST:-venus.seeduction.org}
     networks:
       - tracker_net
     ports:
-      - "9098:80"
+      - "9098:80"     # le site (seeduction.org)
+      - "9099:8081"  # le tracker seul (venus.seeduction.org) : ne sert que /tracker/
 
 networks:
   tracker_net:
