@@ -81,7 +81,7 @@ export default function HomeStreaming() {
     let cancelled = false;
     Promise.all(
       categories.slice(0, 6).map((c) =>
-        api.get('/torrents', { params: { categoryId: c.id, pageSize: 14, sort: 'date' })
+        api.get('/torrents', { params: { categoryId: c.id, pageSize: 14, sort: 'date' } })
           .then((r) => ({ id: c.id, name: c.name, slug: c.slug, items: r.data.items as any[] }))
           .catch(() => ({ id: c.id, name: c.name, slug: c.slug, items: [] as any[] })),
       ),
