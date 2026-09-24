@@ -26,6 +26,7 @@ export interface Category {
   name: string;
   slug: string;
   imageUrl?: string | null;
+  children?: { id: string }[];
 }
 
 export interface LayoutContext {
@@ -43,6 +44,26 @@ export const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
   livres: { icon: '📚', color: '#2dd4bf' },
   xxx: { icon: '🔞', color: '#9fb8a0' },
 };
+
+interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; staffOnly?: boolean }
+
+const starts = (prefix: string) => (p: string) => p === prefix || p.startsWith(`${prefix}/`);
+
+/** Le lien de la section en cours est surligné (les pages de détail comptent dans leur section : un torrent → Parcourir). */
+const NAV_ITEMS: NavItem[] = [
+  { to: '/', icon: '🏠', cls: 'c-home', label: 'Accueil', match: (p) => p === '/' },
+  { to: '/browse', icon: '🔍', cls: 'c-search', label: 'Parcourir', match: (p) => starts('/browse')(p) || starts('/torrents')(p) || starts('/entities')(p) },
+  { to: '/news', icon: '📰', cls: 'c-rules', label: 'Nouvelles', match: starts('/news') },
+  { to: '/upload', icon: '⬆️', cls: 'c-upload', label: 'Envoyer', match: starts('/upload') },
+  { to: '/requests', icon: '💬', cls: 'c-chat', label: 'Demandes', match: starts('/requests') },
+  { to: '/favorites', icon: '⭐', cls: 'c-collections', label: 'Favoris', match: starts('/favorites') },
+  { to: '/collections', icon: '📚', cls: 'c-collections', label: 'Collections', match: starts('/collections') },
+  { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat') },
+  { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
+  { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
+  { to: '/rules', icon: '🛡️', cls: 'c-rules', label: 'Règles', match: starts('/rules') },
+  { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true },
+];
 
 export default function Layout() {
   const { user, accessToken, logout } = useAuthStore();
@@ -114,8 +135,8 @@ export default function Layout() {
         <div className="row">
           <ThemeSwitcher />
           <NotificationsBell />
-          <Link to="/messages">Messages</Link>
-          <Link to="/profile">{user?.username}</Link>
+          <Link to="/messages" className={`top-link${starts('/messages')(location.pathname) ? ' active' : ''}`}>Messages</Link>
+          <Link to="/profile" className={`top-link${starts('/profile')(location.pathname) || starts('/users')(location.pathname) ? ' active' : ''}`}>{user?.username}</Link>
           <button className="secondary" onClick={() => { logout(); navigate('/login'); }}>
             Déconnexion
           </button>
@@ -126,22 +147,14 @@ export default function Layout() {
 
       <div className="mainnav">
         <div className="nav-links">
-          <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
-            <span className="nav-icon c-home">🏠</span>Accueil
-          </Link>
-          <Link to="/browse" className={location.pathname === '/browse' ? 'active' : ''}>
-            <span className="nav-icon c-search">🔍</span>Parcourir
-          </Link>
-          <Link to="/news" className={location.pathname.startsWith('/news') ? 'active' : ''}><span className="nav-icon c-rules">📰</span>Nouvelles</Link>
-          <Link to="/upload"><span className="nav-icon c-upload">⬆️</span>Envoyer</Link>
-          <Link to="/requests"><span className="nav-icon c-chat">💬</span>Demandes</Link>
-          <Link to="/favorites"><span className="nav-icon c-collections">⭐</span>Favoris</Link>
-          <Link to="/collections"><span className="nav-icon c-collections">📚</span>Collections</Link>
-          <Link to="/chat"><span className="nav-icon c-livechat">🗨️</span>Chat</Link>
-          <Link to="/forum"><span className="nav-icon c-forum">👥</span>Forums</Link>
-          <Link to="/stats"><span className="nav-icon c-search">📊</span>Stats</Link>
-          <Link to="/rules"><span className="nav-icon c-rules">🛡️</span>Règles</Link>
-          {isStaff && <Link to="/admin"><span className="nav-icon c-staff">👑</span>Staff</Link>}
+          {NAV_ITEMS.filter((item) => !item.staffOnly || isStaff).map((item) => {
+            const active = item.match(location.pathname);
+            return (
+              <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
+                <span className={`nav-icon ${item.cls}`}>{item.icon}</span>{item.label}
+              </Link>
+            );
+          })}
         </div>
 
         <form className="search-row" onSubmit={submitSearch}>
@@ -159,8 +172,10 @@ export default function Layout() {
           <div className="category-chips">
             {categories.map((c) => {
               const style = CATEGORY_STYLE[c.slug];
+              const activeCategory = location.pathname === '/browse' ? new URLSearchParams(location.search).get('categoryId') : null;
+              const isActive = !!activeCategory && (activeCategory === c.id || !!c.children?.some((sub) => sub.id === activeCategory));
               return (
-                <Link key={c.id} to={`/browse?categoryId=${c.id}`} title={c.name} className={c.imageUrl ? 'has-image' : undefined}>
+                <Link key={c.id} to={`/browse?categoryId=${c.id}`} title={c.name} className={[c.imageUrl ? 'has-image' : '', isActive ? 'active' : ''].filter(Boolean).join(' ') || undefined}>
                   {c.imageUrl ? (
                     <img src={c.imageUrl} alt={c.name} className="category-img" />
                   ) : (

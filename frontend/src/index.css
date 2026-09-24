@@ -945,3 +945,20 @@ th.sorted .sort-arrow { opacity: 1; }
 .torrent-link { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
 .torrent-link-thumb { width: 26px; height: 36px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
 .torrent-tip img.forum-avatar { width: 64px; height: 64px; border-radius: 50%; margin: 0; }
+
+/* ---- Section en cours surlignée (menu principal, barre du haut, catégories) ---- */
+.nav-links a.active {
+  border-color: var(--gold);
+  background: linear-gradient(180deg, rgba(224,184,74,0.18), rgba(224,184,74,0.05));
+  color: var(--gold-bright);
+  box-shadow: 0 0 0 1px rgba(224,184,74,0.22), 0 6px 16px rgba(224,184,74,0.14);
+  position: relative;
+}
+.nav-links a.active::after {
+  content: ''; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 3px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-bright)); border-radius: 3px 3px 0 0;
+}
+.nav-links a.active .nav-icon { background: var(--gold); box-shadow: 0 0 10px rgba(224,184,74,0.45); }
+.category-chips a.active { border-color: var(--gold); color: var(--gold-bright); background: rgba(224,184,74,0.12); font-weight: 600; }
+.top-link { padding: 4px 10px; border-radius: 4px; border: 1px solid transparent; }
+.top-link.active { border-color: var(--gold); color: var(--gold-bright); background: rgba(224,184,74,0.10); }
