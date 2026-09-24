@@ -1474,3 +1474,13 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
   .shell.collapsed .side-head { flex-direction: column; gap: 10px; }
   .shell.collapsed .side-head .side-brand { padding: 4px 0; }
 }
+
+/* ---- Pastille de categorie sur les affiches (une couleur par type de contenu) ---- */
+.cat-tag {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 9px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap;
+  color: #0b0f1e; box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.35); overflow: hidden; text-overflow: ellipsis;
+}
+.poster-badges { align-items: flex-start; }
+.entity-card { position: relative; }
+.entity-card .entity-cat { position: absolute; top: 8px; left: 8px; z-index: 2; max-width: calc(100% - 16px); }

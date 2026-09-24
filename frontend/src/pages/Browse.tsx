@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import UserLink from '../components/UserLink';
+import CategoryTag from '../components/CategoryTag';
 import SearchBox from '../components/SearchBox';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
@@ -384,6 +385,7 @@ export default function Browse() {
                     ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
                     : <div className="poster-fallback">{catStyle?.icon ?? '📦'}</div>}
                   <div className="poster-badges">
+                    <CategoryTag category={t.category} />
                     {t.freeleech && <span className="badge freeleech">FL</span>}
                     {t.doubleUpload && <span className="badge double">2x</span>}
                     {t.resolution && <span className="badge new">{t.resolution}</span>}

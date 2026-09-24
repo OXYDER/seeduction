@@ -195,7 +195,7 @@ export class TorrentsService {
         orderBy,
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
-        include: { category: true, uploader: { select: { id: true, username: true } } },
+        include: { category: { include: { parent: { select: { slug: true, name: true } } } }, uploader: { select: { id: true, username: true } } },
       }),
       this.prisma.torrent.count({ where }),
     ]);
@@ -258,7 +258,7 @@ export class TorrentsService {
 
   private readonly cardSelect = {
     id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true,
-    seeders: true, leechers: true, freeleech: true, doubleUpload: true, createdAt: true, category: { select: { name: true, slug: true } },
+    seeders: true, leechers: true, freeleech: true, doubleUpload: true, createdAt: true, category: { select: { name: true, slug: true, parent: { select: { slug: true, name: true } } } },
   } as const;
 
   /** Nouveaux torrents (30 jours) liés à des acteurs, studios, genres... auxquels le membre est abonné. */
@@ -320,7 +320,7 @@ export class TorrentsService {
       where: { userId, torrent: { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
       orderBy: { lastAnnounceAt: 'desc' },
       take: 40,
-      include: { torrent: { select: { id: true, name: true, coverImage: true, size: true, category: { select: { slug: true, name: true } } } } },
+      include: { torrent: { select: { id: true, name: true, coverImage: true, size: true, category: { select: { slug: true, name: true, parent: { select: { slug: true, name: true } } } } } } },
     });
     const seen = new Set<string>();
     return peers
@@ -343,7 +343,7 @@ export class TorrentsService {
       where: { id },
       select: {
         id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true, seeders: true, leechers: true,
-        createdAt: true, status: true, categoryId: true, category: { select: { name: true } }, metadata: true,
+        createdAt: true, status: true, categoryId: true, category: { select: { name: true, slug: true, parent: { select: { slug: true, name: true } } } }, metadata: true,
       },
     });
     const staff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');

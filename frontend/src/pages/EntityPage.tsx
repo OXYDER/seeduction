@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { ROLE_LABEL, TYPE_LABEL } from '../lib/entityLabels';
 import FollowButton from '../components/FollowButton';
+import CategoryTag from '../components/CategoryTag';
 import HoverCard from '../components/HoverCard';
 import { TorrentPreview } from '../components/TorrentLink';
 
@@ -63,6 +64,7 @@ export default function EntityPage() {
           {items.map((t) => (
             <HoverCard key={t.id} cacheKey={`torrent:${t.id}`} inline={false} load={() => api.get(`/torrents/${t.id}/preview`).then((r) => r.data)} render={(d: any) => <TorrentPreview t={d} />}>
             <Link to={`/torrents/${t.id}`} className="entity-card">
+              <span className="entity-cat"><CategoryTag category={t.category} /></span>
               {t.coverImage
                 ? <img src={t.coverImage} alt="" style={{ width: '100%', aspectRatio: '2 / 3', objectFit: 'cover', borderRadius: 4 }} />
                 : <div className="entity-initial" style={{ width: '100%', aspectRatio: '2 / 3' }}>{t.name.slice(0, 1).toUpperCase()}</div>}

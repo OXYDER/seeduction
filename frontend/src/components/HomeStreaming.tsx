@@ -11,6 +11,7 @@ import { TorrentPreview } from './TorrentLink';
 import NewsPanel from './NewsPanel';
 import UserLink from './UserLink';
 import { HealthDot } from './TorrentBits';
+import CategoryTag from './CategoryTag';
 
 /** Une carte d'affiche (pochette + titre + infos) avec l'infobulle riche au survol. */
 function PosterCard({ t }: { t: any }) {
@@ -22,6 +23,7 @@ function PosterCard({ t }: { t: any }) {
           ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
           : <div className="poster-fallback">{catStyle?.icon ?? '📦'}</div>}
         <div className="poster-badges">
+          <CategoryTag category={t.category} />
           {t.freeleech && <span className="badge freeleech">FL</span>}
           {t.doubleUpload && <span className="badge double">2x</span>}
           {t.resolution && <span className="badge new">{t.resolution}</span>}
@@ -68,6 +70,7 @@ function ContinueCard({ t }: { t: any }) {
   return (
     <Link to={`/torrents/${t.id}`} className="poster-card rail-card continue-card">
       {t.coverImage ? <img className="poster" src={t.coverImage} alt="" loading="lazy" /> : <div className="poster-fallback">{CATEGORY_STYLE[t.category?.slug]?.icon ?? '📦'}</div>}
+      <div className="poster-badges"><CategoryTag category={t.category} /></div>
       <div className="progress-bar"><div style={{ width: `${percent}%` }} className={t.isSeeder ? 'seeding' : ''} /></div>
       <div className="poster-body">
         <div className="poster-title">{t.name}</div>
