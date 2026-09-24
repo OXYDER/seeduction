@@ -88,7 +88,12 @@ export class CategoriesService implements OnModuleInit {
       let general: { id: string } | null = null;
       for (const [i, child] of top.children.entries()) {
         const found = await this.prisma.category.findFirst({ where: { OR: [{ name: { equals: child.name, mode: 'insensitive' } }, { slug: slugify(child.name) }] }, select: { id: true } });
-        if (found) { skipped++; if (i === 0) general = found; continue; }
+        if (found) {
+          skipped++;
+          if (i === 0) general = found;
+          if (child.kind) await this.prisma.category.updateMany({ where: { id: found.id, contentKind: null }, data: { contentKind: child.kind as any } });
+          continue;
+        }
         const made = await this.prisma.category.create({ data: { name: child.name, slug: slugify(child.name), parentId: parent.id, contentKind: (child.kind as any) ?? null } });
         if (i === 0) general = made;
         created++;

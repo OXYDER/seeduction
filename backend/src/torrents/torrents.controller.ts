@@ -41,6 +41,7 @@ export class TorrentsController {
       audio: query.audio,
       source: query.source,
       containerFormat: query.containerFormat,
+      genre: query.genre,
       entityId: query.entityId,
       role: query.role,
     });
@@ -82,6 +83,12 @@ export class TorrentsController {
   }
 
   @UseGuards(OptionalJwtAuthGuard)
+  @Get(':id/nfo')
+  nfo(@Param('id') id: string, @Request() req: any) {
+    return this.torrentsService.getNfo(id, req.user);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req: any) {
     return this.torrentsService.findOne(id, req.user);
@@ -117,6 +124,11 @@ export class TorrentsController {
       containerFormat: body.containerFormat || undefined,
       fps: body.fps ? Number(body.fps) : undefined,
       durationMinutes: body.durationMinutes ? Number(body.durationMinutes) : undefined,
+      season: body.season || undefined,
+      episode: body.episode || undefined,
+      genres: body.genres ? body.genres.split(',').map((g) => g.trim()).filter(Boolean).slice(0, 8) : [],
+      videoType: body.videoType || undefined,
+      nfo: body.nfo && body.nfo.trim() ? body.nfo.slice(0, 200_000) : undefined,
     });
   }
 

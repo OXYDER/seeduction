@@ -9,6 +9,7 @@ import ReportButton from '../components/ReportButton';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
+import NfoPanel from '../components/NfoPanel';
 import TorrentHero from '../components/TorrentHero';
 import TorrentRelated from '../components/TorrentRelated';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
@@ -87,6 +88,10 @@ export default function TorrentDetail() {
   if (!torrent) return <p className="muted">Chargement...</p>;
 
   const meta = [
+    torrent.season ? (/^\d+$/.test(torrent.season) ? `S${torrent.season.padStart(2, '0')}${/^\d+$/.test(torrent.episode ?? '') ? `E${torrent.episode.padStart(2, '0')}` : ''}` : torrent.season) : null,
+    torrent.season && torrent.episode && !/^\d+$/.test(torrent.episode) && /^\d+$/.test(torrent.season) ? torrent.episode : null,
+    torrent.videoType && torrent.videoType !== '2D' ? torrent.videoType : null,
+    ...(torrent.genres ?? []),
     torrent.year, torrent.resolution, torrent.hdr ? 'HDR' : null, torrent.codec,
     torrent.audio, torrent.source, torrent.containerFormat, torrent.language,
     torrent.fps ? `${torrent.fps} fps` : null,
@@ -235,6 +240,7 @@ export default function TorrentDetail() {
           <div className="grid" style={{ gap: 18 }}>
             <TorrentHero torrent={torrent} />
             {descriptionPanel}
+            <NfoPanel torrentId={torrent.id} />
           </div>
         )}
         {tab === 'files' && filesPanel}
@@ -282,6 +288,7 @@ export default function TorrentDetail() {
         )}
       </div>
       {tokenError}
+      <NfoPanel torrentId={torrent.id} />
       <TorrentComments torrentId={torrent.id} />
       {filesPanel}
     </div>

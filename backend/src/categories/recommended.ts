@@ -14,6 +14,7 @@ export interface RecommendedCategory {
 }
 
 const c = (...names: string[]) => names.map((name) => ({ name }));
+const withKind = (kind: string, ...names: string[]) => names.map((name) => ({ name, kind }));
 
 /**
  * Arborescence calquée sur celle de c411.org (Torznab). La première sous-catégorie de chaque liste est la catégorie
@@ -23,7 +24,10 @@ const c = (...names: string[]) => names.map((name) => ({ name }));
 export const RECOMMENDED_CATEGORIES: RecommendedCategory[] = [
   {
     name: 'Films & Vidéos', kind: 'FILM',
-    children: c('Film', 'Série TV', 'Animation', 'Animation Série', 'Documentaire', 'Série Documentaire', 'Émission TV', 'Spectacle', 'Concert', 'Sport', 'Vidéo-clips', 'Collection'),
+    children: [
+      ...c('Film'), ...withKind('SERIE', 'Série TV'), ...c('Animation'), ...withKind('SERIE', 'Animation Série'), ...c('Documentaire'),
+      ...withKind('SERIE', 'Série Documentaire', 'Émission TV'), ...c('Spectacle', 'Concert', 'Sport', 'Vidéo-clips', 'Collection'),
+    ],
   },
   {
     name: 'Ebook', kind: 'LIVRE',

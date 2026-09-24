@@ -67,6 +67,10 @@ export class AdminService {
       if (cat._count.children > 0) throw new BadRequestException('Choisissez une sous-catégorie (les catégories principales ne sont pas sélectionnables)');
       data.categoryId = body.categoryId;
     }
+    for (const key of ['season', 'episode', 'videoType'] as const) {
+      if (typeof body[key] === 'string') data[key] = body[key].trim().slice(0, 40) || null;
+    }
+    if (Array.isArray(body.genres)) data.genres = body.genres.filter((g: any) => typeof g === 'string').map((g: string) => g.trim().slice(0, 40)).filter(Boolean).slice(0, 8);
     if (typeof body.origin === 'string') data.origin = normalizeOrigin(body.origin) ?? null;
     if (typeof body.resolution === 'string') data.resolution = body.resolution.trim() || null;
     if (typeof body.source === 'string') data.source = body.source.trim() || null;

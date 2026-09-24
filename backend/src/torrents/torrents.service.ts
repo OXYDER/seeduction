@@ -43,6 +43,11 @@ export class TorrentsService {
     origin?: string;
     fps?: number;
     durationMinutes?: number;
+    season?: string;
+    episode?: string;
+    genres?: string[];
+    videoType?: string;
+    nfo?: string;
   }) {
     // On stocke (et on calcule l'info_hash sur) la version nettoyée : trackers
     // externes retirés, flag private forcé — voir sanitizeTorrentForUpload.
@@ -87,6 +92,11 @@ export class TorrentsService {
         origin: params.origin,
         fps: params.fps,
         durationMinutes: params.durationMinutes,
+        season: params.season,
+        episode: params.episode,
+        genres: params.genres ?? [],
+        videoType: params.videoType,
+        ...(params.nfo ? { nfoFile: { create: { content: params.nfo } } } : {}),
       },
     });
 
@@ -139,7 +149,7 @@ export class TorrentsService {
     order?: 'asc' | 'desc';
     minSize?: number; maxSize?: number; minSeeders?: number;
     year?: number; language?: string; resolution?: string; codec?: string;
-    hdr?: boolean; audio?: string; source?: string; containerFormat?: string; origin?: string;
+    hdr?: boolean; audio?: string; source?: string; containerFormat?: string; origin?: string; genre?: string;
     entityId?: string; role?: string; hideAnonymous?: boolean; viewerId?: string;
     /** all = torrents actifs (défaut) ; noseeders = approuvés sans seeder ; dead = retirés des listes après une longue inactivité. */
     state?: 'noseeders' | 'dead';
@@ -182,6 +192,7 @@ export class TorrentsService {
     if (params.hdr) where.hdr = true;
     if (params.audio) where.audio = { equals: params.audio, mode: 'insensitive' };
     if (params.source) where.source = { equals: params.source, mode: 'insensitive' };
+    if (params.genre) where.genres = { has: params.genre };
     if (params.containerFormat) where.containerFormat = { equals: params.containerFormat, mode: 'insensitive' };
     if (params.origin) where.origin = params.origin;
 
@@ -365,6 +376,13 @@ export class TorrentsService {
     const overview = (metadata as any)?.overview;
     const synopsis = typeof overview === 'string' && overview.trim() ? overview.trim().replace(/\s+/g, ' ') : null;
     return { ...rest, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
+  }
+
+  /** NFO d'un torrent (même visibilité que la fiche). */
+  async getNfo(id: string, viewer?: { userId: string; role: string }) {
+    await this.findOne(id, viewer);
+    const nfo = await this.prisma.torrentNfo.findUnique({ where: { torrentId: id } });
+    return { content: nfo?.content ?? null };
   }
 
   async findOne(id: string, viewer?: { userId: string; role: string }) {

@@ -9,6 +9,7 @@ import { parseTorrentInfo } from '../lib/bencode';
 import { summarizeTorrent } from '../lib/torrentSummary';
 import { resolveContentKind } from '../lib/categoryKind';
 import DuplicateWarning from '../components/DuplicateWarning';
+import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeInfo, detectVideoType } from '../lib/uploadMeta';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -35,6 +36,13 @@ export default function Upload() {
   const [containerFormat, setContainerFormat] = useState('');
   const [fps, setFps] = useState('');
   const [durationMinutes, setDurationMinutes] = useState('');
+  const [season, setSeason] = useState('');
+  const [episode, setEpisode] = useState('');
+  const [genres, setGenres] = useState<string[]>([]);
+  const [videoType, setVideoType] = useState('2D');
+  const videoTouched = useRef(false);
+  const [nfoText, setNfoText] = useState('');
+  const [missing, setMissing] = useState<string[]>([]);
   const [autoDetected, setAutoDetected] = useState<Set<string>>(new Set());
   const [fileList, setFileList] = useState<{ path: string; size: number }[]>([]);
   const [foundTrackers, setFoundTrackers] = useState<string[]>([]);
@@ -50,6 +58,7 @@ export default function Upload() {
   // l'uploader n'a plus à le choisir lui-même.
   const parentCategory = categories.find((c) => c.children?.some((sub: any) => sub.id === categoryId));
   const defaultKind = resolveContentKind(selectedCategory, parentCategory);
+  const isVideoKind = defaultKind === 'FILM' || defaultKind === 'SERIE';
   const searchInfo = cleanTitleForSearch(name);
   const summary = useMemo(() => summarizeTorrent(fileList), [fileList]);
   // "Artiste - Album" : la partie avant le premier " - " sert d'artiste pour les modèles musique.
@@ -75,6 +84,36 @@ export default function Upload() {
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
   }, []);
+
+  // Remplissage automatique (nom, fichiers, NFO) : ne touche jamais à un champ déjà rempli.
+  useEffect(() => {
+    const text = [name, ...fileList.slice(0, 60).map((f) => f.path)].join(' ');
+    const ep = detectEpisodeInfo(text);
+    const nfo = parseNfo(nfoText);
+    if (!season && (ep.season ?? nfo.season)) setSeason((ep.season ?? nfo.season) as string);
+    if (!episode && (ep.episode ?? nfo.episode)) setEpisode((ep.episode ?? nfo.episode) as string);
+    if (!language && nfo.language) setLanguage(nfo.language);
+    if (!resolution && nfo.resolution) setResolution(nfo.resolution);
+    if (!codec && nfo.codec) setCodec(nfo.codec);
+    if (!audio && nfo.audio) setAudio(nfo.audio);
+    if (!source && nfo.source) setSource(nfo.source);
+    if (!containerFormat && nfo.containerFormat) setContainerFormat(nfo.containerFormat);
+    if (!year && nfo.year) setYear(String(nfo.year));
+    if (!fps && nfo.fps) setFps(String(nfo.fps));
+    if (!durationMinutes && nfo.durationMinutes) setDurationMinutes(String(nfo.durationMinutes));
+    if (!hdr && nfo.hdr) setHdr(true);
+    if (genres.length === 0 && nfo.genres.length > 0) setGenres(nfo.genres);
+    const vt = detectVideoType(text) ?? nfo.videoType;
+    if (vt && !videoTouched.current) setVideoType(vt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, fileList, nfoText]);
+
+  async function onNfoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) { setNfoText(''); return; }
+    if (f.size > 500_000) { setError('Le NFO est trop gros (500 Ko maximum)'); return; }
+    setNfoText((await f.text()).slice(0, 200_000));
+  }
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
@@ -144,6 +183,15 @@ export default function Upload() {
     e.preventDefault();
     if (!file) { setError('Sélectionne un fichier .torrent'); return; }
     if (!categoryId) { setError('Choisis une catégorie'); return; }
+    if (isVideoKind) {
+      const lacks = [
+        defaultKind === 'SERIE' && !season && 'Saison',
+        defaultKind === 'SERIE' && !episode && 'Épisode',
+        !language && 'Langue',
+      ].filter(Boolean) as string[];
+      setMissing(lacks);
+      if (lacks.length > 0) { setError(`Informations manquantes à remplir à la main : ${lacks.join(', ')}`); return; }
+    }
     const form = new FormData();
     form.append('torrentFile', file);
     form.append('name', name);
@@ -164,6 +212,12 @@ export default function Upload() {
     if (containerFormat) form.append('containerFormat', containerFormat);
     if (fps) form.append('fps', fps);
     if (durationMinutes) form.append('durationMinutes', durationMinutes);
+    if (isVideoKind) {
+      if (defaultKind === 'SERIE') { form.append('season', season); form.append('episode', episode); }
+      if (genres.length) form.append('genres', genres.join(','));
+      form.append('videoType', videoType);
+    }
+    if (nfoText) form.append('nfo', nfoText);
     try {
       const { data } = await api.post('/torrents/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
       navigate(`/torrents/${data.id}`, { state: { justUploaded: true } });
@@ -241,6 +295,66 @@ export default function Upload() {
                 ))}
               </select>
             )}
+          </div>
+
+          {isVideoKind && (
+            <div className="panel" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <div className="panel-title"><span className="title-icon">🏷️</span>Métadonnées</div>
+              <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
+                Remplies automatiquement d'après le nom, la liste des fichiers et le NFO. Complète à la main ce qui reste vide (<span style={{ color: 'var(--danger)' }}>*</span> obligatoire).
+              </p>
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                {defaultKind === 'SERIE' && (
+                  <>
+                    <label className="grid" style={{ gap: 4 }}>
+                      <span className="muted">Saison <span style={{ color: 'var(--danger)' }}>*</span></span>
+                      <select value={season} onChange={(e) => setSeason(e.target.value)} style={missing.includes('Saison') ? { borderColor: 'var(--danger)' } : undefined}>
+                        <option value="">Sélectionner…</option>
+                        {SEASON_OPTIONS.map((s) => <option key={s} value={s}>{/^\d+$/.test(s) ? `Saison ${s}` : s}</option>)}
+                      </select>
+                    </label>
+                    <label className="grid" style={{ gap: 4 }}>
+                      <span className="muted">Épisode <span style={{ color: 'var(--danger)' }}>*</span></span>
+                      <select value={episode} onChange={(e) => setEpisode(e.target.value)} style={missing.includes('Épisode') ? { borderColor: 'var(--danger)' } : undefined}>
+                        <option value="">Sélectionner…</option>
+                        {EPISODE_OPTIONS.map((s) => <option key={s} value={s}>{/^\d+$/.test(s) ? `Épisode ${s}` : s}</option>)}
+                      </select>
+                    </label>
+                  </>
+                )}
+                <label className="grid" style={{ gap: 4 }}>
+                  <span className="muted">Langue <span style={{ color: 'var(--danger)' }}>*</span></span>
+                  <select value={language} onChange={(e) => setLanguage(e.target.value)} style={missing.includes('Langue') ? { borderColor: 'var(--danger)' } : undefined}>
+                    <option value="">Sélectionner…</option>
+                    {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </label>
+                <div className="grid" style={{ gap: 4 }}>
+                  <span className="muted">Genre (plusieurs possibles)</span>
+                  <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+                    {GENRES.map((g) => (
+                      <button key={g} type="button" className={genres.includes(g) ? '' : 'secondary'} style={{ padding: '3px 10px', fontSize: 12 }}
+                        onClick={() => setGenres((cur) => cur.includes(g) ? cur.filter((x) => x !== g) : [...cur, g])}>{g}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="grid" style={{ gap: 4, marginTop: 12 }}>
+                <span className="muted">Type</span>
+                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                  {VIDEO_TYPES.map((t) => (
+                    <button key={t} type="button" className={videoType === t ? '' : 'secondary'} style={{ padding: '4px 14px' }}
+                      onClick={() => { videoTouched.current = true; setVideoType(t); }}>{t}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="panel" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div className="muted" style={{ marginBottom: 6 }}>Fichier NFO (optionnel) — sert à remplir automatiquement les métadonnées</div>
+            <input type="file" accept=".nfo,.txt" onChange={onNfoChange} />
+            {nfoText && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>📄 NFO chargé ({nfoText.length.toLocaleString('fr-CA')} caractères) — les champs vides ont été remplis quand c'était possible.</p>}
           </div>
 
           <DescriptionGenerator
