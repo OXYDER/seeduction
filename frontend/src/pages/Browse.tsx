@@ -25,8 +25,8 @@ const SORTS = [
 
 // Colonnes triables : titre affiché -> champ de tri côté serveur.
 const COLUMNS: { label: string; sort: string }[] = [
-  { label: 'Nom', sort: 'nom' },
   { label: 'Catégorie', sort: 'categorie' },
+  { label: 'Nom', sort: 'nom' },
   { label: 'Ajouté', sort: 'date' },
   { label: 'Taille', sort: 'taille' },
   { label: 'S', sort: 'seeders' },
@@ -492,6 +492,11 @@ export default function Browse() {
                 const catStyle = t.category?.slug ? CATEGORY_STYLE[t.category.slug] : undefined;
                 return (
                 <tr key={t.id}>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {t.category?.imageUrl
+                      ? <img src={t.category.imageUrl} alt={t.category.name} title={t.category.name} style={{ height: 22, maxWidth: 80, objectFit: 'contain' }} />
+                      : <CategoryTag category={t.category} />}
+                  </td>
                   <td>
                     <div className="row" style={{ gap: 10 }}>
                       {favorites.enabled && <FavoriteStar active={favorites.ids.has(t.id)} onToggle={() => favorites.toggle(t.id)} />}
@@ -517,11 +522,6 @@ export default function Browse() {
                         )}
                       </span>
                     </div>
-                  </td>
-                  <td className="muted">
-                    {t.category?.imageUrl
-                      ? <img src={t.category.imageUrl} alt={t.category.name} title={t.category.name} style={{ height: 22, maxWidth: 80, objectFit: 'contain' }} />
-                      : t.category?.name}
                   </td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{timeAgo(t.createdAt)}</td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatSize(t.size)}</td>
