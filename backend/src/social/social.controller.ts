@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
 import { SocialService } from './social.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
@@ -23,6 +23,24 @@ export class SocialController {
   @Delete('likes/:torrentId')
   unlike(@Param('torrentId') torrentId: string, @Request() req: any) {
     return this.social.unlike(torrentId, req.user.userId);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get('ratings/:torrentId')
+  ratingStatus(@Param('torrentId') torrentId: string, @Request() req: any) {
+    return this.social.ratingStatus(torrentId, req.user?.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('ratings/:torrentId')
+  rate(@Param('torrentId') torrentId: string, @Body('score') score: number, @Request() req: any) {
+    return this.social.rate(torrentId, req.user.userId, score);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('ratings/:torrentId')
+  removeRating(@Param('torrentId') torrentId: string, @Request() req: any) {
+    return this.social.removeRating(torrentId, req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)

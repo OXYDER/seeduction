@@ -46,6 +46,33 @@ export class SocialService {
     return this.likeStatus(torrentId, userId);
   }
 
+  // ------------------------------------------------------------------ notes (1 à 5 étoiles)
+
+  async ratingStatus(torrentId: string, userId?: string) {
+    const [agg, mine] = await Promise.all([
+      this.prisma.torrentRating.aggregate({ where: { torrentId }, _avg: { score: true }, _count: { _all: true } }),
+      userId ? this.prisma.torrentRating.findUnique({ where: { userId_torrentId: { userId, torrentId } } }) : null,
+    ]);
+    return { average: agg._avg.score ?? null, count: agg._count._all, mine: mine?.score ?? null };
+  }
+
+  async rate(torrentId: string, userId: string, score: number) {
+    const value = Math.round(Number(score));
+    if (!Number.isFinite(value) || value < 1 || value > 5) throw new BadRequestException('La note doit être entre 1 et 5');
+    if (!(await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { id: true } }))) throw new NotFoundException('Torrent introuvable');
+    await this.prisma.torrentRating.upsert({
+      where: { userId_torrentId: { userId, torrentId } },
+      update: { score: value },
+      create: { userId, torrentId, score: value },
+    });
+    return this.ratingStatus(torrentId, userId);
+  }
+
+  async removeRating(torrentId: string, userId: string) {
+    await this.prisma.torrentRating.deleteMany({ where: { userId, torrentId } });
+    return this.ratingStatus(torrentId, userId);
+  }
+
   // ------------------------------------------------------------------ abonnements
 
   async myFollows(userId: string) {

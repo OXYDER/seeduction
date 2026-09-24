@@ -178,8 +178,16 @@ export class AdminService {
     return this.reports.listForStaff(status);
   }
 
-  resolveReport(id: string, status: 'RESOLVED' | 'DISMISSED') {
-    return this.prisma.report.update({ where: { id }, data: { status } });
+  async resolveReport(id: string, status: 'RESOLVED' | 'DISMISSED') {
+    const report = await this.prisma.report.update({ where: { id }, data: { status } });
+    // La personne qui a signalé est prévenue de la suite donnée.
+    await this.notifications.notify({
+      userId: report.reporterId,
+      type: 'SYSTEM',
+      title: status === 'RESOLVED' ? 'Ton signalement a été traité' : 'Ton signalement a été examiné',
+      body: status === 'RESOLVED' ? 'Merci : le staff a pris les mesures nécessaires.' : "Le staff n'a pas retenu d'action pour cet élément. Merci d'avoir aidé à garder la communauté propre.",
+    }).catch(() => undefined);
+    return report;
   }
 
   stats() {

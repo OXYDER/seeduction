@@ -25,6 +25,8 @@ jobs:
         run: |
           npx prisma validate 2>&1 | sed -E 's/^(.*)$/\1/' | tee /tmp/prisma.log; test ${PIPESTATUS[0]} -eq 0 || { echo "::error file=backend/prisma/schema.prisma::$(tr '\n' ' ' < /tmp/prisma.log | cut -c1-500)"; exit 1; }
           npx prisma generate
+      - name: Tests unitaires (jest)
+        run: npm test -- --ci
       - name: Compiler (tsc)
         run: |
           set +e

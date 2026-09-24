@@ -62,6 +62,7 @@ model User {
   forumReads       ForumTopicRead[] @relation("ForumReads")
   torrentComments  TorrentComment[] @relation("CommentAuthor")
   torrentLikes     TorrentLike[]
+  torrentRatings   TorrentRating[]
   entityFollows    EntityFollow[]
   peers            Peer[]
   snapshots        RatioSnapshot[]
@@ -178,6 +179,7 @@ model Torrent {
   favoritedBy    Favorite[]     @relation("TorrentFavorites")
   comments       TorrentComment[]
   likes          TorrentLike[]
+  ratings        TorrentRating[]
   reseedRequestedAt DateTime?
   // Titres du film / de la série dans plusieurs langues et régions (une ligne par titre), pour retrouver un torrent quel que soit le titre cherché.
   searchTitles   String?       @db.Text
@@ -748,4 +750,17 @@ model FreeleechEvent {
   createdAt   DateTime @default(now())
 
   @@index([startsAt, endsAt])
+}
+
+// Note de 1 à 5 étoiles donnée à un torrent (une par membre, modifiable).
+model TorrentRating {
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  torrent   Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId String
+  score     Int
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, torrentId])
+  @@index([torrentId])
 }

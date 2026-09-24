@@ -66,6 +66,16 @@ export default function TorrentHero({ torrent }: { torrent: any }) {
     <div className="panel ornate torrent-hero" style={background}>
       {info.tagline && <div style={{ fontStyle: 'italic', color: 'var(--gold-bright)', marginBottom: 8 }}>« {info.tagline} »</div>}
       {info.originalTitle && info.originalTitle !== torrent.name && <div className="muted" style={{ marginBottom: 6 }}>Titre original : {info.originalTitle}</div>}
+      {Array.isArray(info.titles) && info.titles.length > 1 && (
+        <details style={{ marginBottom: 10 }}>
+          <summary className="muted" style={{ cursor: 'pointer' }}>Autres titres ({info.titles.length - 1})</summary>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+            {info.titles.filter((t: any) => t.title !== torrent.name).map((t: any, i: number) => (
+              <span key={i} className="entity-chip">{t.title}{t.lang && <span className="muted" style={{ fontSize: 10 }}>{t.lang}</span>}</span>
+            ))}
+          </div>
+        </details>
+      )}
 
       {facts.length > 0 && (
         <div className="row" style={{ flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
