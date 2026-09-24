@@ -10,6 +10,18 @@ import * as path from 'path';
 const STORAGE_DIR = process.env.TORRENT_STORAGE_DIR ?? './storage/torrents';
 const ANNOUNCE_BASE_URL = process.env.ANNOUNCE_BASE_URL ?? 'https://tracker.example.com/tracker';
 
+export interface TorrentFilters {
+    categoryId?: string; search?: string; uploaderId?: string; page?: number; pageSize?: number;
+    sort?: string;
+    order?: 'asc' | 'desc';
+    minSize?: number; maxSize?: number; minSeeders?: number;
+    year?: number; language?: string; resolution?: string; codec?: string;
+    hdr?: boolean; audio?: string; source?: string; containerFormat?: string; origin?: string; genre?: string;
+    entityId?: string; role?: string; hideAnonymous?: boolean; viewerId?: string;
+    /** all = torrents actifs (défaut) ; noseeders = approuvés sans seeder ; dead = retirés des listes après une longue inactivité. */
+    state?: 'noseeders' | 'dead';
+  }
+
 @Injectable()
 export class TorrentsService {
   constructor(private prisma: PrismaService, private metadata: MetadataService, private adult: AdultService) {}
@@ -143,17 +155,7 @@ export class TorrentsService {
     });
   }
 
-  async list(params: {
-    categoryId?: string; search?: string; uploaderId?: string; page: number; pageSize: number;
-    sort?: string;
-    order?: 'asc' | 'desc';
-    minSize?: number; maxSize?: number; minSeeders?: number;
-    year?: number; language?: string; resolution?: string; codec?: string;
-    hdr?: boolean; audio?: string; source?: string; containerFormat?: string; origin?: string; genre?: string;
-    entityId?: string; role?: string; hideAnonymous?: boolean; viewerId?: string;
-    /** all = torrents actifs (défaut) ; noseeders = approuvés sans seeder ; dead = retirés des listes après une longue inactivité. */
-    state?: 'noseeders' | 'dead';
-  }) {
+  private async buildWhere(params: TorrentFilters) {
     const where: any = { status: params.state === 'dead' ? 'DEAD' : 'APPROVED' };
     if (params.state === 'noseeders') where.seeders = 0;
     // Catégories adultes : invisibles tant que le membre n'a pas activé l'option dans son compte.
@@ -195,6 +197,33 @@ export class TorrentsService {
     if (params.genre) where.genres = { has: params.genre };
     if (params.containerFormat) where.containerFormat = { equals: params.containerFormat, mode: 'insensitive' };
     if (params.origin) where.origin = params.origin;
+    return where;
+  }
+
+  /**
+   * Valeurs disponibles pour chaque filtre (avec le nombre de torrents) selon la liste affichée : chaque filtre est calculé
+   * en ignorant sa propre sélection, pour qu'on puisse en changer sans repartir de zéro.
+   */
+  async facets(params: TorrentFilters) {
+    const FIELDS = ['resolution', 'source', 'origin', 'language', 'codec', 'audio', 'containerFormat'] as const;
+    const out: Record<string, { value: string; count: number }[]> = {};
+    for (const field of FIELDS) {
+      const where = await this.buildWhere({ ...params, [field]: undefined });
+      const groups: any[] = await (this.prisma.torrent.groupBy as any)({ by: [field], where: { ...where, [field]: { not: null } }, _count: { _all: true } });
+      out[field] = groups.map((g) => ({ value: g[field] as string, count: g._count._all as number })).filter((g) => g.value).sort((x, y) => y.count - x.count);
+    }
+    const genreWhere = await this.buildWhere({ ...params, genre: undefined });
+    const gRows = await this.prisma.torrent.findMany({ where: { ...genreWhere, genres: { isEmpty: false } }, select: { genres: true }, take: 5000 });
+    const counts = new Map<string, number>();
+    for (const r of gRows) for (const g of r.genres) counts.set(g, (counts.get(g) ?? 0) + 1);
+    out.genre = [...counts].map(([value, count]) => ({ value, count })).sort((x, y) => y.count - x.count);
+    const hdrWhere = await this.buildWhere({ ...params, hdr: undefined });
+    out.hdr = [{ value: 'HDR', count: await this.prisma.torrent.count({ where: { ...hdrWhere, hdr: true } }) }].filter((x) => x.count > 0);
+    return out;
+  }
+
+  async list(params: TorrentFilters & { page: number; pageSize: number }) {
+    const where = await this.buildWhere(params);
 
     // Champ de tri + sens par défaut (cliquer sur un titre de colonne inverse le sens).
     const SORTS: Record<string, { build: (dir: 'asc' | 'desc') => any; dir: 'asc' | 'desc' }> = {

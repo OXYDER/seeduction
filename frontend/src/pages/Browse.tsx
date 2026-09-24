@@ -63,6 +63,7 @@ export default function Browse() {
   const audio = params.get('audio') ?? parsed.audio ?? '';
   const containerFormat = params.get('containerFormat') ?? parsed.containerFormat ?? '';
   const origin = params.get('origin') ?? '';
+  const genre = params.get('genre') ?? '';
   const hdr = params.get('hdr') === 'true' || (!!parsed.hdr && params.get('hdr') !== 'false');
   const minSizeGo = params.get('minSize') ?? '';
   const maxSizeGo = params.get('maxSize') ?? '';
@@ -101,7 +102,7 @@ export default function Browse() {
         search: parsed.name, categoryId, uploaderId, page, pageSize: 25, sort, order,
         year: year || undefined, resolution: resolution || undefined, language: language || undefined,
         source: source || undefined, codec: codec || undefined, audio: audio || undefined,
-        containerFormat: containerFormat || undefined, origin: origin || undefined, hdr: hdr || undefined,
+        containerFormat: containerFormat || undefined, origin: origin || undefined, genre: genre || undefined, hdr: hdr || undefined,
         minSize: minSizeGo ? Number(minSizeGo) * 1e9 : undefined,
         maxSize: maxSizeGo ? Number(maxSizeGo) * 1e9 : undefined,
         minSeeders: minSeeders || undefined,
@@ -111,7 +112,25 @@ export default function Browse() {
       setItems(r.data.items);
       setTotal(r.data.total);
     });
-  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, hdr, minSizeGo, maxSizeGo, minSeeders, state]);
+  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state]);
+
+  // Valeurs de filtres réellement disponibles pour la liste affichée (avec nombre de torrents).
+  const [facets, setFacets] = useState<Record<string, { value: string; count: number }[]>>({});
+  useEffect(() => {
+    api.get('/torrents/facets', {
+      params: {
+        search: parsed.name, categoryId, uploaderId,
+        year: year || undefined, resolution: resolution || undefined, language: language || undefined,
+        source: source || undefined, codec: codec || undefined, audio: audio || undefined,
+        containerFormat: containerFormat || undefined, origin: origin || undefined, genre: genre || undefined, hdr: hdr || undefined,
+        minSize: minSizeGo ? Number(minSizeGo) * 1e9 : undefined,
+        maxSize: maxSizeGo ? Number(maxSizeGo) * 1e9 : undefined,
+        minSeeders: minSeeders || undefined,
+        state: state || undefined,
+      },
+    }).then((r) => setFacets(r.data)).catch(() => {});
+  }, [parsed.name, categoryId, uploaderId, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state]);
+
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
@@ -277,28 +296,38 @@ export default function Browse() {
       )}
 
       <div className="facet-rows">
-        <div className="facet-row">
-          <span className="facet-label">Qualité</span>
-          <button type="button" className={!resolution ? 'on' : ''} onClick={() => updateParam('resolution', '')}>Toutes</button>
-          {[['4K/2160p', '4K UHD'], ['1080p', '1080p'], ['720p', '720p'], ['480p', 'SD']].map(([value, label]) => (
-            <button key={value} type="button" className={resolution === value ? 'on' : ''} onClick={() => updateParam('resolution', resolution === value ? '' : value)}>{label}</button>
-          ))}
-          <button type="button" className={hdr ? 'on' : ''} onClick={() => updateParam('hdr', hdr ? 'false' : 'true')}>HDR</button>
-        </div>
-        <div className="facet-row">
-          <span className="facet-label">Origine</span>
-          <button type="button" className={!origin ? 'on' : ''} onClick={() => updateParam('origin', '')}>Toutes</button>
-          {ORIGINS.map((o) => (
-            <button key={o} type="button" className={origin === o ? 'on' : ''} onClick={() => updateParam('origin', origin === o ? '' : o)}>{o}</button>
-          ))}
-        </div>
-        <div className="facet-row">
-          <span className="facet-label">Langue</span>
-          <button type="button" className={!language ? 'on' : ''} onClick={() => updateParam('language', '')}>Toutes</button>
-          {['VFQ', 'VFF', 'VOSTFR', 'VO', 'MULTI'].map((l) => (
-            <button key={l} type="button" className={language === l ? 'on' : ''} onClick={() => updateParam('language', language === l ? '' : l)}>{l}</button>
-          ))}
-        </div>
+        {([
+          ['resolution', 'Qualité', resolution, RESOLUTIONS, (v: string) => (v === '4K/2160p' ? '4K UHD' : v === '480p' ? 'SD' : v)],
+          ['source', 'Source', source, SOURCES, (v: string) => v],
+          ['origin', 'Origine', origin, ORIGINS, (v: string) => v],
+          ['language', 'Langue', language, LANGUAGES, (v: string) => v],
+          ['codec', 'Codec', codec, CODECS, (v: string) => v],
+          ['audio', 'Audio', audio, AUDIO_FORMATS, (v: string) => v],
+          ['genre', 'Genre', genre, [] as string[], (v: string) => v],
+        ] as [string, string, string, string[], (v: string) => string][]).map(([key, label, current, order, show]) => {
+          const available = facets[key] ?? [];
+          const rank = (v: string) => { const i = order.findIndex((o) => o.toLowerCase() === v.toLowerCase()); return i === -1 ? 999 : i; };
+          const values = [...available].sort((x, y) => rank(x.value) - rank(y.value) || y.count - x.count);
+          if (current && !values.some((v) => v.value.toLowerCase() === current.toLowerCase())) values.unshift({ value: current, count: 0 });
+          const showHdr = key === 'resolution' && ((facets.hdr?.length ?? 0) > 0 || hdr);
+          if (values.length === 0 && !showHdr) return null;
+          return (
+            <div className="facet-row" key={key}>
+              <span className="facet-label">{label}</span>
+              <button type="button" className={!current ? 'on' : ''} onClick={() => updateParam(key, '')}>Toutes</button>
+              {values.map((v) => (
+                <button key={v.value} type="button" className={current.toLowerCase() === v.value.toLowerCase() ? 'on' : ''} onClick={() => updateParam(key, current.toLowerCase() === v.value.toLowerCase() ? '' : v.value)}>
+                  {show(v.value)} <span style={{ opacity: 0.6, fontSize: 11 }}>{v.count}</span>
+                </button>
+              ))}
+              {showHdr && (
+                <button type="button" className={hdr ? 'on' : ''} onClick={() => updateParam('hdr', hdr ? 'false' : 'true')}>
+                  HDR <span style={{ opacity: 0.6, fontSize: 11 }}>{facets.hdr?.[0]?.count ?? ''}</span>
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {uploaderId && (

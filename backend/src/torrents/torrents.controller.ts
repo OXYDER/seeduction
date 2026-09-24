@@ -14,6 +14,37 @@ export class TorrentsController {
   constructor(private torrentsService: TorrentsService) {}
 
   @UseGuards(OptionalJwtAuthGuard)
+  @Get('facets')
+  facets(@Query() query: Record<string, string>, @Request() req: any) {
+    // Les uploads anonymes d'un membre ne se retrouvent que par lui-même ou par le staff.
+    const seesAnonymous = !!req.user && (req.user.userId === query.uploaderId || ['MODERATOR', 'ADMIN', 'OWNER'].includes(req.user.role));
+    return this.torrentsService.facets({
+      hideAnonymous: !!query.uploaderId && !seesAnonymous,
+      viewerId: req.user?.userId,
+      state: query.state === 'dead' ? 'dead' : query.state === 'noseeders' ? 'noseeders' : undefined,
+      categoryId: query.categoryId,
+      search: query.search,
+      uploaderId: query.uploaderId,
+      minSize: query.minSize ? Number(query.minSize) : undefined,
+      maxSize: query.maxSize ? Number(query.maxSize) : undefined,
+      minSeeders: query.minSeeders ? Number(query.minSeeders) : undefined,
+      year: query.year ? Number(query.year) : undefined,
+      language: query.language,
+      origin: normalizeOrigin(query.origin),
+      resolution: query.resolution,
+      codec: query.codec,
+      hdr: query.hdr === 'true' ? true : undefined,
+      audio: query.audio,
+      source: query.source,
+      containerFormat: query.containerFormat,
+      genre: query.genre,
+      entityId: query.entityId,
+      role: query.role,
+    });
+  }
+
+
+  @UseGuards(OptionalJwtAuthGuard)
   @Get()
   list(@Query() query: Record<string, string>, @Request() req: any) {
     // Les uploads anonymes d'un membre ne se retrouvent que par lui-même ou par le staff.
