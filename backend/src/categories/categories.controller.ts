@@ -16,6 +16,13 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Post('reset-to-recommended')
+  resetToRecommended() {
+    return this.categoriesService.resetToRecommended();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Post('simplify-legacy')
   simplifyLegacy() {

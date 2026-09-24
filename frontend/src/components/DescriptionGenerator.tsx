@@ -63,6 +63,8 @@ interface Props {
   onCoverChange?: (url: string) => void;
   /** Fiche choisie (source + identifiant) : le serveur en tire acteurs, studios, genres... à l'envoi. */
   onMetaChange?: (meta: { kind: string; id: string } | null) => void;
+  /** Données brutes de la fiche choisie (genre, année...) : permet de préremplir les métadonnées du formulaire. */
+  onDetail?: (data: Record<string, any>) => void;
 }
 
 export default function DescriptionGenerator({
@@ -76,6 +78,7 @@ export default function DescriptionGenerator({
   onGenerate,
   onCoverChange,
   onMetaChange,
+  onDetail,
 }: Props) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [kind, setKind] = useState(defaultKind || 'FILM');
@@ -267,6 +270,7 @@ export default function DescriptionGenerator({
       setValues(next);
       if (data.affiche) onCoverChange?.(data.affiche);
       onMetaChange?.({ kind, id: result.id });
+      onDetail?.(data);
       setSearchResults([]);
       setSearchNote('');
       await generate(next);

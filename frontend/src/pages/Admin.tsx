@@ -452,8 +452,7 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
         <div className="panel" style={{ marginBottom: 16, background: 'rgba(255,255,255,0.03)' }}>
           <strong>📥 Catégories recommandées (FR / QC)</strong>
           <p className="muted" style={{ margin: '4px 0 8px' }}>
-            Ajoute d'un coup une arborescence complète pour un tracker francophone : Films (HD, 4K, Remux, québécois, français…), Séries, Animes, Jeunesse,
-            Spectacles et humour, Sports (hockey, soccer, UFC…), Musique, Jeux, Applications, Livres, Formations, Autres, et XXX (masqué par défaut).
+            Ajoute d'un coup l'arborescence calquée sur c411 : Films & Vidéos, Ebook, Audio, Applications, Jeux Vidéo, Émulation, GPS, Nulled, Imprimante 3D et XXX (masqué par défaut).
             Seules les catégories absentes sont créées : rien n'est renommé ni supprimé.
           </p>
           <button
@@ -476,20 +475,20 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
           <button
             type="button"
             className="secondary"
-            title="Fusionne les anciennes sous-catégories de qualité / origine / langue dans leur catégorie principale"
+            title="Supprime toutes les catégories qui ne font pas partie de la liste recommandée (c411)"
             onClick={async () => {
-              if (!window.confirm('Fusionner les sous-catégories « qualité / origine / langue » (Films HD, Films québécois, Musique MP3…) dans leur catégorie principale ? Les torrents sont déplacés et leurs filtres (résolution, origine, langue…) sont remplis.')) return;
+              if (!window.confirm("Supprimer toutes les anciennes catégories et ne garder que l'arborescence recommandée ? Les torrents des anciennes catégories sont déplacés vers la sous-catégorie équivalente (Films → Film, Séries TV → Série TV, etc.). Cette action est définitive.")) return;
               setError('');
               try {
-                const { data } = await api.post(`${endpoint}/simplify-legacy`);
-                setInstallMsg(`✓ ${data.removed} sous-catégorie(s) fusionnée(s), ${data.moved} torrent(s) déplacé(s)`);
+                const { data } = await api.post(`${endpoint}/reset-to-recommended`);
+                setInstallMsg(`✓ ${data.created} créée(s), ${data.removed} ancienne(s) supprimée(s), ${data.moved} torrent(s) déplacé(s)${data.kept?.length ? ` — conservées car des torrents y restent : ${data.kept.join(', ')}` : ''}`);
                 refresh();
               } catch (err: any) {
                 setError(err.response?.data?.message ?? 'Opération impossible');
               }
             }}
           >
-            🧹 Simplifier : qualité et origine en filtres
+            🧹 Nettoyer : ne garder que les catégories recommandées
           </button>
           {installMsg && <span style={{ color: 'var(--success)', marginLeft: 12 }}>{installMsg}</span>}
         </div>

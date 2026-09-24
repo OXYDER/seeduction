@@ -9,7 +9,7 @@ import { parseTorrentInfo } from '../lib/bencode';
 import { summarizeTorrent } from '../lib/torrentSummary';
 import { resolveContentKind } from '../lib/categoryKind';
 import DuplicateWarning from '../components/DuplicateWarning';
-import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeInfo, detectVideoType } from '../lib/uploadMeta';
+import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeInfo, detectVideoType, matchGenres } from '../lib/uploadMeta';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -43,6 +43,7 @@ export default function Upload() {
   const videoTouched = useRef(false);
   const [nfoText, setNfoText] = useState('');
   const [missing, setMissing] = useState<string[]>([]);
+  const [editing, setEditing] = useState<Set<string>>(new Set());
   const [autoDetected, setAutoDetected] = useState<Set<string>>(new Set());
   const [fileList, setFileList] = useState<{ path: string; size: number }[]>([]);
   const [foundTrackers, setFoundTrackers] = useState<string[]>([]);
@@ -59,6 +60,21 @@ export default function Upload() {
   const parentCategory = categories.find((c) => c.children?.some((sub: any) => sub.id === categoryId));
   const defaultKind = resolveContentKind(selectedCategory, parentCategory);
   const isVideoKind = defaultKind === 'FILM' || defaultKind === 'SERIE';
+  // Étapes : chacune n'est accessible qu'une fois la précédente terminée.
+  const step1 = !!file && !!name.trim();
+  const step2 = step1 && !!categoryId;
+  const step3 = step2 && (!isVideoKind || (!!language && (defaultKind !== 'SERIE' || (!!season && !!episode))));
+  const step4 = step3 && description.trim().length > 0;
+
+  /** Une fiche choisie dans le générateur remplit les genres et l'année si rien n'a été trouvé avant. */
+  function onGeneratorDetail(data: Record<string, any>) {
+    if (typeof data.genre === 'string' && data.genre) {
+      const found = matchGenres(data.genre);
+      if (found.length > 0) setGenres((cur) => (cur.length > 0 ? cur : found));
+    }
+    const y = typeof data['année'] === 'string' ? data['année'].match(/\d{4}/)?.[0] : undefined;
+    if (y) setYear((cur) => cur || y);
+  }
   const searchInfo = cleanTitleForSearch(name);
   const summary = useMemo(() => summarizeTorrent(fileList), [fileList]);
   // "Artiste - Album" : la partie avant le premier " - " sert d'artiste pour les modèles musique.
@@ -254,6 +270,7 @@ export default function Upload() {
 
       <div className="panel">
         <form onSubmit={submit} className="grid">
+          <Step n={1} title="Fichier torrent" done={step1} locked={false}>
           <input type="file" accept=".torrent" onChange={onFileChange} required />
           {fileList.length > 0 && (
             <p className="muted" style={{ fontSize: 12, margin: 0 }}>
@@ -271,8 +288,16 @@ export default function Upload() {
               {' '}— Seeduction y ajoute automatiquement son announce avec la passkey de chaque membre au téléchargement.
             </p>
           )}
+            <div className="grid" style={{ gap: 6 }}>
+              <div className="muted">NFO / MediaInfo (optionnel) — sert à remplir automatiquement les métadonnées</div>
+              <input type="file" accept=".nfo,.txt" onChange={onNfoChange} />
+              <textarea rows={nfoText ? 5 : 2} placeholder="…ou colle ici le texte du NFO ou de MediaInfo" value={nfoText} onChange={(e) => setNfoText(e.target.value.slice(0, 200_000))} style={{ fontFamily: 'Consolas, monospace', fontSize: 12 }} />
+            </div>
           <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
           <DuplicateWarning name={name} metaId={meta?.id} />
+          </Step>
+
+          <Step n={2} title="Catégorie" done={step2} locked={!step1} hint="Termine l'étape 1 (fichier torrent et nom).">
           <div className="row" style={{ gap: 8 }}>
             <select
               value={mainId}
@@ -297,66 +322,9 @@ export default function Upload() {
             )}
           </div>
 
-          {isVideoKind && (
-            <div className="panel" style={{ background: 'rgba(255,255,255,0.03)' }}>
-              <div className="panel-title"><span className="title-icon">🏷️</span>Métadonnées</div>
-              <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
-                Remplies automatiquement d'après le nom, la liste des fichiers et le NFO. Complète à la main ce qui reste vide (<span style={{ color: 'var(--danger)' }}>*</span> obligatoire).
-              </p>
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-                {defaultKind === 'SERIE' && (
-                  <>
-                    <label className="grid" style={{ gap: 4 }}>
-                      <span className="muted">Saison <span style={{ color: 'var(--danger)' }}>*</span></span>
-                      <select value={season} onChange={(e) => setSeason(e.target.value)} style={missing.includes('Saison') ? { borderColor: 'var(--danger)' } : undefined}>
-                        <option value="">Sélectionner…</option>
-                        {SEASON_OPTIONS.map((s) => <option key={s} value={s}>{/^\d+$/.test(s) ? `Saison ${s}` : s}</option>)}
-                      </select>
-                    </label>
-                    <label className="grid" style={{ gap: 4 }}>
-                      <span className="muted">Épisode <span style={{ color: 'var(--danger)' }}>*</span></span>
-                      <select value={episode} onChange={(e) => setEpisode(e.target.value)} style={missing.includes('Épisode') ? { borderColor: 'var(--danger)' } : undefined}>
-                        <option value="">Sélectionner…</option>
-                        {EPISODE_OPTIONS.map((s) => <option key={s} value={s}>{/^\d+$/.test(s) ? `Épisode ${s}` : s}</option>)}
-                      </select>
-                    </label>
-                  </>
-                )}
-                <label className="grid" style={{ gap: 4 }}>
-                  <span className="muted">Langue <span style={{ color: 'var(--danger)' }}>*</span></span>
-                  <select value={language} onChange={(e) => setLanguage(e.target.value)} style={missing.includes('Langue') ? { borderColor: 'var(--danger)' } : undefined}>
-                    <option value="">Sélectionner…</option>
-                    {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
-                  </select>
-                </label>
-                <div className="grid" style={{ gap: 4 }}>
-                  <span className="muted">Genre (plusieurs possibles)</span>
-                  <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-                    {GENRES.map((g) => (
-                      <button key={g} type="button" className={genres.includes(g) ? '' : 'secondary'} style={{ padding: '3px 10px', fontSize: 12 }}
-                        onClick={() => setGenres((cur) => cur.includes(g) ? cur.filter((x) => x !== g) : [...cur, g])}>{g}</button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="grid" style={{ gap: 4, marginTop: 12 }}>
-                <span className="muted">Type</span>
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {VIDEO_TYPES.map((t) => (
-                    <button key={t} type="button" className={videoType === t ? '' : 'secondary'} style={{ padding: '4px 14px' }}
-                      onClick={() => { videoTouched.current = true; setVideoType(t); }}>{t}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          </Step>
 
-          <div className="panel" style={{ background: 'rgba(255,255,255,0.03)' }}>
-            <div className="muted" style={{ marginBottom: 6 }}>Fichier NFO (optionnel) — sert à remplir automatiquement les métadonnées</div>
-            <input type="file" accept=".nfo,.txt" onChange={onNfoChange} />
-            {nfoText && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>📄 NFO chargé ({nfoText.length.toLocaleString('fr-CA')} caractères) — les champs vides ont été remplis quand c'était possible.</p>}
-          </div>
-
+          <Step n={3} title="Métadonnées" done={step3} locked={!step2} hint="Choisis d'abord la catégorie.">
           <DescriptionGenerator
             knownValues={generatorKnownValues}
             defaultKind={defaultKind}
@@ -368,35 +336,55 @@ export default function Upload() {
             onGenerate={setDescription}
             onCoverChange={setCoverImage}
             onMetaChange={setMeta}
+            onDetail={onGeneratorDetail}
           />
-
-          <div>
-            <div className="muted" style={{ marginBottom: 6 }}>Description</div>
-            <WysiwygEditor value={description} onChange={setDescription} minHeight={320} />
-          </div>
-
-          <div>
-            <div className="muted" style={{ marginBottom: 6 }}>Pochette / affiche (optionnelle)</div>
-            <div className="row" style={{ alignItems: 'center', gap: 10 }}>
-              {coverImage
-                ? <img src={coverImage} alt="" style={{ width: 60, height: 84, objectFit: 'cover', borderRadius: 4 }} />
-                : <div style={{ width: 60, height: 84, background: 'var(--bg-panel-raised)', borderRadius: 4 }} />}
-              <div className="grid" style={{ gap: 6 }}>
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onCoverFileChange} disabled={coverUploading} />
-                {coverImage && (
-                  <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setCoverImage('')}>
-                    Retirer la pochette
-                  </button>
-                )}
+            {isVideoKind && (
+              <div className="grid" style={{ gap: 10 }}>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  Remplies automatiquement d'après le nom, les fichiers, le NFO et la fiche choisie ci-dessus. Seules les informations introuvables sont à saisir (<span style={{ color: 'var(--danger)' }}>*</span> obligatoire).
+                </p>
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, alignItems: 'start' }}>
+                  {defaultKind === 'SERIE' && (
+                    <>
+                      <FoundOrInput id="season" label="Saison" required filled={!!season} summary={/^\d+$/.test(season) ? `Saison ${season}` : season} editing={editing} setEditing={setEditing} missing={missing.includes('Saison')}>
+                        <select value={season} onChange={(e) => setSeason(e.target.value)}>
+                          <option value="">Sélectionner…</option>
+                          {SEASON_OPTIONS.map((x) => <option key={x} value={x}>{/^\d+$/.test(x) ? `Saison ${x}` : x}</option>)}
+                        </select>
+                      </FoundOrInput>
+                      <FoundOrInput id="episode" label="Épisode" required filled={!!episode} summary={/^\d+$/.test(episode) ? `Épisode ${episode}` : episode} editing={editing} setEditing={setEditing} missing={missing.includes('Épisode')}>
+                        <select value={episode} onChange={(e) => setEpisode(e.target.value)}>
+                          <option value="">Sélectionner…</option>
+                          {EPISODE_OPTIONS.map((x) => <option key={x} value={x}>{/^\d+$/.test(x) ? `Épisode ${x}` : x}</option>)}
+                        </select>
+                      </FoundOrInput>
+                    </>
+                  )}
+                  <FoundOrInput id="language" label="Langue" required filled={!!language} summary={language} editing={editing} setEditing={setEditing} missing={missing.includes('Langue')}>
+                    <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+                      <option value="">Sélectionner…</option>
+                      {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </FoundOrInput>
+                  <FoundOrInput id="type" label="Type" filled={!!videoType && (videoTouched.current || videoType !== '2D')} summary={videoType} editing={editing} setEditing={setEditing}>
+                    <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                      {VIDEO_TYPES.map((t) => (
+                        <button key={t} type="button" className={videoType === t ? '' : 'secondary'} style={{ padding: '4px 14px' }}
+                          onClick={() => { videoTouched.current = true; setVideoType(t); }}>{t}</button>
+                      ))}
+                    </div>
+                  </FoundOrInput>
+                  <FoundOrInput id="genres" label="Genre" filled={genres.length > 0} summary={genres.join(', ')} editing={editing} setEditing={setEditing}>
+                    <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+                      {GENRES.map((g) => (
+                        <button key={g} type="button" className={genres.includes(g) ? '' : 'secondary'} style={{ padding: '3px 10px', fontSize: 12 }}
+                          onClick={() => setGenres((cur) => cur.includes(g) ? cur.filter((x) => x !== g) : [...cur, g])}>{g}</button>
+                      ))}
+                    </div>
+                  </FoundOrInput>
+                </div>
               </div>
-            </div>
-            <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-              Remplie automatiquement en choisissant un résultat dans le générateur ci-dessus, ou envoie ta propre image. Toujours sauvegardée sur Seeduction.
-            </p>
-          </div>
-
-          <input placeholder="Tags (séparés par virgule)" value={tags} onChange={(e) => setTags(e.target.value)} />
-
+            )}
           <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setShowMeta((v) => !v)}>
             {showMeta ? 'Masquer' : '+ Métadonnées techniques (optionnel)'}
           </button>
@@ -439,11 +427,89 @@ export default function Upload() {
             </div>
           )}
 
+          </Step>
+
+          <Step n={4} title="Description et pochette" done={step4} locked={!step3} hint="Complète les métadonnées à l'étape 3.">
+          <div>
+            <div className="muted" style={{ marginBottom: 6 }}>Description</div>
+            <WysiwygEditor value={description} onChange={setDescription} minHeight={320} />
+          </div>
+
+          <div>
+            <div className="muted" style={{ marginBottom: 6 }}>Pochette / affiche (optionnelle)</div>
+            <div className="row" style={{ alignItems: 'center', gap: 10 }}>
+              {coverImage
+                ? <img src={coverImage} alt="" style={{ width: 60, height: 84, objectFit: 'cover', borderRadius: 4 }} />
+                : <div style={{ width: 60, height: 84, background: 'var(--bg-panel-raised)', borderRadius: 4 }} />}
+              <div className="grid" style={{ gap: 6 }}>
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onCoverFileChange} disabled={coverUploading} />
+                {coverImage && (
+                  <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setCoverImage('')}>
+                    Retirer la pochette
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+              Remplie automatiquement en choisissant un résultat dans le générateur ci-dessus, ou envoie ta propre image. Toujours sauvegardée sur Seeduction.
+            </p>
+          </div>
+
+          <input placeholder="Tags (séparés par virgule)" value={tags} onChange={(e) => setTags(e.target.value)} />
+          </Step>
+
+          <Step n={5} title="Envoi" done={false} locked={!step4} hint="Ajoute une description à l'étape 4.">
           <label className="row"><input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} style={{ width: 'auto' }} /> Upload anonyme</label>
-          {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
-          <button type="submit">Uploader</button>
+            {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
+            <button type="submit" disabled={!step4}>Uploader</button>
+          </Step>
         </form>
       </div>
+    </div>
+  );
+}
+
+const STEP_STYLE_LOCKED = { opacity: 0.4, pointerEvents: 'none' as const, filter: 'grayscale(0.4)' };
+
+/** Une étape du formulaire : verrouillée tant que la précédente n'est pas terminée. */
+function Step({ n, title, done, locked, hint, children }: { n: number; title: string; done: boolean; locked: boolean; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="panel" style={{ background: 'rgba(255,255,255,0.03)', position: 'relative' }}>
+      <div className="row" style={{ alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <span style={{
+          width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0,
+          background: done ? 'var(--success)' : locked ? 'rgba(255,255,255,0.12)' : 'linear-gradient(135deg, var(--acc1, var(--gold)), var(--acc2, var(--gold-bright)))', color: '#fff',
+        }}>{done ? '✓' : n}</span>
+        <strong style={{ fontSize: 16 }}>Étape {n} — {title}</strong>
+        {locked && <span className="muted" style={{ fontSize: 12 }}>🔒 {hint}</span>}
+      </div>
+      <div className="grid" style={{ gap: 12, ...(locked ? STEP_STYLE_LOCKED : {}) }} aria-disabled={locked}>{children}</div>
+    </div>
+  );
+}
+
+/** Valeur trouvée automatiquement (affichée en résumé, modifiable) ou champ à saisir si rien n'a été trouvé. */
+function FoundOrInput({ id, label, required, filled, summary, editing, setEditing, missing, children }: {
+  id: string; label: string; required?: boolean; filled: boolean; summary: string; editing: Set<string>; setEditing: (f: (s: Set<string>) => Set<string>) => void; missing?: boolean; children: React.ReactNode;
+}) {
+  const isEditing = editing.has(id);
+  const toggle = () => setEditing((cur) => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  if (filled && !isEditing) {
+    return (
+      <div className="grid" style={{ gap: 2 }}>
+        <span className="muted">{label}</span>
+        <div className="row" style={{ alignItems: 'center', gap: 8 }}>
+          <span style={{ color: 'var(--success)' }}>✓</span> <strong>{summary}</strong>
+          <button type="button" className="secondary" style={{ padding: '2px 10px', fontSize: 12 }} onClick={toggle}>Modifier</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="grid" style={{ gap: 4, ...(missing ? { outline: '1px solid var(--danger)', outlineOffset: 4, borderRadius: 6 } : {}) }}>
+      <span className="muted">{label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
+      {children}
+      {filled && <button type="button" className="secondary" style={{ alignSelf: 'flex-start', padding: '2px 10px', fontSize: 12 }} onClick={toggle}>OK</button>}
     </div>
   );
 }

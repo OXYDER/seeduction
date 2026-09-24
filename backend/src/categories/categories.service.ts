@@ -108,6 +108,57 @@ export class CategoriesService implements OnModuleInit {
     return { created, skipped, movedTorrents };
   }
 
+  /**
+   * Remet les catégories à l'arborescence recommandée : installe ce qui manque, déplace les torrents des anciennes
+   * catégories vers la sous-catégorie équivalente, puis supprime toutes les catégories qui ne font pas partie de l'arborescence.
+   * Une ancienne catégorie qui contient encore des torrents sans équivalent est conservée (et signalée).
+   */
+  async resetToRecommended() {
+    const OLD_TARGET: Record<string, string> = {
+      films: 'Film', 'series-tv': 'Série TV', animes: 'Animation Série', musique: 'Musique', jeux: 'Jeux Windows',
+      applications: 'Logiciels Windows', livres: 'Livres', xxx: 'XXX Films', 'spectacles-et-humour': 'Spectacle', sports: 'Sport',
+      'formations-et-cours': 'Formation', jeunesse: 'Série TV',
+    };
+    const recNames = new Set<string>();
+    for (const top of RECOMMENDED_CATEGORIES) { recNames.add(slugify(top.name)); for (const ch of top.children) recNames.add(slugify(ch.name)); }
+    const recTops = new Set(RECOMMENDED_CATEGORIES.map((t) => slugify(t.name)));
+
+    // Cible de chaque ancienne catégorie principale, calculée avant tout renommage.
+    const before = await this.prisma.category.findMany({ select: { id: true, slug: true, parentId: true } });
+    const rootSlugById = new Map(before.map((c) => [c.id, c.parentId ? before.find((p) => p.id === c.parentId)?.slug ?? c.slug : c.slug]));
+
+    // Une ancienne catégorie principale qui porte le nom d'une nouvelle sous-catégorie (Musique, Livres) est renommée pour libérer le nom.
+    for (const c of before) {
+      if (!c.parentId && !recTops.has(c.slug) && recNames.has(c.slug)) {
+        const name = `${c.slug.charAt(0).toUpperCase()}${c.slug.slice(1)} (ancien)`;
+        await this.prisma.category.update({ where: { id: c.id }, data: { name, slug: slugify(name) } });
+      }
+    }
+
+    const install = await this.installRecommended();
+
+    const all = await this.prisma.category.findMany({ select: { id: true, name: true, slug: true, parentId: true } });
+    const legacy = all.filter((c) => !recNames.has(c.slug)).sort((a, b) => Number(!!b.parentId) - Number(!!a.parentId));
+    let removed = 0;
+    let moved = 0;
+    const kept: string[] = [];
+    for (const c of legacy) {
+      const count = await this.prisma.torrent.count({ where: { categoryId: c.id } });
+      if (count > 0) {
+        const targetName = OLD_TARGET[rootSlugById.get(c.id) ?? ''];
+        const target = targetName ? await this.prisma.category.findFirst({ where: { slug: slugify(targetName) }, select: { id: true } }) : null;
+        if (!target) { kept.push(c.name); continue; }
+        moved += (await this.prisma.torrent.updateMany({ where: { categoryId: c.id }, data: { categoryId: target.id } })).count;
+      }
+      const remainingChildren = await this.prisma.category.count({ where: { parentId: c.id } });
+      if (remainingChildren > 0) { kept.push(c.name); continue; }
+      await this.prisma.category.delete({ where: { id: c.id } });
+      removed++;
+    }
+    this.adult.invalidate();
+    return { ...install, removed, moved, kept };
+  }
+
   async list(viewer?: { userId: string; role: string }, includeAdult = false) {
     // Le staff peut demander toutes les catégories (pour les gérer) ; sinon les catégories adultes sont masquées.
     const staff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
