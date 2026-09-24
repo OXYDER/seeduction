@@ -11,6 +11,30 @@ export const THEMES: { label: string; value: string }[] = [
   { label: '🔵 Nuit Argentée', value: 'nuit' },
 ];
 
+export const ACCENT_STORAGE_KEY = 'seeduction-accent';
+export const ACCENTS: { value: string; label: string; color: string }[] = [
+  { value: 'violet', label: 'Violet et rose', color: 'linear-gradient(135deg, #8b5cf6, #ec4899)' },
+  { value: 'bleu', label: 'Bleu', color: 'linear-gradient(135deg, #3b82f6, #06b6d4)' },
+  { value: 'rouge', label: 'Rouge', color: 'linear-gradient(135deg, #ef4444, #f97316)' },
+  { value: 'vert', label: 'Vert', color: 'linear-gradient(135deg, #10b981, #84cc16)' },
+  { value: 'or', label: 'Doré', color: 'linear-gradient(135deg, #f0c45c, #f59e0b)' },
+];
+
+export function getAccent(): string {
+  return document.documentElement.getAttribute('data-accent') ?? 'violet';
+}
+
+export function setAccent(value: string) {
+  if (value === 'violet') document.documentElement.removeAttribute('data-accent');
+  else document.documentElement.setAttribute('data-accent', value);
+  try {
+    localStorage.setItem(ACCENT_STORAGE_KEY, value);
+  } catch {
+    // Stockage indisponible : le choix vaut pour cette visite.
+  }
+  window.dispatchEvent(new Event('seeduction-theme'));
+}
+
 export function getTheme(): string {
   return document.documentElement.getAttribute('data-theme') ?? DEFAULT_THEME;
 }
@@ -26,6 +50,16 @@ export function setTheme(value: string) {
 }
 
 /** Thème courant, mis à jour dès qu'il change (sert à choisir la mise en page : barre latérale ou barre du haut). */
+export function useAccent(): string {
+  const [accent, setAccentState] = useState(getAccent);
+  useEffect(() => {
+    const update = () => setAccentState(getAccent());
+    window.addEventListener('seeduction-theme', update);
+    return () => window.removeEventListener('seeduction-theme', update);
+  }, []);
+  return accent;
+}
+
 export function useTheme(): string {
   const [theme, setThemeState] = useState(getTheme);
   useEffect(() => {

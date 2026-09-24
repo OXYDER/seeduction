@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { THEMES, setTheme, useTheme } from '../lib/theme';
+import { ACCENTS, THEMES, setAccent, setTheme, useAccent, useTheme } from '../lib/theme';
 
 export { THEME_STORAGE_KEY } from '../lib/theme';
 
 export default function ThemeSwitcher() {
   const [open, setOpen] = useState(false);
   const current = useTheme();
+  const accent = useAccent();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,6 +37,14 @@ export default function ThemeSwitcher() {
               {current === t.value ? '✓ ' : ''}{t.label}
             </button>
           ))}
+          {current === 'prestige' && (
+            <div className="accent-dots" title="Couleur d'accent">
+              <span className="muted" style={{ fontSize: 11 }}>Accent</span>
+              {ACCENTS.map((a) => (
+                <button key={a.value} type="button" className={`accent-dot${accent === a.value ? ' on' : ''}`} style={{ background: a.color }} title={a.label} aria-label={a.label} onClick={() => setAccent(a.value)} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

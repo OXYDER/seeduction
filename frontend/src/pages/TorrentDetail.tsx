@@ -23,6 +23,7 @@ export default function TorrentDetail() {
   const [loadError, setLoadError] = useState('');
   const theme = useTheme();
   const [tab, setTab] = useState<'overview' | 'files' | 'comments' | 'related'>('overview');
+  const [trailerOpen, setTrailerOpen] = useState(false);
   usePageBackdrop(torrent ? (torrent.metadata?.backdrop ?? torrent.coverImage ?? null) : null);
   const user = useAuthStore((s) => s.user);
   const favorites = useFavorites();
@@ -193,6 +194,9 @@ export default function TorrentDetail() {
               <span>par {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</span>
             </div>
             <div className="detail-actions">
+              {torrent.metadata?.trailer?.key && (
+                <button type="button" className="secondary" onClick={() => setTrailerOpen(true)}>▶ Bande-annonce</button>
+              )}
               {actions}
               {favorites.enabled && (
                 <button type="button" className="secondary" onClick={() => favorites.toggle(torrent.id)}>
@@ -203,6 +207,20 @@ export default function TorrentDetail() {
             {tokenError}
           </div>
         </section>
+
+        {trailerOpen && torrent.metadata?.trailer?.key && (
+          <div className="trailer-modal" onClick={() => setTrailerOpen(false)}>
+            <button type="button" className="secondary trailer-close" onClick={() => setTrailerOpen(false)}>✕ Fermer</button>
+            <div className="trailer-modal-inner" onClick={(e) => e.stopPropagation()}>
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(torrent.metadata.trailer.key)}?autoplay=1&rel=0`}
+                title="Bande-annonce"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
 
         {staffPanel}
 

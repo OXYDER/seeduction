@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTheme } from '../lib/theme';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -58,6 +59,7 @@ export default function Forum() {
   const user = useAuthStore((s) => s.user);
   const [data, setData] = useState<any>(null);
   const [q, setQ] = useState('');
+  const theme = useTheme();
 
   function load() {
     api.get('/forum/index').then((r) => setData(r.data)).catch(() => setData({ roots: [], stats: null }));
@@ -97,6 +99,13 @@ export default function Forum() {
           {user && <button type="button" className="secondary" onClick={markRead}>✓ Tout marquer comme lu</button>}
         </form>
       </div>
+
+      {theme === 'prestige' && (
+        <nav className="tabs" style={{ margin: '-6px 0 0' }} aria-label="Sections du forum">
+          <a className="on" href="/forum" onClick={(e) => e.preventDefault()}>Forums</a>
+          <Link to="/forum/latest">Derniers messages</Link>
+        </nav>
+      )}
 
       {data.roots.filter((r: any) => r.isCategory).map((c: any) => (
         <ForumTable key={c.id} title={c.name} forums={c.subforums} isSection />

@@ -10,6 +10,8 @@
         try {
           var theme = localStorage.getItem('seeduction-theme');
           document.documentElement.setAttribute('data-theme', theme || 'prestige');
+          var accent = localStorage.getItem('seeduction-accent');
+          if (accent && accent !== 'violet') document.documentElement.setAttribute('data-accent', accent);
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'prestige');
         }
