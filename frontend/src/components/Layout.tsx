@@ -51,6 +51,14 @@ export const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
   sports: { icon: '🏆', color: '#38bdf8' },
   'formations-et-cours': { icon: '🎓', color: '#a3e635' },
   autres: { icon: '📁', color: '#94a3b8' },
+  'films-videos': { icon: '🎬', color: '#7aa0ff' },
+  ebook: { icon: '📚', color: '#2dd4bf' },
+  audio: { icon: '🎵', color: '#f472b6' },
+  'jeux-video': { icon: '🎮', color: '#4caf50' },
+  emulation: { icon: '🕹️', color: '#f59e0b' },
+  gps: { icon: '🧭', color: '#22d3ee' },
+  nulled: { icon: '🧩', color: '#a78bfa' },
+  'imprimante-3d': { icon: '🧊', color: '#fb7185' },
 };
 
 interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; staffOnly?: boolean }
