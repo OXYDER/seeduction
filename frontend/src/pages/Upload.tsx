@@ -14,6 +14,7 @@ export default function Upload() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [mainId, setMainId] = useState('');
   const [categories, setCategories] = useState<any[]>([]);
   const [tags, setTags] = useState('');
   const [anonymous, setAnonymous] = useState(false);
@@ -218,18 +219,29 @@ export default function Upload() {
           )}
           <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
           <DuplicateWarning name={name} metaId={meta?.id} />
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-            <option value="">— Choisir une catégorie —</option>
-            {categories.map((c) => (
-              c.children?.length ? (
-                <optgroup key={c.id} label={c.name}>
-                  {c.children.map((sub: any) => (
-                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                  ))}
-                </optgroup>
-              ) : <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <div className="row" style={{ gap: 8 }}>
+            <select
+              value={mainId}
+              onChange={(e) => {
+                const main = categories.find((c) => c.id === e.target.value);
+                setMainId(e.target.value);
+                setCategoryId(main && !main.children?.length ? main.id : '');
+              }}
+              required
+              style={{ flex: 1 }}
+            >
+              <option value="">— Catégorie principale —</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {(categories.find((c) => c.id === mainId)?.children?.length ?? 0) > 0 && (
+              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required style={{ flex: 1 }}>
+                <option value="">— Sous-catégorie —</option>
+                {categories.find((c) => c.id === mainId)?.children.map((sub: any) => (
+                  <option key={sub.id} value={sub.id}>{sub.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
 
           <DescriptionGenerator
             knownValues={generatorKnownValues}
