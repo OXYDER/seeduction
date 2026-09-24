@@ -1370,3 +1370,52 @@ a.pill:hover { background: rgba(139, 92, 246,0.12); color: var(--gold-bright); }
   .rail-plex .rail > span { flex-basis: 144px; }
   .tabs { gap: 20px; }
 }
+
+/* ---- Prestige : fiche de torrent facon plateforme ---- */
+.detail-plex { display: grid; gap: 22px; }
+.detail-head { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 36px; align-items: start; padding-top: 6px; }
+.detail-poster img, .detail-poster .poster-fallback { width: 260px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 16px; box-shadow: 0 30px 70px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.1); display: block; }
+.detail-poster .poster-fallback { display: flex; align-items: center; justify-content: center; font-size: 72px; background: linear-gradient(160deg, #1b2240, #0d1224); }
+.detail-info h1 { font-size: clamp(28px, 4vw, 46px); line-height: 1.06; letter-spacing: -0.03em; margin: 0 0 12px; text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
+.detail-info .hero-synopsis { max-width: 70ch; -webkit-line-clamp: 6; }
+.detail-stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 4px 0 18px; color: #c9d0e6; font-size: 14px; }
+.detail-stats strong { color: #fff; }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.download-btn { padding: 12px 26px; border-radius: 999px; font-size: 15px; }
+@media (max-width: 760px) {
+  .detail-head { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .detail-poster img, .detail-poster .poster-fallback { width: 170px; }
+}
+
+/* ---- Prestige : menu lateral reductible (icones seules) ---- */
+.side-collapse { display: none; }
+:root[data-theme="prestige"] .side-collapse { display: inline-flex; align-self: flex-end; padding: 2px 10px; font-size: 14px; border-radius: 999px; margin: -6px 0 -4px; }
+@media (min-width: 981px) {
+  .shell.collapsed { grid-template-columns: 82px minmax(0, 1fr); }
+  .shell.collapsed .side-nav { padding: 18px 10px 14px; align-items: center; }
+  .shell.collapsed .side-brand span, .shell.collapsed .side-links a > span:not(.side-icon), .shell.collapsed .side-section-title,
+  .shell.collapsed .side-user-card > div, .shell.collapsed .side-logout { display: none; }
+  .shell.collapsed .side-links a { justify-content: center; padding: 10px; }
+  .shell.collapsed .side-links { align-items: stretch; width: 100%; }
+  .shell.collapsed .side-collapse { align-self: center; }
+  .shell.collapsed .side-user { justify-content: center; }
+}
+@media (max-width: 980px) { .side-collapse, :root[data-theme="prestige"] .side-collapse { display: none; } }
+
+/* ---- Prestige : carrousel de la vedette, « Continuer », chargement ---- */
+.hero-fade { animation: heroFade .7s ease both; }
+@keyframes heroFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.hero-dots { display: flex; gap: 8px; margin-top: 22px; }
+.hero-dots button { width: 26px; height: 5px; padding: 0; border-radius: 3px; background: rgba(255,255,255,0.28); box-shadow: none; }
+.hero-dots button.on { width: 44px; background: #fff; }
+:root[data-theme="prestige"] .hero-dots button:hover:not(:disabled) { transform: none; box-shadow: none; }
+.progress-bar { position: absolute; left: 0; right: 0; height: 5px; background: rgba(255,255,255,0.18); border-radius: 0 0 0 0; top: calc(100% - 5px); }
+.continue-card { position: relative; }
+.rail-plex .continue-card .progress-bar { top: auto; bottom: 62px; left: 0; right: 0; border-radius: 0; z-index: 2; }
+.progress-bar > div { height: 100%; background: linear-gradient(90deg, #8b5cf6, #ec4899); }
+.progress-bar > div.seeding { background: #4ee0a0; }
+.skeleton-card { flex: 0 0 190px; display: block; }
+.skeleton-poster, .skeleton-line { display: block; border-radius: 12px; background: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.12), rgba(255,255,255,0.05)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+.skeleton-poster { aspect-ratio: 2 / 3; }
+.skeleton-line { height: 12px; margin-top: 10px; width: 70%; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }

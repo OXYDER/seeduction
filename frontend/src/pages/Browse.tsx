@@ -7,6 +7,7 @@ import { formatBytes as formatSize } from '../lib/format';
 import { CATEGORY_STYLE } from '../components/Layout';
 import { timeAgo } from '../lib/time';
 import { useAuthStore } from '../store/auth';
+import { useTheme } from '../lib/theme';
 import { useFavorites } from '../lib/favorites';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
 import { parseNaturalQuery, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
@@ -70,6 +71,7 @@ export default function Browse() {
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
   const favorites = useFavorites();
+  const theme = useTheme();
   const authUser = useAuthStore((s) => s.user);
   const currentUserId = authUser?.id;
   const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(authUser?.role ?? '');
@@ -260,6 +262,16 @@ export default function Browse() {
           </div>
         </div>
       </div>
+
+      {theme === 'prestige' && categories.length > 0 && !uploaderId && (
+        <nav className="tabs" aria-label="Catégories">
+          <button type="button" className={!categoryId ? 'on' : ''} onClick={() => updateParam('categoryId', '')}>Tout</button>
+          {categories.map((c) => {
+            const isActive = categoryId === c.id || !!c.children?.some((sub: any) => sub.id === categoryId);
+            return <button key={c.id} type="button" className={isActive ? 'on' : ''} onClick={() => updateParam('categoryId', c.id)}>{c.name}</button>;
+          })}
+        </nav>
+      )}
 
       {uploaderId && (
         <button className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => updateParam('uploaderId', '')}>

@@ -40,9 +40,9 @@ function PosterCard({ t }: { t: any }) {
 }
 
 /** Rangée d'affiches défilante, façon plateforme de streaming. */
-function Rail({ title, to, items }: { title: string; to: string; items: any[] }) {
+function Rail({ title, to, items, loading }: { title: string; to: string; items: any[]; loading?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  if (items.length === 0) return null;
+  if (items.length === 0 && !loading) return null;
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' });
   return (
     <section className="rail-section rail-plex">
@@ -55,9 +55,25 @@ function Rail({ title, to, items }: { title: string; to: string; items: any[] })
         </div>
       </div>
       <div className="rail" ref={ref}>
+        {loading && items.length === 0 && Array.from({ length: 8 }, (_, i) => <span key={i} className="skeleton-card"><span className="skeleton-poster" /><span className="skeleton-line" /></span>)}
         {items.map((t) => <PosterCard key={t.id} t={t} />)}
       </div>
     </section>
+  );
+}
+
+/** « Continuer » : un torrent en cours de téléchargement ou de seed, avec sa barre de progression. */
+function ContinueCard({ t }: { t: any }) {
+  const percent = Math.round(t.progress * 100);
+  return (
+    <Link to={`/torrents/${t.id}`} className="poster-card rail-card continue-card">
+      {t.coverImage ? <img className="poster" src={t.coverImage} alt="" loading="lazy" /> : <div className="poster-fallback">{CATEGORY_STYLE[t.category?.slug]?.icon ?? '📦'}</div>}
+      <div className="progress-bar"><div style={{ width: `${percent}%` }} className={t.isSeeder ? 'seeding' : ''} /></div>
+      <div className="poster-body">
+        <div className="poster-title">{t.name}</div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.isSeeder ? '🌱 En seed' : `⬇ ${percent} %`}</div>
+      </div>
+    </Link>
   );
 }
 
@@ -83,10 +99,15 @@ export default function HomeStreaming() {
   const [topUploaders, setTopUploaders] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [topics, setTopics] = useState<any[]>([]);
+  const [active, setActive] = useState<any[]>([]);
+  const [loadedLatest, setLoadedLatest] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
 
   useEffect(() => {
     api.get('/torrents', { params: { pageSize: 18, sort: 'seeders' } }).then((r) => setPopular(r.data.items)).catch(() => {});
-    api.get('/torrents', { params: { pageSize: 18, sort: 'date' } }).then((r) => setLatest(r.data.items)).catch(() => {});
+    api.get('/torrents', { params: { pageSize: 18, sort: 'date' } }).then((r) => setLatest(r.data.items)).catch(() => {}).finally(() => setLoadedLatest(true));
+    api.get('/torrents/mine/active').then((r) => setActive(r.data)).catch(() => {});
     api.get('/users/leaderboard', { params: { limit: 5 } }).then((r) => setTopUploaders(r.data)).catch(() => {});
     api.get('/stats/global').then((r) => setStats(r.data)).catch(() => {});
     api.get('/forum/latest').then((r) => setTopics(r.data.slice(0, 8))).catch(() => {});
@@ -106,8 +127,21 @@ export default function HomeStreaming() {
 
   // À la une : le torrent populaire qui a une grande image de fond (TMDB) ou au moins une pochette, de préférence avec un synopsis.
   const withArt = (t: any) => t.backdrop || t.coverImage;
-  const featured = popular.find((t) => t.backdrop && t.synopsis) ?? popular.find((t) => withArt(t) && t.synopsis) ?? popular.find(withArt) ?? latest.find(withArt) ?? null;
+  const candidates = [...popular, ...latest].filter((t, i, all) => withArt(t) && all.findIndex((x) => x.id === t.id) === i);
+  const featuredList = [
+    ...candidates.filter((t) => t.backdrop && t.synopsis),
+    ...candidates.filter((t) => !(t.backdrop && t.synopsis) && t.synopsis),
+    ...candidates.filter((t) => !t.synopsis),
+  ].slice(0, 5);
+  const featured = featuredList[heroIndex % Math.max(1, featuredList.length)] ?? null;
   usePageBackdrop(featured ? (featured.backdrop ?? featured.coverImage) : null);
+
+  // Défilement automatique de la vedette (en pause quand la souris est dessus).
+  useEffect(() => {
+    if (featuredList.length < 2 || heroPaused || tab !== 'trending') return;
+    const timer = window.setInterval(() => setHeroIndex((i) => (i + 1) % featuredList.length), 9000);
+    return () => window.clearInterval(timer);
+  }, [featuredList.length, heroPaused, tab]);
 
   const hour = new Date().getHours();
   const greeting = hour < 5 ? 'Bonne nuit' : hour < 18 ? 'Bonjour' : 'Bonsoir';
@@ -123,7 +157,7 @@ export default function HomeStreaming() {
       {tab === 'trending' && (
         <>
           {featured ? (
-            <section className="hero-plex">
+            <section key={featured.id} className="hero-plex hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
               <div className="hero-kicker">{greeting} {user?.username} · À la une</div>
               <h1>{featured.name}</h1>
               <div className="hero-meta">
@@ -135,6 +169,13 @@ export default function HomeStreaming() {
                 <Link to={`/torrents/${featured.id}`}><button type="button" className="hero-cta">Voir la fiche</button></Link>
                 <Link to="/browse"><button type="button" className="secondary hero-cta-2">Parcourir le catalogue</button></Link>
               </div>
+              {featuredList.length > 1 && (
+                <div className="hero-dots" role="tablist" aria-label="Torrents à la une">
+                  {featuredList.map((f, i) => (
+                    <button key={f.id} type="button" role="tab" aria-selected={i === heroIndex % featuredList.length} className={i === heroIndex % featuredList.length ? 'on' : ''} onClick={() => setHeroIndex(i)} aria-label={f.name} />
+                  ))}
+                </div>
+              )}
             </section>
           ) : (
             <section className="hero-plex">
@@ -145,7 +186,13 @@ export default function HomeStreaming() {
             </section>
           )}
 
-          <Rail title="Nouveautés" to="/browse?sort=date" items={latest} />
+          {active.length > 0 && (
+            <section className="rail-section rail-plex">
+              <div className="rail-head"><h2>Continuer</h2><span className="muted">Tes téléchargements et seeds en cours</span></div>
+              <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
+            </section>
+          )}
+          <Rail title="Nouveautés" to="/browse?sort=date" items={latest} loading={!loadedLatest} />
           <Rail title="Les plus seedés cette semaine" to="/browse?sort=seeders" items={popular} />
           {byCategory.map((row) => (
             <Rail key={row.id} title={row.name} to={`/browse?categoryId=${row.id}`} items={row.items} />

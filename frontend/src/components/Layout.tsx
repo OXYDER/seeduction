@@ -77,6 +77,15 @@ export default function Layout() {
   const [search, setSearch] = useState('');
   const theme = useTheme();
   const [drawer, setDrawer] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('sideCollapsed') === '1'; } catch { return false; }
+  });
+  function toggleCollapsed() {
+    setCollapsed((v) => {
+      try { localStorage.setItem('sideCollapsed', v ? '0' : '1'); } catch { /* stockage indisponible */ }
+      return !v;
+    });
+  }
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   // Compteur de messages non lus (thème Prestige) : rafraîchi à chaque changement de page.
@@ -121,13 +130,14 @@ export default function Layout() {
     const tabs = ['/', '/browse', '/upload', '/forum'].map((to) => NAV_ITEMS.find((i) => i.to === to)!);
 
     return (
-      <div className="shell">
+      <div className={`shell${collapsed ? ' collapsed' : ''}`}>
         {drawer && <div className="shell-overlay" onClick={() => setDrawer(false)} />}
         <aside className={`side-nav${drawer ? ' open' : ''}`}>
           <Link to="/" className="side-brand">
             <img src="/logo-icon.png" alt="" width={34} height={34} />
             <span>SEEDUCTION</span>
           </Link>
+          <button type="button" className="secondary side-collapse" onClick={toggleCollapsed} title={collapsed ? 'Agrandir le menu' : 'Réduire le menu'} aria-label="Réduire ou agrandir le menu">{collapsed ? '»' : '«'}</button>
 
           <div className="side-user">
             <Link to="/profile" className="side-user-card">
@@ -143,7 +153,7 @@ export default function Layout() {
             {visibleNav.map((item) => {
               const active = item.match(location.pathname);
               return (
-                <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
+                <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={item.label}>
                   <span className="side-icon">{item.icon}</span>
                   <span>{item.label}</span>
                 </Link>

@@ -256,6 +256,30 @@ export class TorrentsService {
     return { kind: null };
   }
 
+  /** Torrents que le membre télécharge ou seede en ce moment (d'après ses derniers announces), avec leur avancement. */
+  async activeForUser(userId: string) {
+    const hidden = await this.adult.hiddenFor(userId);
+    const peers = await this.prisma.peer.findMany({
+      where: { userId, torrent: { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
+      orderBy: { lastAnnounceAt: 'desc' },
+      take: 40,
+      include: { torrent: { select: { id: true, name: true, coverImage: true, size: true, category: { select: { slug: true, name: true } } } } },
+    });
+    const seen = new Set<string>();
+    return peers
+      .filter((p) => (seen.has(p.torrentId) ? false : (seen.add(p.torrentId), true)))
+      .map((p) => {
+        const size = Number(p.torrent.size) || 0;
+        const left = Number(p.left) || 0;
+        return {
+          ...p.torrent,
+          isSeeder: p.isSeeder,
+          progress: p.isSeeder || size === 0 ? 1 : Math.max(0, Math.min(1, 1 - left / size)),
+          lastAnnounceAt: p.lastAnnounceAt,
+        };
+      });
+  }
+
   /** Infos légères pour l'infobulle d'un torrent (pochette, détails de base, extrait du synopsis). */
   async preview(id: string, viewer?: { userId: string; role: string }) {
     const t = await this.prisma.torrent.findUnique({

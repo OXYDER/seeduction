@@ -44,6 +44,12 @@ export class TorrentsController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('mine/active')
+  active(@Request() req: any) {
+    return this.torrentsService.activeForUser(req.user.userId);
+  }
+
   @UseGuards(OptionalJwtAuthGuard)
   @Get('duplicates')
   duplicates(@Query('metaId') metaId: string | undefined, @Query('name') name: string | undefined, @Request() req: any) {
