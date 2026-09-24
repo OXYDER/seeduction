@@ -63,6 +63,7 @@ export default function Browse() {
   const minSizeGo = params.get('minSize') ?? '';
   const maxSizeGo = params.get('maxSize') ?? '';
   const minSeeders = params.get('minSeeders') ?? '';
+  const state = params.get('state') === 'dead' ? 'dead' : params.get('state') === 'noseeders' ? 'noseeders' : '';
 
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -94,12 +95,13 @@ export default function Browse() {
         minSize: minSizeGo ? Number(minSizeGo) * 1e9 : undefined,
         maxSize: maxSizeGo ? Number(maxSizeGo) * 1e9 : undefined,
         minSeeders: minSeeders || undefined,
+        state: state || undefined,
       },
     }).then((r) => {
       setItems(r.data.items);
       setTotal(r.data.total);
     });
-  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, hdr, minSizeGo, maxSizeGo, minSeeders]);
+  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, hdr, minSizeGo, maxSizeGo, minSeeders, state]);
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
@@ -180,6 +182,7 @@ export default function Browse() {
     minSizeGo && { key: 'minSize', label: `≥ ${minSizeGo} Go` },
     maxSizeGo && { key: 'maxSize', label: `≤ ${maxSizeGo} Go` },
     minSeeders && { key: 'minSeeders', label: `≥ ${minSeeders} seeders` },
+    state && { key: 'state', label: state === 'dead' ? '☠️ Torrents morts' : '🔁 Sans seeder' },
   ] as (false | '' | { key: string; label: string })[]).filter(Boolean) as { key: string; label: string }[];
   const hasAdvancedFilters = activeFilters.length > 0;
   const currentSortLabel = SORTS.find((s) => s.value === sort)?.label ?? 'Date';
@@ -215,6 +218,14 @@ export default function Browse() {
             <button type="button" className={view === 'list' ? 'on' : ''} onClick={() => setView('list')} title="Vue liste">☰</button>
             <button type="button" className={view === 'grid' ? 'on' : ''} onClick={() => setView('grid')} title="Vue affiches">▦</button>
           </div>
+          <button
+            type="button"
+            className={`icon-btn${state === 'dead' ? ' active' : ''}`}
+            onClick={() => updateParam('state', state === 'dead' ? '' : 'dead')}
+            title="Torrents retirés des listes après une longue période sans seeder"
+          >
+            <span>☠️</span> Morts
+          </button>
           <button type="button" className={`icon-btn${showFilters ? ' active' : ''}`} onClick={() => setShowFilters((v) => !v)} title="Filtres">
             <span>🔎</span> Filtres {hasAdvancedFilters && <span className="count">{activeFilters.length}</span>}
           </button>
@@ -308,6 +319,13 @@ export default function Browse() {
             ))}
             {field('Taille min (Go)', <input type="number" value={minSizeGo} onChange={(e) => updateParam('minSize', e.target.value)} style={full} />)}
             {field('Taille max (Go)', <input type="number" value={maxSizeGo} onChange={(e) => updateParam('maxSize', e.target.value)} style={full} />)}
+            {field('État', (
+              <select value={state} onChange={(e) => updateParam('state', e.target.value)} style={full}>
+                <option value="">Torrents actifs</option>
+                <option value="noseeders">🔁 Sans seeder (à reseeder)</option>
+                <option value="dead">☠️ Morts (retirés des listes)</option>
+              </select>
+            ))}
             {field('Seeders minimum', <input type="number" value={minSeeders} onChange={(e) => updateParam('minSeeders', e.target.value)} style={full} />)}
             <label className="row muted" style={{ gap: 6, paddingBottom: 8 }}>
               <input type="checkbox" style={{ width: 'auto' }} checked={hdr} onChange={(e) => updateParam('hdr', e.target.checked ? 'true' : 'false')} />
@@ -406,6 +424,7 @@ export default function Browse() {
                         {t.doubleUpload && <span className="badge double">2x</span>}{' '}
                         {t.resolution && <span className="badge new">{t.resolution}</span>}{' '}
                         {t.hdr && <span className="badge double">HDR</span>}
+                        {t.status === 'DEAD' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>☠️ Mort</span>}
                         {(t.year || t.language || t.source) && (
                           <div className="muted" style={{ fontSize: 11 }}>
                             {[t.year, t.language, t.source, t.codec].filter(Boolean).join(' · ')}

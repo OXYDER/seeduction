@@ -19,6 +19,7 @@ export class TorrentsController {
     const seesAnonymous = !!req.user && (req.user.userId === query.uploaderId || ['MODERATOR', 'ADMIN', 'OWNER'].includes(req.user.role));
     return this.torrentsService.list({
       hideAnonymous: !!query.uploaderId && !seesAnonymous,
+      state: query.state === 'dead' ? 'dead' : query.state === 'noseeders' ? 'noseeders' : undefined,
       categoryId: query.categoryId,
       search: query.search,
       uploaderId: query.uploaderId,

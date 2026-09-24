@@ -126,8 +126,11 @@ export class TorrentsService {
     year?: number; language?: string; resolution?: string; codec?: string;
     hdr?: boolean; audio?: string; source?: string; containerFormat?: string;
     entityId?: string; role?: string; hideAnonymous?: boolean;
+    /** all = torrents actifs (défaut) ; noseeders = approuvés sans seeder ; dead = retirés des listes après une longue inactivité. */
+    state?: 'noseeders' | 'dead';
   }) {
-    const where: any = { status: 'APPROVED' };
+    const where: any = { status: params.state === 'dead' ? 'DEAD' : 'APPROVED' };
+    if (params.state === 'noseeders') where.seeders = 0;
     if (params.categoryId) {
       // Choisir une catégorie parente inclut aussi ses sous-catégories.
       const ids = await this.prisma.category.findMany({
