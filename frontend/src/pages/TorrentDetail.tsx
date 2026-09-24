@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import UserLink from '../components/UserLink';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
@@ -208,7 +209,7 @@ export default function TorrentDetail() {
           </div>
         </section>
 
-        {trailerOpen && torrent.metadata?.trailer?.key && (
+        {trailerOpen && torrent.metadata?.trailer?.key && createPortal(
           <div className="trailer-modal" onClick={() => setTrailerOpen(false)}>
             <button type="button" className="secondary trailer-close" onClick={() => setTrailerOpen(false)}>✕ Fermer</button>
             <div className="trailer-modal-inner" onClick={(e) => e.stopPropagation()}>
@@ -220,6 +221,8 @@ export default function TorrentDetail() {
               />
             </div>
           </div>
+        ,
+          document.body,
         )}
 
         {staffPanel}
