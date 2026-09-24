@@ -1496,3 +1496,8 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 .facet-row button:hover:not(:disabled) { color: #fff; border-color: var(--border-gold); background: rgba(255,255,255,0.10); transform: none; box-shadow: none; }
 .facet-row button.on { background: linear-gradient(135deg, var(--gold), var(--gold-bright)); color: var(--on-accent); border-color: transparent; }
 :root[data-theme="prestige"] .facet-row button.on { background: linear-gradient(135deg, var(--acc1), var(--acc2)); color: #fff; }
+
+/* Un nom de release sans espaces (Mes.Morts.Tristes.S01...) ne doit pas élargir la carte : on force la coupure de mot. */
+.rail > span, .rail-plex .rail > span { min-width: 0; max-width: 190px; }
+.poster-card { min-width: 0; }
+.poster-card .poster-title, .poster-card .poster-body { overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
