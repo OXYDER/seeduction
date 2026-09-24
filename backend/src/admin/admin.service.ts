@@ -62,7 +62,9 @@ export class AdminService {
     if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim().slice(0, 300);
     if (typeof body.description === 'string') data.description = body.description;
     if (typeof body.categoryId === 'string' && body.categoryId) {
-      if (!(await this.prisma.category.findUnique({ where: { id: body.categoryId }, select: { id: true } }))) throw new BadRequestException('Catégorie introuvable');
+      const cat = await this.prisma.category.findUnique({ where: { id: body.categoryId }, select: { id: true, _count: { select: { children: true } } } });
+      if (!cat) throw new BadRequestException('Catégorie introuvable');
+      if (cat._count.children > 0) throw new BadRequestException('Choisissez une sous-catégorie (les catégories principales ne sont pas sélectionnables)');
       data.categoryId = body.categoryId;
     }
     if (typeof body.origin === 'string') data.origin = normalizeOrigin(body.origin) ?? null;

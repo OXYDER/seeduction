@@ -29,10 +29,9 @@ export default function StaffTorrentPanel({ torrent, startOpen, onSaved }: { tor
   useEffect(() => {
     if (!open || categories.length > 0) return;
     api.get('/categories', { params: { includeAdult: 1 } }).then((r) => {
-      setCategories(r.data.flatMap((c: any) => [
-        { id: c.id, name: c.name },
-        ...(c.children ?? []).map((sub: any) => ({ id: sub.id, name: `${c.name} › ${sub.name}` })),
-      ]));
+      setCategories(r.data.flatMap((c: any) => (c.children?.length
+        ? c.children.map((sub: any) => ({ id: sub.id, name: `${c.name} › ${sub.name}` }))
+        : [{ id: c.id, name: c.name }])));
     }).catch(() => {});
   }, [open, categories.length]);
 

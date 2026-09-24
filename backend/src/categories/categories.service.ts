@@ -74,9 +74,7 @@ export class CategoriesService implements OnModuleInit {
   async installRecommended() {
     let created = 0;
     let skipped = 0;
-    const exists = async (name: string) =>
-      !!(await this.prisma.category.findFirst({ where: { OR: [{ name: { equals: name, mode: 'insensitive' } }, { slug: slugify(name) }] }, select: { id: true } }));
-
+    let movedTorrents = 0;
     for (const top of RECOMMENDED_CATEGORIES) {
       let parent = await this.prisma.category.findFirst({ where: { OR: [{ name: { equals: top.name, mode: 'insensitive' } }, { slug: slugify(top.name) }] } });
       if (!parent) {
@@ -87,14 +85,22 @@ export class CategoriesService implements OnModuleInit {
         // Une catégorie existante sans type de contenu reçoit celui recommandé (la recherche automatique en dépend).
         if (!parent.contentKind && top.kind) await this.prisma.category.update({ where: { id: parent.id }, data: { contentKind: top.kind as any } });
       }
-      for (const child of top.children) {
-        if (await exists(child.name)) { skipped++; continue; }
-        await this.prisma.category.create({ data: { name: child.name, slug: slugify(child.name), parentId: parent.id, contentKind: (child.kind as any) ?? null } });
+      let general: { id: string } | null = null;
+      for (const [i, child] of top.children.entries()) {
+        const found = await this.prisma.category.findFirst({ where: { OR: [{ name: { equals: child.name, mode: 'insensitive' } }, { slug: slugify(child.name) }] }, select: { id: true } });
+        if (found) { skipped++; if (i === 0) general = found; continue; }
+        const made = await this.prisma.category.create({ data: { name: child.name, slug: slugify(child.name), parentId: parent.id, contentKind: (child.kind as any) ?? null } });
+        if (i === 0) general = made;
         created++;
+      }
+      // Les torrents restés directement dans la catégorie principale passent dans sa première sous-catégorie (générale).
+      if (general) {
+        const moved = await this.prisma.torrent.updateMany({ where: { categoryId: parent.id }, data: { categoryId: general.id } });
+        movedTorrents += moved.count;
       }
     }
     this.adult.invalidate();
-    return { created, skipped };
+    return { created, skipped, movedTorrents };
   }
 
   async list(viewer?: { userId: string; role: string }, includeAdult = false) {

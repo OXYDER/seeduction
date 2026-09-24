@@ -463,7 +463,7 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
               setError('');
               try {
                 const { data } = await api.post(`${endpoint}/install-recommended`);
-                setInstallMsg(`✓ ${data.created} catégorie(s) créée(s), ${data.skipped} déjà présente(s)`);
+                setInstallMsg(`✓ ${data.created} catégorie(s) créée(s), ${data.skipped} déjà présente(s), ${data.movedTorrents ?? 0} torrent(s) reclassé(s)`);
                 refresh();
               } catch (err: any) {
                 setError(err.response?.data?.message ?? "Installation impossible");
@@ -527,10 +527,9 @@ function TorrentsAdmin() {
   function refresh() {
     api.get('/admin/torrents', { params: { search } }).then((r) => setTorrents(r.data));
     api.get('/categories', { params: { includeAdult: 1 } }).then((r) => {
-      const flat = r.data.flatMap((c: any) => [
-        { id: c.id, name: c.name },
-        ...(c.children ?? []).map((sub: any) => ({ id: sub.id, name: `↳ ${sub.name}` })),
-      ]);
+      const flat = r.data.flatMap((c: any) => (c.children?.length
+        ? c.children.map((sub: any) => ({ id: sub.id, name: `${c.name} › ${sub.name}` }))
+        : [{ id: c.id, name: c.name }]));
       setCategories(flat);
     });
   }

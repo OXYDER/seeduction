@@ -13,126 +13,116 @@ export interface RecommendedCategory {
   children: { name: string; kind?: string }[];
 }
 
+const c = (...names: string[]) => names.map((name) => ({ name }));
+
+/** La première sous-catégorie de chaque liste est la catégorie « générale » : elle reçoit les torrents restés dans la catégorie principale. */
 export const RECOMMENDED_CATEGORIES: RecommendedCategory[] = [
   {
     name: 'Films', kind: 'FILM',
-    children: [
-      { name: "Films d'animation" },
-      { name: 'Films jeunesse' },
-      { name: 'Documentaires' },
-      { name: 'Courts métrages' },
-    ],
+    children: c(
+      'Longs métrages', "Films d'animation", 'Films jeunesse et famille', 'Documentaires', 'Courts métrages',
+      'Films québécois et canadiens', 'Films français et européens', 'Films asiatiques', 'Films indépendants et d’auteur',
+      'Films classiques et cinéma muet', 'Films d’horreur', 'Films de science-fiction et fantastique', 'Films 3D',
+      'Collections et sagas', 'Films religieux et spirituels', 'Autres films',
+    ),
   },
   {
     name: 'Séries TV', kind: 'SERIE',
-    children: [
-      { name: "Séries d'animation" },
-      { name: 'Séries jeunesse' },
-      { name: 'Documentaires TV' },
-      { name: 'Émissions et téléréalité' },
-      { name: 'Talk-shows et variétés' },
-    ],
+    children: c(
+      'Séries télé', "Séries d'animation", 'Séries jeunesse', 'Documentaires TV', 'Émissions et téléréalité',
+      'Talk-shows et variétés', 'Séries québécoises', 'Séries françaises et européennes', 'Séries asiatiques et K-Drama',
+      'Téléromans et feuilletons', 'Mini-séries et téléfilms', 'Actualités et magazines télé', 'Cuisine, maison et style de vie',
+      'Séries de sport et docu-sportifs', 'Autres séries',
+    ),
   },
   {
     name: 'Animes', kind: 'SERIE',
     children: [
+      { name: 'Animes séries' },
       { name: 'Animes films', kind: 'FILM' },
       { name: 'Animes OAV et spéciaux' },
+      { name: 'Animes VF et VOSTFR (packs complets)' },
+      { name: 'Donghua (animation chinoise)' },
+      { name: 'Autres animes' },
     ],
   },
   {
     name: 'Spectacles et humour',
     children: [
-      { name: 'Humour' },
+      { name: 'Humour et one-man-shows' },
+      { name: 'Gala Juste pour rire et festivals d’humour' },
       { name: 'Concerts et festivals', kind: 'MUSIQUE' },
       { name: 'Théâtre et spectacles' },
+      { name: 'Opéra, ballet et danse' },
+      { name: 'Cirque et spectacles vivants' },
+      { name: 'Magie et variétés' },
+      { name: 'Conférences et TED' },
+      { name: 'Autres spectacles' },
     ],
   },
   {
     name: 'Sports',
-    children: [
-      { name: 'Hockey' },
-      { name: 'Football / Soccer' },
-      { name: 'Basketball' },
-      { name: 'Baseball' },
-      { name: 'Football américain' },
-      { name: 'Formule 1 et sports moteurs' },
-      { name: 'UFC et sports de combat' },
-      { name: 'Autres sports' },
-    ],
+    children: c(
+      'Hockey', 'Football / Soccer', 'Basketball', 'Baseball', 'Football américain', 'Formule 1 et sports moteurs',
+      'UFC et sports de combat', 'Boxe et lutte (WWE, AEW)', 'Tennis et golf', 'Cyclisme et athlétisme',
+      'Sports d’hiver et olympiques', 'Rugby et cricket', 'Sports extrêmes et plein air', 'Documentaires sportifs',
+      'Autres sports',
+    ),
   },
   {
     name: 'Musique', kind: 'MUSIQUE',
-    children: [
-      { name: 'Bandes originales' },
-      { name: 'Discographies' },
-      { name: 'Compilations et singles' },
-      { name: 'Clips et vidéos musicales' },
-    ],
+    children: c(
+      'Albums', 'Discographies', 'Compilations et singles', 'Bandes originales', 'Clips et vidéos musicales',
+      'Musique québécoise', 'Musique française', 'Rock et métal', 'Pop et variétés', 'Hip-hop et R&B',
+      'Électronique et dance', 'Jazz et blues', 'Classique et opéra', 'Country et folk', 'Musique du monde et latine',
+      'Musique pour enfants', 'Mix et sets DJ', 'Partitions et karaoké', 'Autres musiques',
+    ),
   },
   {
     name: 'Jeux', kind: 'JEU',
-    children: [
-      { name: 'Jeux PC' },
-      { name: 'Jeux PlayStation' },
-      { name: 'Jeux Xbox' },
-      { name: 'Jeux Nintendo' },
-      { name: 'Jeux mobiles' },
-      { name: 'Rétro et émulation' },
-      { name: 'Mises à jour et DLC' },
-    ],
+    children: c(
+      'Jeux PC', 'Jeux PlayStation', 'Jeux Xbox', 'Jeux Nintendo', 'Jeux mobiles', 'Rétro et émulation',
+      'Mises à jour et DLC', 'Jeux de réalité virtuelle', 'Jeux indépendants', 'Jeux Mac et Linux',
+      'Bandes originales de jeux', 'Guides, cheats et mods', 'Autres jeux',
+    ),
   },
   {
     name: 'Applications', kind: 'LOGICIEL',
-    children: [
-      { name: 'Logiciels Windows' },
-      { name: 'Logiciels macOS' },
-      { name: 'Logiciels Linux' },
-      { name: 'Applications Android' },
-      { name: 'Applications iOS' },
-      { name: 'Création et multimédia' },
-      { name: 'Utilitaires et sécurité' },
-      { name: 'Outils de développement' },
-    ],
+    children: c(
+      'Logiciels Windows', 'Logiciels macOS', 'Logiciels Linux', 'Applications Android', 'Applications iOS',
+      'Création et multimédia', 'Utilitaires et sécurité', 'Outils de développement', 'Bureautique et productivité',
+      'Systèmes d’exploitation', 'Montage vidéo et audio', 'Photo et graphisme', 'Modélisation 3D et CAO',
+      'Pilotes et firmwares', 'Plugins et banques de sons', 'Autres applications',
+    ),
   },
   {
     name: 'Livres', kind: 'LIVRE',
-    children: [
-      { name: 'Livres numériques' },
-      { name: 'Livres audio' },
-      { name: 'Bandes dessinées et comics' },
-      { name: 'Mangas' },
-      { name: 'Magazines et journaux' },
-      { name: 'Manuels et références' },
-    ],
+    children: c(
+      'Livres numériques', 'Livres audio', 'Bandes dessinées et comics', 'Mangas', 'Magazines et journaux',
+      'Manuels et références', 'Romans et littérature', 'Livres jeunesse', 'Cuisine et santé',
+      'Histoire, sciences et documentaires', 'Livres québécois', 'Encyclopédies et dictionnaires', 'Autres livres',
+    ),
   },
   {
     name: 'Formations et cours', kind: 'DOCUMENT',
-    children: [
-      { name: 'Formations vidéo' },
-      { name: 'Cours de langues' },
-      { name: 'Tutoriels' },
-    ],
+    children: c(
+      'Formations vidéo', 'Cours de langues', 'Tutoriels', 'Informatique et programmation', 'Design et création',
+      'Affaires et finance', 'Musique et instruments', 'Cuisine et bricolage', 'Autres formations',
+    ),
   },
   {
     name: 'Autres',
-    children: [
-      { name: "Images et fonds d'écran" },
-      { name: 'Podcasts et radio' },
-      { name: 'Divers' },
-    ],
+    children: c(
+      'Divers', "Images et fonds d'écran", 'Podcasts et radio', 'Polices et ressources graphiques', 'Cartes et GPS',
+      'Sous-titres', 'Modèles 3D et impression 3D',
+    ),
   },
   {
     name: 'XXX', kind: 'XXX', adult: true,
-    children: [
-      { name: 'XXX Films' },
-      { name: 'XXX Scènes' },
-      { name: 'XXX Séries web' },
-      { name: 'XXX Amateur' },
-      { name: 'XXX Hentai et animation' },
-      { name: 'XXX Photos et magazines' },
-      { name: 'XXX Jeux' },
-    ],
+    children: c(
+      'XXX Films', 'XXX Scènes', 'XXX Séries web', 'XXX Amateur', 'XXX Hentai et animation', 'XXX Photos et magazines',
+      'XXX Jeux', 'XXX Vidéos VR', 'XXX Compilations', 'XXX Autres',
+    ),
   },
 ];
 

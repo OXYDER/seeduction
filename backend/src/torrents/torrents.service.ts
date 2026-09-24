@@ -14,6 +14,13 @@ const ANNOUNCE_BASE_URL = process.env.ANNOUNCE_BASE_URL ?? 'https://tracker.exam
 export class TorrentsService {
   constructor(private prisma: PrismaService, private metadata: MetadataService, private adult: AdultService) {}
 
+  /** Une catégorie principale qui a des sous-catégories n'est pas sélectionnable : il faut choisir une sous-catégorie. */
+  private async assertSelectableCategory(categoryId: string) {
+    const cat = await this.prisma.category.findUnique({ where: { id: categoryId }, select: { id: true, _count: { select: { children: true } } } });
+    if (!cat) throw new BadRequestException('Catégorie introuvable');
+    if (cat._count.children > 0) throw new BadRequestException('Choisissez une sous-catégorie (les catégories principales ne sont pas sélectionnables)');
+  }
+
   async upload(params: {
     userId: string;
     fileBuffer: Buffer;
@@ -52,6 +59,7 @@ export class TorrentsService {
     if (existing) throw new BadRequestException('Ce torrent existe déjà sur le tracker (dupe)');
 
     await fs.mkdir(STORAGE_DIR, { recursive: true });
+    await this.assertSelectableCategory(params.categoryId);
     const storedPath = path.join(STORAGE_DIR, `${parsed.infoHash}.torrent`);
     await fs.writeFile(storedPath, cleanBuffer);
 

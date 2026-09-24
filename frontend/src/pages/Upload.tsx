@@ -221,12 +221,13 @@ export default function Upload() {
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
             <option value="">— Choisir une catégorie —</option>
             {categories.map((c) => (
-              <optgroup key={c.id} label={c.name}>
-                <option value={c.id}>{c.name}</option>
-                {c.children?.map((sub: any) => (
-                  <option key={sub.id} value={sub.id}>↳ {sub.name}</option>
-                ))}
-              </optgroup>
+              c.children?.length ? (
+                <optgroup key={c.id} label={c.name}>
+                  {c.children.map((sub: any) => (
+                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                  ))}
+                </optgroup>
+              ) : <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
 
