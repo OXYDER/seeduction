@@ -53,7 +53,7 @@ export function detectEpisodeFromRelease(name: string, filePaths: string[]): { s
   const episodes = new Set<string>();
   let season = fromName.season;
   for (const path of filePaths) {
-    const m = path.match(/S(\d{1,2})[ ._-]?E(\d{1,3})/i);
+    const m = path.match(/\bS(\d{1,2})[ ._-]?E(\d{1,3})/i);
     if (m) { season = season ?? String(Number(m[1])); episodes.add(String(Number(m[2]))); }
   }
   if (!season) return fromName;
