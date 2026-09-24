@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import UserLink from '../components/UserLink';
 import Avatar from '../components/Avatar';
+import SearchBox from '../components/SearchBox';
 import WysiwygEditor from '../components/WysiwygEditor';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { timeAgo } from '../lib/time';
@@ -110,7 +111,14 @@ export default function Messages() {
           {composing || (!openId && !thread) ? (
             <form onSubmit={send} className="grid" style={{ gap: 10 }}>
               <h3>Nouveau message</h3>
-              <input placeholder="Destinataire (nom d'utilisateur)" value={form.recipientUsername} onChange={(e) => setForm({ ...form, recipientUsername: e.target.value })} required />
+              <SearchBox
+                placeholder="Destinataire (commence à taper un nom d'utilisateur)"
+                value={form.recipientUsername}
+                onChange={(v) => setForm((f) => ({ ...f, recipientUsername: v }))}
+                scopes={['users']}
+                onPickUser={() => undefined}
+                inputStyle={{ width: '100%' }}
+              />
               <input placeholder="Sujet" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} maxLength={200} required />
               <WysiwygEditor key={formKey} value={form.content} onChange={(v) => setForm((f) => ({ ...f, content: v }))} minHeight={180} placeholder="Ton message..." />
               {error && <div className="muted" style={{ color: 'var(--danger)' }}>{error}</div>}

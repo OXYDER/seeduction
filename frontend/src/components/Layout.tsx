@@ -6,6 +6,7 @@ import { formatBytes, formatNumber } from '../lib/format';
 import NotificationsBell from './NotificationsBell';
 import InstallPrompt from './InstallPrompt';
 import ThemeSwitcher from './ThemeSwitcher';
+import SearchBox from './SearchBox';
 
 export interface Profile {
   id: string;
@@ -70,9 +71,13 @@ export default function Layout() {
 
   const isStaff = user?.role === 'ADMIN' || user?.role === 'MODERATOR' || user?.role === 'OWNER';
 
+  function goSearch() {
+    navigate(`/browse?search=${encodeURIComponent(search)}`);
+  }
+
   function submitSearch(e: FormEvent) {
     e.preventDefault();
-    navigate(`/browse?search=${encodeURIComponent(search)}`);
+    goSearch();
   }
 
   // Le site n'est pas visible aux non-membres : tout ce qui passe par ce
@@ -147,10 +152,12 @@ export default function Layout() {
         </div>
 
         <form className="search-row" onSubmit={submitSearch}>
-          <input
+          <SearchBox
             placeholder="Rechercher des torrents, des utilisateurs ou des catégories..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
+            onSubmit={goSearch}
+            scopes={['torrents', 'users', 'categories', 'entities']}
           />
           <button type="submit">Rechercher</button>
         </form>

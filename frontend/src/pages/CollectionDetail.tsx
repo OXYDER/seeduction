@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import UserLink from '../components/UserLink';
+import SearchBox from '../components/SearchBox';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -136,7 +137,9 @@ export default function CollectionDetail() {
                   {collection.collaborators.length === 0 && <p className="muted">Aucun collaborateur.</p>}
                 </div>
                 <form onSubmit={addCollaborator} className="row" style={{ marginTop: 8 }}>
-                  <input placeholder="Nom d'utilisateur" value={collaboratorName} onChange={(e) => setCollaboratorName(e.target.value)} />
+                  <div style={{ flex: 1 }}>
+                    <SearchBox placeholder="Nom d'utilisateur" value={collaboratorName} onChange={setCollaboratorName} scopes={['users']} onPickUser={() => undefined} inputStyle={{ width: '100%' }} />
+                  </div>
                   <button type="submit">Ajouter</button>
                 </form>
               </div>

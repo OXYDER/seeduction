@@ -255,17 +255,19 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
   border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--bg-panel-raised);
-  overflow: hidden;
+  position: relative;
+  z-index: 20;
 }
+.search-row .sb-wrap { flex: 1; min-width: 0; }
 .search-row input {
-  flex: 1;
+  width: 100%;
   padding: 14px 20px;
   border: none;
-  border-radius: 0;
+  border-radius: 6px 0 0 6px;
   background: transparent;
 }
 .search-row input:focus { border: none; }
-.search-row button { border-radius: 0; padding: 0 30px; }
+.search-row button { border-radius: 0 6px 6px 0; padding: 0 30px; }
 
 .category-chips {
   display: flex;
@@ -903,3 +905,21 @@ th.sorted .sort-arrow { opacity: 1; }
 
 /* ---- Signature de forum ---- */
 .forum-signature { margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 12px; color: var(--text-dim); }
+
+/* ---- Recherche avec pré-résultats ---- */
+.sb-wrap { position: relative; }
+.sb-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 70; max-height: 70vh; overflow-y: auto; min-width: 280px;
+  background: var(--bg-panel-raised); border: 1px solid var(--border-gold); border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); padding: 4px 0;
+}
+.sb-group { padding: 8px 12px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gold); font-weight: 700; }
+.sb-item { display: flex; align-items: center; gap: 10px; padding: 6px 12px; cursor: pointer; color: var(--text); }
+.sb-item.active { background: var(--bg-panel); }
+.sb-item .forum-avatar { margin: 0; flex-shrink: 0; }
+.sb-thumb { width: 30px; height: 42px; object-fit: cover; border-radius: 3px; flex-shrink: 0; background: var(--bg-panel); }
+.sb-thumb.sb-wide { width: 42px; height: 30px; object-fit: contain; }
+.sb-thumb.sb-icon { display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--gold); font-weight: 700; border: 1px solid var(--border); }
+.sb-text { display: flex; flex-direction: column; min-width: 0; text-align: left; }
+.sb-title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-sub { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-submit { color: var(--gold-bright); font-size: 13px; border-top: 1px solid var(--border); margin-top: 4px; }

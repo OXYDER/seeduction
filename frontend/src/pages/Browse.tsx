@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import UserLink from '../components/UserLink';
+import SearchBox from '../components/SearchBox';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes as formatSize } from '../lib/format';
@@ -208,12 +209,15 @@ export default function Browse() {
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <h1>{uploaderId ? (uploaderId === currentUserId ? 'Mes uploads' : 'Torrents de ce membre') : 'Parcourir'}</h1>
         <div className="list-toolbar">
-          <input
-            placeholder="Rechercher... (ex: Dune 2024 4K HDR VOSTFR)"
-            value={rawSearch}
-            onChange={(e) => updateParam('search', e.target.value)}
-            style={{ width: 320, maxWidth: '100%' }}
-          />
+          <div style={{ width: 320, maxWidth: '100%' }}>
+            <SearchBox
+              placeholder="Rechercher... (ex: Dune 2024 4K HDR VOSTFR)"
+              value={rawSearch}
+              onChange={(v) => updateParam('search', v)}
+              scopes={['torrents', 'categories']}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
           <div className="view-toggle">
             <button type="button" className={view === 'list' ? 'on' : ''} onClick={() => setView('list')} title="Vue liste">☰</button>
             <button type="button" className={view === 'grid' ? 'on' : ''} onClick={() => setView('grid')} title="Vue affiches">▦</button>

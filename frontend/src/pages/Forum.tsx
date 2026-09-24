@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import UserLink from '../components/UserLink';
+import SearchBox from '../components/SearchBox';
 import { LastPostCell } from '../components/ForumBits';
 
 function ForumRow({ f }: { f: any }) {
@@ -81,7 +82,16 @@ export default function Forum() {
           className="row"
           onSubmit={(e) => { e.preventDefault(); if (q.trim().length >= 2) navigate(`/forum/search?q=${encodeURIComponent(q.trim())}`); }}
         >
-          <input placeholder="Rechercher dans le forum..." value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 260 }} />
+          <div style={{ width: 260 }}>
+            <SearchBox
+              placeholder="Rechercher dans le forum..."
+              value={q}
+              onChange={setQ}
+              scopes={['topics', 'users']}
+              onSubmit={() => { if (q.trim().length >= 2) navigate(`/forum/search?q=${encodeURIComponent(q.trim())}`); }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
           <button type="submit" className="secondary">🔍</button>
           <Link to="/forum/latest" className="icon-btn">🕒 Derniers messages</Link>
           {user && <button type="button" className="secondary" onClick={markRead}>✓ Tout marquer comme lu</button>}
