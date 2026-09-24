@@ -1,27 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { THEMES, setTheme, useTheme } from '../lib/theme';
 
-export const THEME_STORAGE_KEY = 'seeduction-theme';
-
-const THEMES: { label: string; value: string }[] = [
-  { label: '🟡 Doré (par défaut)', value: '' },
-  { label: '🔴 Écarlate', value: 'ecarlate' },
-  { label: '🔵 Nuit Argentée', value: 'nuit' },
-];
-
-function setTheme(value: string) {
-  if (value) document.documentElement.setAttribute('data-theme', value);
-  else document.documentElement.removeAttribute('data-theme');
-  try {
-    if (value) localStorage.setItem(THEME_STORAGE_KEY, value);
-    else localStorage.removeItem(THEME_STORAGE_KEY);
-  } catch {
-    // Stockage indisponible (navigation privée...) : le thème reste appliqué pour cette session, juste pas mémorisé.
-  }
-}
+export { THEME_STORAGE_KEY } from '../lib/theme';
 
 export default function ThemeSwitcher() {
   const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState(() => document.documentElement.getAttribute('data-theme') ?? '');
+  const current = useTheme();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,7 +18,6 @@ export default function ThemeSwitcher() {
 
   function choose(value: string) {
     setTheme(value);
-    setCurrent(value);
     setOpen(false);
   }
 
@@ -42,7 +25,7 @@ export default function ThemeSwitcher() {
     <div ref={ref} style={{ position: 'relative' }}>
       <button type="button" className="secondary" onClick={() => setOpen((v) => !v)} title="Changer de thème">🎨</button>
       {open && (
-        <div className="panel ornate" style={{ position: 'absolute', right: 0, top: '110%', width: 190, zIndex: 50, padding: 8 }}>
+        <div className="panel ornate theme-menu" style={{ position: 'absolute', right: 0, top: '110%', width: 210, zIndex: 80, padding: 8 }}>
           {THEMES.map((t) => (
             <button
               key={t.value}

@@ -8,6 +8,8 @@ import InstallPrompt from './InstallPrompt';
 import ThemeSwitcher from './ThemeSwitcher';
 import SearchBox from './SearchBox';
 import FreeleechBanner from './FreeleechBanner';
+import Avatar from './Avatar';
+import { useTheme } from '../lib/theme';
 
 export interface Profile {
   id: string;
@@ -18,6 +20,7 @@ export interface Profile {
   bonusPoints: number;
   ratio: number | null;
   createdAt: string;
+  avatarUrl?: string | null;
   _count: { torrentsUploaded: number; invitees: number };
 }
 
@@ -72,6 +75,16 @@ export default function Layout() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
+  const theme = useTheme();
+  const [drawer, setDrawer] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // Compteur de messages non lus (thème Prestige) : rafraîchi à chaque changement de page.
+  useEffect(() => {
+    setDrawer(false);
+    if (!accessToken) return;
+    api.get('/messages/unread-count').then((r) => setUnreadMessages(Number(r.data) || 0)).catch(() => {});
+  }, [location.pathname, accessToken]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -100,6 +113,121 @@ export default function Layout() {
   // Le site n'est pas visible aux non-membres : tout ce qui passe par ce
   // Layout (donc tout sauf /login et /register) exige une session valide.
   if (!accessToken) return <Navigate to="/login" replace />;
+
+  // ---- Thème Prestige : barre latérale (ordinateur) / barre d'onglets (mobile) ----
+  if (theme === 'prestige') {
+    const visibleNav = NAV_ITEMS.filter((item) => !item.staffOnly || isStaff);
+    const activeCategory = location.pathname === '/browse' ? new URLSearchParams(location.search).get('categoryId') : null;
+    const tabs = ['/', '/browse', '/upload', '/forum'].map((to) => NAV_ITEMS.find((i) => i.to === to)!);
+
+    return (
+      <div className="shell">
+        {drawer && <div className="shell-overlay" onClick={() => setDrawer(false)} />}
+        <aside className={`side-nav${drawer ? ' open' : ''}`}>
+          <Link to="/" className="side-brand">
+            <img src="/logo-icon.png" alt="" width={34} height={34} />
+            <span>SEEDUCTION</span>
+          </Link>
+
+          <nav className="side-links">
+            {visibleNav.map((item) => {
+              const active = item.match(location.pathname);
+              return (
+                <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
+                  <span className="side-icon">{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {categories.length > 0 && (
+            <div className="side-section">
+              <div className="side-section-title">Catégories</div>
+              <nav className="side-links compact">
+                {categories.map((c) => {
+                  const style = CATEGORY_STYLE[c.slug];
+                  const isActive = !!activeCategory && (activeCategory === c.id || !!c.children?.some((sub) => sub.id === activeCategory));
+                  return (
+                    <Link key={c.id} to={`/browse?categoryId=${c.id}`} className={isActive ? 'active' : ''} title={c.name}>
+                      <span className="side-icon">{c.imageUrl ? <img src={c.imageUrl} alt="" /> : (style?.icon ?? '📁')}</span>
+                      <span>{c.name}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          )}
+
+          <div className="side-user">
+            <Link to="/profile" className="side-user-card">
+              <Avatar user={{ username: user?.username, avatarUrl: profile?.avatarUrl }} size={38} />
+              <div style={{ minWidth: 0 }}>
+                <div className="side-user-name">{user?.username}</div>
+                <div className="side-user-sub">Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</div>
+              </div>
+            </Link>
+            <button className="secondary side-logout" onClick={() => { logout(); navigate('/login'); }} title="Se déconnecter">⎋</button>
+          </div>
+        </aside>
+
+        <div className="shell-main">
+          <header className="side-topbar">
+            <button type="button" className="secondary side-burger" onClick={() => setDrawer(true)} aria-label="Ouvrir le menu">☰</button>
+            <form className="side-search" onSubmit={submitSearch}>
+              <SearchBox
+                placeholder="Rechercher un torrent, un membre, une catégorie..."
+                value={search}
+                onChange={setSearch}
+                onSubmit={goSearch}
+                scopes={['torrents', 'users', 'categories', 'entities']}
+              />
+            </form>
+            {profile && (
+              <div className="stat-pills">
+                <span className="pill up" title="Upload">▲ {formatBytes(profile.uploaded)}</span>
+                <span className="pill down" title="Téléchargé">▼ {formatBytes(profile.downloaded)}</span>
+                <Link to="/bonus" className="pill gold" title="Points bonus : boutique et règle du seed">✦ {formatNumber(Math.round(profile.bonusPoints))}</Link>
+              </div>
+            )}
+            <div className="row" style={{ gap: 8 }}>
+              <ThemeSwitcher />
+              <NotificationsBell />
+              <Link to="/messages" className={`icon-pill${starts('/messages')(location.pathname) ? ' active' : ''}`} title="Messages">
+                ✉️{unreadMessages > 0 && <span className="dot-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
+              </Link>
+            </div>
+          </header>
+
+          <FreeleechBanner />
+
+          <main className="container">
+            <div key={location.pathname} className="page-enter">
+              <Outlet context={{ profile, categories } satisfies LayoutContext} />
+            </div>
+          </main>
+        </div>
+
+        <nav className="tabbar" aria-label="Navigation principale">
+          {tabs.map((item) => {
+            const active = item.match(location.pathname);
+            return (
+              <Link key={item.to} to={item.to} className={active ? 'active' : ''}>
+                <span>{item.icon}</span>
+                <small>{item.label}</small>
+              </Link>
+            );
+          })}
+          <button type="button" onClick={() => setDrawer(true)} className="tab-more">
+            <span>☰</span>
+            <small>Menu</small>
+          </button>
+        </nav>
+
+        <InstallPrompt />
+      </div>
+    );
+  }
 
   return (
     <div>

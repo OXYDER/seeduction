@@ -5,6 +5,8 @@ import { useAuthStore } from '../store/auth';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import NewsPanel from '../components/NewsPanel';
+import HomeStreaming from '../components/HomeStreaming';
+import { useTheme } from '../lib/theme';
 import TorrentLink from '../components/TorrentLink';
 import { getRankInfo } from '../lib/rank';
 import { CATEGORY_STYLE, type LayoutContext } from '../components/Layout';
@@ -32,7 +34,7 @@ interface GlobalStats {
   totalTraffic: string;
 }
 
-export default function Dashboard() {
+function ClassicDashboard() {
   const { profile } = useOutletContext<LayoutContext>();
   const user = useAuthStore((s) => s.user);
   const [torrents, setTorrents] = useState<any[]>([]);
@@ -233,4 +235,10 @@ export default function Dashboard() {
       )}
     </div>
   );
+}
+
+/** Accueil : mise en page « streaming » avec le thème Prestige, tableau de bord classique avec les autres thèmes. */
+export default function Dashboard() {
+  const theme = useTheme();
+  return theme === 'prestige' ? <HomeStreaming /> : <ClassicDashboard />;
 }
