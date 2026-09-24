@@ -52,6 +52,16 @@ export class AuthController {
     return this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword, ipOf(req));
   }
 
+  @Get('features')
+  features() {
+    return { emailReset: this.authService.emailResetAvailable };
+  }
+
+  @Post('forgot-password')
+  forgotPassword(@Body('email') email: string, @Request() req: any) {
+    return this.authService.forgotPassword(email, ipOf(req));
+  }
+
   @Post('reset-password')
   resetPassword(@Body() body: { token: string; newPassword: string }, @Request() req: any) {
     return this.authService.resetPassword(body.token, body.newPassword, ipOf(req));

@@ -8,6 +8,7 @@ import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 import { AuditService } from '../audit/audit.service';
+import { MailService } from '../mail/mail.service';
 import { CLASS_LABELS, INVITE_QUOTA } from '../common/utils/economy';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -51,6 +52,7 @@ export class AuthService {
     private notifications: NotificationsService,
     private badges: BadgesService,
     private audit: AuditService,
+    private mail: MailService,
   ) {}
 
   private assertPassword(password: string) {
@@ -233,7 +235,41 @@ export class AuthService {
     return { changed: true };
   }
 
-  /** Réinitialisation avec un lien émis par le staff (usage unique, 1 heure). */
+  get emailResetAvailable() {
+    return this.mail.enabled;
+  }
+
+  /**
+   * « Mot de passe oublié » : envoie un lien par e-mail. La réponse est toujours la même, que l'adresse
+   * existe ou non, pour ne pas révéler quels comptes existent ; limité par adresse IP et par compte.
+   */
+  async forgotPassword(email: string, ip?: string | null) {
+    if (!this.mail.enabled) throw new BadRequestException("L'envoi d'e-mails n'est pas configuré : demande un lien de réinitialisation au staff.");
+    this.ipLimiter.assertAllowed(`forgot:${ip ?? 'unknown'}`);
+    this.ipLimiter.fail(`forgot:${ip ?? 'unknown'}`); // chaque demande compte, réussie ou non
+
+    const clean = String(email ?? '').trim().toLowerCase();
+    const user = clean ? await this.prisma.user.findFirst({ where: { email: { equals: clean, mode: 'insensitive' }, status: 'ACTIVE' } }) : null;
+    if (user) {
+      // Pas plus d'un lien toutes les 5 minutes par compte.
+      const recent = await this.prisma.passwordReset.findFirst({ where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 5 * 60_000) } } });
+      if (!recent) {
+        await this.prisma.passwordReset.deleteMany({ where: { userId: user.id, usedAt: null } });
+        const token = randomBytes(32).toString('hex');
+        await this.prisma.passwordReset.create({ data: { userId: user.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + 3600_000) } });
+        const link = `${this.mail.siteUrl()}/reset-password?token=${token}`;
+        await this.mail.send(
+          user.email,
+          'Réinitialisation de ton mot de passe Seeduction',
+          `Bonjour ${user.username},\n\nPour choisir un nouveau mot de passe, ouvre ce lien (valable 1 heure, à usage unique) :\n${link}\n\nSi tu n'es pas à l'origine de cette demande, ignore ce message : ton mot de passe reste inchangé.`,
+        );
+        await this.audit.log(user.id, 'RESET_LINK_EMAILED', undefined, ip);
+      }
+    }
+    return { sent: true };
+  }
+
+  /** Réinitialisation avec un lien émis par le staff ou reçu par e-mail (usage unique, 1 heure). */
   async resetPassword(token: string, next: string, ip?: string | null) {
     this.assertPassword(next);
     this.ipLimiter.assertAllowed(`reset:${ip ?? 'unknown'}`);

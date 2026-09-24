@@ -8,6 +8,7 @@ import Favorites from './pages/Favorites';
 import Bonus from './pages/Bonus';
 import Stats from './pages/Stats';
 import ResetPassword from './pages/ResetPassword';
+import ForgotPassword from './pages/ForgotPassword';
 import ForumView from './pages/ForumView';
 import { ForumLatest, ForumSearch } from './pages/ForumMisc';
 import TorrentDetail from './pages/TorrentDetail';
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         {/* Layout redirige vers /login si aucune session valide : le site
             entier est privé, rien n'est visible aux non-membres. */}
         <Route element={<Layout />}>

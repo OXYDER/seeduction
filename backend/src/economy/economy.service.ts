@@ -68,6 +68,35 @@ export class EconomyService {
     }
   }
 
+  /**
+   * Chaque nuit : un torrent approuvé sans aucun seeder et sans aucune activité depuis DEAD_TORRENT_DAYS jours
+   * (60 par défaut, 0 pour désactiver) passe en « mort » et disparaît des listes. Il revient tout seul
+   * dès qu'un membre le seede de nouveau ; le staff peut aussi le remettre à la main.
+   */
+  @Cron('0 5 * * *')
+  async markDeadTorrents() {
+    const days = Number(process.env.DEAD_TORRENT_DAYS ?? 60);
+    if (!Number.isFinite(days) || days <= 0) return;
+    const cutoff = new Date(Date.now() - days * 86400_000);
+    const dead = await this.prisma.torrent.findMany({
+      where: { status: 'APPROVED', seeders: 0, updatedAt: { lt: cutoff } },
+      select: { id: true, name: true, uploaderId: true },
+      take: 500,
+    });
+    if (dead.length === 0) return;
+    await this.prisma.torrent.updateMany({ where: { id: { in: dead.map((t) => t.id) } }, data: { status: 'DEAD' } });
+    await this.prisma.notification.createMany({
+      data: dead.map((t) => ({
+        userId: t.uploaderId,
+        type: 'SYSTEM' as const,
+        title: 'Torrent sans seeder retiré des listes',
+        body: `« ${t.name} » n'a plus de seeder depuis ${days} jours. Il revient automatiquement dès qu'il est de nouveau seedé.`,
+        link: `/torrents/${t.id}`,
+      })),
+    });
+    this.logger.log(`${dead.length} torrent(s) marqué(s) comme morts`);
+  }
+
   /** Chaque nuit : supprime les jetons freeleech expirés. */
   @Cron(CronExpression.EVERY_DAY_AT_4AM)
   async cleanExpired() {

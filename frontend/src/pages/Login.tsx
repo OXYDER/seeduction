@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -9,8 +9,13 @@ export default function Login() {
   const [totpToken, setTotpToken] = useState('');
   const [need2FA, setNeed2FA] = useState(false);
   const [error, setError] = useState('');
+  const [emailReset, setEmailReset] = useState(false);
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    api.get('/auth/features').then((r) => setEmailReset(!!r.data.emailReset)).catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,7 +55,9 @@ export default function Login() {
             {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
             <button type="submit">Connexion</button>
             <Link to="/register"><button type="button" className="secondary" style={{ width: '100%' }}>Créer un compte</button></Link>
-            <div className="muted" style={{ fontSize: 12, textAlign: 'center' }}>Mot de passe oublié ? Demande un lien de réinitialisation au staff.</div>
+            <div className="muted" style={{ fontSize: 12, textAlign: 'center' }}>
+              {emailReset ? <Link to="/forgot-password">Mot de passe oublié ?</Link> : 'Mot de passe oublié ? Demande un lien de réinitialisation au staff.'}
+            </div>
           </form>
 
           <div className="ornate-divider" />

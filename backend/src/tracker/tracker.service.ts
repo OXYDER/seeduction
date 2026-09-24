@@ -175,7 +175,8 @@ export class TrackerService {
       this.prisma.peer.count({ where: { torrentId: torrent.id, isSeeder: true } }),
       this.prisma.peer.count({ where: { torrentId: torrent.id, isSeeder: false } }),
     ]);
-    await this.prisma.torrent.update({ where: { id: torrent.id }, data: { seeders, leechers } });
+    // Un torrent marqué « mort » revient dès qu'il a de nouveau un seeder.
+    await this.prisma.torrent.update({ where: { id: torrent.id }, data: { seeders, leechers, ...(torrent.status === 'DEAD' && seeders > 0 ? { status: 'APPROVED' as const } : {}) } });
 
     // Liste de peers à retourner (exclut le peer courant)
     const wanted = Math.min(params.numwant ?? 50, 100);
