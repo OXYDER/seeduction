@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
 import { SettingsService } from '../settings/settings.service';
-import { RECOMMENDED_CATEGORIES } from './recommended';
+import { LEGACY_FACET_CATEGORIES, RECOMMENDED_CATEGORIES } from './recommended';
 
 const DEFAULT_CATEGORIES = [
   { name: 'Films', slug: 'films', contentKind: 'FILM' as const },
@@ -45,6 +45,32 @@ export class CategoriesService implements OnModuleInit {
    * Ajoute l'arborescence recommandée (FR / QC) : seules les catégories absentes sont créées.
    * Une catégorie est considérée présente si son nom OU son identifiant d'adresse existe déjà.
    */
+  /**
+   * Fusionne dans leur catégorie principale les anciennes sous-catégories « qualité / origine / langue » (Films HD,
+   * Films québécois...) : les torrents sont déplacés, la valeur correspondante est reportée dans leur filtre
+   * (résolution, source, origine, langue, audio) si elle est vide, puis la sous-catégorie est supprimée.
+   */
+  async simplifyLegacy() {
+    let removed = 0;
+    let moved = 0;
+    for (const legacy of LEGACY_FACET_CATEGORIES) {
+      const category = await this.prisma.category.findFirst({
+        where: { name: { equals: legacy.name, mode: 'insensitive' }, parent: { name: { equals: legacy.parent, mode: 'insensitive' } } },
+        select: { id: true, parentId: true },
+      });
+      if (!category?.parentId) continue;
+      for (const [field, value] of Object.entries(legacy.set ?? {})) {
+        await this.prisma.torrent.updateMany({ where: { categoryId: category.id, [field]: null }, data: { [field]: value } });
+      }
+      const result = await this.prisma.torrent.updateMany({ where: { categoryId: category.id }, data: { categoryId: category.parentId } });
+      moved += result.count;
+      await this.prisma.category.delete({ where: { id: category.id } }).catch(() => undefined);
+      removed++;
+    }
+    this.adult.invalidate();
+    return { removed, moved };
+  }
+
   async installRecommended() {
     let created = 0;
     let skipped = 0;

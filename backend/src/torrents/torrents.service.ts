@@ -33,6 +33,7 @@ export class TorrentsService {
     audio?: string;
     source?: string;
     containerFormat?: string;
+    origin?: string;
     fps?: number;
     durationMinutes?: number;
   }) {
@@ -75,6 +76,7 @@ export class TorrentsService {
         audio: params.audio,
         source: params.source,
         containerFormat: params.containerFormat,
+        origin: params.origin,
         fps: params.fps,
         durationMinutes: params.durationMinutes,
       },
@@ -129,7 +131,7 @@ export class TorrentsService {
     order?: 'asc' | 'desc';
     minSize?: number; maxSize?: number; minSeeders?: number;
     year?: number; language?: string; resolution?: string; codec?: string;
-    hdr?: boolean; audio?: string; source?: string; containerFormat?: string;
+    hdr?: boolean; audio?: string; source?: string; containerFormat?: string; origin?: string;
     entityId?: string; role?: string; hideAnonymous?: boolean; viewerId?: string;
     /** all = torrents actifs (défaut) ; noseeders = approuvés sans seeder ; dead = retirés des listes après une longue inactivité. */
     state?: 'noseeders' | 'dead';
@@ -173,6 +175,7 @@ export class TorrentsService {
     if (params.audio) where.audio = { equals: params.audio, mode: 'insensitive' };
     if (params.source) where.source = { equals: params.source, mode: 'insensitive' };
     if (params.containerFormat) where.containerFormat = { equals: params.containerFormat, mode: 'insensitive' };
+    if (params.origin) where.origin = params.origin;
 
     // Champ de tri + sens par défaut (cliquer sur un titre de colonne inverse le sens).
     const SORTS: Record<string, { build: (dir: 'asc' | 'desc') => any; dir: 'asc' | 'desc' }> = {

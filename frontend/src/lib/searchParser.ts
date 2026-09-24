@@ -2,8 +2,9 @@
 // parseur de recherche en langage naturel, pour que les valeurs se
 // correspondent toujours exactement des deux côtés.
 export const RESOLUTIONS = ['4K/2160p', '1080p', '720p', '480p'];
-export const LANGUAGES = ['VF', 'VFF', 'VOSTFR', 'VO', 'MULTI'];
-export const SOURCES = ['BluRay', 'WEB-DL', 'WEBRip', 'HDTV', 'DVDRip', 'CAM'];
+export const LANGUAGES = ['VFQ', 'VFF', 'VF', 'VOSTFR', 'VO', 'MULTI'];
+export const ORIGINS = ['Québec', 'France', 'Canada anglais', 'International'];
+export const SOURCES = ['Remux', 'BluRay', 'WEB-DL', 'WEBRip', 'HDTV', 'DVDRip', 'CAM'];
 export const CODECS = ['x264', 'x265/HEVC', 'AV1', 'XviD'];
 export const AUDIO_FORMATS = ['MP3', 'FLAC', 'AAC', 'DTS', 'TrueHD', 'Atmos'];
 export const CONTAINERS = ['MKV', 'MP4', 'AVI'];
@@ -19,9 +20,11 @@ alias(['720p', 'hd'], 'resolution', '720p');
 alias(['480p', 'sd'], 'resolution', '480p');
 alias(['vostfr', 'vost'], 'language', 'VOSTFR');
 alias(['vf', 'french'], 'language', 'VF');
+alias(['vfq', 'quebec', 'québec'], 'language', 'VFQ');
 alias(['vff', 'truefrench'], 'language', 'VFF');
 alias(['vo'], 'language', 'VO');
 alias(['multi'], 'language', 'MULTI');
+alias(['remux'], 'source', 'Remux');
 alias(['bluray', 'blu-ray', 'bdrip'], 'source', 'BluRay');
 alias(['web-dl', 'webdl'], 'source', 'WEB-DL');
 alias(['webrip'], 'source', 'WEBRip');

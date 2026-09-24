@@ -1484,3 +1484,15 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 .poster-badges { align-items: flex-start; }
 .entity-card { position: relative; }
 .entity-card .entity-cat { position: absolute; top: 8px; left: 8px; z-index: 2; max-width: calc(100% - 16px); }
+
+/* ---- Filtres rapides : qualite, origine, langue (chips) ---- */
+.facet-rows { display: grid; gap: 8px; margin: 2px 0 6px; }
+.facet-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.facet-label { min-width: 62px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); font-weight: 700; }
+.facet-row button {
+  padding: 4px 13px; font-size: 13px; border-radius: 999px; background: rgba(255,255,255,0.06); color: var(--text-dim);
+  border: 1px solid var(--border); box-shadow: none; font-weight: 600;
+}
+.facet-row button:hover:not(:disabled) { color: #fff; border-color: var(--border-gold); background: rgba(255,255,255,0.10); transform: none; box-shadow: none; }
+.facet-row button.on { background: linear-gradient(135deg, var(--gold), var(--gold-bright)); color: var(--on-accent); border-color: transparent; }
+:root[data-theme="prestige"] .facet-row button.on { background: linear-gradient(135deg, var(--acc1), var(--acc2)); color: #fff; }

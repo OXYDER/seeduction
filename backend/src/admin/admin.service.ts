@@ -4,6 +4,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 import { ReportsService } from '../reports/reports.service';
 import { SocialService } from '../social/social.service';
+import { normalizeOrigin } from '../common/utils/facets';
 
 import { createHash, randomBytes } from 'crypto';
 
@@ -64,6 +65,10 @@ export class AdminService {
       if (!(await this.prisma.category.findUnique({ where: { id: body.categoryId }, select: { id: true } }))) throw new BadRequestException('Catégorie introuvable');
       data.categoryId = body.categoryId;
     }
+    if (typeof body.origin === 'string') data.origin = normalizeOrigin(body.origin) ?? null;
+    if (typeof body.resolution === 'string') data.resolution = body.resolution.trim() || null;
+    if (typeof body.source === 'string') data.source = body.source.trim() || null;
+    if (typeof body.language === 'string') data.language = body.language.trim() || null;
     if (typeof body.freeleech === 'boolean') data.freeleech = body.freeleech;
     if (typeof body.doubleUpload === 'boolean') data.doubleUpload = body.doubleUpload;
     if (body.coverImage === null || typeof body.coverImage === 'string') data.coverImage = body.coverImage || null;

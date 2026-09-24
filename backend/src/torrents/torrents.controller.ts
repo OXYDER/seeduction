@@ -5,6 +5,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { TorrentsService } from './torrents.service';
+import { normalizeOrigin } from '../common/utils/facets';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 
@@ -33,6 +34,7 @@ export class TorrentsController {
       minSeeders: query.minSeeders ? Number(query.minSeeders) : undefined,
       year: query.year ? Number(query.year) : undefined,
       language: query.language,
+      origin: normalizeOrigin(query.origin),
       resolution: query.resolution,
       codec: query.codec,
       hdr: query.hdr === 'true' ? true : undefined,
@@ -106,6 +108,7 @@ export class TorrentsController {
       metaId: body.metaId || undefined,
       year: body.year ? Number(body.year) : undefined,
       language: body.language || undefined,
+      origin: normalizeOrigin(body.origin),
       resolution: body.resolution || undefined,
       codec: body.codec || undefined,
       hdr: body.hdr === 'true',

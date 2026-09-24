@@ -472,6 +472,25 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
           >
             Ajouter les catégories recommandées
           </button>
+          {' '}
+          <button
+            type="button"
+            className="secondary"
+            title="Fusionne les anciennes sous-catégories de qualité / origine / langue dans leur catégorie principale"
+            onClick={async () => {
+              if (!window.confirm('Fusionner les sous-catégories « qualité / origine / langue » (Films HD, Films québécois, Musique MP3…) dans leur catégorie principale ? Les torrents sont déplacés et leurs filtres (résolution, origine, langue…) sont remplis.')) return;
+              setError('');
+              try {
+                const { data } = await api.post(`${endpoint}/simplify-legacy`);
+                setInstallMsg(`✓ ${data.removed} sous-catégorie(s) fusionnée(s), ${data.moved} torrent(s) déplacé(s)`);
+                refresh();
+              } catch (err: any) {
+                setError(err.response?.data?.message ?? 'Opération impossible');
+              }
+            }}
+          >
+            🧹 Simplifier : qualité et origine en filtres
+          </button>
           {installMsg && <span style={{ color: 'var(--success)', marginLeft: 12 }}>{installMsg}</span>}
         </div>
       )}

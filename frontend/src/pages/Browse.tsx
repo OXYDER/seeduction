@@ -11,7 +11,7 @@ import { useAuthStore } from '../store/auth';
 import { useTheme } from '../lib/theme';
 import { useFavorites } from '../lib/favorites';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
-import { parseNaturalQuery, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
+import { parseNaturalQuery, ORIGINS, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
 
 const SORTS = [
   { value: 'date', label: 'Date' },
@@ -62,6 +62,7 @@ export default function Browse() {
   const codec = params.get('codec') ?? parsed.codec ?? '';
   const audio = params.get('audio') ?? parsed.audio ?? '';
   const containerFormat = params.get('containerFormat') ?? parsed.containerFormat ?? '';
+  const origin = params.get('origin') ?? '';
   const hdr = params.get('hdr') === 'true' || (!!parsed.hdr && params.get('hdr') !== 'false');
   const minSizeGo = params.get('minSize') ?? '';
   const maxSizeGo = params.get('maxSize') ?? '';
@@ -100,7 +101,7 @@ export default function Browse() {
         search: parsed.name, categoryId, uploaderId, page, pageSize: 25, sort, order,
         year: year || undefined, resolution: resolution || undefined, language: language || undefined,
         source: source || undefined, codec: codec || undefined, audio: audio || undefined,
-        containerFormat: containerFormat || undefined, hdr: hdr || undefined,
+        containerFormat: containerFormat || undefined, origin: origin || undefined, hdr: hdr || undefined,
         minSize: minSizeGo ? Number(minSizeGo) * 1e9 : undefined,
         maxSize: maxSizeGo ? Number(maxSizeGo) * 1e9 : undefined,
         minSeeders: minSeeders || undefined,
@@ -110,7 +111,7 @@ export default function Browse() {
       setItems(r.data.items);
       setTotal(r.data.total);
     });
-  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, hdr, minSizeGo, maxSizeGo, minSeeders, state]);
+  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, hdr, minSizeGo, maxSizeGo, minSeeders, state]);
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
@@ -187,6 +188,7 @@ export default function Browse() {
     codec && { key: 'codec', label: codec },
     audio && { key: 'audio', label: audio },
     containerFormat && { key: 'containerFormat', label: containerFormat },
+    origin && { key: 'origin', label: `Origine : ${origin}` },
     hdr && { key: 'hdr', label: 'HDR' },
     minSizeGo && { key: 'minSize', label: `≥ ${minSizeGo} Go` },
     maxSizeGo && { key: 'maxSize', label: `≤ ${maxSizeGo} Go` },
@@ -274,6 +276,31 @@ export default function Browse() {
         </nav>
       )}
 
+      <div className="facet-rows">
+        <div className="facet-row">
+          <span className="facet-label">Qualité</span>
+          <button type="button" className={!resolution ? 'on' : ''} onClick={() => updateParam('resolution', '')}>Toutes</button>
+          {[['4K/2160p', '4K UHD'], ['1080p', '1080p'], ['720p', '720p'], ['480p', 'SD']].map(([value, label]) => (
+            <button key={value} type="button" className={resolution === value ? 'on' : ''} onClick={() => updateParam('resolution', resolution === value ? '' : value)}>{label}</button>
+          ))}
+          <button type="button" className={hdr ? 'on' : ''} onClick={() => updateParam('hdr', hdr ? 'false' : 'true')}>HDR</button>
+        </div>
+        <div className="facet-row">
+          <span className="facet-label">Origine</span>
+          <button type="button" className={!origin ? 'on' : ''} onClick={() => updateParam('origin', '')}>Toutes</button>
+          {ORIGINS.map((o) => (
+            <button key={o} type="button" className={origin === o ? 'on' : ''} onClick={() => updateParam('origin', origin === o ? '' : o)}>{o}</button>
+          ))}
+        </div>
+        <div className="facet-row">
+          <span className="facet-label">Langue</span>
+          <button type="button" className={!language ? 'on' : ''} onClick={() => updateParam('language', '')}>Toutes</button>
+          {['VFQ', 'VFF', 'VOSTFR', 'VO', 'MULTI'].map((l) => (
+            <button key={l} type="button" className={language === l ? 'on' : ''} onClick={() => updateParam('language', language === l ? '' : l)}>{l}</button>
+          ))}
+        </div>
+      </div>
+
       {uploaderId && (
         <button className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => updateParam('uploaderId', '')}>
           ← Voir tous les torrents
@@ -337,6 +364,12 @@ export default function Browse() {
               <select value={containerFormat} onChange={(e) => updateParam('containerFormat', e.target.value)} style={full}>
                 <option value="">Tous</option>
                 {CONTAINERS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            ))}
+            {field('Origine', (
+              <select value={origin} onChange={(e) => updateParam('origin', e.target.value)} style={full}>
+                <option value="">Toutes</option>
+                {ORIGINS.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             ))}
             {field('Taille min (Go)', <input type="number" value={minSizeGo} onChange={(e) => updateParam('minSize', e.target.value)} style={full} />)}
@@ -450,7 +483,7 @@ export default function Browse() {
                         {t.status === 'DEAD' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>☠️ Mort</span>}
                         {(t.year || t.language || t.source) && (
                           <div className="muted" style={{ fontSize: 11 }}>
-                            {[t.year, t.language, t.source, t.codec].filter(Boolean).join(' · ')}
+                            {[t.year, t.origin, t.language, t.source, t.codec].filter(Boolean).join(' · ')}
                           </div>
                         )}
                       </span>

@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import DescriptionGenerator from '../components/DescriptionGenerator';
 import WysiwygEditor from '../components/WysiwygEditor';
-import { RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName, cleanTitleForSearch } from '../lib/searchParser';
+import { ORIGINS, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName, cleanTitleForSearch } from '../lib/searchParser';
 import { parseTorrentInfo } from '../lib/bencode';
 import { summarizeTorrent } from '../lib/torrentSummary';
 import { resolveContentKind } from '../lib/categoryKind';
@@ -25,6 +25,7 @@ export default function Upload() {
   const [showMeta, setShowMeta] = useState(false);
   const [year, setYear] = useState('');
   const [language, setLanguage] = useState('');
+  const [origin, setOrigin] = useState('');
   const [resolution, setResolution] = useState('');
   const [codec, setCodec] = useState('');
   const [hdr, setHdr] = useState(false);
@@ -153,6 +154,7 @@ export default function Upload() {
     if (meta) { form.append('metaKind', meta.kind); form.append('metaId', meta.id); }
     if (year) form.append('year', year);
     if (language) form.append('language', language);
+    if (origin) form.append('origin', origin);
     if (resolution) form.append('resolution', resolution);
     if (codec) form.append('codec', codec);
     form.append('hdr', String(hdr));
@@ -277,6 +279,10 @@ export default function Upload() {
               <select value={language} onChange={(e) => setLanguage(e.target.value)}>
                 <option value="">Langue</option>
                 {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <select value={origin} onChange={(e) => setOrigin(e.target.value)} title="Pays ou région de production du contenu">
+                <option value="">Origine</option>
+                {ORIGINS.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
               <select value={resolution} onChange={(e) => setResolution(e.target.value)}>
                 <option value="">Résolution</option>

@@ -17,6 +17,13 @@ export class CategoriesController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Post('simplify-legacy')
+  simplifyLegacy() {
+    return this.categoriesService.simplifyLegacy();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Post('install-recommended')
   installRecommended() {
     return this.categoriesService.installRecommended();
