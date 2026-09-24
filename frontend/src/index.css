@@ -988,18 +988,23 @@ th.sorted .sort-arrow { opacity: 1; }
   /* Couleur d'accent (choisie dans le selecteur de theme) : violet/rose par defaut */
   --acc1: #8b5cf6; --acc2: #ec4899; --acc-rgb: 139, 92, 246; --acc2-rgb: 236, 72, 153;
   --acc-light: #c4b5fd; --acc-link: #b9a4ff; --acc-link-hover: #e0d4ff; --on-acc: #ffffff;
+  /* Nappes du fond aurore (RVB) : indigo en haut a droite, bleu marine en haut a gauche, cuivre en bas a gauche */
+  --aurora-a: 92, 68, 170; --aurora-b: 196, 92, 46; --aurora-c: 22, 62, 112; --aurora-d: 70, 28, 78;
   color-scheme: dark;
 }
-:root[data-theme="prestige"][data-accent="bleu"] { --acc1: #3b82f6; --acc2: #06b6d4; --acc-rgb: 59, 130, 246; --acc2-rgb: 6, 182, 212; --acc-light: #bfdbfe; --acc-link: #93c5fd; --acc-link-hover: #dbeafe; }
-:root[data-theme="prestige"][data-accent="rouge"] { --acc1: #ef4444; --acc2: #f97316; --acc-rgb: 239, 68, 68; --acc2-rgb: 249, 115, 22; --acc-light: #fecaca; --acc-link: #fca5a5; --acc-link-hover: #fee2e2; }
-:root[data-theme="prestige"][data-accent="vert"] { --acc1: #10b981; --acc2: #84cc16; --acc-rgb: 16, 185, 129; --acc2-rgb: 132, 204, 22; --acc-light: #a7f3d0; --acc-link: #6ee7b7; --acc-link-hover: #d1fae5; }
-:root[data-theme="prestige"][data-accent="or"] { --acc1: #f0c45c; --acc2: #f59e0b; --acc-rgb: 240, 196, 92; --acc2-rgb: 245, 158, 11; --acc-light: #ffe7a3; --acc-link: #ffd982; --acc-link-hover: #fff1c9; --on-acc: #1a1204; }
+:root[data-theme="prestige"][data-accent="bleu"] { --aurora-a: 36, 92, 205; --aurora-b: 12, 140, 160; --aurora-c: 20, 40, 120; --aurora-d: 20, 70, 110; --acc1: #3b82f6; --acc2: #06b6d4; --acc-rgb: 59, 130, 246; --acc2-rgb: 6, 182, 212; --acc-light: #bfdbfe; --acc-link: #93c5fd; --acc-link-hover: #dbeafe; }
+:root[data-theme="prestige"][data-accent="rouge"] { --aurora-a: 150, 40, 64; --aurora-b: 232, 112, 30; --aurora-c: 90, 24, 50; --aurora-d: 80, 20, 40; --acc1: #ef4444; --acc2: #f97316; --acc-rgb: 239, 68, 68; --acc2-rgb: 249, 115, 22; --acc-light: #fecaca; --acc-link: #fca5a5; --acc-link-hover: #fee2e2; }
+:root[data-theme="prestige"][data-accent="vert"] { --aurora-a: 20, 120, 92; --aurora-b: 140, 172, 40; --aurora-c: 14, 70, 80; --aurora-d: 24, 80, 50; --acc1: #10b981; --acc2: #84cc16; --acc-rgb: 16, 185, 129; --acc2-rgb: 132, 204, 22; --acc-light: #a7f3d0; --acc-link: #6ee7b7; --acc-link-hover: #d1fae5; }
+:root[data-theme="prestige"][data-accent="or"] { --aurora-a: 120, 90, 34; --aurora-b: 204, 104, 30; --aurora-c: 60, 50, 90; --aurora-d: 90, 40, 30; --acc1: #f0c45c; --acc2: #f59e0b; --acc-rgb: 240, 196, 92; --acc2-rgb: 245, 158, 11; --acc-light: #ffe7a3; --acc-link: #ffd982; --acc-link-hover: #fff1c9; --on-acc: #1a1204; }
 :root[data-theme="prestige"] body {
+  /* Fond « aurore » facon plateforme de streaming : nappes de couleur diffuses sur noir, avec vignettage sur les bords. */
   background:
-    radial-gradient(900px 520px at 6% -6%, rgba(var(--acc-rgb), 0.10), transparent 60%),
-    radial-gradient(820px 620px at 100% 8%, rgba(var(--acc2-rgb), 0.17), transparent 55%),
-    radial-gradient(720px 520px at 50% 115%, rgba(56, 189, 248, 0.08), transparent 60%),
-    var(--bg);
+    radial-gradient(ellipse at 50% 48%, transparent 52%, rgba(0, 0, 0, 0.62) 100%),
+    radial-gradient(58% 52% at 72% 24%, rgba(var(--aurora-a), 0.56), transparent 72%),
+    radial-gradient(50% 45% at 30% 14%, rgba(var(--aurora-c), 0.46), transparent 72%),
+    radial-gradient(62% 52% at 26% 80%, rgba(var(--aurora-b), 0.60), transparent 74%),
+    radial-gradient(46% 42% at 86% 88%, rgba(var(--aurora-d), 0.40), transparent 72%),
+    #05060f;
   background-attachment: fixed;
 }
 :root[data-theme="prestige"] ::selection { background: rgba(var(--acc-rgb), 0.35); color: #fff; }
