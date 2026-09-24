@@ -37,6 +37,8 @@ interface RichMetadata {
   backdropUrl: string | null;
   /** Titres dans plusieurs langues / régions, un par ligne (recherche). */
   searchTitles?: string;
+  /** Vrai si le synopsis affiché est bien en français (traduit, ou déjà français). */
+  overviewOk?: boolean;
 }
 
 const TMDB_IMG = 'https://image.tmdb.org/t/p';
@@ -241,12 +243,62 @@ export class MetadataService {
   /** Fiche complète, avec le synopsis traduit en français s'il ne l'est pas déjà. */
   private async rich(kind: string, id: string): Promise<RichMetadata> {
     const rich = await this.richRaw(kind, id);
+    let ok = true;
+
+    // Synopsis de la présentation générée.
     const description = rich.variables?.description;
     if (typeof description === 'string' && description) {
-      const translated = await this.translate.toFrench(description);
-      if (translated) rich.variables.description = translated.text;
+      const d = await this.toFrenchSafe(description);
+      rich.variables.description = d.text;
+      ok = ok && d.ok;
     }
+    // Synopsis et slogan affichés dans l'entête de la fiche (souvent le même texte : la traduction est mise en cache).
+    if (typeof rich.info?.overview === 'string' && rich.info.overview) {
+      const o = await this.toFrenchSafe(rich.info.overview);
+      rich.info.overview = o.text;
+      ok = ok && o.ok;
+    }
+    if (typeof rich.info?.tagline === 'string' && rich.info.tagline) {
+      rich.info.tagline = (await this.toFrenchSafe(rich.info.tagline)).text;
+    }
+    rich.overviewOk = ok;
     return rich;
+  }
+
+  /** Traduit en français un texte qui ne l'est pas ; `ok` est faux si la traduction a échoué (on réessaiera plus tard). */
+  private async toFrenchSafe(text: string): Promise<{ text: string; ok: boolean }> {
+    if (!text || text.trim().length < 40) return { text, ok: true };
+    if (this.translate.detect(text) === 'fr') return { text, ok: true };
+    const translated = await this.translate.toFrench(text);
+    return translated ? { text: translated.text, ok: true } : { text, ok: false };
+  }
+
+  /**
+   * Torrents envoyés avant la traduction du synopsis : on les traduit petit à petit (quelques-uns toutes
+   * les 10 minutes, pour rester dans les limites du service de traduction gratuit).
+   */
+  @Cron('*/10 * * * *')
+  async backfillOverviews() {
+    const torrents = await this.prisma.torrent.findMany({
+      where: { metaSource: { not: null }, overviewTranslatedAt: null },
+      select: { id: true, metadata: true },
+      take: 5,
+    });
+    for (const t of torrents) {
+      const info = ((t.metadata as any) ?? {}) as Record<string, any>;
+      try {
+        let ok = true;
+        if (typeof info.overview === 'string' && info.overview) {
+          const o = await this.toFrenchSafe(info.overview);
+          info.overview = o.text;
+          ok = o.ok;
+        }
+        if (typeof info.tagline === 'string' && info.tagline) info.tagline = (await this.toFrenchSafe(info.tagline)).text;
+        if (ok) await this.prisma.torrent.update({ where: { id: t.id }, data: { metadata: info as any, overviewTranslatedAt: new Date() } });
+      } catch (err: any) {
+        this.logger.warn(`Traduction du synopsis : ${err?.message ?? err}`);
+      }
+    }
   }
 
   private richRaw(kind: string, id: string): Promise<RichMetadata> {
@@ -655,7 +707,11 @@ export class MetadataService {
 
     await this.prisma.torrent.update({
       where: { id: torrentId },
-      data: { metaSource: rich.source, metaExternalId: id, metadata: rich.info as any, ...(rich.searchTitles !== undefined ? { searchTitles: rich.searchTitles } : {}) },
+      data: {
+        metaSource: rich.source, metaExternalId: id, metadata: rich.info as any,
+        overviewTranslatedAt: rich.overviewOk ? new Date() : null,
+        ...(rich.searchTitles !== undefined ? { searchTitles: rich.searchTitles } : {}),
+      },
     });
 
     const pendingImages: { entityId: string; url: string }[] = [];

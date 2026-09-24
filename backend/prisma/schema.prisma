@@ -183,6 +183,8 @@ model Torrent {
   reseedRequestedAt DateTime?
   // Titres du film / de la série dans plusieurs langues et régions (une ligne par titre), pour retrouver un torrent quel que soit le titre cherché.
   searchTitles   String?       @db.Text
+  // Date à laquelle le synopsis et le slogan affichés sur la fiche ont été traduits en français (vide = pas encore fait).
+  overviewTranslatedAt DateTime?
   snatches       Snatch[]
   requestFilled  TorrentRequest?
   collectionItems CollectionItem[]
