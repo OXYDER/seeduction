@@ -74,7 +74,12 @@ export default function Browse() {
   const currentUserId = authUser?.id;
   const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(authUser?.role ?? '');
   const [view, setViewState] = useState<'list' | 'grid'>(() => {
-    try { return localStorage.getItem('browseView') === 'grid' ? 'grid' : 'list'; } catch { return 'list'; }
+    // Thème Prestige : la grille d'affiches est la vue par défaut (façon plateforme de streaming), sauf choix contraire mémorisé.
+    try {
+      const saved = localStorage.getItem('browseView');
+      if (saved === 'grid' || saved === 'list') return saved;
+    } catch { /* stockage indisponible */ }
+    return document.documentElement.getAttribute('data-theme') === 'prestige' ? 'grid' : 'list';
   });
   function setView(v: 'list' | 'grid') {
     setViewState(v);
