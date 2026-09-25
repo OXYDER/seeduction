@@ -152,13 +152,18 @@ async function startPlayback(torrentBuffer, fileIndex) {
   for (const f of torrent.files) if (f !== file) f.deselect();
   file.select();
 
-  // Repère utile pour le débogage : pairs trouvés, vitesse, progression de CE fichier (pas du torrent entier).
+  // Pairs, vitesse (envoi + réception) et progression de CE fichier (pas du torrent entier) : visibles en survolant
+  // l'icône dans la barre des tâches, et dans son menu — pas seulement en mode développement.
   if (progressTimer) clearInterval(progressTimer);
   progressTimer = setInterval(() => {
     if (!activeTorrent) return;
-    const kbps = (activeTorrent.downloadSpeed / 1024).toFixed(1);
+    const downKbps = (activeTorrent.downloadSpeed / 1024).toFixed(1);
+    const upKbps = (activeTorrent.uploadSpeed / 1024).toFixed(1);
     const pct = (file.progress * 100).toFixed(1);
-    log(`Pairs : ${activeTorrent.numPeers} — ${kbps} Ko/s — ${pct}% du fichier téléchargé`);
+    const summary = `${file.name}\n${pct}% — ${activeTorrent.numPeers} pair(s) — ↓ ${downKbps} Ko/s · ↑ ${upKbps} Ko/s`;
+    log(summary.replace(/\n/g, ' — '));
+    if (tray) tray.setToolTip(`Lecteur Seeduction\n${summary}`);
+    refreshTrayMenu(`Lecture : ${pct}% — ${activeTorrent.numPeers} pair(s) — ↓${downKbps} ↑${upKbps} Ko/s`);
   }, 3000);
 
   const server = http.createServer((req, res) => {
@@ -199,6 +204,7 @@ function stopCurrent() {
   if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
   if (activeServer) { try { activeServer.close(); } catch { /* déjà fermé */ } activeServer = null; }
   if (activeTorrent) { try { activeTorrent.destroy({ destroyStore: true }); } catch { /* déjà détruit */ } activeTorrent = null; }
+  if (tray) tray.setToolTip('Lecteur Seeduction');
   refreshTrayMenu('En veille — ouvre un lien « Visualiser en ligne » depuis Seeduction');
 }
 
