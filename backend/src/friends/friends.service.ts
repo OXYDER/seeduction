@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PresenceService } from '../dm/presence.service';
+import { PresenceService } from '../presence/presence.service';
 import { DmGateway } from '../dm/dm.gateway';
 
 const userSelect = { id: true, username: true, avatarUrl: true };
@@ -28,7 +28,7 @@ export class FriendsService {
     for (const f of rows) {
       const isRequester = f.requesterId === userId;
       const other = isRequester ? f.addressee : f.requester;
-      if (f.status === 'ACCEPTED') friends.push({ friendshipId: f.id, ...other, online: this.presence.isOnline(other.id) });
+      if (f.status === 'ACCEPTED') friends.push({ friendshipId: f.id, ...other, status: this.presence.publicStatus(other.id) });
       else if (isRequester) outgoing.push({ friendshipId: f.id, ...other });
       else incoming.push({ friendshipId: f.id, ...other });
     }

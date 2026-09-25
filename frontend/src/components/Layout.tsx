@@ -10,7 +10,9 @@ import SearchBox from './SearchBox';
 import FreeleechBanner from './FreeleechBanner';
 import Avatar from './Avatar';
 import ChatDock from './ChatDock';
+import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
+import { usePublicChatStore } from '../store/publicChat';
 import { useTheme } from '../lib/theme';
 
 export interface Profile {
@@ -23,6 +25,7 @@ export interface Profile {
   ratio: number | null;
   createdAt: string;
   avatarUrl?: string | null;
+  presenceStatus?: 'ONLINE' | 'AWAY' | 'BUSY' | 'INVISIBLE';
   _count: { torrentsUploaded: number; invitees: number };
 }
 
@@ -108,6 +111,8 @@ export default function Layout() {
   const dmDisconnect = useDmStore((s) => s.disconnect);
   const dmTotalUnread = useDmStore((s) => s.totalUnread);
   const dmBump = useDmStore((s) => s.friendRequestBump);
+  const chatConnect = usePublicChatStore((s) => s.connect);
+  const chatDisconnect = usePublicChatStore((s) => s.disconnect);
 
   // Compteur de messages non lus (thème Prestige) : rafraîchi à chaque changement de page.
   useEffect(() => {
@@ -116,10 +121,12 @@ export default function Layout() {
     api.get('/messages/unread-count').then((r) => setUnreadMessages(Number(r.data) || 0)).catch(() => {});
   }, [location.pathname, accessToken]);
 
-  // Chat privé (amis) : connecté tant qu'on est authentifié, indépendamment de la page affichée.
+  // Chat privé (amis) et chat public : connectés tant qu'on est authentifié, indépendamment de la page affichée
+  // (façon Messenger — accessibles partout via les bulles, pas seulement sur leurs pages dédiées).
   useEffect(() => {
-    if (accessToken) dmConnect(accessToken); else dmDisconnect();
-    return () => { if (!accessToken) dmDisconnect(); };
+    if (accessToken && user) { dmConnect(accessToken); chatConnect(accessToken, user.id); }
+    else { dmDisconnect(); chatDisconnect(); }
+    return () => { if (!accessToken) { dmDisconnect(); chatDisconnect(); } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
@@ -185,7 +192,10 @@ export default function Layout() {
 
           <div className="side-user">
             <Link to="/profile" className="side-user-card">
-              <Avatar user={{ username: user?.username, avatarUrl: profile?.avatarUrl }} size={38} />
+              <span style={{ position: 'relative', display: 'inline-block', width: 38, height: 38, flexShrink: 0 }}>
+                <Avatar user={{ username: user?.username, avatarUrl: profile?.avatarUrl }} size={38} />
+                <StatusSwitcher value={profile?.presenceStatus} />
+              </span>
               <div style={{ minWidth: 0 }}>
                 <div className="side-user-name">{user?.username}</div>
                 <div className="side-user-sub">Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</div>

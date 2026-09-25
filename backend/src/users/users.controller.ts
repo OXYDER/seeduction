@@ -20,6 +20,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/presence')
+  setPresence(@Body('status') status: string, @Request() req: any) {
+    return this.usersService.setPresenceStatus(req.user.userId, status);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('me/adult')
   setAdult(@Body() body: { enabled: boolean; confirmAge?: boolean }, @Request() req: any) {
     return this.usersService.setAdultPreference(req.user.userId, !!body?.enabled, !!body?.confirmAge);

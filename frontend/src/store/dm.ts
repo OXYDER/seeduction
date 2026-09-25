@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api/client';
+import { PublicStatus } from '../lib/presence';
 
 export interface DmUser { id: string; username: string; avatarUrl?: string | null }
 export interface DmMessage { id: string; content: string; createdAt: string; fromMe: boolean; sender?: DmUser; pending?: boolean }
@@ -9,7 +10,7 @@ export interface ChatWindow { friend: DmUser; minimized: boolean }
 interface DmState {
   socket: Socket | null;
   connected: boolean;
-  onlineIds: Set<string>;
+  statusById: Record<string, PublicStatus>;
   windows: ChatWindow[];
   messages: Record<string, DmMessage[]>;
   unread: Record<string, number>;
@@ -34,7 +35,7 @@ const MAX_WINDOWS = 3;
 export const useDmStore = create<DmState>((set, get) => ({
   socket: null,
   connected: false,
-  onlineIds: new Set(),
+  statusById: {},
   windows: [],
   messages: {},
   unread: {},
@@ -49,12 +50,14 @@ export const useDmStore = create<DmState>((set, get) => ({
     socket.on('connect', () => set({ connected: true }));
     socket.on('disconnect', () => set({ connected: false }));
 
-    socket.on('dm:online-friends', (ids: string[]) => set({ onlineIds: new Set(ids) }));
-    socket.on('dm:presence', ({ userId, online }: { userId: string; online: boolean }) => {
+    socket.on('dm:online-friends', (list: { userId: string; status: PublicStatus }[]) => {
+      set({ statusById: Object.fromEntries(list.map((f) => [f.userId, f.status])) });
+    });
+    socket.on('dm:presence', ({ userId, status }: { userId: string; status: PublicStatus }) => {
       set((s) => {
-        const next = new Set(s.onlineIds);
-        if (online) next.add(userId); else next.delete(userId);
-        return { onlineIds: next };
+        const next = { ...s.statusById };
+        if (status === 'OFFLINE') delete next[userId]; else next[userId] = status;
+        return { statusById: next };
       });
     });
 
@@ -95,7 +98,7 @@ export const useDmStore = create<DmState>((set, get) => ({
 
   disconnect() {
     get().socket?.disconnect();
-    set({ socket: null, connected: false, onlineIds: new Set(), windows: [], messages: {}, unread: {}, totalUnread: 0 });
+    set({ socket: null, connected: false, statusById: {}, windows: [], messages: {}, unread: {}, totalUnread: 0 });
   },
 
   openChat(friend) {

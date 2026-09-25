@@ -10,6 +10,7 @@ import ProfileEditor from '../components/ProfileEditor';
 import AdultPreference from '../components/AdultPreference';
 import Avatar from '../components/Avatar';
 import { displayRank } from '../lib/memberClass';
+import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
 
 export default function Profile() {
   const { id } = useParams();
@@ -75,8 +76,17 @@ export default function Profile() {
   return (
     <div className="grid">
       <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
-        <Avatar user={profile} size={56} />
+        <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+          <Avatar user={profile} size={56} />
+          {profile.onlineStatus && (
+            <span
+              title={STATUS_LABEL[profile.onlineStatus as keyof typeof STATUS_LABEL]}
+              style={{ position: 'absolute', right: 0, bottom: 0, width: 15, height: 15, borderRadius: '50%', border: '3px solid var(--bg-panel)', background: STATUS_COLOR[profile.onlineStatus as keyof typeof STATUS_COLOR] }}
+            />
+          )}
+        </span>
         <h1 style={{ margin: 0 }}>{profile.username}</h1>
+        {profile.onlineStatus && <span className="muted" style={{ fontSize: 13 }}>{STATUS_LABEL[profile.onlineStatus as keyof typeof STATUS_LABEL]}</span>}
         {profile.role && <span className="badge double">{displayRank(profile, ROLE_LABEL)}</span>}
         {profile.status === 'BANNED' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>Banni</span>}
         <span className="muted">

@@ -41,13 +41,14 @@ services:
     volumes:
       - torrent_storage:/data/torrents:ro
       - cover_storage:/data/covers:ro
+      - chat_file_storage:/data/chat-files:ro
       - ./backups/files:/backups
     command:
       - sh
       - -c
       - |
         while true; do
-          tar czf /backups/files-$$(date +%F).tar.gz -C /data torrents covers
+          tar czf /backups/files-$$(date +%F).tar.gz -C /data torrents covers chat-files
           find /backups -name 'files-*.tar.gz' -mtime +14 -delete
           sleep 86400
         done
@@ -68,6 +69,7 @@ services:
     volumes:
       - torrent_storage:/app/storage/torrents
       - cover_storage:/app/storage/covers
+      - chat_file_storage:/app/storage/chat-files
     networks:
       - tracker_net
     # Pas de port exposé publiquement ici — passe par Nginx Proxy Manager
@@ -96,3 +98,4 @@ volumes:
   pg_data:
   torrent_storage:
   cover_storage:
+  chat_file_storage:

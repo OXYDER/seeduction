@@ -1,24 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useDmStore, DmUser } from '../store/dm';
+import { usePublicChatStore } from '../store/publicChat';
+import PublicChatPanel from './PublicChatPanel';
 import Avatar from './Avatar';
+import { STATUS_COLOR, PublicStatus } from '../lib/presence';
 import { timeAgo } from '../lib/time';
 
 const TYPING_TTL_MS = 4000;
 
-function OnlineDot({ online }: { online: boolean }) {
-  return <span style={{ width: 9, height: 9, borderRadius: '50%', background: online ? 'var(--success)' : '#6b7280', border: '2px solid var(--bg-panel)', position: 'absolute', right: -1, bottom: -1 }} />;
+function StatusDot({ status }: { status: PublicStatus | undefined }) {
+  return <span style={{ width: 9, height: 9, borderRadius: '50%', background: STATUS_COLOR[status ?? 'OFFLINE'], border: '2px solid var(--bg-panel)', position: 'absolute', right: -1, bottom: -1 }} />;
 }
 
 function ChatWindow({ friend, onClose, onMinimize }: { friend: DmUser; onClose: () => void; onMinimize: () => void }) {
   const messages = useDmStore((s) => s.messages[friend.id] ?? []);
-  const onlineIds = useDmStore((s) => s.onlineIds);
+  const status = useDmStore((s) => s.statusById[friend.id]);
   const typingFrom = useDmStore((s) => s.typingFrom[friend.id]);
   const send = useDmStore((s) => s.send);
   const typing = useDmStore((s) => s.typing);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  const typingTimer = useRef<number | undefined>(undefined);
   const lastTypingSent = useRef(0);
 
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [messages.length]);
@@ -52,11 +55,11 @@ function ChatWindow({ friend, onClose, onMinimize }: { friend: DmUser; onClose: 
         <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
           <span style={{ position: 'relative', display: 'inline-flex' }}>
             <Avatar user={friend} size={28} />
-            <OnlineDot online={onlineIds.has(friend.id)} />
+            <StatusDot status={status} />
           </span>
           <div style={{ minWidth: 0 }}>
             <strong style={{ fontSize: 13, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{friend.username}</strong>
-            <span className="muted" style={{ fontSize: 11 }}>{onlineIds.has(friend.id) ? 'Actif maintenant' : ''}</span>
+            <span className="muted" style={{ fontSize: 11 }}>{status === 'ONLINE' ? 'Actif maintenant' : status === 'AWAY' ? 'Absent' : status === 'BUSY' ? 'Occupé' : ''}</span>
           </div>
         </div>
         <div className="row" style={{ gap: 2 }}>
@@ -91,23 +94,56 @@ function ChatWindow({ friend, onClose, onMinimize }: { friend: DmUser; onClose: 
   );
 }
 
-/** Bulles de discussion façon Messenger, ancrées en bas à droite ; persistent au fil de la navigation (montées dans Layout). */
+function PublicChatBubble() {
+  const minimized = usePublicChatStore((s) => s.minimized);
+  const unread = usePublicChatStore((s) => s.unread);
+  const setMinimized = usePublicChatStore((s) => s.setMinimized);
+  const connected = usePublicChatStore((s) => s.connected);
+  // Sur la page /chat, le panneau est déjà affiché en pleine page : la bulle flottante resterait redondante.
+  const onChatPage = useLocation().pathname.startsWith('/chat');
+
+  if (!connected || onChatPage) return null;
+
+  if (minimized) {
+    return (
+      <button type="button" className="dm-bubble-avatar" title="Chat public" onClick={() => setMinimized(false)}>
+        <span style={{ fontSize: 22 }}>🗨️</span>
+        {unread > 0 && <span className="dot-badge" style={{ top: -4, right: -4 }}>{unread > 99 ? '99+' : unread}</span>}
+      </button>
+    );
+  }
+  return (
+    <div className="public-chat-window">
+      <div className="dm-window-head" onClick={() => setMinimized(true)}>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 18 }}>🗨️</span>
+          <strong style={{ fontSize: 13 }}>Chat public</strong>
+        </div>
+        <div className="row" style={{ gap: 2 }}>
+          <button type="button" className="dm-icon-btn" title="Réduire" onClick={(e) => { e.stopPropagation(); setMinimized(true); }}>—</button>
+        </div>
+      </div>
+      <PublicChatPanel compact />
+    </div>
+  );
+}
+
+/** Bulles de discussion façon Messenger (chat public + conversations privées), ancrées en bas à droite ; persistent au fil de la navigation (montées dans Layout). */
 export default function ChatDock() {
   const windows = useDmStore((s) => s.windows);
-  const onlineIds = useDmStore((s) => s.onlineIds);
+  const statusById = useDmStore((s) => s.statusById);
   const unread = useDmStore((s) => s.unread);
   const closeChat = useDmStore((s) => s.closeChat);
   const toggleMinimize = useDmStore((s) => s.toggleMinimize);
 
-  if (windows.length === 0) return null;
-
   return (
     <div className="dm-dock">
+      <PublicChatBubble />
       {windows.map((w) =>
         w.minimized ? (
           <button key={w.friend.id} type="button" className="dm-bubble-avatar" title={w.friend.username} onClick={() => toggleMinimize(w.friend.id)}>
             <Avatar user={w.friend} size={48} />
-            <OnlineDot online={onlineIds.has(w.friend.id)} />
+            <StatusDot status={statusById[w.friend.id]} />
             {!!unread[w.friend.id] && <span className="dot-badge" style={{ top: -4, right: -4 }}>{unread[w.friend.id]}</span>}
           </button>
         ) : (

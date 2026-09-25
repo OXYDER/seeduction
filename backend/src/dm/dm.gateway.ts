@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect,
   SubscribeMessage, WebSocketGateway, WebSocketServer,
@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../common/prisma.service';
 import { DmService } from './dm.service';
-import { PresenceService } from './presence.service';
+import { PresenceService } from '../presence/presence.service';
 
 interface DmSocket extends Socket {
   data: { userId: string; username: string };
@@ -24,7 +24,7 @@ function room(userId: string) {
   namespace: '/dm',
   cors: { origin: process.env.CORS_ORIGIN?.split(',') ?? '*' },
 })
-export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(DmGateway.name);
   private lastMessageAt = new Map<string, number>();
@@ -35,6 +35,17 @@ export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private dmService: DmService,
     private presence: PresenceService,
   ) {}
+
+  /** Relaie les changements de présence (connexion/déconnexion/statut) aux amis du membre concerné, sans coupler les gateways entre elles. */
+  onModuleInit() {
+    this.presence.on('presence-changed', async ({ userId, online }: { userId: string; online: boolean }) => {
+      const status = online ? this.presence.publicStatus(userId) : 'OFFLINE';
+      for (const id of await this.friendIdsOf(userId)) this.server.to(room(id)).emit('dm:presence', { userId, status });
+    });
+    this.presence.on('status-changed', async ({ userId, status }: { userId: string; status: string }) => {
+      for (const id of await this.friendIdsOf(userId)) this.server.to(room(id)).emit('dm:presence', { userId, status });
+    });
+  }
 
   private async friendIdsOf(userId: string) {
     const rows = await this.prisma.friendship.findMany({
@@ -51,25 +62,18 @@ export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'change-me-in-.env' });
       client.data = { userId: payload.sub, username: payload.username };
       client.join(room(client.data.userId));
-      const justOnline = this.presence.add(client.data.userId, client.id);
+      await this.presence.connect(client.data.userId, client.id, client.data.username);
 
       const friendIds = await this.friendIdsOf(client.data.userId);
-      client.emit('dm:online-friends', this.presence.onlineAmong(friendIds));
-      if (justOnline) {
-        for (const id of friendIds) this.server.to(room(id)).emit('dm:presence', { userId: client.data.userId, online: true });
-      }
+      client.emit('dm:online-friends', friendIds.map((id) => ({ userId: id, status: this.presence.publicStatus(id) })).filter((f) => f.status !== 'OFFLINE'));
     } catch {
       client.disconnect();
     }
   }
 
-  async handleDisconnect(client: DmSocket) {
+  handleDisconnect(client: DmSocket) {
     if (!client.data?.userId) return;
-    const wentOffline = this.presence.remove(client.data.userId, client.id);
-    if (wentOffline) {
-      const friendIds = await this.friendIdsOf(client.data.userId);
-      for (const id of friendIds) this.server.to(room(id)).emit('dm:presence', { userId: client.data.userId, online: false });
-    }
+    this.presence.disconnect(client.data.userId, client.id);
   }
 
   @SubscribeMessage('dm:send')

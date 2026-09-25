@@ -5,7 +5,7 @@ Deux conteneurs tournent en permanence (voir `docker-compose.yml`) :
 | Conteneur | Ce qu'il sauvegarde | Où | Rétention |
 |---|---|---|---|
 | `db-backup` | base PostgreSQL (membres, torrents, forum...) | `./backups/db/` | 7 jours, 4 semaines, 6 mois |
-| `files-backup` | fichiers `.torrent` et pochettes | `./backups/files/` | 14 jours |
+| `files-backup` | fichiers `.torrent`, pochettes et pièces jointes du chat | `./backups/files/` | 14 jours |
 
 `./backups/` est ignoré par git : `deploy.sh` n'y touche jamais.
 
@@ -35,6 +35,6 @@ docker compose start backend frontend
 
 ```bash
 docker run --rm -v seeduction_torrent_storage:/data/torrents -v seeduction_cover_storage:/data/covers \
-  -v "$PWD/backups/files:/backups" alpine tar xzf /backups/files-AAAA-MM-JJ.tar.gz -C /data
+  -v seeduction_chat_file_storage:/data/chat-files -v "$PWD/backups/files:/backups" alpine tar xzf /backups/files-AAAA-MM-JJ.tar.gz -C /data
 ```
 (le préfixe `seeduction_` des volumes dépend du nom du dossier du projet : vérifie avec `docker volume ls`.)

@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import Avatar from '../components/Avatar';
 import { Link } from 'react-router-dom';
 import { useDmStore } from '../store/dm';
+import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
 
 type Tab = 'friends' | 'incoming' | 'outgoing';
 
@@ -13,7 +14,7 @@ export default function Friends() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const openChat = useDmStore((s) => s.openChat);
-  const onlineIds = useDmStore((s) => s.onlineIds);
+  const statusById = useDmStore((s) => s.statusById);
   const bump = useDmStore((s) => s.friendRequestBump);
 
   function refresh() {
@@ -75,24 +76,27 @@ export default function Friends() {
 
         {tab === 'friends' && (
           <div className="grid" style={{ gap: 8 }}>
-            {data.friends.map((f) => (
-              <div key={f.friendshipId} className="row" style={{ justifyContent: 'space-between', padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
-                <Link to={`/users/${f.id}`} className="row" style={{ gap: 10, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}>
-                  <span style={{ position: 'relative', display: 'inline-flex' }}>
-                    <Avatar user={f} size={40} />
-                    <span style={{ position: 'absolute', right: -1, bottom: -1, width: 10, height: 10, borderRadius: '50%', border: '2px solid var(--bg-panel)', background: onlineIds.has(f.id) ? 'var(--success)' : '#6b7280' }} />
-                  </span>
-                  <div>
-                    <strong>{f.username}</strong>
-                    <div className="muted" style={{ fontSize: 12 }}>{onlineIds.has(f.id) ? 'Actif maintenant' : 'Hors ligne'}</div>
+            {data.friends.map((f) => {
+              const status = statusById[f.id] ?? f.status ?? 'OFFLINE';
+              return (
+                <div key={f.friendshipId} className="row" style={{ justifyContent: 'space-between', padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
+                  <Link to={`/users/${f.id}`} className="row" style={{ gap: 10, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}>
+                    <span style={{ position: 'relative', display: 'inline-flex' }}>
+                      <Avatar user={f} size={40} />
+                      <span style={{ position: 'absolute', right: -1, bottom: -1, width: 10, height: 10, borderRadius: '50%', border: '2px solid var(--bg-panel)', background: STATUS_COLOR[status as keyof typeof STATUS_COLOR] }} />
+                    </span>
+                    <div>
+                      <strong>{f.username}</strong>
+                      <div className="muted" style={{ fontSize: 12 }}>{STATUS_LABEL[status as keyof typeof STATUS_LABEL]}</div>
+                    </div>
+                  </Link>
+                  <div className="row" style={{ gap: 6 }}>
+                    <button type="button" onClick={() => openChat({ id: f.id, username: f.username, avatarUrl: f.avatarUrl })}>💬 Message</button>
+                    <button type="button" className="danger" onClick={() => window.confirm(`Retirer ${f.username} de tes amis ?`) && remove(f.friendshipId)}>Retirer</button>
                   </div>
-                </Link>
-                <div className="row" style={{ gap: 6 }}>
-                  <button type="button" onClick={() => openChat({ id: f.id, username: f.username, avatarUrl: f.avatarUrl })}>💬 Message</button>
-                  <button type="button" className="danger" onClick={() => window.confirm(`Retirer ${f.username} de tes amis ?`) && remove(f.friendshipId)}>Retirer</button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {data.friends.length === 0 && <p className="muted">Tu n'as pas encore d'amis. Cherche un membre par son nom ci-dessus, ou depuis son profil.</p>}
           </div>
         )}

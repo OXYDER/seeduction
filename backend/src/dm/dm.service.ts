@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PresenceService } from './presence.service';
+import { PresenceService } from '../presence/presence.service';
 
 const MAX_LENGTH = 4000;
 const userSelect = { id: true, username: true, avatarUrl: true };

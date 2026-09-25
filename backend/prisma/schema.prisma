@@ -85,6 +85,7 @@ model User {
   badges           UserBadge[]
   apiKeys          ApiKey[]
   chatMessages     ChatMessage[]
+  chatReactions    ChatReaction[]
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
 
@@ -93,6 +94,7 @@ model User {
   freeleechTokens  Int        @default(0)
   avatarUrl        String?
   showAdult        Boolean    @default(false) // a activé l'affichage du contenu pour adultes (18+)
+  presenceStatus   PresenceStatus @default(ONLINE) // préférence affichée quand le membre est connecté (voir enum)
   adultAcceptedAt  DateTime?
   signature        String?    @db.Text
   createdAt        DateTime   @default(now())
@@ -660,9 +662,38 @@ model ChatMessage {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   content   String   @db.Text
+  // Pièce jointe : soit une image (affichée en ligne), soit un fichier quelconque (lien de téléchargement) — jamais les deux.
+  imageUrl  String?
+  fileUrl   String?
+  fileName  String?
+  fileSize  Int?
   createdAt DateTime @default(now())
+  reactions ChatReaction[]
 
   @@index([createdAt])
+}
+
+// Une réaction (émoji) par membre et par message ; en choisir une nouvelle remplace la précédente (comme Messenger).
+model ChatReaction {
+  id        String      @id @default(uuid())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  emoji     String
+  createdAt DateTime    @default(now())
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+}
+
+// Préférence d'affichage de présence, indépendante du fait d'être réellement connecté (calculée à part) :
+// ONLINE/AWAY/BUSY s'affichent tel quel si le membre est connecté ; INVISIBLE l'affiche hors ligne pour les autres.
+enum PresenceStatus {
+  ONLINE
+  AWAY
+  BUSY
+  INVISIBLE
 }
 
 // ---------------------------------------------------------------------------

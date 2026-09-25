@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { PresenceStatus } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { FriendsService } from '../friends/friends.service';
+import { PresenceService } from '../presence/presence.service';
+
+const PRESENCE_VALUES: PresenceStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'INVISIBLE'];
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService, private friends: FriendsService) {}
+  constructor(private prisma: PrismaService, private friends: FriendsService, private presence: PresenceService) {}
 
   /**
    * Profil complet pour soi-même ; le staff voit en plus l'e-mail ; les autres
@@ -17,6 +21,7 @@ export class UsersService {
         id: true, username: true, email: true, role: true, uploaded: true,
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
+        presenceStatus: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
@@ -25,15 +30,26 @@ export class UsersService {
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
     const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
-    const { email, passkey, minRatio, showAdult, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     return {
       ...publicInfo,
       ratio,
+      // « onlineStatus » est ce que voient les autres (ONLINE/AWAY/BUSY/OFFLINE, jamais INVISIBLE tel quel) ;
+      // « presenceStatus » (préférence brute, y compris INVISIBLE) n'est renvoyé qu'à l'intéressé, pour présélectionner son menu.
+      onlineStatus: this.presence.publicStatus(user.id),
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
+  }
+
+  /** Statut de présence choisi (En ligne / Absent / Occupé / Apparaître hors ligne), visible partout où le membre apparaît. */
+  async setPresenceStatus(userId: string, status: string) {
+    if (!PRESENCE_VALUES.includes(status as PresenceStatus)) throw new BadRequestException('Statut invalide');
+    await this.prisma.user.update({ where: { id: userId }, data: { presenceStatus: status as PresenceStatus } });
+    this.presence.setPreference(userId, status as PresenceStatus);
+    return { presenceStatus: status };
   }
 
   /** Avatar (image téléversée sur Seeduction, jamais un lien externe) et signature affichée sous les messages du forum. */
