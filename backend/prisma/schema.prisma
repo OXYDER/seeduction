@@ -130,6 +130,7 @@ model Category {
   parentId String?
   children Category[] @relation("SubCategories")
   torrents Torrent[]
+  requests TorrentRequest[]
   // Type de contenu (Film/Série/Musique/...) pour le générateur de description :
   // une sous-catégorie sans valeur hérite de celle de sa catégorie parente.
   contentKind TemplateKind?
@@ -333,7 +334,13 @@ model TorrentRequest {
   id          String   @id @default(uuid())
   title       String
   description String?  @db.Text
-  bounty      Float    @default(0) // bonus points offerts
+  bounty      Float    @default(0) // bonus points offerts (total, contributions des autres membres comprises)
+  backers     Int      @default(1) // nombre de contributions à la récompense
+  year        Int?
+  language    String?  // langue souhaitée (VFQ, VFF, VOSTFR...)
+  resolution  String?  // qualité souhaitée (1080p, 4K/2160p...)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId  String?
 
   requestedBy User     @relation(fields: [requestedById], references: [id])
   requestedById String
