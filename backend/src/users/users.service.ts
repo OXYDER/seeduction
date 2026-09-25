@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PresenceStatus } from '@prisma/client';
+import { PresenceStatus, DmPrivacy } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { FriendsService } from '../friends/friends.service';
 import { PresenceService } from '../presence/presence.service';
 
 const PRESENCE_VALUES: PresenceStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'INVISIBLE'];
+const DM_PRIVACY_VALUES: DmPrivacy[] = ['EVERYONE', 'FRIENDS_ONLY'];
 
 @Injectable()
 export class UsersService {
@@ -21,7 +22,7 @@ export class UsersService {
         id: true, username: true, email: true, role: true, uploaded: true,
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
-        presenceStatus: true,
+        presenceStatus: true, dmPrivacy: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
@@ -30,18 +31,25 @@ export class UsersService {
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
     const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
-    const { email, passkey, minRatio, showAdult, presenceStatus, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     return {
       ...publicInfo,
       ratio,
       // « onlineStatus » est ce que voient les autres (ONLINE/AWAY/BUSY/OFFLINE, jamais INVISIBLE tel quel) ;
-      // « presenceStatus » (préférence brute, y compris INVISIBLE) n'est renvoyé qu'à l'intéressé, pour présélectionner son menu.
+      // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus: this.presence.publicStatus(user.id),
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
+  }
+
+  /** Qui peut écrire au membre en chat privé sans être son ami (tout le monde par défaut, comme une demande de message Messenger). */
+  async setDmPrivacy(userId: string, value: string) {
+    if (!DM_PRIVACY_VALUES.includes(value as DmPrivacy)) throw new BadRequestException('Valeur invalide');
+    await this.prisma.user.update({ where: { id: userId }, data: { dmPrivacy: value as DmPrivacy } });
+    return { dmPrivacy: value };
   }
 
   /** Statut de présence choisi (En ligne / Absent / Occupé / Apparaître hors ligne), visible partout où le membre apparaît. */

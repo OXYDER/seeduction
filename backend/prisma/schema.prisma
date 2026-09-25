@@ -95,6 +95,7 @@ model User {
   avatarUrl        String?
   showAdult        Boolean    @default(false) // a activé l'affichage du contenu pour adultes (18+)
   presenceStatus   PresenceStatus @default(ONLINE) // préférence affichée quand le membre est connecté (voir enum)
+  dmPrivacy        DmPrivacy      @default(EVERYONE) // qui peut lui écrire en chat privé sans être son ami
   adultAcceptedAt  DateTime?
   signature        String?    @db.Text
   createdAt        DateTime   @default(now())
@@ -694,6 +695,13 @@ enum PresenceStatus {
   AWAY
   BUSY
   INVISIBLE
+}
+
+// EVERYONE : n'importe quel membre peut écrire en chat privé, comme une « demande de message » Messenger, sans être ami.
+// FRIENDS_ONLY : seuls les amis peuvent écrire ; un autre membre voit le bouton d'ajout en ami à la place du bouton Message.
+enum DmPrivacy {
+  EVERYONE
+  FRIENDS_ONLY
 }
 
 // ---------------------------------------------------------------------------

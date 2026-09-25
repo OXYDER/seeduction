@@ -22,25 +22,33 @@ function FriendAction({ u }: { u: any }) {
     try { await fn(); setStatus(next); } catch { /* action refusée : le statut n'a pas bougé */ } finally { setBusy(false); }
   }
 
-  if (status === 'FRIENDS') {
-    return (
-      <button type="button" className="secondary" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => openChat({ id: u.id, username: u.username, avatarUrl: u.avatarUrl })}>
-        💬 Message
-      </button>
-    );
-  }
-  if (status === 'PENDING_OUT') return <span className="muted" style={{ fontSize: 12 }}>⏳ Demande envoyée</span>;
+  // Écrire à quelqu'un ne demande pas d'être ami (comme une demande de message Messenger) : le bouton est toujours là,
+  // sauf que ce membre peut avoir restreint son chat privé à ses amis (l'erreur s'affiche alors dans la fenêtre de discussion).
+  const messageBtn = (
+    <button type="button" className="secondary" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => openChat({ id: u.id, username: u.username, avatarUrl: u.avatarUrl })}>
+      💬 Message
+    </button>
+  );
+
+  if (status === 'FRIENDS') return messageBtn;
+  if (status === 'PENDING_OUT') return <div className="row" style={{ gap: 6 }}>{messageBtn}<span className="muted" style={{ fontSize: 12 }}>⏳ Demande envoyée</span></div>;
   if (status === 'PENDING_IN') {
     return (
-      <button type="button" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={() => act(async () => { await api.post(`/friends/${u.friendshipId ?? ''}/accept`); }, 'FRIENDS')}>
-        ✔️ Accepter la demande
-      </button>
+      <div className="row" style={{ gap: 6 }}>
+        {messageBtn}
+        <button type="button" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={() => act(async () => { await api.post(`/friends/${u.friendshipId ?? ''}/accept`); }, 'FRIENDS')}>
+          ✔️ Accepter
+        </button>
+      </div>
     );
   }
   return (
-    <button type="button" className="secondary" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={() => act(async () => { await api.post('/friends/request', { username: u.username }); }, 'PENDING_OUT')}>
-      ➕ Ajouter en ami
-    </button>
+    <div className="row" style={{ gap: 6 }}>
+      {messageBtn}
+      <button type="button" className="secondary" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={() => act(async () => { await api.post('/friends/request', { username: u.username }); }, 'PENDING_OUT')}>
+        ➕ Ajouter en ami
+      </button>
+    </div>
   );
 }
 

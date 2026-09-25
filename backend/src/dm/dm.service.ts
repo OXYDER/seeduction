@@ -6,7 +6,11 @@ import { PresenceService } from '../presence/presence.service';
 const MAX_LENGTH = 4000;
 const userSelect = { id: true, username: true, avatarUrl: true };
 
-/** Discussions privées entre amis (style « Messenger ») : distinctes de la messagerie classique (sujet + destinataire libre). */
+/**
+ * Discussions privées façon « Messenger » : distinctes de la messagerie classique (sujet + destinataire libre).
+ * Par défaut, n'importe quel membre peut en écrire un autre (comme une demande de message Messenger) ; un membre peut
+ * restreindre ça à ses amis seulement (voir `dmPrivacy` sur User, réglable dans son compte).
+ */
 @Injectable()
 export class DmService {
   constructor(private prisma: PrismaService, private notifications: NotificationsService, private presence: PresenceService) {}
@@ -16,42 +20,66 @@ export class DmService {
     return `dm-${[a, b].sort().join('-')}`;
   }
 
-  private async assertFriends(meId: string, otherId: string) {
-    const friendship = await this.prisma.friendship.findFirst({
-      where: { status: 'ACCEPTED', OR: [{ requesterId: meId, addresseeId: otherId }, { requesterId: otherId, addresseeId: meId }] },
-    });
-    if (!friendship) throw new ForbiddenException('Vous devez être amis pour vous écrire ici');
+  private async areFriends(aId: string, bId: string) {
+    return !!(await this.prisma.friendship.findFirst({
+      where: { status: 'ACCEPTED', OR: [{ requesterId: aId, addresseeId: bId }, { requesterId: bId, addresseeId: aId }] },
+    }));
   }
 
-  /** Amis avec le dernier message échangé (s'il y en a un) et le nombre de messages non lus, triés par activité récente. */
-  async conversations(userId: string) {
-    const friendships = await this.prisma.friendship.findMany({
-      where: { status: 'ACCEPTED', OR: [{ requesterId: userId }, { addresseeId: userId }] },
-      include: { requester: { select: userSelect }, addressee: { select: userSelect } },
-    });
-    const friends = friendships.map((f) => (f.requesterId === userId ? f.addressee : f.requester));
-    if (friends.length === 0) return [];
+  /** true si `fromId` a le droit d'écrire à `toId`, selon la préférence de `toId` (tout le monde, ou ses amis seulement). */
+  private async canMessage(fromId: string, toId: string) {
+    const target = await this.prisma.user.findUnique({ where: { id: toId }, select: { dmPrivacy: true } });
+    if (!target) return false;
+    if (target.dmPrivacy === 'EVERYONE') return true;
+    return this.areFriends(fromId, toId);
+  }
 
-    const threadKeys = friends.map((f) => this.threadKey(userId, f.id));
-    const messages = await this.prisma.privateMessage.findMany({
-      where: { threadId: { in: threadKeys } },
-      orderBy: { createdAt: 'desc' },
-    });
-    const byThread = new Map<string, typeof messages>();
-    for (const m of messages) {
-      const arr = byThread.get(m.threadId!) ?? [];
+  private async assertCanMessage(fromId: string, toId: string) {
+    if (!(await this.canMessage(fromId, toId))) {
+      throw new ForbiddenException("Ce membre n'accepte les messages privés que de ses amis");
+    }
+  }
+
+  /** Amis et discussions déjà entamées, avec le dernier message (s'il y en a un) et le nombre de non lus, triés par activité récente. */
+  async conversations(userId: string) {
+    const [friendships, threadMessages] = await Promise.all([
+      this.prisma.friendship.findMany({
+        where: { status: 'ACCEPTED', OR: [{ requesterId: userId }, { addresseeId: userId }] },
+        include: { requester: { select: userSelect }, addressee: { select: userSelect } },
+      }),
+      this.prisma.privateMessage.findMany({
+        where: { threadId: { startsWith: 'dm-' }, OR: [{ senderId: userId }, { recipientId: userId }] },
+        orderBy: { createdAt: 'desc' },
+        include: { sender: { select: userSelect }, recipient: { select: userSelect } },
+      }),
+    ]);
+
+    const others = new Map<string, { id: string; username: string; avatarUrl: string | null }>();
+    for (const f of friendships) {
+      const other = f.requesterId === userId ? f.addressee : f.requester;
+      others.set(other.id, other);
+    }
+    for (const m of threadMessages) {
+      const other = m.senderId === userId ? m.recipient : m.sender;
+      if (!others.has(other.id)) others.set(other.id, other);
+    }
+    if (others.size === 0) return [];
+
+    const byOther = new Map<string, typeof threadMessages>();
+    for (const m of threadMessages) {
+      const otherId = m.senderId === userId ? m.recipientId : m.senderId;
+      const arr = byOther.get(otherId) ?? [];
       arr.push(m);
-      byThread.set(m.threadId!, arr);
+      byOther.set(otherId, arr);
     }
 
-    return friends
-      .map((friend) => {
-        const key = this.threadKey(userId, friend.id);
-        const thread = byThread.get(key) ?? [];
+    return [...others.values()]
+      .map((other) => {
+        const thread = byOther.get(other.id) ?? [];
         const last = thread[0];
         const unread = thread.filter((m) => m.recipientId === userId && !m.read).length;
         return {
-          friend: { ...friend, online: this.presence.isOnline(friend.id) },
+          friend: { ...other, online: this.presence.isOnline(other.id) },
           last: last ? { content: last.content.slice(0, 140), createdAt: last.createdAt, fromMe: last.senderId === userId } : null,
           unread,
         };
@@ -67,10 +95,10 @@ export class DmService {
     return this.prisma.privateMessage.count({ where: { recipientId: userId, read: false, threadId: { startsWith: 'dm-' } } });
   }
 
-  /** Historique avec un ami ; marque les messages reçus comme lus. */
-  async history(userId: string, friendId: string) {
-    await this.assertFriends(userId, friendId);
-    const threadId = this.threadKey(userId, friendId);
+  /** Historique avec un membre ; marque les messages reçus comme lus. Autorisé s'il n'a pas restreint ses messages à ses amis. */
+  async history(userId: string, otherId: string) {
+    await this.assertCanMessage(userId, otherId);
+    const threadId = this.threadKey(userId, otherId);
     const messages = await this.prisma.privateMessage.findMany({
       where: { threadId },
       orderBy: { createdAt: 'asc' },
@@ -86,7 +114,7 @@ export class DmService {
     if (!text) throw new BadRequestException('Message vide');
     if (text.length > MAX_LENGTH) throw new BadRequestException(`Message trop long (${MAX_LENGTH} caractères maximum)`);
     if (toId === fromId) throw new BadRequestException("Tu ne peux pas t'écrire à toi-même");
-    await this.assertFriends(fromId, toId);
+    await this.assertCanMessage(fromId, toId);
 
     const threadId = this.threadKey(fromId, toId);
     const message = await this.prisma.privateMessage.create({
@@ -103,8 +131,8 @@ export class DmService {
     return { id: message.id, content: message.content, createdAt: message.createdAt, sender: message.sender };
   }
 
-  async markRead(userId: string, friendId: string) {
-    const threadId = this.threadKey(userId, friendId);
+  async markRead(userId: string, otherId: string) {
+    const threadId = this.threadKey(userId, otherId);
     await this.prisma.privateMessage.updateMany({ where: { threadId, recipientId: userId, read: false }, data: { read: true } });
     return { ok: true };
   }

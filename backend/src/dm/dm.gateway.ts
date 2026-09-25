@@ -89,7 +89,7 @@ export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect, OnMo
       this.server.to(room(userId)).emit('dm:message', { ...payload, fromMe: true, otherId: body.toUserId });
       this.server.to(room(body.toUserId)).emit('dm:message', { ...payload, fromMe: false, otherId: userId });
     } catch (err: any) {
-      client.emit('dm:error', err?.message ?? 'Message invalide');
+      client.emit('dm:error', { toUserId: body.toUserId, message: err?.message ?? 'Message invalide' });
     }
   }
 

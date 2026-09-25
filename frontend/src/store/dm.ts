@@ -17,6 +17,7 @@ interface DmState {
   totalUnread: number;
   typingFrom: Record<string, number>; // friendId -> timestamp du dernier "en train d'écrire"
   friendRequestBump: number; // incrémenté à chaque demande d'ami reçue/acceptée, pour que la page Amis se rafraîchisse
+  errors: Record<string, string>; // friendId -> dernier message d'erreur (ex : « n'accepte les messages que de ses amis »)
 
   connect: (token: string) => void;
   disconnect: () => void;
@@ -28,6 +29,7 @@ interface DmState {
   typing: (friendId: string) => void;
   markSeen: (friendId: string) => void;
   refreshUnread: () => void;
+  dismissError: (friendId: string) => void;
 }
 
 const MAX_WINDOWS = 3;
@@ -42,6 +44,7 @@ export const useDmStore = create<DmState>((set, get) => ({
   totalUnread: 0,
   typingFrom: {},
   friendRequestBump: 0,
+  errors: {},
 
   connect(token) {
     if (get().socket) return;
@@ -92,6 +95,14 @@ export const useDmStore = create<DmState>((set, get) => ({
     socket.on('dm:friend-request', () => set((s) => ({ friendRequestBump: s.friendRequestBump + 1 })));
     socket.on('dm:friend-accepted', () => set((s) => ({ friendRequestBump: s.friendRequestBump + 1 })));
 
+    socket.on('dm:error', ({ toUserId, message }: { toUserId: string; message: string }) => {
+      set((s) => ({
+        errors: { ...s.errors, [toUserId]: message },
+        // Le message qui vient d'échouer (encore "pending") est retiré : il n'a jamais été livré.
+        messages: { ...s.messages, [toUserId]: (s.messages[toUserId] ?? []).filter((m) => !m.pending) },
+      }));
+    });
+
     set({ socket });
     get().refreshUnread();
   },
@@ -128,8 +139,11 @@ export const useDmStore = create<DmState>((set, get) => ({
     try {
       const { data } = await api.get(`/dm/thread/${friendId}`);
       set((s) => ({ messages: { ...s.messages, [friendId]: data } }));
-    } catch {
-      set((s) => ({ messages: { ...s.messages, [friendId]: [] } }));
+    } catch (err: any) {
+      set((s) => ({
+        messages: { ...s.messages, [friendId]: [] },
+        errors: err.response?.data?.message ? { ...s.errors, [friendId]: err.response.data.message } : s.errors,
+      }));
     }
   },
 
@@ -149,7 +163,10 @@ export const useDmStore = create<DmState>((set, get) => ({
         .then(({ data }) => set((s) => ({
           messages: { ...s.messages, [friendId]: (s.messages[friendId] ?? []).map((m) => (m.id === tempId ? { ...data, fromMe: true } : m)) },
         })))
-        .catch(() => set((s) => ({ messages: { ...s.messages, [friendId]: (s.messages[friendId] ?? []).filter((m) => m.id !== tempId) } })));
+        .catch((err: any) => set((s) => ({
+          messages: { ...s.messages, [friendId]: (s.messages[friendId] ?? []).filter((m) => m.id !== tempId) },
+          errors: err.response?.data?.message ? { ...s.errors, [friendId]: err.response.data.message } : s.errors,
+        })));
     }
   },
 
@@ -168,5 +185,13 @@ export const useDmStore = create<DmState>((set, get) => ({
 
   refreshUnread() {
     api.get('/dm/unread-count').then((r) => set({ totalUnread: Number(r.data) || 0 })).catch(() => {});
+  },
+
+  dismissError(friendId) {
+    set((s) => {
+      if (!(friendId in s.errors)) return {};
+      const { [friendId]: _, ...rest } = s.errors;
+      return { errors: rest };
+    });
   },
 }));

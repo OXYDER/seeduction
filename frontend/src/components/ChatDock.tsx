@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useDmStore, DmUser } from '../store/dm';
 import { usePublicChatStore } from '../store/publicChat';
 import PublicChatPanel from './PublicChatPanel';
 import Avatar from './Avatar';
-import { STATUS_COLOR, PublicStatus } from '../lib/presence';
+import { STATUS_COLOR, STATUS_LABEL, PublicStatus } from '../lib/presence';
 import { timeAgo } from '../lib/time';
 
 const TYPING_TTL_MS = 4000;
@@ -17,6 +18,8 @@ function ChatWindow({ friend, onClose, onMinimize }: { friend: DmUser; onClose: 
   const messages = useDmStore((s) => s.messages[friend.id] ?? []);
   const status = useDmStore((s) => s.statusById[friend.id]);
   const typingFrom = useDmStore((s) => s.typingFrom[friend.id]);
+  const error = useDmStore((s) => s.errors[friend.id]);
+  const dismissError = useDmStore((s) => s.dismissError);
   const send = useDmStore((s) => s.send);
   const typing = useDmStore((s) => s.typing);
   const [input, setInput] = useState('');
@@ -32,6 +35,12 @@ function ChatWindow({ friend, onClose, onMinimize }: { friend: DmUser; onClose: 
     const t = window.setTimeout(() => setIsTyping(false), TYPING_TTL_MS);
     return () => window.clearTimeout(t);
   }, [typingFrom]);
+
+  useEffect(() => {
+    if (!error) return;
+    const t = window.setTimeout(() => dismissError(friend.id), 5000);
+    return () => window.clearTimeout(t);
+  }, [error, friend.id, dismissError]);
 
   function onInput(v: string) {
     setInput(v);
@@ -54,16 +63,16 @@ function ChatWindow({ friend, onClose, onMinimize }: { friend: DmUser; onClose: 
       <div className="dm-window-head" onClick={onMinimize}>
         <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
           <span style={{ position: 'relative', display: 'inline-flex' }}>
-            <Avatar user={friend} size={28} />
+            <Avatar user={friend} size={30} />
             <StatusDot status={status} />
           </span>
           <div style={{ minWidth: 0 }}>
             <strong style={{ fontSize: 13, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{friend.username}</strong>
-            <span className="muted" style={{ fontSize: 11 }}>{status === 'ONLINE' ? 'Actif maintenant' : status === 'AWAY' ? 'Absent' : status === 'BUSY' ? 'Occupé' : ''}</span>
+            <span className="muted" style={{ fontSize: 11 }}>{STATUS_LABEL[status ?? 'OFFLINE']}</span>
           </div>
         </div>
-        <div className="row" style={{ gap: 2 }}>
-          <button type="button" className="dm-icon-btn" title="Réduire" onClick={(e) => { e.stopPropagation(); onMinimize(); }}>—</button>
+        <div className="row" style={{ gap: 4 }}>
+          <button type="button" className="dm-icon-btn" title="Réduire" onClick={(e) => { e.stopPropagation(); onMinimize(); }}>⌄</button>
           <button type="button" className="dm-icon-btn" title="Fermer" onClick={(e) => { e.stopPropagation(); onClose(); }}>✕</button>
         </div>
       </div>
@@ -86,6 +95,7 @@ function ChatWindow({ friend, onClose, onMinimize }: { friend: DmUser; onClose: 
         )}
         <div ref={endRef} />
       </div>
+      {error && <div className="dm-window-error">{error}</div>}
       <form className="dm-window-input" onSubmit={submit}>
         <input placeholder="Écrire un message..." value={input} onChange={(e) => onInput(e.target.value)} maxLength={4000} />
         <button type="submit" disabled={!input.trim()} aria-label="Envoyer">➤</button>
@@ -96,8 +106,10 @@ function ChatWindow({ friend, onClose, onMinimize }: { friend: DmUser; onClose: 
 
 function PublicChatBubble() {
   const minimized = usePublicChatStore((s) => s.minimized);
+  const expanded = usePublicChatStore((s) => s.expanded);
   const unread = usePublicChatStore((s) => s.unread);
   const setMinimized = usePublicChatStore((s) => s.setMinimized);
+  const setExpanded = usePublicChatStore((s) => s.setExpanded);
   const connected = usePublicChatStore((s) => s.connected);
   // Sur la page /chat, le panneau est déjà affiché en pleine page : la bulle flottante resterait redondante.
   const onChatPage = useLocation().pathname.startsWith('/chat');
@@ -106,26 +118,42 @@ function PublicChatBubble() {
 
   if (minimized) {
     return (
-      <button type="button" className="dm-bubble-avatar" title="Chat public" onClick={() => setMinimized(false)}>
-        <span style={{ fontSize: 22 }}>🗨️</span>
+      <button type="button" className="dm-bubble-avatar public-bubble" title="Chat public" onClick={() => setMinimized(false)}>
+        <span style={{ fontSize: 24 }}>🗨️</span>
         {unread > 0 && <span className="dot-badge" style={{ top: -4, right: -4 }}>{unread > 99 ? '99+' : unread}</span>}
       </button>
     );
   }
-  return (
-    <div className="public-chat-window">
-      <div className="dm-window-head" onClick={() => setMinimized(true)}>
+
+  const win = (
+    <div className={`public-chat-window${expanded ? ' expanded' : ''}`}>
+      <div className="dm-window-head" onClick={() => !expanded && setMinimized(true)}>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 18 }}>🗨️</span>
           <strong style={{ fontSize: 13 }}>Chat public</strong>
         </div>
-        <div className="row" style={{ gap: 2 }}>
-          <button type="button" className="dm-icon-btn" title="Réduire" onClick={(e) => { e.stopPropagation(); setMinimized(true); }}>—</button>
+        <div className="row" style={{ gap: 4 }}>
+          <button type="button" className="dm-icon-btn" title={expanded ? 'Réduire la fenêtre' : 'Agrandir la fenêtre'} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
+            {expanded ? '⤡' : '⤢'}
+          </button>
+          {!expanded && <button type="button" className="dm-icon-btn" title="Réduire" onClick={(e) => { e.stopPropagation(); setMinimized(true); }}>⌄</button>}
+          <button type="button" className="dm-icon-btn" title="Fermer" onClick={(e) => { e.stopPropagation(); setMinimized(true); setExpanded(false); }}>✕</button>
         </div>
       </div>
-      <PublicChatPanel compact />
+      <PublicChatPanel compact={!expanded} />
     </div>
   );
+
+  if (expanded) {
+    return createPortal(
+      <>
+        <div className="public-chat-backdrop" onClick={() => setExpanded(false)} />
+        {win}
+      </>,
+      document.body,
+    );
+  }
+  return win;
 }
 
 /** Bulles de discussion façon Messenger (chat public + conversations privées), ancrées en bas à droite ; persistent au fil de la navigation (montées dans Layout). */

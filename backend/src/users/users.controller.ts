@@ -26,6 +26,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/dm-privacy')
+  setDmPrivacy(@Body('value') value: string, @Request() req: any) {
+    return this.usersService.setDmPrivacy(req.user.userId, value);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('me/adult')
   setAdult(@Body() body: { enabled: boolean; confirmAge?: boolean }, @Request() req: any) {
     return this.usersService.setAdultPreference(req.user.userId, !!body?.enabled, !!body?.confirmAge);

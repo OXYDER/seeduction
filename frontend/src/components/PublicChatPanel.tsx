@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePublicChatStore, ChatMsg } from '../store/publicChat';
 import { useAuthStore } from '../store/auth';
+import { useDmStore } from '../store/dm';
 import { api } from '../api/client';
 import Avatar from './Avatar';
 import UserLink from './UserLink';
@@ -14,18 +15,27 @@ const STAFF_ROLES = ['MODERATOR', 'ADMIN', 'OWNER'];
 
 function MembersList() {
   const onlineUsers = usePublicChatStore((s) => s.onlineUsers);
+  const me = useAuthStore((s) => s.user);
+  const openChat = useDmStore((s) => s.openChat);
   return (
     <div className="chat-members">
       <div className="chat-members-title">En ligne — {onlineUsers.length}</div>
       <div className="chat-members-list">
         {onlineUsers.map((u) => (
-          <div key={u.id} className="chat-member-row">
+          <button
+            key={u.id}
+            type="button"
+            className="chat-member-row"
+            disabled={u.id === me?.id}
+            title={u.id === me?.id ? undefined : `Écrire à ${u.username}`}
+            onClick={() => openChat({ id: u.id, username: u.username })}
+          >
             <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
               <Avatar user={{ username: u.username }} size={26} />
               <span style={{ position: 'absolute', right: -1, bottom: -1, width: 8, height: 8, borderRadius: '50%', border: '2px solid var(--bg-panel)', background: STATUS_COLOR[u.status] }} />
             </span>
             <span style={{ fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.username}</span>
-          </div>
+          </button>
         ))}
         {onlineUsers.length === 0 && <p className="muted" style={{ fontSize: 12 }}>Personne pour l'instant.</p>}
       </div>
@@ -66,12 +76,14 @@ function MessageRow({ msg, showMeta, seenHere, isStaff }: { msg: ChatMsg; showMe
     await api.delete(`/chat/messages/${msg.id}`);
   }
 
+  const avatarSlot = showMeta ? <Avatar user={msg.user} size={30} /> : <span style={{ width: 30, flexShrink: 0 }} />;
+
   return (
-    <div className="chat-msg-row" style={mine ? { flexDirection: 'row-reverse' } : undefined}>
-      {showMeta ? <Avatar user={msg.user} size={30} /> : <span style={{ width: 30, flexShrink: 0 }} />}
-      <div style={{ minWidth: 0, maxWidth: '78%' }}>
+    <div className={`chat-msg-row${mine ? ' mine' : ''}`}>
+      {!mine && avatarSlot}
+      <div style={{ minWidth: 0, maxWidth: '100%' }}>
         {showMeta && (
-          <div className="row" style={{ gap: 6, fontSize: 11, marginBottom: 2, flexDirection: mine ? 'row-reverse' : 'row' }}>
+          <div className="row" style={{ gap: 6, fontSize: 11, marginBottom: 2, justifyContent: mine ? 'flex-end' : 'flex-start' }}>
             <strong style={{ color: 'var(--gold)' }}><UserLink user={msg.user} /></strong>
             <span className="muted">{new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
@@ -99,9 +111,9 @@ function MessageRow({ msg, showMeta, seenHere, isStaff }: { msg: ChatMsg; showMe
               ))}
             </div>
           )}
-          <div className="chat-msg-tools" style={{ [mine ? 'left' : 'right']: '100%' }}>
-            <button type="button" title="Réagir" onClick={() => setPickerOpen((v) => !v)}>😊</button>
-            {(mine || isStaff) && <button type="button" title="Supprimer" onClick={removeMessage}>🗑️</button>}
+          <div className={`chat-msg-tools${mine ? ' mine' : ''}`}>
+            <button type="button" className="chat-icon-btn" title="Réagir" onClick={() => setPickerOpen((v) => !v)}>😊</button>
+            {(mine || isStaff) && <button type="button" className="chat-icon-btn" title="Supprimer" onClick={removeMessage}>🗑️</button>}
             {pickerOpen && <ReactionPicker onPick={(e) => { react(msg.id, e); setPickerOpen(false); }} onClose={() => setPickerOpen(false)} />}
           </div>
         </div>
@@ -111,6 +123,7 @@ function MessageRow({ msg, showMeta, seenHere, isStaff }: { msg: ChatMsg; showMe
           </div>
         )}
       </div>
+      {mine && avatarSlot}
     </div>
   );
 }
@@ -225,8 +238,8 @@ export default function PublicChatPanel({ compact = false }: { compact?: boolean
         <form className="public-chat-composer" onSubmit={submit}>
           <input type="file" accept="image/jpeg,image/png,image/webp" ref={imageInput} hidden onChange={onPickImage} />
           <input type="file" ref={fileInput} hidden onChange={onPickFile} />
-          <button type="button" title="Envoyer une photo" disabled={busy} onClick={() => imageInput.current?.click()}>🖼️</button>
-          <button type="button" title="Joindre un fichier" disabled={busy} onClick={() => fileInput.current?.click()}>📎</button>
+          <button type="button" className="chat-icon-btn lg" title="Envoyer une photo" disabled={busy} onClick={() => imageInput.current?.click()}>🖼️</button>
+          <button type="button" className="chat-icon-btn lg" title="Joindre un fichier" disabled={busy} onClick={() => fileInput.current?.click()}>📎</button>
           <div style={{ position: 'relative', flex: 1 }}>
             <input placeholder="Écris un message..." value={input} onChange={(e) => onInput(e.target.value)} maxLength={500} />
             {emojiOpen && (
@@ -237,8 +250,8 @@ export default function PublicChatPanel({ compact = false }: { compact?: boolean
               </div>
             )}
           </div>
-          <button type="button" title="Emoji" onClick={() => setEmojiOpen((v) => !v)}>😀</button>
-          <button type="submit" disabled={!input.trim()}>Envoyer</button>
+          <button type="button" className="chat-icon-btn lg" title="Emoji" onClick={() => setEmojiOpen((v) => !v)}>😀</button>
+          <button type="submit" className="chat-send-btn" disabled={!input.trim()} title="Envoyer" aria-label="Envoyer">➤</button>
         </form>
       </div>
       <MembersList />

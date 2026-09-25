@@ -26,6 +26,7 @@ interface PublicChatState {
   typingFrom: Record<string, { username: string; at: number }>;
   seenBy: Record<string, { username: string; messageId: string }>;
   minimized: boolean;
+  expanded: boolean;
   unread: number;
   error: string;
   myUserId: string | null;
@@ -33,6 +34,7 @@ interface PublicChatState {
   connect: (token: string, myUserId: string) => void;
   disconnect: () => void;
   setMinimized: (v: boolean) => void;
+  setExpanded: (v: boolean) => void;
   send: (body: { content?: string; imageUrl?: string; fileUrl?: string; fileName?: string; fileSize?: number }) => void;
   typing: () => void;
   react: (messageId: string, emoji: string) => void;
@@ -51,6 +53,7 @@ export const usePublicChatStore = create<PublicChatState>((set, get) => ({
   typingFrom: {},
   seenBy: {},
   minimized: true,
+  expanded: false,
   unread: 0,
   error: '',
   myUserId: null,
@@ -106,7 +109,11 @@ export const usePublicChatStore = create<PublicChatState>((set, get) => ({
   },
 
   setMinimized(v) {
-    set({ minimized: v, unread: v ? get().unread : 0 });
+    set({ minimized: v, unread: v ? get().unread : 0, expanded: v ? false : get().expanded });
+  },
+
+  setExpanded(v) {
+    set({ expanded: v });
   },
 
   send(body) {

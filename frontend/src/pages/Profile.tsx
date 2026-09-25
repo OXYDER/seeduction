@@ -8,6 +8,7 @@ import ReportButton from '../components/ReportButton';
 import SecurityPanel from '../components/SecurityPanel';
 import ProfileEditor from '../components/ProfileEditor';
 import AdultPreference from '../components/AdultPreference';
+import DmPrivacyPanel from '../components/DmPrivacyPanel';
 import Avatar from '../components/Avatar';
 import { displayRank } from '../lib/memberClass';
 import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
@@ -149,6 +150,7 @@ export default function Profile() {
         </>
       )}
       {showTab('account') && <ProfileEditor key={profile.avatarUrl ?? 'none'} profile={profile} onSaved={() => setReloadKey((k) => k + 1)} />}
+      {showTab('account') && <DmPrivacyPanel value={profile.dmPrivacy ?? 'EVERYONE'} />}
       {showTab('account') && <AdultPreference enabled={!!profile.showAdult} />}
       {showTab('security') && <SecurityPanel />}
       {showTab('dev') && (
