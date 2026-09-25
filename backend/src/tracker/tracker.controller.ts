@@ -32,6 +32,9 @@ export class TrackerController {
         event: query.event,
         numwant: query.numwant ? parseInt(query.numwant, 10) : undefined,
         compact: query.compact === '1',
+        // Ajouté par TorrentsService.getDownloadFile() quand le .torrent sert au lecteur Seeduction (pas à un
+        // téléchargement classique) — voir tracker.service.ts pour ce que ça change côté hit & run.
+        viaStream: query.stream === '1',
       });
 
       // Format compact IPv4 (6 octets par peer) : les peers IPv6 sont ignorés au lieu de faire échouer l'announce.

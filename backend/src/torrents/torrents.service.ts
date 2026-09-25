@@ -124,8 +124,13 @@ export class TorrentsService {
     return torrent;
   }
 
-  /** Génère à la volée le .torrent avec l'announce URL personnalisée (passkey) de l'utilisateur qui télécharge. */
-  async getDownloadFile(torrentId: string, userId: string): Promise<Buffer> {
+  /**
+   * Génère à la volée le .torrent avec l'announce URL personnalisée (passkey) de l'utilisateur qui télécharge.
+   * `viaStream` marque l'announce comme venant du lecteur Seeduction (navigateur ou desktop) et non d'un vrai
+   * téléchargement : le membre ne pourra jamais continuer à seeder une fois la vidéo fermée, donc le tracker n'en
+   * tire aucune obligation « hit & run » (voir tracker.service.ts).
+   */
+  async getDownloadFile(torrentId: string, userId: string, opts?: { viaStream?: boolean }): Promise<Buffer> {
     const torrent = await this.prisma.torrent.findUnique({ where: { id: torrentId } });
     if (!torrent) throw new NotFoundException('Torrent introuvable');
 
@@ -136,7 +141,7 @@ export class TorrentsService {
     }
 
     const original = await fs.readFile(torrent.filePath);
-    const announceUrl = `${ANNOUNCE_BASE_URL}/${user.passkey}/announce`;
+    const announceUrl = `${ANNOUNCE_BASE_URL}/${user.passkey}/announce${opts?.viaStream ? '?stream=1' : ''}`;
     return rewriteTorrentForUser(original, announceUrl);
   }
 

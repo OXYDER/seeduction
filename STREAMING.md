@@ -21,13 +21,26 @@ Le lecteur desktop est un vrai client BitTorrent (comme qBittorrent), sans cette
    `StreamService.createPlaySession`), puis ouvre `seeduction://stream/<jeton>` — un lien qui ouvre automatiquement
    le logiciel installé sur le PC du membre (comme un lien Zoom ou Spotify).
 2. Le logiciel échange ce jeton contre le **même `.torrent` personnalisé** (announce Seeduction + passkey du
-   membre) qu'un téléchargement classique (`GET /api/stream/session/:token`, à usage unique, expire après 2 min).
-   Le visionnage compte donc comme un peer normal pour le ratio et le suivi hit & run.
+   membre) qu'un téléchargement classique (`GET /api/stream/session/:token`, à usage unique, expire après 2 min) —
+   mais avec `?stream=1` ajouté à l'announce.
 3. Il rejoint le swarm **directement depuis le PC du membre** (aucune charge sur le NAS), télécharge dans l'ordre
    uniquement le fichier demandé, le sert sur un petit serveur local, et lance **Seeduction VLC** (une copie de VLC
    incluse dans l'installateur — voir `desktop-player/scripts/fetch-vlc.js`) dessus.
 
 Aucun format n'est restreint : VLC lit à peu près tout, y compris `.mkv` et x265/HEVC.
+
+## Le ratio compte, pas le hit & run
+
+Le `?stream=1` de l'announce (`viaStream` dans `TrackerService.announce`) fait que le téléchargement/envoi compte
+normalement pour le ratio du membre, **mais** :
+
+- **Aucun `Snatch` n'est créé** à la fin de la lecture : comme personne ne laisse le lecteur tourner pour seeder une
+  fois la vidéo fermée, créer une obligation « hit & run » à chaque lecture punirait les membres pour rien.
+- **`completedCount`** (« X complétés » sur la fiche) n'est **pas** incrémenté par une lecture menée à terme — un
+  compteur séparé, **`streamCompletedCount`** (« X lectures complétées »), l'est à la place, pour ne pas fausser la
+  statistique de popularité en téléchargement du torrent.
+- Un `Snatch` **déjà existant** (un vrai téléchargement antérieur, pas régularisé) peut en revanche se régulariser
+  grâce au temps de seed accumulé pendant une lecture — ça ne peut qu'aider le membre.
 
 ## Quelles catégories affichent le bouton
 

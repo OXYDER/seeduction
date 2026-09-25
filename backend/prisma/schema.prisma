@@ -179,6 +179,7 @@ model Torrent {
   seeders        Int           @default(0)
   leechers       Int           @default(0)
   completedCount Int           @default(0) // nb total de "snatch" (téléchargement complet)
+  streamCompletedCount Int     @default(0) // nb de lectures complètes via le lecteur Seeduction (pas de vrai téléchargement, à part)
 
   peers          Peer[]
   entities       TorrentEntity[]

@@ -219,6 +219,7 @@ export default function TorrentDetail() {
               <span><HealthDot seeders={torrent.seeders} /><strong>{torrent.seeders}</strong> seeders</span>
               <span><strong>{torrent.leechers}</strong> leechers</span>
               <span><strong>{torrent.completedCount}</strong> complétés</span>
+              {torrent.streamCompletedCount > 0 && <span><strong>{torrent.streamCompletedCount}</strong> lectures complétées</span>}
               <span><strong>{formatBytes(torrent.size)}</strong></span>
               <span>par {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</span>
             </div>
@@ -313,7 +314,10 @@ export default function TorrentDetail() {
           <div>
             <div className="muted">Catégorie : {torrent.category?.name}</div>
             <div className="muted">Uploader : {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</div>
-            <div className="muted"><HealthDot seeders={torrent.seeders} />Seeders {torrent.seeders} / Leechers {torrent.leechers} / Complétés {torrent.completedCount}</div>
+            <div className="muted">
+              <HealthDot seeders={torrent.seeders} />Seeders {torrent.seeders} / Leechers {torrent.leechers} / Complétés {torrent.completedCount}
+              {torrent.streamCompletedCount > 0 && ` / Lectures complétées ${torrent.streamCompletedCount}`}
+            </div>
           </div>
           {actions}
         </div>
