@@ -30,7 +30,12 @@ export default function WatchOnlineButton({ torrentId, fileList }: { torrentId: 
     setSessionError('');
     setInstallHint(false);
     const files = m === 'browser' ? browserFiles : allFiles;
-    setChosen(files.length === 1 ? files[0].index : null);
+    if (files.length === 1) {
+      // Un seul fichier : pas besoin de choix, on lance la lecture tout de suite (sinon rien ne se passait jamais).
+      if (m === 'browser') playInBrowser(files[0].index); else playOnDesktop(files[0].index);
+    } else {
+      setChosen(null);
+    }
   }
 
   async function playInBrowser(index: number) {

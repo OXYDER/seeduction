@@ -54,10 +54,10 @@ if (!gotLock) {
   app.on('window-all-closed', (event) => event.preventDefault());
 
   app.whenReady().then(() => {
-    if (!app.isPackaged) {
-      // En dev, l'enregistrement du protocole a besoin du chemin de ce script (inutile une fois installé via electron-builder).
-      app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1] || '.')]);
-    } else if (!app.isDefaultProtocolClient(PROTOCOL)) {
+    // Uniquement une fois installé (electron-builder s'en charge normalement à l'installation) : en développement
+    // (`npm start`), s'enregistrer soi-même écraserait l'association Windows vers la vraie version installée avec
+    // une entrée qui ne fonctionne qu'aussi longtemps que ce terminal de test reste ouvert.
+    if (app.isPackaged && !app.isDefaultProtocolClient(PROTOCOL)) {
       app.setAsDefaultProtocolClient(PROTOCOL);
     }
 
@@ -99,12 +99,16 @@ async function handleUrl(rawUrl) {
     if (!token) throw new Error('Lien incomplet.');
     await playToken(token);
   } catch (err) {
-    notifyError(err.message || String(err));
+    // La cause détaillée (ex : code d'erreur TLS/réseau précis) va dans la console pour le débogage ;
+    // la fenêtre affichée au membre reste courte et lisible.
+    if (err && err.cause) log('Cause détaillée :', err.cause);
+    notifyError((err && err.message) || String(err));
   }
 }
 
 async function playToken(token) {
   refreshTrayMenu('Récupération du torrent…');
+  log('Appel de', `${SITE_BASE_URL}/api/stream/session/${token}`);
   const res = await fetch(`${SITE_BASE_URL}/api/stream/session/${encodeURIComponent(token)}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
