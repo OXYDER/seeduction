@@ -20,6 +20,7 @@ let tray = null;
 let client = null;
 let activeTorrent = null;
 let activeServer = null;
+let progressTimer = null;
 
 function log(...args) {
   console.log('[Seeduction Player]', ...args);
@@ -29,6 +30,15 @@ function notifyError(message) {
   log('Erreur :', message);
   dialog.showErrorBox('Lecteur Seeduction', message);
 }
+
+// Filet de sécurité général : une erreur imprévue ne doit plus jamais fermer tout le logiciel (ça arrivait avec
+// certaines erreurs réseau tardives sur le flux vidéo). On la journalise et on continue.
+process.on('uncaughtException', (err) => {
+  log('Erreur non gérée (ignorée pour ne pas fermer le logiciel) :', err && err.message);
+});
+process.on('unhandledRejection', (err) => {
+  log('Promesse rejetée non gérée (ignorée) :', err && err.message ? err.message : err);
+});
 
 // ---------------------------------------------------------------------------
 // Démarrage : une seule instance, on capte les liens seeduction:// qu'on reçoit
@@ -131,29 +141,50 @@ async function startPlayback(torrentBuffer, fileIndex) {
     t.on('error', (err) => { if (!settled) reject(err); });
   });
   activeTorrent = torrent;
+  log('Torrent prêt — trackers :', torrent.announce);
+  torrent.on('noPeers', (announceType) => log(`Aucun pair trouvé via ${announceType}`));
+  torrent.on('wire', (wire) => log('Pair connecté :', wire.remoteAddress, wire.remotePort));
+  torrent.on('warning', (err) => log('Avertissement WebTorrent :', err.message));
+  torrent.on('trackerAnnounce', () => log('Annonce envoyée au tracker — réponse : ', torrent.numPeers, 'pair(s) connu(s) au total'));
 
   const file = torrent.files[fileIndex];
   if (!file) throw new Error('Fichier introuvable dans ce torrent.');
   for (const f of torrent.files) if (f !== file) f.deselect();
   file.select();
 
+  // Repère utile pour le débogage : pairs trouvés, vitesse, progression de CE fichier (pas du torrent entier).
+  if (progressTimer) clearInterval(progressTimer);
+  progressTimer = setInterval(() => {
+    if (!activeTorrent) return;
+    const kbps = (activeTorrent.downloadSpeed / 1024).toFixed(1);
+    const pct = (file.progress * 100).toFixed(1);
+    log(`Pairs : ${activeTorrent.numPeers} — ${kbps} Ko/s — ${pct}% du fichier téléchargé`);
+  }, 3000);
+
   const server = http.createServer((req, res) => {
+    log('VLC demande :', req.headers.range ? `octets ${req.headers.range}` : 'le fichier depuis le début');
     const range = req.headers.range;
+    let readStream;
     if (!range) {
       res.writeHead(200, { 'Content-Length': file.length, 'Content-Type': 'application/octet-stream', 'Accept-Ranges': 'bytes' });
-      file.createReadStream().pipe(res);
-      return;
+      readStream = file.createReadStream();
+    } else {
+      const match = /bytes=(\d*)-(\d*)/.exec(range);
+      const start = match && match[1] ? Number.parseInt(match[1], 10) : 0;
+      const end = match && match[2] ? Number.parseInt(match[2], 10) : file.length - 1;
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${file.length}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': end - start + 1,
+        'Content-Type': 'application/octet-stream',
+      });
+      readStream = file.createReadStream({ start, end });
     }
-    const match = /bytes=(\d*)-(\d*)/.exec(range);
-    const start = match && match[1] ? Number.parseInt(match[1], 10) : 0;
-    const end = match && match[2] ? Number.parseInt(match[2], 10) : file.length - 1;
-    res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${file.length}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': end - start + 1,
-      'Content-Type': 'application/octet-stream',
-    });
-    file.createReadStream({ start, end }).pipe(res);
+    // VLC ferme/rouvre souvent la connexion en cours de lecture (recherche dans la vidéo, fermeture) : sans ces
+    // filets, l'erreur qui en résulte remontait jusqu'au processus principal et plantait tout le logiciel.
+    readStream.on('error', () => { try { res.destroy(); } catch { /* déjà fermé */ } });
+    res.on('close', () => { try { readStream.destroy(); } catch { /* déjà fermé */ } });
+    readStream.pipe(res).on('error', () => { /* géré ci-dessus */ });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   activeServer = server;
@@ -165,6 +196,7 @@ async function startPlayback(torrentBuffer, fileIndex) {
 }
 
 function stopCurrent() {
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
   if (activeServer) { try { activeServer.close(); } catch { /* déjà fermé */ } activeServer = null; }
   if (activeTorrent) { try { activeTorrent.destroy({ destroyStore: true }); } catch { /* déjà détruit */ } activeTorrent = null; }
   refreshTrayMenu('En veille — ouvre un lien « Visualiser en ligne » depuis Seeduction');
