@@ -213,6 +213,12 @@ function stopCurrent() {
 // ---------------------------------------------------------------------------
 
 function findVlc() {
+  // La copie incluse dans l'installateur (voir scripts/fetch-vlc.js et package.json "extraResources") : les membres
+  // n'ont rien à installer. Seulement disponible une fois empaqueté (electron-builder) — pas en mode développement.
+  if (app.isPackaged) {
+    const bundled = path.join(process.resourcesPath, 'vlc', process.platform === 'win32' ? 'Seeduction VLC.exe' : 'vlc');
+    if (fs.existsSync(bundled)) return bundled;
+  }
   if (process.platform === 'win32') {
     const candidates = [
       'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe',
