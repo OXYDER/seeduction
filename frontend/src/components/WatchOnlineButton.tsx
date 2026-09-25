@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 
@@ -70,9 +71,9 @@ export default function WatchOnlineButton({ torrentId, fileList }: { torrentId: 
                       <p className="muted" style={{ margin: '6px 0 10px' }}>
                         Le lecteur Seeduction n'est peut-être pas encore installé sur ce PC.
                       </p>
-                      <a href="https://github.com/OXYDER/seeduction/tree/main/desktop-player" target="_blank" rel="noreferrer" className="secondary" style={{ display: 'inline-block' }}>
+                      <Link to="/player" className="secondary" style={{ display: 'inline-block' }} onClick={close}>
                         Comment installer le lecteur
-                      </a>
+                      </Link>
                     </div>
                   )}
                   {allFiles.length > 1 && (
