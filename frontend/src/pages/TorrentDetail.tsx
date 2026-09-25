@@ -12,6 +12,7 @@ import { bbcodeToHtml } from '../lib/bbcode';
 import TorrentVersions from '../components/TorrentVersions';
 import NfoPanel from '../components/NfoPanel';
 import StickyDownloadBar from '../components/StickyDownloadBar';
+import WatchOnlineButton from '../components/WatchOnlineButton';
 import TorrentHero from '../components/TorrentHero';
 import TorrentRelated from '../components/TorrentRelated';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
@@ -118,6 +119,7 @@ export default function TorrentDetail() {
   const actions = user && (
     <div className="row" style={{ gap: 8, position: 'relative', flexWrap: 'wrap' }}>
       <button onClick={download} className="download-btn">⬇ Télécharger le .torrent</button>
+      <WatchOnlineButton torrentId={torrent.id} fileList={torrent.fileList} />
       <TorrentSocial torrentId={torrent.id} seeders={torrent.seeders} isUploader={torrent.uploader?.id === user.id} />
       {!torrent.freeleech && (tokenUntil
         ? <span className="badge freeleech" title="Jeton freeleech actif">🎟️ Freeleech pour toi jusqu'au {new Date(tokenUntil).toLocaleDateString('fr-FR')}</span>

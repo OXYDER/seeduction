@@ -35,6 +35,7 @@ import { MetadataModule } from './metadata/metadata.module';
 import { EntitiesModule } from './entities/entities.module';
 import { FriendsModule } from './friends/friends.module';
 import { DmModule } from './dm/dm.module';
+import { StreamModule } from './stream/stream.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { DmModule } from './dm/dm.module';
     EntitiesModule,
     FriendsModule,
     DmModule,
+    StreamModule,
   ],
 })
 export class AppModule {}

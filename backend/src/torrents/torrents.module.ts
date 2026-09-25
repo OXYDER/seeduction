@@ -8,5 +8,6 @@ import { MetadataModule } from '../metadata/metadata.module';
   imports: [MetadataModule],
   controllers: [TorrentsController],
   providers: [TorrentsService, PrismaService],
+  exports: [TorrentsService],
 })
 export class TorrentsModule {}
