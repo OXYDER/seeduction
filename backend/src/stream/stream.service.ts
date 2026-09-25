@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { TorrentsService } from '../torrents/torrents.service';
 
 // webtorrent 1.x (dernière ligne CommonJS, la 2.x étant en ESM pur, incompatible avec ce backend en require()).
@@ -20,6 +21,15 @@ interface Session {
   lastAccess: number;
 }
 
+interface PlaySession {
+  userId: string;
+  torrentId: string;
+  fileIndex: number;
+  expiresAt: number;
+}
+
+const PLAY_SESSION_TTL_MS = 2 * 60_000; // le lecteur desktop doit récupérer le lien dans les 2 minutes
+
 /**
  * « Visualiser en ligne » : le serveur rejoint le swarm comme un membre normal (même .torrent personnalisé, même
  * passkey, donc même comptabilité de ratio et de hit & run qu'un téléchargement classique) et relaie les octets au
@@ -32,9 +42,30 @@ export class StreamService {
   private readonly logger = new Logger(StreamService.name);
   private client: any;
   private sessions = new Map<string, Session>(); // clé = id du torrent en base
+  private playSessions = new Map<string, PlaySession>(); // clé = jeton à usage unique remis au lecteur desktop
 
   constructor(private torrents: TorrentsService) {
     setInterval(() => this.cleanupIdle(), 5 * 60_000).unref();
+  }
+
+  /**
+   * Jeton à usage unique pour le lecteur desktop (voir desktop-player/) : le lien `seeduction://stream/<jeton>`
+   * ouvert par le membre laisse le logiciel récupérer le .torrent personnalisé sans jamais exposer sa passkey dans
+   * la ligne de commande du processus (visible par d'autres logiciels sur le même PC).
+   */
+  createPlaySession(userId: string, torrentId: string, fileIndex: number): string {
+    const token = randomUUID();
+    this.playSessions.set(token, { userId, torrentId, fileIndex, expiresAt: Date.now() + PLAY_SESSION_TTL_MS });
+    return token;
+  }
+
+  /** Consommé une seule fois par le lecteur desktop : renvoie le .torrent personnalisé (base64) + le fichier choisi. */
+  async resolvePlaySession(token: string) {
+    const session = this.playSessions.get(token);
+    if (!session || session.expiresAt < Date.now()) throw new NotFoundException('Lien de lecture invalide ou expiré : relance « Ouvrir dans le lecteur » depuis Seeduction.');
+    this.playSessions.delete(token);
+    const buffer = await this.torrents.getDownloadFile(session.torrentId, session.userId);
+    return { torrentBase64: buffer.toString('base64'), fileIndex: session.fileIndex };
   }
 
   private getClient() {
@@ -50,6 +81,9 @@ export class StreamService {
         this.sessions.delete(id);
         this.logger.log(`Lecture arrêtée par inactivité : torrent ${id}`);
       }
+    }
+    for (const [token, session] of this.playSessions) {
+      if (session.expiresAt < now) this.playSessions.delete(token);
     }
   }
 

@@ -1,7 +1,8 @@
-import { Controller, ForbiddenException, Get, Param, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { PrismaService } from '../common/prisma.service';
 import { StreamService } from './stream.service';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 const MIME_BY_EXT: Record<string, string> = {
   mp4: 'video/mp4',
@@ -20,6 +21,25 @@ function mimeFor(name: string) {
 @Controller('stream')
 export class StreamController {
   constructor(private prisma: PrismaService, private streamService: StreamService) {}
+
+  /**
+   * Jeton à usage unique pour le lecteur desktop (voir desktop-player/) : le bouton « Ouvrir dans le lecteur »
+   * appelle ceci pour obtenir le lien `seeduction://stream/<jeton>`, qui ouvre automatiquement le logiciel installé
+   * sur le PC du membre. Aucun format n'est limité côté lecteur desktop (contrairement au lecteur du navigateur ci-
+   * dessous) : VLC lit à peu près tout, y compris les .mkv en x265.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('session')
+  createSession(@Body() body: { torrentId: string; fileIndex?: number }, @Req() req: any) {
+    const token = this.streamService.createPlaySession(req.user.userId, body.torrentId, Number(body.fileIndex) || 0);
+    return { token };
+  }
+
+  /** Consommé une seule fois par le lecteur desktop (pas par le navigateur) : pas d'authentification, le jeton en tient lieu. */
+  @Get('session/:token')
+  resolveSession(@Param('token') token: string) {
+    return this.streamService.resolvePlaySession(token);
+  }
 
   @Get(':torrentId')
   async stream(

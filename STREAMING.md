@@ -1,7 +1,13 @@
 # Visualiser en ligne (streaming sans client)
 
-Le bouton **▶ Visualiser en ligne** sur la fiche d'un torrent lance la lecture directement dans le navigateur,
-sans qu'un membre ait besoin d'installer ou de configurer un client BitTorrent.
+Deux façons de regarder un torrent sans ouvrir manuellement un client BitTorrent :
+
+- **▶ Visualiser en ligne** (ce document) : lecture dans le navigateur, le NAS relaie le fichier. Limité aux
+  formats lisibles nativement par un `<video>` (voir plus bas).
+- **🖥️ Ouvrir dans le lecteur Seeduction** ([desktop-player/](desktop-player/README.md)) : un petit logiciel
+  installé sur le PC du membre télécharge directement depuis les seeders (zéro charge sur le NAS) et lance VLC —
+  aucune limite de format, y compris `.mkv`/x265. Il faut l'installer une fois ; ensuite, cliquer sur le bouton
+  ouvre le logiciel automatiquement (comme un lien Zoom ou Spotify).
 
 ## Comment ça marche
 

@@ -1,0 +1,30 @@
+{
+  "name": "seeduction-player",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lecteur desktop Seeduction : un lien seeduction:// ouvre ce logiciel et joue le torrent directement (VLC), sans passer par le NAS et sans limite de format.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "webtorrent": "^1.2.18"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "org.seeduction.player",
+    "productName": "Seeduction Player",
+    "files": ["src/**/*", "package.json"],
+    "protocols": [
+      { "name": "Seeduction Stream", "schemes": ["seeduction"] }
+    ],
+    "win": { "target": "nsis" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false },
+    "mac": { "target": "dmg", "category": "public.app-category.video" },
+    "linux": { "target": "AppImage", "category": "Video" }
+  }
+}
