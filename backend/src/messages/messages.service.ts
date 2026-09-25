@@ -29,7 +29,8 @@ export class MessagesService {
   }
 
   unreadCount(userId: string) {
-    return this.prisma.privateMessage.count({ where: { recipientId: userId, read: false, deletedByRecipient: false } });
+    // Le chat privé entre amis (fils « dm-... ») a son propre compteur, affiché à côté du menu Amis.
+    return this.prisma.privateMessage.count({ where: { recipientId: userId, read: false, deletedByRecipient: false, NOT: { threadId: { startsWith: 'dm-' } } } });
   }
 
   markRead(messageId: string, userId: string) {
@@ -47,6 +48,8 @@ export class MessagesService {
   async threads(userId: string) {
     const messages = await this.prisma.privateMessage.findMany({
       where: {
+        // Le chat privé entre amis (fils « dm-... ») a sa propre page (Amis) : il n'apparaît pas dans la messagerie classique.
+        NOT: { threadId: { startsWith: 'dm-' } },
         OR: [
           { senderId: userId, deletedBySender: false },
           { recipientId: userId, deletedByRecipient: false },

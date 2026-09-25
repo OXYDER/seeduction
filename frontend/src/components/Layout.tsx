@@ -9,6 +9,8 @@ import ThemeSwitcher from './ThemeSwitcher';
 import SearchBox from './SearchBox';
 import FreeleechBanner from './FreeleechBanner';
 import Avatar from './Avatar';
+import ChatDock from './ChatDock';
+import { useDmStore } from '../store/dm';
 import { useTheme } from '../lib/theme';
 
 export interface Profile {
@@ -74,6 +76,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/requests', icon: '💬', cls: 'c-chat', label: 'Demandes', match: starts('/requests') },
   { to: '/favorites', icon: '⭐', cls: 'c-collections', label: 'Favoris', match: starts('/favorites') },
   { to: '/collections', icon: '📚', cls: 'c-collections', label: 'Collections', match: starts('/collections') },
+  { to: '/friends', icon: '👫', cls: 'c-collections', label: 'Amis', match: starts('/friends') },
   { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat') },
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
@@ -100,6 +103,11 @@ export default function Layout() {
     });
   }
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
+  const dmConnect = useDmStore((s) => s.connect);
+  const dmDisconnect = useDmStore((s) => s.disconnect);
+  const dmTotalUnread = useDmStore((s) => s.totalUnread);
+  const dmBump = useDmStore((s) => s.friendRequestBump);
 
   // Compteur de messages non lus (thème Prestige) : rafraîchi à chaque changement de page.
   useEffect(() => {
@@ -107,6 +115,18 @@ export default function Layout() {
     if (!accessToken) return;
     api.get('/messages/unread-count').then((r) => setUnreadMessages(Number(r.data) || 0)).catch(() => {});
   }, [location.pathname, accessToken]);
+
+  // Chat privé (amis) : connecté tant qu'on est authentifié, indépendamment de la page affichée.
+  useEffect(() => {
+    if (accessToken) dmConnect(accessToken); else dmDisconnect();
+    return () => { if (!accessToken) dmDisconnect(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (!accessToken) { setPendingFriendRequests(0); return; }
+    api.get('/friends').then((r) => setPendingFriendRequests(r.data.incoming?.length ?? 0)).catch(() => {});
+  }, [accessToken, dmBump]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -230,6 +250,9 @@ export default function Layout() {
               <Link to="/messages" className={`icon-pill${starts('/messages')(location.pathname) ? ' active' : ''}`} title="Messages">
                 ✉️{unreadMessages > 0 && <span className="dot-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
               </Link>
+              <Link to="/friends" className={`icon-pill${starts('/friends')(location.pathname) ? ' active' : ''}`} title="Amis">
+                👫{(pendingFriendRequests + dmTotalUnread) > 0 && <span className="dot-badge">{pendingFriendRequests + dmTotalUnread > 99 ? '99+' : pendingFriendRequests + dmTotalUnread}</span>}
+              </Link>
             </div>
           </header>
 
@@ -259,6 +282,7 @@ export default function Layout() {
         </nav>
 
         <InstallPrompt />
+        <ChatDock />
       </div>
     );
   }
@@ -298,6 +322,7 @@ export default function Layout() {
           <ThemeSwitcher />
           <NotificationsBell />
           <Link to="/messages" className={`top-link${starts('/messages')(location.pathname) ? ' active' : ''}`}>Messages</Link>
+          <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{(pendingFriendRequests + dmTotalUnread) > 0 ? ` (${pendingFriendRequests + dmTotalUnread})` : ''}</Link>
           <Link to="/profile" className={`top-link${starts('/profile')(location.pathname) || starts('/users')(location.pathname) ? ' active' : ''}`}>{user?.username}</Link>
           <button className="secondary" onClick={() => { logout(); navigate('/login'); }}>
             Déconnexion
@@ -358,6 +383,7 @@ export default function Layout() {
       </div>
 
       <InstallPrompt />
+      <ChatDock />
     </div>
   );
 }

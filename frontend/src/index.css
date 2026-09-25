@@ -1501,3 +1501,47 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 .rail > span, .rail-plex .rail > span { min-width: 0; max-width: 190px; }
 .poster-card { min-width: 0; }
 .poster-card .poster-title, .poster-card .poster-body { overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
+
+/* ---- Chat privé (amis) façon Messenger : bulles ancrées en bas à droite ---- */
+.dm-dock {
+  position: fixed; right: 16px; bottom: 0; z-index: 120; display: flex; align-items: flex-end; gap: 10px;
+  pointer-events: none;
+}
+.dm-dock > * { pointer-events: auto; }
+.dm-bubble-avatar {
+  position: relative; width: 52px; height: 52px; border-radius: 50%; padding: 0; border: none; background: var(--bg-panel-raised, var(--bg-panel));
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
+}
+.dm-bubble-avatar:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(0,0,0,0.5); }
+.dm-window {
+  width: 320px; height: 420px; display: flex; flex-direction: column; background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 12px 12px 0 0; box-shadow: 0 10px 34px rgba(0,0,0,0.5); overflow: hidden;
+}
+.dm-window-head {
+  display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; cursor: pointer;
+  background: linear-gradient(135deg, var(--acc1, var(--gold)), var(--acc2, var(--gold-bright))); color: #fff;
+}
+.dm-window-head .muted { color: rgba(255,255,255,0.85); }
+.dm-icon-btn { background: rgba(255,255,255,0.18); border: none; color: #fff; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; line-height: 1; cursor: pointer; }
+.dm-icon-btn:hover { background: rgba(255,255,255,0.32); }
+.dm-window-body { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 3px; }
+.dm-bubble-row { display: flex; gap: 6px; align-items: flex-end; }
+.dm-bubble-row.me { justify-content: flex-end; }
+.dm-bubble-row.them { justify-content: flex-start; }
+.dm-bubble {
+  max-width: 210px; padding: 7px 12px; border-radius: 16px; font-size: 13.5px; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap;
+}
+.dm-bubble.me { background: linear-gradient(135deg, var(--acc1, var(--gold)), var(--acc2, var(--gold-bright))); color: #fff; border-bottom-right-radius: 4px; }
+.dm-bubble.them { background: rgba(255,255,255,0.08); border-bottom-left-radius: 4px; }
+.dm-typing { display: flex; gap: 3px; align-items: center; padding: 10px 12px; }
+.dm-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); animation: dmTyping 1.2s infinite ease-in-out; }
+.dm-typing span:nth-child(2) { animation-delay: .15s; }
+.dm-typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes dmTyping { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+.dm-window-input { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--border); }
+.dm-window-input input { flex: 1; }
+.dm-window-input button { width: 36px; padding: 0; border-radius: 50%; }
+@media (max-width: 700px) {
+  .dm-dock { right: 8px; left: 8px; justify-content: flex-end; }
+  .dm-window { width: min(320px, calc(100vw - 16px)); }
+}

@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { FriendsService } from '../friends/friends.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private friends: FriendsService) {}
 
   /**
    * Profil complet pour soi-même ; le staff voit en plus l'e-mail ; les autres
@@ -25,9 +26,11 @@ export class UsersService {
     const isSelf = viewer?.userId === user.id;
     const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
     const { email, passkey, minRatio, showAdult, ...publicInfo } = user;
+    const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     return {
       ...publicInfo,
       ratio,
+      ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
       ...(isSelf ? { email, passkey, minRatio, showAdult } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };

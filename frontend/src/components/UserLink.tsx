@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import HoverCard from './HoverCard';
@@ -5,6 +6,43 @@ import Avatar from './Avatar';
 import { formatBytes } from '../lib/format';
 import { displayRank } from '../lib/memberClass';
 import { ROLE_LABEL } from './StaffUserPanel';
+import { useAuthStore } from '../store/auth';
+import { useDmStore } from '../store/dm';
+
+function FriendAction({ u }: { u: any }) {
+  const me = useAuthStore((s) => s.user);
+  const openChat = useDmStore((s) => s.openChat);
+  const [status, setStatus] = useState<string | undefined>(u.friendStatus);
+  const [busy, setBusy] = useState(false);
+
+  if (!me || me.id === u.id || !status) return null;
+
+  async function act(fn: () => Promise<any>, next: string) {
+    setBusy(true);
+    try { await fn(); setStatus(next); } catch { /* action refusée : le statut n'a pas bougé */ } finally { setBusy(false); }
+  }
+
+  if (status === 'FRIENDS') {
+    return (
+      <button type="button" className="secondary" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => openChat({ id: u.id, username: u.username, avatarUrl: u.avatarUrl })}>
+        💬 Message
+      </button>
+    );
+  }
+  if (status === 'PENDING_OUT') return <span className="muted" style={{ fontSize: 12 }}>⏳ Demande envoyée</span>;
+  if (status === 'PENDING_IN') {
+    return (
+      <button type="button" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={() => act(async () => { await api.post(`/friends/${u.friendshipId ?? ''}/accept`); }, 'FRIENDS')}>
+        ✔️ Accepter la demande
+      </button>
+    );
+  }
+  return (
+    <button type="button" className="secondary" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={() => act(async () => { await api.post('/friends/request', { username: u.username }); }, 'PENDING_OUT')}>
+      ➕ Ajouter en ami
+    </button>
+  );
+}
 
 function UserCard({ u }: { u: any }) {
   return (
@@ -19,6 +57,9 @@ function UserCard({ u }: { u: any }) {
           {u._count?.torrentsUploaded ?? 0} torrent(s) envoyé(s)<br />
           Membre depuis le {new Date(u.createdAt).toLocaleDateString('fr-FR')}
           {u.lastSeenAt && <><br />Vu le {new Date(u.lastSeenAt).toLocaleDateString('fr-FR')}</>}
+        </div>
+        <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+          <FriendAction u={u} />
         </div>
       </div>
     </>

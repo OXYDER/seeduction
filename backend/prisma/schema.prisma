@@ -85,6 +85,8 @@ model User {
   badges           UserBadge[]
   apiKeys          ApiKey[]
   chatMessages     ChatMessage[]
+  friendRequestsSent     Friendship[] @relation("FriendRequester")
+  friendRequestsReceived Friendship[] @relation("FriendAddressee")
 
   minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
   memberClass      MemberClass @default(NOUVEAU) // rang automatique (ancienneté, upload, ratio)
@@ -421,7 +423,7 @@ model PrivateMessage {
   senderId    String
   recipient   User     @relation("Recipient", fields: [recipientId], references: [id])
   recipientId String
-  subject     String
+  subject     String   @default("") // vide pour un message du chat privé (amis) — le formulaire de messagerie classique impose un sujet
   content     String   @db.Text
   read        Boolean  @default(false)
   createdAt   DateTime @default(now())
@@ -502,6 +504,7 @@ model ActivityLog {
 }
 
 enum NotificationType {
+  FRIEND_REQUEST
   MESSAGE
   FORUM_REPLY
   REQUEST_FILLED
@@ -617,6 +620,33 @@ model ApiKey {
   createdAt  DateTime  @default(now())
 
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// AMIS
+// ---------------------------------------------------------------------------
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
+
+// Une seule ligne par paire, quel que soit qui a envoyé la demande. ACCEPTED = amis. BLOCKED = requester a bloqué addressee.
+model Friendship {
+  id          String       @id @default(uuid())
+  requester   User         @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterId String
+  addressee   User         @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  addresseeId String
+  status      FriendStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
 }
 
 // ---------------------------------------------------------------------------

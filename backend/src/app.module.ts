@@ -33,6 +33,8 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 import { CoversModule } from './covers/covers.module';
 import { MetadataModule } from './metadata/metadata.module';
 import { EntitiesModule } from './entities/entities.module';
+import { FriendsModule } from './friends/friends.module';
+import { DmModule } from './dm/dm.module';
 
 @Module({
   imports: [
@@ -70,6 +72,8 @@ import { EntitiesModule } from './entities/entities.module';
     CoversModule,
     MetadataModule,
     EntitiesModule,
+    FriendsModule,
+    DmModule,
   ],
 })
 export class AppModule {}
