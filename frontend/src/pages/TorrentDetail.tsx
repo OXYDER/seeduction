@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import UserLink from '../components/UserLink';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
 import TorrentVersions from '../components/TorrentVersions';
 import NfoPanel from '../components/NfoPanel';
+import StickyDownloadBar from '../components/StickyDownloadBar';
 import TorrentHero from '../components/TorrentHero';
 import TorrentRelated from '../components/TorrentRelated';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
@@ -27,6 +28,7 @@ export default function TorrentDetail() {
   const theme = useTheme();
   const [tab, setTab] = useState<'overview' | 'files' | 'comments' | 'related'>('overview');
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const downloadAnchorRef = useRef<HTMLDivElement>(null);
   usePageBackdrop(torrent ? (torrent.metadata?.backdrop ?? torrent.coverImage ?? null) : null);
   const user = useAuthStore((s) => s.user);
   const favorites = useFavorites();
@@ -178,6 +180,16 @@ export default function TorrentDetail() {
 
     return (
       <div className="detail-plex">
+        {user && (
+          <StickyDownloadBar
+            torrent={torrent}
+            anchorRef={downloadAnchorRef}
+            onDownload={download}
+            favoriteEnabled={favorites.enabled}
+            favorite={favorites.ids.has(torrent.id)}
+            onToggleFavorite={() => favorites.toggle(torrent.id)}
+          />
+        )}
         {uploadedBanner}
         <section className="detail-head">
           <div className="detail-poster">
@@ -200,7 +212,7 @@ export default function TorrentDetail() {
               <span><strong>{formatBytes(torrent.size)}</strong></span>
               <span>par {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</span>
             </div>
-            <div className="detail-actions">
+            <div className="detail-actions" ref={downloadAnchorRef}>
               {torrent.metadata?.trailer?.key && (
                 <button type="button" className="secondary" onClick={() => setTrailerOpen(true)}>▶ Bande-annonce</button>
               )}
@@ -254,6 +266,16 @@ export default function TorrentDetail() {
 
   return (
     <div className="grid">
+      {user && (
+        <StickyDownloadBar
+          torrent={torrent}
+          anchorRef={downloadAnchorRef}
+          onDownload={download}
+          favoriteEnabled={favorites.enabled}
+          favorite={favorites.ids.has(torrent.id)}
+          onToggleFavorite={() => favorites.toggle(torrent.id)}
+        />
+      )}
       {uploadedBanner}
       <div className="row" style={{ alignItems: 'flex-start', gap: 16 }}>
         {torrent.coverImage && (
@@ -277,7 +299,7 @@ export default function TorrentDetail() {
         <TorrentRelated torrentId={torrent.id} seriesTitle={torrent.metadata?.originalTitle ?? torrent.name} />
       )}
       <div className="panel grid">
-        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }} ref={downloadAnchorRef}>
           <div>
             <div className="muted">Catégorie : {torrent.category?.name}</div>
             <div className="muted">Uploader : {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</div>

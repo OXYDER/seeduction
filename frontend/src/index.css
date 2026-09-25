@@ -1545,3 +1545,22 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
   .dm-dock { right: 8px; left: 8px; justify-content: flex-end; }
   .dm-window { width: min(320px, calc(100vw - 16px)); }
 }
+
+/* ---- Barre de téléchargement collée en haut (apparaît quand le bouton principal défile hors écran) ---- */
+.sticky-dl-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 65;
+  transform: translateY(-100%); transition: transform .25s cubic-bezier(.2,.7,.2,1);
+  background: rgba(10,13,26,0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border); box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+}
+.sticky-dl-bar.show { transform: translateY(0); }
+.sticky-dl-inner { display: flex; align-items: center; gap: 14px; max-width: 1500px; margin: 0 auto; padding: 9px 28px; }
+.sticky-dl-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 14px; }
+.sticky-dl-bar .download-btn { padding: 8px 20px; font-size: 13px; }
+.shell .sticky-dl-bar { left: 252px; }
+.shell.collapsed .sticky-dl-bar { left: 82px; }
+@media (max-width: 980px) {
+  .shell .sticky-dl-bar, .shell.collapsed .sticky-dl-bar { left: 0; }
+  .sticky-dl-inner { padding: 8px 14px; gap: 10px; }
+  .sticky-dl-title { display: none; }
+}
