@@ -1,64 +1,52 @@
-# Visualiser en ligne (streaming sans client)
+# Ouvrir dans le lecteur Seeduction (streaming sans client torrent)
 
-Deux façons de regarder un torrent sans ouvrir manuellement un client BitTorrent :
+Le bouton **🖥️ Ouvrir dans le lecteur Seeduction** sur la fiche d'un torrent lance la lecture directement sur le
+PC du membre, sans qu'il ait besoin d'ouvrir manuellement un client BitTorrent — voir [desktop-player/](desktop-player/README.md)
+pour le logiciel lui-même. Il n'apparaît que sur du contenu vidéo (Films, Séries, Animes, XXX... voir plus bas),
+pas sur les catégories audio/logiciels/jeux/livres où « regarder » n'a pas de sens.
 
-- **▶ Visualiser en ligne** (ce document) : lecture dans le navigateur, le NAS relaie le fichier. Limité aux
-  formats lisibles nativement par un `<video>` (voir plus bas).
-- **🖥️ Ouvrir dans le lecteur Seeduction** ([desktop-player/](desktop-player/README.md)) : un petit logiciel
-  installé sur le PC du membre télécharge directement depuis les seeders (zéro charge sur le NAS) et lance VLC —
-  aucune limite de format, y compris `.mkv`/x265. Il faut l'installer une fois ; ensuite, cliquer sur le bouton
-  ouvre le logiciel automatiquement (comme un lien Zoom ou Spotify).
+Il a remplacé un premier essai, **« ▶ Visualiser en ligne »** (lecture dans le navigateur, relayée par le NAS),
+retiré du site : il était limité aux formats lisibles nativement par un `<video>` (`.mp4`/`.webm`), ratait donc la
+plupart des releases actuelles en `.mkv`/x265, et chargeait le NAS pour rien alors que le lecteur desktop fait mieux
+sur les deux plans. Le code de ce premier essai (`backend/src/stream/stream.service.ts` → `getFile()`, la route
+`GET /api/stream/:torrentId`) reste dans le backend au cas où, mais n'est plus appelé par le site.
 
 ## Comment ça marche
 
 Un navigateur ne peut pas rejoindre un swarm BitTorrent lui-même (il ne parle que WebRTC, les clients comme
 qBittorrent ou Transmission ne parlent que TCP/uTP classique — les deux mondes ne se comprennent pas directement).
-Le NAS fait donc le pont :
+Le lecteur desktop est un vrai client BitTorrent (comme qBittorrent), sans cette limite :
 
-1. Quand un membre clique sur « Visualiser en ligne », le **backend rejoint le swarm comme un peer normal**
-   (`backend/src/stream/stream.service.ts`, via la librairie `webtorrent` en Node.js) — avec le **même** fichier
-   `.torrent` personnalisé (announce Seeduction + passkey du membre) qu'un téléchargement classique. Le visionnage
-   compte donc comme un peer normal pour le ratio et le suivi hit & run, exactement comme s'il avait téléchargé le
-   fichier avec un client.
-2. Il télécharge **uniquement le fichier demandé**, dans l'ordre (les autres fichiers d'un pack de plusieurs
-   épisodes ne sont pas touchés).
-3. Il relaie les octets au navigateur au fur et à mesure, via une requête HTTP à plages (`Range`) — le même
-   mécanisme que n'importe quel site vidéo. Un `<video>` HTML peut donc jouer le fichier avant qu'il soit
-   complètement téléchargé.
-4. Si plusieurs membres regardent le même contenu en même temps, ils **partagent la même session de téléchargement**
-   côté serveur (un seul swarm, pas un par spectateur).
-5. Une session sans requête depuis 20 minutes est fermée automatiquement et son cache disque supprimé.
+1. Un clic sur le bouton demande au serveur un **jeton de lecture à usage unique** (`POST /api/stream/session`,
+   `StreamService.createPlaySession`), puis ouvre `seeduction://stream/<jeton>` — un lien qui ouvre automatiquement
+   le logiciel installé sur le PC du membre (comme un lien Zoom ou Spotify).
+2. Le logiciel échange ce jeton contre le **même `.torrent` personnalisé** (announce Seeduction + passkey du
+   membre) qu'un téléchargement classique (`GET /api/stream/session/:token`, à usage unique, expire après 2 min).
+   Le visionnage compte donc comme un peer normal pour le ratio et le suivi hit & run.
+3. Il rejoint le swarm **directement depuis le PC du membre** (aucune charge sur le NAS), télécharge dans l'ordre
+   uniquement le fichier demandé, le sert sur un petit serveur local, et lance **Seeduction VLC** (une copie de VLC
+   incluse dans l'installateur — voir `desktop-player/scripts/fetch-vlc.js`) dessus.
 
-Aucun transcodage n'est fait : les octets du fichier sont relayés tels quels.
+Aucun format n'est restreint : VLC lit à peu près tout, y compris `.mkv` et x265/HEVC.
 
-## Limite volontaire de cette version
+## Quelles catégories affichent le bouton
 
-**Seuls les fichiers déjà dans un format lisible nativement par un navigateur** peuvent être visualisés ainsi :
-`.mp4`, `.m4v`, `.webm`, `.ogv` (liste dans `PLAYABLE_EXTENSIONS`, backend et frontend). Le bouton n'apparaît tout
-simplement pas pour les autres formats — notamment **`.mkv` et le codec x265/HEVC, très répandus sur les releases
-actuelles**, qu'aucun navigateur ne sait lire directement.
-
-Étendre ça à n'importe quel torrent demanderait de transcoder à la volée avec `ffmpeg` (ré-encoder la vidéo en
-direct), ce qui est beaucoup plus lourd pour le CPU du NAS — surtout avec plusieurs lectures simultanées ou du
-contenu 4K. Ce n'est pas fait pour l'instant ; voir avec l'utilisateur avant de s'y lancer.
+`frontend/src/pages/TorrentDetail.tsx` (`VIDEO_KINDS`) affiche le bouton quand le type de contenu de la catégorie
+(`resolveContentKind`, avec repli sur la catégorie principale) est `FILM`, `SERIE`, `XXX` ou `DOCUMENT` — donc Films,
+Séries, Animes (rangés en FILM/SERIE), XXX, et les formations/documentaires vidéo s'il y en a. Musique, logiciels,
+jeux et livres n'ont pas ce bouton.
 
 ## Fichiers concernés
 
-- `backend/src/stream/` — module NestJS (`StreamService` gère le client WebTorrent et le cache des sessions,
-  `StreamController` sert le flux vidéo par plages).
-- `frontend/src/components/WatchOnlineButton.tsx` — bouton + lecteur (réutilise la modale de bande-annonce).
-- `frontend/src/lib/streaming.ts` / `backend/src/stream/stream.service.ts` (`PLAYABLE_EXTENSIONS`) — liste des
-  extensions lisibles ; à garder identique des deux côtés.
-- `frontend/nginx/site.conf.template` — bloc `location /api/stream/` dédié (tampon désactivé, délais longs) pour
-  que le flux vidéo ne soit pas retardé ou coupé par nginx.
+- `backend/src/stream/` — module NestJS (`StreamService` gère le client WebTorrent, le cache des sessions de
+  lecture navigateur (dormant) et les jetons à usage unique du lecteur desktop ; `StreamController` expose les deux).
+- `frontend/src/components/WatchOnlineButton.tsx` — bouton + sélecteur de fichier (réutilise la modale de bande-annonce).
+- `frontend/nginx/site.conf.template` — bloc `location /api/stream/` dédié (tampon désactivé, délais longs), utile
+  pour `POST /api/stream/session` comme pour l'ancien flux vidéo.
+- `desktop-player/` — le logiciel lui-même (voir son propre README).
 
 ## Stockage
 
-Le cache de lecture est stocké dans `STREAM_STORAGE_DIR` (par défaut `./storage/stream-cache` dans le conteneur
-backend). C'est un cache jetable : il n'a pas besoin d'être sauvegardé, et peut être vidé sans risque.
-
-## Authentification du flux vidéo
-
-Une balise `<video>` fait une simple requête `GET` et ne peut pas envoyer l'en-tête `Authorization` du reste du
-site. Le flux est donc identifié par la **passkey** du membre dans l'URL (`/api/stream/:torrentId?file=0&passkey=...`),
-exactement comme les announces du tracker et les téléchargements de `.torrent` le font déjà.
+Le cache de lecture navigateur (dormant) est stocké dans `STREAM_STORAGE_DIR` (par défaut `./storage/stream-cache`
+dans le conteneur backend) — un cache jetable, pas besoin de le sauvegarder. Le lecteur desktop, lui, télécharge
+sur le PC du membre, jamais sur le NAS.

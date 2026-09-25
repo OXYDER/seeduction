@@ -20,6 +20,10 @@ import { useFavorites } from '../lib/favorites';
 import { usePageBackdrop } from '../lib/backdrop';
 import { useTheme } from '../lib/theme';
 import { formatBytes } from '../lib/format';
+import { resolveContentKind } from '../lib/categoryKind';
+
+// Types de contenu pour lesquels « Ouvrir dans le lecteur Seeduction » a un sens (vidéo à regarder).
+const VIDEO_KINDS = new Set(['FILM', 'SERIE', 'XXX', 'DOCUMENT']);
 
 export default function TorrentDetail() {
   const { id } = useParams();
@@ -103,6 +107,10 @@ export default function TorrentDetail() {
   ].filter(Boolean);
 
   const synopsis: string | null = torrent.metadata?.overview ?? null;
+  // Catégorie principale déduite de l'inclusion du parent (voir torrents.service.ts) : nécessaire au repli d'une
+  // sous-catégorie qui n'a pas son propre type de contenu.
+  const contentKind = resolveContentKind(torrent.category, torrent.category?.parent);
+  const isVideoKind = VIDEO_KINDS.has(contentKind ?? '');
 
   const uploadedBanner = justUploaded && (
     <div className="panel ornate">
@@ -119,7 +127,7 @@ export default function TorrentDetail() {
   const actions = user && (
     <div className="row" style={{ gap: 8, position: 'relative', flexWrap: 'wrap' }}>
       <button onClick={download} className="download-btn">⬇ Télécharger le .torrent</button>
-      <WatchOnlineButton torrentId={torrent.id} fileList={torrent.fileList} />
+      {isVideoKind && <WatchOnlineButton torrentId={torrent.id} fileList={torrent.fileList} />}
       <TorrentSocial torrentId={torrent.id} seeders={torrent.seeders} isUploader={torrent.uploader?.id === user.id} />
       {!torrent.freeleech && (tokenUntil
         ? <span className="badge freeleech" title="Jeton freeleech actif">🎟️ Freeleech pour toi jusqu'au {new Date(tokenUntil).toLocaleDateString('fr-FR')}</span>
