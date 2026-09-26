@@ -10,7 +10,7 @@ import { formatBytes } from '../lib/format';
  * format. Affiché uniquement pour du contenu vidéo (voir isVideoKind côté TorrentDetail) ; l'ancien lecteur intégré
  * au navigateur (limité au .mp4/.webm) a été retiré au profit de celui-ci, plus capable.
  */
-export default function WatchOnlineButton({ torrentId, fileList }: { torrentId: string; fileList: { path: string; size: number }[] | null | undefined }) {
+export default function WatchOnlineButton({ torrentId, fileList, compact }: { torrentId: string; fileList: { path: string; size: number }[] | null | undefined; compact?: boolean }) {
   const allFiles = (fileList ?? []).map((f, index) => ({ ...f, index }));
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<number | null>(null);
@@ -46,8 +46,13 @@ export default function WatchOnlineButton({ torrentId, fileList }: { torrentId: 
 
   return (
     <>
-      <button type="button" onClick={start} title="Ouvre le lecteur Seeduction installé sur ton PC : tous les formats, aucune charge sur le NAS">
-        🖥️ Ouvrir dans le lecteur Seeduction
+      <button
+        type="button"
+        onClick={start}
+        className={compact ? 'icon-btn' : undefined}
+        title="Ouvre le lecteur Seeduction installé sur ton PC : tous les formats, aucune charge sur le NAS"
+      >
+        {compact ? '▶' : '🖥️ Ouvrir dans le lecteur Seeduction'}
       </button>
 
       {open && createPortal(

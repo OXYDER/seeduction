@@ -12,6 +12,20 @@ import { useTheme } from '../lib/theme';
 import { useFavorites } from '../lib/favorites';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
 import { parseNaturalQuery, ORIGINS, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
+import WatchOnlineButton from '../components/WatchOnlineButton';
+import { resolveContentKind } from '../lib/categoryKind';
+
+const VIDEO_KINDS = new Set(['FILM', 'SERIE', 'XXX', 'DOCUMENT']);
+
+async function downloadTorrent(id: string, name: string) {
+  const res = await api.get(`/torrents/${id}/download`, { responseType: 'blob' });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${name}.torrent`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
 
 const SORTS = [
   { value: 'date', label: 'Date' },
@@ -481,10 +495,15 @@ export default function Browse() {
                     className={`sortable${sort === c.sort ? ' sorted' : ''}`}
                     onClick={() => clickColumn(c.sort)}
                     title={`Trier par ${c.label.toLowerCase()}`}
+                    // Toutes les colonnes sauf "Nom" se réduisent à leur contenu (largeur 1% + pas de retour à la
+                    // ligne) : le tableau étant en table-layout auto, "Nom" absorbe alors tout l'espace restant et
+                    // ses titres remontent juste à côté de la catégorie, au lieu d'être poussés loin à droite.
+                    style={c.sort === 'nom' ? undefined : { width: '1%', whiteSpace: 'nowrap' }}
                   >
                     {c.label}<span className="sort-arrow">{sort === c.sort ? (order === 'asc' ? '▲' : '▼') : '⇅'}</span>
                   </th>
                 ))}
+                <th style={{ width: '1%', whiteSpace: 'nowrap' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -528,11 +547,26 @@ export default function Browse() {
                   <td style={{ color: 'var(--success)', whiteSpace: 'nowrap' }}><HealthDot seeders={t.seeders} />{t.seeders}</td>
                   <td style={{ color: 'var(--danger)' }}>{t.leechers}</td>
                   <td className="muted">{t.anonymousUpload ? 'Anonyme' : <UserLink user={t.uploader} />}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <div className="row" style={{ gap: 4 }}>
+                      {VIDEO_KINDS.has(resolveContentKind(t.category, t.category?.parent) ?? '') && (
+                        <WatchOnlineButton compact torrentId={t.id} fileList={t.fileList} />
+                      )}
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title="Télécharger le .torrent"
+                        onClick={() => downloadTorrent(t.id, t.name)}
+                      >
+                        ⬇
+                      </button>
+                    </div>
+                  </td>
                 </tr>
                 );
               })}
               {items.length === 0 && (
-                <tr><td colSpan={COLUMNS.length} className="muted">Aucun résultat.</td></tr>
+                <tr><td colSpan={COLUMNS.length + 1} className="muted">Aucun résultat.</td></tr>
               )}
             </tbody>
           </table>
