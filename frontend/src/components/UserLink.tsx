@@ -8,6 +8,7 @@ import { displayRank } from '../lib/memberClass';
 import { ROLE_LABEL } from './StaffUserPanel';
 import { useAuthStore } from '../store/auth';
 import { useDmStore } from '../store/dm';
+import { STATUS_COLOR, STATUS_LABEL, type PublicStatus } from '../lib/presence';
 
 function FriendAction({ u }: { u: any }) {
   const me = useAuthStore((s) => s.user);
@@ -53,12 +54,20 @@ function FriendAction({ u }: { u: any }) {
 }
 
 function UserCard({ u }: { u: any }) {
+  const onlineStatus: PublicStatus = u.onlineStatus ?? 'OFFLINE';
   return (
     <>
-      <Avatar user={u} size={64} />
+      <span style={{ position: 'relative', display: 'inline-block', flexShrink: 0 }}>
+        <Avatar user={u} size={64} />
+        <span
+          title={STATUS_LABEL[onlineStatus]}
+          style={{ position: 'absolute', right: 2, bottom: 2, width: 14, height: 14, borderRadius: '50%', background: STATUS_COLOR[onlineStatus], border: '2px solid var(--bg-panel-raised, #10162a)' }}
+        />
+      </span>
       <div style={{ minWidth: 0 }}>
         <div className="tip-title">{u.username}</div>
         <div className="tip-meta">{displayRank(u, ROLE_LABEL)}{u.status === 'BANNED' ? ' · 🚫 banni' : ''}</div>
+        {u.statusText && <div className="tip-meta" style={{ fontStyle: 'italic', marginTop: 3 }}>{u.statusText}</div>}
         <div className="tip-meta" style={{ marginTop: 6, lineHeight: 1.7 }}>
           Ratio : <strong style={{ color: 'var(--gold-bright)' }}>{u.ratio != null ? u.ratio.toFixed(2) : '∞'}</strong><br />
           <span style={{ color: 'var(--success)' }}>▲ {formatBytes(u.uploaded)}</span> · <span style={{ color: 'var(--danger)' }}>▼ {formatBytes(u.downloaded)}</span><br />

@@ -1,18 +1,31 @@
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import HoverCard from './HoverCard';
-import { formatBytes } from '../lib/format';
+import { formatBytes, formatRuntime } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { HealthDot } from './TorrentBits';
 
-/** Contenu de l'infobulle d'un torrent : pochette, infos de base et synopsis. */
+/** Contenu de l'infobulle d'un torrent : pochette, note, infos de base, casting et synopsis. */
 export function TorrentPreview({ t }: { t: any }) {
+  const runtime = formatRuntime(t.runtime);
   return (
     <>
       {t.coverImage && <img src={t.coverImage} alt="" />}
       <div style={{ minWidth: 0 }}>
         <div className="tip-title">{t.name}</div>
-        <div className="tip-meta">{[t.category?.name, t.year, t.resolution, t.language, formatBytes(t.size)].filter(Boolean).join(' · ')}</div>
+        <div className="tip-meta">
+          {t.rating != null && <span className="tip-rating">★ {t.rating.toFixed(1)}</span>}
+          {[t.category?.name, t.year, runtime, t.resolution, t.language, formatBytes(t.size)].filter(Boolean).join(' · ')}
+        </div>
+        {(t.director || t.cast?.length > 0) && (
+          <div className="tip-meta tip-credits">
+            {t.director && <div><span className="muted">Réalisation :</span> {t.director}</div>}
+            {t.cast?.length > 0 && <div><span className="muted">Avec :</span> {t.cast.join(', ')}</div>}
+          </div>
+        )}
+        {t.genres?.length > 0 && (
+          <div className="tip-genres">{t.genres.slice(0, 4).map((g: string) => <span key={g} className="tip-genre-chip">{g}</span>)}</div>
+        )}
         <div className="tip-meta">
           <HealthDot seeders={t.seeders} />
           <span style={{ color: 'var(--success)' }}>▲ {t.seeders}</span> · <span style={{ color: 'var(--danger)' }}>▼ {t.leechers}</span> · {timeAgo(t.createdAt)}

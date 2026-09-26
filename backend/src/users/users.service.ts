@@ -22,7 +22,7 @@ export class UsersService {
         id: true, username: true, email: true, role: true, uploaded: true,
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
-        presenceStatus: true, dmPrivacy: true,
+        presenceStatus: true, dmPrivacy: true, statusText: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
@@ -52,12 +52,16 @@ export class UsersService {
     return { dmPrivacy: value };
   }
 
-  /** Statut de présence choisi (En ligne / Absent / Occupé / Apparaître hors ligne), visible partout où le membre apparaît. */
-  async setPresenceStatus(userId: string, status: string) {
+  /**
+   * Statut de présence choisi (En ligne / Absent / Occupé / Apparaître hors ligne), visible partout où le membre
+   * apparaît, avec un petit message libre optionnel (ex. « En vacances jusqu'au 5 ») affiché à côté.
+   */
+  async setPresenceStatus(userId: string, status: string, statusText?: string | null) {
     if (!PRESENCE_VALUES.includes(status as PresenceStatus)) throw new BadRequestException('Statut invalide');
-    await this.prisma.user.update({ where: { id: userId }, data: { presenceStatus: status as PresenceStatus } });
+    const text = typeof statusText === 'string' ? statusText.trim().slice(0, 100) || null : undefined;
+    await this.prisma.user.update({ where: { id: userId }, data: { presenceStatus: status as PresenceStatus, ...(text !== undefined ? { statusText: text } : {}) } });
     this.presence.setPreference(userId, status as PresenceStatus);
-    return { presenceStatus: status };
+    return { presenceStatus: status, ...(text !== undefined ? { statusText: text } : {}) };
   }
 
   /** Avatar (image téléversée sur Seeduction, jamais un lien externe) et signature affichée sous les messages du forum. */

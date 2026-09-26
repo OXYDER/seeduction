@@ -14,6 +14,8 @@ import { FavoriteStar, HealthDot } from '../components/TorrentBits';
 import { parseNaturalQuery, ORIGINS, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
 import WatchOnlineButton from '../components/WatchOnlineButton';
 import { resolveContentKind } from '../lib/categoryKind';
+import HoverCard from '../components/HoverCard';
+import { TorrentPreview } from '../components/TorrentLink';
 
 const VIDEO_KINDS = new Set(['FILM', 'SERIE', 'XXX', 'DOCUMENT']);
 
@@ -52,8 +54,6 @@ const COLUMNS: { label: string; sort: string }[] = [
 const DEFAULT_DIR: Record<string, 'asc' | 'desc'> = {
   date: 'desc', nom: 'asc', taille: 'desc', seeders: 'desc', leechers: 'desc', popularite: 'desc', activite: 'desc', categorie: 'asc', uploader: 'asc',
 };
-
-interface Tip { t: any; x: number; y: number }
 
 export default function Browse() {
   const [params, setParams] = useSearchParams();
@@ -106,8 +106,6 @@ export default function Browse() {
   }
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
-  const [tip, setTip] = useState<Tip | null>(null);
-  const tipTimer = useRef<number | undefined>(undefined);
   const sortMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -199,19 +197,6 @@ export default function Browse() {
     setSort(field, sort === field ? (order === 'asc' ? 'desc' : 'asc') : undefined);
   }
 
-  function showTip(t: any, e: React.MouseEvent) {
-    window.clearTimeout(tipTimer.current);
-    const { clientX, clientY } = e;
-    tipTimer.current = window.setTimeout(() => setTip({ t, x: clientX, y: clientY }), 250);
-  }
-  function moveTip(e: React.MouseEvent) {
-    const { clientX, clientY } = e;
-    setTip((prev) => (prev ? { ...prev, x: clientX, y: clientY } : prev));
-  }
-  function hideTip() {
-    window.clearTimeout(tipTimer.current);
-    setTip(null);
-  }
 
   const activeFilters = ([
     year && { key: 'year', label: `Année ${year}` },
@@ -231,13 +216,6 @@ export default function Browse() {
   const hasAdvancedFilters = activeFilters.length > 0;
   const currentSortLabel = SORTS.find((s) => s.value === sort)?.label ?? 'Date';
 
-  // Infobulle : reste dans l'écran près des bords.
-  const tipStyle = tip
-    ? {
-        left: Math.max(8, Math.min(tip.x + 18, window.innerWidth - 384)),
-        top: Math.max(8, Math.min(tip.y + 18, window.innerHeight - 200)),
-      }
-    : undefined;
 
   const field = (label: string, control: React.ReactNode) => (
     <div>
@@ -468,37 +446,32 @@ export default function Browse() {
             {items.map((t) => {
               const catStyle = t.category?.slug ? CATEGORY_STYLE[t.category.slug] : undefined;
               return (
-                <Link
-                  key={t.id}
-                  to={`/torrents/${t.id}`}
-                  className="poster-card"
-                  onMouseEnter={(e) => showTip(t, e)}
-                  onMouseMove={moveTip}
-                  onMouseLeave={hideTip}
-                >
-                  {t.coverImage
-                    ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
-                    : <div className="poster-fallback">{catStyle?.icon ?? '📦'}</div>}
-                  <div className="poster-badges">
-                    <CategoryTag category={t.category} />
-                    {t.freeleech && <span className="badge freeleech">FL</span>}
-                    {t.doubleUpload && <span className="badge double">2x</span>}
-                    {t.resolution && <span className="badge new">{t.resolution}</span>}
-                  </div>
-                  {favorites.enabled && (
-                    <div className="poster-fav">
-                      <FavoriteStar active={favorites.ids.has(t.id)} onToggle={() => favorites.toggle(t.id)} />
+                <HoverCard key={t.id} cacheKey={`torrent:${t.id}`} inline={false} load={() => api.get(`/torrents/${t.id}/preview`).then((r) => r.data)} render={(d: any) => <TorrentPreview t={d} />}>
+                  <Link to={`/torrents/${t.id}`} className="poster-card">
+                    {t.coverImage
+                      ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
+                      : <div className="poster-fallback">{catStyle?.icon ?? '📦'}</div>}
+                    <div className="poster-badges">
+                      <CategoryTag category={t.category} />
+                      {t.freeleech && <span className="badge freeleech">FL</span>}
+                      {t.doubleUpload && <span className="badge double">2x</span>}
+                      {t.resolution && <span className="badge new">{t.resolution}</span>}
                     </div>
-                  )}
-                  <div className="poster-body">
-                    <div className="poster-title">{t.name}</div>
-                    <div className="muted" style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center' }}>
-                      <HealthDot seeders={t.seeders} />
-                      <span style={{ color: 'var(--success)' }}>{t.seeders}</span>&nbsp;/&nbsp;<span style={{ color: 'var(--danger)' }}>{t.leechers}</span>
-                      <span style={{ marginLeft: 'auto' }}>{formatSize(t.size)}</span>
+                    {favorites.enabled && (
+                      <div className="poster-fav">
+                        <FavoriteStar active={favorites.ids.has(t.id)} onToggle={() => favorites.toggle(t.id)} />
+                      </div>
+                    )}
+                    <div className="poster-body">
+                      <div className="poster-title">{t.name}</div>
+                      <div className="muted" style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center' }}>
+                        <HealthDot seeders={t.seeders} />
+                        <span style={{ color: 'var(--success)' }}>{t.seeders}</span>&nbsp;/&nbsp;<span style={{ color: 'var(--danger)' }}>{t.leechers}</span>
+                        <span style={{ marginLeft: 'auto' }}>{formatSize(t.size)}</span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </HoverCard>
               );
             })}
             {items.length === 0 && <div className="muted">Aucun résultat.</div>}
@@ -547,7 +520,9 @@ export default function Browse() {
                       )}
                       <span>
                         {isStaff && <Link to={`/torrents/${t.id}?edit=1`} title="Modifier / supprimer (staff)" style={{ marginRight: 6 }}>✏️</Link>}
-                        <Link to={`/torrents/${t.id}`} onMouseEnter={(e) => showTip(t, e)} onMouseMove={moveTip} onMouseLeave={hideTip}>{t.name}</Link>{' '}
+                        <HoverCard cacheKey={`torrent:${t.id}`} load={() => api.get(`/torrents/${t.id}/preview`).then((r) => r.data)} render={(d: any) => <TorrentPreview t={d} />}>
+                          <Link to={`/torrents/${t.id}`}>{t.name}</Link>
+                        </HoverCard>{' '}
                         {t.freeleech && <span className="badge freeleech">FL</span>}{' '}
                         {t.doubleUpload && <span className="badge double">2x</span>}{' '}
                         {t.resolution && <span className="badge new">{t.resolution}</span>}{' '}
@@ -604,23 +579,6 @@ export default function Browse() {
         </div>
       </div>
 
-      {tip && (
-        <div className="torrent-tip" style={tipStyle}>
-          {tip.t.coverImage && <img src={tip.t.coverImage} alt="" />}
-          <div style={{ minWidth: 0 }}>
-            <div className="tip-title">{tip.t.name}</div>
-            <div className="tip-meta">
-              {[tip.t.category?.name, tip.t.year, tip.t.resolution, tip.t.language, formatSize(tip.t.size)].filter(Boolean).join(' · ')}
-            </div>
-            <div className="tip-meta">
-              <span style={{ color: 'var(--success)' }}>▲ {tip.t.seeders}</span> · <span style={{ color: 'var(--danger)' }}>▼ {tip.t.leechers}</span> · {timeAgo(tip.t.createdAt)}
-            </div>
-            <div className="tip-synopsis">
-              {tip.t.synopsis ?? <span className="muted">Pas de synopsis pour ce torrent.</span>}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

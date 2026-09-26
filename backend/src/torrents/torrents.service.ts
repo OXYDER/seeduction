@@ -427,23 +427,38 @@ export class TorrentsService {
       });
   }
 
-  /** Infos légères pour l'infobulle d'un torrent (pochette, détails de base, extrait du synopsis). */
+  /** Infos légères pour l'infobulle d'un torrent (pochette, détails de base, note, casting, extrait du synopsis). */
   async preview(id: string, viewer?: { userId: string; role: string }) {
     const t = await this.prisma.torrent.findUnique({
       where: { id },
       select: {
         id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true, seeders: true, leechers: true,
-        createdAt: true, status: true, categoryId: true, category: { select: { name: true, slug: true, parent: { select: { slug: true, name: true } } } }, metadata: true,
+        createdAt: true, status: true, categoryId: true, genres: true,
+        category: { select: { name: true, slug: true, parent: { select: { slug: true, name: true } } } }, metadata: true,
+        entities: {
+          where: { role: { in: ['ACTOR', 'DIRECTOR'] } },
+          orderBy: [{ role: 'asc' }, { position: 'asc' }],
+          take: 8,
+          select: { role: true, entity: { select: { id: true, name: true } } },
+        },
       },
     });
     const staff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
     if (!t || (t.status !== 'APPROVED' && !staff)) throw new NotFoundException('Torrent introuvable');
     if (!staff && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) throw new ForbiddenException('Contenu masqué');
 
-    const { metadata, categoryId, status, ...rest } = t;
-    const overview = (metadata as any)?.overview;
+    const { metadata, categoryId, status, entities, ...rest } = t;
+    const meta = (metadata as any) ?? {};
+    const overview = meta.overview;
     const synopsis = typeof overview === 'string' && overview.trim() ? overview.trim().replace(/\s+/g, ' ') : null;
-    return { ...rest, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
+    return {
+      ...rest,
+      synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis,
+      rating: typeof meta.rating === 'number' ? meta.rating : null,
+      runtime: typeof meta.runtime === 'number' ? meta.runtime : null,
+      director: entities.find((e) => e.role === 'DIRECTOR')?.entity.name ?? null,
+      cast: entities.filter((e) => e.role === 'ACTOR').slice(0, 4).map((e) => e.entity.name),
+    };
   }
 
   /** NFO d'un torrent (même visibilité que la fiche). */

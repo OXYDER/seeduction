@@ -26,6 +26,7 @@ export interface Profile {
   createdAt: string;
   avatarUrl?: string | null;
   presenceStatus?: 'ONLINE' | 'AWAY' | 'BUSY' | 'INVISIBLE';
+  statusText?: string | null;
   _count: { torrentsUploaded: number; invitees: number };
 }
 
@@ -194,11 +195,13 @@ export default function Layout() {
             <Link to="/profile" className="side-user-card">
               <span style={{ position: 'relative', display: 'inline-block', width: 38, height: 38, flexShrink: 0 }}>
                 <Avatar user={{ username: user?.username, avatarUrl: profile?.avatarUrl }} size={38} />
-                <StatusSwitcher value={profile?.presenceStatus} />
+                <StatusSwitcher value={profile?.presenceStatus} statusText={profile?.statusText} onChange={(v, t) => setProfile((p) => (p ? { ...p, presenceStatus: v, statusText: t } : p))} />
               </span>
               <div style={{ minWidth: 0 }}>
                 <div className="side-user-name">{user?.username}</div>
-                <div className="side-user-sub">Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</div>
+                <div className="side-user-sub">
+                  {profile?.statusText ? <span style={{ fontStyle: 'italic' }}>{profile.statusText}</span> : <>Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</>}
+                </div>
               </div>
             </Link>
             <button className="secondary side-logout" onClick={() => { logout(); navigate('/login'); }} title="Se déconnecter">⎋</button>

@@ -822,8 +822,13 @@ th.sorted .sort-arrow { opacity: 1; }
   border-radius: 4px; box-shadow: 0 12px 32px rgba(0,0,0,0.6);
 }
 .torrent-tip img { width: 84px; height: 120px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
-.torrent-tip .tip-title { font-weight: 700; color: var(--gold-bright); line-height: 1.3; }
+.torrent-tip .tip-title { font-weight: 700; color: var(--gold-bright); line-height: 1.3; overflow-wrap: anywhere; }
 .torrent-tip .tip-meta { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+.torrent-tip .tip-rating { color: #fbbf24; font-weight: 700; margin-right: 6px; }
+.torrent-tip .tip-credits { line-height: 1.5; }
+.torrent-tip .tip-credits > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.torrent-tip .tip-genres { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.torrent-tip .tip-genre-chip { font-size: 10.5px; padding: 1px 7px; border-radius: 4px; background: rgba(255,255,255,0.08); color: var(--text-dim); }
 .torrent-tip .tip-synopsis { font-size: 12.5px; line-height: 1.45; margin-top: 8px; }
 @media (hover: none) { .torrent-tip { display: none; } }
 
@@ -1322,7 +1327,10 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 :root[data-theme="prestige"] .side-brand { padding: 4px 8px 2px; }
 :root[data-theme="prestige"] .side-icon { background: transparent; width: 26px; height: 26px; font-size: 17px; }
 :root[data-theme="prestige"] .side-links a { padding: 10px 14px; border-radius: 4px; font-size: 15px; font-weight: 600; color: #b3bbd1; }
-:root[data-theme="prestige"] .side-links a:hover { background: rgba(255,255,255,0.08); color: #fff; transform: none; }
+:root[data-theme="prestige"] .side-links a:hover { background: rgba(255,255,255,0.14); color: #fff; transform: none; }
+/* Le wordmark gardait la police ornée "Cinzel" du thème classique, détonnant avec le reste du menu (Inter partout
+   ailleurs en Prestige) — une police standard et un espacement plus resserré donnent un rendu plus net, moins "médiéval". */
+:root[data-theme="prestige"] .side-brand { font-family: var(--font-body); letter-spacing: 0.04em; font-weight: 800; }
 /* Element actif = pastille pleine et lumineuse (lisible, tres « Plex ») */
 :root[data-theme="prestige"] .side-links a.active { background: #fff; color: #0b1020; border-color: transparent; box-shadow: 0 8px 26px rgba(0,0,0,0.45); }
 :root[data-theme="prestige"] .side-links a.active .side-icon { background: transparent; box-shadow: none; }

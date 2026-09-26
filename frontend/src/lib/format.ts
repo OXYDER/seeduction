@@ -9,3 +9,11 @@ export function formatBytes(bytes: number | string | bigint) {
 export function formatNumber(n: number | string | bigint) {
   return Number(n).toLocaleString('fr-FR');
 }
+
+/** Durée en minutes (issue de TMDB) -> "1 h 52" / "45 min". */
+export function formatRuntime(minutes?: number | null) {
+  if (!minutes || minutes <= 0) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`;
+}

@@ -21,8 +21,8 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('me/presence')
-  setPresence(@Body('status') status: string, @Request() req: any) {
-    return this.usersService.setPresenceStatus(req.user.userId, status);
+  setPresence(@Body() body: { status: string; statusText?: string | null }, @Request() req: any) {
+    return this.usersService.setPresenceStatus(req.user.userId, body.status, body.statusText);
   }
 
   @UseGuards(JwtAuthGuard)
