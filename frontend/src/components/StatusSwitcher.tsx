@@ -47,19 +47,13 @@ export default function StatusSwitcher({ value, statusText, open, onOpenChange, 
   if (!open) return null;
 
   return (
-    <div
-      ref={ref}
-      className="panel ornate"
-      style={{ position: 'absolute', left: 0, right: 0, top: '100%', marginTop: 8, zIndex: 90, padding: 10 }}
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div ref={ref} className="status-menu" onClick={(e) => e.stopPropagation()}>
       {PRESENCE_OPTIONS.map((o) => (
         <button
           key={o.value}
           type="button"
-          className="secondary"
+          className={`status-option${current === o.value ? ' on' : ''}`}
           disabled={busy}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', marginBottom: 3, fontWeight: current === o.value ? 700 : 400 }}
           onClick={() => { if (o.value !== current) save(o.value, text); }}
         >
           <span style={{ width: 10, height: 10, borderRadius: '50%', background: o.color, flexShrink: 0 }} />
@@ -76,7 +70,7 @@ export default function StatusSwitcher({ value, statusText, open, onOpenChange, 
           onKeyDown={(e) => { if (e.key === 'Enter') save(current, text); }}
           style={{ width: '100%' }}
         />
-        <button type="button" disabled={busy} style={{ width: '100%', marginTop: 6 }} onClick={() => save(current, text)}>Enregistrer</button>
+        <button type="button" className="secondary" disabled={busy} style={{ width: '100%', marginTop: 6 }} onClick={() => save(current, text)}>Enregistrer</button>
       </div>
       <Link to="/profile" className="muted" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }} onClick={() => onOpenChange(false)}>
         Voir mon profil →

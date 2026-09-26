@@ -1148,6 +1148,19 @@ th.sorted .sort-arrow { opacity: 1; }
 .side-user-card { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 7px; border-radius: 4px; color: var(--text); transition: background .15s ease; }
 .side-user-card:hover { background: rgba(255,255,255,0.06); }
 .side-user-card .forum-avatar { margin: 0; flex-shrink: 0; box-shadow: 0 0 0 2px rgba(var(--acc-rgb),0.4); }
+/* Fond plein (pas de dégradé translucide ni de flou façon .panel.ornate) : ce menu se pose par-dessus les liens du
+   menu de gauche, et le flou de .secondary derrière chaque option y laissait passer le texte des liens en dessous —
+   illisible. Même logique que .sort-menu, qui n'a jamais eu ce problème. */
+.status-menu {
+  position: absolute; left: 0; right: 0; top: 100%; margin-top: 8px; z-index: 90; padding: 8px;
+  background: var(--bg-panel-raised); border: 1px solid var(--border-gold); border-radius: 4px; box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+}
+.status-menu .status-option {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; margin-bottom: 2px;
+  background: none; border: 0; color: var(--text); font-size: 13px; text-align: left; border-radius: 4px; cursor: pointer;
+}
+.status-menu .status-option:hover, .status-menu .status-option.on { background: var(--bg-panel); }
+.status-menu .status-option.on { font-weight: 700; }
 .side-user-name { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-user-sub { font-size: 11px; color: var(--text-dim); }
 .side-logout { padding: 8px 12px; }
