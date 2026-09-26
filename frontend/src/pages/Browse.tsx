@@ -511,7 +511,7 @@ export default function Browse() {
                 const catStyle = t.category?.slug ? CATEGORY_STYLE[t.category.slug] : undefined;
                 return (
                 <tr key={t.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>
+                  <td className="cat-cell" style={{ whiteSpace: 'nowrap' }}>
                     {t.category?.imageUrl
                       ? <img src={t.category.imageUrl} alt={t.category.name} title={t.category.name} style={{ height: 22, maxWidth: 80, objectFit: 'contain' }} />
                       : <CategoryTag category={t.category} />}
