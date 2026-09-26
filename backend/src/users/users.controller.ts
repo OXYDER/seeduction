@@ -32,6 +32,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/watching-visibility')
+  setShowWatchingStatus(@Body('enabled') enabled: boolean, @Request() req: any) {
+    return this.usersService.setShowWatchingStatus(req.user.userId, enabled);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('me/adult')
   setAdult(@Body() body: { enabled: boolean; confirmAge?: boolean }, @Request() req: any) {
     return this.usersService.setAdultPreference(req.user.userId, !!body?.enabled, !!body?.confirmAge);

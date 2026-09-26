@@ -28,6 +28,7 @@ export interface Profile {
   avatarUrl?: string | null;
   presenceStatus?: 'ONLINE' | 'AWAY' | 'BUSY' | 'INVISIBLE';
   statusText?: string | null;
+  watching?: string | null;
   _count: { torrentsUploaded: number; invitees: number };
 }
 
@@ -214,7 +215,13 @@ export default function Layout() {
               <div style={{ minWidth: 0 }}>
                 <div className="side-user-name">{user?.username}</div>
                 <div className="side-user-sub">
-                  {profile?.statusText ? <span style={{ fontStyle: 'italic' }}>{profile.statusText}</span> : <>Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</>}
+                  {profile?.watching ? (
+                    <span title={profile.watching}>🎬 {profile.watching}</span>
+                  ) : profile?.statusText ? (
+                    <span style={{ fontStyle: 'italic' }}>{profile.statusText}</span>
+                  ) : (
+                    <>Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</>
+                  )}
                 </div>
               </div>
               <StatusSwitcher

@@ -106,6 +106,7 @@ export default function Browse() {
   }
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
+  const [closedCatId, setClosedCatId] = useState<string | null>(null);
   const sortMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -284,17 +285,21 @@ export default function Browse() {
             const isActive = categoryId === c.id || !!c.children?.some((sub: any) => sub.id === categoryId);
             const total = (c._count?.torrents ?? 0) + (c.children?.reduce((sum: number, sub: any) => sum + (sub._count?.torrents ?? 0), 0) ?? 0);
             const hasChildren = c.children?.length > 0;
+            // Le menu déroulant se montre au survol (CSS) : cliquer un sous-lien ne fait pas bouger la souris, donc
+            // il resterait ouvert tant qu'on ne bouge pas ailleurs. `closedCatId` le force fermé juste après un clic,
+            // et se réinitialise dès que la souris quitte vraiment cette catégorie (prêt à se rouvrir normalement).
+            const forceClosed = closedCatId === c.id;
             return (
-              <div key={c.id} className="cat-tab-wrap">
-                <button type="button" className={isActive ? 'on' : ''} onClick={() => updateParam('categoryId', c.id)}>
+              <div key={c.id} className={`cat-tab-wrap${forceClosed ? ' force-closed' : ''}`} onMouseLeave={() => setClosedCatId(null)}>
+                <button type="button" className={isActive ? 'on' : ''} onClick={() => { updateParam('categoryId', c.id); setClosedCatId(c.id); }}>
                   {c.name}
                   <span className="cat-tab-count">{total}</span>
                 </button>
                 {hasChildren && (
                   <div className="cat-tab-dropdown">
-                    <button type="button" className={categoryId === c.id ? 'on' : ''} onClick={() => updateParam('categoryId', c.id)}>Tout {c.name}</button>
+                    <button type="button" className={categoryId === c.id ? 'on' : ''} onClick={() => { updateParam('categoryId', c.id); setClosedCatId(c.id); }}>Tout {c.name}</button>
                     {c.children.map((sub: any) => (
-                      <button key={sub.id} type="button" className={categoryId === sub.id ? 'on' : ''} onClick={() => updateParam('categoryId', sub.id)}>
+                      <button key={sub.id} type="button" className={categoryId === sub.id ? 'on' : ''} onClick={() => { updateParam('categoryId', sub.id); setClosedCatId(c.id); }}>
                         {sub.name} <span className="cat-tab-count">{sub._count?.torrents ?? 0}</span>
                       </button>
                     ))}
@@ -548,11 +553,11 @@ export default function Browse() {
                       )}
                       <button
                         type="button"
-                        className="icon-btn"
+                        className="icon-btn icon-btn-sq"
                         title="Télécharger le .torrent"
                         onClick={() => downloadTorrent(t.id, t.name)}
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12 3v12" />
                           <path d="M7 10l5 5 5-5" />
                           <path d="M5 21h14" />

@@ -97,6 +97,12 @@ model User {
   presenceStatus   PresenceStatus @default(ONLINE) // préférence affichée quand le membre est connecté (voir enum)
   statusText       String?    @db.VarChar(100) // petit message libre affiché à côté du statut (profil, infobulle, chat)
   freeleechUntil   DateTime?  // freeleech personnel (cadeau de bienvenue, récompense...) : ses téléchargements ne comptent pas dans son ratio jusqu'à cette date
+  // « En train de regarder X » via le lecteur desktop : rafraîchi toutes les quelques secondes tant que la lecture
+  // continue (voir StreamController) — expire tout seul (watchingUntil) si le lecteur ferme sans prévenir, jamais
+  // rempli pour du contenu adulte, et respecte showWatchingStatus (préférence du membre).
+  watchingTitle      String?   @db.VarChar(140)
+  watchingUntil      DateTime?
+  showWatchingStatus Boolean   @default(true)
   dmPrivacy        DmPrivacy      @default(EVERYONE) // qui peut lui écrire en chat privé sans être son ami
   adultAcceptedAt  DateTime?
   signature        String?    @db.Text

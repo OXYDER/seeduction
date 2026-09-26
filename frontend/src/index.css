@@ -801,6 +801,10 @@ th.sorted .sort-arrow { opacity: 1; }
   font-size: 14px; cursor: pointer;
 }
 .icon-btn:hover, .icon-btn.active { border-color: var(--gold); color: var(--gold-bright); }
+/* Icône seule (pas de texte à côté, ex. Visionner/Télécharger dans la liste) : une taille carrée fixe, sinon un
+   glyphe texte ("▶") et un SVG de même largeur/hauteur nominale ne rendent pas forcément à la même taille visuelle
+   une fois posés dans le padding par défaut de .icon-btn. */
+.icon-btn.icon-btn-sq { width: 30px; height: 30px; padding: 0; justify-content: center; }
 .icon-btn .count {
   min-width: 16px; height: 16px; padding: 0 4px; border-radius: 4px; background: var(--gold); color: var(--on-accent);
   font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
@@ -1492,6 +1496,9 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
   box-shadow: 0 12px 32px rgba(0,0,0,0.6);
 }
 .cat-tab-wrap:hover .cat-tab-dropdown, .cat-tab-wrap:focus-within .cat-tab-dropdown { display: flex; }
+/* Forcé fermé juste après un clic sur un sous-lien (voir Browse.tsx) : sans ça, le survol CSS garde le menu ouvert
+   tant que la souris ne bouge pas, même si on vient de choisir une sous-catégorie. */
+.cat-tab-wrap.force-closed .cat-tab-dropdown { display: none !important; }
 .cat-tab-dropdown button {
   background: none; border: 1px solid transparent; box-shadow: none; color: var(--text-dim); text-align: left;
   padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: 500; white-space: nowrap;

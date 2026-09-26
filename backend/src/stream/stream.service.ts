@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { TorrentsService } from '../torrents/torrents.service';
+import { PrismaService } from '../common/prisma.service';
 
 // webtorrent 1.x (dernière ligne CommonJS, la 2.x étant en ESM pur, incompatible avec ce backend en require()).
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -46,7 +47,7 @@ export class StreamService {
   private sessions = new Map<string, Session>(); // clé = id du torrent en base
   private playSessions = new Map<string, PlaySession>(); // clé = jeton à usage unique remis au lecteur desktop
 
-  constructor(private torrents: TorrentsService) {
+  constructor(private torrents: TorrentsService, private prisma: PrismaService) {
     setInterval(() => this.cleanupIdle(), 5 * 60_000).unref();
   }
 
@@ -75,7 +76,36 @@ export class StreamService {
     const coverImage = summary?.coverImage
       ? (summary.coverImage.startsWith('http') ? summary.coverImage : `${(process.env.SITE_URL ?? 'https://seeduction.org').replace(/\/+$/, '')}${summary.coverImage}`)
       : null;
-    return { torrentBase64: buffer.toString('base64'), fileIndex: session.fileIndex, torrentName: summary?.name ?? null, coverImage };
+    return { torrentBase64: buffer.toString('base64'), fileIndex: session.fileIndex, torrentId: session.torrentId, torrentName: summary?.name ?? null, coverImage };
+  }
+
+  /**
+   * « En train de regarder X » (voir desktop-player) : le lecteur ping cette route toutes les quelques secondes tant
+   * qu'il joue un fichier, identifié par la passkey du membre (comme le tracker) plutôt qu'un token JWT — le lecteur
+   * n'a jamais de session web. Jamais rempli pour du contenu adulte, et respecte showWatchingStatus. Auto-expire
+   * (watchingUntil) si le lecteur ferme sans prévenir le serveur (crash...), donc pas besoin d'un correctif manuel.
+   */
+  async pingWatching(passkey: string, torrentId: string) {
+    const user = await this.prisma.user.findUnique({ where: { passkey } });
+    if (!user || !user.showWatchingStatus) return { ok: true };
+    const torrent = await this.prisma.torrent.findUnique({
+      where: { id: torrentId },
+      select: { name: true, category: { select: { adult: true, parent: { select: { adult: true } } } } },
+    });
+    if (!torrent || torrent.category?.adult || torrent.category?.parent?.adult) return { ok: true };
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { watchingTitle: torrent.name.slice(0, 140), watchingUntil: new Date(Date.now() + 30_000) },
+    });
+    return { ok: true };
+  }
+
+  /** Appelé une fois à la fermeture du lecteur pour revenir au statut immédiatement (sinon, jusqu'à 30s d'attente). */
+  async stopWatching(passkey: string) {
+    const user = await this.prisma.user.findUnique({ where: { passkey } });
+    if (!user) return { ok: true };
+    await this.prisma.user.update({ where: { id: user.id }, data: { watchingTitle: null, watchingUntil: null } });
+    return { ok: true };
   }
 
   private getClient() {

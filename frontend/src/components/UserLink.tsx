@@ -67,7 +67,11 @@ function UserCard({ u }: { u: any }) {
       <div style={{ minWidth: 0 }}>
         <div className="tip-title">{u.username}</div>
         <div className="tip-meta">{displayRank(u, ROLE_LABEL)}{u.status === 'BANNED' ? ' · 🚫 banni' : ''}</div>
-        {u.statusText && <div className="tip-meta" style={{ fontStyle: 'italic', marginTop: 3 }}>{u.statusText}</div>}
+        {u.watching ? (
+          <div className="tip-meta" style={{ marginTop: 3 }}>🎬 Regarde {u.watching}</div>
+        ) : u.statusText ? (
+          <div className="tip-meta" style={{ fontStyle: 'italic', marginTop: 3 }}>{u.statusText}</div>
+        ) : null}
         <div className="tip-meta" style={{ marginTop: 6, lineHeight: 1.7 }}>
           Ratio : <strong style={{ color: 'var(--gold-bright)' }}>{u.ratio != null ? u.ratio.toFixed(2) : '∞'}</strong><br />
           <span style={{ color: 'var(--success)' }}>▲ {formatBytes(u.uploaded)}</span> · <span style={{ color: 'var(--danger)' }}>▼ {formatBytes(u.downloaded)}</span><br />

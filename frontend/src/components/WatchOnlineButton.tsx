@@ -49,7 +49,7 @@ export default function WatchOnlineButton({ torrentId, fileList, compact }: { to
       <button
         type="button"
         onClick={start}
-        className={compact ? 'icon-btn' : undefined}
+        className={compact ? 'icon-btn icon-btn-sq' : undefined}
         title="Ouvre le lecteur Seeduction installé sur ton PC : tous les formats, aucune charge sur le serveur"
       >
         {compact ? '▶' : '🖥️ Ouvrir dans le lecteur Seeduction'}

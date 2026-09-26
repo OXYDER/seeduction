@@ -291,7 +291,7 @@ function persistSessions() {
   try { fs.mkdirSync(TORRENTS_DIR, { recursive: true }); } catch { /* existe déjà */ }
   const list = [...sessions.values()].map((s) => ({
     id: s.id, name: s.name, fileIndex: s.fileIndex, addedAt: s.addedAt, completedAt: s.completedAt, downloadPath: s.downloadPath,
-    torrentName: s.torrentName, coverImage: s.coverImage,
+    torrentId: s.torrentId, torrentName: s.torrentName, coverImage: s.coverImage,
     seedSecondsAccrued: s.seedSecondsAccrued || 0, uploadedAccrued: s.uploadedAccrued || 0,
     resumePositionSeconds: s.resumePositionSeconds || 0, durationSeconds: s.durationSeconds || 0,
   }));
@@ -355,6 +355,7 @@ function registerSession(session) {
     session.uploadedAccrued += uploadDelta;
     session.lastUploadedSnapshot = session.torrent.uploaded;
     if (session.status === 'completed') session.seedSecondsAccrued += tickSeconds;
+    if (session.playing) pingWatching(session);
 
     const pct = (session.torrent.progress * 100).toFixed(1);
     log(`${session.name} — ${pct}% — ${session.torrent.numPeers} pair(s) — ↓ ${(session.torrent.downloadSpeed / 1024).toFixed(1)} Ko/s ↑ ${(session.torrent.uploadSpeed / 1024).toFixed(1)} Ko/s`);
@@ -400,8 +401,8 @@ async function playToken(token) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.message || `Le lien de lecture a expiré ou est invalide (${res.status}). Relance-le depuis Seeduction.`);
   }
-  const { torrentBase64, fileIndex, torrentName, coverImage } = await res.json();
-  await startPlayback(Buffer.from(torrentBase64, 'base64'), fileIndex, { torrentName, coverImage });
+  const { torrentBase64, fileIndex, torrentId, torrentName, coverImage } = await res.json();
+  await startPlayback(Buffer.from(torrentBase64, 'base64'), fileIndex, { torrentId, torrentName, coverImage });
 }
 
 async function startPlayback(torrentBuffer, fileIndex, meta = {}) {
@@ -457,7 +458,7 @@ async function startPlayback(torrentBuffer, fileIndex, meta = {}) {
   const session = {
     id: sessionId, name: file.name, fileIndex, addedAt: Date.now(), completedAt: null,
     downloadPath: settings.downloadPath, torrent, file, server: null, notifiedComplete: false,
-    torrentName: meta.torrentName || null, coverImage: meta.coverImage || null,
+    torrentId: meta.torrentId || null, torrentName: meta.torrentName || null, coverImage: meta.coverImage || null,
     resumePositionSeconds: 0, durationSeconds: 0,
   };
   registerSession(session);
@@ -687,6 +688,41 @@ function stopPositionPolling(session) {
   if (session.positionPollTimer) { clearInterval(session.positionPollTimer); session.positionPollTimer = null; }
 }
 
+/** La passkey (announce personnalisé Seeduction + passkey/announce) sert à s'identifier pour « en train de
+ * regarder X », sans jamais avoir de session web côté lecteur — même identifiant que le tracker lui-même utilise. */
+function extractPasskey(torrent) {
+  try {
+    const url = (torrent.announce || [])[0] || '';
+    const m = /\/([a-f0-9]{16,64})\/announce/i.exec(url);
+    return m ? m[1] : null;
+  } catch { return null; }
+}
+
+/** Ping périodique pendant la lecture : le serveur affiche « 🎬 Regarde X » à la place du statut du membre (jamais
+ * pour du contenu adulte, ni si le membre a désactivé ça dans son profil — décidé côté serveur). Auto-expire côté
+ * serveur si le lecteur ferme sans prévenir (crash), donc pas grave si `stopWatching` ne s'exécute jamais. */
+function pingWatching(session) {
+  if (!session.torrentId) return;
+  const passkey = extractPasskey(session.torrent);
+  if (!passkey) return;
+  fetch(`${SITE_BASE_URL}/api/stream/watching`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passkey, torrentId: session.torrentId }),
+  }).catch(() => { /* pas grave, on retentera au prochain tick */ });
+}
+
+/** Appelé une fois à la fermeture de VLC : revient au statut d'origine tout de suite plutôt que d'attendre
+ * l'expiration côté serveur (jusqu'à 30 s). */
+function stopWatching(session) {
+  if (!session.torrentId) return;
+  const passkey = extractPasskey(session.torrent);
+  if (!passkey) return;
+  fetch(`${SITE_BASE_URL}/api/stream/watching/stop`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passkey }),
+  }).catch(() => { /* pas grave */ });
+}
+
 /** Lance Seeduction VLC avec son interface HTTP activée (mot de passe aléatoire par lecture, jamais exposé) pour
  * suivre la position de lecture, et reprend automatiquement 5 s avant le dernier point connu — ou depuis le début si
  * le membre avait fini de regarder (moins de 30 s restantes la dernière fois). Repli sur le lecteur par défaut du
@@ -712,9 +748,11 @@ async function launchPlayerForSession(session, streamUrl) {
       child.on('exit', () => {
         session.playing = false;
         stopPositionPolling(session);
+        stopWatching(session);
         broadcastDownloadsUpdate();
       });
       startPositionPolling(session, controlPort, controlPassword);
+      pingWatching(session);
       broadcastDownloadsUpdate();
       return;
     } catch (err) {

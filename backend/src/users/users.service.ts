@@ -23,6 +23,7 @@ export class UsersService {
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
+        watchingTitle: true, watchingUntil: true, showWatchingStatus: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
@@ -31,17 +32,22 @@ export class UsersService {
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
     const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
+    const onlineStatus = this.presence.publicStatus(user.id);
+    // Ce qu'on regarde en ce moment ne s'affiche que si le membre n'apparaît pas hors ligne (ça reviendrait à
+    // trahir un statut "invisible" volontairement choisi) et que watchingUntil n'a pas expiré.
+    const watching = onlineStatus !== 'OFFLINE' && watchingUntil && watchingUntil > new Date() ? watchingTitle : null;
     return {
       ...publicInfo,
       ratio,
+      watching,
       // « onlineStatus » est ce que voient les autres (ONLINE/AWAY/BUSY/OFFLINE, jamais INVISIBLE tel quel) ;
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
-      onlineStatus: this.presence.publicStatus(user.id),
+      onlineStatus,
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
   }
@@ -51,6 +57,12 @@ export class UsersService {
     if (!DM_PRIVACY_VALUES.includes(value as DmPrivacy)) throw new BadRequestException('Valeur invalide');
     await this.prisma.user.update({ where: { id: userId }, data: { dmPrivacy: value as DmPrivacy } });
     return { dmPrivacy: value };
+  }
+
+  /** Afficher ou non « en train de regarder X » (voir StreamService.pingWatching) quand le lecteur desktop tourne. */
+  async setShowWatchingStatus(userId: string, enabled: boolean) {
+    await this.prisma.user.update({ where: { id: userId }, data: { showWatchingStatus: !!enabled, ...(enabled ? {} : { watchingTitle: null, watchingUntil: null }) } });
+    return { showWatchingStatus: !!enabled };
   }
 
   /**

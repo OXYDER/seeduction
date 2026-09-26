@@ -41,6 +41,18 @@ export class StreamController {
     return this.streamService.resolvePlaySession(token);
   }
 
+  /** Ping périodique du lecteur desktop pendant la lecture (« en train de regarder X »), identifié par passkey. */
+  @Post('watching')
+  watching(@Body() body: { passkey: string; torrentId: string }) {
+    return this.streamService.pingWatching(body?.passkey, body?.torrentId);
+  }
+
+  /** Appelé une fois à la fermeture du lecteur : revient au statut immédiatement plutôt que d'attendre l'expiration. */
+  @Post('watching/stop')
+  stopWatching(@Body() body: { passkey: string }) {
+    return this.streamService.stopWatching(body?.passkey);
+  }
+
   @Get(':torrentId')
   async stream(
     @Param('torrentId') torrentId: string,
