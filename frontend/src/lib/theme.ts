@@ -1,15 +1,9 @@
 import { useEffect, useState } from 'react';
 
 export const THEME_STORAGE_KEY = 'seeduction-theme';
-/** Thème appliqué à ceux qui n'en ont jamais choisi. Les anciens thèmes restent disponibles dans le sélecteur 🎨. */
+/** Seul thème du site (mise en page) — les anciens (Doré classique, Écarlate, Nuit Argentée) ont été retirés au
+ * profit d'une seule mise en page « Prestige », personnalisable par sa couleur d'accent (voir ACCENTS). */
 export const DEFAULT_THEME = 'prestige';
-
-export const THEMES: { label: string; value: string }[] = [
-  { label: '✨ Prestige (nouveau)', value: 'prestige' },
-  { label: '🟡 Doré classique', value: 'dore' },
-  { label: '🔴 Écarlate', value: 'ecarlate' },
-  { label: '🔵 Nuit Argentée', value: 'nuit' },
-];
 
 export const ACCENT_STORAGE_KEY = 'seeduction-accent';
 export const ACCENTS: { value: string; label: string; color: string }[] = [
@@ -18,6 +12,11 @@ export const ACCENTS: { value: string; label: string; color: string }[] = [
   { value: 'rouge', label: 'Rouge', color: 'linear-gradient(135deg, #ef4444, #f97316)' },
   { value: 'vert', label: 'Vert', color: 'linear-gradient(135deg, #10b981, #84cc16)' },
   { value: 'or', label: 'Doré', color: 'linear-gradient(135deg, #f0c45c, #f59e0b)' },
+  { value: 'neon', label: 'Néon Arcade', color: 'linear-gradient(135deg, #22d3ee, #f472b6)' },
+  { value: 'emeraude', label: 'Émeraude Royale', color: 'linear-gradient(135deg, #059669, #e0b84a)' },
+  { value: 'sang', label: 'Sang et Ombre', color: 'linear-gradient(135deg, #dc2626, #7f1d1d)' },
+  { value: 'glacier', label: 'Glacier', color: 'linear-gradient(135deg, #67e8f9, #a5b4fc)' },
+  { value: 'aurore', label: 'Aurore', color: 'linear-gradient(135deg, #fb923c, #d946ef)' },
 ];
 
 export function getAccent(): string {

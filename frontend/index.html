@@ -6,10 +6,11 @@
     <title>Seeduction</title>
     <script>
       // Applique le thème choisi avant le premier rendu, pour éviter un flash du thème par défaut.
+      // Seul "prestige" existe encore (les anciens thèmes Doré classique/Écarlate/Nuit Argentée ont été retirés) :
+      // une valeur différente encore en localStorage (ancien choix) est ignorée plutôt qu'appliquée.
       (function () {
         try {
-          var theme = localStorage.getItem('seeduction-theme');
-          document.documentElement.setAttribute('data-theme', theme || 'prestige');
+          document.documentElement.setAttribute('data-theme', 'prestige');
           var accent = localStorage.getItem('seeduction-accent');
           if (accent && accent !== 'violet') document.documentElement.setAttribute('data-accent', accent);
         } catch (e) {
