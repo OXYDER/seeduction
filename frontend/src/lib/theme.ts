@@ -34,6 +34,60 @@ export function setAccent(value: string) {
   window.dispatchEvent(new Event('seeduction-theme'));
 }
 
+export const CATEGORY_ACCENT_STORAGE_KEY = 'seeduction-category-accent';
+
+export function getCategoryAccentEnabled(): boolean {
+  try { return localStorage.getItem(CATEGORY_ACCENT_STORAGE_KEY) === '1'; } catch { return false; }
+}
+
+export function setCategoryAccentEnabled(enabled: boolean) {
+  try { localStorage.setItem(CATEGORY_ACCENT_STORAGE_KEY, enabled ? '1' : '0'); } catch { /* stockage indisponible */ }
+  if (!enabled) applyCategoryAccent(null);
+  window.dispatchEvent(new Event('seeduction-theme'));
+}
+
+export function useCategoryAccentEnabled(): boolean {
+  const [enabled, setEnabled] = useState(getCategoryAccentEnabled);
+  useEffect(() => {
+    const update = () => setEnabled(getCategoryAccentEnabled());
+    window.addEventListener('seeduction-theme', update);
+    return () => window.removeEventListener('seeduction-theme', update);
+  }, []);
+  return enabled;
+}
+
+function hexToRgb(hex: string): string {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return '139, 92, 246';
+  return `${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}`;
+}
+
+/**
+ * « L'accent suit la catégorie » (option cochable, désactivée par défaut) : au lieu de la couleur fixe choisie dans
+ * ACCENTS, l'accent du site (boutons, liens, lueurs...) prend la couleur de la catégorie actuellement parcourue
+ * (voir CATEGORY_STYLE dans Layout.tsx), en surchargeant les variables CSS directement sur <html> — plus prioritaire
+ * que la règle [data-accent] sans avoir à y toucher. Un hex de `null` retire la surcharge (retour à l'accent choisi).
+ */
+export function applyCategoryAccent(hex: string | null) {
+  const root = document.documentElement.style;
+  if (!hex || !getCategoryAccentEnabled()) {
+    root.removeProperty('--acc1');
+    root.removeProperty('--acc2');
+    root.removeProperty('--acc-rgb');
+    root.removeProperty('--acc2-rgb');
+    root.removeProperty('--acc-light');
+    root.removeProperty('--acc-link');
+    return;
+  }
+  const rgb = hexToRgb(hex);
+  root.setProperty('--acc1', hex);
+  root.setProperty('--acc2', hex);
+  root.setProperty('--acc-rgb', rgb);
+  root.setProperty('--acc2-rgb', rgb);
+  root.setProperty('--acc-light', hex);
+  root.setProperty('--acc-link', hex);
+}
+
 export function getTheme(): string {
   return document.documentElement.getAttribute('data-theme') ?? DEFAULT_THEME;
 }

@@ -34,7 +34,7 @@ export default function CategoryTag({ category }: { category?: Cat | null }) {
   return (
     <span
       className="cat-tag"
-      style={{ background: categoryColor(category), cursor: goToCategory ? 'pointer' : undefined }}
+      style={{ backgroundColor: categoryColor(category), cursor: goToCategory ? 'pointer' : undefined }}
       title={category.parent?.name ? `${category.parent.name} › ${category.name}` : category.name}
       role={goToCategory ? 'link' : undefined}
       tabIndex={goToCategory ? 0 : undefined}

@@ -1560,6 +1560,10 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
   display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 9px; border-radius: 4px;
   font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap;
   color: #0b0f1e; box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.35); overflow: hidden; text-overflow: ellipsis;
+  /* Un aplat de couleur pastel (voir CATEGORY_STYLE) posé sur un fond sombre paraissait plat : ce dégradé (clair en
+     haut, plus sombre en bas) donne un peu de relief sans changer la teinte de chaque catégorie. Superposé via
+     background-image (la couleur elle-même vient de backgroundColor en style inline, sur CategoryTag.tsx). */
+  background-image: linear-gradient(160deg, rgba(255,255,255,0.5), rgba(255,255,255,0) 45%, rgba(0,0,0,0.22) 100%);
 }
 .poster-badges { align-items: flex-start; }
 

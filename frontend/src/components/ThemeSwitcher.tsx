@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ACCENTS, setAccent, useAccent } from '../lib/theme';
+import { ACCENTS, setAccent, useAccent, useCategoryAccentEnabled, setCategoryAccentEnabled } from '../lib/theme';
 
 export { THEME_STORAGE_KEY } from '../lib/theme';
 
@@ -7,6 +7,7 @@ export { THEME_STORAGE_KEY } from '../lib/theme';
 export default function ThemeSwitcher() {
   const [open, setOpen] = useState(false);
   const accent = useAccent();
+  const categoryAccent = useCategoryAccentEnabled();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,6 +37,10 @@ export default function ThemeSwitcher() {
               </button>
             ))}
           </div>
+          <label className="row" style={{ gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', fontSize: 12.5, cursor: 'pointer' }}>
+            <input type="checkbox" checked={categoryAccent} onChange={(e) => setCategoryAccentEnabled(e.target.checked)} />
+            L'accent suit la catégorie parcourue
+          </label>
         </div>
       )}
     </div>

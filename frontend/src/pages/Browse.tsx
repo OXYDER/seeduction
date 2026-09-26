@@ -8,7 +8,7 @@ import { formatBytes as formatSize } from '../lib/format';
 import { CATEGORY_STYLE } from '../components/Layout';
 import { timeAgo } from '../lib/time';
 import { useAuthStore } from '../store/auth';
-import { useTheme } from '../lib/theme';
+import { useTheme, applyCategoryAccent } from '../lib/theme';
 import { useFavorites } from '../lib/favorites';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
 import { parseNaturalQuery, ORIGINS, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
@@ -162,6 +162,13 @@ export default function Browse() {
   // ses sous-catégories comme filtres supplémentaires.
   const activeParent = categories.find((c) => c.id === categoryId)
     ?? categories.find((c) => c.children?.some((sub: any) => sub.id === categoryId));
+
+  // « L'accent suit la catégorie » (option cochable, voir ThemeSwitcher) : sans effet si elle est désactivée
+  // (applyCategoryAccent le revérifie lui-même). Toujours nettoyé en quittant la page.
+  useEffect(() => {
+    applyCategoryAccent(activeParent?.slug ? CATEGORY_STYLE[activeParent.slug]?.color ?? null : null);
+    return () => applyCategoryAccent(null);
+  }, [activeParent?.slug]);
 
   function updateParam(key: string, value: string) {
     const next = new URLSearchParams(params);

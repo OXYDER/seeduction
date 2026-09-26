@@ -13,6 +13,8 @@ import TorrentVersions from '../components/TorrentVersions';
 import NfoPanel from '../components/NfoPanel';
 import StickyDownloadBar from '../components/StickyDownloadBar';
 import WatchOnlineButton from '../components/WatchOnlineButton';
+import { CATEGORY_STYLE } from '../components/Layout';
+import { applyCategoryAccent } from '../lib/theme';
 import TorrentHero from '../components/TorrentHero';
 import TorrentRelated from '../components/TorrentRelated';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
@@ -69,6 +71,13 @@ export default function TorrentDetail() {
     if (!user) return;
     api.get('/collections/mine').then((r) => setMyCollections(r.data)).catch(() => {});
   }, [user]);
+
+  // « L'accent suit la catégorie » (option cochable, voir ThemeSwitcher) : sans effet si elle est désactivée.
+  const topCategorySlug = torrent?.category?.parent?.slug ?? torrent?.category?.slug ?? null;
+  useEffect(() => {
+    applyCategoryAccent(topCategorySlug ? CATEGORY_STYLE[topCategorySlug]?.color ?? null : null);
+    return () => applyCategoryAccent(null);
+  }, [topCategorySlug]);
 
   async function addToCollection(collectionId: string) {
     await api.post(`/collections/${collectionId}/items`, { torrentId: id });
