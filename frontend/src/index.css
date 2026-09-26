@@ -1451,6 +1451,10 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 /* Onglets de catégorie de la page Parcourir : nombre de torrents sous le nom, et un menu déroulant des
    sous-catégories au survol (garde le clic direct sur le nom pour "toute la catégorie"). */
 .cat-tab-wrap { position: relative; display: inline-flex; }
+/* Pont invisible entre le bouton et le menu : sans lui, l'espace visuel (margin-top du menu) entre les deux n'
+   appartient ni à l'un ni à l'autre, et le survol se coupe net dès que la souris le traverse — le menu se ferme
+   avant même d'y arriver. Cette zone tampon fait partie de .cat-tab-wrap, donc le survol ne se rompt jamais. */
+.cat-tab-wrap::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 10px; }
 .cat-tab-count { margin-left: 5px; font-size: 11px; opacity: 0.6; font-weight: 600; }
 .cat-tab-dropdown {
   display: none; position: absolute; top: 100%; left: 0; margin-top: 6px; min-width: 190px; z-index: 30;
