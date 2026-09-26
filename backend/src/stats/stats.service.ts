@@ -93,10 +93,30 @@ export class StatsService {
     await this.badges.checkAndAwardAll();
   }
 
-  /** Toutes les 15 minutes : purge les peers inactifs depuis + de 45 min (clients crashés/off). */
-  @Cron('*/15 * * * *')
+  /**
+   * Toutes les 5 minutes : purge les peers inactifs depuis + de 45 min (clients crashés/fermés sans announce
+   * "stopped" — déconnexion réseau, mise en veille, plantage...). Sans ça, un seeder/leecher disparu reste compté
+   * jusqu'à ce que quelqu'un d'autre announce sur ce même torrent (parfois jamais), ce qui affiche des compteurs
+   * gonflés pendant longtemps. On recalcule seeders/leechers seulement pour les torrents concernés par cette purge
+   * (pas tous les torrents du site) : peu de lignes la plupart du temps, donc ça ne charge pas le serveur même en
+   * tournant plus souvent que le délai d'announce (30 min) des clients.
+   */
+  @Cron('*/5 * * * *')
   async purgeStalePeers() {
     const cutoff = new Date(Date.now() - 45 * 60_000);
+    const affected = await this.prisma.peer.findMany({
+      where: { lastAnnounceAt: { lt: cutoff } },
+      select: { torrentId: true },
+      distinct: ['torrentId'],
+    });
+    if (affected.length === 0) return;
     await this.prisma.peer.deleteMany({ where: { lastAnnounceAt: { lt: cutoff } } });
+    await Promise.all(affected.map(async ({ torrentId }) => {
+      const [seeders, leechers] = await Promise.all([
+        this.prisma.peer.count({ where: { torrentId, isSeeder: true } }),
+        this.prisma.peer.count({ where: { torrentId, isSeeder: false } }),
+      ]);
+      await this.prisma.torrent.update({ where: { id: torrentId }, data: { seeders, leechers } }).catch(() => {}); // torrent supprimé entre-temps : ignoré
+    }));
   }
 }

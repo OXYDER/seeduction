@@ -66,8 +66,16 @@ export class StreamService {
     const session = this.playSessions.get(token);
     if (!session || session.expiresAt < Date.now()) throw new NotFoundException('Lien de lecture invalide ou expiré : relance « Ouvrir dans le lecteur » depuis Seeduction.');
     this.playSessions.delete(token);
-    const buffer = await this.torrents.getDownloadFile(session.torrentId, session.userId, { viaStream: true });
-    return { torrentBase64: buffer.toString('base64'), fileIndex: session.fileIndex };
+    const [buffer, summary] = await Promise.all([
+      this.torrents.getDownloadFile(session.torrentId, session.userId, { viaStream: true }),
+      this.torrents.getSummary(session.torrentId),
+    ]);
+    // La pochette (torrent.coverImage) est un chemin relatif (ex: /api/covers/xxx.jpg) : le lecteur desktop n'a pas
+    // d'origine de page pour le résoudre tout seul, contrairement au site, donc on renvoie l'URL absolue.
+    const coverImage = summary?.coverImage
+      ? (summary.coverImage.startsWith('http') ? summary.coverImage : `${(process.env.SITE_URL ?? 'https://seeduction.org').replace(/\/+$/, '')}${summary.coverImage}`)
+      : null;
+    return { torrentBase64: buffer.toString('base64'), fileIndex: session.fileIndex, torrentName: summary?.name ?? null, coverImage };
   }
 
   private getClient() {

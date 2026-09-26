@@ -16,8 +16,9 @@ export interface AnnounceParams {
   event?: 'started' | 'stopped' | 'completed';
   numwant?: number;
   compact?: boolean;
-  // Announce du lecteur Seeduction (navigateur ou desktop), pas d'un vrai client BitTorrent installé : le membre ne
-  // pourra jamais continuer à seeder au-delà de la lecture, donc aucune obligation « hit & run » ne doit en naître.
+  // Announce venant du lecteur Seeduction (desktop) plutôt que du navigateur : c'est un vrai client BitTorrent
+  // (WebTorrent) qui continue de seeder après la lecture, donc il est soumis aux mêmes règles hit & run qu'un
+  // téléchargement classique. Le flag sert uniquement à alimenter un compteur séparé pour les statistiques.
   viaStream?: boolean;
 }
 
@@ -164,20 +165,15 @@ export class TrackerService {
     }
 
     if (params.event === 'completed') {
-      if (params.viaStream) {
-        // Une lecture via le lecteur Seeduction (navigateur ou desktop) n'est pas un vrai téléchargement : pas de
-        // client qui continuera à seeder une fois la vidéo fermée, donc pas de Snatch (aucune obligation de seed à
-        // créer, ça punirait le membre pour rien) et pas compté dans les « complétés » classiques — à la place, un
-        // compteur séparé pour ne pas fausser les statistiques de popularité en téléchargement du torrent.
-        await this.prisma.torrent.update({ where: { id: torrent.id }, data: { streamCompletedCount: { increment: 1 } } });
-      } else {
-        await this.prisma.snatch.create({ data: { torrentId: torrent.id, userId: user.id, lastSeedAt: new Date() } });
-        await this.prisma.torrent.update({ where: { id: torrent.id }, data: { completedCount: { increment: 1 } } });
-      }
+      // Le lecteur Seeduction est un vrai client BitTorrent qui continue de seeder après coup : un téléchargement
+      // complété via le lecteur crée une obligation de seed normale, exactement comme n'importe quel client.
+      await this.prisma.snatch.create({ data: { torrentId: torrent.id, userId: user.id, lastSeedAt: new Date() } });
+      await this.prisma.torrent.update({
+        where: { id: torrent.id },
+        data: { completedCount: { increment: 1 }, ...(params.viaStream ? { streamCompletedCount: { increment: 1 } } : {}) },
+      });
     }
 
-    // Un Snatch déjà existant (vrai téléchargement antérieur) peut légitimement se régulariser grâce à cette
-    // session de lecture ; seule la création d'un NOUVEAU Snatch est exclue pour une session de lecture (ci-dessus).
     if (params.left === 0) await this.trackSeeding(user.id, torrent, params.uploaded);
 
     // Recalcule seeders/leechers du torrent

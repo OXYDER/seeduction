@@ -145,6 +145,11 @@ export class TorrentsService {
     return rewriteTorrentForUser(original, announceUrl);
   }
 
+  /** Résumé minimal (titre + pochette) pour l'affichage côté lecteur desktop (fenêtre Téléchargements). */
+  async getSummary(torrentId: string) {
+    return this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { id: true, name: true, coverImage: true } });
+  }
+
   /** Torrents déjà présents qui ressemblent à celui qu'on s'apprête à envoyer (même fiche de métadonnées, ou même nom). */
   async findDuplicates(metaId?: string, name?: string, viewerId?: string) {
     const hiddenCategories = await this.adult.hiddenFor(viewerId);
@@ -251,7 +256,9 @@ export class TorrentsService {
         orderBy,
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
-        include: { category: { include: { parent: { select: { slug: true, name: true } } } }, uploader: { select: { id: true, username: true } } },
+        // parent.contentKind : nécessaire pour savoir si une sous-catégorie sans contentKind propre (héritée du
+        // parent) est de la vidéo, afin d'afficher ou non le bouton "Visionner" dans cette liste.
+        include: { category: { include: { parent: { select: { slug: true, name: true, contentKind: true } } } }, uploader: { select: { id: true, username: true } } },
       }),
       this.prisma.torrent.count({ where }),
     ]);
