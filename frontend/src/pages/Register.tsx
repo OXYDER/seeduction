@@ -36,14 +36,11 @@ export default function Register() {
             <img src="/logo-icon.png" alt="" width={56} height={56} />
             <h2 style={{ marginTop: 10 }}>Créer un compte</h2>
           </div>
-          <p className="muted" style={{ textAlign: 'center' }}>
-            Le tout premier compte créé devient automatiquement administrateur, sans invitation.
-          </p>
           {done ? (
             <p style={{ color: 'var(--success)', textAlign: 'center' }}>Compte créé ! Redirection...</p>
           ) : (
             <form onSubmit={submit} className="grid">
-              <input placeholder="Code d'invitation (inutile pour le 1er compte)" value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value })} />
+              <input placeholder="Code d'invitation" value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value })} />
               <input placeholder="Nom d'utilisateur" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
               <input placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               <input placeholder="Mot de passe" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
