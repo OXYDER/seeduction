@@ -21,11 +21,19 @@ export default function ThemeSwitcher() {
     <div ref={ref} style={{ position: 'relative' }}>
       <button type="button" className="secondary" onClick={() => setOpen((v) => !v)} title="Couleur d'accent">🎨</button>
       {open && (
-        <div className="panel ornate theme-menu" style={{ position: 'absolute', right: 0, top: '110%', width: 210, zIndex: 80, padding: 8 }}>
-          <div className="accent-dots" title="Couleur d'accent">
-            <span className="muted" style={{ fontSize: 11 }}>Accent</span>
+        <div className="panel ornate theme-menu" style={{ position: 'absolute', right: 0, top: '110%', width: 260, zIndex: 80, padding: 10 }}>
+          <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Couleur d'accent</div>
+          <div className="accent-grid">
             {ACCENTS.map((a) => (
-              <button key={a.value} type="button" className={`accent-dot${accent === a.value ? ' on' : ''}`} style={{ background: a.color }} title={a.label} aria-label={a.label} onClick={() => { setAccent(a.value); setOpen(false); }} />
+              <button
+                key={a.value}
+                type="button"
+                className={`accent-swatch${accent === a.value ? ' on' : ''}`}
+                onClick={() => { setAccent(a.value); setOpen(false); }}
+              >
+                <span className="accent-swatch-dot" style={{ background: a.color }} />
+                {a.label}
+              </button>
             ))}
           </div>
         </div>

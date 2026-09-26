@@ -491,12 +491,15 @@ th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: 
   text-shadow: 0 0 30px rgba(212, 175, 55, 0.35);
 }
 .hero p { color: var(--text-dim); max-width: 420px; line-height: 1.6; margin-top: 8px; }
-.hero-cta {
-  background: linear-gradient(180deg, #3a2f14, #241c0c) !important;
-  border: 1px solid var(--gold) !important;
-  color: var(--gold-bright) !important;
-  border-radius: 4px !important;
-  padding: 12px 30px !important;
+/* Ancien style (thème classique, retiré) : ces !important écrasaient sans le vouloir le style Prestige du même
+   bouton (fond/bordure/texte dorés au lieu du dégradé d'accent), d'où un bouton "Voir la fiche" qui jurait à côté
+   de "Parcourir le catalogue" — pas un problème de hauteur, une vraie collision de couleurs entre les deux thèmes. */
+:root:not([data-theme="prestige"]) .hero-cta {
+  background: linear-gradient(180deg, #3a2f14, #241c0c);
+  border: 1px solid var(--gold);
+  color: var(--gold-bright);
+  border-radius: 4px;
+  padding: 12px 30px;
   margin-top: 16px;
   box-shadow: 0 0 18px rgba(212, 175, 55, 0.25), inset 0 1px 0 rgba(245, 214, 122, 0.2);
 }
@@ -1485,6 +1488,17 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 .accent-dots { display: flex; gap: 8px; padding: 6px 4px 2px; align-items: center; }
 .accent-dot { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid transparent; box-shadow: none; }
 .accent-dot.on { border-color: #fff; }
+/* Remplace la rangée de petits ronds de 22px (trop fins pour bien viser) par une grille de pastilles plus larges,
+   avec le nom de la couleur — plus facile à cliquer, et on sait ce qu'on choisit avant de cliquer. */
+.accent-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.accent-swatch {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 12.5px; font-weight: 600;
+  text-align: left; cursor: pointer;
+}
+.accent-swatch:hover { background: rgba(255,255,255,0.09); border-color: var(--border-gold); }
+.accent-swatch.on { border-color: var(--acc1); background: rgba(var(--acc-rgb), 0.14); }
+.accent-swatch-dot { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(255,255,255,0.25) inset; }
 .trailer-modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.82); padding: 20px; animation: tipIn .2s ease both; }
 .trailer-modal-inner { position: relative; width: min(960px, 100%); aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,0.7); background: #000; }
 .trailer-modal-inner iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }

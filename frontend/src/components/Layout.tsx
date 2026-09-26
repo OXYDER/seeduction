@@ -14,6 +14,7 @@ import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
 import { usePublicChatStore } from '../store/publicChat';
 import { useTheme } from '../lib/theme';
+import { PRESENCE_OPTIONS } from '../lib/presence';
 
 export interface Profile {
   id: string;
@@ -96,6 +97,7 @@ export default function Layout() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
+  const [statusOpen, setStatusOpen] = useState(false);
   const theme = useTheme();
   const [drawer, setDrawer] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
@@ -192,10 +194,22 @@ export default function Layout() {
           </div>
 
           <div className="side-user">
-            <Link to="/profile" className="side-user-card">
+            <div
+              className="side-user-card"
+              style={{ position: 'relative', cursor: 'pointer' }}
+              onClick={() => setStatusOpen((v) => !v)}
+              title="Changer de statut"
+            >
               <span style={{ position: 'relative', display: 'inline-block', width: 38, height: 38, flexShrink: 0 }}>
                 <Avatar user={{ username: user?.username, avatarUrl: profile?.avatarUrl }} size={38} />
-                <StatusSwitcher value={profile?.presenceStatus} statusText={profile?.statusText} onChange={(v, t) => setProfile((p) => (p ? { ...p, presenceStatus: v, statusText: t } : p))} />
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute', right: -2, bottom: -2, width: 14, height: 14, borderRadius: '50%',
+                    background: (PRESENCE_OPTIONS.find((o) => o.value === profile?.presenceStatus) ?? PRESENCE_OPTIONS[0]).color,
+                    border: '2px solid var(--bg-panel, #10162a)',
+                  }}
+                />
               </span>
               <div style={{ minWidth: 0 }}>
                 <div className="side-user-name">{user?.username}</div>
@@ -203,7 +217,14 @@ export default function Layout() {
                   {profile?.statusText ? <span style={{ fontStyle: 'italic' }}>{profile.statusText}</span> : <>Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</>}
                 </div>
               </div>
-            </Link>
+              <StatusSwitcher
+                value={profile?.presenceStatus}
+                statusText={profile?.statusText}
+                open={statusOpen}
+                onOpenChange={setStatusOpen}
+                onChange={(v, t) => setProfile((p) => (p ? { ...p, presenceStatus: v, statusText: t } : p))}
+              />
+            </div>
             <button className="secondary side-logout" onClick={() => { logout(); navigate('/login'); }} title="Se déconnecter">⎋</button>
           </div>
           <nav className="side-links">
