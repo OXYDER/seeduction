@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Client Seeduction</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; font-size: 13px;
+    background: #0c0f1a; color: #e8e9ee; height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 16px; border-bottom: 1px solid #23283b; flex-shrink: 0;
+    background: linear-gradient(135deg, #a78bfa, #f472b6);
+  }
+  header h1 { font-size: 15px; margin: 0; color: #fff; }
+  header .muted { font-size: 12px; color: rgba(255,255,255,0.85); }
+  header .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  button {
+    background: rgba(255,255,255,0.16); color: #fff; border: none; border-radius: 8px; padding: 6px 12px;
+    font-size: 12px; cursor: pointer;
+  }
+  button:hover { background: rgba(255,255,255,0.28); }
+  button.danger { background: rgba(239,68,68,0.85); }
+  button.danger:hover { background: rgba(239,68,68,1); }
+  button.locked { background: rgba(245,158,11,0.25); color: #fbbf24; }
+  button.locked:hover { background: rgba(245,158,11,0.4); }
+  button.playing { background: rgba(34,197,94,0.18); color: #22c55e; cursor: default; }
+  button.playing:hover { background: rgba(34,197,94,0.18); }
+  #settings-panel button, #settings-panel input { background: #1c2032; color: #e8e9ee; }
+  #settings-panel button:hover { background: #262c44; }
+  main { flex: 1; overflow-y: auto; padding: 10px 14px; }
+  .empty { text-align: center; color: #8b8fa3; margin-top: 60px; font-size: 13px; }
+  #settings-panel {
+    display: none; padding: 12px 16px; border-bottom: 1px solid #23283b; background: rgba(255,255,255,0.03);
+    flex-direction: column; gap: 10px; flex-shrink: 0;
+  }
+  #settings-panel.open { display: flex; }
+  .settings-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .settings-row label { color: #9aa0b4; font-size: 12px; min-width: 150px; }
+  .settings-row input[type="number"] { width: 80px; border: 1px solid #2c3350; border-radius: 6px; padding: 4px 6px; }
+  #folder-path { flex: 1; color: #c9cce0; font-size: 12px; word-break: break-all; }
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    padding: 8px 14px; border-bottom: 1px solid #1c2032; flex-shrink: 0;
+  }
+  .tabs { display: flex; gap: 4px; }
+  .tabs button, .view-toggle button {
+    background: transparent; color: #9aa0b4; border: 1px solid #23283b; border-radius: 999px; padding: 4px 12px; font-size: 11.5px;
+  }
+  .tabs button.active, .view-toggle button.active { background: rgba(167,139,250,0.22); color: #d8b4fe; border-color: rgba(167,139,250,0.4); }
+  .view-toggle { display: flex; gap: 4px; }
+  .row {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center;
+    background: rgba(255,255,255,0.04); border: 1px solid #23283b; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  .row .poster {
+    grid-column: 1; grid-row: 1 / span 3; width: 46px; height: 64px; object-fit: cover; border-radius: 6px;
+    background: #1c2032; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #4b5170;
+  }
+  .row .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; grid-column: 2; }
+  .row .row-actions { grid-column: 3; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 4px; }
+  .row .row-actions button { white-space: nowrap; }
+  .row .meta { grid-column: 2; font-size: 11.5px; color: #9aa0b4; display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { padding: 1px 7px; border-radius: 8px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .badge.downloading { background: rgba(56,189,248,0.18); color: #38bdf8; }
+  .badge.completed { background: rgba(34,197,94,0.18); color: #22c55e; }
+  .hnr-pending { color: #fbbf24; font-weight: 600; flex-basis: 100%; }
+  .hnr-done { color: #22c55e; font-weight: 600; flex-basis: 100%; }
+  .bar { grid-column: 2; height: 5px; border-radius: 3px; background: #1c2032; overflow: hidden; margin-top: 4px; }
+  .bar > div { height: 100%; background: linear-gradient(90deg, #a78bfa, #f472b6); }
+  /* Vue compacte : une ligne par torrent, sans barre de progression ni actions empilées. */
+  main.compact .row {
+    grid-template-columns: 26px 1.5fr auto auto auto auto; gap: 10px; padding: 6px 12px; align-items: center;
+  }
+  main.compact .row .poster { width: 22px; height: 30px; font-size: 13px; grid-row: 1; }
+  main.compact .row .name { grid-column: 2; }
+  main.compact .row .meta { grid-column: 3 / span 3; display: contents; }
+  main.compact .row .meta > span:not(.badge):not(.hnr-pending):not(.hnr-done) { display: none; }
+  main.compact .row .hnr-pending, main.compact .row .hnr-done { flex-basis: auto; font-size: 11px; }
+  main.compact .row .bar { display: none; }
+  main.compact .row .row-actions { flex-direction: row; flex-wrap: wrap; grid-row: 1; justify-content: flex-end; }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>💻 Client Seeduction</h1>
+      <div class="muted" id="disk-usage">Espace utilisé : —</div>
+    </div>
+    <div class="actions">
+      <button id="btn-open-root">📂 Ouvrir le dossier</button>
+      <button id="btn-settings">⚙ Paramètres</button>
+      <button id="btn-refresh">↻ Actualiser</button>
+      <button id="btn-clear" class="danger">🗑 Tout supprimer</button>
+    </div>
+  </header>
+
+  <div id="settings-panel">
+    <div class="settings-row">
+      <label>Dossier de téléchargement</label>
+      <span id="folder-path">—</span>
+      <button id="btn-change-folder">Changer…</button>
+    </div>
+    <div class="settings-row">
+      <label>Limite de téléchargement (Ko/s)</label>
+      <input type="number" id="input-down-limit" min="0" placeholder="0 = illimité" />
+    </div>
+    <div class="settings-row">
+      <label>Limite d'envoi (Ko/s)</label>
+      <input type="number" id="input-up-limit" min="0" placeholder="0 = illimité" />
+    </div>
+    <div class="settings-row">
+      <button id="btn-save-limits">Enregistrer les limites</button>
+      <span class="muted" style="color:#9aa0b4;">Le nouveau dossier s'applique aux prochains téléchargements.</span>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tabs" id="tabs">
+      <button data-filter="all" class="active">Tout</button>
+      <button data-filter="downloading">En téléchargement</button>
+      <button data-filter="completed">En partage</button>
+    </div>
+    <div class="view-toggle" id="view-toggle">
+      <button data-view="cards" class="active">Cartes</button>
+      <button data-view="compact">Compacte</button>
+    </div>
+  </div>
+
+  <main id="list">
+    <p class="empty">Aucun téléchargement pour l'instant — clique sur « Ouvrir dans le lecteur Seeduction » sur le site.</p>
+  </main>
+
+  <script>
+    let lastData = { sessions: [], settings: null, totalDiskUsage: 0, receivedAt: Date.now() };
+    let filter = 'all';
+    let view = 'cards';
+    try {
+      filter = localStorage.getItem('seeduction-filter') || 'all';
+      view = localStorage.getItem('seeduction-view') || 'cards';
+    } catch { /* stockage indisponible : réglages par défaut */ }
+
+    function formatBytes(n) {
+      if (!n) return '0 o';
+      const units = ['o', 'Ko', 'Mo', 'Go', 'To'];
+      let i = 0;
+      while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+      return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+    }
+    function formatSpeed(n) { return `${formatBytes(n)}/s`; }
+    function formatDuration(seconds) {
+      seconds = Math.max(0, Math.round(seconds));
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      const parts = [];
+      if (h > 0) parts.push(`${h} h`);
+      if (h > 0 || m > 0) parts.push(`${m} min`);
+      parts.push(`${s} s`);
+      return parts.join(' ');
+    }
+    function formatClock(seconds) {
+      seconds = Math.max(0, Math.round(seconds));
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      const pad = (n) => String(n).padStart(2, '0');
+      return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+    }
+
+    function render() {
+      const { sessions, settings, totalDiskUsage } = lastData;
+      document.getElementById('disk-usage').textContent = `Espace utilisé : ${formatBytes(totalDiskUsage)}`;
+      if (settings) {
+        document.getElementById('folder-path').textContent = settings.downloadPath;
+        if (document.activeElement.id !== 'input-down-limit') document.getElementById('input-down-limit').value = settings.downloadLimit || 0;
+        if (document.activeElement.id !== 'input-up-limit') document.getElementById('input-up-limit').value = settings.uploadLimit || 0;
+      }
+      const list = document.getElementById('list');
+      list.className = view === 'compact' ? 'compact' : '';
+      const visible = sessions.filter((s) => filter === 'all' || s.status === filter);
+      if (!visible.length) {
+        list.innerHTML = `<p class="empty">${sessions.length ? 'Rien à afficher dans cette vue.' : 'Aucun téléchargement pour l\'instant — clique sur « Ouvrir dans le lecteur Seeduction » sur le site.'}</p>`;
+        return;
+      }
+      // Le temps restant est recalculé à chaque rendu (appelé chaque seconde, voir plus bas) à partir de l'horodatage
+      // de la dernière donnée reçue du processus principal : ça descend en temps réel entre deux mises à jour réseau.
+      const elapsedSinceUpdate = (Date.now() - (lastData.receivedAt || Date.now())) / 1000;
+      list.innerHTML = visible.map((s) => {
+        const locked = s.hnr && !s.hnr.satisfied;
+        const remaining = locked ? Math.max(0, s.hnr.remainingSeconds - elapsedSinceUpdate) : 0;
+        const hnrLine = !s.hnr ? '' : s.hnr.satisfied
+          ? '<span class="hnr-done">✅ Obligation de partage respectée</span>'
+          : `<span class="hnr-pending">⏳ Temps de partage obligatoire restant : ${formatDuration(remaining)}</span>`;
+        const posterImg = s.coverImage
+          ? `<img class="poster" src="${s.coverImage.replace(/"/g, '&quot;')}" alt="" onerror="this.outerHTML='<div class=&quot;poster&quot;>🎬</div>'" />`
+          : '<div class="poster">🎬</div>';
+        const finishedWatching = s.durationSeconds > 0 && s.resumePositionSeconds >= s.durationSeconds - 30;
+        const watchLabel = s.resumePositionSeconds > 10 && !finishedWatching
+          ? `▶ Reprendre (${formatClock(s.resumePositionSeconds)}${s.durationSeconds ? ' / ' + formatClock(s.durationSeconds) : ''})`
+          : '▶ Visionner';
+        const watchButton = s.playing
+          ? '<button disabled class="playing">▶ En cours de lecture</button>'
+          : `<button data-watch="${s.id}">${watchLabel}</button>`;
+        return `
+        <div class="row" data-id="${s.id}">
+          ${posterImg}
+          <div class="name" title="${(s.torrentName || s.name).replace(/"/g, '&quot;')}">${s.torrentName || s.name}</div>
+          <div class="row-actions">
+            ${watchButton}
+            <button data-open="${s.id}">📂 Ouvrir</button>
+            <button data-stop="${s.id}" class="${locked ? 'locked' : ''}">⏹ Arrêter</button>
+            <button data-delete="${s.id}" data-locked="${locked ? '1' : ''}" class="${locked ? 'locked' : 'danger'}">🗑 Supprimer</button>
+          </div>
+          <div class="meta">
+            <span class="badge ${s.status}">${s.status === 'completed' ? 'Terminé' : 'En cours'}</span>
+            ${s.status === 'completed' ? '<span class="badge completed">EN SEED</span>' : ''}
+            <span>${(s.progress * 100).toFixed(1)}% de ${formatBytes(s.size)}</span>
+            <span>${s.peers} pair(s)</span>
+            <span>↓ ${formatSpeed(s.downSpeed)}</span>
+            <span>↑ ${formatSpeed(s.upSpeed)}</span>
+            ${hnrLine}
+          </div>
+          <div class="bar"><div style="width:${Math.min(100, s.progress * 100)}%"></div></div>
+        </div>
+      `;
+      }).join('');
+      list.querySelectorAll('[data-watch]').forEach((btn) => {
+        btn.addEventListener('click', () => window.seeductionPlayer.watch(btn.getAttribute('data-watch')));
+      });
+      list.querySelectorAll('[data-open]').forEach((btn) => {
+        btn.addEventListener('click', () => window.seeductionPlayer.openItemFolder(btn.getAttribute('data-open')));
+      });
+      list.querySelectorAll('[data-stop]').forEach((btn) => {
+        btn.addEventListener('click', () => window.seeductionPlayer.remove(btn.getAttribute('data-stop'), false));
+      });
+      list.querySelectorAll('[data-delete]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          // Verrouillé (partage obligatoire pas terminé) : on passe directement par le processus principal, qui
+          // affiche la même alerte que pour « Arrêter » — pas de confirmation de suppression inutile avant.
+          if (btn.getAttribute('data-locked')) { window.seeductionPlayer.remove(btn.getAttribute('data-delete'), true); return; }
+          if (confirm('Supprimer ce fichier du disque ? Cette action est irréversible.')) {
+            window.seeductionPlayer.remove(btn.getAttribute('data-delete'), true);
+          }
+        });
+      });
+    }
+
+    window.seeductionPlayer.onData((data) => { lastData = { ...data, receivedAt: Date.now() }; render(); });
+    // Fait descendre le compte à rebours du partage obligatoire seconde par seconde, sans attendre la prochaine
+    // mise à jour du processus principal (toutes les 3 s) — c'est la seule chose qui change entre deux rendus.
+    setInterval(render, 1000);
+    document.getElementById('btn-refresh').addEventListener('click', () => window.seeductionPlayer.refresh());
+    document.getElementById('btn-open-root').addEventListener('click', () => window.seeductionPlayer.openRootFolder());
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      if (confirm('Arrêter tous les téléchargements ET supprimer tous les fichiers du disque ? Les torrents dont le partage obligatoire n\'est pas terminé seront gardés. Cette action est irréversible.')) {
+        window.seeductionPlayer.clearAll(true);
+      }
+    });
+    document.getElementById('btn-settings').addEventListener('click', () => {
+      document.getElementById('settings-panel').classList.toggle('open');
+    });
+    document.getElementById('btn-change-folder').addEventListener('click', () => window.seeductionPlayer.chooseFolder());
+    document.getElementById('btn-save-limits').addEventListener('click', () => {
+      window.seeductionPlayer.setLimits({
+        downloadLimit: Number(document.getElementById('input-down-limit').value) || 0,
+        uploadLimit: Number(document.getElementById('input-up-limit').value) || 0,
+      });
+    });
+
+    document.getElementById('tabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-filter]');
+      if (!btn) return;
+      filter = btn.getAttribute('data-filter');
+      try { localStorage.setItem('seeduction-filter', filter); } catch { /* pas grave */ }
+      document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b === btn));
+      render();
+    });
+    document.getElementById('view-toggle').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-view]');
+      if (!btn) return;
+      view = btn.getAttribute('data-view');
+      try { localStorage.setItem('seeduction-view', view); } catch { /* pas grave */ }
+      document.querySelectorAll('#view-toggle button').forEach((b) => b.classList.toggle('active', b === btn));
+      render();
+    });
+    document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.getAttribute('data-filter') === filter));
+    document.querySelectorAll('#view-toggle button').forEach((b) => b.classList.toggle('active', b.getAttribute('data-view') === view));
+
+    window.seeductionPlayer.getSettings().then((settings) => { lastData.settings = settings; render(); });
+  </script>
+</body>
+</html>

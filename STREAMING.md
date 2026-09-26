@@ -29,18 +29,23 @@ Le lecteur desktop est un vrai client BitTorrent (comme qBittorrent), sans cette
 
 Aucun format n'est restreint : VLC lit à peu près tout, y compris `.mkv` et x265/HEVC.
 
-## Le ratio compte, pas le hit & run
+## Le lecteur est un vrai client — les mêmes règles s'appliquent
 
-Le `?stream=1` de l'announce (`viaStream` dans `TrackerService.announce`) fait que le téléchargement/envoi compte
-normalement pour le ratio du membre, **mais** :
+Le lecteur desktop est un client BitTorrent (WebTorrent) comme un autre, pas un lecteur jetable : le fichier va
+directement dans le dossier de téléchargement du membre (configurable dans la fenêtre Téléchargements, par défaut
+`Téléchargements/Seeduction`), le torrent continue à seeder après la lecture, et les sessions reprennent
+automatiquement au redémarrage du logiciel (le lecteur se lance aussi avec Windows). Il propose des réglages
+comparables à un client standard : limites de vitesse, ouverture du dossier d'un fichier, arrêt d'une session en
+gardant le fichier, ou suppression complète.
 
-- **Aucun `Snatch` n'est créé** à la fin de la lecture : comme personne ne laisse le lecteur tourner pour seeder une
-  fois la vidéo fermée, créer une obligation « hit & run » à chaque lecture punirait les membres pour rien.
-- **`completedCount`** (« X complétés » sur la fiche) n'est **pas** incrémenté par une lecture menée à terme — un
-  compteur séparé, **`streamCompletedCount`** (« X lectures complétées »), l'est à la place, pour ne pas fausser la
-  statistique de popularité en téléchargement du torrent.
-- Un `Snatch` **déjà existant** (un vrai téléchargement antérieur, pas régularisé) peut en revanche se régulariser
-  grâce au temps de seed accumulé pendant une lecture — ça ne peut qu'aider le membre.
+En conséquence, un téléchargement complété via `?stream=1` (`viaStream` dans `TrackerService.announce`) suit
+exactement le même chemin qu'un téléchargement classique :
+
+- Un **`Snatch`** est créé normalement à la fin du téléchargement, avec la même obligation de seed (hit & run) que
+  n'importe quel client — le membre a tout ce qu'il faut ici pour la respecter (fichier gardé, seed qui continue).
+- **`completedCount`** est incrémenté comme d'habitude. **`streamCompletedCount`** (« X lectures complétées ») est
+  incrémenté **en plus**, uniquement à titre informatif (combien de complétions sont passées par le lecteur plutôt
+  qu'un client tiers).
 
 ## Quelles catégories affichent le bouton
 
@@ -62,4 +67,7 @@ jeux et livres n'ont pas ce bouton.
 
 Le cache de lecture navigateur (dormant) est stocké dans `STREAM_STORAGE_DIR` (par défaut `./storage/stream-cache`
 dans le conteneur backend) — un cache jetable, pas besoin de le sauvegarder. Le lecteur desktop, lui, télécharge
-sur le PC du membre, jamais sur le NAS.
+sur le PC du membre, jamais sur le NAS : par défaut dans `Téléchargements/Seeduction`, modifiable dans la fenêtre
+Téléchargements (`desktop-player/src/settings.js`). Les métadonnées des sessions actives (`sessions.json`) et une
+copie de chaque `.torrent` sont gardées dans le dossier de données de l'app pour pouvoir reprendre le seed après un
+redémarrage du logiciel.
