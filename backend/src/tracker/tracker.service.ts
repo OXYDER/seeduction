@@ -65,12 +65,14 @@ export class TrackerService {
     const torrent = await this.prisma.torrent.findUnique({ where: { infoHash: params.infoHash } });
     if (!torrent) throw new NotFoundException('Torrent inconnu de ce tracker');
 
-    // Freeleech : sur ce torrent, pour tout le site (événement), ou par jeton personnel.
+    // Freeleech : sur ce torrent, pour tout le site (événement), par jeton personnel sur ce torrent précis, ou par
+    // freeleech de compte (cadeau de bienvenue, récompense...) qui couvre tous les torrents jusqu'à une date.
     const [globalFreeleech, personal] = await Promise.all([
       this.settings.freeleechUntil(),
       this.prisma.personalFreeleech.findUnique({ where: { userId_torrentId: { userId: user.id, torrentId: torrent.id } } }),
     ]);
-    const isFree = torrent.freeleech || !!globalFreeleech || (!!personal && personal.expiresAt > new Date());
+    const isFree = torrent.freeleech || !!globalFreeleech || (!!personal && personal.expiresAt > new Date())
+      || (!!user.freeleechUntil && user.freeleechUntil > new Date());
 
     const isDownloading = params.left > 0;
     if (isDownloading && !isFree) {

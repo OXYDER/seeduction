@@ -22,7 +22,7 @@ export class UsersService {
         id: true, username: true, email: true, role: true, uploaded: true,
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
-        presenceStatus: true, dmPrivacy: true, statusText: true,
+        presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
@@ -31,8 +31,9 @@ export class UsersService {
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
     const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
+    const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     return {
       ...publicInfo,
       ratio,
@@ -40,7 +41,7 @@ export class UsersService {
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus: this.presence.publicStatus(user.id),
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
   }

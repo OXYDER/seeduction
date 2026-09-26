@@ -119,6 +119,11 @@ export default function Profile() {
         <Card label="Download" value={`${(Number(profile.downloaded) / 1e9).toFixed(2)} Go`} />
         <Card label="Bonus points" value={profile.bonusPoints?.toFixed(0) ?? 0} />
       </div>
+      {own && profile.freeleechUntil && (
+        <div className="panel" style={{ borderColor: 'var(--gold)', color: 'var(--gold-bright)' }}>
+          🎁 Freeleech personnel actif jusqu'au {new Date(profile.freeleechUntil).toLocaleDateString('fr-FR')} — tes téléchargements ne comptent pas dans ton ratio jusque-là.
+        </div>
+      )}
       <div className="panel">
         <h3>Badges {badges.length > 0 && `(${badges.length})`}</h3>
         {badges.length === 0 && <p className="muted">Aucun badge obtenu pour l'instant.</p>}

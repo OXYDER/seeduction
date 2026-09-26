@@ -20,6 +20,9 @@ export const ECONOMY = {
   bonusPerTorrentHour: num('BONUS_PER_TORRENT_HOUR', 1),
   /** Plafond de torrents comptés par heure (évite l'abus par milliers de petits torrents). */
   bonusMaxTorrents: num('BONUS_MAX_TORRENTS', 200),
+  /** Cadeau de bienvenue à l'inscription : upload de départ (Go) et durée du freeleech personnel (jours). */
+  welcomeUploadGb: num('WELCOME_UPLOAD_GB', 50),
+  welcomeFreeleechDays: num('WELCOME_FREELEECH_DAYS', 7),
 };
 
 export const ANNOUNCE_INTERVAL_SECONDS = 1800;

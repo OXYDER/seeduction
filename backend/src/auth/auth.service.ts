@@ -9,7 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 import { AuditService } from '../audit/audit.service';
 import { MailService } from '../mail/mail.service';
-import { CLASS_LABELS, INVITE_QUOTA } from '../common/utils/economy';
+import { CLASS_LABELS, ECONOMY, INVITE_QUOTA } from '../common/utils/economy';
 
 const MIN_PASSWORD_LENGTH = 8;
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -70,10 +70,16 @@ export class AuthService {
     this.assertPassword(password);
     const isFirstUser = (await this.prisma.user.count()) === 0;
     const passwordHash = await bcrypt.hash(password, 12);
+    // Cadeau de bienvenue : un peu d'upload de départ (pour ne pas commencer à 0/∞) et un freeleech personnel
+    // temporaire, pour découvrir le site sans se soucier du ratio dès les premiers téléchargements.
+    const welcomeGift = {
+      uploaded: BigInt(Math.round(ECONOMY.welcomeUploadGb * 1e9)),
+      freeleechUntil: new Date(Date.now() + ECONOMY.welcomeFreeleechDays * 86400_000),
+    };
 
     if (isFirstUser) {
       const created = await this.prisma.user.create({
-        data: { username, email, passwordHash, role: 'ADMIN' },
+        data: { username, email, passwordHash, role: 'ADMIN', ...welcomeGift },
       });
       return { id: created.id, username: created.username, passkey: created.passkey };
     }
@@ -91,6 +97,7 @@ export class AuthService {
           email,
           passwordHash,
           invitedById: invite.createdById,
+          ...welcomeGift,
         },
       });
       await tx.inviteCode.update({
@@ -106,6 +113,13 @@ export class AuthService {
       title: `${user.username} a rejoint le tracker`,
       body: 'Ton invitation a été utilisée',
       link: `/users/${user.id}`,
+    });
+    await this.notifications.notify({
+      userId: user.id,
+      type: 'SYSTEM',
+      title: `Bienvenue sur Seeduction, ${user.username} !`,
+      body: `Cadeau de bienvenue : ${ECONOMY.welcomeUploadGb} Go d'upload offerts et ${ECONOMY.welcomeFreeleechDays} jours de freeleech personnel (tes téléchargements ne compteront pas dans ton ratio pendant cette période). Bonne découverte !`,
+      link: '/profile',
     });
     await this.badges.checkAndAward(invite.createdById);
 

@@ -96,6 +96,7 @@ model User {
   showAdult        Boolean    @default(false) // a activé l'affichage du contenu pour adultes (18+)
   presenceStatus   PresenceStatus @default(ONLINE) // préférence affichée quand le membre est connecté (voir enum)
   statusText       String?    @db.VarChar(100) // petit message libre affiché à côté du statut (profil, infobulle, chat)
+  freeleechUntil   DateTime?  // freeleech personnel (cadeau de bienvenue, récompense...) : ses téléchargements ne comptent pas dans son ratio jusqu'à cette date
   dmPrivacy        DmPrivacy      @default(EVERYONE) // qui peut lui écrire en chat privé sans être son ami
   adultAcceptedAt  DateTime?
   signature        String?    @db.Text
