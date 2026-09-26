@@ -1432,6 +1432,10 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 .detail-stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 4px 0 18px; color: #c9d0e6; font-size: 14px; }
 .detail-stats strong { color: #fff; }
 .detail-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+/* Bande-annonce / Télécharger / Ouvrir dans le lecteur : hauteur identique forcée — sans ça, un emoji ("🖥️") a une
+   boîte de ligne plus haute qu'un simple texte à padding égal, et les trois boutons ne s'alignent jamais vraiment. */
+.detail-actions-primary { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+.detail-actions-primary button { height: 46px; display: inline-flex; align-items: center; padding: 0 22px; }
 .download-btn { padding: 12px 26px; border-radius: 4px; font-size: 15px; }
 @media (max-width: 760px) {
   .detail-head { grid-template-columns: minmax(0, 1fr); gap: 20px; }

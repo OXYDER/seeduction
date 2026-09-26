@@ -123,11 +123,16 @@ export default function TorrentDetail() {
     </div>
   );
 
-  // Boutons d'action (télécharger, merci, jeton, collection, signaler) : les mêmes dans les deux mises en page.
-  const actions = user && (
-    <div className="row" style={{ gap: 8, position: 'relative', flexWrap: 'wrap' }}>
+  // Boutons d'action : téléchargement/lecture en haut (même hauteur que Bande-annonce), le reste (note, merci,
+  // jeton, collection, signaler, favoris) sur une deuxième rangée — les mêmes dans les deux mises en page.
+  const primaryActions = user && (
+    <>
       <button onClick={download} className="download-btn">⬇ Télécharger le .torrent</button>
       {isVideoKind && <WatchOnlineButton torrentId={torrent.id} fileList={torrent.fileList} />}
+    </>
+  );
+  const secondaryActions = user && (
+    <div className="row" style={{ gap: 8, position: 'relative', flexWrap: 'wrap' }}>
       <TorrentSocial torrentId={torrent.id} seeders={torrent.seeders} isUploader={torrent.uploader?.id === user.id} />
       {!torrent.freeleech && (tokenUntil
         ? <span className="badge freeleech" title="Jeton freeleech actif">🎟️ Freeleech pour toi jusqu'au {new Date(tokenUntil).toLocaleDateString('fr-FR')}</span>
@@ -223,11 +228,14 @@ export default function TorrentDetail() {
               <span><strong>{formatBytes(torrent.size)}</strong></span>
               <span>par {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</span>
             </div>
-            <div className="detail-actions" ref={downloadAnchorRef}>
+            <div className="detail-actions-primary" ref={downloadAnchorRef}>
               {torrent.metadata?.trailer?.key && (
                 <button type="button" className="secondary" onClick={() => setTrailerOpen(true)}>▶ Bande-annonce</button>
               )}
-              {actions}
+              {primaryActions}
+            </div>
+            <div className="detail-actions" style={{ marginTop: 8 }}>
+              {secondaryActions}
               {favorites.enabled && (
                 <button type="button" className="secondary" onClick={() => favorites.toggle(torrent.id)}>
                   {favorites.ids.has(torrent.id) ? '★ Dans ma liste' : '☆ Ma liste'}
@@ -319,7 +327,7 @@ export default function TorrentDetail() {
               {torrent.streamCompletedCount > 0 && ` / Lectures complétées ${torrent.streamCompletedCount}`}
             </div>
           </div>
-          {actions}
+          <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>{primaryActions}{secondaryActions}</div>
         </div>
         {torrent.description && (
           <div className="bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(torrent.description) }} />
