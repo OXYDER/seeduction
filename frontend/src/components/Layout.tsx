@@ -34,7 +34,8 @@ export interface Category {
   name: string;
   slug: string;
   imageUrl?: string | null;
-  children?: { id: string }[];
+  _count?: { torrents: number };
+  children?: { id: string; _count?: { torrents: number } }[];
 }
 
 export interface LayoutContext {
@@ -166,7 +167,6 @@ export default function Layout() {
   // ---- Thème Prestige : barre latérale (ordinateur) / barre d'onglets (mobile) ----
   if (theme === 'prestige') {
     const visibleNav = NAV_ITEMS.filter((item) => !item.staffOnly || isStaff);
-    const activeCategory = location.pathname === '/browse' ? new URLSearchParams(location.search).get('categoryId') : null;
     const tabs = ['/', '/browse', '/upload', '/forum'].map((to) => NAV_ITEMS.find((i) => i.to === to)!);
 
     return (
@@ -214,24 +214,6 @@ export default function Layout() {
               );
             })}
           </nav>
-
-          {categories.length > 0 && (
-            <div className="side-section">
-              <div className="side-section-title">Catégories</div>
-              <nav className="side-links compact">
-                {categories.map((c) => {
-                  const style = CATEGORY_STYLE[c.slug];
-                  const isActive = !!activeCategory && (activeCategory === c.id || !!c.children?.some((sub) => sub.id === activeCategory));
-                  return (
-                    <Link key={c.id} to={`/browse?categoryId=${c.id}`} className={isActive ? 'active' : ''} title={c.name}>
-                      <span className="side-icon">{c.imageUrl ? <img src={c.imageUrl} alt="" /> : (style?.icon ?? '📁')}</span>
-                      <span>{c.name}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-          )}
 
         </aside>
 

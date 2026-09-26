@@ -27,7 +27,7 @@ export default function PlayerDownload() {
         <p className="muted" style={{ margin: 0 }}>
           Regarde un film ou une série directement sur ton PC, sans télécharger de client BitTorrent et sans limite
           de format — même les .mkv en x265/HEVC. Le téléchargement se fait directement entre ton PC et les
-          seeders, sans passer par le NAS.
+          seeders, sans passer par le serveur.
         </p>
       </div>
 

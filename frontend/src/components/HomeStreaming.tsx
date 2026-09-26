@@ -195,7 +195,7 @@ export default function HomeStreaming() {
 
           {active.length > 0 && (
             <section className="rail-section rail-plex">
-              <div className="rail-head"><h2>Continuer</h2><span className="muted">Tes téléchargements et seeds en cours</span></div>
+              <div className="rail-head"><h2>Mon activité</h2><span className="muted">Tes téléchargements et seeds en cours</span></div>
               <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
             </section>
           )}

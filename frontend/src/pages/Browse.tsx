@@ -302,9 +302,28 @@ export default function Browse() {
       {theme === 'prestige' && categories.length > 0 && !uploaderId && (
         <nav className="tabs" aria-label="Catégories">
           <button type="button" className={!categoryId ? 'on' : ''} onClick={() => updateParam('categoryId', '')}>Tout</button>
-          {categories.map((c) => {
+          {categories.map((c: any) => {
             const isActive = categoryId === c.id || !!c.children?.some((sub: any) => sub.id === categoryId);
-            return <button key={c.id} type="button" className={isActive ? 'on' : ''} onClick={() => updateParam('categoryId', c.id)}>{c.name}</button>;
+            const total = (c._count?.torrents ?? 0) + (c.children?.reduce((sum: number, sub: any) => sum + (sub._count?.torrents ?? 0), 0) ?? 0);
+            const hasChildren = c.children?.length > 0;
+            return (
+              <div key={c.id} className="cat-tab-wrap">
+                <button type="button" className={isActive ? 'on' : ''} onClick={() => updateParam('categoryId', c.id)}>
+                  {c.name}
+                  <span className="cat-tab-count">{total}</span>
+                </button>
+                {hasChildren && (
+                  <div className="cat-tab-dropdown">
+                    <button type="button" className={categoryId === c.id ? 'on' : ''} onClick={() => updateParam('categoryId', c.id)}>Tout {c.name}</button>
+                    {c.children.map((sub: any) => (
+                      <button key={sub.id} type="button" className={categoryId === sub.id ? 'on' : ''} onClick={() => updateParam('categoryId', sub.id)}>
+                        {sub.name} <span className="cat-tab-count">{sub._count?.torrents ?? 0}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
           })}
         </nav>
       )}

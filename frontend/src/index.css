@@ -86,7 +86,10 @@ input:focus, textarea:focus, select:focus {
 button {
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
   color: var(--on-accent);
-  border: none;
+  /* Transparent plutôt que "none" : un bouton .secondary a un vrai bord de 1px, ce qui le rendrait plus haut/large
+     de 2px qu'un bouton normal placé juste à côté (ex. "Voir la fiche" / "Parcourir le catalogue") si celui-ci
+     n'a aucun bord du tout. Réserver le même espace évite ce décalage. */
+  border: 1px solid transparent;
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
@@ -1345,7 +1348,10 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 }
 :root[data-theme="prestige"] .tabs button:hover:not(:disabled) { color: #fff; background: none; transform: none; box-shadow: none; filter: none; }
 :root[data-theme="prestige"] .tabs button.on { color: #fff; }
-:root[data-theme="prestige"] .tabs button.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--acc1), var(--acc2)); }
+:root[data-theme="prestige"] .tabs button.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--acc1), var(--acc2)); opacity: 1; }
+/* Un survol n'affichait jusqu'ici qu'un changement de couleur du texte, sans aucun repère visuel sous l'onglet :
+   on ajoute le même soulignement qu'à l'état actif, en plus discret (l'onglet actif reste le plus visible). */
+:root[data-theme="prestige"] .tabs button:not(.on):hover::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--acc1), var(--acc2)); opacity: 0.55; }
 
 /* Accueil : grand titre sur le fond, sans cadre */
 .home-plex { display: grid; gap: 30px; }
@@ -1439,7 +1445,26 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
 :root[data-theme="prestige"] .tabs a { color: #a4adc4; font-size: 15px; font-weight: 600; padding: 8px 2px; position: relative; }
 :root[data-theme="prestige"] .tabs a:hover { color: #fff; }
 :root[data-theme="prestige"] .tabs a.on { color: #fff; }
-:root[data-theme="prestige"] .tabs a.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--acc1), var(--acc2)); }
+:root[data-theme="prestige"] .tabs a.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--acc1), var(--acc2)); opacity: 1; }
+:root[data-theme="prestige"] .tabs a:not(.on):hover::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--acc1), var(--acc2)); opacity: 0.55; }
+
+/* Onglets de catégorie de la page Parcourir : nombre de torrents sous le nom, et un menu déroulant des
+   sous-catégories au survol (garde le clic direct sur le nom pour "toute la catégorie"). */
+.cat-tab-wrap { position: relative; display: inline-flex; }
+.cat-tab-count { margin-left: 5px; font-size: 11px; opacity: 0.6; font-weight: 600; }
+.cat-tab-dropdown {
+  display: none; position: absolute; top: 100%; left: 0; margin-top: 6px; min-width: 190px; z-index: 30;
+  flex-direction: column; padding: 6px; gap: 2px;
+  background: var(--bg-panel-raised); border: 1px solid var(--border-gold); border-radius: 4px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+}
+.cat-tab-wrap:hover .cat-tab-dropdown, .cat-tab-wrap:focus-within .cat-tab-dropdown { display: flex; }
+.cat-tab-dropdown button {
+  background: none; border: 1px solid transparent; box-shadow: none; color: var(--text-dim); text-align: left;
+  padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: 500; white-space: nowrap;
+}
+.cat-tab-dropdown button:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.cat-tab-dropdown button.on { color: var(--gold-bright); }
 .accent-dots { display: flex; gap: 8px; padding: 6px 4px 2px; align-items: center; }
 .accent-dot { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid transparent; box-shadow: none; }
 .accent-dot.on { border-color: #fff; }

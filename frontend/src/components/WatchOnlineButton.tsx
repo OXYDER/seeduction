@@ -6,7 +6,7 @@ import { formatBytes } from '../lib/format';
 
 /**
  * « Ouvrir dans le lecteur Seeduction » (desktop-player/) : un petit logiciel installé sur le PC du membre
- * télécharge directement depuis les seeders (aucune charge sur le NAS) et lance Seeduction VLC — aucune limite de
+ * télécharge directement depuis les seeders (aucune charge sur le serveur) et lance Seeduction VLC — aucune limite de
  * format. Affiché uniquement pour du contenu vidéo (voir isVideoKind côté TorrentDetail) ; l'ancien lecteur intégré
  * au navigateur (limité au .mp4/.webm) a été retiré au profit de celui-ci, plus capable.
  */
@@ -50,7 +50,7 @@ export default function WatchOnlineButton({ torrentId, fileList, compact }: { to
         type="button"
         onClick={start}
         className={compact ? 'icon-btn' : undefined}
-        title="Ouvre le lecteur Seeduction installé sur ton PC : tous les formats, aucune charge sur le NAS"
+        title="Ouvre le lecteur Seeduction installé sur ton PC : tous les formats, aucune charge sur le serveur"
       >
         {compact ? '▶' : '🖥️ Ouvrir dans le lecteur Seeduction'}
       </button>
