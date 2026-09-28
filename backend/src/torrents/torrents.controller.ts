@@ -40,6 +40,7 @@ export class TorrentsController {
       genre: query.genre,
       entityId: query.entityId,
       role: query.role,
+      period: query.period === 'day' || query.period === 'week' || query.period === 'month' ? query.period : undefined,
     });
   }
 
@@ -60,6 +61,7 @@ export class TorrentsController {
       pageSize: parseInt(query.pageSize ?? '25', 10),
       sort: query.sort,
       order: query.order === 'asc' ? 'asc' : query.order === 'desc' ? 'desc' : undefined,
+      period: query.period === 'day' || query.period === 'week' || query.period === 'month' ? query.period : undefined,
       minSize: query.minSize ? Number(query.minSize) : undefined,
       maxSize: query.maxSize ? Number(query.maxSize) : undefined,
       minSeeders: query.minSeeders ? Number(query.minSeeders) : undefined,

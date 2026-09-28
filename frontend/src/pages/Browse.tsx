@@ -83,6 +83,7 @@ export default function Browse() {
   const maxSizeGo = params.get('maxSize') ?? '';
   const minSeeders = params.get('minSeeders') ?? '';
   const state = params.get('state') === 'dead' ? 'dead' : params.get('state') === 'noseeders' ? 'noseeders' : '';
+  const period = params.get('period') === 'day' || params.get('period') === 'week' || params.get('period') === 'month' ? params.get('period')! : '';
 
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -120,12 +121,13 @@ export default function Browse() {
         maxSize: maxSizeGo ? Number(maxSizeGo) * 1e9 : undefined,
         minSeeders: minSeeders || undefined,
         state: state || undefined,
+        period: period || undefined,
       },
     }).then((r) => {
       setItems(r.data.items);
       setTotal(r.data.total);
     });
-  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state]);
+  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state, period]);
 
   // Valeurs de filtres réellement disponibles pour la liste affichée (avec nombre de torrents).
   const [facets, setFacets] = useState<Record<string, { value: string; count: number }[]>>({});
@@ -140,9 +142,10 @@ export default function Browse() {
         maxSize: maxSizeGo ? Number(maxSizeGo) * 1e9 : undefined,
         minSeeders: minSeeders || undefined,
         state: state || undefined,
+        period: period || undefined,
       },
     }).then((r) => setFacets(r.data)).catch(() => {});
-  }, [parsed.name, categoryId, uploaderId, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state]);
+  }, [parsed.name, categoryId, uploaderId, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state, period]);
 
 
   useEffect(() => {
@@ -319,6 +322,13 @@ export default function Browse() {
       )}
 
       <div className="facet-rows">
+        <div className="facet-row">
+          <span className="facet-label">Ajoutés</span>
+          <button type="button" className={!period ? 'on' : ''} onClick={() => updateParam('period', '')}>Toujours</button>
+          <button type="button" className={period === 'day' ? 'on' : ''} onClick={() => updateParam('period', 'day')}>24 heures</button>
+          <button type="button" className={period === 'week' ? 'on' : ''} onClick={() => updateParam('period', 'week')}>Cette semaine</button>
+          <button type="button" className={period === 'month' ? 'on' : ''} onClick={() => updateParam('period', 'month')}>Ce mois</button>
+        </div>
         {([
           ['resolution', 'Qualité', resolution, RESOLUTIONS, (v: string) => (v === '4K/2160p' ? '4K UHD' : v === '480p' ? 'SD' : v)],
           ['source', 'Source', source, SOURCES, (v: string) => v],

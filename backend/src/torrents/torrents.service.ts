@@ -20,6 +20,8 @@ export interface TorrentFilters {
     entityId?: string; role?: string; hideAnonymous?: boolean; viewerId?: string;
     /** all = torrents actifs (défaut) ; noseeders = approuvés sans seeder ; dead = retirés des listes après une longue inactivité. */
     state?: 'noseeders' | 'dead';
+    /** Ajoutés dans les dernières 24h / 7 jours / 30 jours (Accueil : Derniers torrents / Les plus populaires). */
+    period?: 'day' | 'week' | 'month';
   }
 
 @Injectable()
@@ -207,6 +209,10 @@ export class TorrentsService {
     if (params.genre) where.genres = { has: params.genre };
     if (params.containerFormat) where.containerFormat = { equals: params.containerFormat, mode: 'insensitive' };
     if (params.origin) where.origin = params.origin;
+    if (params.period) {
+      const ms = { day: 86400_000, week: 7 * 86400_000, month: 30 * 86400_000 }[params.period];
+      where.createdAt = { gte: new Date(Date.now() - ms) };
+    }
     return where;
   }
 

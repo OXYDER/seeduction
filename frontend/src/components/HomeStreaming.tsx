@@ -64,6 +64,69 @@ function Rail({ title, to, items, loading }: { title: string; to: string; items:
   );
 }
 
+const PERIODS: { value: 'day' | 'week' | 'month'; label: string }[] = [
+  { value: 'day', label: '24 heures' },
+  { value: 'week', label: 'Cette semaine' },
+  { value: 'month', label: 'Ce mois' },
+];
+const COUNT_OPTIONS = [10, 18, 25, 50, 100];
+
+/**
+ * Rangée avec ses propres onglets 24h/semaine/mois (et, si `allowCount`, un choix du nombre affiché) — sa propre
+ * requête à chaque changement, indépendante des rangées "populaire"/"nouveautés" fixes du reste de la page.
+ */
+function TimeRangeRail({ title, sort, allowCount }: { title: string; sort: 'date' | 'seeders'; allowCount?: boolean }) {
+  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week');
+  const [count, setCount] = useState(18);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api.get('/torrents', { params: { pageSize: count, sort, period } })
+      .then((r) => { if (!cancelled) setItems(r.data.items); })
+      .catch(() => { if (!cancelled) setItems([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [sort, period, count]);
+
+  const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' });
+
+  return (
+    <section className="rail-section rail-plex">
+      <div className="rail-head">
+        <h2>{title}</h2>
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+          <div className="row" style={{ gap: 4 }}>
+            {PERIODS.map((p) => (
+              <button key={p.value} type="button" className={`secondary${period === p.value ? ' on' : ''}`} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setPeriod(p.value)}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {allowCount && (
+            <select value={count} onChange={(e) => setCount(Number(e.target.value))} style={{ width: 'auto', padding: '4px 8px', fontSize: 12 }} title="Nombre à afficher">
+              {COUNT_OPTIONS.map((n) => <option key={n} value={n}>{n} torrents</option>)}
+            </select>
+          )}
+          <Link to={`/browse?sort=${sort}&period=${period}`} className="rail-all">Tout voir →</Link>
+          <div className="row" style={{ gap: 6 }}>
+            <button type="button" className="secondary rail-btn" onClick={() => scroll(-1)} aria-label="Précédent">‹</button>
+            <button type="button" className="secondary rail-btn" onClick={() => scroll(1)} aria-label="Suivant">›</button>
+          </div>
+        </div>
+      </div>
+      <div className="rail" ref={ref}>
+        {loading && Array.from({ length: 8 }, (_, i) => <span key={i} className="skeleton-card"><span className="skeleton-poster" /><span className="skeleton-line" /></span>)}
+        {!loading && items.length === 0 && <p className="muted" style={{ padding: '20px 4px' }}>Rien à afficher pour cette période.</p>}
+        {!loading && items.map((t) => <PosterCard key={t.id} t={t} />)}
+      </div>
+    </section>
+  );
+}
+
 /** « Continuer » : un torrent en cours de téléchargement ou de seed, avec sa barre de progression. */
 function ContinueCard({ t }: { t: any }) {
   const percent = Math.round(t.progress * 100);
@@ -105,13 +168,12 @@ export default function HomeStreaming() {
   const [active, setActive] = useState<any[]>([]);
   const [followed, setFollowed] = useState<any[]>([]);
   const [recommended, setRecommended] = useState<any[]>([]);
-  const [loadedLatest, setLoadedLatest] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
 
   useEffect(() => {
     api.get('/torrents', { params: { pageSize: 18, sort: 'seeders' } }).then((r) => setPopular(r.data.items)).catch(() => {});
-    api.get('/torrents', { params: { pageSize: 18, sort: 'date' } }).then((r) => setLatest(r.data.items)).catch(() => {}).finally(() => setLoadedLatest(true));
+    api.get('/torrents', { params: { pageSize: 18, sort: 'date' } }).then((r) => setLatest(r.data.items)).catch(() => {});
     api.get('/torrents/mine/active').then((r) => setActive(r.data)).catch(() => {});
     api.get('/torrents/mine/followed').then((r) => setFollowed(r.data)).catch(() => {});
     api.get('/torrents/mine/recommended').then((r) => setRecommended(r.data)).catch(() => {});
@@ -201,8 +263,8 @@ export default function HomeStreaming() {
           )}
           <Rail title="De tes abonnements" to="/favorites" items={followed} />
           <Rail title="Recommandé pour toi" to="/browse" items={recommended} />
-          <Rail title="Nouveautés" to="/browse?sort=date" items={latest} loading={!loadedLatest} />
-          <Rail title="Les plus seedés cette semaine" to="/browse?sort=seeders" items={popular} />
+          <TimeRangeRail title="Derniers torrents" sort="date" />
+          <TimeRangeRail title="Les plus populaires" sort="seeders" allowCount />
           {byCategory.map((row) => (
             <Rail key={row.id} title={row.name} to={`/browse?categoryId=${row.id}`} items={row.items} />
           ))}
