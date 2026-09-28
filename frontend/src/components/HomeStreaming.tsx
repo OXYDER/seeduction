@@ -79,6 +79,7 @@ function TimeRangeRail({ title, sort, allowCount }: { title: string; sort: 'date
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week');
   const [count, setCount] = useState(18);
   const [items, setItems] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -86,8 +87,8 @@ function TimeRangeRail({ title, sort, allowCount }: { title: string; sort: 'date
     let cancelled = false;
     setLoading(true);
     api.get('/torrents', { params: { pageSize: count, sort, period } })
-      .then((r) => { if (!cancelled) setItems(r.data.items); })
-      .catch(() => { if (!cancelled) setItems([]); })
+      .then((r) => { if (!cancelled) { setItems(r.data.items); setTotal(r.data.total); } })
+      .catch(() => { if (!cancelled) { setItems([]); setTotal(0); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [sort, period, count]);
@@ -97,7 +98,7 @@ function TimeRangeRail({ title, sort, allowCount }: { title: string; sort: 'date
   return (
     <section className="rail-section rail-plex">
       <div className="rail-head">
-        <h2>{title}</h2>
+        <h2>{title}{total > 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 400, marginLeft: 8 }}>({total})</span>}</h2>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <div className="row" style={{ gap: 4 }}>
             {PERIODS.map((p) => (
@@ -107,11 +108,13 @@ function TimeRangeRail({ title, sort, allowCount }: { title: string; sort: 'date
             ))}
           </div>
           {allowCount && (
-            <select value={count} onChange={(e) => setCount(Number(e.target.value))} style={{ width: 'auto', padding: '4px 8px', fontSize: 12 }} title="Nombre à afficher">
-              {COUNT_OPTIONS.map((n) => <option key={n} value={n}>{n} torrents</option>)}
+            <select value={count} onChange={(e) => setCount(Number(e.target.value))} style={{ width: 'auto', padding: '4px 8px', fontSize: 12 }} title="Nombre à afficher dans cette rangée">
+              {COUNT_OPTIONS.map((n) => <option key={n} value={n}>{n} affichés</option>)}
             </select>
           )}
-          <Link to={`/browse?sort=${sort}&period=${period}`} className="rail-all">Tout voir →</Link>
+          <Link to={`/browse?sort=${sort}&period=${period}`} className="rail-all">
+            {total > count ? `Voir les ${total} →` : 'Tout voir →'}
+          </Link>
           <div className="row" style={{ gap: 6 }}>
             <button type="button" className="secondary rail-btn" onClick={() => scroll(-1)} aria-label="Précédent">‹</button>
             <button type="button" className="secondary rail-btn" onClick={() => scroll(1)} aria-label="Suivant">›</button>
