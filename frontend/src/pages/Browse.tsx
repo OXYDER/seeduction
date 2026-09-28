@@ -54,6 +54,7 @@ const COLUMNS: { label: string; sort: string }[] = [
 const DEFAULT_DIR: Record<string, 'asc' | 'desc'> = {
   date: 'desc', nom: 'asc', taille: 'desc', seeders: 'desc', leechers: 'desc', popularite: 'desc', activite: 'desc', categorie: 'asc', uploader: 'asc',
 };
+const PAGE_SIZES = [25, 50, 100];
 
 export default function Browse() {
   const [params, setParams] = useSearchParams();
@@ -61,6 +62,7 @@ export default function Browse() {
   const categoryId = params.get('categoryId') ?? '';
   const uploaderId = params.get('uploaderId') ?? '';
   const page = parseInt(params.get('page') ?? '1', 10);
+  const pageSize = PAGE_SIZES.includes(parseInt(params.get('pageSize') ?? '', 10)) ? parseInt(params.get('pageSize')!, 10) : 25;
   const sort = params.get('sort') ?? 'date';
   const order: 'asc' | 'desc' = params.get('order') === 'asc' ? 'asc' : params.get('order') === 'desc' ? 'desc' : (DEFAULT_DIR[sort] ?? 'desc');
 
@@ -113,7 +115,7 @@ export default function Browse() {
   useEffect(() => {
     api.get('/torrents', {
       params: {
-        search: parsed.name, categoryId, uploaderId, page, pageSize: 25, sort, order,
+        search: parsed.name, categoryId, uploaderId, page, pageSize, sort, order,
         year: year || undefined, resolution: resolution || undefined, language: language || undefined,
         source: source || undefined, codec: codec || undefined, audio: audio || undefined,
         containerFormat: containerFormat || undefined, origin: origin || undefined, genre: genre || undefined, hdr: hdr || undefined,
@@ -127,7 +129,7 @@ export default function Browse() {
       setItems(r.data.items);
       setTotal(r.data.total);
     });
-  }, [parsed.name, categoryId, uploaderId, page, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state, period]);
+  }, [parsed.name, categoryId, uploaderId, page, pageSize, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state, period]);
 
   // Valeurs de filtres réellement disponibles pour la liste affichée (avec nombre de torrents).
   const [facets, setFacets] = useState<Record<string, { value: string; count: number }[]>>({});
@@ -186,12 +188,20 @@ export default function Browse() {
     setParams(next);
   }
 
+  function changePageSize(size: number) {
+    const next = new URLSearchParams(params);
+    next.set('pageSize', String(size));
+    next.set('page', '1'); // la page courante n'a plus forcément de sens avec une autre taille de page
+    setParams(next);
+  }
+
   function resetFilters() {
     const next = new URLSearchParams();
     if (rawSearch) next.set('search', rawSearch);
     if (categoryId) next.set('categoryId', categoryId);
     if (params.get('sort')) next.set('sort', params.get('sort')!);
     if (params.get('order')) next.set('order', params.get('order')!);
+    if (params.get('pageSize')) next.set('pageSize', params.get('pageSize')!);
     setParams(next);
   }
 
@@ -592,11 +602,17 @@ export default function Browse() {
           </table>
         </div>
         )}
-        <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
-          <span className="muted">Page {page} / {Math.max(1, Math.ceil(total / 25))}</span>
-          <div className="row">
+        <div className="row" style={{ justifyContent: 'space-between', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
+          <span className="muted">Page {page} / {Math.max(1, Math.ceil(total / pageSize))} ({total} résultat{total > 1 ? 's' : ''})</span>
+          <div className="row" style={{ gap: 10 }}>
+            <label className="muted row" style={{ gap: 6, fontSize: 12.5 }}>
+              Par page
+              <select value={pageSize} onChange={(e) => changePageSize(Number(e.target.value))} style={{ width: 'auto', padding: '4px 8px', fontSize: 12.5 }}>
+                {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
             <button className="secondary" disabled={page <= 1} onClick={() => goToPage(page - 1)}>← Préc.</button>
-            <button className="secondary" disabled={page * 25 >= total} onClick={() => goToPage(page + 1)}>Suiv. →</button>
+            <button className="secondary" disabled={page * pageSize >= total} onClick={() => goToPage(page + 1)}>Suiv. →</button>
           </div>
         </div>
       </div>
