@@ -8,5 +8,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
   imports: [NotificationsModule],
   controllers: [TrackerController],
   providers: [TrackerService, PrismaService],
+  exports: [TrackerService],
 })
 export class TrackerModule {}

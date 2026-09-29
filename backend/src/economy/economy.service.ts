@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SettingsService } from '../settings/settings.service';
+import { TrackerService } from '../tracker/tracker.service';
 import { ECONOMY, SHOP_ITEMS } from '../common/utils/economy';
 
 const TOKEN_DURATION_MS = 7 * 86400_000;
@@ -12,7 +13,12 @@ const TOKEN_DURATION_MS = 7 * 86400_000;
 export class EconomyService {
   private readonly logger = new Logger(EconomyService.name);
 
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private settings: SettingsService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+    private settings: SettingsService,
+    private tracker: TrackerService,
+  ) {}
 
   // ------------------------------------------------------------------ tâches planifiées
 
@@ -34,8 +40,8 @@ export class EconomyService {
   /**
    * Toutes les 15 minutes : un torrent approuvé resté à 0 seeder pendant ECONOMY.deadAfterHours (délai de grâce,
    * pour ignorer les coupures courtes) passe automatiquement DEAD. `diedAt` sert ensuite à calculer la récompense
-   * de reseed (voir TrackerService.grantReseedReward) — pas de récompense pour le passage à DEAD lui-même, juste
-   * pour celui qui le relance ensuite.
+   * de reseed (voir TrackerService) — pas de récompense pour le passage à DEAD lui-même, juste pour celui qui le
+   * relance ensuite, et seulement une fois confirmé que ça a vraiment servi.
    */
   @Cron('*/15 * * * *')
   async markDeadTorrents() {
@@ -45,6 +51,16 @@ export class EconomyService {
       data: { status: 'DEAD', diedAt: new Date() },
     });
     if (count > 0) this.logger.log(`${count} torrent(s) passé(s) DEAD (0 seeder depuis plus de ${ECONOMY.deadAfterHours}h)`);
+  }
+
+  /**
+   * Toutes les 30 minutes : confirme les récompenses de reseed en attente là où personne d'autre n'a encore fini de
+   * télécharger, mais où le releveur a tenu le seed assez longtemps tout seul (voir TrackerService pour le détail
+   * complet de la règle et son garde-fou anti-abus).
+   */
+  @Cron('*/30 * * * *')
+  async confirmLongSeedReseedRewards() {
+    await this.tracker.confirmLongSeedPendingRewards();
   }
 
   /** Chaque heure : détecte les « hit & run » (torrent complété, délai de grâce écoulé, seed insuffisant, plus de seed en cours). */

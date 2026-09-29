@@ -4,9 +4,10 @@ import { EconomyService } from './economy.service';
 import { RanksService } from './ranks.service';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { TrackerModule } from '../tracker/tracker.module';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, TrackerModule],
   controllers: [EconomyController],
   providers: [EconomyService, RanksService, PrismaService],
   exports: [EconomyService],

@@ -193,6 +193,12 @@ model Torrent {
   // sert à calculer la récompense de reseed (TrackerService.grantReseedReward), proportionnelle au temps resté mort.
   zeroSeedersSince DateTime?
   diedAt           DateTime?
+  // Récompense de reseed en attente de confirmation (voir TrackerService.confirmReseedReward / EconomyService) :
+  // posée quand quelqu'un relance un torrent DEAD, confirmée seulement quand un AUTRE membre finit de le télécharger
+  // (preuve que ça a vraiment servi) ou, à défaut, quand le releveur a tenu le seed assez longtemps tout seul.
+  // Effacée sans récompense si le seed retombe à 0 avant l'une ou l'autre de ces conditions.
+  revivedByUserId String?
+  revivedAt       DateTime?
 
   peers          Peer[]
   entities       TorrentEntity[]
