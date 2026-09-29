@@ -87,7 +87,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat') },
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
-  { to: '/rules', icon: '🛡️', cls: 'c-rules', label: 'Règles', match: starts('/rules') },
+  { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p) },
   { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true },
 ];
 

@@ -333,7 +333,7 @@ export default function HomeStreaming() {
               <Link to="/messages">✉️ Messages</Link>
               <Link to="/requests">💬 Demandes</Link>
               <Link to="/collections">📚 Collections</Link>
-              <Link to="/rules">🛡️ Règles</Link>
+              <Link to="/wiki">📖 Wiki</Link>
             </div>
           </div>
         </div>

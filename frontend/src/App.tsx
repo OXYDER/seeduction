@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -23,7 +23,7 @@ import Messages from './pages/Messages';
 import Requests from './pages/Requests';
 import Friends from './pages/Friends';
 import PlayerDownload from './pages/PlayerDownload';
-import Rules from './pages/Rules';
+import Wiki from './pages/Wiki';
 import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
 import HallOfFame from './pages/HallOfFame';
@@ -63,7 +63,9 @@ export default function App() {
           <Route path="/player" element={<PlayerDownload />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
-          <Route path="/rules" element={<Rules />} />
+          <Route path="/wiki" element={<Wiki />} />
+          <Route path="/wiki/:slug" element={<Wiki />} />
+          <Route path="/rules" element={<Navigate to="/wiki" replace />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/bonus" element={<Bonus />} />
           <Route path="/stats" element={<Stats />} />

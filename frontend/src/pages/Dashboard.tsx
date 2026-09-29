@@ -154,7 +154,7 @@ function ClassicDashboard() {
                 <span className="label">Invitations</span>
                 {profile && <span className="pill">{profile._count.invitees}</span>}
               </Link>
-              <Link to="/rules"><span className="icon">🛡️</span><span className="label">Règles</span></Link>
+              <Link to="/wiki"><span className="icon">📖</span><span className="label">Wiki</span></Link>
             </div>
           </div>
         </div>

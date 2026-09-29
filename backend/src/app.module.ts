@@ -36,6 +36,7 @@ import { EntitiesModule } from './entities/entities.module';
 import { FriendsModule } from './friends/friends.module';
 import { DmModule } from './dm/dm.module';
 import { StreamModule } from './stream/stream.module';
+import { WikiModule } from './wiki/wiki.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { StreamModule } from './stream/stream.module';
     FriendsModule,
     DmModule,
     StreamModule,
+    WikiModule,
   ],
 })
 export class AppModule {}

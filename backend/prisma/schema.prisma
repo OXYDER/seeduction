@@ -878,3 +878,39 @@ model TorrentRating {
   @@id([userId, torrentId])
   @@index([torrentId])
 }
+
+// ---------------------------------------------------------------------------
+// WIKI — remplace l'ancienne page « Règles » statique par une vraie base de
+// connaissances éditable par le staff, avec recherche (voir wiki.service.ts).
+// Peuplée automatiquement au premier démarrage (WikiService.onModuleInit,
+// même idée que CategoriesService pour les catégories par défaut) puis tenue
+// à jour manuellement (staff) ou par Claude à chaque nouvelle fonctionnalité.
+// ---------------------------------------------------------------------------
+
+model WikiCategory {
+  id       String        @id @default(uuid())
+  name     String
+  slug     String        @unique
+  icon     String?
+  order    Int           @default(0)
+  articles WikiArticle[]
+}
+
+model WikiArticle {
+  id         String       @id @default(uuid())
+  category   WikiCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId String
+  title      String
+  slug       String       @unique
+  content    String       @db.Text // BBCode, comme les nouvelles et le forum (voir lib/bbcode côté frontend)
+  // Mots-clés/synonymes supplémentaires (pas forcément dans le titre ou le texte) pour que la recherche les trouve
+  // quand même — ex. "hit and run", "HnR" en plus de "hit & run".
+  keywords   String?
+  // Apparaît aussi dans la FAQ (questions courtes, très consultées) en plus de sa catégorie normale.
+  isFaq      Boolean      @default(false)
+  order      Int          @default(0)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([categoryId])
+}

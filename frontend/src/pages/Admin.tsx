@@ -3,8 +3,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } fro
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { NewsAdmin, FreeleechAdmin } from '../components/AdminNewsFreeleech';
+import { WikiAdmin } from '../components/AdminWiki';
 
-const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates'] as const;
+const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki'] as const;
 type Tab = typeof BASE_TABS[number] | 'Monitoring' | 'Journal';
 
 export default function Admin() {
@@ -29,6 +30,7 @@ export default function Admin() {
       {tab === 'Torrents' && <TorrentsAdmin />}
       {tab === 'Forum' && <ForumAdmin />}
       {tab === 'Templates' && <TemplatesAdmin />}
+      {tab === 'Wiki' && <WikiAdmin />}
       {tab === 'Journal' && <AuditAdmin />}
       {tab === 'Monitoring' && <MonitoringAdmin />}
     </div>
