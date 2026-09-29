@@ -188,6 +188,11 @@ model Torrent {
   leechers       Int           @default(0)
   completedCount Int           @default(0) // nb total de "snatch" (téléchargement complet)
   streamCompletedCount Int     @default(0) // nb de lectures complètes via le lecteur Seeduction (pas de vrai téléchargement, à part)
+  // Passage automatique à DEAD après un délai de grâce à 0 seeder (voir EconomyService.markDeadTorrents) : zeroSeedersSince
+  // marque le début de la panne (remis à null dès qu'un seeder revient), diedAt le moment où le statut DEAD a été posé —
+  // sert à calculer la récompense de reseed (TrackerService.grantReseedReward), proportionnelle au temps resté mort.
+  zeroSeedersSince DateTime?
+  diedAt           DateTime?
 
   peers          Peer[]
   entities       TorrentEntity[]

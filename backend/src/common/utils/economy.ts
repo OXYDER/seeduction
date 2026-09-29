@@ -23,6 +23,21 @@ export const ECONOMY = {
   /** Cadeau de bienvenue à l'inscription : upload de départ (Go) et durée du freeleech personnel (jours). */
   welcomeUploadGb: num('WELCOME_UPLOAD_GB', 50),
   welcomeFreeleechDays: num('WELCOME_FREELEECH_DAYS', 7),
+  /** Un torrent approuvé à 0 seeder pendant ce délai devient automatiquement DEAD. */
+  deadAfterHours: num('DEAD_AFTER_HOURS', 48),
+  /**
+   * Récompense pour avoir remis en seed un torrent DEAD (une seule fois, au premier qui le relance) :
+   * base + une part par Go (plafonnée) + une part par jour resté mort (plafonnée), le tout re-plafonné.
+   * Pas automatique pour n'importe qui : exclu si ce membre seedait déjà ce torrent dans les heures avant sa mort
+   * (reseedExclusionHours) — empêche de tuer son propre seed puis de le relancer pour la récompense.
+   */
+  reseedExclusionHours: num('RESEED_EXCLUSION_HOURS', 24),
+  reseedRewardBase: num('RESEED_REWARD_BASE', 25),
+  reseedRewardPerGb: num('RESEED_REWARD_PER_GB', 0.5),
+  reseedRewardSizeCap: num('RESEED_REWARD_SIZE_CAP', 100),
+  reseedRewardPerDay: num('RESEED_REWARD_PER_DAY', 5),
+  reseedRewardDaysCap: num('RESEED_REWARD_DAYS_CAP', 50),
+  reseedRewardMax: num('RESEED_REWARD_MAX', 200),
 };
 
 export const ANNOUNCE_INTERVAL_SECONDS = 1800;

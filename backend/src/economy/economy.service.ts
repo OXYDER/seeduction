@@ -31,6 +31,22 @@ export class EconomyService {
     this.logger.log(`Bonus crédité à ${seeding.length} membre(s)`);
   }
 
+  /**
+   * Toutes les 15 minutes : un torrent approuvé resté à 0 seeder pendant ECONOMY.deadAfterHours (délai de grâce,
+   * pour ignorer les coupures courtes) passe automatiquement DEAD. `diedAt` sert ensuite à calculer la récompense
+   * de reseed (voir TrackerService.grantReseedReward) — pas de récompense pour le passage à DEAD lui-même, juste
+   * pour celui qui le relance ensuite.
+   */
+  @Cron('*/15 * * * *')
+  async markDeadTorrents() {
+    const cutoff = new Date(Date.now() - ECONOMY.deadAfterHours * 3600_000);
+    const { count } = await this.prisma.torrent.updateMany({
+      where: { status: 'APPROVED', seeders: 0, zeroSeedersSince: { lte: cutoff } },
+      data: { status: 'DEAD', diedAt: new Date() },
+    });
+    if (count > 0) this.logger.log(`${count} torrent(s) passé(s) DEAD (0 seeder depuis plus de ${ECONOMY.deadAfterHours}h)`);
+  }
+
   /** Chaque heure : détecte les « hit & run » (torrent complété, délai de grâce écoulé, seed insuffisant, plus de seed en cours). */
   @Cron('15 * * * *')
   async detectHitAndRun() {

@@ -2,6 +2,7 @@ import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../common/prisma.service';
 import { PeerEvent } from '@prisma/client';
 import { SettingsService } from '../settings/settings.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY } from '../common/utils/economy';
 
 export interface AnnounceParams {
@@ -32,7 +33,41 @@ const ANNOUNCE_INTERVAL = ANNOUNCE_INTERVAL_SECONDS; // 30 min — cadence conse
 
 @Injectable()
 export class TrackerService {
-  constructor(private prisma: PrismaService, private settings: SettingsService) {}
+  constructor(private prisma: PrismaService, private settings: SettingsService, private notifications: NotificationsService) {}
+
+  /**
+   * Récompense pour avoir remis en seed un torrent DEAD — voir ECONOMY.reseed* pour le calcul et la condition
+   * d'exclusion (pas déjà seeder dans les heures précédant la mort). Silencieuse en cas d'erreur : ça ne doit
+   * jamais faire échouer un announce.
+   */
+  private async grantReseedReward(
+    torrent: { id: string; name: string; size: bigint; diedAt: Date | null },
+    userId: string,
+    hadRecentSeedBefore: boolean,
+  ) {
+    try {
+      if (!torrent.diedAt || hadRecentSeedBefore) return; // probablement celui qui l'a laissé mourir : pas de récompense
+      const sizeGb = Number(torrent.size) / 1e9;
+      const daysDead = Math.max(0, (Date.now() - torrent.diedAt.getTime()) / 86400_000);
+      const points = Math.min(
+        ECONOMY.reseedRewardMax,
+        Math.round(
+          ECONOMY.reseedRewardBase
+          + Math.min(sizeGb * ECONOMY.reseedRewardPerGb, ECONOMY.reseedRewardSizeCap)
+          + Math.min(daysDead * ECONOMY.reseedRewardPerDay, ECONOMY.reseedRewardDaysCap),
+        ),
+      );
+      if (points <= 0) return;
+      await this.prisma.user.update({ where: { id: userId }, data: { bonusPoints: { increment: points } } });
+      await this.notifications.notify({
+        userId,
+        type: 'SYSTEM',
+        title: 'Torrent ressuscité !',
+        body: `Tu as remis « ${torrent.name} » en seed après qu'il soit tombé à 0 seeder — +${points} points bonus.`,
+        link: `/torrents/${torrent.id}`,
+      });
+    } catch { /* un announce ne doit jamais échouer à cause de la récompense */ }
+  }
 
   /**
    * Suivi du seed pour la règle « hit & run » : cumule le temps passé à seeder
@@ -73,6 +108,19 @@ export class TrackerService {
     ]);
     const isFree = torrent.freeleech || !!globalFreeleech || (!!personal && personal.expiresAt > new Date())
       || (!!user.freeleechUntil && user.freeleechUntil > new Date());
+
+    // Capturé avant toute écriture de cette requête (la création/mise à jour de Snatch plus bas mettrait sinon
+    // toujours lastSeedAt à "maintenant", rendant ce test toujours vrai) : sert à la récompense de reseed si ce
+    // torrent était mort et revient à la vie dans cet announce (voir grantReseedReward plus bas).
+    const hadRecentSeedBeforeThisAnnounce = torrent.diedAt
+      ? !!(await this.prisma.snatch.findFirst({
+          where: {
+            userId: user.id,
+            torrentId: torrent.id,
+            lastSeedAt: { gte: new Date(torrent.diedAt.getTime() - ECONOMY.reseedExclusionHours * 3600_000) },
+          },
+        }))
+      : false;
 
     const isDownloading = params.left > 0;
     if (isDownloading && !isFree) {
@@ -183,8 +231,23 @@ export class TrackerService {
       this.prisma.peer.count({ where: { torrentId: torrent.id, isSeeder: true } }),
       this.prisma.peer.count({ where: { torrentId: torrent.id, isSeeder: false } }),
     ]);
-    // Un torrent marqué « mort » revient dès qu'il a de nouveau un seeder.
-    await this.prisma.torrent.update({ where: { id: torrent.id }, data: { seeders, leechers, ...(torrent.status === 'DEAD' && seeders > 0 ? { status: 'APPROVED' as const } : {}) } });
+    const wasDead = torrent.status === 'DEAD';
+    const revives = wasDead && seeders > 0;
+    await this.prisma.torrent.update({
+      where: { id: torrent.id },
+      data: {
+        seeders, leechers,
+        // Un torrent marqué « mort » revient dès qu'il a de nouveau un seeder.
+        ...(revives ? { status: 'APPROVED' as const, diedAt: null } : {}),
+        // Suivi du délai de grâce avant DEAD (voir EconomyService.markDeadTorrents) : démarre dès que ça tombe à 0,
+        // se réinitialise dès qu'un seeder revient.
+        ...(seeders === 0 && torrent.seeders > 0 ? { zeroSeedersSince: new Date() } : {}),
+        ...(seeders > 0 ? { zeroSeedersSince: null } : {}),
+      },
+    });
+    // Récompense de reseed : après avoir mis à jour le statut, pas avant (sinon la requête ci-dessus écraserait un
+    // diedAt déjà remis à null entre-temps par une autre requête concurrente — ordre défensif, pas critique ici).
+    if (revives) this.grantReseedReward(torrent, user.id, hadRecentSeedBeforeThisAnnounce);
 
     // Liste de peers à retourner (exclut le peer courant)
     const wanted = Math.min(params.numwant ?? 50, 100);
