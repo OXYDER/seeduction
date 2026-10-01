@@ -689,11 +689,13 @@ function stopPositionPolling(session) {
 }
 
 /** La passkey (announce personnalisé Seeduction + passkey/announce) sert à s'identifier pour « en train de
- * regarder X », sans jamais avoir de session web côté lecteur — même identifiant que le tracker lui-même utilise. */
+ * regarder X », sans jamais avoir de session web côté lecteur — même identifiant que le tracker lui-même utilise.
+ * La passkey est un UUID (avec tirets, ex. a1b2c3d4-e5f6-7890-abcd-ef1234567890) : le segment capturé doit donc
+ * accepter n'importe quel caractère hors « / » et « ? », pas seulement de l'hexadécimal pur. */
 function extractPasskey(torrent) {
   try {
     const url = (torrent.announce || [])[0] || '';
-    const m = /\/([a-f0-9]{16,64})\/announce/i.exec(url);
+    const m = /\/([^/?]+)\/announce(?:\?|$)/i.exec(url);
     return m ? m[1] : null;
   } catch { return null; }
 }
