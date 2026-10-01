@@ -116,15 +116,20 @@ export class StreamService {
   }
 
   /**
-   * Position de lecture sauvegardée pour ce membre sur ce torrent, si elle vaut la peine d'être proposée en reprise :
-   * plus de 2 minutes de lecture, et pas déjà terminé (dans les 30 dernières secondes, comme le lecteur desktop
-   * lui-même considère un fichier « fini » avant de repartir de zéro plutôt que de reprendre juste avant la fin).
+   * Position de lecture sauvegardée pour ce membre sur ce torrent (voir PlaybackPosition, alimentée par le ping du
+   * lecteur desktop toutes les 3 s pendant la lecture) : `playingNow` indique une lecture active à l'instant même
+   * (mise à jour vue il y a moins de 8 s — un peu plus que l'intervalle du ping, pour tolérer la latence réseau),
+   * `resumable` indique qu'il vaut la peine de proposer « Reprendre à xx:xx » (plus de 2 minutes de lecture, et pas
+   * déjà fini — dans les 30 dernières secondes, comme le lecteur desktop lui-même avant de repartir de zéro).
    */
   async getPosition(userId: string, torrentId: string) {
     const row = await this.prisma.playbackPosition.findUnique({ where: { userId_torrentId: { userId, torrentId } } });
-    if (!row || row.positionSeconds <= 120) return null;
-    if (row.durationSeconds && row.positionSeconds >= row.durationSeconds - 30) return null;
-    return { positionSeconds: row.positionSeconds, durationSeconds: row.durationSeconds };
+    if (!row) return null;
+    const playingNow = Date.now() - row.updatedAt.getTime() < 8000;
+    const finished = row.durationSeconds != null && row.positionSeconds >= row.durationSeconds - 30;
+    const resumable = row.positionSeconds > 120 && !finished;
+    if (!playingNow && !resumable) return null;
+    return { positionSeconds: row.positionSeconds, durationSeconds: row.durationSeconds, playingNow, resumable };
   }
 
   /** Appelé une fois à la fermeture du lecteur pour revenir au statut immédiatement (sinon, jusqu'à 30s d'attente). */
