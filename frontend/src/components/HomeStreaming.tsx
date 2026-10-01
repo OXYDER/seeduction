@@ -171,12 +171,16 @@ export default function HomeStreaming() {
   const [active, setActive] = useState<any[]>([]);
   const [followed, setFollowed] = useState<any[]>([]);
   const [recommended, setRecommended] = useState<any[]>([]);
+  const [atRisk, setAtRisk] = useState<any[]>([]);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
 
   useEffect(() => {
     api.get('/torrents', { params: { pageSize: 18, sort: 'seeders' } }).then((r) => setPopular(r.data.items)).catch(() => {});
     api.get('/torrents', { params: { pageSize: 18, sort: 'date' } }).then((r) => setLatest(r.data.items)).catch(() => {});
+    // Torrents encore vivants mais fragiles (1-2 seeders) : les surfacer ici pour qu'on les reseede
+    // avant qu'ils tombent à 0 et passent DEAD (voir ECONOMY.deadAfterHours côté backend).
+    api.get('/torrents', { params: { pageSize: 18, minSeeders: 1, maxSeeders: 2, sort: 'seeders', order: 'asc' } }).then((r) => setAtRisk(r.data.items)).catch(() => {});
     api.get('/torrents/mine/active').then((r) => setActive(r.data)).catch(() => {});
     api.get('/torrents/mine/followed').then((r) => setFollowed(r.data)).catch(() => {});
     api.get('/torrents/mine/recommended').then((r) => setRecommended(r.data)).catch(() => {});
@@ -264,6 +268,7 @@ export default function HomeStreaming() {
               <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
             </section>
           )}
+          <Rail title="⚠️ Torrents à risque (1-2 seeders)" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />
           <Rail title="De tes abonnements" to="/favorites" items={followed} />
           <Rail title="Recommandé pour toi" to="/browse" items={recommended} />
           <TimeRangeRail title="Derniers torrents" sort="date" />

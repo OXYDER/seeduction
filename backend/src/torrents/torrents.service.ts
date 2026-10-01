@@ -14,7 +14,7 @@ export interface TorrentFilters {
     categoryId?: string; search?: string; uploaderId?: string; page?: number; pageSize?: number;
     sort?: string;
     order?: 'asc' | 'desc';
-    minSize?: number; maxSize?: number; minSeeders?: number;
+    minSize?: number; maxSize?: number; minSeeders?: number; maxSeeders?: number;
     year?: number; language?: string; resolution?: string; codec?: string;
     hdr?: boolean; audio?: string; source?: string; containerFormat?: string; origin?: string; genre?: string;
     entityId?: string; role?: string; hideAnonymous?: boolean; viewerId?: string;
@@ -198,7 +198,11 @@ export class TorrentsService {
       if (params.minSize != null) where.size.gte = BigInt(Math.round(params.minSize));
       if (params.maxSize != null) where.size.lte = BigInt(Math.round(params.maxSize));
     }
-    if (params.minSeeders != null) where.seeders = { gte: params.minSeeders };
+    if (params.minSeeders != null || params.maxSeeders != null) {
+      where.seeders = {};
+      if (params.minSeeders != null) where.seeders.gte = params.minSeeders;
+      if (params.maxSeeders != null) where.seeders.lte = params.maxSeeders;
+    }
     if (params.year != null) where.year = params.year;
     if (params.language) where.language = { equals: params.language, mode: 'insensitive' };
     if (params.resolution) where.resolution = { equals: params.resolution, mode: 'insensitive' };

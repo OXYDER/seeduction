@@ -84,6 +84,7 @@ export default function Browse() {
   const minSizeGo = params.get('minSize') ?? '';
   const maxSizeGo = params.get('maxSize') ?? '';
   const minSeeders = params.get('minSeeders') ?? '';
+  const maxSeeders = params.get('maxSeeders') ?? '';
   const state = params.get('state') === 'dead' ? 'dead' : params.get('state') === 'noseeders' ? 'noseeders' : '';
   const period = params.get('period') === 'day' || params.get('period') === 'week' || params.get('period') === 'month' ? params.get('period')! : '';
 
@@ -122,6 +123,7 @@ export default function Browse() {
         minSize: minSizeGo ? Number(minSizeGo) * 1e9 : undefined,
         maxSize: maxSizeGo ? Number(maxSizeGo) * 1e9 : undefined,
         minSeeders: minSeeders || undefined,
+        maxSeeders: maxSeeders || undefined,
         state: state || undefined,
         period: period || undefined,
       },
@@ -129,7 +131,7 @@ export default function Browse() {
       setItems(r.data.items);
       setTotal(r.data.total);
     });
-  }, [parsed.name, categoryId, uploaderId, page, pageSize, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state, period]);
+  }, [parsed.name, categoryId, uploaderId, page, pageSize, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period]);
 
   // Valeurs de filtres réellement disponibles pour la liste affichée (avec nombre de torrents).
   const [facets, setFacets] = useState<Record<string, { value: string; count: number }[]>>({});
@@ -143,11 +145,12 @@ export default function Browse() {
         minSize: minSizeGo ? Number(minSizeGo) * 1e9 : undefined,
         maxSize: maxSizeGo ? Number(maxSizeGo) * 1e9 : undefined,
         minSeeders: minSeeders || undefined,
+        maxSeeders: maxSeeders || undefined,
         state: state || undefined,
         period: period || undefined,
       },
     }).then((r) => setFacets(r.data)).catch(() => {});
-  }, [parsed.name, categoryId, uploaderId, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, state, period]);
+  }, [parsed.name, categoryId, uploaderId, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period]);
 
 
   useEffect(() => {
@@ -232,6 +235,7 @@ export default function Browse() {
     minSizeGo && { key: 'minSize', label: `≥ ${minSizeGo} Go` },
     maxSizeGo && { key: 'maxSize', label: `≤ ${maxSizeGo} Go` },
     minSeeders && { key: 'minSeeders', label: `≥ ${minSeeders} seeders` },
+    maxSeeders && { key: 'maxSeeders', label: `≤ ${maxSeeders} seeders` },
     state && { key: 'state', label: state === 'dead' ? '☠️ Torrents morts' : '🔁 Sans seeder' },
   ] as (false | '' | { key: string; label: string })[]).filter(Boolean) as { key: string; label: string }[];
   const hasAdvancedFilters = activeFilters.length > 0;
@@ -454,6 +458,7 @@ export default function Browse() {
               </select>
             ))}
             {field('Seeders minimum', <input type="number" value={minSeeders} onChange={(e) => updateParam('minSeeders', e.target.value)} style={full} />)}
+            {field('Seeders maximum', <input type="number" value={maxSeeders} onChange={(e) => updateParam('maxSeeders', e.target.value)} style={full} />)}
             <label className="row muted" style={{ gap: 6, paddingBottom: 8 }}>
               <input type="checkbox" style={{ width: 'auto' }} checked={hdr} onChange={(e) => updateParam('hdr', e.target.checked ? 'true' : 'false')} />
               HDR uniquement
