@@ -700,14 +700,20 @@ function extractPasskey(torrent) {
 
 /** Ping périodique pendant la lecture : le serveur affiche « 🎬 Regarde X » à la place du statut du membre (jamais
  * pour du contenu adulte, ni si le membre a désactivé ça dans son profil — décidé côté serveur). Auto-expire côté
- * serveur si le lecteur ferme sans prévenir (crash), donc pas grave si `stopWatching` ne s'exécute jamais. */
+ * serveur si le lecteur ferme sans prévenir (crash), donc pas grave si `stopWatching` ne s'exécute jamais.
+ * Transporte aussi la position de lecture courante, pour que le site web puisse proposer « Reprendre la lecture à
+ * xx:xx » à la place de « Ouvrir dans le lecteur » sur la fiche torrent. */
 function pingWatching(session) {
   if (!session.torrentId) return;
   const passkey = extractPasskey(session.torrent);
   if (!passkey) return;
   fetch(`${SITE_BASE_URL}/api/stream/watching`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ passkey, torrentId: session.torrentId }),
+    body: JSON.stringify({
+      passkey, torrentId: session.torrentId,
+      positionSeconds: session.resumePositionSeconds || 0,
+      durationSeconds: session.durationSeconds || 0,
+    }),
   }).catch(() => { /* pas grave, on retentera au prochain tick */ });
 }
 

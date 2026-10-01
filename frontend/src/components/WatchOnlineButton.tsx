@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import { formatBytes } from '../lib/format';
+import { formatBytes, formatClock } from '../lib/format';
 
 /**
  * « Ouvrir dans le lecteur Seeduction » (desktop-player/) : un petit logiciel installé sur le PC du membre
@@ -16,6 +16,18 @@ export default function WatchOnlineButton({ torrentId, fileList, compact }: { to
   const [chosen, setChosen] = useState<number | null>(null);
   const [installHint, setInstallHint] = useState(false);
   const [sessionError, setSessionError] = useState('');
+  const [resume, setResume] = useState<{ positionSeconds: number } | null>(null);
+
+  // Position laissée par une lecture précédente dans le lecteur Seeduction (voir StreamService.pingWatching) :
+  // au-delà de 2 minutes et pas déjà terminé, on propose de reprendre plutôt que de rouvrir depuis le début.
+  // Seulement pour le bouton complet (fiche torrent) : la variante compacte (liste de Parcourir) n'affiche que « ▶ »
+  // et ne vaut pas la rafale d'une requête par ligne affichée.
+  useEffect(() => {
+    if (compact) return;
+    let cancelled = false;
+    api.get(`/stream/position/${torrentId}`).then((r) => { if (!cancelled) setResume(r.data); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [torrentId, compact]);
 
   if (allFiles.length === 0) return null;
 
@@ -50,9 +62,9 @@ export default function WatchOnlineButton({ torrentId, fileList, compact }: { to
         type="button"
         onClick={start}
         className={compact ? 'icon-btn icon-btn-sq' : undefined}
-        title="Ouvre le lecteur Seeduction installé sur ton PC : tous les formats, aucune charge sur le serveur"
+        title={resume ? `Reprend à ${formatClock(resume.positionSeconds)} dans le lecteur Seeduction` : 'Ouvre le lecteur Seeduction installé sur ton PC : tous les formats, aucune charge sur le serveur'}
       >
-        {compact ? '▶' : '🖥️ Ouvrir dans le lecteur Seeduction'}
+        {compact ? '▶' : resume ? `🖥️ Reprendre la lecture à ${formatClock(resume.positionSeconds)}` : '🖥️ Ouvrir dans le lecteur Seeduction'}
       </button>
 
       {open && createPortal(

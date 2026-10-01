@@ -214,6 +214,7 @@ model Torrent {
   // Date à laquelle le synopsis et le slogan affichés sur la fiche ont été traduits en français (vide = pas encore fait).
   overviewTranslatedAt DateTime?
   snatches       Snatch[]
+  playbackPositions PlaybackPosition[]
   requestFilled  TorrentRequest?
   collectionItems CollectionItem[]
 
@@ -337,6 +338,21 @@ model Snatch {
 
   @@index([userId, torrentId])
   @@index([satisfied, hnr, completedAt])
+}
+
+// Dernière position de lecture connue dans le lecteur Seeduction (voir StreamService.pingWatching), pour proposer
+// « Reprendre la lecture à xx:xx » à la place de « Ouvrir dans le lecteur » sur la fiche torrent. Privé au membre :
+// n'a rien à voir avec le statut public « en train de regarder » (watchingTitle sur User).
+model PlaybackPosition {
+  id              String   @id @default(uuid())
+  torrent         Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId       String
+  userId          String
+  positionSeconds Int
+  durationSeconds Int?
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, torrentId])
 }
 
 // Snapshot périodique du ratio d'un user (pour graphiques d'évolution)

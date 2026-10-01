@@ -84,10 +84,25 @@ export class StreamService {
    * qu'il joue un fichier, identifié par la passkey du membre (comme le tracker) plutôt qu'un token JWT — le lecteur
    * n'a jamais de session web. Jamais rempli pour du contenu adulte, et respecte showWatchingStatus. Auto-expire
    * (watchingUntil) si le lecteur ferme sans prévenir le serveur (crash...), donc pas besoin d'un correctif manuel.
+   *
+   * Transporte aussi, au passage, la position de lecture courante (voir PlaybackPosition) pour le bouton « Reprendre
+   * la lecture à xx:xx » sur la fiche torrent — privé au membre, donc enregistré indépendamment de showWatchingStatus
+   * et du filtre contenu adulte ci-dessous, qui ne concernent que le statut PUBLIC.
    */
-  async pingWatching(passkey: string, torrentId: string) {
+  async pingWatching(passkey: string, torrentId: string, positionSeconds?: number, durationSeconds?: number) {
     const user = await this.prisma.user.findUnique({ where: { passkey } });
-    if (!user || !user.showWatchingStatus) return { ok: true };
+    if (!user) return { ok: true };
+
+    if (typeof positionSeconds === 'number' && Number.isFinite(positionSeconds) && positionSeconds > 0) {
+      const data = { positionSeconds: Math.floor(positionSeconds), durationSeconds: durationSeconds ? Math.floor(durationSeconds) : null };
+      await this.prisma.playbackPosition.upsert({
+        where: { userId_torrentId: { userId: user.id, torrentId } },
+        create: { userId: user.id, torrentId, ...data },
+        update: data,
+      });
+    }
+
+    if (!user.showWatchingStatus) return { ok: true };
     const torrent = await this.prisma.torrent.findUnique({
       where: { id: torrentId },
       select: { name: true, category: { select: { adult: true, parent: { select: { adult: true } } } } },
@@ -98,6 +113,18 @@ export class StreamService {
       data: { watchingTitle: torrent.name.slice(0, 140), watchingUntil: new Date(Date.now() + 30_000) },
     });
     return { ok: true };
+  }
+
+  /**
+   * Position de lecture sauvegardée pour ce membre sur ce torrent, si elle vaut la peine d'être proposée en reprise :
+   * plus de 2 minutes de lecture, et pas déjà terminé (dans les 30 dernières secondes, comme le lecteur desktop
+   * lui-même considère un fichier « fini » avant de repartir de zéro plutôt que de reprendre juste avant la fin).
+   */
+  async getPosition(userId: string, torrentId: string) {
+    const row = await this.prisma.playbackPosition.findUnique({ where: { userId_torrentId: { userId, torrentId } } });
+    if (!row || row.positionSeconds <= 120) return null;
+    if (row.durationSeconds && row.positionSeconds >= row.durationSeconds - 30) return null;
+    return { positionSeconds: row.positionSeconds, durationSeconds: row.durationSeconds };
   }
 
   /** Appelé une fois à la fermeture du lecteur pour revenir au statut immédiatement (sinon, jusqu'à 30s d'attente). */
