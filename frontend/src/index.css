@@ -2002,7 +2002,30 @@ td.cat-cell .cat-tag { display: flex; height: 44px; width: 140px; border-radius:
 .msgr-sticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; max-height: 240px; overflow-y: auto; }
 .msgr-sticker-grid button { font-size: 34px; line-height: 1.2; padding: 4px; background: none; border: 0; box-shadow: none; border-radius: 8px; }
 .msgr-sticker-grid button:hover { background: rgba(255,255,255,0.1); }
+.msgr-emoji-anchor { position: relative; }
+@media (max-width: 600px) {
+  /* Sur téléphone la fenêtre s'ouvre sur toute la largeur du composeur, sinon elle déborde de l'écran. */
+  .msgr-emoji-anchor { position: static; }
+  .msgr-composer .msgr-emoji-pop, .msgr-composer .msgr-emoji-pop.wide { left: 8px; right: 8px; max-width: none; width: auto; }
+  .msgr-sticker-grid { grid-template-columns: repeat(5, 1fr); }
+}
+.msgr-emoji-pop.wide { max-width: none; width: min(340px, calc(100vw - 32px)); }
 .msgr-gif-pane { width: 220px; }
+.msgr-gif-pane.wide { width: 100%; }
+.msgr-gif-head { display: flex; gap: 6px; margin-bottom: 8px; }
+.msgr-gif-head input { flex: 1; min-width: 0; padding: 6px 10px; font-size: 13px; }
+.msgr-gif-kind { display: flex; flex: none; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.14); }
+.msgr-gif-kind button { padding: 4px 8px; font-size: 12px; background: none; border: 0; box-shadow: none; border-radius: 0; opacity: 0.7; }
+.msgr-gif-kind button.on { background: rgba(255,255,255,0.14); opacity: 1; }
+.msgr-gif-grid { columns: 2; column-gap: 6px; max-height: 280px; overflow-y: auto; }
+.msgr-gif-grid button { display: block; width: 100%; margin: 0 0 6px; padding: 0; border: 0; background: rgba(255,255,255,0.05); box-shadow: none; border-radius: 8px; overflow: hidden; break-inside: avoid; }
+.msgr-gif-grid button.sticker { background: none; }
+.msgr-gif-grid img { display: block; width: 100%; height: auto; }
+.msgr-gif-note { font-size: 12px; text-align: center; margin: 8px 0; }
+.msgr-gif-more { width: 100%; font-size: 12px; margin-bottom: 6px; }
+.msgr-gif-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.msgr-gif-foot .msgr-gif-upload { width: auto; flex: 1; font-size: 12px; }
+.msgr-gif-foot .muted { font-size: 11px; flex: none; }
 .msgr-gif-pane p { font-size: 12px; margin: 8px 0 0; }
 .msgr-gif-upload { width: 100%; font-size: 13px; }
 .msgr-file { display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-radius: 14px; background: rgba(255,255,255,0.1); color: var(--text); font-size: 13.5px; max-width: 100%; }

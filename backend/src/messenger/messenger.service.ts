@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter } from 'events';
 import { Prisma } from '@prisma/client';
+import { KLIPY_MEDIA } from './messenger-gifs.service';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from '../presence/presence.service';
@@ -470,8 +471,10 @@ export class MessengerService extends EventEmitter {
     const data: Prisma.MessageUncheckedCreateInput = { conversationId, senderId: actor.userId, content };
 
     if (input.imageUrl) {
-      if (!/^\/api\/covers\/[\w.-]+$/.test(input.imageUrl)) throw new BadRequestException('Image invalide');
-      type = /\.gif$/i.test(input.imageUrl) ? 'GIF' : 'IMAGE';
+      // Soit une image téléversée chez nous, soit un GIF / autocollant choisi dans la recherche Klipy.
+      const klipy = KLIPY_MEDIA.test(input.imageUrl);
+      if (!klipy && !/^\/api\/covers\/[\w.-]+$/.test(input.imageUrl)) throw new BadRequestException('Image invalide');
+      type = klipy || /\.gif$/i.test(input.imageUrl) ? 'GIF' : 'IMAGE';
       data.imageUrl = input.imageUrl;
     } else if (input.fileUrl) {
       if (!/^\/api\/(chat|messenger)\/files\/[^\s]+$/.test(input.fileUrl)) throw new BadRequestException('Fichier invalide');

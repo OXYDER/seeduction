@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CoversService } from '../covers/covers.service';
 import { ChatFilesService } from '../chat/chat-files.service';
 import { Actor, MessengerService, SendInput } from './messenger.service';
+import { MessengerGifsService } from './messenger-gifs.service';
 
 const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.user.username, role: req.user.role });
 
@@ -13,11 +14,19 @@ const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.u
 @UseGuards(JwtAuthGuard)
 @Controller('messenger')
 export class MessengerController {
-  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService) {}
+  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService, private gifs: MessengerGifsService) {}
 
   @Get('conversations')
   list(@Query('archived') archived: string | undefined, @Request() req: any) {
     return this.messenger.list(actorOf(req), { archived: archived === '1' || archived === 'true' });
+  }
+
+  /** Recherche (ou tendances si `q` est vide) de GIF et d'autocollants. `enabled: false` tant que KLIPY_API_KEY n'est pas configurée. */
+  @Get('gifs')
+  async gifSearch(@Query('q') q: string | undefined, @Query('kind') kind: string | undefined, @Query('page') page: string | undefined, @Request() req: any) {
+    if (!this.gifs.enabled()) return { enabled: false, items: [], hasNext: false };
+    const n = Math.min(50, Math.max(1, parseInt(page ?? '1', 10) || 1));
+    return { enabled: true, ...(await this.gifs.search(req.user.userId, kind === 'stickers' ? 'stickers' : 'gifs', q ?? '', n)) };
   }
 
   @Get('unread')

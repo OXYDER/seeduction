@@ -4,6 +4,7 @@ import { EMOJI_GRID, STICKERS } from '../../lib/emoji';
 import { canRecordVoice, pickRecorderMime, uploadAttachment, uploadVoice } from '../../lib/messengerUpload';
 import Avatar from '../Avatar';
 import ShareTorrentModal from './ShareTorrentModal';
+import GifPicker from './GifPicker';
 
 // Brouillons : ce qu'on a commencé à écrire dans une conversation est gardé quand on passe à une autre.
 const drafts = new Map<string, string>();
@@ -252,10 +253,10 @@ export default function Composer({ conversationId, writable, people, replyTo, on
           aria-label="Message"
         />
         {!editing && (
-          <div style={{ position: 'relative' }}>
+          <div className="msgr-emoji-anchor">
             <button type="button" className="chat-icon-btn lg" title="Émojis, autocollants et GIF" onClick={() => setEmoji((v) => !v)}>😀</button>
             {emoji && (
-              <div className="msgr-emoji-pop">
+              <div className={`msgr-emoji-pop${tab === 'gif' ? ' wide' : ''}`}>
                 <div className="msgr-pop-tabs" role="tablist">
                   {([['emoji', 'Émojis'], ['sticker', 'Autocollants'], ['gif', 'GIF']] as const).map(([k, label]) => (
                     <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{label}</button>
@@ -272,11 +273,14 @@ export default function Composer({ conversationId, writable, people, replyTo, on
                   </div>
                 )}
                 {tab === 'gif' && (
-                  <div className="msgr-gif-pane">
+                  <>
                     <input ref={gifInput} type="file" accept="image/gif" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { setEmoji(false); sendFile(f); } }} />
-                    <button type="button" className="msgr-gif-upload" disabled={busy} onClick={() => gifInput.current?.click()}>🎞️ Envoyer un GIF depuis mon ordinateur</button>
-                    <p className="muted">Tu peux aussi glisser-déposer ou coller un GIF directement dans la conversation (10 Mo max).</p>
-                  </div>
+                    <GifPicker
+                      busy={busy}
+                      onUploadClick={() => gifInput.current?.click()}
+                      onPick={(url) => { send(conversationId, { type: 'GIF', imageUrl: url, replyToId: replyTo?.id }); setEmoji(false); onCancelReply(); }}
+                    />
+                  </>
                 )}
               </div>
             )}

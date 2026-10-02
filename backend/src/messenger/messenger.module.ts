@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { MessengerController } from './messenger.controller';
 import { MessengerFilesController } from './messenger-files.controller';
 import { MessengerService } from './messenger.service';
+import { MessengerGifsService } from './messenger-gifs.service';
 import { MessengerGateway } from './messenger.gateway';
 import { MessengerMigrationService } from './messenger-migration.service';
 import { PrismaService } from '../common/prisma.service';
@@ -20,7 +21,7 @@ import { ChatModule } from '../chat/chat.module';
     JwtModule.register({ secret: process.env.JWT_SECRET ?? 'change-me-in-.env', signOptions: { expiresIn: '7d' } }),
   ],
   controllers: [MessengerController, MessengerFilesController],
-  providers: [MessengerService, MessengerGateway, MessengerMigrationService, PrismaService],
+  providers: [MessengerService, MessengerGifsService, MessengerGateway, MessengerMigrationService, PrismaService],
   exports: [MessengerService],
 })
 export class MessengerModule {}
