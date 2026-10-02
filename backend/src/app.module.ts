@@ -37,6 +37,7 @@ import { FriendsModule } from './friends/friends.module';
 import { DmModule } from './dm/dm.module';
 import { StreamModule } from './stream/stream.module';
 import { WikiModule } from './wiki/wiki.module';
+import { MessengerModule } from './messenger/messenger.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { WikiModule } from './wiki/wiki.module';
     DmModule,
     StreamModule,
     WikiModule,
+    MessengerModule,
   ],
 })
 export class AppModule {}

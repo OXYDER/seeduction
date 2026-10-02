@@ -86,6 +86,10 @@ model User {
   apiKeys          ApiKey[]
   chatMessages     ChatMessage[]
   chatReactions    ChatReaction[]
+  msgrConversationsCreated Conversation[]       @relation("ConversationCreator")
+  msgrMemberships          ConversationMember[] @relation("ConversationMembers")
+  msgrMessages             Message[]            @relation("MessagesSent")
+  msgrReactions            MessageReaction[]
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
 
@@ -217,6 +221,7 @@ model Torrent {
   overviewTranslatedAt DateTime?
   snatches       Snatch[]
   playbackPositions PlaybackPosition[]
+  chatShares     Message[]
   requestFilled  TorrentRequest?
   collectionItems CollectionItem[]
 
@@ -933,4 +938,125 @@ model WikiArticle {
   updatedAt  DateTime     @updatedAt
 
   @@index([categoryId])
+}
+
+// ---------------------------------------------------------------------------
+// MESSENGER — un seul moteur de conversations pour le chat privé (1 à 1), les groupes et les canaux publics.
+// Remplace à terme ChatMessage (chat public) et les PrivateMessage « dm-… » (chat privé) : leurs messages sont
+// recopiés ici au démarrage (voir MessengerMigrationService, idempotent, sans rien supprimer des anciennes tables).
+// ---------------------------------------------------------------------------
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  CHANNEL
+}
+
+enum ConversationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  VOICE
+  GIF
+  SYSTEM
+}
+
+model Conversation {
+  id              String               @id @default(uuid())
+  type            ConversationType
+  // 1 à 1 : les deux ids triés (« a:b ») — garantit une seule conversation par paire, peu importe qui écrit le premier.
+  directKey       String?              @unique
+  name            String?              @db.VarChar(80)
+  slug            String?              @unique // canaux
+  description     String?              @db.VarChar(300)
+  iconUrl         String?
+  createdBy       User?                @relation("ConversationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById     String?
+  // Canaux : rôle minimal pour lire / écrire (vide = tout le monde) — ex. un canal « Annonces » en lecture seule, ou « Staff ».
+  readRole        UserRole?
+  writeRole       UserRole?
+  slowModeSeconds Int                  @default(0)
+  pinnedMessageId String?
+  position        Int                  @default(0)
+  archived        Boolean              @default(false)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  lastMessageAt   DateTime             @default(now())
+  members         ConversationMember[]
+  messages        Message[]
+
+  @@index([type, lastMessageAt])
+}
+
+model ConversationMember {
+  id             String           @id @default(uuid())
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  user           User             @relation("ConversationMembers", fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  role           ConversationRole @default(MEMBER)
+  nickname       String?          @db.VarChar(40)
+  // Tout ce qui est plus récent que ça (et pas écrit par soi) est « non lu » ; sert aussi aux « Vu » des autres membres.
+  lastReadAt     DateTime         @default(now())
+  mutedUntil     DateTime?
+  pinned         Boolean          @default(false)
+  archived       Boolean          @default(false)
+  joinedAt       DateTime         @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String            @id @default(uuid())
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  sender         User              @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId       String
+  type           MessageType       @default(TEXT)
+  content        String            @default("") @db.Text
+  replyTo        Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replyToId      String?
+  replies        Message[]         @relation("MessageReplies")
+  imageUrl       String?
+  fileUrl        String?
+  fileName       String?
+  fileSize       Int?
+  mime           String?
+  durationMs     Int?
+  // Torrent partagé (la fiche s'affiche dans la bulle) — soit choisi explicitement, soit repéré dans un lien collé.
+  torrent        Torrent?          @relation(fields: [torrentId], references: [id], onDelete: SetNull)
+  torrentId      String?
+  mentionIds     String[]
+  editedAt       DateTime?
+  // « Annuler l'envoi » : le contenu est effacé, la ligne reste pour garder le fil cohérent (réponses, « Vu »).
+  deletedAt      DateTime?
+  createdAt      DateTime          @default(now())
+  // Provenance des messages recopiés depuis les anciens chats (évite les doublons à chaque redémarrage).
+  legacyChatId   String?           @unique
+  legacyPmId     String?           @unique
+  reactions      MessageReaction[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+// Une réaction (émoji) par membre et par message ; en choisir une nouvelle remplace la précédente.
+model MessageReaction {
+  id        String   @id @default(uuid())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([messageId])
 }

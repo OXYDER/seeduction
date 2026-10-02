@@ -19,6 +19,6 @@ import { CoversModule } from '../covers/covers.module';
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway, ChatFilesService, PrismaService],
-  exports: [ChatGateway],
+  exports: [ChatGateway, ChatFilesService],
 })
 export class ChatModule {}
