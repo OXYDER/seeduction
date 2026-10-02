@@ -76,6 +76,29 @@ services:
     expose:
       - "3000"
 
+  # Serveur TURN FACULTATIF pour les appels audio/vidéo du Messenger : sans lui, les appels passent en direct entre les deux
+  # navigateurs (suffisant dans la plupart des cas) ; avec lui, ils passent aussi derrière les réseaux qui bloquent le
+  # direct (4G d'opérateur, entreprises...). Il ne démarre que si COMPOSE_PROFILES=turn est dans le .env racine.
+  # Mode d'emploi complet : README.md, section « Appels audio/vidéo ».
+  coturn:
+    image: coturn/coturn:4.6
+    profiles: ["turn"]
+    restart: unless-stopped
+    network_mode: host   # le relais utilise de nombreux ports UDP : plus simple et plus fiable qu'une table de ports Docker
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        exec turnserver -n --log-file=stdout --fingerprint --no-cli --no-multicast-peers
+        --realm="$${TURN_REALM:-seeduction.org}" --use-auth-secret --static-auth-secret="$$TURN_SECRET"
+        --listening-port=3478 --min-port=49160 --max-port=49200
+        --external-ip="$$TURN_EXTERNAL_IP"
+        --denied-peer-ip=10.0.0.0-10.255.255.255 --denied-peer-ip=172.16.0.0-172.31.255.255 --denied-peer-ip=192.168.0.0-192.168.255.255 --denied-peer-ip=127.0.0.0-127.255.255.255
+    environment:
+      TURN_SECRET: ${TURN_SECRET:-}
+      TURN_EXTERNAL_IP: ${TURN_EXTERNAL_IP:-}
+      TURN_REALM: ${TURN_REALM:-seeduction.org}
+
   frontend:
     build: ./frontend
     restart: unless-stopped

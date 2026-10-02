@@ -311,6 +311,21 @@ export class MessengerService extends EventEmitter {
     await this.publish({ id: conversationId, type: 'GROUP' }, 'message:new', messageToDto(row));
   }
 
+  /** Trace d'un appel dans la conversation (« Appel audio · 2 min 14 s », « Appel manqué »...). */
+  async logCall(conversationId: string, callerId: string, text: string) {
+    await this.systemMessage(conversationId, callerId, text);
+  }
+
+  /** Avec qui on appelle : seulement dans un 1 à 1 dont on est membre, et si les règles de message privé le permettent. */
+  async callPeer(actor: Actor, conversationId: string): Promise<string> {
+    const { conv } = await this.access(actor, conversationId);
+    if (conv.type !== 'DIRECT') throw new BadRequestException('Les appels se font dans une conversation privée');
+    const otherId = (await this.memberIds(conv.id)).find((id) => id !== actor.userId);
+    if (!otherId) throw new BadRequestException('Interlocuteur introuvable');
+    await this.assertCanDirect(actor.userId, otherId);
+    return otherId;
+  }
+
   async createGroup(actor: Actor, name: string, memberIds: string[]) {
     const title = (name ?? '').trim().slice(0, 80);
     if (!title) throw new BadRequestException('Donne un nom au groupe');

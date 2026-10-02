@@ -290,7 +290,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
       {
         title: 'Messenger : discussions, groupes et canaux',
         slug: 'messenger',
-        keywords: 'chat, messagerie, vocal, message vocal, micro, gif, autocollant, sticker, dm, message privé, groupe, canal, salon, mention, répondre, réaction, amis, notifications, son, épingler, sourdine, archiver, partager un torrent',
+        keywords: 'chat, messagerie, appel, appeler, vidéo, caméra, partage d\'écran, vocal, message vocal, micro, gif, autocollant, sticker, dm, message privé, groupe, canal, salon, mention, répondre, réaction, amis, notifications, son, épingler, sourdine, archiver, partager un torrent',
         isFaq: true,
         supersedes: ['amis-et-messagerie', 'chat-public'],
         content:
@@ -308,6 +308,8 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Mentionner[/b] quelqu'un avec @pseudo : il est prévenu, et son nom ressort dans le message.\n` +
           `• Voir quand l'autre est en train d'écrire, et le « Vu » une fois ton message lu.\n` +
           `• Chercher un mot dans une conversation (🔍), épingler un message important, voir les photos et fichiers partagés (ⓘ).\n\n` +
+          `[b]Appels audio et vidéo[/b]\n` +
+          `Dans une conversation privée, 📞 lance un appel audio et 🎥 un appel vidéo (les boutons sont grisés si l'autre n'est pas en ligne). Chez lui, ça sonne en haut de l'écran : il peut répondre, répondre sans caméra (🎤) ou refuser. Pendant l'appel tu peux couper ton micro, activer ou couper ta caméra (même si l'appel a commencé en audio), partager ton écran (ordinateur seulement) et réduire la fenêtre pour continuer à naviguer — le son continue. L'appel et sa durée (ou « manqué » / « refusé ») restent écrits dans la conversation. Le navigateur te demande l'accès au micro et à la caméra la première fois ; si tu as refusé, réautorise-les depuis le cadenas de la barre d'adresse. Les appels sont directs d'un navigateur à l'autre : si l'appel reste sur « Connexion… », l'un de vous est sans doute sur un réseau très restrictif (4G, entreprise) — essaie un autre réseau ou préviens le staff. Un seul appel à la fois ; les statuts « Occupé » ne reçoivent pas d'appels.\n\n` +
           `[b]S'organiser[/b]\n` +
           `Le menu ⋯ d'une conversation permet de l'[b]épingler[/b] en haut de la liste, de la mettre en [b]sourdine[/b] (1 h, 8 h, 24 h ou jusqu'à réactivation — plus de son ni de notification, mais les messages arrivent quand même) ou de l'[b]archiver[/b]. Les filtres Non lus, Groupes et Canaux retrouvent vite ce qui t'intéresse.\n\n` +
           `[b]Notifications[/b]\n` +

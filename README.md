@@ -83,6 +83,23 @@ depuis une conversation avec Claude :
 Ce pattern garde toute authentification (token ou clé SSH) exclusivement sur
 tes machines — jamais dans une conversation.
 
+## Appels audio/vidéo (Messenger)
+
+Les appels 1 à 1 (bouton 📞 / 🎥 dans une conversation privée) utilisent WebRTC : le son et l'image passent **directement**
+entre les deux navigateurs, le serveur ne fait que sonner et relayer la négociation. Ça marche tel quel dans la plupart des
+cas (STUN public de Google), à condition que le site soit en **https** (le navigateur refuse le micro sinon).
+
+Certains réseaux (4G d'opérateur, entreprises, Wi-Fi d'hôtel) bloquent le direct : l'appel reste alors sur « Connexion… ».
+Pour ceux-là, il faut un relais **TURN**. Le `docker-compose.yml` en contient un (coturn), éteint par défaut :
+
+1. Sur le routeur, redirige vers le NAS : **UDP+TCP 3478** et **UDP 49160-49200**.
+2. Dans le `.env` **racine** : `COMPOSE_PROFILES=turn`, `TURN_SECRET=<longue phrase au hasard>` et
+   `TURN_EXTERNAL_IP=<adresse IP publique>`.
+3. Dans `backend/.env` : `TURN_URLS=turn:seeduction.org:3478,turn:seeduction.org:3478?transport=tcp` et la **même** `TURN_SECRET`.
+4. `./deploy.sh`. Le serveur donne alors aux navigateurs des identifiants TURN temporaires (6 h), jamais un mot de passe fixe.
+
+Le nom de domaine du TURN doit pointer vers ton IP publique **sans** passer par un proxy (Nginx Proxy Manager ne relaie pas l'UDP).
+
 ## Ce qui est scaffoldé vs à approfondir
 
 **Complet et fonctionnel** : moteur tracker (announce/scrape), bencode,

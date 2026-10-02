@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Namespace, Socket } from 'socket.io';
 import { MessengerService, RealtimeEvent, SendInput } from './messenger.service';
 import { PresenceService } from '../presence/presence.service';
+import { MessengerCallsService } from './messenger-calls.service';
 
 interface MessengerSocket extends Socket {
   data: { userId: string; username: string; role: string };
@@ -31,9 +32,17 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
   private sentAt = new Map<string, number[]>();
   private presenceTimer: NodeJS.Timeout | null = null;
 
-  constructor(private jwtService: JwtService, private messenger: MessengerService, private presence: PresenceService) {}
+  constructor(private jwtService: JwtService, private messenger: MessengerService, private presence: PresenceService, private calls: MessengerCallsService) {}
 
   onModuleInit() {
+    this.calls.attach({
+      toUser: (userId, event, payload, exceptSocketId) => {
+        if (!this.server) return;
+        const room = this.server.to(userRoom(userId));
+        (exceptSocketId ? room.except(exceptSocketId) : room).emit(event, payload);
+      },
+      toSocket: (socketId, event, payload) => { this.server?.to(socketId).emit(event, payload); },
+    });
     this.messenger.on('realtime', (e: RealtimeEvent) => {
       if (!this.server) return;
       if (e.channel) this.server.to(channelRoom(e.channel)).emit(e.event, e.payload);
@@ -80,6 +89,7 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
   handleDisconnect(client: MessengerSocket) {
     if (!client.data?.userId) return;
     this.presence.disconnect(client.data.userId, client.id);
+    void this.calls.onSocketGone(client.data.userId, client.id);
     if (!this.presence.isOnline(client.data.userId)) this.sentAt.delete(client.data.userId);
   }
 
@@ -149,5 +159,44 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
     if (!audience) return;
     if (audience.channel) client.to(channelRoom(audience.channel)).emit('conversation:typing', payload);
     else client.to(audience.userIds.filter((id) => id !== client.data.userId).map(userRoom)).emit('conversation:typing', payload);
+  }
+
+  // ------------------------------------------------------------------ appels audio / vidéo
+
+  @SubscribeMessage('call:invite')
+  async onCallInvite(@ConnectedSocket() client: MessengerSocket, @MessageBody() body: { conversationId: string; video?: boolean }) {
+    if (!client.data?.userId || !body?.conversationId) return { ok: false, error: 'Requête invalide' };
+    const res = await this.guard(() => this.calls.invite(this.actor(client), client.id, body.conversationId, !!body.video));
+    return res.ok ? res.data : res;
+  }
+
+  @SubscribeMessage('call:accept')
+  onCallAccept(@ConnectedSocket() client: MessengerSocket, @MessageBody() body: { callId: string }) {
+    if (!client.data?.userId) return { ok: false };
+    return this.calls.accept(client.data.userId, client.id, body?.callId);
+  }
+
+  @SubscribeMessage('call:decline')
+  onCallDecline(@ConnectedSocket() client: MessengerSocket, @MessageBody() body: { callId: string }) {
+    if (!client.data?.userId) return { ok: false };
+    return this.calls.decline(client.data.userId, body?.callId);
+  }
+
+  @SubscribeMessage('call:hangup')
+  onCallHangup(@ConnectedSocket() client: MessengerSocket, @MessageBody() body: { callId: string }) {
+    if (!client.data?.userId) return { ok: false };
+    return this.calls.hangup(client.data.userId, body?.callId);
+  }
+
+  @SubscribeMessage('call:signal')
+  onCallSignal(@ConnectedSocket() client: MessengerSocket, @MessageBody() body: { callId: string; data: any }) {
+    if (!client.data?.userId) return { ok: false };
+    return this.calls.relay(client.data.userId, body?.callId, 'call:signal', body?.data);
+  }
+
+  @SubscribeMessage('call:media')
+  onCallMedia(@ConnectedSocket() client: MessengerSocket, @MessageBody() body: { callId: string; data: any }) {
+    if (!client.data?.userId) return { ok: false };
+    return this.calls.relay(client.data.userId, body?.callId, 'call:media', body?.data);
   }
 }

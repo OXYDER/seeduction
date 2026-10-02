@@ -3,6 +3,7 @@ import { totalUnreadOf, useMessenger } from '../store/messenger';
 import ConversationView from './messenger/ConversationView';
 import ConvAvatar from './messenger/ConvAvatar';
 import MessengerAlerts from './messenger/MessengerAlerts';
+import CallManager from './messenger/CallManager';
 
 /**
  * Bulles de discussion façon Messenger, ancrées en bas à droite et présentes sur tout le site (montées dans Layout) :
@@ -24,6 +25,7 @@ export default function ChatDock() {
   return (
     <>
       <MessengerAlerts />
+      <CallManager />
       <div className="dm-dock">
         {connected && !onChatPage && (
           <Link to="/chat" className="dm-bubble-avatar public-bubble" title="Ouvrir le Messenger" aria-label="Ouvrir le Messenger">

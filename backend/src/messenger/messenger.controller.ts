@@ -7,6 +7,7 @@ import { CoversService } from '../covers/covers.service';
 import { ChatFilesService } from '../chat/chat-files.service';
 import { Actor, MessengerService, SendInput } from './messenger.service';
 import { MessengerGifsService } from './messenger-gifs.service';
+import { MessengerCallsService } from './messenger-calls.service';
 
 const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.user.username, role: req.user.role });
 
@@ -14,7 +15,7 @@ const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.u
 @UseGuards(JwtAuthGuard)
 @Controller('messenger')
 export class MessengerController {
-  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService, private gifs: MessengerGifsService) {}
+  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService, private gifs: MessengerGifsService, private calls: MessengerCallsService) {}
 
   @Get('conversations')
   list(@Query('archived') archived: string | undefined, @Request() req: any) {
@@ -27,6 +28,12 @@ export class MessengerController {
     if (!this.gifs.enabled()) return { enabled: false, items: [], hasNext: false };
     const n = Math.min(50, Math.max(1, parseInt(page ?? '1', 10) || 1));
     return { enabled: true, ...(await this.gifs.search(req.user.userId, kind === 'stickers' ? 'stickers' : 'gifs', q ?? '', n)) };
+  }
+
+  /** Serveurs STUN / TURN pour les appels. */
+  @Get('calls/ice')
+  callIce(@Request() req: any) {
+    return this.calls.iceServers(req.user.userId);
   }
 
   @Get('unread')

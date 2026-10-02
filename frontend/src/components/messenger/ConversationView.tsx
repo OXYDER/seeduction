@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import { statusOf, useMessenger, type Msg, type MsgUser } from '../../store/messenger';
+import { useCalls } from '../../store/calls';
 import { STATUS_LABEL } from '../../lib/presence';
 import { clock, dayLabel, isSameDay } from '../../lib/chatFormat';
 import ConvAvatar from './ConvAvatar';
@@ -30,6 +31,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   const thread = useMessenger((s) => s.threads[conversationId]);
   const typingMap = useMessenger((s) => s.typing[conversationId]);
   const online = useMessenger((s) => s.online);
+  const callPhase = useCalls((s) => s.phase);
   const onlineList = useMessenger((s) => s.onlineList);
   const { loadThread, loadOlder, setVisible, markRead, ensureConversation } = useMessenger.getState();
 
@@ -207,6 +209,10 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     await api.post(`/messenger/conversations/${conversationId}/pin`, { messageId: conv!.pinnedMessageId === m.id ? null : m.id }).catch((err) => window.alert(err.response?.data?.message ?? 'Impossible d\'épingler'));
   }
 
+  const canCall = callPhase === 'idle' && status !== 'OFFLINE';
+  const callTitle = (kind: string) => (callPhase !== 'idle' ? 'Tu es déjà en appel' : status === 'OFFLINE' ? `${conv.name} n'est pas en ligne` : `Appel ${kind}`);
+  const startCall = (video: boolean) => { if (conv.other) void useCalls.getState().start(conv.id, { id: conv.other.id, username: conv.other.username, avatarUrl: conv.other.avatarUrl }, video); };
+
   const subtitle = typingNames.length
     ? <span className="msgr-typing-text">{typingNames.join(', ')} {typingNames.length > 1 ? 'écrivent' : 'écrit'}…</span>
     : conv.type === 'DIRECT' ? <span className="muted">{STATUS_LABEL[status]}</span>
@@ -230,6 +236,12 @@ export default function ConversationView({ conversationId, variant, onClose, onM
           {subtitle}
         </div>
         <div className="row" style={{ gap: 2 }} onClick={(e) => e.stopPropagation()}>
+          {conv.type === 'DIRECT' && conv.other && (
+            <>
+              <button type="button" className="dm-icon-btn" title={callTitle('audio')} aria-label="Appel audio" disabled={!canCall} onClick={() => startCall(false)}>📞</button>
+              <button type="button" className="dm-icon-btn" title={callTitle('vidéo')} aria-label="Appel vidéo" disabled={!canCall} onClick={() => startCall(true)}>🎥</button>
+            </>
+          )}
           <button type="button" className={`dm-icon-btn${searchOpen ? ' on' : ''}`} title="Rechercher dans la conversation" onClick={() => setSearchOpen((v) => !v)}>🔍</button>
           {onOpenInfo && <button type="button" className={`dm-icon-btn${infoOpen ? ' on' : ''}`} title="Infos et réglages" onClick={onOpenInfo}>ⓘ</button>}
           {variant === 'dock' && onMinimize && <button type="button" className="dm-icon-btn" title="Réduire" onClick={onMinimize}>⌄</button>}
