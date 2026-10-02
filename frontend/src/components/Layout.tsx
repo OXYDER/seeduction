@@ -128,6 +128,10 @@ function LayoutInner() {
   }
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
+  const [friendIds, setFriendIds] = useState<string[]>([]);
+  const onlineMap = useMessenger((s) => s.online);
+  const friendsOnline = friendIds.filter((id) => (onlineMap[id] ?? 'OFFLINE') !== 'OFFLINE').length;
+  const [econ, setEcon] = useState<{ seeding: number; hnr: number } | null>(null);
   const dmConnect = useDmStore((s) => s.connect);
   const dmDisconnect = useDmStore((s) => s.disconnect);
   const dmBump = useDmStore((s) => s.friendRequestBump);
@@ -157,8 +161,20 @@ function LayoutInner() {
 
   useEffect(() => {
     if (!accessToken) { setPendingFriendRequests(0); return; }
-    api.get('/friends').then((r) => setPendingFriendRequests(r.data.incoming?.length ?? 0)).catch(() => {});
+    const load = () => api.get('/friends').then((r) => { setPendingFriendRequests(r.data.incoming?.length ?? 0); setFriendIds((r.data.friends ?? []).map((f: any) => f.id)); }).catch(() => {});
+    load();
+    const t = setInterval(() => { if (!document.hidden) load(); }, 90_000);
+    return () => clearInterval(t);
   }, [accessToken, dmBump]);
+
+  // Hit & run, torrents en seed : pastilles du haut, rafraîchies à chaque page puis toutes les 2 minutes.
+  useEffect(() => {
+    if (!accessToken) return;
+    const load = () => api.get('/bonus/me').then((r) => setEcon({ seeding: r.data.seedingCount ?? 0, hnr: r.data.unresolved?.length ?? 0 })).catch(() => {});
+    load();
+    const t = setInterval(() => { if (!document.hidden) load(); }, 120_000);
+    return () => clearInterval(t);
+  }, [accessToken, location.pathname]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -205,6 +221,14 @@ function LayoutInner() {
         <>
           {privUnread > 0 && <span className="side-badge red" title={`${privUnread} message${privUnread > 1 ? 's' : ''} privé${privUnread > 1 ? 's' : ''} non lu${privUnread > 1 ? 's' : ''}`}>{fmt(privUnread)}</span>}
           {pubUnread > 0 && <span className="side-badge red outline" title={`${pubUnread} message${pubUnread > 1 ? 's' : ''} public${pubUnread > 1 ? 's' : ''} non lu${pubUnread > 1 ? 's' : ''}`}># {fmt(pubUnread)}</span>}
+        </>
+      );
+    }
+    if (item.to === '/friends') {
+      return (
+        <>
+          {pendingFriendRequests > 0 && <span className="side-badge red" title={`${pendingFriendRequests} demande${pendingFriendRequests > 1 ? 's' : ''} d'ami`}>{fmt(pendingFriendRequests)}</span>}
+          {friendsOnline > 0 && <span className="side-badge green" title={`${friendsOnline} ami${friendsOnline > 1 ? 's' : ''} en ligne`}>{fmt(friendsOnline)}</span>}
         </>
       );
     }
@@ -329,6 +353,9 @@ function LayoutInner() {
                 <span className="pill up" title="Upload">▲ {formatBytes(profile.uploaded)}</span>
                 <span className="pill down" title="Téléchargé">▼ {formatBytes(profile.downloaded)}</span>
                 <Link to="/bonus" className="pill gold" title="Points bonus : boutique et règle du seed">✦ {formatNumber(Math.round(profile.bonusPoints))}</Link>
+                <span className={`pill ${Number(profile.uploaded) >= Number(profile.downloaded) ? 'up' : 'down'}`} title="Différentiel : upload moins téléchargé (ta marge avant de passer sous un ratio de 1)">Δ {Number(profile.uploaded) >= Number(profile.downloaded) ? '+' : '−'}{formatBytes(Math.abs(Number(profile.uploaded) - Number(profile.downloaded)))}</span>
+                {econ && <Link to="/bonus" className="pill up" title="Torrents que tu seedes en ce moment">🌱 {econ.seeding}</Link>}
+                {econ && <Link to="/bonus" className={`pill ${econ.hnr > 0 ? 'down' : ''}`} title={econ.hnr > 0 ? `${econ.hnr} hit & run non régularisé${econ.hnr > 1 ? 's' : ''}` : 'Aucun hit & run : parfait !'}>H&amp;R {econ.hnr}</Link>}
               </div>
             )}
             <div className="row" style={{ gap: 8 }}>
@@ -339,7 +366,7 @@ function LayoutInner() {
                 ✉️{unreadMessages > 0 && <span className="dot-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
               </Link>
               <Link to="/friends" className={`icon-pill${starts('/friends')(location.pathname) ? ' active' : ''}`} title="Amis">
-                👫{pendingFriendRequests > 0 && <span className="dot-badge">{pendingFriendRequests > 99 ? '99+' : pendingFriendRequests}</span>}
+                👫{pendingFriendRequests > 0 && <span className="dot-badge" title="Demandes d'ami">{pendingFriendRequests > 99 ? '99+' : pendingFriendRequests}</span>}{friendsOnline > 0 && <span className="dot-badge green" title={`${friendsOnline} ami${friendsOnline > 1 ? 's' : ''} en ligne`}>{friendsOnline > 99 ? '99+' : friendsOnline}</span>}
               </Link>
             </div>
           </header>
@@ -400,6 +427,11 @@ function LayoutInner() {
               <span className="label">Points Seed :</span>
               <span className="value">{formatNumber(Math.round(profile.bonusPoints))}</span>
             </Link>
+            <div className="topbar-stat" title="Upload moins téléchargé">
+              <span className="label">Différentiel :</span>
+              <span className="value">{Number(profile.uploaded) >= Number(profile.downloaded) ? '+' : '−'}{formatBytes(Math.abs(Number(profile.uploaded) - Number(profile.downloaded)))}</span>
+            </div>
+            {econ && <Link to="/bonus" className="topbar-stat" title="Torrents en seed / hit & run"><span className="label">Seeds / H&amp;R :</span><span className="value">{econ.seeding} / {econ.hnr}</span></Link>}
             <div className="topbar-stat">
               <span className="label">Invitations :</span>
               <span className="value">{profile._count.invitees}</span>
@@ -411,7 +443,7 @@ function LayoutInner() {
           <SeedObligations />
           <NotificationsBell />
           <Link to="/messages" className={`top-link${starts('/messages')(location.pathname) ? ' active' : ''}`}>Messages</Link>
-          <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{pendingFriendRequests > 0 ? ` (${pendingFriendRequests})` : ''}</Link>
+          <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{pendingFriendRequests > 0 ? ` (${pendingFriendRequests})` : ''}{friendsOnline > 0 && <span className="online-count" title="Amis en ligne"> ● {friendsOnline}</span>}</Link>
           <Link to="/profile" className={`top-link${starts('/profile')(location.pathname) || starts('/users')(location.pathname) ? ' active' : ''}`}>{user?.username}</Link>
           <button className="secondary" onClick={() => { logout(); navigate('/login'); }}>
             Déconnexion

@@ -26,15 +26,15 @@ export class AnnouncementsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: { title?: string; content?: string; pinned?: boolean }) {
+  update(@Param('id') id: string, @Body() body: { title?: string; content?: string; pinned?: boolean; summary?: string | null; imageUrl?: string | null }) {
     return this.announcementsService.update(id, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'ADMIN', 'OWNER')
   @Post()
-  create(@Body() body: { title: string; content: string; pinned?: boolean }, @Request() req: any) {
-    return this.announcementsService.create(req.user.userId, body.title, body.content, body.pinned);
+  create(@Body() body: { title: string; content: string; pinned?: boolean; summary?: string | null; imageUrl?: string | null }, @Request() req: any) {
+    return this.announcementsService.create(req.user.userId, body.title, body.content, body.pinned, { summary: body.summary, imageUrl: body.imageUrl });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

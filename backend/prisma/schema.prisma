@@ -587,6 +587,8 @@ model Announcement {
   id        String   @id @default(uuid())
   title     String
   content   String   @db.Text
+  summary   String?  @db.VarChar(300) // chapeau affiché dans les listes
+  imageUrl  String?  // image principale (téléversée sur Seeduction : /api/covers/...)
   pinned    Boolean  @default(false)
   author    User     @relation(fields: [authorId], references: [id])
   authorId  String

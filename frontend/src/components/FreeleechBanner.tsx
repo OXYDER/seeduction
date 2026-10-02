@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../api/client';
 import { bbcodeToHtml } from '../lib/bbcode';
+import { useCountdown } from './FreeleechCalendar';
 
 const fmt = (iso: string) => new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -15,6 +16,8 @@ export default function FreeleechBanner() {
     api.get('/bonus/freeleech').then((r) => setState(r.data)).catch(() => {});
   }, [location.pathname]);
 
+  const endsIn = useCountdown(state?.until ?? null);
+  const startsIn = useCountdown(state?.upcoming?.[0]?.startsAt ?? null);
   if (!state) return null;
   const next = state.upcoming?.[0];
   if (!state.until && !next) return null;
@@ -27,7 +30,7 @@ export default function FreeleechBanner() {
   if (state.until) {
     return (
       <div style={box}>
-        🎉 <strong>{state.event?.title ?? 'Freeleech global'}</strong> jusqu'au {fmt(state.until)} : les téléchargements ne comptent pas dans le ratio !
+        🎉 <strong>{state.event?.title ?? 'Freeleech global'}</strong> jusqu'au {fmt(state.until)} (<strong>encore {endsIn}</strong>) : les téléchargements ne comptent pas dans le ratio !
         {state.event?.message && (
           <>
             {' '}<button type="button" className="secondary" style={{ padding: '1px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>{open ? 'Masquer' : 'En savoir plus'}</button>
@@ -40,7 +43,7 @@ export default function FreeleechBanner() {
 
   return (
     <div style={{ ...box, background: 'rgba(224,184,74,0.10)' }}>
-      🗓️ Prochain freeleech : <strong>{next.title}</strong> — {fmt(next.startsAt)}
+      🗓️ Prochain freeleech : <strong>{next.title}</strong> — {fmt(next.startsAt)} (<strong>dans {startsIn}</strong>)
       {next.message && (
         <>
           {' '}<button type="button" className="secondary" style={{ padding: '1px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>{open ? 'Masquer' : 'Détails'}</button>

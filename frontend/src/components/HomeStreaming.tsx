@@ -9,6 +9,7 @@ import { CATEGORY_STYLE, type LayoutContext } from './Layout';
 import { PosterCard, Rail } from './TorrentRail';
 import NewsPanel from './NewsPanel';
 import ModerationRail from './ModerationRail';
+import FreeleechCalendar from './FreeleechCalendar';
 import UserLink from './UserLink';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
@@ -174,6 +175,7 @@ export default function HomeStreaming() {
   return (
     <div className="home-plex">
       <ModerationRail />
+      <FreeleechCalendar compact />
       <nav className="tabs" aria-label="Sections de l'accueil">
         {TABS.map((t) => (
           <button key={t.id} type="button" className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.label}</button>

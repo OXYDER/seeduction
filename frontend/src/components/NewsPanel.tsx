@@ -22,13 +22,16 @@ export default function NewsPanel({ limit = 3 }: { limit?: number }) {
       {items?.length === 0 && <p className="muted">Aucune nouvelle pour l'instant.</p>}
       <div className="grid" style={{ gap: 14 }}>
         {items?.map((n) => (
-          <article key={n.id} className="news-item">
+          <article key={n.id} className="news-item with-thumb">
+            {n.imageUrl && <Link to={`/news/${n.id}`} className="news-thumb"><img src={n.imageUrl} alt="" loading="lazy" /></Link>}
+            <div style={{ minWidth: 0 }}>
             <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
               <Link to={`/news/${n.id}`}><strong style={{ fontSize: 16 }}>{n.pinned ? '📌 ' : ''}{n.title}</strong></Link>
               <span className="muted" style={{ fontSize: 12 }}>{timeAgo(n.createdAt)}{n.author && ` · ${n.author.username}`}</span>
             </div>
-            <div className="news-excerpt bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(n.content) }} />
+            {n.summary ? <p className="muted" style={{ margin: '4px 0' }}>{n.summary}</p> : <div className="news-excerpt bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(n.content) }} />}
             <Link to={`/news/${n.id}`} className="muted" style={{ fontSize: 12 }}>Lire la suite</Link>
+            </div>
           </article>
         ))}
       </div>

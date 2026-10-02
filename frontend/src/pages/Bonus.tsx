@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import FreeleechCalendar from '../components/FreeleechCalendar';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import TorrentLink from '../components/TorrentLink';
@@ -37,6 +38,7 @@ export default function Bonus() {
   return (
     <div className="grid page-narrow" style={{ gap: 16 }}>
       <h1>🎁 Points bonus</h1>
+      <FreeleechCalendar />
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
         <div className="panel"><div className="muted">Solde</div><div style={{ fontSize: 26, fontWeight: 700, color: 'var(--gold-bright)' }}>{Math.floor(data.points)}</div></div>

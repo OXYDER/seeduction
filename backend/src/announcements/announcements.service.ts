@@ -35,8 +35,18 @@ export class AnnouncementsService {
     return item;
   }
 
-  async update(id: string, data: { title?: string; content?: string; pinned?: boolean }) {
+  private cleanImage(v: unknown): string | null | undefined {
+    if (v === undefined) return undefined;
+    if (!v) return null;
+    if (typeof v !== 'string' || !/^\/api\/covers\/[\w.-]+$/.test(v)) throw new BadRequestException('Image invalide : téléverse-la depuis le site');
+    return v;
+  }
+
+  async update(id: string, data: { title?: string; content?: string; pinned?: boolean; summary?: string | null; imageUrl?: string | null }) {
     const payload: any = {};
+    if (data.summary !== undefined) payload.summary = (data.summary ?? '').trim().slice(0, 300) || null;
+    const img = this.cleanImage(data.imageUrl);
+    if (img !== undefined) payload.imageUrl = img;
     if (data.title?.trim()) payload.title = data.title.trim();
     if (data.content?.trim()) payload.content = data.content;
     if (typeof data.pinned === 'boolean') payload.pinned = data.pinned;
@@ -44,9 +54,10 @@ export class AnnouncementsService {
     return this.prisma.announcement.update({ where: { id }, data: payload });
   }
 
-  async create(authorId: string, title: string, content: string, pinned = false) {
+  async create(authorId: string, title: string, content: string, pinned = false, extra: { summary?: string | null; imageUrl?: string | null } = {}) {
+    if (!title?.trim() || !content?.trim()) throw new BadRequestException('Titre et contenu requis');
     const announcement = await this.prisma.announcement.create({
-      data: { title, content, pinned, author: { connect: { id: authorId } } },
+      data: { title: title.trim(), content, pinned, summary: (extra.summary ?? '').trim().slice(0, 300) || null, imageUrl: this.cleanImage(extra.imageUrl) ?? null, author: { connect: { id: authorId } } },
     });
     // La notification affiche un extrait sans balises de mise en forme.
     await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `📯 ${title}`, body: content.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 140), link: `/news/${announcement.id}` });
