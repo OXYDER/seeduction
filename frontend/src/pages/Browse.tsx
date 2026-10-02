@@ -1,33 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import UserLink from '../components/UserLink';
-import CategoryTag from '../components/CategoryTag';
 import SearchBox from '../components/SearchBox';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
-import { formatBytes as formatSize } from '../lib/format';
 import { CATEGORY_STYLE } from '../components/Layout';
-import { timeAgo } from '../lib/time';
 import { useAuthStore } from '../store/auth';
 import { useTheme, applyCategoryAccent } from '../lib/theme';
-import { useFavorites } from '../lib/favorites';
-import { FavoriteStar, HealthDot } from '../components/TorrentBits';
+import { useViewMode } from '../lib/viewMode';
+import TorrentView, { ViewSwitcher } from '../components/TorrentView';
+import Recommended from '../components/Recommended';
 import { parseNaturalQuery, ORIGINS, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
-import WatchOnlineButton from '../components/WatchOnlineButton';
-import { resolveContentKind } from '../lib/categoryKind';
-import HoverCard from '../components/HoverCard';
-import { TorrentPreview } from '../components/TorrentLink';
-
-const VIDEO_KINDS = new Set(['FILM', 'SERIE', 'XXX', 'DOCUMENT']);
-
-async function downloadTorrent(id: string, name: string) {
-  const res = await api.get(`/torrents/${id}/download`, { responseType: 'blob' });
-  const url = window.URL.createObjectURL(new Blob([res.data]));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${name}.torrent`;
-  a.click();
-  window.URL.revokeObjectURL(url);
-}
 
 const SORTS = [
   { value: 'date', label: 'Date' },
@@ -37,17 +18,6 @@ const SORTS = [
   { value: 'leechers', label: 'Leechers' },
   { value: 'popularite', label: 'Popularité' },
   { value: 'activite', label: 'Activité' },
-];
-
-// Colonnes triables : titre affiché -> champ de tri côté serveur.
-const COLUMNS: { label: string; sort: string }[] = [
-  { label: 'Catégorie', sort: 'categorie' },
-  { label: 'Nom', sort: 'nom' },
-  { label: 'Ajouté', sort: 'date' },
-  { label: 'Taille', sort: 'taille' },
-  { label: 'S', sort: 'seeders' },
-  { label: 'L', sort: 'leechers' },
-  { label: 'Uploader', sort: 'uploader' },
 ];
 
 // Sens par défaut au premier clic (comme côté serveur) : texte A→Z, chiffres du plus grand au plus petit.
@@ -91,23 +61,10 @@ export default function Browse() {
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
-  const favorites = useFavorites();
   const theme = useTheme();
   const authUser = useAuthStore((s) => s.user);
   const currentUserId = authUser?.id;
-  const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(authUser?.role ?? '');
-  const [view, setViewState] = useState<'list' | 'grid'>(() => {
-    // Thème Prestige : la grille d'affiches est la vue par défaut (façon plateforme de streaming), sauf choix contraire mémorisé.
-    try {
-      const saved = localStorage.getItem('browseView');
-      if (saved === 'grid' || saved === 'list') return saved;
-    } catch { /* stockage indisponible */ }
-    return document.documentElement.getAttribute('data-theme') === 'prestige' ? 'grid' : 'list';
-  });
-  function setView(v: 'list' | 'grid') {
-    setViewState(v);
-    try { localStorage.setItem('browseView', v); } catch { /* stockage indisponible : le choix vaut pour cette visite */ }
-  }
+  const [view, setView] = useViewMode('browse');
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [closedCatId, setClosedCatId] = useState<string | null>(null);
@@ -264,10 +221,7 @@ export default function Browse() {
               inputStyle={{ width: '100%' }}
             />
           </div>
-          <div className="view-toggle">
-            <button type="button" className={view === 'list' ? 'on' : ''} onClick={() => setView('list')} title="Vue liste">☰</button>
-            <button type="button" className={view === 'grid' ? 'on' : ''} onClick={() => setView('grid')} title="Vue affiches">▦</button>
-          </div>
+          <ViewSwitcher value={view} onChange={setView} />
           <button
             type="button"
             className={`icon-btn${state === 'dead' ? ' active' : ''}`}
@@ -478,135 +432,7 @@ export default function Browse() {
 
       <div className="panel">
         <div className="muted" style={{ marginBottom: 8 }}>{total} résultat(s)</div>
-        {view === 'grid' ? (
-          <div className="poster-grid">
-            {items.map((t) => {
-              const catStyle = t.category?.slug ? CATEGORY_STYLE[t.category.slug] : undefined;
-              return (
-                <HoverCard key={t.id} cacheKey={`torrent:${t.id}`} inline={false} load={() => api.get(`/torrents/${t.id}/preview`).then((r) => r.data)} render={(d: any) => <TorrentPreview t={d} />}>
-                  <Link to={`/torrents/${t.id}`} className="poster-card">
-                    {t.coverImage
-                      ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
-                      : <div className="poster-fallback">{catStyle?.icon ?? '📦'}</div>}
-                    <div className="poster-badges">
-                      <CategoryTag category={t.category} />
-                      {t.freeleech && <span className="badge freeleech">FL</span>}
-                      {t.doubleUpload && <span className="badge double">2x</span>}
-                      {t.resolution && <span className="badge new">{t.resolution}</span>}
-                    </div>
-                    {favorites.enabled && (
-                      <div className="poster-fav">
-                        <FavoriteStar active={favorites.ids.has(t.id)} onToggle={() => favorites.toggle(t.id)} />
-                      </div>
-                    )}
-                    <div className="poster-body">
-                      <div className="poster-title">{t.name}</div>
-                      <div className="muted" style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center' }}>
-                        <HealthDot seeders={t.seeders} />
-                        <span style={{ color: 'var(--success)' }}>{t.seeders}</span>&nbsp;/&nbsp;<span style={{ color: 'var(--danger)' }}>{t.leechers}</span>
-                        <span style={{ marginLeft: 'auto' }}>{formatSize(t.size)}</span>
-                      </div>
-                    </div>
-                  </Link>
-                </HoverCard>
-              );
-            })}
-            {items.length === 0 && <div className="muted">Aucun résultat.</div>}
-          </div>
-        ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                {COLUMNS.map((c) => (
-                  <th
-                    key={c.sort}
-                    className={`sortable${sort === c.sort ? ' sorted' : ''}`}
-                    onClick={() => clickColumn(c.sort)}
-                    title={`Trier par ${c.label.toLowerCase()}`}
-                    // Toutes les colonnes sauf "Nom" se réduisent à leur contenu (largeur 1% + pas de retour à la
-                    // ligne) : le tableau étant en table-layout auto, "Nom" absorbe alors tout l'espace restant et
-                    // ses titres remontent juste à côté de la catégorie, au lieu d'être poussés loin à droite.
-                    style={c.sort === 'nom' ? undefined : { width: '1%', whiteSpace: 'nowrap' }}
-                  >
-                    {c.label}<span className="sort-arrow">{sort === c.sort ? (order === 'asc' ? '▲' : '▼') : '⇅'}</span>
-                  </th>
-                ))}
-                <th style={{ width: '1%', whiteSpace: 'nowrap' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((t) => {
-                const catStyle = t.category?.slug ? CATEGORY_STYLE[t.category.slug] : undefined;
-                return (
-                <tr key={t.id}>
-                  <td className="cat-cell" style={{ whiteSpace: 'nowrap' }}>
-                    {t.category?.imageUrl
-                      ? <img src={t.category.imageUrl} alt={t.category.name} title={t.category.name} style={{ height: 22, maxWidth: 80, objectFit: 'contain' }} />
-                      : <CategoryTag category={t.category} />}
-                  </td>
-                  <td>
-                    <div className="row" style={{ gap: 10 }}>
-                      {favorites.enabled && <FavoriteStar active={favorites.ids.has(t.id)} onToggle={() => favorites.toggle(t.id)} />}
-                      {t.coverImage ? (
-                        <img src={t.coverImage} alt="" style={{ width: 32, height: 44, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
-                      ) : (
-                        <span className="category-swatch" style={{ background: `${(catStyle?.color ?? '#e0b84a')}26` }}>
-                          {catStyle?.icon ?? '📦'}
-                        </span>
-                      )}
-                      <span>
-                        {isStaff && <Link to={`/torrents/${t.id}?edit=1`} title="Modifier / supprimer (staff)" style={{ marginRight: 6 }}>✏️</Link>}
-                        <HoverCard cacheKey={`torrent:${t.id}`} load={() => api.get(`/torrents/${t.id}/preview`).then((r) => r.data)} render={(d: any) => <TorrentPreview t={d} />}>
-                          <Link to={`/torrents/${t.id}`}>{t.name}</Link>
-                        </HoverCard>{' '}
-                        {t.freeleech && <span className="badge freeleech">FL</span>}{' '}
-                        {t.doubleUpload && <span className="badge double">2x</span>}{' '}
-                        {t.resolution && <span className="badge new">{t.resolution}</span>}{' '}
-                        {t.hdr && <span className="badge double">HDR</span>}
-                        {t.status === 'DEAD' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>☠️ Mort</span>}
-                        {(t.year || t.language || t.source) && (
-                          <div className="muted" style={{ fontSize: 11 }}>
-                            {[t.year, t.origin, t.language, t.source, t.codec].filter(Boolean).join(' · ')}
-                          </div>
-                        )}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{timeAgo(t.createdAt)}</td>
-                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatSize(t.size)}</td>
-                  <td style={{ color: 'var(--success)', whiteSpace: 'nowrap' }}><HealthDot seeders={t.seeders} />{t.seeders}</td>
-                  <td style={{ color: 'var(--danger)' }}>{t.leechers}</td>
-                  <td className="muted">{t.anonymousUpload ? 'Anonyme' : <UserLink user={t.uploader} />}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    <div className="row" style={{ gap: 4 }}>
-                      {VIDEO_KINDS.has(resolveContentKind(t.category, t.category?.parent) ?? '') && (
-                        <WatchOnlineButton compact torrentId={t.id} fileList={t.fileList} />
-                      )}
-                      <button
-                        type="button"
-                        className="icon-btn icon-btn-sq"
-                        title="Télécharger le .torrent"
-                        onClick={() => downloadTorrent(t.id, t.name)}
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 3v12" />
-                          <path d="M7 10l5 5 5-5" />
-                          <path d="M5 21h14" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                );
-              })}
-              {items.length === 0 && (
-                <tr><td colSpan={COLUMNS.length + 1} className="muted">Aucun résultat.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        )}
+        <TorrentView items={items} view={view} sort={sort} order={order} onSort={clickColumn} />
         <div className="row" style={{ justifyContent: 'space-between', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
           <span className="muted">Page {page} / {Math.max(1, Math.ceil(total / pageSize))} ({total} résultat{total > 1 ? 's' : ''})</span>
           <div className="row" style={{ gap: 10 }}>
@@ -621,6 +447,8 @@ export default function Browse() {
           </div>
         </div>
       </div>
+
+      {items.length === 0 && !uploaderId && <Recommended title="🔎 Rien trouvé ? Tu pourrais aimer" subtitle="Selon ton historique" />}
 
     </div>
   );

@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { api } from '../api/client';
-import { formatBytes } from '../lib/format';
 import { ROLE_LABEL, TYPE_LABEL } from '../lib/entityLabels';
 import FollowButton from '../components/FollowButton';
-import CategoryTag from '../components/CategoryTag';
-import HoverCard from '../components/HoverCard';
-import { TorrentPreview } from '../components/TorrentLink';
+import { useViewMode } from '../lib/viewMode';
+import TorrentView, { ViewSwitcher } from '../components/TorrentView';
 
 const PAGE_SIZE = 24;
 
@@ -19,6 +17,7 @@ export default function EntityPage() {
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState('');
+  const [view, setView] = useViewMode('entity');
 
   useEffect(() => {
     setRole('');
@@ -59,28 +58,11 @@ export default function EntityPage() {
       </div>
 
       <div className="panel">
-        <div className="muted" style={{ marginBottom: 12 }}>{total} torrent{total > 1 ? 's' : ''}</div>
-        <div className="entity-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
-          {items.map((t) => (
-            <HoverCard key={t.id} cacheKey={`torrent:${t.id}`} inline={false} load={() => api.get(`/torrents/${t.id}/preview`).then((r) => r.data)} render={(d: any) => <TorrentPreview t={d} />}>
-            <Link to={`/torrents/${t.id}`} className="entity-card">
-              <span className="entity-cat"><CategoryTag category={t.category} /></span>
-              {t.coverImage
-                ? <img src={t.coverImage} alt="" style={{ width: '100%', aspectRatio: '2 / 3', objectFit: 'cover', borderRadius: 4 }} />
-                : <div className="entity-initial" style={{ width: '100%', aspectRatio: '2 / 3' }}>{t.name.slice(0, 1).toUpperCase()}</div>}
-              <div className="entity-card-name">{t.name}</div>
-              <div className="muted" style={{ fontSize: 11 }}>
-                {[t.year, t.category?.name, formatBytes(t.size)].filter(Boolean).join(' · ')}
-              </div>
-              <div style={{ fontSize: 11 }}>
-                <span style={{ color: 'var(--success)' }}>{t.seeders} S</span>{' '}
-                <span style={{ color: 'var(--danger)' }}>{t.leechers} L</span>
-              </div>
-            </Link>
-            </HoverCard>
-          ))}
+        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 12 }}>
+          <span className="muted">{total} torrent{total > 1 ? 's' : ''}</span>
+          <ViewSwitcher value={view} onChange={setView} />
         </div>
-        {items.length === 0 && <p className="muted">Aucun torrent approuvé pour l'instant.</p>}
+        <TorrentView items={items} view={view} empty="Aucun torrent approuvé pour l'instant." />
         <div className="row" style={{ justifyContent: 'space-between', marginTop: 16 }}>
           <span className="muted">Page {page}</span>
           <div className="row">

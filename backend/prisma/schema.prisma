@@ -103,6 +103,8 @@ model User {
   watchingTitle      String?   @db.VarChar(140)
   watchingUntil      DateTime?
   showWatchingStatus Boolean   @default(true)
+  // Affichage par défaut des listes de torrents (list | details | grid | posters | compact) — voir frontend/src/lib/viewMode.ts.
+  defaultView      String     @default("grid") @db.VarChar(12)
   dmPrivacy        DmPrivacy      @default(EVERYONE) // qui peut lui écrire en chat privé sans être son ami
   adultAcceptedAt  DateTime?
   signature        String?    @db.Text

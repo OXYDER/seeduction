@@ -24,6 +24,22 @@ export interface TorrentFilters {
     period?: 'day' | 'week' | 'month';
   }
 
+/** Inclusions communes à toutes les listes de torrents (Parcourir, favoris, collections, recommandations...). */
+export const LIST_INCLUDE = {
+  // parent.contentKind : nécessaire pour savoir si une sous-catégorie sans contentKind propre (héritée du
+  // parent) est de la vidéo, afin d'afficher ou non le bouton "Visionner" dans la liste.
+  category: { include: { parent: { select: { slug: true, name: true, contentKind: true } } } },
+  uploader: { select: { id: true, username: true } },
+} as const;
+
+/** Extrait du synopsis (infobulle, vue « détails ») + grande image de fond ; le JSON complet reste sur la fiche. */
+export function toListRow({ metadata, ...t }: any) {
+  const overview = (metadata as any)?.overview;
+  const synopsis = typeof overview === 'string' && overview.trim() ? overview.trim().replace(/\s+/g, ' ') : null;
+  const backdrop = (metadata as any)?.backdrop;
+  return { ...t, backdrop: typeof backdrop === 'string' ? backdrop : null, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
+}
+
 @Injectable()
 export class TorrentsService {
   constructor(private prisma: PrismaService, private metadata: MetadataService, private adult: AdultService) {}
@@ -266,20 +282,12 @@ export class TorrentsService {
         orderBy,
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
-        // parent.contentKind : nécessaire pour savoir si une sous-catégorie sans contentKind propre (héritée du
-        // parent) est de la vidéo, afin d'afficher ou non le bouton "Visionner" dans cette liste.
-        include: { category: { include: { parent: { select: { slug: true, name: true, contentKind: true } } } }, uploader: { select: { id: true, username: true } } },
+        include: LIST_INCLUDE,
       }),
       this.prisma.torrent.count({ where }),
     ]);
 
-    // Extrait du synopsis pour l'infobulle de la liste (le JSON complet reste sur la fiche).
-    const rows = items.map(({ metadata, ...t }) => {
-      const overview = (metadata as any)?.overview;
-      const synopsis = typeof overview === 'string' && overview.trim() ? overview.trim().replace(/\s+/g, ' ') : null;
-      const backdrop = (metadata as any)?.backdrop;
-      return { ...t, backdrop: typeof backdrop === 'string' ? backdrop : null, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
-    });
+    const rows = items.map(toListRow);
 
     return { items: rows, total, page: params.page, pageSize: params.pageSize };
   }
@@ -379,38 +387,6 @@ export class TorrentsService {
       take: 16,
       select: this.cardSelect,
     });
-  }
-
-  /**
-   * Recommandations : torrents qui partagent des acteurs, studios, artistes, genres... avec ce que le membre a
-   * déjà complété (les plus proches d'abord), en excluant ce qu'il a déjà.
-   */
-  async recommended(userId: string) {
-    const [hidden, snatches] = await Promise.all([
-      this.adult.hiddenFor(userId),
-      this.prisma.snatch.findMany({ where: { userId }, orderBy: { completedAt: 'desc' }, take: 25, select: { torrentId: true } }),
-    ]);
-    const owned = snatches.map((s) => s.torrentId);
-    if (owned.length === 0) return [];
-    const links = await this.prisma.torrentEntity.findMany({ where: { torrentId: { in: owned } }, select: { entityId: true } });
-    const entityIds = [...new Set(links.map((l) => l.entityId))].slice(0, 80);
-    if (entityIds.length === 0) return [];
-
-    const ranked = await this.prisma.torrentEntity.groupBy({
-      by: ['torrentId'],
-      where: {
-        entityId: { in: entityIds },
-        torrentId: { notIn: owned },
-        torrent: { status: 'APPROVED', uploaderId: { not: userId }, ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) },
-      },
-      _count: { _all: true },
-      orderBy: { _count: { torrentId: 'desc' } },
-      take: 16,
-    });
-    if (ranked.length === 0) return [];
-    const torrents = await this.prisma.torrent.findMany({ where: { id: { in: ranked.map((r) => r.torrentId) } }, select: this.cardSelect });
-    const order = new Map(ranked.map((r, i) => [r.torrentId, i]));
-    return torrents.sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
   }
 
   /** Torrents que le membre télécharge ou seede en ce moment (d'après ses derniers announces), avec leur avancement. */

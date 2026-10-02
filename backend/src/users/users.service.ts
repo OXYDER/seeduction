@@ -6,6 +6,7 @@ import { PresenceService } from '../presence/presence.service';
 
 const PRESENCE_VALUES: PresenceStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'INVISIBLE'];
 const DM_PRIVACY_VALUES: DmPrivacy[] = ['EVERYONE', 'FRIENDS_ONLY'];
+const VIEW_VALUES = ['list', 'details', 'grid', 'posters', 'compact'];
 
 @Injectable()
 export class UsersService {
@@ -23,7 +24,7 @@ export class UsersService {
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
-        watchingTitle: true, watchingUntil: true, showWatchingStatus: true,
+        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
@@ -32,7 +33,7 @@ export class UsersService {
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
     const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     const onlineStatus = this.presence.publicStatus(user.id);
@@ -47,7 +48,7 @@ export class UsersService {
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus,
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, defaultView } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
   }
@@ -57,6 +58,13 @@ export class UsersService {
     if (!DM_PRIVACY_VALUES.includes(value as DmPrivacy)) throw new BadRequestException('Valeur invalide');
     await this.prisma.user.update({ where: { id: userId }, data: { dmPrivacy: value as DmPrivacy } });
     return { dmPrivacy: value };
+  }
+
+  /** Affichage par défaut des listes de torrents (chaque page peut ensuite être changée ponctuellement par le membre). */
+  async setDefaultView(userId: string, view: string) {
+    if (!VIEW_VALUES.includes(view)) throw new BadRequestException('Affichage inconnu');
+    await this.prisma.user.update({ where: { id: userId }, data: { defaultView: view } });
+    return { defaultView: view };
   }
 
   /** Afficher ou non « en train de regarder X » (voir StreamService.pingWatching) quand le lecteur desktop tourne. */

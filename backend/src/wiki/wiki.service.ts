@@ -18,30 +18,29 @@ const ARTICLE_LIST_SELECT = { id: true, categoryId: true, title: true, slug: tru
 export class WikiService implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
 
-  /** Peuple le wiki avec le contenu de départ (voir wiki-seed.ts), une seule fois si la table est vide. */
+  /**
+   * Peuple le wiki avec le contenu de départ (voir wiki-seed.ts) : tout au premier démarrage, puis à chaque démarrage
+   * seulement les articles du fichier qui n'existent pas encore (repérés par leur slug) — c'est ce qui fait apparaître
+   * automatiquement la documentation d'une nouvelle fonctionnalité après un déploiement, sans jamais écraser un
+   * article déjà là (donc les retouches du staff sont conservées). Pour retirer définitivement un article du seed,
+   * le supprimer aussi de wiki-seed.ts, sinon il revient au prochain démarrage.
+   */
   async onModuleInit() {
-    const count = await this.prisma.wikiCategory.count();
-    if (count > 0) return;
     for (let i = 0; i < WIKI_SEED.length; i++) {
       const cat = WIKI_SEED[i];
-      await this.prisma.wikiCategory.create({
-        data: {
-          name: cat.name,
-          slug: cat.slug,
-          icon: cat.icon,
-          order: i,
-          articles: {
-            create: cat.articles.map((a, j) => ({
-              title: a.title,
-              slug: a.slug,
-              content: a.content,
-              keywords: a.keywords,
-              isFaq: !!a.isFaq,
-              order: j,
-            })),
-          },
-        },
-      });
+      let category = await this.prisma.wikiCategory.findUnique({ where: { slug: cat.slug } });
+      if (!category) {
+        category = await this.prisma.wikiCategory.create({ data: { name: cat.name, slug: cat.slug, icon: cat.icon, order: i } });
+      }
+      const existing = new Set((await this.prisma.wikiArticle.findMany({ where: { categoryId: category.id }, select: { slug: true } })).map((a) => a.slug));
+      const missing = cat.articles.map((a, j) => ({ a, j })).filter(({ a }) => !existing.has(a.slug));
+      for (const { a, j } of missing) {
+        // Même slug ailleurs (article déplacé vers une autre catégorie par le staff) : on ne le recrée pas.
+        if (await this.prisma.wikiArticle.findUnique({ where: { slug: a.slug }, select: { id: true } })) continue;
+        await this.prisma.wikiArticle.create({
+          data: { categoryId: category.id, title: a.title, slug: a.slug, content: a.content, keywords: a.keywords, isFaq: !!a.isFaq, order: j },
+        });
+      }
     }
   }
 

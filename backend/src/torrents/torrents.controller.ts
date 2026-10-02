@@ -5,13 +5,14 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { TorrentsService } from './torrents.service';
+import { RecommendationsService } from './recommendations.service';
 import { normalizeOrigin } from '../common/utils/facets';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 
 @Controller('torrents')
 export class TorrentsController {
-  constructor(private torrentsService: TorrentsService) {}
+  constructor(private torrentsService: TorrentsService, private recommendations: RecommendationsService) {}
 
   @UseGuards(OptionalJwtAuthGuard)
   @Get('facets')
@@ -88,10 +89,11 @@ export class TorrentsController {
     return this.torrentsService.followedFeed(req.user.userId);
   }
 
+  /** Offres basées sur l'historique : `basedOn` (id d'un torrent) les oriente vers ce qui ressemble à cette fiche. */
   @UseGuards(JwtAuthGuard)
   @Get('mine/recommended')
-  recommended(@Request() req: any) {
-    return this.torrentsService.recommended(req.user.userId);
+  recommended(@Query('basedOn') basedOn: string | undefined, @Query('limit') limit: string | undefined, @Request() req: any) {
+    return this.recommendations.forUser(req.user.userId, { basedOn: basedOn || undefined, limit: limit ? Number(limit) : undefined });
   }
 
   @UseGuards(JwtAuthGuard)

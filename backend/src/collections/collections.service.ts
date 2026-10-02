@@ -1,42 +1,39 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
-
-const TORRENT_CARD_SELECT = {
-  id: true,
-  categoryId: true,
-  name: true,
-  size: true,
-  seeders: true,
-  leechers: true,
-  category: { select: { name: true, slug: true } },
-};
+import { LIST_INCLUDE, toListRow } from '../torrents/torrents.service';
 
 @Injectable()
 export class CollectionsService {
   constructor(private prisma: PrismaService, private adult: AdultService) {}
 
-  /** Mes collections (propriétaire) + celles où je suis collaborateur. */
-  mine(userId: string) {
-    return this.prisma.collection.findMany({
-      where: { OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }] },
+  /** Aperçu en mosaïque (jusqu'à 4 pochettes) + compteurs ; jamais de pochette d'un contenu adulte masqué pour ce membre. */
+  private async withCovers(userId: string | undefined, where: any) {
+    const hidden = await this.adult.hiddenFor(userId);
+    const rows = await this.prisma.collection.findMany({
+      where,
       orderBy: { updatedAt: 'desc' },
       include: {
         owner: { select: { id: true, username: true } },
         _count: { select: { items: true, collaborators: true } },
+        items: {
+          orderBy: { addedAt: 'desc' },
+          take: 8,
+          where: { torrent: { coverImage: { not: null }, ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
+          select: { torrent: { select: { coverImage: true } } },
+        },
       },
     });
+    return rows.map(({ items, ...c }) => ({ ...c, covers: items.map((i) => i.torrent.coverImage as string).slice(0, 4) }));
   }
 
-  publicCollections() {
-    return this.prisma.collection.findMany({
-      where: { visibility: { in: ['PUBLIC', 'COLLABORATIVE'] } },
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        owner: { select: { id: true, username: true } },
-        _count: { select: { items: true, collaborators: true } },
-      },
-    });
+  /** Mes collections (propriétaire) + celles où je suis collaborateur. */
+  mine(userId: string) {
+    return this.withCovers(userId, { OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }] });
+  }
+
+  publicCollections(userId?: string) {
+    return this.withCovers(userId, { visibility: { in: ['PUBLIC', 'COLLABORATIVE'] } });
   }
 
   async findOne(id: string, userId?: string) {
@@ -48,7 +45,7 @@ export class CollectionsService {
         items: {
           orderBy: { addedAt: 'desc' },
           include: {
-            torrent: { select: TORRENT_CARD_SELECT },
+            torrent: { include: LIST_INCLUDE },
             addedBy: { select: { id: true, username: true } },
           },
         },
@@ -64,7 +61,7 @@ export class CollectionsService {
     // Les torrents adultes n'apparaissent que pour un membre qui a activé l'option.
     const hidden = await this.adult.hiddenFor(userId);
     if (hidden.length) collection.items = collection.items.filter((i) => !hidden.includes(i.torrent.categoryId));
-    return collection;
+    return { ...collection, items: collection.items.map((i) => ({ ...i, torrent: toListRow(i.torrent) })) };
   }
 
   create(userId: string, name: string, description: string | undefined, visibility: string) {

@@ -1,3 +1,4 @@
+import { applyDefaultView } from '../lib/viewMode';
 import { useEffect, useState, FormEvent } from 'react';
 import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
@@ -147,7 +148,7 @@ export default function Layout() {
 
   useEffect(() => {
     if (accessToken) {
-      api.get('/users/me').then((r) => setProfile(r.data)).catch(() => {});
+      api.get('/users/me').then((r) => { setProfile(r.data); applyDefaultView(r.data.defaultView); }).catch(() => {});
     } else {
       setProfile(null);
     }

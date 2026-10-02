@@ -13,9 +13,10 @@ export class CollectionsController {
     return this.collectionsService.mine(req.user.userId);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('public')
-  publicCollections() {
-    return this.collectionsService.publicCollections();
+  publicCollections(@Request() req: any) {
+    return this.collectionsService.publicCollections(req.user?.userId);
   }
 
   @UseGuards(OptionalJwtAuthGuard)

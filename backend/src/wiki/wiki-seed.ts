@@ -174,6 +174,28 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `La page d'accueil propose aussi des rangées « Derniers torrents » et « Les plus populaires », chacune avec ses propres onglets de période — leur lien « Voir tout » ouvre Parcourir déjà filtré pareil.`,
       },
       {
+        title: 'Affichages des listes et offres personnalisées',
+        slug: 'affichages-et-recommandations',
+        keywords: 'vue, liste, détails, grille, affiches, compact, affichage par défaut, recommandations, suggestions, tu pourrais aimer',
+        isFaq: true,
+        content:
+          `[b]Cinq façons d'afficher les torrents[/b]\n` +
+          `Partout où le site montre une liste de torrents (Parcourir, À télécharger plus tard, collections, fiches d'acteurs et de studios...), les boutons en haut de la liste changent l'affichage :\n` +
+          `• [b]Liste[/b] : tableau complet avec colonnes triables (date, taille, seeders...).\n` +
+          `• [b]Détails[/b] : une grande ligne par torrent avec l'affiche, les infos techniques et un extrait du synopsis.\n` +
+          `• [b]Grille[/b] : cartes avec l'affiche, le titre, la qualité et les statistiques toujours visibles.\n` +
+          `• [b]Affiches[/b] : grandes affiches seules, les détails apparaissent au survol.\n` +
+          `• [b]Compact[/b] : une ligne fine par torrent, pour en voir un maximum à l'écran.\n\n` +
+          `[b]Ton affichage par défaut[/b]\n` +
+          `Dans Profil > Compte > « Affichage des listes de torrents », choisis celui qui s'applique partout par défaut. Tu peux ensuite changer l'affichage d'une page précise avec les boutons en haut de la liste : ce choix est retenu pour cette page, dans ce navigateur. Changer ton réglage par défaut dans ton compte remet toutes les pages sur celui-ci.\n\n` +
+          `[b]« Tu pourrais aimer » : les offres de torrents[/b]\n` +
+          `Sur l'accueil, sur chaque fiche torrent (« Dans la même veine »), dans tes favoris, tes collections et quand une recherche ne donne rien, le site te propose des torrents que tu n'as pas encore, d'après ton activité :\n` +
+          `• ce que tu as téléchargé, regardé dans le lecteur Seeduction, mis de côté, remercié, noté ou rangé dans une collection, et ce que tu seedes en ce moment ;\n` +
+          `• les acteurs, studios, artistes et genres que tu suis ;\n` +
+          `• regarder un film pèse plus que le télécharger, et une mauvaise note joue contre.\n` +
+          `Chaque affiche dit pourquoi elle t'est proposée (« Avec... », « Réalisé par... », « Comme... »). Les contenus que tu as déjà (même dans une autre version) et le contenu adulte masqué ne sont jamais proposés. Sans historique, tu vois ce qui est populaire en ce moment.`,
+      },
+      {
         title: 'Torrents morts et récompense de reseed',
         slug: 'torrents-morts-et-reseed',
         keywords: 'dead, mort, 0 seeder, reseed, récompense, resurrection',

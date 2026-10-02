@@ -32,6 +32,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/default-view')
+  setDefaultView(@Body('view') view: string, @Request() req: any) {
+    return this.usersService.setDefaultView(req.user.userId, view);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('me/watching-visibility')
   setShowWatchingStatus(@Body('enabled') enabled: boolean, @Request() req: any) {
     return this.usersService.setShowWatchingStatus(req.user.userId, enabled);

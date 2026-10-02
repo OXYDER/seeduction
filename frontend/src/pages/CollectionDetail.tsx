@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import UserLink from '../components/UserLink';
-import TorrentLink from '../components/TorrentLink';
+import TorrentView, { ViewSwitcher } from '../components/TorrentView';
+import Recommended from '../components/Recommended';
+import { useViewMode } from '../lib/viewMode';
 import SearchBox from '../components/SearchBox';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
-import { formatBytes } from '../lib/format';
 
 const VISIBILITY_LABEL: Record<string, string> = {
   PRIVATE: '🔒 Privée',
@@ -21,6 +22,7 @@ export default function CollectionDetail() {
   const [error, setError] = useState('');
   const [editForm, setEditForm] = useState({ name: '', description: '', visibility: 'PRIVATE' });
   const [collaboratorName, setCollaboratorName] = useState('');
+  const [view, setView] = useViewMode('collection');
 
   function refresh() {
     api.get(`/collections/${id}`)
@@ -35,6 +37,8 @@ export default function CollectionDetail() {
   if (error) return <p className="muted">{error}</p>;
   if (!collection) return <p className="muted">Chargement...</p>;
 
+  const rows = collection.items.map((item: any) => ({ ...item.torrent, _item: item }));
+  const hasNotes = collection.items.some((item: any) => item.note);
   const isOwner = user?.id === collection.owner.id;
   const isCollaborator = collection.collaborators.some((c: any) => c.user.id === user?.id);
   const canEditItems = isOwner || (collection.visibility === 'COLLABORATIVE' && isCollaborator);
@@ -80,27 +84,20 @@ export default function CollectionDetail() {
 
       <div className="split-2">
         <div className="panel">
-          <h3>Torrents ({collection.items.length})</h3>
-          <table>
-            <thead><tr><th>Nom</th><th>Taille</th><th>Seeders</th><th>Ajouté par</th>{canEditItems && <th></th>}</tr></thead>
-            <tbody>
-              {collection.items.map((item: any) => (
-                <tr key={item.id}>
-                  <td>
-                    <TorrentLink torrent={item.torrent} />
-                    {item.note && <div className="muted" style={{ fontSize: 12 }}>{item.note}</div>}
-                  </td>
-                  <td className="muted">{formatBytes(item.torrent.size)}</td>
-                  <td className="muted">{item.torrent.seeders}</td>
-                  <td className="muted"><UserLink user={item.addedBy} /></td>
-                  {canEditItems && (
-                    <td><button className="secondary" onClick={() => removeItem(item.torrent.id)}>Retirer</button></td>
-                  )}
-                </tr>
-              ))}
-              {collection.items.length === 0 && <tr><td className="muted">Aucun torrent dans cette collection.</td></tr>}
-            </tbody>
-          </table>
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 10 }}>
+            <h3 style={{ margin: 0 }}>Torrents ({collection.items.length})</h3>
+            <ViewSwitcher value={view} onChange={setView} />
+          </div>
+          <TorrentView
+            items={rows}
+            view={view}
+            empty="Aucun torrent dans cette collection."
+            extraColumns={[
+              ...(hasNotes ? [{ header: 'Note', render: (t: any) => t._item.note ?? '' }] : []),
+              { header: 'Ajouté par', render: (t: any) => <UserLink user={t._item.addedBy} /> },
+            ]}
+            rowActions={canEditItems ? (t) => <button className="secondary" onClick={() => removeItem(t.id)}>Retirer</button> : undefined}
+          />
           {canEditItems && (
             <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
               Ajoute des torrents depuis leur page de détail via « Ajouter à une collection ».
@@ -148,6 +145,8 @@ export default function CollectionDetail() {
           </div>
         )}
       </div>
+
+      <Recommended title="✨ Pour enrichir cette collection" subtitle="Selon ton historique" />
     </div>
   );
 }

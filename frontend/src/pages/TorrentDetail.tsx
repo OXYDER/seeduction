@@ -17,6 +17,7 @@ import { CATEGORY_STYLE } from '../components/Layout';
 import { applyCategoryAccent } from '../lib/theme';
 import TorrentHero from '../components/TorrentHero';
 import TorrentRelated from '../components/TorrentRelated';
+import Recommended from '../components/Recommended';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
 import { useFavorites } from '../lib/favorites';
 import { usePageBackdrop } from '../lib/backdrop';
@@ -288,6 +289,8 @@ export default function TorrentDetail() {
         {tab === 'files' && filesPanel}
         {tab === 'comments' && <TorrentComments torrentId={torrent.id} />}
         {tab === 'related' && hasRelated && <TorrentRelated torrentId={torrent.id} seriesTitle={torrent.metadata?.originalTitle ?? torrent.name} />}
+
+        {user && <Recommended key={torrent.id} title="✨ Dans la même veine" subtitle="Selon cette fiche et ton historique" basedOn={torrent.id} />}
       </div>
     );
   }

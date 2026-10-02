@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
-import { HealthDot, FavoriteStar } from '../components/TorrentBits';
+import { FavoriteStar } from '../components/TorrentBits';
 import { TYPE_LABEL } from '../lib/entityLabels';
-import TorrentLink from '../components/TorrentLink';
+import { useViewMode } from '../lib/viewMode';
+import TorrentView, { ViewSwitcher } from '../components/TorrentView';
+import Recommended from '../components/Recommended';
 
 export default function Favorites() {
   const [items, setItems] = useState<any[] | null>(null);
   const [follows, setFollows] = useState<any[]>([]);
+  const [view, setView] = useViewMode('favorites');
 
   useEffect(() => {
     api.get('/favorites').then((r) => setItems(r.data)).catch(() => setItems([]));
@@ -36,6 +38,10 @@ export default function Favorites() {
         </div>
       )}
       <div className="panel">
+        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 10 }}>
+          <span className="muted">{items ? `${items.length} torrent${items.length > 1 ? 's' : ''}` : ''}</span>
+          <ViewSwitcher value={view} onChange={setView} />
+        </div>
         {items === null && <p className="muted">Chargement...</p>}
         {items?.length === 0 && (
           <p className="muted">
@@ -43,33 +49,17 @@ export default function Favorites() {
           </p>
         )}
         {items && items.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table>
-              <thead>
-                <tr><th></th><th>Nom</th><th>Catégorie</th><th>Mis de côté</th><th>Taille</th><th>S</th><th>L</th></tr>
-              </thead>
-              <tbody>
-                {items.map((t) => (
-                  <tr key={t.id}>
-                    <td><FavoriteStar active onToggle={() => remove(t.id)} /></td>
-                    <td>
-                      <div className="row" style={{ gap: 10 }}>
-                        {t.coverImage && <img src={t.coverImage} alt="" style={{ width: 32, height: 44, objectFit: 'cover', borderRadius: 3 }} />}
-                        <TorrentLink torrent={t} thumb={false} />
-                      </div>
-                    </td>
-                    <td className="muted">{t.category?.name}</td>
-                    <td className="muted">{timeAgo(t.favoritedAt)}</td>
-                    <td className="muted">{formatBytes(t.size)}</td>
-                    <td style={{ color: 'var(--success)' }}><HealthDot seeders={t.seeders} />{t.seeders}</td>
-                    <td style={{ color: 'var(--danger)' }}>{t.leechers}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TorrentView
+            items={items}
+            view={view}
+            hideUploader
+            leading={(t) => <FavoriteStar active onToggle={() => remove(t.id)} />}
+            extraColumns={[{ header: 'Mis de côté', render: (t) => (t.favoritedAt ? timeAgo(t.favoritedAt) : '') }]}
+          />
         )}
       </div>
+
+      <Recommended title="✨ Dans la même veine que tes favoris" />
     </div>
   );
 }

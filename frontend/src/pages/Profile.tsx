@@ -10,6 +10,7 @@ import ProfileEditor from '../components/ProfileEditor';
 import AdultPreference from '../components/AdultPreference';
 import DmPrivacyPanel from '../components/DmPrivacyPanel';
 import WatchingVisibilityPanel from '../components/WatchingVisibilityPanel';
+import DefaultViewPanel from '../components/DefaultViewPanel';
 import Avatar from '../components/Avatar';
 import { displayRank } from '../lib/memberClass';
 import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
@@ -157,6 +158,7 @@ export default function Profile() {
       )}
       {showTab('account') && <ProfileEditor key={profile.avatarUrl ?? 'none'} profile={profile} onSaved={() => setReloadKey((k) => k + 1)} />}
       {showTab('account') && <DmPrivacyPanel value={profile.dmPrivacy ?? 'EVERYONE'} />}
+      {showTab('account') && <DefaultViewPanel value={profile.defaultView} />}
       {showTab('account') && <WatchingVisibilityPanel value={profile.showWatchingStatus !== false} />}
       {showTab('account') && <AdultPreference enabled={!!profile.showAdult} />}
       {showTab('security') && <SecurityPanel />}
