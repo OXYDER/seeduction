@@ -312,7 +312,7 @@ export class TorrentsService {
       },
       select: {
         id: true, name: true, size: true, resolution: true, source: true, codec: true, audio: true, language: true, hdr: true, containerFormat: true,
-        seeders: true, leechers: true, freeleech: true, createdAt: true, anonymousUpload: true, uploader: { select: { id: true, username: true } },
+        seeders: true, leechers: true, freeleech: true, createdAt: true, anonymousUpload: true, completedCount: true, season: true, episode: true, status: true, uploader: { select: { id: true, username: true } },
       },
       take: 60,
     });

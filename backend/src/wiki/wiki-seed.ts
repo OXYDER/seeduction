@@ -190,7 +190,9 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Détails[/b] : une grande ligne par torrent avec l'affiche, les infos techniques et un extrait du synopsis.\n` +
           `• [b]Grille[/b] : cartes avec l'affiche, le titre, la qualité et les statistiques toujours visibles.\n` +
           `• [b]Affiches[/b] : grandes affiches seules, les détails apparaissent au survol.\n` +
-          `• [b]Compact[/b] : une ligne fine par torrent, pour en voir un maximum à l'écran.\n\n` +
+          `• [b]Compact[/b] : une ligne fine par torrent, pour en voir un maximum à l'écran.\n` +
+          `• [b]Groupé[/b] : les releases d'un même film, d'une même série, d'un album ou d'un logiciel sont réunies sous un seul titre (affiche, qualités disponibles, totaux) ; un clic le déplie sur chaque version (langue, qualité, source, audio, codec, équipe, taille, complétés, seeders). La fiche d'un torrent montre la même liste dans « Versions ».\n\n` +
+          `[b]En haut de l'écran[/b] : en plus de l'upload, du téléchargé et des points, tu vois ton [b]différentiel[/b] (upload moins téléchargé), le nombre de torrents que tu [b]seedes[/b] et tes [b]hit & run[/b] ; l'icône 👫 montre une pastille rouge pour les demandes d'ami et une verte pour les amis en ligne (la même chose à côté de « Amis » dans le menu). Le [b]calendrier freeleech[/b] (accueil et page Points bonus) affiche le freeleech en cours et les prochains, avec un décompte.\n\n` +
           `[b]Ton affichage par défaut[/b]\n` +
           `Dans Profil > Compte > « Affichage des listes de torrents », choisis celui qui s'applique partout par défaut. Tu peux ensuite changer l'affichage d'une page précise avec les boutons en haut de la liste : ce choix est retenu pour cette page, dans ce navigateur. Changer ton réglage par défaut dans ton compte remet toutes les pages sur celui-ci.\n\n` +
           `[b]« Tu pourrais aimer » : les offres de torrents[/b]\n` +

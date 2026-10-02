@@ -15,6 +15,7 @@ import HoverCard from './HoverCard';
 import { TorrentPreview } from './TorrentLink';
 import { FavoriteStar, HealthDot } from './TorrentBits';
 import WatchOnlineButton from './WatchOnlineButton';
+import TorrentGroups from './TorrentGroups';
 
 const VIDEO_KINDS = new Set(['FILM', 'SERIE', 'XXX', 'DOCUMENT']);
 
@@ -132,6 +133,22 @@ export default function TorrentView(props: TorrentViewProps) {
   ));
 
   if (items.length === 0) return <div className="muted tv-empty">{empty ?? 'Aucun résultat.'}</div>;
+
+  // ------------------------------------------------------------------ groupé (releases d'un même contenu réunies)
+  if (view === 'grouped') {
+    return (
+      <TorrentGroups
+        items={items}
+        star={(t) => <span className="vg-star">{star(t)}</span>}
+        actions={(t) => (
+          <>
+            {VIDEO_KINDS.has(resolveContentKind(t.category, t.category?.parent) ?? '') && t.fileList && <WatchOnlineButton compact torrentId={t.id} fileList={t.fileList} />}
+            {props.rowActions?.(t)}
+          </>
+        )}
+      />
+    );
+  }
 
   // ------------------------------------------------------------------ liste (tableau)
   if (view === 'list') {

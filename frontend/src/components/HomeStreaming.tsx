@@ -10,6 +10,7 @@ import { PosterCard, Rail } from './TorrentRail';
 import NewsPanel from './NewsPanel';
 import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
+import HomeShortcuts from './HomeShortcuts';
 import UserLink from './UserLink';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
@@ -176,6 +177,7 @@ export default function HomeStreaming() {
     <div className="home-plex">
       <ModerationRail />
       <FreeleechCalendar compact />
+      <HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} />
       <nav className="tabs" aria-label="Sections de l'accueil">
         {TABS.map((t) => (
           <button key={t.id} type="button" className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.label}</button>

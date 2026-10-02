@@ -5,7 +5,7 @@ import { useCallback, useSyncExternalStore } from 'react';
  * Chaque membre choisit un affichage par défaut dans son compte (stocké côté serveur, voir User.defaultView) ; sur
  * chaque page il peut ensuite changer ponctuellement — ce choix-là est retenu par page, dans ce navigateur seulement.
  */
-export type ViewMode = 'list' | 'details' | 'grid' | 'posters' | 'compact';
+export type ViewMode = 'list' | 'details' | 'grid' | 'posters' | 'compact' | 'grouped';
 
 export const VIEW_MODES: { id: ViewMode; icon: string; label: string; hint: string }[] = [
   { id: 'list', icon: '☰', label: 'Liste', hint: 'Tableau complet, colonnes triables' },
@@ -13,6 +13,7 @@ export const VIEW_MODES: { id: ViewMode; icon: string; label: string; hint: stri
   { id: 'grid', icon: '▦', label: 'Grille', hint: 'Cartes avec titre, qualité et statistiques' },
   { id: 'posters', icon: '▩', label: 'Affiches', hint: 'Grandes affiches seules, infos au survol' },
   { id: 'compact', icon: '≣', label: 'Compact', hint: 'Une ligne fine par torrent, un maximum à l\'écran' },
+  { id: 'grouped', icon: '🗂', label: 'Groupé', hint: 'Les releases d\'un même film, série, album ou logiciel regroupées sous un seul titre' },
 ];
 
 const STORAGE_PREFIX = 'seeduction:view:';
