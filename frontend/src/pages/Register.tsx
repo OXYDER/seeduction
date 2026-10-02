@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 
 export default function Register() {
-  const [form, setForm] = useState({ inviteCode: '', username: '', email: '', password: '' });
+  const [params] = useSearchParams();
+  // Un lien d'inscription (Admin > Invitations) arrive avec le code déjà rempli : /register?code=...
+  const [form, setForm] = useState({ inviteCode: params.get('code') ?? '', username: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const navigate = useNavigate();

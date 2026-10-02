@@ -2298,3 +2298,27 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .staff-status.PENDING { background: rgba(245,158,11,0.25); color: #fbbf24; }
 .staff-status.REJECTED { background: rgba(229,56,79,0.25); color: #ff8394; }
 .staff-status.DEAD { background: rgba(148,163,184,0.25); color: #cbd5e1; }
+
+/* ---- Admin > Invitations ---- */
+.inv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.inv-grid label { display: grid; gap: 4px; }
+.inv-grid input, .inv-created + * input { width: 100%; }
+.inv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.inv-chips button.on, .panel .row button.secondary.on { background: var(--acc1, #8b5cf6); color: #fff; }
+.inv-check { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; cursor: pointer; }
+.inv-check input { margin-top: 3px; }
+.inv-created { display: grid; gap: 8px; padding: 12px; border-radius: 10px; background: rgba(31,168,85,0.14); border: 1px solid rgba(31,168,85,0.45); }
+.inv-code { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.1); }
+.inv-list { display: grid; gap: 8px; }
+.inv-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); border-left: 3px solid #1fa855; }
+.inv-row.scheduled { border-left-color: #3b82f6; }
+.inv-row.expired, .inv-row.exhausted { border-left-color: #94a3b8; opacity: 0.85; }
+.inv-row.disabled { border-left-color: #e5384f; opacity: 0.75; }
+.inv-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; margin-top: 4px; }
+.inv-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.inv-uses { grid-column: 1 / -1; overflow-x: auto; }
+.inv-status { padding: 1px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.12); }
+.inv-status.active { background: rgba(31,168,85,0.25); color: #6ee7a0; }
+.inv-status.scheduled { background: rgba(59,130,246,0.25); color: #93c5fd; }
+.inv-status.disabled { background: rgba(229,56,79,0.25); color: #ff8394; }
+@media (max-width: 700px) { .inv-row { grid-template-columns: 1fr; } .inv-actions { justify-content: flex-start; } }

@@ -128,6 +128,31 @@ model InviteCode {
   used       Boolean   @default(false)
   expiresAt  DateTime?
   createdAt  DateTime  @default(now())
+  // Codes « génériques » de l'administration (Admin > Invitations) : plusieurs inscriptions possibles, début programmé,
+  // une seule inscription par adresse IP si demandé. Un code de membre garde les valeurs par défaut : 1 utilisation.
+  label      String?   @db.VarChar(80)
+  generic    Boolean   @default(false)
+  maxUses    Int       @default(1)
+  useCount   Int       @default(0)
+  perIpOnce  Boolean   @default(false)
+  disabled   Boolean   @default(false)
+  startsAt   DateTime?
+  uses       InviteUse[]
+}
+
+// Une ligne par inscription faite avec un code. ipKey n'est rempli que pour les codes limités à une inscription par IP :
+// la contrainte d'unicité (inviteId, ipKey) l'impose même si deux inscriptions arrivent au même instant (NULL = pas de limite).
+model InviteUse {
+  id        String     @id @default(uuid())
+  invite    InviteCode @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  inviteId  String
+  userId    String
+  ip        String?
+  ipKey     String?
+  createdAt DateTime   @default(now())
+
+  @@unique([inviteId, ipKey])
+  @@index([inviteId])
 }
 
 // ---------------------------------------------------------------------------

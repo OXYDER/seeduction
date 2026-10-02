@@ -4,13 +4,26 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 const ipOf = (req: any): string | null => (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? null;
 
+/**
+ * Adresse IP du visiteur pour les limites d'inscription : on ne se fie pas à la PREMIÈRE valeur de X-Forwarded-For (un
+ * visiteur peut en envoyer une fausse), mais à celle ajoutée par notre chaîne de proxys. TRUSTED_PROXY_HOPS = nombre de
+ * proxys devant le backend qui ajoutent l'adresse de leur client (2 par défaut : Nginx Proxy Manager + le nginx du site ;
+ * 3 si Cloudflare est devant).
+ */
+const trustedIpOf = (req: any): string | null => {
+  const hops = Math.max(1, Number(process.env.TRUSTED_PROXY_HOPS ?? 2) || 2);
+  const parts = String(req.headers?.['x-forwarded-for'] ?? '').split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return req.ip ?? null;
+  return parts[Math.max(0, parts.length - hops)] ?? null;
+};
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  register(@Body() body: { inviteCode: string; username: string; email: string; password: string }) {
-    return this.authService.register(body.inviteCode, body.username, body.email, body.password);
+  register(@Body() body: { inviteCode: string; username: string; email: string; password: string }, @Request() req: any) {
+    return this.authService.register(body.inviteCode, body.username, body.email, body.password, trustedIpOf(req));
   }
 
   @Post('login')

@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AdminService, Actor } from './admin.service';
+import { AdminInvitesService, InviteInput } from './admin-invites.service';
 import { AuditService } from '../audit/audit.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -9,7 +10,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 @Roles('MODERATOR', 'ADMIN', 'OWNER')
 @Controller('admin')
 export class AdminController {
-  constructor(private adminService: AdminService, private audit: AuditService) {}
+  constructor(private adminService: AdminService, private invites: AdminInvitesService, private audit: AuditService) {}
 
   @Get('stats')
   stats() {
@@ -141,6 +142,44 @@ export class AdminController {
     const result = await this.adminService.unbanUser(this.actor(req), id);
     await this.audit.log(req.user.userId, 'USER_UNBAN', { targetId: id }, this.ip(req));
     return result;
+  }
+
+  // ---- codes d'invitation génériques (administrateurs seulement)
+
+  @Roles('ADMIN', 'OWNER')
+  @Get('invites')
+  listInvites(@Query('members') members?: string) {
+    return this.invites.list(members === '1');
+  }
+
+  @Roles('ADMIN', 'OWNER')
+  @Post('invites')
+  async createInvites(@Body() body: InviteInput, @Request() req: any) {
+    const result = await this.invites.create(req.user.userId, body ?? {});
+    await this.audit.log(req.user.userId, 'INVITE_CREATE', { codes: result.codes.length, maxUses: body?.maxUses, perIpOnce: !!body?.perIpOnce, expiresAt: body?.expiresAt ?? null }, this.ip(req));
+    return result;
+  }
+
+  @Roles('ADMIN', 'OWNER')
+  @Patch('invites/:id')
+  async updateInvite(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    const result = await this.invites.update(id, body ?? {});
+    await this.audit.log(req.user.userId, 'INVITE_EDIT', { inviteId: id, fields: Object.keys(body ?? {}) }, this.ip(req));
+    return result;
+  }
+
+  @Roles('ADMIN', 'OWNER')
+  @Delete('invites/:id')
+  async deleteInvite(@Param('id') id: string, @Request() req: any) {
+    const result = await this.invites.remove(id);
+    await this.audit.log(req.user.userId, 'INVITE_DELETE', { code: result.code }, this.ip(req));
+    return { ok: true };
+  }
+
+  @Roles('ADMIN', 'OWNER')
+  @Get('invites/:id/uses')
+  inviteUses(@Param('id') id: string) {
+    return this.invites.uses(id);
   }
 
   @Get('reports')

@@ -5,15 +5,16 @@ import { useAuthStore } from '../store/auth';
 import { NewsAdmin, FreeleechAdmin } from '../components/AdminNewsFreeleech';
 import { WikiAdmin } from '../components/AdminWiki';
 import { ChannelsAdmin } from '../components/AdminChannels';
+import { InvitesAdmin } from '../components/AdminInvites';
 
 const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki'] as const;
-type Tab = typeof BASE_TABS[number] | 'Canaux' | 'Monitoring' | 'Journal';
+type Tab = typeof BASE_TABS[number] | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal';
 
 export default function Admin() {
   const role = useAuthStore((s) => s.user?.role);
   const [tab, setTab] = useState<Tab>('Vue d\'ensemble');
   // Le monitoring expose des détails d'infrastructure : réservé ADMIN/OWNER (les modérateurs voient le reste).
-  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Canaux', 'Journal', 'Monitoring'] : [...BASE_TABS];
+  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Invitations', 'Canaux', 'Journal', 'Monitoring'] : [...BASE_TABS];
 
   return (
     <div className="grid">
@@ -32,6 +33,7 @@ export default function Admin() {
       {tab === 'Forum' && <ForumAdmin />}
       {tab === 'Templates' && <TemplatesAdmin />}
       {tab === 'Wiki' && <WikiAdmin />}
+      {tab === 'Invitations' && <InvitesAdmin />}
       {tab === 'Canaux' && <ChannelsAdmin />}
       {tab === 'Journal' && <AuditAdmin />}
       {tab === 'Monitoring' && <MonitoringAdmin />}

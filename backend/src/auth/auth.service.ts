@@ -66,7 +66,7 @@ export class AuthService {
    * SAUF pour le tout premier compte du tracker (base vide), qui devient
    * automatiquement ADMIN sans invitation, pour amorcer le premier accès.
    */
-  async register(inviteCode: string, username: string, email: string, password: string) {
+  async register(inviteCode: string, username: string, email: string, password: string, ip: string | null = null) {
     this.assertPassword(password);
     const isFirstUser = (await this.prisma.user.count()) === 0;
     const passwordHash = await bcrypt.hash(password, 12);
@@ -84,30 +84,53 @@ export class AuthService {
       return { id: created.id, username: created.username, passkey: created.passkey };
     }
 
-    const invite = await this.prisma.inviteCode.findUnique({ where: { code: inviteCode } });
-    if (!invite || invite.used) throw new BadRequestException('Code d\'invitation invalide ou déjà utilisé');
+    const typed = (inviteCode ?? '').trim();
+    const invite = (await this.prisma.inviteCode.findUnique({ where: { code: typed } }))
+      ?? (typed ? await this.prisma.inviteCode.findUnique({ where: { code: typed.toUpperCase() } }) : null); // les codes de l'administration sont en majuscules
+    if (!invite || invite.used || invite.disabled || invite.useCount >= invite.maxUses) throw new BadRequestException('Code d\'invitation invalide ou déjà utilisé');
+    if (invite.startsAt && invite.startsAt > new Date()) throw new BadRequestException("Ce code d'invitation n'est pas encore actif");
     if (invite.expiresAt && invite.expiresAt < new Date()) {
       throw new BadRequestException('Code d\'invitation expiré');
     }
+    if (invite.perIpOnce) {
+      if (!ip) throw new BadRequestException("Impossible de vérifier ton adresse IP : ce code est limité à une inscription par connexion");
+      if (await this.prisma.inviteUse.findFirst({ where: { inviteId: invite.id, ipKey: ip }, select: { id: true } })) {
+        throw new BadRequestException('Ce code a déjà servi à créer un compte depuis cette connexion (une inscription par adresse IP)');
+      }
+    }
 
-    const user = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.user.create({
-        data: {
-          username,
-          email,
-          passwordHash,
-          invitedById: invite.createdById,
-          ...welcomeGift,
-        },
+    let user;
+    try {
+      user = await this.prisma.$transaction(async (tx) => {
+        // Réservation atomique d'une place : deux inscriptions simultanées ne peuvent pas dépasser le maximum.
+        const claimed = await tx.inviteCode.updateMany({
+          where: { id: invite.id, used: false, disabled: false, useCount: { lt: invite.maxUses } },
+          data: { useCount: { increment: 1 } },
+        });
+        if (claimed.count === 0) throw new BadRequestException('Code d\'invitation invalide ou déjà utilisé');
+        const created = await tx.user.create({
+          data: {
+            username,
+            email,
+            passwordHash,
+            invitedById: invite.createdById,
+            ...welcomeGift,
+          },
+        });
+        await tx.inviteUse.create({ data: { inviteId: invite.id, userId: created.id, ip, ipKey: invite.perIpOnce ? ip : null } });
+        if (invite.useCount + 1 >= invite.maxUses) await tx.inviteCode.update({ where: { id: invite.id }, data: { used: true, usedByEmail: email } });
+        else await tx.inviteCode.update({ where: { id: invite.id }, data: { usedByEmail: email } });
+        return created;
       });
-      await tx.inviteCode.update({
-        where: { id: invite.id },
-        data: { used: true, usedByEmail: email },
-      });
-      return created;
-    });
+    } catch (err: any) {
+      // Deux inscriptions depuis la même IP au même instant : la contrainte d'unicité refuse la seconde.
+      if (err?.code === 'P2002' && String(err?.meta?.target ?? '').includes('ipKey')) {
+        throw new BadRequestException('Ce code a déjà servi à créer un compte depuis cette connexion (une inscription par adresse IP)');
+      }
+      throw err;
+    }
 
-    await this.notifications.notify({
+    if (!invite.generic || invite.maxUses <= 10) await this.notifications.notify({
       userId: invite.createdById,
       type: 'INVITE_USED',
       title: `${user.username} a rejoint le tracker`,
