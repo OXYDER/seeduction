@@ -640,6 +640,82 @@ export class MessengerService extends EventEmitter {
     return { total: rows[0]?.n ?? 0, mentions: rows[0]?.mentions ?? 0 };
   }
 
+  // ------------------------------------------------------------------ administration des canaux (ADMIN / OWNER)
+
+  private assertAdmin(actor: Actor) {
+    if (rank(actor.role) < rank('ADMIN')) throw new ForbiddenException('Réservé aux administrateurs');
+  }
+
+  private slugify(name: string) {
+    return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40) || 'canal';
+  }
+
+  private validRole(r: unknown) {
+    if (r === null || r === undefined || r === '') return null;
+    if (typeof r !== 'string' || !ROLE_ORDER.includes(r)) throw new BadRequestException('Rôle invalide');
+    return r as any;
+  }
+
+  async adminListChannels(actor: Actor) {
+    this.assertAdmin(actor);
+    const rows = await this.prisma.conversation.findMany({
+      where: { type: 'CHANNEL' }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+      include: { _count: { select: { messages: true } } },
+    });
+    return rows.map(({ _count, ...c }) => ({ ...c, messageCount: _count.messages }));
+  }
+
+  async createChannel(actor: Actor, data: { name: string; description?: string; readRole?: string | null; writeRole?: string | null; slowModeSeconds?: number; position?: number }) {
+    this.assertAdmin(actor);
+    const name = (data.name ?? '').trim().slice(0, 80);
+    if (!name) throw new BadRequestException('Donne un nom au canal');
+    const base = this.slugify(name);
+    let slug = base;
+    for (let i = 2; await this.prisma.conversation.findUnique({ where: { slug }, select: { id: true } }); i++) slug = `${base}-${i}`;
+    const last = await this.prisma.conversation.findFirst({ where: { type: 'CHANNEL' }, orderBy: { position: 'desc' }, select: { position: true } });
+    const channel = await this.prisma.conversation.create({
+      data: {
+        type: 'CHANNEL', name, slug, createdById: actor.userId,
+        description: data.description?.trim().slice(0, 300) || null,
+        readRole: this.validRole(data.readRole), writeRole: this.validRole(data.writeRole),
+        slowModeSeconds: Math.max(0, Math.min(3600, Math.floor(Number(data.slowModeSeconds) || 0))),
+        position: Number.isFinite(data.position) ? Math.floor(data.position as number) : (last?.position ?? 0) + 1,
+      },
+    });
+    this.emit('channel:changed', { id: channel.id });
+    return channel;
+  }
+
+  async updateChannel(actor: Actor, id: string, data: { name?: string; description?: string | null; readRole?: string | null; writeRole?: string | null; slowModeSeconds?: number; position?: number; archived?: boolean }) {
+    this.assertAdmin(actor);
+    const channel = await this.prisma.conversation.findUnique({ where: { id } });
+    if (!channel || channel.type !== 'CHANNEL') throw new NotFoundException('Canal introuvable');
+    const patch: Prisma.ConversationUpdateInput = {};
+    if (data.name !== undefined) { const n = data.name.trim().slice(0, 80); if (!n) throw new BadRequestException('Le nom ne peut pas être vide'); patch.name = n; }
+    if (data.description !== undefined) patch.description = data.description?.trim().slice(0, 300) || null;
+    if (data.readRole !== undefined) patch.readRole = this.validRole(data.readRole);
+    if (data.writeRole !== undefined) patch.writeRole = this.validRole(data.writeRole);
+    if (data.slowModeSeconds !== undefined) patch.slowModeSeconds = Math.max(0, Math.min(3600, Math.floor(Number(data.slowModeSeconds) || 0)));
+    if (Number.isFinite(data.position)) patch.position = Math.floor(data.position as number);
+    if (typeof data.archived === 'boolean') {
+      if (data.archived && channel.slug === 'general') throw new BadRequestException('Le canal Général ne peut pas être archivé');
+      patch.archived = data.archived;
+    }
+    const updated = await this.prisma.conversation.update({ where: { id }, data: patch });
+    this.emit('channel:changed', { id });
+    return updated;
+  }
+
+  async deleteChannel(actor: Actor, id: string) {
+    this.assertAdmin(actor);
+    const channel = await this.prisma.conversation.findUnique({ where: { id } });
+    if (!channel || channel.type !== 'CHANNEL') throw new NotFoundException('Canal introuvable');
+    if (channel.slug === 'general') throw new BadRequestException('Le canal Général ne peut pas être supprimé (archive-le plutôt, ou modifie ses droits)');
+    await this.prisma.conversation.delete({ where: { id } });
+    this.emit('channel:changed', { id, removed: true });
+    return { ok: true };
+  }
+
   /** Amis et personnes avec qui on discute : pour afficher leur présence. */
   async peerIds(userId: string) {
     const [friends, directs] = await Promise.all([

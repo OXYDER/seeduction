@@ -107,6 +107,28 @@ export class MessengerController {
     return this.messenger.react(actorOf(req), id, emoji);
   }
 
+  // --- Administration des canaux (ADMIN / OWNER) ---
+
+  @Get('admin/channels')
+  adminChannels(@Request() req: any) {
+    return this.messenger.adminListChannels(actorOf(req));
+  }
+
+  @Post('admin/channels')
+  createChannel(@Body() body: any, @Request() req: any) {
+    return this.messenger.createChannel(actorOf(req), body ?? {});
+  }
+
+  @Patch('admin/channels/:id')
+  updateChannel(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    return this.messenger.updateChannel(actorOf(req), id, body ?? {});
+  }
+
+  @Delete('admin/channels/:id')
+  deleteChannel(@Param('id') id: string, @Request() req: any) {
+    return this.messenger.deleteChannel(actorOf(req), id);
+  }
+
   /** Pièce jointe : une image (jpeg/png/webp) s'affiche en ligne, tout autre fichier devient un lien de téléchargement. */
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))

@@ -39,6 +39,17 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
       if (e.channel) this.server.to(channelRoom(e.channel)).emit(e.event, e.payload);
       else if (e.userIds?.length) this.server.to(e.userIds.map(userRoom)).emit(e.event, e.payload);
     });
+    // Canal créé / modifié / supprimé : chaque connexion rejoint ou quitte la salle du canal selon son rôle, puis tout le monde rafraîchit sa liste.
+    this.messenger.on('channel:changed', async ({ id, removed }: { id: string; removed?: boolean }) => {
+      if (!this.server) return;
+      try {
+        for (const s of await this.server.fetchSockets()) {
+          const allowed = !removed && (await this.messenger.readableChannelIds({ role: (s.data as any)?.role ?? 'USER' })).includes(id);
+          if (allowed) s.join(channelRoom(id)); else s.leave(channelRoom(id));
+        }
+      } catch (err: any) { this.logger.warn(`Mise à jour des salles de canal échouée : ${err?.message}`); }
+      this.server.emit('conversation:changed', { conversationId: id, reason: 'channel' });
+    });
     // La présence est partagée avec le reste du site : tout changement met à jour la liste des membres en ligne (regroupé pour ne pas inonder).
     const schedule = () => {
       if (this.presenceTimer) return;
