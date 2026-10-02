@@ -32,15 +32,51 @@ export class AdminService {
     return torrent;
   }
 
-  async rejectTorrent(id: string) {
+  async rejectTorrent(id: string, reason?: string) {
+    const why = (reason ?? '').trim().slice(0, 300);
     const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'REJECTED' } });
     await this.notifications.notify({
       userId: torrent.uploaderId,
       type: 'TORRENT_REJECTED',
       title: 'Ton torrent a été rejeté',
-      body: torrent.name,
+      body: why ? `${torrent.name} — Motif : ${why}` : torrent.name,
     });
     return torrent;
+  }
+
+  /** Compteurs de la file de modération (pastille du menu « Modération »). */
+  async queueCounts() {
+    const [pendingTorrents, openReports] = await Promise.all([
+      this.prisma.torrent.count({ where: { status: 'PENDING' } }),
+      this.prisma.report.count({ where: { status: 'OPEN' } }),
+    ]);
+    return { pendingTorrents, openReports, total: pendingTorrents + openReports };
+  }
+
+  /** Torrents à valider, du plus ancien au plus récent, avec de quoi décider sans ouvrir chaque fiche. */
+  async pendingQueue() {
+    const rows = await this.prisma.torrent.findMany({
+      where: { status: 'PENDING' },
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+      select: {
+        id: true, name: true, size: true, coverImage: true, createdAt: true, year: true, resolution: true, description: true, fileList: true,
+        anonymousUpload: true, category: { select: { name: true } }, uploader: { select: { id: true, username: true, uploaded: true, downloaded: true, createdAt: true } },
+      },
+    });
+    const reportCounts = await this.prisma.report.groupBy({
+      by: ['targetId'],
+      where: { status: 'OPEN', targetType: 'torrent', targetId: { in: rows.map((r) => r.id) } },
+      _count: { _all: true },
+    });
+    const reported = new Map(reportCounts.map((r) => [r.targetId, r._count._all]));
+    return rows.map(({ size, description, fileList, ...t }) => ({
+      ...t,
+      size: Number(size),
+      fileCount: Array.isArray(fileList) ? fileList.length : 0,
+      excerpt: (description ?? '').replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 240),
+      openReports: reported.get(t.id) ?? 0,
+    }));
   }
 
   pendingTorrents() {
@@ -185,8 +221,8 @@ export class AdminService {
     return this.prisma.user.update({ where: { id: userId }, data: { status: 'ACTIVE' } });
   }
 
-  listReports(status: 'OPEN' | 'RESOLVED' | 'DISMISSED' = 'OPEN') {
-    return this.reports.listForStaff(status);
+  listReports(status: 'OPEN' | 'RESOLVED' | 'DISMISSED' = 'OPEN', target?: { type?: string; id?: string }) {
+    return this.reports.listForStaff(status, target);
   }
 
   async resolveReport(id: string, status: 'RESOLVED' | 'DISMISSED') {

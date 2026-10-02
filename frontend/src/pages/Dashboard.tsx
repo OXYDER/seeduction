@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/auth';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import NewsPanel from '../components/NewsPanel';
+import ModerationRail from '../components/ModerationRail';
 import HomeStreaming from '../components/HomeStreaming';
 import { useTheme } from '../lib/theme';
 import TorrentLink from '../components/TorrentLink';
@@ -54,6 +55,7 @@ function ClassicDashboard() {
 
   return (
     <div className="grid">
+      <ModerationRail />
       <div className="hero ornate-frame">
         <div className="hero-top">
           <div className="hero-content">

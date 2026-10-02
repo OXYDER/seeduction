@@ -23,6 +23,13 @@ export class EconomyController {
     return this.economy.overview(req.user.userId);
   }
 
+  /** Seeds à terminer : torrents téléchargés dont l'obligation de seed n'est pas encore remplie. */
+  @UseGuards(JwtAuthGuard)
+  @Get('seeds')
+  seeds(@Request() req: any) {
+    return this.economy.seedObligations(req.user.userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('redeem')
   redeem(@Body('item') item: string, @Request() req: any) {

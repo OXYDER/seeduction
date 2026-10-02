@@ -99,6 +99,14 @@ export function totalUnreadOf(conversations: ConvSummary[]) {
   return conversations.reduce((n, c) => (c.archived || isMuted(c) ? n : n + c.unread), 0);
 }
 
+/** Non lus séparés en messages privés (1 à 1 et groupes) et messages publics (canaux), sans compter les conversations muettes ou archivées. */
+export function privateUnreadOf(conversations: ConvSummary[]) {
+  return conversations.reduce((n, c) => (c.type === 'CHANNEL' || c.archived || isMuted(c) ? n : n + c.unread), 0);
+}
+export function publicUnreadOf(conversations: ConvSummary[]) {
+  return conversations.reduce((n, c) => (c.type !== 'CHANNEL' || c.archived || isMuted(c) ? n : n + c.unread), 0);
+}
+
 interface MsgrState {
   socket: Socket | null;
   connected: boolean;

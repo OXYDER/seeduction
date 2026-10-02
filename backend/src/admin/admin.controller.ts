@@ -21,6 +21,33 @@ export class AdminController {
     return this.adminService.pendingTorrents();
   }
 
+  /** Compteurs de la file de modération (torrents en attente + signalements ouverts). */
+  @Get('queue')
+  queue() {
+    return this.adminService.queueCounts();
+  }
+
+  /** Torrents en attente de validation, avec pochette, envoyeur, extrait de description... */
+  @Get('queue/torrents')
+  queueTorrents() {
+    return this.adminService.pendingQueue();
+  }
+
+  /** Approuve plusieurs torrents d'un coup (50 au plus). */
+  @Post('torrents/approve-many')
+  async approveMany(@Body('ids') ids: string[], @Request() req: any) {
+    const list = Array.isArray(ids) ? [...new Set(ids.filter((i) => typeof i === 'string'))].slice(0, 50) : [];
+    let approved = 0;
+    for (const id of list) {
+      try {
+        const result = await this.adminService.approveTorrent(id);
+        await this.audit.log(req.user.userId, 'TORRENT_APPROVE', { torrentId: id, name: result.name }, this.ip(req));
+        approved++;
+      } catch { /* torrent supprimé entre-temps : on continue avec les autres */ }
+    }
+    return { approved };
+  }
+
   @Get('torrents')
   allTorrents(@Query('search') search?: string) {
     return this.adminService.allTorrents(search);
@@ -48,9 +75,9 @@ export class AdminController {
   }
 
   @Post('torrents/:id/reject')
-  async reject(@Param('id') id: string, @Request() req: any) {
-    const result = await this.adminService.rejectTorrent(id);
-    await this.audit.log(req.user.userId, 'TORRENT_REJECT', { torrentId: id, name: result.name }, this.ip(req));
+  async reject(@Param('id') id: string, @Body('reason') reason: string | undefined, @Request() req: any) {
+    const result = await this.adminService.rejectTorrent(id, reason);
+    await this.audit.log(req.user.userId, 'TORRENT_REJECT', { torrentId: id, name: result.name, ...(reason ? { reason: String(reason).slice(0, 300) } : {}) }, this.ip(req));
     return result;
   }
 
@@ -117,8 +144,8 @@ export class AdminController {
   }
 
   @Get('reports')
-  reports(@Query('status') status: 'OPEN' | 'RESOLVED' | 'DISMISSED' = 'OPEN') {
-    return this.adminService.listReports(status);
+  reports(@Query('status') status: 'OPEN' | 'RESOLVED' | 'DISMISSED' = 'OPEN', @Query('targetType') targetType?: string, @Query('targetId') targetId?: string) {
+    return this.adminService.listReports(status, { type: targetType, id: targetId });
   }
 
   @Post('reports/:id/resolve')

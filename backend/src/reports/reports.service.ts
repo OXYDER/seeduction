@@ -35,9 +35,9 @@ export class ReportsService {
   }
 
   /** Liste enrichie pour le staff : qui a signalé, quoi, et un lien direct vers l'élément. */
-  async listForStaff(status: 'OPEN' | 'RESOLVED' | 'DISMISSED') {
+  async listForStaff(status: 'OPEN' | 'RESOLVED' | 'DISMISSED', target?: { type?: string; id?: string }) {
     const reports = await this.prisma.report.findMany({
-      where: { status },
+      where: { status, ...(target?.type ? { targetType: target.type } : {}), ...(target?.id ? { targetId: target.id } : {}) },
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: { reporter: { select: { id: true, username: true } } },
@@ -45,8 +45,10 @@ export class ReportsService {
     return Promise.all(reports.map(async (r) => {
       let label = r.targetId;
       let link: string | null = null;
+      let torrent: { id: string; name: string; coverImage: string | null; status: string; seeders: number } | null = null;
       if (r.targetType === 'torrent') {
-        const t = await this.prisma.torrent.findUnique({ where: { id: r.targetId }, select: { name: true } });
+        const t = await this.prisma.torrent.findUnique({ where: { id: r.targetId }, select: { id: true, name: true, coverImage: true, status: true, seeders: true } });
+        torrent = t;
         label = t?.name ?? '(torrent supprimé)';
         link = t ? `/torrents/${r.targetId}` : null;
       } else if (r.targetType === 'user') {
@@ -62,7 +64,7 @@ export class ReportsService {
         label = c ? `Commentaire : « ${c.content.slice(0, 80)} »` : '(commentaire supprimé)';
         link = c ? `/torrents/${c.torrentId}` : null;
       }
-      return { ...r, label, link };
+      return { ...r, label, link, torrent };
     }));
   }
 }

@@ -137,6 +137,49 @@ export class EconomyService {
     };
   }
 
+  /**
+   * « Mes seeds à terminer » : les torrents téléchargés dont l'obligation de seed (temps ou ratio) n'est pas encore remplie,
+   * du plus urgent au moins urgent. `status` : hnr (déjà averti), idle (ne seede pas en ce moment), seeding (en cours).
+   */
+  async seedObligations(userId: string) {
+    const snatches = await this.prisma.snatch.findMany({
+      where: { userId, satisfied: false, torrent: { uploaderId: { not: userId } } },
+      orderBy: { completedAt: 'desc' },
+      take: 200,
+      include: { torrent: { select: { id: true, name: true, size: true, coverImage: true, status: true } } },
+    });
+    const byTorrent = new Map<string, (typeof snatches)[number]>();
+    for (const s of snatches) if (!byTorrent.has(s.torrentId)) byTorrent.set(s.torrentId, s); // le plus récent par torrent
+    const list = [...byTorrent.values()];
+    const peers = list.length
+      ? await this.prisma.peer.findMany({ where: { userId, torrentId: { in: list.map((s) => s.torrentId) } }, select: { torrentId: true, isSeeder: true, uploaded: true, lastAnnounceAt: true } })
+      : [];
+    const required = ECONOMY.hnrSeedHours * 3600;
+    const fresh = Date.now() - 45 * 60_000;
+    const items = list.map((s) => {
+      const mine = peers.filter((p) => p.torrentId === s.torrentId);
+      const seedingNow = mine.some((p) => p.isSeeder && p.lastAnnounceAt.getTime() > fresh);
+      const uploaded = mine.reduce((n, p) => n + Number(p.uploaded), 0);
+      const size = Number(s.torrent.size);
+      const status = s.hnr ? 'hnr' : seedingNow ? 'seeding' : 'idle';
+      return {
+        torrentId: s.torrentId, name: s.torrent.name, coverImage: s.torrent.coverImage, size,
+        completedAt: s.completedAt, seedSeconds: s.seedSeconds, requiredSeconds: required,
+        remainingSeconds: Math.max(0, required - s.seedSeconds),
+        ratio: size > 0 ? Math.round((uploaded / size) * 100) / 100 : 0,
+        deadline: new Date(s.completedAt.getTime() + ECONOMY.hnrGraceHours * 3600_000),
+        status,
+      };
+    });
+    const rank = { hnr: 0, idle: 1, seeding: 2 } as const;
+    items.sort((a, b) => rank[a.status as keyof typeof rank] - rank[b.status as keyof typeof rank] || (a.status === 'seeding' ? a.remainingSeconds - b.remainingSeconds : a.deadline.getTime() - b.deadline.getTime()));
+    return {
+      rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours },
+      counts: { total: items.length, hnr: items.filter((i) => i.status === 'hnr').length, idle: items.filter((i) => i.status === 'idle').length, seeding: items.filter((i) => i.status === 'seeding').length },
+      items,
+    };
+  }
+
   // ------------------------------------------------------------------ boutique
 
   async redeem(userId: string, itemId: string) {

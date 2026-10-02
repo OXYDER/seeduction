@@ -17,6 +17,7 @@ import Upload from './pages/Upload';
 import Profile from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
 import Admin from './pages/Admin';
+import Moderation from './pages/Moderation';
 import Forum from './pages/Forum';
 import ForumTopic from './pages/ForumTopic';
 import Messages from './pages/Messages';
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/entities/:id" element={<EntityPage />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/moderation" element={<Moderation />} />
           <Route path="/forum" element={<Forum />} />
           <Route path="/forum/f/:id" element={<ForumView />} />
           <Route path="/forum/latest" element={<ForumLatest />} />

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import UserLink from '../components/UserLink';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
+import StaffQueueBanner from '../components/StaffQueueBanner';
 import TorrentComments from '../components/TorrentComments';
 import TorrentSocial from '../components/TorrentSocial';
 import ReportButton from '../components/ReportButton';
@@ -168,6 +169,8 @@ export default function TorrentDetail() {
     </div>
   );
 
+  const staffBanner = isStaff && <StaffQueueBanner key={`q-${torrent.id}`} torrent={torrent} onStatusChange={(status) => setTorrent((t: any) => ({ ...t, status }))} />;
+
   const staffPanel = isStaff && (
     <StaffTorrentPanel key={torrent.id} torrent={torrent} startOpen={searchParams.get('edit') === '1'} onSaved={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} />
   );
@@ -215,6 +218,7 @@ export default function TorrentDetail() {
             onToggleFavorite={() => favorites.toggle(torrent.id)}
           />
         )}
+        {staffBanner}
         {uploadedBanner}
         <section className="detail-head">
           <div className="detail-poster">
@@ -307,6 +311,7 @@ export default function TorrentDetail() {
           onToggleFavorite={() => favorites.toggle(torrent.id)}
         />
       )}
+      {staffBanner}
       {uploadedBanner}
       <div className="row" style={{ alignItems: 'flex-start', gap: 16 }}>
         {torrent.coverImage && (

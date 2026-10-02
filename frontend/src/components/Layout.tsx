@@ -13,7 +13,9 @@ import Avatar from './Avatar';
 import ChatDock from './ChatDock';
 import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
-import { useMessenger, totalUnreadOf } from '../store/messenger';
+import { useMessenger, privateUnreadOf, publicUnreadOf } from '../store/messenger';
+import { useQueue } from '../store/queue';
+import SeedObligations from './SeedObligations';
 import { useTheme } from '../lib/theme';
 import { PRESENCE_OPTIONS } from '../lib/presence';
 
@@ -89,6 +91,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
   { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p) },
+  { to: '/moderation', icon: '🛡️', cls: 'c-staff', label: 'Modération', match: starts('/moderation'), staffOnly: true },
   { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true },
 ];
 
@@ -118,7 +121,11 @@ export default function Layout() {
   const dmBump = useDmStore((s) => s.friendRequestBump);
   const msgrConnect = useMessenger((s) => s.connect);
   const msgrDisconnect = useMessenger((s) => s.disconnect);
-  const msgrUnread = useMessenger((s) => totalUnreadOf(s.conversations));
+  const privUnread = useMessenger((s) => privateUnreadOf(s.conversations));
+  const pubUnread = useMessenger((s) => publicUnreadOf(s.conversations));
+  const queueTotal = useQueue((s) => s.total);
+  const refreshQueue = useQueue((s) => s.refresh);
+  const resetQueue = useQueue((s) => s.reset);
 
   // Compteur de messages non lus (thème Prestige) : rafraîchi à chaque changement de page.
   useEffect(() => {
@@ -155,6 +162,32 @@ export default function Layout() {
   }, [accessToken]);
 
   const isStaff = user?.role === 'ADMIN' || user?.role === 'MODERATOR' || user?.role === 'OWNER';
+
+  // File de modération (staff) : pastille du menu, recomptée à chaque changement de page et toutes les minutes.
+  useEffect(() => {
+    if (!accessToken || !isStaff) { resetQueue(); return; }
+    void refreshQueue();
+  }, [accessToken, isStaff, location.pathname, refreshQueue, resetQueue]);
+  useEffect(() => {
+    if (!accessToken || !isStaff) return;
+    const t = setInterval(() => { if (!document.hidden) void refreshQueue(); }, 60_000);
+    return () => clearInterval(t);
+  }, [accessToken, isStaff, refreshQueue]);
+
+  /** Pastilles d'un lien du menu : messages privés / publics non lus pour « Chat », éléments à traiter pour « Modération ». */
+  const badgesFor = (item: NavItem) => {
+    const fmt = (n: number) => (n > 99 ? '99+' : String(n));
+    if (item.to === '/chat') {
+      return (
+        <>
+          {privUnread > 0 && <span className="side-badge red" title={`${privUnread} message${privUnread > 1 ? 's' : ''} privé${privUnread > 1 ? 's' : ''} non lu${privUnread > 1 ? 's' : ''}`}>{fmt(privUnread)}</span>}
+          {pubUnread > 0 && <span className="side-badge red outline" title={`${pubUnread} message${pubUnread > 1 ? 's' : ''} public${pubUnread > 1 ? 's' : ''} non lu${pubUnread > 1 ? 's' : ''}`}># {fmt(pubUnread)}</span>}
+        </>
+      );
+    }
+    if (item.to === '/moderation' && queueTotal > 0) return <span className="side-badge red" title={`${queueTotal} élément${queueTotal > 1 ? 's' : ''} à modérer`}>{fmt(queueTotal)}</span>;
+    return null;
+  };
 
   function goSearch() {
     navigate(`/browse?search=${encodeURIComponent(search)}`);
@@ -242,7 +275,7 @@ export default function Layout() {
                 <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={item.label}>
                   <span className="side-icon">{item.icon}</span>
                   <span>{item.label}</span>
-                  {item.to === '/chat' && msgrUnread > 0 && <span className="side-badge">{msgrUnread > 99 ? '99+' : msgrUnread}</span>}
+                  {badgesFor(item)}
                 </Link>
               );
             })}
@@ -271,6 +304,7 @@ export default function Layout() {
             )}
             <div className="row" style={{ gap: 8 }}>
               <ThemeSwitcher />
+              <SeedObligations />
               <NotificationsBell />
               <Link to="/messages" className={`icon-pill${starts('/messages')(location.pathname) ? ' active' : ''}`} title="Messages">
                 ✉️{unreadMessages > 0 && <span className="dot-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
@@ -301,7 +335,7 @@ export default function Layout() {
             );
           })}
           <button type="button" onClick={() => setDrawer(true)} className="tab-more">
-            <span>☰</span>
+            <span>☰{(privUnread + pubUnread + (isStaff ? queueTotal : 0)) > 0 && <i className="tab-dot" />}</span>
             <small>Menu</small>
           </button>
         </nav>
@@ -345,6 +379,7 @@ export default function Layout() {
         )}
         <div className="row">
           <ThemeSwitcher />
+          <SeedObligations />
           <NotificationsBell />
           <Link to="/messages" className={`top-link${starts('/messages')(location.pathname) ? ' active' : ''}`}>Messages</Link>
           <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{pendingFriendRequests > 0 ? ` (${pendingFriendRequests})` : ''}</Link>
@@ -363,7 +398,7 @@ export default function Layout() {
             const active = item.match(location.pathname);
             return (
               <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
-                <span className={`nav-icon ${item.cls}`}>{item.icon}</span>{item.label}
+                <span className={`nav-icon ${item.cls}`}>{item.icon}</span>{item.label}{badgesFor(item)}
               </Link>
             );
           })}

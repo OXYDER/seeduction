@@ -91,7 +91,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
       {
         title: 'Hit & Run : l\'obligation de seed',
         slug: 'hit-and-run',
-        keywords: 'hnr, hit and run, obligation de seed, abandon',
+        keywords: 'hnr, hit and run, obligation de seed, abandon, icône, pastille, seeds à terminer',
         isFaq: true,
         content:
           `Télécharger un torrent crée une petite obligation : le seeder un minimum de temps après, pour ne pas juste « prendre et partir ».\n\n` +
@@ -100,6 +100,8 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• Tu l'as seedé au moins [b]72 heures[/b] au total après la fin du téléchargement, OU\n` +
           `• Tu as envoyé au moins l'équivalent de [b]100 % de sa taille[/b] en upload sur ce torrent précis.\n\n` +
           `Un délai de grâce de [b]48 heures[/b] après la fin du téléchargement est toujours accordé avant qu'un manquement soit compté comme un hit & run.\n\n` +
+          `[b]Suivre tes seeds en un coup d'œil[/b]\n` +
+          `Dès que tu as au moins un téléchargement à terminer, une icône [b]🌱[/b] apparaît en haut de l'écran, à côté de la cloche. Sa pastille indique combien de torrents sont concernés et sa couleur résume la situation : [b]verte[/b] (tout est en seed), [b]orange[/b] (un torrent ne seede pas en ce moment — relance-le), [b]rouge[/b] (un hit & run est déjà compté). Un clic ouvre la liste, du plus urgent au moins urgent : pour chacun, le temps de seed accompli sur les 72 h requises, ton ratio sur ce torrent, et la date limite du délai de grâce. L'icône disparaît toute seule quand tout est régularisé.\n\n` +
           `[b]Ce qui se passe si tu accumules des hit & run non régularisés[/b]\n` +
           `Au-delà de [b]5 hit & run non régularisés[/b], tes nouveaux téléchargements sont bloqués (le seed, lui, continue normalement) jusqu'à ce que tu en régularises assez — reprends le seed des torrents concernés (visibles sur ton profil) pour débloquer ton compte.\n\n` +
           `[b]Le lecteur Seeduction compte pareil[/b]\n` +
@@ -313,6 +315,8 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `Dans une conversation privée, 📞 lance un appel audio et 🎥 un appel vidéo (les boutons sont grisés si l'autre n'est pas en ligne). Chez lui, ça sonne en haut de l'écran : il peut répondre, répondre sans caméra (🎤) ou refuser. Pendant l'appel tu peux couper ton micro, activer ou couper ta caméra (même si l'appel a commencé en audio), partager ton écran (ordinateur seulement) et réduire la fenêtre pour continuer à naviguer — le son continue. L'appel et sa durée (ou « manqué » / « refusé ») restent écrits dans la conversation. Le navigateur te demande l'accès au micro et à la caméra la première fois ; si tu as refusé, réautorise-les depuis le cadenas de la barre d'adresse. Les appels sont directs d'un navigateur à l'autre : si l'appel reste sur « Connexion… », l'un de vous est sans doute sur un réseau très restrictif (4G, entreprise) — essaie un autre réseau ou préviens le staff. Un seul appel à la fois ; les statuts « Occupé » ne reçoivent pas d'appels.\n\n` +
           `[b]S'organiser[/b]\n` +
           `Le menu ⋯ d'une conversation permet de l'[b]épingler[/b] en haut de la liste, de la mettre en [b]sourdine[/b] (1 h, 8 h, 24 h ou jusqu'à réactivation — plus de son ni de notification, mais les messages arrivent quand même) ou de l'[b]archiver[/b]. Les filtres Non lus, Groupes et Canaux retrouvent vite ce qui t'intéresse.\n\n` +
+          `[b]Pastilles sur le lien « Chat »[/b]\n` +
+          `Le lien « Chat » du menu porte deux pastilles : une pastille rouge pleine pour les [b]messages privés[/b] non lus (conversations à deux et groupes) et une pastille rouge à contour, précédée de #, pour les [b]messages publics[/b] non lus (canaux). Elles disparaissent quand tu lis les conversations, et ne comptent pas celles que tu as mises en sourdine. Les conversations privées qui arrivent s'ouvrent en petite bulle en bas à droite.\n\n` +
           `[b]Notifications[/b]\n` +
           `Un son et une pastille (dans le menu et dans le titre de l'onglet) signalent chaque nouveau message ; le 🔔 de la liste des discussions règle le son et active les notifications du navigateur (quand l'onglet est en arrière-plan). Si tu es hors ligne, tu reçois une notification sur le site.\n\n` +
           `[b]Amis[/b] : envoie une demande depuis un profil ou la page Amis ; une fois acceptée, tu peux créer des groupes avec cette personne. Tu n'as pas besoin d'être ami pour discuter à deux.`,
@@ -399,7 +403,8 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Modérateur[/b] : modération du contenu et des membres (approbation des torrents, avertissements, gestion des reports et du forum).\n` +
           `• [b]Admin[/b] : tout ce que peut faire un modérateur, plus la configuration du site (catégories, freeleech, templates, statistiques du serveur).\n` +
           `• [b]Owner[/b] : accès complet, y compris la promotion d'autres membres au staff.\n\n` +
-          `Un badge distinctif identifie chaque rôle partout où le pseudo apparaît.`,
+          `Un badge distinctif identifie chaque rôle partout où le pseudo apparaît.\n\n` +
+          `[b]La page Modération[/b] (menu « Modération », avec une pastille rouge qui compte ce qui attend) regroupe le travail du staff : les [b]torrents à valider[/b] (pochette, envoyeur, extrait de description, approbation ou rejet en un clic avec un motif envoyé au membre, approbation de plusieurs d'un coup) et les [b]signalements[/b] ouverts (résoudre, ignorer, ou retirer le torrent signalé). L'accueil affiche aussi un bandeau « À modérer » quand il y a quelque chose à traiter, et la fiche d'un torrent en attente ou signalé montre un bandeau avec les mêmes boutons.`,
       },
     ],
   },
