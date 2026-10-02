@@ -37,6 +37,10 @@ const HNR_RATIO = Number(process.env.SEEDUCTION_HNR_RATIO || 1);
 // des sessions actives — rangés dans le dossier de données de l'app, jamais dans le dossier de téléchargement.
 const TORRENTS_DIR = path.join(app.getPath('userData'), 'torrents');
 const SESSIONS_FILE = path.join(app.getPath('userData'), 'sessions.json');
+// Journal texte simple (en plus de la console, invisible une fois l'app lancée par double-clic) — pour pouvoir
+// diagnostiquer après coup (ex. pourquoi le ping « en train de regarder » n'est jamais arrivé au serveur) sans avoir
+// à relancer le logiciel depuis un terminal. Remis à zéro s'il dépasse 2 Mo, pour ne jamais grossir indéfiniment.
+const LOG_FILE = path.join(app.getPath('userData'), 'player.log');
 
 let settings = settingsStore.load();
 let tray = null;
@@ -46,7 +50,12 @@ let downloadsWin = null;
 const sessions = new Map();
 
 function log(...args) {
+  const line = `[${new Date().toISOString()}] ${args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')}`;
   console.log('[Seeduction Player]', ...args);
+  try {
+    if (fs.existsSync(LOG_FILE) && fs.statSync(LOG_FILE).size > 2_000_000) fs.writeFileSync(LOG_FILE, '');
+    fs.appendFileSync(LOG_FILE, line + '\n');
+  } catch { /* pas grave : la console reste la source de vérité quand un terminal est attaché */ }
 }
 
 function notifyError(message) {
@@ -109,6 +118,7 @@ if (!gotLock) {
       app.setLoginItemSettings({ openAtLogin: true, path: process.execPath });
     }
 
+    log('Lecteur Seeduction démarré — version', app.getVersion());
     createTray();
     setupIpc();
     restoreSessions();
@@ -140,6 +150,7 @@ function refreshTrayMenu() {
     { type: 'separator' },
     { label: '💻 Ouvrir le client Seeduction', click: openDownloadsWindow },
     { label: '📂 Ouvrir le dossier de téléchargement', click: () => shell.openPath(settings.downloadPath) },
+    { label: '📄 Afficher les journaux', click: () => shell.openPath(LOG_FILE) },
     { type: 'separator' },
     // Quitter le logiciel ne doit pas supprimer les fichiers déjà téléchargés ni casser le seed — un membre qui
     // ferme le lecteur doit pouvoir le rouvrir plus tard et continuer à respecter ses obligations de seed. Mais tant
@@ -706,9 +717,9 @@ function extractPasskey(torrent) {
  * Transporte aussi la position de lecture courante, pour que le site web puisse proposer « Reprendre la lecture à
  * xx:xx » à la place de « Ouvrir dans le lecteur » sur la fiche torrent. */
 function pingWatching(session) {
-  if (!session.torrentId) return;
+  if (!session.torrentId) { log('pingWatching : pas de torrentId sur la session, abandon'); return; }
   const passkey = extractPasskey(session.torrent);
-  if (!passkey) return;
+  if (!passkey) { log('pingWatching : passkey introuvable dans l\'announce :', (session.torrent.announce || [])[0]); return; }
   fetch(`${SITE_BASE_URL}/api/stream/watching`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -716,7 +727,8 @@ function pingWatching(session) {
       positionSeconds: session.resumePositionSeconds || 0,
       durationSeconds: session.durationSeconds || 0,
     }),
-  }).catch(() => { /* pas grave, on retentera au prochain tick */ });
+  }).then((res) => { if (!res.ok) log('pingWatching : réponse serveur', res.status); })
+    .catch((err) => log('pingWatching : échec réseau (on retentera au prochain tick) :', err.message));
 }
 
 /** Appelé une fois à la fermeture de VLC : revient au statut d'origine tout de suite plutôt que d'attendre
