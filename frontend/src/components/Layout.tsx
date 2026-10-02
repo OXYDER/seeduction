@@ -13,7 +13,7 @@ import Avatar from './Avatar';
 import ChatDock from './ChatDock';
 import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
-import { usePublicChatStore } from '../store/publicChat';
+import { useMessenger, totalUnreadOf } from '../store/messenger';
 import { useTheme } from '../lib/theme';
 import { PRESENCE_OPTIONS } from '../lib/presence';
 
@@ -115,10 +115,10 @@ export default function Layout() {
   const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
   const dmConnect = useDmStore((s) => s.connect);
   const dmDisconnect = useDmStore((s) => s.disconnect);
-  const dmTotalUnread = useDmStore((s) => s.totalUnread);
   const dmBump = useDmStore((s) => s.friendRequestBump);
-  const chatConnect = usePublicChatStore((s) => s.connect);
-  const chatDisconnect = usePublicChatStore((s) => s.disconnect);
+  const msgrConnect = useMessenger((s) => s.connect);
+  const msgrDisconnect = useMessenger((s) => s.disconnect);
+  const msgrUnread = useMessenger((s) => totalUnreadOf(s.conversations));
 
   // Compteur de messages non lus (thème Prestige) : rafraîchi à chaque changement de page.
   useEffect(() => {
@@ -130,9 +130,9 @@ export default function Layout() {
   // Chat privé (amis) et chat public : connectés tant qu'on est authentifié, indépendamment de la page affichée
   // (façon Messenger — accessibles partout via les bulles, pas seulement sur leurs pages dédiées).
   useEffect(() => {
-    if (accessToken && user) { dmConnect(accessToken); chatConnect(accessToken, user.id); }
-    else { dmDisconnect(); chatDisconnect(); }
-    return () => { if (!accessToken) { dmDisconnect(); chatDisconnect(); } };
+    if (accessToken && user) { dmConnect(accessToken); msgrConnect(accessToken, { id: user.id, username: user.username }); }
+    else { dmDisconnect(); msgrDisconnect(); }
+    return () => { if (!accessToken) { dmDisconnect(); msgrDisconnect(); } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
@@ -242,6 +242,7 @@ export default function Layout() {
                 <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={item.label}>
                   <span className="side-icon">{item.icon}</span>
                   <span>{item.label}</span>
+                  {item.to === '/chat' && msgrUnread > 0 && <span className="side-badge">{msgrUnread > 99 ? '99+' : msgrUnread}</span>}
                 </Link>
               );
             })}
@@ -275,7 +276,7 @@ export default function Layout() {
                 ✉️{unreadMessages > 0 && <span className="dot-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
               </Link>
               <Link to="/friends" className={`icon-pill${starts('/friends')(location.pathname) ? ' active' : ''}`} title="Amis">
-                👫{(pendingFriendRequests + dmTotalUnread) > 0 && <span className="dot-badge">{pendingFriendRequests + dmTotalUnread > 99 ? '99+' : pendingFriendRequests + dmTotalUnread}</span>}
+                👫{pendingFriendRequests > 0 && <span className="dot-badge">{pendingFriendRequests > 99 ? '99+' : pendingFriendRequests}</span>}
               </Link>
             </div>
           </header>
@@ -346,7 +347,7 @@ export default function Layout() {
           <ThemeSwitcher />
           <NotificationsBell />
           <Link to="/messages" className={`top-link${starts('/messages')(location.pathname) ? ' active' : ''}`}>Messages</Link>
-          <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{(pendingFriendRequests + dmTotalUnread) > 0 ? ` (${pendingFriendRequests + dmTotalUnread})` : ''}</Link>
+          <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{pendingFriendRequests > 0 ? ` (${pendingFriendRequests})` : ''}</Link>
           <Link to="/profile" className={`top-link${starts('/profile')(location.pathname) || starts('/users')(location.pathname) ? ' active' : ''}`}>{user?.username}</Link>
           <button className="secondary" onClick={() => { logout(); navigate('/login'); }}>
             Déconnexion

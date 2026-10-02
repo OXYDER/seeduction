@@ -7,12 +7,12 @@ import { formatBytes } from '../lib/format';
 import { displayRank } from '../lib/memberClass';
 import { ROLE_LABEL } from './StaffUserPanel';
 import { useAuthStore } from '../store/auth';
-import { useDmStore } from '../store/dm';
+import { useMessenger } from '../store/messenger';
 import { STATUS_COLOR, STATUS_LABEL, type PublicStatus } from '../lib/presence';
 
 function FriendAction({ u }: { u: any }) {
   const me = useAuthStore((s) => s.user);
-  const openChat = useDmStore((s) => s.openChat);
+  const openDirect = useMessenger((s) => s.openDirect);
   const [status, setStatus] = useState<string | undefined>(u.friendStatus);
   const [busy, setBusy] = useState(false);
 
@@ -26,7 +26,7 @@ function FriendAction({ u }: { u: any }) {
   // Écrire à quelqu'un ne demande pas d'être ami (comme une demande de message Messenger) : le bouton est toujours là,
   // sauf que ce membre peut avoir restreint son chat privé à ses amis (l'erreur s'affiche alors dans la fenêtre de discussion).
   const messageBtn = (
-    <button type="button" className="secondary" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => openChat({ id: u.id, username: u.username, avatarUrl: u.avatarUrl })}>
+    <button type="button" className="secondary" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => openDirect({ id: u.id, username: u.username, avatarUrl: u.avatarUrl })}>
       💬 Message
     </button>
   );

@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import Avatar from '../components/Avatar';
 import { Link } from 'react-router-dom';
 import { useDmStore } from '../store/dm';
+import { useMessenger, statusOf } from '../store/messenger';
 import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
 
 type Tab = 'friends' | 'incoming' | 'outgoing';
@@ -13,8 +14,8 @@ export default function Friends() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const openChat = useDmStore((s) => s.openChat);
-  const statusById = useDmStore((s) => s.statusById);
+  const openDirect = useMessenger((s) => s.openDirect);
+  const online = useMessenger((s) => s.online);
   const bump = useDmStore((s) => s.friendRequestBump);
 
   function refresh() {
@@ -77,7 +78,7 @@ export default function Friends() {
         {tab === 'friends' && (
           <div className="grid" style={{ gap: 8 }}>
             {data.friends.map((f) => {
-              const status = statusById[f.id] ?? f.status ?? 'OFFLINE';
+              const status = statusOf(online, f.id);
               return (
                 <div key={f.friendshipId} className="row" style={{ justifyContent: 'space-between', padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
                   <Link to={`/users/${f.id}`} className="row" style={{ gap: 10, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}>
@@ -91,7 +92,7 @@ export default function Friends() {
                     </div>
                   </Link>
                   <div className="row" style={{ gap: 6 }}>
-                    <button type="button" onClick={() => openChat({ id: f.id, username: f.username, avatarUrl: f.avatarUrl })}>💬 Message</button>
+                    <button type="button" onClick={() => openDirect({ id: f.id, username: f.username, avatarUrl: f.avatarUrl })}>💬 Message</button>
                     <button type="button" className="danger" onClick={() => window.confirm(`Retirer ${f.username} de tes amis ?`) && remove(f.friendshipId)}>Retirer</button>
                   </div>
                 </div>

@@ -16,6 +16,8 @@ export interface WikiSeedArticle {
   content: string;
   keywords?: string;
   isFaq?: boolean;
+  /** Anciens articles du seed remplacés par celui-ci : supprimés au démarrage s'ils n'ont jamais été modifiés par le staff. */
+  supersedes?: string[];
 }
 
 export interface WikiSeedCategory {
@@ -286,19 +288,29 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `Ce statut (sauf « Apparaître hors ligne ») et ton message sont visibles de tous les membres.`,
       },
       {
-        title: 'Amis et messagerie privée',
-        slug: 'amis-et-messagerie',
-        keywords: 'dm, chat privé, demande ami',
+        title: 'Messenger : discussions, groupes et canaux',
+        slug: 'messenger',
+        keywords: 'chat, messagerie, dm, message privé, groupe, canal, salon, mention, répondre, réaction, amis, notifications, son, épingler, sourdine, archiver, partager un torrent',
+        isFaq: true,
+        supersedes: ['amis-et-messagerie', 'chat-public'],
         content:
-          `Envoie une demande d'ami depuis le profil d'un membre ou son infobulle. Une fois acceptée, vous pouvez discuter en privé façon messagerie instantanée (indicateurs de frappe et de lecture inclus).\n\n` +
-          `Tu n'as pas besoin d'être ami avec quelqu'un pour lui écrire : par défaut, tout le monde peut t'envoyer un message privé. Tu peux restreindre ça à tes amis seulement depuis Profil > Compte.`,
-      },
-      {
-        title: 'Chat public',
-        slug: 'chat-public',
-        keywords: 'salon, discussion générale, public chat',
-        content:
-          `Une bulle de discussion publique est accessible depuis n'importe quelle page du site : liste des membres en ligne, indicateurs de frappe, réactions, et envoi d'images ou de fichiers.`,
+          `Le Messenger regroupe toutes tes discussions au même endroit : la page [b]Chat[/b] du menu, et des bulles flottantes en bas à droite de n'importe quelle page.\n\n` +
+          `[b]Trois types de conversations[/b]\n` +
+          `• [b]Privées (1 à 1)[/b] : avec n'importe quel membre. Par défaut tout le monde peut t'écrire ; tu peux restreindre ça à tes amis seulement dans Profil > Compte.\n` +
+          `• [b]Groupes[/b] : jusqu'à 50 personnes, avec un nom et une image. Seuls tes amis peuvent être ajoutés. Le créateur est propriétaire ; il peut nommer des administrateurs, qui ajoutent et retirent des membres et épinglent des messages. Tu peux quitter un groupe quand tu veux.\n` +
+          `• [b]Canaux publics[/b] : des salons ouverts à toute la communauté (le canal « Général » est l'ancien chat public). Le staff en crée d'autres, avec leurs règles (lecture seule, mode lent...).\n\n` +
+          `[b]Ce que tu peux faire dans un message[/b]\n` +
+          `• Envoyer du texte, des [b]émojis[/b], des [b]photos[/b] (jpeg, png, webp) et des [b]fichiers[/b] (20 Mo maximum) — par le trombone, en collant une image, ou en glissant un fichier sur la conversation.\n` +
+          `• [b]Partager un torrent[/b] (bouton 🎬) : sa fiche s'affiche dans la bulle avec l'affiche et les seeders. Coller un lien vers une fiche du site fait pareil.\n` +
+          `• [b]Répondre[/b] à un message précis (il est cité), [b]réagir[/b] avec un émoji, [b]modifier[/b] ton message ou [b]annuler son envoi[/b] (il disparaît pour tout le monde).\n` +
+          `• [b]Mentionner[/b] quelqu'un avec @pseudo : il est prévenu, et son nom ressort dans le message.\n` +
+          `• Voir quand l'autre est en train d'écrire, et le « Vu » une fois ton message lu.\n` +
+          `• Chercher un mot dans une conversation (🔍), épingler un message important, voir les photos et fichiers partagés (ⓘ).\n\n` +
+          `[b]S'organiser[/b]\n` +
+          `Le menu ⋯ d'une conversation permet de l'[b]épingler[/b] en haut de la liste, de la mettre en [b]sourdine[/b] (1 h, 8 h, 24 h ou jusqu'à réactivation — plus de son ni de notification, mais les messages arrivent quand même) ou de l'[b]archiver[/b]. Les filtres Non lus, Groupes et Canaux retrouvent vite ce qui t'intéresse.\n\n` +
+          `[b]Notifications[/b]\n` +
+          `Un son et une pastille (dans le menu et dans le titre de l'onglet) signalent chaque nouveau message ; le 🔔 de la liste des discussions règle le son et active les notifications du navigateur (quand l'onglet est en arrière-plan). Si tu es hors ligne, tu reçois une notification sur le site.\n\n` +
+          `[b]Amis[/b] : envoie une demande depuis un profil ou la page Amis ; une fois acceptée, tu peux créer des groupes avec cette personne. Tu n'as pas besoin d'être ami pour discuter à deux.`,
       },
       {
         title: 'Forum',

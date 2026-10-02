@@ -26,6 +26,15 @@ export class WikiService implements OnModuleInit {
    * le supprimer aussi de wiki-seed.ts, sinon il revient au prochain démarrage.
    */
   async onModuleInit() {
+    // Un article du seed qui en remplace d'anciens (supersedes) les retire, sauf si le staff les a retouchés entre-temps.
+    for (const cat of WIKI_SEED) {
+      for (const art of cat.articles) {
+        for (const oldSlug of art.supersedes ?? []) {
+          const old = await this.prisma.wikiArticle.findUnique({ where: { slug: oldSlug }, select: { id: true, createdAt: true, updatedAt: true } });
+          if (old && Math.abs(old.updatedAt.getTime() - old.createdAt.getTime()) < 2000) await this.prisma.wikiArticle.delete({ where: { id: old.id } });
+        }
+      }
+    }
     for (let i = 0; i < WIKI_SEED.length; i++) {
       const cat = WIKI_SEED[i];
       let category = await this.prisma.wikiCategory.findUnique({ where: { slug: cat.slug } });
