@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { assertPerm } from '../common/utils/account';
 import { ForumService } from './forum.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
@@ -49,12 +50,14 @@ export class ForumController {
   @UseGuards(JwtAuthGuard)
   @Post('categories/:id/topics')
   createTopic(@Param('id') id: string, @Body() body: { title: string; content: string }, @Request() req: any) {
+    assertPerm(req, 'write');
     return this.forumService.createTopic(id, req.user.userId, req.user.role, body.title, body.content);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('topics/:id/reply')
   reply(@Param('id') id: string, @Body('content') content: string, @Request() req: any) {
+    assertPerm(req, 'write');
     return this.forumService.reply(id, req.user.userId, req.user.role, content);
   }
 

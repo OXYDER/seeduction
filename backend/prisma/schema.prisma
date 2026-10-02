@@ -125,7 +125,8 @@ model User {
   parent           User?      @relation("FamilyProfiles", fields: [parentId], references: [id])
   profiles         User[]     @relation("FamilyProfiles")
   profileName      String?    @db.VarChar(24)
-  profileType      String     @default("MASTER") @db.VarChar(8) // MASTER | ADULT | CHILD
+  profileType      String     @default("MASTER") @db.VarChar(8) // MASTER | PROFILE (anciens profils : ADULT | CHILD)
+  profilePerms     Json?      // droits accordés par le profil principal (voir common/utils/family-perms.ts)
   pinHash          String?    // PIN à 4 chiffres (haché) : demandé à chaque connexion et à chaque changement de profil
   pinFailures      Int        @default(0)
   pinLockedUntil   DateTime?

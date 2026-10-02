@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { loadPerms } from '../common/utils/family-perms';
 import { EventEmitter } from 'events';
 import { Prisma } from '@prisma/client';
 import { KLIPY_MEDIA } from './messenger-gifs.service';
@@ -278,7 +279,13 @@ export class MessengerService extends EventEmitter {
   }
 
   /** Ouvre (ou crée) le 1 à 1 avec ce membre. */
+  /** Compte famille : le profil principal peut retirer à un profil le droit à la messagerie (chat, appels). */
+  async assertMessaging(userId: string) {
+    if (!(await loadPerms(this.prisma, userId)).messaging) throw new ForbiddenException("Le profil principal n'autorise pas la messagerie pour ce profil");
+  }
+
   async openDirect(actor: Actor, otherId: string) {
+    await this.assertMessaging(actor.userId);
     if (!otherId || otherId === actor.userId) throw new BadRequestException("Tu ne peux pas t'écrire à toi-même");
     await this.assertCanDirect(actor.userId, otherId);
     const key = [actor.userId, otherId].sort().join(':');
@@ -327,6 +334,7 @@ export class MessengerService extends EventEmitter {
   }
 
   async createGroup(actor: Actor, name: string, memberIds: string[]) {
+    await this.assertMessaging(actor.userId);
     const title = (name ?? '').trim().slice(0, 80);
     if (!title) throw new BadRequestException('Donne un nom au groupe');
     const others = [...new Set((memberIds ?? []).filter((id) => id && id !== actor.userId))];
@@ -466,6 +474,7 @@ export class MessengerService extends EventEmitter {
   }
 
   async send(actor: Actor, conversationId: string, input: SendInput) {
+    await this.assertMessaging(actor.userId);
     const { conv } = await this.access(actor, conversationId);
     this.assertCanWrite(actor, conv);
 

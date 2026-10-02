@@ -2372,3 +2372,5 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
   .fam-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .fam-chats { grid-template-columns: 1fr; }
 }
+
+.fam-rights { display: grid; gap: 6px; margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); }

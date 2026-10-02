@@ -56,13 +56,13 @@ export class FamilyController {
   }
 
   @Post('profiles')
-  create(@Body() body: { name: string; type: string; pin: string; avatarUrl?: string | null }, @Request() req: any) {
+  create(@Body() body: { name: string; pin: string; perms?: Record<string, boolean>; avatarUrl?: string | null }, @Request() req: any) {
     assertMaster(req);
     return this.family.createProfile(req.user.accountId, body ?? ({} as any));
   }
 
   @Patch('profiles/:id')
-  update(@Param('id') id: string, @Body() body: { name?: string; type?: string; avatarUrl?: string | null }, @Request() req: any) {
+  update(@Param('id') id: string, @Body() body: { name?: string; perms?: Record<string, boolean>; avatarUrl?: string | null }, @Request() req: any) {
     assertMaster(req);
     return this.family.updateProfile(req.user.accountId, id, body ?? {});
   }
@@ -87,13 +87,13 @@ export class FamilyController {
     return this.family.activity(req.user.accountId, { profileId: q.profileId, action: q.action, before: q.before, limit: q.limit ? Number(q.limit) : undefined });
   }
 
-  @Get('children/:id/conversations')
+  @Get('profiles/:id/conversations')
   childConversations(@Param('id') id: string, @Request() req: any) {
     assertMaster(req);
     return this.family.childConversations(req.user.accountId, id);
   }
 
-  @Get('children/:id/conversations/:cid/messages')
+  @Get('profiles/:id/conversations/:cid/messages')
   childMessages(@Param('id') id: string, @Param('cid') cid: string, @Query('before') before: string | undefined, @Request() req: any) {
     assertMaster(req);
     return this.family.childMessages(req.user.accountId, id, cid, before);

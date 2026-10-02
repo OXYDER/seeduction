@@ -72,7 +72,7 @@ function UserCard({ u }: { u: any }) {
         />
       </span>
       <div style={{ minWidth: 0 }}>
-        <div className="tip-title"><ProfileName username={u.username} />{u.profile && <span className="tip-meta"> · profil {u.profile.type === 'CHILD' ? 'enfant' : u.profile.type === 'ADULT' ? 'adulte' : 'principal'} du compte {u.profile.account}</span>}</div>
+        <div className="tip-title"><ProfileName username={u.username} />{u.profile && <span className="tip-meta"> · profil du compte {u.profile.account}</span>}</div>
         <div className="tip-meta">{displayRank(u, ROLE_LABEL)}{u.status === 'BANNED' ? ' · 🚫 banni' : ''}</div>
         {u.watching ? (
           <div className="tip-meta" style={{ marginTop: 3 }}>🎬 Regarde {u.watching}</div>

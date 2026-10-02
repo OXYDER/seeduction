@@ -1,4 +1,5 @@
 import { Body, Controller, ForbiddenException, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { assertPerm } from '../common/utils/account';
 import { Request, Response } from 'express';
 import { PrismaService } from '../common/prisma.service';
 import { StreamService } from './stream.service';
@@ -31,6 +32,7 @@ export class StreamController {
   @UseGuards(JwtAuthGuard)
   @Post('session')
   createSession(@Body() body: { torrentId: string; fileIndex?: number }, @Req() req: any) {
+    assertPerm(req, 'download');
     const token = this.streamService.createPlaySession(req.user.accountId ?? req.user.userId, body.torrentId, Number(body.fileIndex) || 0, req.user.userId);
     return { token };
   }

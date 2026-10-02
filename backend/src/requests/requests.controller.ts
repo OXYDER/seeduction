@@ -2,7 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request }
 import { RequestsService, RequestInput } from './requests.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
-import { accountOf, assertNotChild } from '../common/utils/account';
+import { accountOf, assertPerm } from '../common/utils/account';
 
 @Controller('requests')
 export class RequestsController {
@@ -17,14 +17,14 @@ export class RequestsController {
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Body() body: RequestInput, @Request() req: any) {
-    assertNotChild(req, 'Créer une demande');
+    assertPerm(req, 'spend');
     return this.requestsService.create(accountOf(req), body);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/bounty')
   addBounty(@Param('id') id: string, @Body('amount') amount: number, @Request() req: any) {
-    assertNotChild(req, 'Ajouter une prime');
+    assertPerm(req, 'spend');
     return this.requestsService.addBounty(id, accountOf(req), amount);
   }
 

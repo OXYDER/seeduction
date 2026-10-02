@@ -4,9 +4,9 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
 import type { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { ALL_PERMS, normalizePerms, permsOf } from '../common/utils/family-perms';
 
 export const MAX_PROFILES = 4; // le profil principal compris
-const PROFILE_TYPES = ['ADULT', 'CHILD'] as const;
 const NAME_FORMAT = /^[\p{L}\p{N}_-]{2,16}$/u;
 const PIN_FORMAT = /^\d{4}$/;
 const MAX_PIN_FAILURES = 5;
@@ -53,7 +53,7 @@ export class FamilyService {
   private card(p: any, owner: { username: string }) {
     return {
       id: p.id, name: p.profileName ?? owner.username, username: p.username, accountName: owner.username, avatarUrl: p.avatarUrl,
-      type: p.profileType, isMaster: !p.parentId, blocked: !!p.profileBlocked, hasPin: !!p.pinHash,
+      perms: permsOf(p), isMaster: !p.parentId, blocked: !!p.profileBlocked, hasPin: !!p.pinHash,
     };
   }
 
@@ -99,27 +99,26 @@ export class FamilyService {
     return username;
   }
 
-  async createProfile(accountId: string, input: { name: string; type: string; pin: string; avatarUrl?: string | null }) {
+  async createProfile(accountId: string, input: { name: string; pin: string; perms?: unknown; avatarUrl?: string | null }) {
     const owner = await this.owner(accountId);
     if (!owner.familyEnabled) throw new BadRequestException("Active d'abord le compte famille");
     const count = await this.prisma.user.count({ where: { parentId: accountId } });
     if (count + 1 >= MAX_PROFILES) throw new BadRequestException(`Un compte famille compte ${MAX_PROFILES} profils au maximum (le tien compris)`);
     const name = String(input.name ?? '').trim();
-    if (!(PROFILE_TYPES as readonly string[]).includes(input.type)) throw new BadRequestException('Type de profil invalide (adulte ou enfant)');
     this.assertPin(input.pin);
     const username = await this.assertNameFree(accountId, owner, name);
     const avatarUrl = input.avatarUrl && /^\/api\/covers\/[\w.-]+$/.test(input.avatarUrl) ? input.avatarUrl : null;
     const created = await this.prisma.user.create({
       data: {
         username, email: `profil-${randomBytes(8).toString('hex')}@profils.invalid`, passwordHash: await bcrypt.hash(randomBytes(24).toString('hex'), 4), // aucun mot de passe utilisable : on entre par le compte
-        parentId: accountId, profileName: name, profileType: input.type, pinHash: await bcrypt.hash(input.pin, 10), avatarUrl,
+        parentId: accountId, profileName: name, profileType: 'PROFILE', profilePerms: normalizePerms(input.perms), pinHash: await bcrypt.hash(input.pin, 10), avatarUrl,
         role: 'USER', showAdult: false, defaultView: owner.defaultView,
       },
     });
     return this.card(created, owner);
   }
 
-  async updateProfile(accountId: string, profileId: string, body: { name?: string; type?: string; avatarUrl?: string | null }) {
+  async updateProfile(accountId: string, profileId: string, body: { name?: string; perms?: unknown; avatarUrl?: string | null }) {
     const owner = await this.owner(accountId);
     const p = await this.ownProfile(accountId, profileId);
     const data: Record<string, any> = {};
@@ -128,10 +127,10 @@ export class FamilyService {
       data.username = await this.assertNameFree(accountId, owner, name, p.id);
       data.profileName = name;
     }
-    if (body.type !== undefined) {
-      if (!(PROFILE_TYPES as readonly string[]).includes(body.type)) throw new BadRequestException('Type de profil invalide');
-      data.profileType = body.type;
-      if (body.type === 'CHILD') { data.showAdult = false; }
+    if (body.perms !== undefined) {
+      const perms = normalizePerms({ ...permsOf(p), ...(body.perms as object) });
+      data.profilePerms = perms;
+      if (!perms.adult) data.showAdult = false; // sans droit « contenu adulte », l'affichage est coupé tout de suite
     }
     if (body.avatarUrl !== undefined) {
       if (body.avatarUrl && !/^\/api\/covers\/[\w.-]+$/.test(body.avatarUrl)) throw new BadRequestException('Avatar invalide');
@@ -188,13 +187,13 @@ export class FamilyService {
 
     const isMaster = p.id === owner.id;
     const payload: JwtPayload = isMaster
-      ? { sub: owner.id, username: owner.username, role: owner.role, fam: true, ptype: 'MASTER' }
-      : { sub: p.id, username: p.username, role: 'USER', acct: owner.id, fam: true, ptype: p.profileType };
+      ? { sub: owner.id, username: owner.username, role: owner.role, fam: true }
+      : { sub: p.id, username: p.username, role: 'USER', acct: owner.id, fam: true };
     return {
       accessToken: this.jwt.sign(payload),
       user: {
         id: p.id, username: p.username, role: isMaster ? owner.role : 'USER', passkey: isMaster ? owner.passkey : '',
-        profile: { name: p.profileName ?? owner.username, type: p.profileType, account: owner.username, isMaster, familyId: owner.id },
+        profile: { name: p.profileName ?? owner.username, perms: isMaster ? ALL_PERMS : permsOf(p), account: owner.username, isMaster, familyId: owner.id },
       },
     };
   }
@@ -254,12 +253,11 @@ export class FamilyService {
     };
   }
 
-  // ------------------------------------------------------------------ conversations des profils enfants
+  // ------------------------------------------------------------------ conversations des profils
 
+  /** Le profil principal a le contrôle complet : il peut lire les conversations de n'importe quel autre profil du compte. */
   private async childOf(accountId: string, profileId: string) {
-    const p = await this.ownProfile(accountId, profileId);
-    if (p.profileType !== 'CHILD') throw new ForbiddenException('Les conversations ne sont visibles que pour les profils enfants');
-    return p;
+    return this.ownProfile(accountId, profileId);
   }
 
   async childConversations(accountId: string, profileId: string) {

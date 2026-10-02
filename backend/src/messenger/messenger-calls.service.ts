@@ -65,6 +65,7 @@ export class MessengerCallsService {
   private busy(userId: string) { return this.byUser.has(userId); }
 
   async invite(actor: Actor, socketId: string, conversationId: string, video: boolean) {
+    await this.messenger.assertMessaging(actor.userId);
     if (this.busy(actor.userId)) return { ok: false as const, error: 'Tu es déjà en appel' };
     const calleeId = await this.messenger.callPeer(actor, conversationId);
     if (!this.presence.isOnline(calleeId) || this.presence.publicStatus(calleeId) === 'OFFLINE') return { ok: false as const, error: "Ce membre n'est pas en ligne" };

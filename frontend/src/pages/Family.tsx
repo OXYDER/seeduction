@@ -3,8 +3,9 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { timeAgo } from '../lib/time';
 import Avatar from '../components/Avatar';
+import { DEFAULT_PERMS, PERM_KEYS, PERM_LABELS, type Perms } from '../store/auth';
 
-interface Card { id: string; name: string; username: string; accountName: string; avatarUrl: string | null; type: 'MASTER' | 'ADULT' | 'CHILD'; isMaster: boolean; blocked: boolean; hasPin: boolean }
+interface Card { id: string; name: string; username: string; accountName: string; avatarUrl: string | null; perms: Perms; isMaster: boolean; blocked: boolean; hasPin: boolean }
 interface Activity {
   id: string; at: string; action: string; verb: string; detail: string | null; ip: string | null;
   profile: { id: string; name: string; avatarUrl: string | null };
@@ -13,7 +14,6 @@ interface Activity {
 interface ChildConv { id: string; type: string; name: string; members: string[]; lastMessageAt: string | null }
 interface ChildMsg { id: string; at: string; type: string; content: string; imageUrl: string | null; fileName: string | null; durationMs: number | null; sender: { id: string; username: string }; fromChild: boolean }
 
-const TYPE_LABEL = { MASTER: 'Principal', ADULT: 'Adulte', CHILD: 'Enfant' } as const;
 const ACTIONS: [string, string][] = [
   ['', 'Toutes les actions'], ['login', 'Connexions'], ['download', 'Téléchargements'], ['play', 'Lectures'], ['view', 'Consultations'], ['search', 'Recherches'],
   ['comment', 'Commentaires'], ['forum', 'Forum'], ['favorite', 'Favoris'], ['upload', 'Envois'], ['friend', 'Demandes d\'ami'], ['report', 'Signalements'], ['pin_failed', 'PIN incorrects'],
@@ -61,11 +61,11 @@ export default function Family() {
             <div className="mod-tabs" role="tablist">
               <button type="button" className={tab === 'profiles' ? 'on' : ''} onClick={() => setTab('profiles')}>Profils ({state.profiles.length}/{state.max})</button>
               <button type="button" className={tab === 'activity' ? 'on' : ''} onClick={() => setTab('activity')}>Activité</button>
-              <button type="button" className={tab === 'chats' ? 'on' : ''} onClick={() => setTab('chats')}>Conversations des enfants</button>
+              <button type="button" className={tab === 'chats' ? 'on' : ''} onClick={() => setTab('chats')}>Conversations</button>
             </div>
             {tab === 'profiles' && <ProfilesPanel state={state} reload={load} say={say} setError={setError} />}
             {tab === 'activity' && <ActivityPanel profiles={state.profiles} />}
-            {tab === 'chats' && <ChatsPanel profiles={state.profiles.filter((p) => p.type === 'CHILD')} />}
+            {tab === 'chats' && <ChatsPanel profiles={state.profiles.filter((p) => !p.isMaster)} />}
           </>
         )}
     </div>
@@ -96,7 +96,7 @@ function EnablePanel({ onEnabled }: { onEnabled: () => Promise<void> }) {
         <li>Jusqu'à <strong>4 profils</strong> (le tien compris), chacun avec son nom, son avatar, ses favoris, ses collections, sa messagerie et ses amis.</li>
         <li>Chaque profil a un <strong>PIN à 4 chiffres</strong>, demandé à <strong>chaque connexion</strong> et à chaque changement de profil.</li>
         <li>Le ratio, l'upload, le seed, la passkey, les points et la sécurité du compte restent communs. Seul toi (profil principal) peux y toucher.</li>
-        <li>Tu vois l'<strong>activité de chaque profil</strong> (téléchargements, lectures, commentaires, recherches...), tu peux <strong>bloquer</strong> un profil, et tu peux <strong>lire les conversations des profils enfants</strong>. Prévins les membres de ta famille.</li>
+        <li>Tu as le <strong>contrôle complet</strong> : tu choisis ce que chaque profil peut faire (contenu adulte, envoi de torrents, dépenses de points, messagerie...), tu vois son <strong>activité</strong> (téléchargements, lectures, commentaires, recherches...), tu peux le <strong>bloquer</strong> et <strong>lire ses conversations</strong>. Prévins les membres de ta famille.</li>
         <li>Les profils s'affichent sur le site sous la forme « Nom·{'{ton pseudo}'} » : on voit toujours à quel compte ils appartiennent.</li>
       </ul>
       <label style={{ display: 'grid', gap: 4 }}><span className="muted">Ton mot de passe (pour confirmer)</span><input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ maxWidth: 320 }} /></label>
@@ -113,7 +113,8 @@ function EnablePanel({ onEnabled }: { onEnabled: () => Promise<void> }) {
 
 function ProfilesPanel({ state, reload, say, setError }: { state: { profiles: Card[]; max: number }; reload: () => void; say: (t: string) => void; setError: (e: string) => void }) {
   const [name, setName] = useState('');
-  const [type, setType] = useState<'ADULT' | 'CHILD'>('CHILD');
+  const [perms, setPerms] = useState<Perms>({ ...DEFAULT_PERMS });
+  const [rightsFor, setRightsFor] = useState<string | null>(null);
   const [pin, setPin] = useState('');
   const [pin2, setPin2] = useState('');
   const [busy, setBusy] = useState(false);
@@ -132,7 +133,7 @@ function ProfilesPanel({ state, reload, say, setError }: { state: { profiles: Ca
     e.preventDefault();
     if (!pinOk(pin)) { setError('Le PIN doit contenir exactement 4 chiffres'); return; }
     if (pin !== pin2) { setError('Les deux PIN ne sont pas identiques'); return; }
-    await run(async () => { await api.post('/family/profiles', { name: name.trim(), type, pin }); setName(''); setPin(''); setPin2(''); }, '✓ Profil créé');
+    await run(async () => { await api.post('/family/profiles', { name: name.trim(), pin, perms }); setName(''); setPin(''); setPin2(''); }, '✓ Profil créé');
   }
 
   async function uploadAvatar(p: Card, file: File | undefined) {
@@ -156,9 +157,19 @@ function ProfilesPanel({ state, reload, say, setError }: { state: { profiles: Ca
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                 <strong>{p.name}</strong>
                 <span className="muted">· {p.username}</span>
-                <span className={`fam-type ${p.type}`}>{TYPE_LABEL[p.type]}</span>
+                {p.isMaster ? <span className="fam-type MASTER">Principal</span> : <span className="muted" style={{ fontSize: 12 }}>{PERM_KEYS.filter((k) => !p.perms[k]).length ? `${PERM_KEYS.filter((k) => !p.perms[k]).length} restriction(s)` : 'Tous les droits'}</span>}
                 {p.blocked && <span className="inv-status disabled">Bloqué</span>}
               </div>
+              {rightsFor === p.id && !p.isMaster && (
+                <div className="fam-rights">
+                  {PERM_KEYS.map((k) => (
+                    <label key={k} className="inv-check" style={{ margin: 0 }}>
+                      <input type="checkbox" checked={p.perms[k]} disabled={busy} onChange={(e) => run(() => api.patch(`/family/profiles/${p.id}`, { perms: { [k]: e.target.checked } }), '✓ Droits mis à jour')} />
+                      {PERM_LABELS[k]}
+                    </label>
+                  ))}
+                </div>
+              )}
               {pinFor === p.id && (
                 <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                   <PinInput value={newPin} onChange={setNewPin} placeholder="Nouveau PIN" />
@@ -179,9 +190,7 @@ function ProfilesPanel({ state, reload, say, setError }: { state: { profiles: Ca
               {!p.isMaster && (
                 <>
                   <label className="secondary fam-file">📷 Avatar<input type="file" accept="image/*" hidden onChange={(e) => { uploadAvatar(p, e.target.files?.[0]); e.target.value = ''; }} /></label>
-                  <select value={p.type} onChange={(e) => run(() => api.patch(`/family/profiles/${p.id}`, { type: e.target.value }), '✓ Type modifié')} aria-label="Type de profil">
-                    <option value="CHILD">Enfant</option><option value="ADULT">Adulte</option>
-                  </select>
+                  <button type="button" className={`secondary${rightsFor === p.id ? ' on' : ''}`} onClick={() => setRightsFor(rightsFor === p.id ? null : p.id)}>🔑 Droits</button>
                   <button type="button" className="secondary" onClick={() => { const n = window.prompt('Nouveau nom du profil (2 à 16 caractères, sans espace) :', p.name); if (n && n.trim() !== p.name) run(() => api.patch(`/family/profiles/${p.id}`, { name: n.trim() }), '✓ Profil renommé'); }}>Renommer</button>
                   <button type="button" className="secondary" onClick={() => { setPinFor(pinFor === p.id ? null : p.id); setNewPin(''); }}>Changer le PIN</button>
                   <button type="button" className={p.blocked ? '' : 'danger'} disabled={busy} onClick={() => run(() => api.post(`/family/profiles/${p.id}/block`, { blocked: !p.blocked }), p.blocked ? '✓ Profil débloqué' : '✓ Profil bloqué')}>{p.blocked ? 'Débloquer' : 'Bloquer'}</button>
@@ -198,12 +207,14 @@ function ProfilesPanel({ state, reload, say, setError }: { state: { profiles: Ca
           <h3 style={{ margin: 0 }}>Ajouter un profil</h3>
           <div className="inv-grid">
             <label><span className="muted">Nom du profil (2 à 16 caractères, sans espace)</span><input value={name} onChange={(e) => setName(e.target.value.replace(/[^\p{L}\p{N}_-]/gu, ''))} maxLength={16} required /></label>
-            <label><span className="muted">Type</span>
-              <select value={type} onChange={(e) => setType(e.target.value as 'ADULT' | 'CHILD')}>
-                <option value="CHILD">Enfant — contenu adulte masqué, pas d'envoi de torrents, conversations visibles par toi</option>
-                <option value="ADULT">Adulte — ses conversations restent privées</option>
-              </select>
-            </label>
+          </div>
+          <div>
+            <div className="muted" style={{ marginBottom: 6 }}>Ce que ce profil a le droit de faire (modifiable à tout moment)</div>
+            <div className="fam-rights">
+              {PERM_KEYS.map((k) => (
+                <label key={k} className="inv-check" style={{ margin: 0 }}><input type="checkbox" checked={perms[k]} onChange={(e) => setPerms({ ...perms, [k]: e.target.checked })} />{PERM_LABELS[k]}</label>
+              ))}
+            </div>
           </div>
           <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
             <label style={{ display: 'grid', gap: 4 }}><span className="muted">PIN (4 chiffres)</span><PinInput value={pin} onChange={setPin} placeholder="••••" /></label>
@@ -272,20 +283,20 @@ function ChatsPanel({ profiles }: { profiles: Card[] }) {
 
   useEffect(() => {
     setConvs(null); setOpenId(null); setMsgs(null);
-    if (childId) api.get(`/family/children/${childId}/conversations`).then((r) => setConvs(r.data)).catch(() => setConvs([]));
+    if (childId) api.get(`/family/profiles/${childId}/conversations`).then((r) => setConvs(r.data)).catch(() => setConvs([]));
   }, [childId]);
 
   function open(id: string) {
     setOpenId(id); setMsgs(null);
-    api.get(`/family/children/${childId}/conversations/${id}/messages`).then((r) => setMsgs(r.data)).catch(() => setMsgs([]));
+    api.get(`/family/profiles/${childId}/conversations/${id}/messages`).then((r) => setMsgs(r.data)).catch(() => setMsgs([]));
   }
 
-  if (profiles.length === 0) return <div className="panel"><p className="muted">Aucun profil enfant. Les conversations des profils « adulte » restent privées.</p></div>;
+  if (profiles.length === 0) return <div className="panel"><p className="muted">Aucun autre profil pour le moment.</p></div>;
 
   return (
     <div className="panel">
       <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <select value={childId} onChange={(e) => setChildId(e.target.value)} aria-label="Profil enfant">
+        <select value={childId} onChange={(e) => setChildId(e.target.value)} aria-label="Profil">
           {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <span className="muted" style={{ fontSize: 12 }}>Lecture seule — les messages ne sont pas marqués comme lus.</span>

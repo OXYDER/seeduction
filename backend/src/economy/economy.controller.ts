@@ -5,7 +5,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
-import { accountOf, assertMaster } from '../common/utils/account';
+import { accountOf, assertPerm } from '../common/utils/account';
 
 @Controller('bonus')
 export class EconomyController {
@@ -34,7 +34,7 @@ export class EconomyController {
   @UseGuards(JwtAuthGuard)
   @Post('redeem')
   redeem(@Body('item') item: string, @Request() req: any) {
-    assertMaster(req);
+    assertPerm(req, 'spend');
     return this.economy.redeem(accountOf(req), item);
   }
 
@@ -47,7 +47,7 @@ export class EconomyController {
   @UseGuards(JwtAuthGuard)
   @Post('token/:torrentId')
   useToken(@Param('torrentId') torrentId: string, @Request() req: any) {
-    assertMaster(req);
+    assertPerm(req, 'spend');
     return this.economy.useToken(accountOf(req), torrentId);
   }
 

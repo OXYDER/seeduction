@@ -3,6 +3,7 @@ import { PresenceStatus, DmPrivacy } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { FriendsService } from '../friends/friends.service';
 import { PresenceService } from '../presence/presence.service';
+import { ALL_PERMS, permsOf, type Perms } from '../common/utils/family-perms';
 
 const PRESENCE_VALUES: PresenceStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'INVISIBLE'];
 const DM_PRIVACY_VALUES: DmPrivacy[] = ['EVERYONE', 'FRIENDS_ONLY'];
@@ -25,33 +26,33 @@ export class UsersService {
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
         watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true,
-        parentId: true, profileName: true, profileType: true, familyEnabled: true,
+        parentId: true, profileName: true, profileType: true, profilePerms: true, familyEnabled: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
 
     // Compte famille : un profil montre les chiffres de son compte (ratio, upload, points, rang...), avec le nom du compte à côté.
-    let profile: { name: string; type: string; account: string; accountId: string; isMaster: boolean } | null = null;
+    let profile: { name: string; perms: Perms; account: string; accountId: string; isMaster: boolean } | null = null;
     if (user.parentId) {
       const owner = await this.prisma.user.findUnique({
         where: { id: user.parentId },
         select: { id: true, username: true, uploaded: true, downloaded: true, bonusPoints: true, minRatio: true, memberClass: true, freeleechUntil: true, createdAt: true, _count: { select: { torrentsUploaded: true, invitees: true } } },
       });
       if (owner) {
-        profile = { name: user.profileName ?? user.username, type: user.profileType, account: owner.username, accountId: owner.id, isMaster: false };
+        profile = { name: user.profileName ?? user.username, perms: permsOf(user), account: owner.username, accountId: owner.id, isMaster: false };
         Object.assign(user, { uploaded: owner.uploaded, downloaded: owner.downloaded, bonusPoints: owner.bonusPoints, minRatio: owner.minRatio, memberClass: owner.memberClass, freeleechUntil: owner.freeleechUntil, createdAt: owner.createdAt, _count: owner._count });
       }
       user.email = '';
       user.passkey = '';
     } else if (user.familyEnabled) {
-      profile = { name: user.username, type: 'MASTER', account: user.username, accountId: user.id, isMaster: true };
+      profile = { name: user.username, perms: ALL_PERMS, account: user.username, accountId: user.id, isMaster: true };
     }
 
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
     const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, parentId, profileName, profileType, familyEnabled, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     const onlineStatus = this.presence.publicStatus(user.id);

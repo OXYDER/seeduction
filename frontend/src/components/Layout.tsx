@@ -227,7 +227,7 @@ function LayoutInner() {
 
   // ---- Thème Prestige : barre latérale (ordinateur) / barre d'onglets (mobile) ----
   if (theme === 'prestige') {
-    const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && !(item.to === '/upload' && user?.profile?.type === 'CHILD')); // un profil enfant ne peut pas envoyer de torrents
+    const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && !(item.to === '/upload' && user?.profile && !user.profile.perms?.upload)); // sans le droit d'envoi accordé par le profil principal
     const tabs = ['/', '/browse', '/upload', '/forum'].map((to) => NAV_ITEMS.find((i) => i.to === to)!);
 
     return (

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseG
 import { CommentsService } from './comments.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
+import { assertPerm } from '../common/utils/account';
 
 @Controller('comments')
 export class CommentsController {
@@ -16,6 +17,7 @@ export class CommentsController {
   @UseGuards(JwtAuthGuard)
   @Post('torrent/:torrentId')
   create(@Param('torrentId') torrentId: string, @Body('content') content: string, @Request() req: any) {
+    assertPerm(req, 'write');
     return this.commentsService.create(torrentId, req.user, content);
   }
 

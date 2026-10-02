@@ -1,5 +1,6 @@
 import { Global, Injectable, Module } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { permsOf } from '../common/utils/family-perms';
 
 /**
  * Contenu pour adultes : les catégories marquées « adulte » par le staff (et leurs sous-catégories)
@@ -33,7 +34,9 @@ export class AdultService {
   async hiddenFor(userId?: string | null): Promise<string[]> {
     const adult = await this.adultCategoryIds();
     if (adult.length === 0 || !userId) return adult;
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { showAdult: true } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { showAdult: true, parentId: true, profilePerms: true, profileType: true } });
+    // Compte famille : sans le droit « contenu adulte » accordé par le profil principal, rien ne s'affiche, quel que soit le réglage du profil.
+    if (user && user.parentId && !permsOf(user).adult) return adult;
     return user?.showAdult ? [] : adult;
   }
 }

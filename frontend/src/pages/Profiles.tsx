@@ -4,9 +4,8 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import Avatar from '../components/Avatar';
 
-interface Card { id: string; name: string; username: string; accountName: string; avatarUrl: string | null; type: 'MASTER' | 'ADULT' | 'CHILD'; isMaster: boolean; blocked: boolean; hasPin: boolean }
+interface Card { id: string; name: string; username: string; accountName: string; avatarUrl: string | null; isMaster: boolean; blocked: boolean; hasPin: boolean }
 
-const TYPE_LABEL = { MASTER: 'Principal', ADULT: 'Adulte', CHILD: 'Enfant' } as const;
 
 /** Saisie du PIN à 4 chiffres : clavier à l'écran ou clavier de l'ordinateur ; part tout seul au 4e chiffre. */
 function PinPad({ card, onDone, onCancel }: { card: Card; onDone: (pin: string) => Promise<string | null>; onCancel: () => void }) {
@@ -95,7 +94,7 @@ export default function Profiles() {
           <button key={c.id} type="button" className={`profile-card${c.blocked ? ' blocked' : ''}`} disabled={c.blocked} onClick={() => setPicked(c)} title={c.blocked ? 'Profil bloqué par le profil principal' : `Ouvrir le profil ${c.name}`}>
             <Avatar user={{ username: c.name, avatarUrl: c.avatarUrl }} size={104} />
             <strong>{c.name}</strong>
-            <span className="muted">{c.blocked ? '🔒 Bloqué' : TYPE_LABEL[c.type]}</span>
+            <span className="muted">{c.blocked ? '🔒 Bloqué' : c.isMaster ? 'Principal' : ''}</span>
           </button>
         ))}
       </div>
