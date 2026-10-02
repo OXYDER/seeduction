@@ -13,7 +13,7 @@ import RejectReason from './RejectReason';
  */
 export default function ModerationRail() {
   const role = useAuthStore((s) => s.user?.role);
-  const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
+  const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
   const { pendingTorrents, openReports, refresh } = useQueue();
   const [items, setItems] = useState<any[]>([]);
   const [rejecting, setRejecting] = useState<string | null>(null);

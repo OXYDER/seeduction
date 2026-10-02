@@ -11,7 +11,7 @@ import { bbcodeToHtml } from '../lib/bbcode';
 import { displayRank } from '../lib/memberClass';
 import Avatar from '../components/Avatar';
 
-const isStaffRole = (role?: string) => ['MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
+const isStaffRole = (role?: string) => ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
 
 export default function ForumTopic() {
   const { id } = useParams();

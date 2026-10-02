@@ -4,6 +4,7 @@ import UserLink from '../components/UserLink';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import StaffQueueBanner from '../components/StaffQueueBanner';
+import CopyButton from '../components/CopyButton';
 import TorrentComments from '../components/TorrentComments';
 import TorrentSocial from '../components/TorrentSocial';
 import ReportButton from '../components/ReportButton';
@@ -42,7 +43,7 @@ export default function TorrentDetail() {
   const user = useAuthStore((s) => s.user);
   const favorites = useFavorites();
   const [searchParams] = useSearchParams();
-  const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
+  const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
   const [editSignal, setEditSignal] = useState(0);
   const [myCollections, setMyCollections] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
@@ -228,7 +229,8 @@ export default function TorrentDetail() {
           </div>
           <div className="detail-info">
             <div className="hero-kicker">{torrent.category?.name}{torrent.status === 'PENDING' ? ' · en attente de validation' : ''}{torrent.status === 'DEAD' ? ' · ☠️ mort' : ''}</div>
-            <h1>{torrent.name}</h1>
+            <h1>{torrent.name} <CopyButton text={torrent.name} title="Copier le nom de la release" /></h1>
+            {torrent.infoHash && <div className="detail-hash" title="Empreinte (info-hash) du torrent"><span className="muted">Hash :</span> <code>{torrent.infoHash}</code> <CopyButton text={torrent.infoHash} title="Copier le hash" /></div>}
             <div className="hero-meta">{meta.join('  ·  ')}</div>
             <div className="row" style={{ flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {torrent.freeleech && <span className="badge freeleech">FREELEECH</span>}
@@ -238,8 +240,9 @@ export default function TorrentDetail() {
             {synopsis && <p className="hero-synopsis">{synopsis}</p>}
             <div className="detail-stats">
               <span><HealthDot seeders={torrent.seeders} /><strong>{torrent.seeders}</strong> seeders</span>
-              <span><strong>{torrent.leechers}</strong> leechers</span>
-              <span><strong>{torrent.completedCount}</strong> complétés</span>
+              <span title="Membres qui téléchargent ce torrent en ce moment sans l'avoir terminé"><strong>{torrent.leechers}</strong> téléchargements non complétés</span>
+              <span title="Téléchargements terminés"><strong>{torrent.completedCount}</strong> complétés</span>
+              <span title="Commentaires"><strong>{torrent._count?.comments ?? 0}</strong> commentaires</span>
               {torrent.streamCompletedCount > 0 && <span><strong>{torrent.streamCompletedCount}</strong> lectures complétées</span>}
               <span><strong>{formatBytes(torrent.size)}</strong></span>
               <span>par {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</span>
@@ -341,8 +344,9 @@ export default function TorrentDetail() {
           <div>
             <div className="muted">Catégorie : {torrent.category?.name}</div>
             <div className="muted">Uploader : {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</div>
+            {torrent.infoHash && <div className="muted">Hash : <code>{torrent.infoHash}</code> <CopyButton text={torrent.infoHash} title="Copier le hash" /></div>}
             <div className="muted">
-              <HealthDot seeders={torrent.seeders} />Seeders {torrent.seeders} / Leechers {torrent.leechers} / Complétés {torrent.completedCount}
+              <HealthDot seeders={torrent.seeders} />Seeders {torrent.seeders} / Téléchargements non complétés {torrent.leechers} / Complétés {torrent.completedCount}
               {torrent.streamCompletedCount > 0 && ` / Lectures complétées ${torrent.streamCompletedCount}`}
             </div>
           </div>

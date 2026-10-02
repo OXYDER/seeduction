@@ -19,7 +19,7 @@ export class TorrentsController {
   @Get('facets')
   facets(@Query() query: Record<string, string>, @Request() req: any) {
     // Les uploads anonymes d'un membre ne se retrouvent que par lui-même ou par le staff.
-    const seesAnonymous = !!req.user && (req.user.userId === query.uploaderId || ['MODERATOR', 'ADMIN', 'OWNER'].includes(req.user.role));
+    const seesAnonymous = !!req.user && (req.user.userId === query.uploaderId || ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(req.user.role));
     return this.torrentsService.facets({
       hideAnonymous: !!query.uploaderId && !seesAnonymous,
       viewerId: req.user?.userId,
@@ -52,7 +52,7 @@ export class TorrentsController {
   @Get()
   list(@Query() query: Record<string, string>, @Request() req: any) {
     // Les uploads anonymes d'un membre ne se retrouvent que par lui-même ou par le staff.
-    const seesAnonymous = !!req.user && (req.user.userId === query.uploaderId || ['MODERATOR', 'ADMIN', 'OWNER'].includes(req.user.role));
+    const seesAnonymous = !!req.user && (req.user.userId === query.uploaderId || ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(req.user.role));
     return this.torrentsService.list({
       hideAnonymous: !!query.uploaderId && !seesAnonymous,
       viewerId: req.user?.userId,

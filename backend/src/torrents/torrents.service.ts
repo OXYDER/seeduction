@@ -30,6 +30,7 @@ export const LIST_INCLUDE = {
   // parent) est de la vidéo, afin d'afficher ou non le bouton "Visionner" dans la liste.
   category: { include: { parent: { select: { slug: true, name: true, contentKind: true } } } },
   uploader: { select: { id: true, username: true } },
+  _count: { select: { comments: true } }, // nombre de commentaires affiché dans les listes
 } as const;
 
 /** Extrait du synopsis (infobulle, vue « détails ») + grande image de fond ; le JSON complet reste sur la fiche. */
@@ -154,7 +155,7 @@ export class TorrentsService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
-    if (!['MODERATOR', 'ADMIN', 'OWNER'].includes(user.role) && (await this.adult.hiddenFor(opts?.viewerId ?? userId)).includes(torrent.categoryId)) {
+    if (!['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role) && (await this.adult.hiddenFor(opts?.viewerId ?? userId)).includes(torrent.categoryId)) {
       throw new ForbiddenException('Ce contenu est réservé aux adultes : active-le dans ton profil.');
     }
 
@@ -302,7 +303,7 @@ export class TorrentsService {
   async versions(id: string, viewer?: { userId: string; role: string }) {
     const t = await this.prisma.torrent.findUnique({ where: { id }, select: { metaSource: true, metaExternalId: true, season: true, episode: true, categoryId: true } });
     if (!t || !t.metaSource || !t.metaExternalId) return [];
-    if (!['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '') && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) return [];
+    if (!['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '') && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) return [];
     const rows = await this.prisma.torrent.findMany({
       where: {
         OR: [
@@ -432,7 +433,7 @@ export class TorrentsService {
         },
       },
     });
-    const staff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
+    const staff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
     if (!t || (t.status !== 'APPROVED' && !staff)) throw new NotFoundException('Torrent introuvable');
     if (!staff && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) throw new ForbiddenException('Contenu masqué');
 
@@ -470,7 +471,7 @@ export class TorrentsService {
     });
     if (!torrent) throw new NotFoundException('Torrent introuvable');
     // Le staff garde l'accès (modération) ; les autres doivent avoir activé le contenu adulte.
-    if (!['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '')) {
+    if (!['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '')) {
       const hidden = await this.adult.hiddenFor(viewer?.userId);
       if (hidden.includes(torrent.categoryId)) {
         throw new ForbiddenException('Ce contenu est réservé aux adultes : active l\'affichage du contenu pour adultes dans ton profil pour y accéder.');

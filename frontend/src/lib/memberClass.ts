@@ -9,7 +9,7 @@ export const CLASS_ICON: Record<string, string> = {
 /** Rang à afficher : le rôle du staff s'il y en a un, sinon la classe automatique (Nouveau, Membre, Power User...). */
 export function displayRank(user: { role?: string; memberClass?: string } | null | undefined, roleLabels: Record<string, string>): string {
   if (!user) return '';
-  if (user.role && ['MODERATOR', 'ADMIN', 'OWNER'].includes(user.role)) return roleLabels[user.role] ?? user.role;
+  if (user.role && ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role)) return roleLabels[user.role] ?? user.role;
   const cls = user.memberClass ?? 'NOUVEAU';
   return `${CLASS_ICON[cls] ?? ''} ${CLASS_LABEL[cls] ?? cls}`.trim();
 }

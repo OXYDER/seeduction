@@ -52,7 +52,7 @@ export class EconomyController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post('freeleech')
   async setFreeleech(@Body() body: { hours?: number | null; until?: string | null }, @Request() req: any) {
     const result = await this.economy.setGlobalFreeleech({ hours: body?.hours === undefined || body?.hours === null ? null : Number(body.hours), until: body?.until ?? null });
@@ -61,14 +61,14 @@ export class EconomyController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Get('events')
   events() {
     return this.economy.listEvents();
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post('events')
   async createEvent(@Body() body: { title: string; message?: string; startsAt: string; endsAt: string; announce?: boolean }, @Request() req: any) {
     const event = await this.economy.createEvent(req.user.userId, body);
@@ -77,7 +77,7 @@ export class EconomyController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Patch('events/:id')
   async updateEvent(@Param('id') id: string, @Body() body: { title?: string; message?: string | null; startsAt?: string; endsAt?: string }, @Request() req: any) {
     const event = await this.economy.updateEvent(id, body);
@@ -86,7 +86,7 @@ export class EconomyController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Delete('events/:id')
   async deleteEvent(@Param('id') id: string, @Request() req: any) {
     const event = await this.economy.deleteEvent(id);

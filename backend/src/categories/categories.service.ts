@@ -161,7 +161,7 @@ export class CategoriesService implements OnModuleInit {
 
   async list(viewer?: { userId: string; role: string }, includeAdult = false) {
     // Le staff peut demander toutes les catégories (pour les gérer) ; sinon les catégories adultes sont masquées.
-    const staff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
+    const staff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
     const hidden = includeAdult && staff ? [] : await this.adult.hiddenFor(viewer?.userId);
     // contentKind est renvoyé tel quel (non hérité) : une sous-catégorie sans
     // valeur propre doit rester "vide" pour l'admin (édition) — c'est au

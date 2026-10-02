@@ -7,7 +7,7 @@ import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from '../presence/presence.service';
 
-const ROLE_ORDER = ['USER', 'UPLOADER', 'MODERATOR', 'ADMIN', 'OWNER'];
+const ROLE_ORDER = ['USER', 'UPLOADER', 'MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const rank = (r?: string | null) => (r ? ROLE_ORDER.indexOf(r) : -1);
 export const isStaff = (role?: string | null) => rank(role) >= rank('MODERATOR');
 

@@ -4,7 +4,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { AdultService } from '../adult/adult.service';
 
 const PER_PAGE = 20;
-const STAFF = ['MODERATOR', 'ADMIN', 'OWNER'];
+const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const MAX_LENGTH = 5000;
 
 @Injectable()

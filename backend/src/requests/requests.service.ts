@@ -3,7 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 
-const STAFF = ['MODERATOR', 'ADMIN', 'OWNER'];
+const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const MAX_BOUNTY = 100_000;
 
 export interface RequestInput {

@@ -14,7 +14,7 @@ import Avatar from './Avatar';
 /** Commentaires sous un torrent : écrire, citer, modifier, supprimer, signaler. */
 export default function TorrentComments({ torrentId }: { torrentId: string }) {
   const user = useAuthStore((s) => s.user);
-  const staff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
+  const staff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
   const [data, setData] = useState<{ items: any[]; total: number; page: number; pageSize: number } | null>(null);
   const [page, setPage] = useState(1);
   const [text, setText] = useState('');

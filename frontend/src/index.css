@@ -2471,3 +2471,21 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .hs-cats { display: flex; flex-wrap: wrap; gap: 8px; }
 .hs-cat { padding: 5px 14px; border-radius: 999px; font-size: 13px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); }
 .hs-cat:hover { background: rgba(255,255,255,0.12); }
+
+/* ---- Copier, résumé de liste, hash ---- */
+.copy-btn { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-left: 6px; padding: 0; vertical-align: middle; border-radius: 6px; background: rgba(255,255,255,0.07); border: 0; box-shadow: none; color: inherit; opacity: 0.55; font-size: 12px; }
+.copy-btn:hover { opacity: 1; background: rgba(255,255,255,0.16); }
+.copy-btn.done { opacity: 1; color: #6ee7a0; }
+.vr-name-line { display: flex; align-items: center; min-width: 0; }
+.vr-name-line .vr-name { min-width: 0; }
+.tv-summary { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 8px 14px; margin-bottom: 8px; border-radius: 10px; background: rgba(255,255,255,0.05); font-size: 13px; }
+.detail-hash { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; font-size: 13px; }
+.detail-hash code { word-break: break-all; font-size: 12px; opacity: 0.9; }
+
+/* ---- Admin > Paramètres ---- */
+.cfg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.cfg-field { display: grid; gap: 4px; align-content: start; }
+.cfg-field input { width: 100%; }
+.cfg-field input.cfg-dirty { outline: 2px solid var(--acc1, #8b5cf6); }
+.cfg-reset { padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+.cfg-bar { position: sticky; bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 12px; background: #151b33; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }

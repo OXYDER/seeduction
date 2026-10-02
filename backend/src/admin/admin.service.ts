@@ -6,9 +6,11 @@ import { ReportsService } from '../reports/reports.service';
 import { SocialService } from '../social/social.service';
 import { normalizeOrigin } from '../common/utils/facets';
 
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 
-const ROLE_RANK: Record<string, number> = { USER: 0, UPLOADER: 1, MODERATOR: 2, ADMIN: 3, OWNER: 4 };
+const ROLE_RANK: Record<string, number> = { USER: 0, UPLOADER: 1, MODERATOR: 2, SUPER_MODERATOR: 3, ADMIN: 4, OWNER: 5 };
+const MEMBER_EDITORS = ['SUPER_MODERATOR', 'ADMIN', 'OWNER'];
+const MEMBER_CLASSES = ['NOUVEAU', 'MEMBRE', 'POWER_USER', 'ELITE', 'VETERAN'];
 const TORRENT_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'DEAD'];
 
 export interface Actor { userId: string; username: string; role: string }
@@ -147,23 +149,31 @@ export class AdminService {
       where: { id: userId },
       select: {
         id: true, username: true, email: true, role: true, status: true, uploaded: true, downloaded: true, bonusPoints: true,
+        minRatio: true, memberClass: true, freeleechTokens: true, parentId: true, familyEnabled: true,
         createdAt: true, lastSeenAt: true,
         warnings: { orderBy: { createdAt: 'desc' }, take: 20 },
         bans: { orderBy: { createdAt: 'desc' }, take: 20 },
       },
     });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
-    return user;
+    // Hit & run non régularisés (qu'un administrateur peut effacer).
+    const flagged = await this.prisma.snatch.findMany({ where: { userId, hnr: true, satisfied: false }, orderBy: { completedAt: 'desc' }, take: 50 });
+    const names = flagged.length ? await this.prisma.torrent.findMany({ where: { id: { in: flagged.map((f) => f.torrentId) } }, select: { id: true, name: true } }) : [];
+    const byId = new Map(names.map((t) => [t.id, t.name]));
+    const hnr = flagged.map((f) => ({ id: f.id, torrentId: f.torrentId, name: byId.get(f.torrentId) ?? '(torrent supprimé)', seedHours: Math.floor(f.seedSeconds / 3600), completedAt: f.completedAt }));
+    return { ...user, hnr };
   }
 
   /** Rôle, pseudo, upload/download/bonus : réservé aux administrateurs, avec la hiérarchie des rôles. */
   async updateUser(actor: Actor, userId: string, body: Record<string, any>) {
     userId = await this.accountIdOf(userId);
-    if (!['ADMIN', 'OWNER'].includes(actor.role)) throw new ForbiddenException('Réservé aux administrateurs');
+    if (!MEMBER_EDITORS.includes(actor.role)) throw new ForbiddenException('Réservé aux administrateurs et super modérateurs');
     const target = await this.loadTarget(userId);
     if (actor.userId !== target.id) this.assertOutranks(actor, target);
 
     const data: Record<string, any> = {};
+    const who = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    (target as any).email = who?.email;
     if (typeof body.role === 'string') {
       if (!(body.role in ROLE_RANK)) throw new BadRequestException('Rôle invalide');
       if (actor.userId === target.id && body.role !== target.role) throw new ForbiddenException('Tu ne peux pas changer ton propre rôle');
@@ -186,6 +196,26 @@ export class AdminService {
         if (!Number.isFinite(gb) || gb < 0) throw new BadRequestException(`Valeur invalide pour ${field}`);
         data[field] = BigInt(Math.round(gb * 1e9));
       }
+    }
+    if (typeof body.email === 'string' && body.email.trim().toLowerCase() !== (target as any).email?.toLowerCase()) {
+      const email = body.email.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Courriel invalide');
+      if (await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' }, id: { not: userId } }, select: { id: true } })) throw new BadRequestException('Ce courriel est déjà utilisé');
+      data.email = email;
+    }
+    if (body.minRatio !== undefined && body.minRatio !== null && body.minRatio !== '') {
+      const r = Number(body.minRatio);
+      if (!Number.isFinite(r) || r < 0 || r > 20) throw new BadRequestException('Ratio minimum invalide (0 à 20)');
+      data.minRatio = r;
+    }
+    if (typeof body.memberClass === 'string' && body.memberClass) {
+      if (!MEMBER_CLASSES.includes(body.memberClass)) throw new BadRequestException('Rang inconnu');
+      data.memberClass = body.memberClass;
+    }
+    if (body.freeleechTokens !== undefined && body.freeleechTokens !== null && body.freeleechTokens !== '') {
+      const n = Math.floor(Number(body.freeleechTokens));
+      if (!Number.isFinite(n) || n < 0 || n > 100000) throw new BadRequestException('Nombre de jetons invalide');
+      data.freeleechTokens = n;
     }
     if (body.bonusPoints !== undefined && body.bonusPoints !== null && body.bonusPoints !== '') {
       const points = Number(body.bonusPoints);
@@ -233,6 +263,40 @@ export class AdminService {
     userId = await this.accountIdOf(userId);
     this.assertOutranks(actor, await this.loadTarget(userId));
     return this.prisma.user.update({ where: { id: userId }, data: { status: 'ACTIVE' } });
+  }
+
+  private assertMemberEditor(actor: Actor) {
+    if (!MEMBER_EDITORS.includes(actor.role)) throw new ForbiddenException('Réservé aux administrateurs et super modérateurs');
+  }
+
+  /** Efface des hit & run (un seul, ou tous ceux du membre) : ils ne comptent plus ni dans le blocage des téléchargements ni dans son historique. */
+  async clearHitAndRun(actor: Actor, userId: string, snatchId?: string) {
+    this.assertMemberEditor(actor);
+    userId = await this.accountIdOf(userId);
+    this.assertOutranks(actor, await this.loadTarget(userId));
+    const res = await this.prisma.snatch.updateMany({ where: { userId, hnr: true, satisfied: false, ...(snatchId ? { id: snatchId } : {}) }, data: { hnr: false, satisfied: true } });
+    let warnings = 0;
+    if (!snatchId) warnings = (await this.prisma.warning.deleteMany({ where: { userId, issuedBy: 'Système', reason: { startsWith: 'Hit & run' } } })).count;
+    return { cleared: res.count, warningsDeleted: warnings };
+  }
+
+  async deleteWarning(actor: Actor, userId: string, warningId: string) {
+    this.assertMemberEditor(actor);
+    userId = await this.accountIdOf(userId);
+    this.assertOutranks(actor, await this.loadTarget(userId));
+    const res = await this.prisma.warning.deleteMany({ where: { id: warningId, userId } });
+    if (res.count === 0) throw new NotFoundException('Avertissement introuvable');
+    return { ok: true };
+  }
+
+  /** Nouvelle passkey (l'ancienne cesse de fonctionner : le membre doit retélécharger ses .torrent). */
+  async regeneratePasskey(actor: Actor, userId: string) {
+    this.assertMemberEditor(actor);
+    userId = await this.accountIdOf(userId);
+    this.assertOutranks(actor, await this.loadTarget(userId));
+    const passkey = randomUUID();
+    await this.prisma.user.update({ where: { id: userId }, data: { passkey } });
+    return { ok: true };
   }
 
   listReports(status: 'OPEN' | 'RESOLVED' | 'DISMISSED' = 'OPEN', target?: { type?: string; id?: string }) {

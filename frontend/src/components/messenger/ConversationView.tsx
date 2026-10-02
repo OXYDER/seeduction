@@ -12,7 +12,7 @@ import Composer from './Composer';
 
 const TYPING_TTL_MS = 4500;
 const CLUSTER_GAP_MS = 5 * 60_000;
-const STAFF = ['MODERATOR', 'ADMIN', 'OWNER'];
+const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 
 interface Props {
   conversationId: string;

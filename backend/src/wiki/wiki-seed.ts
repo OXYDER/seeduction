@@ -424,7 +424,9 @@ export const WIKI_SEED: WikiSeedCategory[] = [
         keywords: 'modérateur, admin, owner, hiérarchie',
         content:
           `• [b]Modérateur[/b] : modération du contenu et des membres (approbation des torrents, avertissements, gestion des reports et du forum).\n` +
-          `• [b]Admin[/b] : tout ce que peut faire un modérateur, plus la configuration du site (catégories, freeleech, templates, statistiques du serveur).\n` +
+          `• [b]Super modérateur[/b] : comme un modérateur, avec en plus le droit de modifier les membres (upload, download, points bonus, courriel, rang, ratio minimum, effacement des hit & run).
+` +
+          `• [b]Admin[/b] : tout ce que peut faire un modérateur, plus la configuration du site (catégories, freeleech, templates, statistiques du serveur) et les [b]paramètres du tracker[/b] (Admin > Paramètres : cadeau de bienvenue, ratio minimum, hit & run, points bonus, rangs, prix de la boutique).\n` +
           `• [b]Owner[/b] : accès complet, y compris la promotion d'autres membres au staff.\n\n` +
           `Un badge distinctif identifie chaque rôle partout où le pseudo apparaît.\n\n` +
           `[b]Codes d'invitation génériques[/b] (administrateurs) : Admin > Invitations permet de créer des codes avec la durée de validité de ton choix (et un début programmé), un nombre d'inscriptions permises, et si besoin une seule inscription par adresse IP. Chaque inscription est notée (membre, IP, date) ; un code peut être désactivé, prolongé ou supprimé, et un lien d'inscription prêt à envoyer est généré.\n\n` +

@@ -9,7 +9,7 @@ import Avatar from '../Avatar';
 import ConvAvatar from './ConvAvatar';
 import Lightbox from './Lightbox';
 
-const ROLE_LABEL: Record<string, string> = { OWNER: 'Propriétaire', ADMIN: 'Administrateur', MEMBER: '' };
+const ROLE_LABEL: Record<string, string> = { OWNER: 'Propriétaire', SUPER_MODERATOR: 'Super modérateur', ADMIN: 'Administrateur', MEMBER: '' };
 
 /** Panneau de droite : membres et réglages d'un groupe, médias partagés, personnes en ligne d'un canal. */
 export default function ConversationInfo({ conversationId, onClose, onLeft }: { conversationId: string; onClose: () => void; onLeft: () => void }) {

@@ -16,6 +16,7 @@ import { TorrentPreview } from './TorrentLink';
 import { FavoriteStar, HealthDot } from './TorrentBits';
 import WatchOnlineButton from './WatchOnlineButton';
 import TorrentGroups from './TorrentGroups';
+import CopyButton from './CopyButton';
 
 const VIDEO_KINDS = new Set(['FILM', 'SERIE', 'XXX', 'DOCUMENT']);
 
@@ -47,14 +48,18 @@ export interface TorrentViewProps {
   /** Boutons supplémentaires à côté de « Visionner » / « Télécharger ». */
   rowActions?: (t: any) => ReactNode;
   hideUploader?: boolean;
+  /** Cache la ligne « N torrents · taille totale » en tête de liste. */
+  hideSummary?: boolean;
   empty?: ReactNode;
 }
 
-const COLUMNS: { label: string; sort: string; key: 'cat' | 'name' | 'date' | 'size' | 's' | 'l' | 'up' }[] = [
+const COLUMNS: { label: string; sort: string; key: 'cat' | 'name' | 'date' | 'size' | 'cm' | 'dl' | 's' | 'l' | 'up' }[] = [
   { label: 'Catégorie', sort: 'categorie', key: 'cat' },
   { label: 'Nom', sort: 'nom', key: 'name' },
   { label: 'Ajouté', sort: 'date', key: 'date' },
   { label: 'Taille', sort: 'taille', key: 'size' },
+  { label: '💬', sort: '', key: 'cm' },
+  { label: 'Compl.', sort: '', key: 'dl' },
   { label: 'S', sort: 'seeders', key: 's' },
   { label: 'L', sort: 'leechers', key: 'l' },
   { label: 'Uploader', sort: 'uploader', key: 'up' },
@@ -102,9 +107,24 @@ function Cover({ t, className }: { t: any; className?: string }) {
  * Chaque champ est facultatif : une liste qui n'a pas (encore) tous les détails s'affiche quand même proprement.
  */
 export default function TorrentView(props: TorrentViewProps) {
+  const total = props.items.reduce((n, t) => n + (Number(t.size) || 0), 0);
+  return (
+    <>
+      {props.items.length > 0 && !props.hideSummary && (
+        <div className="tv-summary" role="status">
+          <span><strong>{props.items.length}</strong> torrent{props.items.length > 1 ? 's' : ''} affiché{props.items.length > 1 ? 's' : ''}</span>
+          <span>Taille totale : <strong>{formatBytes(total)}</strong></span>
+        </div>
+      )}
+      <TorrentViewBody {...props} />
+    </>
+  );
+}
+
+function TorrentViewBody(props: TorrentViewProps) {
   const { items, view, empty } = props;
   const favorites = useFavorites();
-  const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(useAuthStore((s) => s.user?.role) ?? '');
+  const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(useAuthStore((s) => s.user?.role) ?? '');
 
   const star = (t: any) => props.leading
     ? props.leading(t)
@@ -160,14 +180,14 @@ export default function TorrentView(props: TorrentViewProps) {
             <tr>
               {cols.map((c) => (
                 <th
-                  key={c.sort}
-                  className={props.onSort ? `sortable${props.sort === c.sort ? ' sorted' : ''}` : undefined}
-                  onClick={props.onSort ? () => props.onSort!(c.sort) : undefined}
-                  title={props.onSort ? `Trier par ${c.label.toLowerCase()}` : undefined}
+                  key={c.key}
+                  className={props.onSort && c.sort ? `sortable${props.sort === c.sort ? ' sorted' : ''}` : undefined}
+                  onClick={props.onSort && c.sort ? () => props.onSort!(c.sort) : undefined}
+                  title={c.key === 'cm' ? 'Commentaires' : c.key === 'dl' ? 'Téléchargements complétés' : props.onSort && c.sort ? `Trier par ${c.label.toLowerCase()}` : undefined}
                   // Toutes les colonnes sauf « Nom » se réduisent à leur contenu : « Nom » absorbe l'espace restant.
                   style={c.key === 'name' ? undefined : { width: '1%', whiteSpace: 'nowrap' }}
                 >
-                  {c.label}{props.onSort && <span className="sort-arrow">{props.sort === c.sort ? (props.order === 'asc' ? '▲' : '▼') : '⇅'}</span>}
+                  {c.label}{props.onSort && c.sort && <span className="sort-arrow">{props.sort === c.sort ? (props.order === 'asc' ? '▲' : '▼') : '⇅'}</span>}
                 </th>
               ))}
               {props.extraColumns?.map((c) => <th key={c.header} style={{ width: '1%', whiteSpace: 'nowrap' }}>{c.header}</th>)}
@@ -192,7 +212,7 @@ export default function TorrentView(props: TorrentViewProps) {
                         : <span className="category-swatch" style={{ background: `${(catStyle?.color ?? '#e0b84a')}26` }}>{catStyle?.icon ?? '📦'}</span>}
                       <span>
                         {isStaff && <Link to={`/torrents/${t.id}?edit=1`} title="Modifier / supprimer (staff)" style={{ marginRight: 6 }}>✏️</Link>}
-                        {titleLink(t)}{' '}
+                        {titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" />{' '}
                         <Badges t={t} />
                         {metaLine(t) && <div className="muted" style={{ fontSize: 11 }}>{metaLine(t)}</div>}
                         {t.reason && <div className="tv-reason">✨ {t.reason}</div>}
@@ -201,6 +221,8 @@ export default function TorrentView(props: TorrentViewProps) {
                   </td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{t.createdAt ? timeAgo(t.createdAt) : ''}</td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatBytes(t.size)}</td>
+                  <td className="muted" style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>{t._count?.comments ?? 0}</td>
+                  <td className="muted" style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>{t.completedCount ?? 0}</td>
                   <td style={{ color: 'var(--success)', whiteSpace: 'nowrap' }}><HealthDot seeders={t.seeders ?? 0} />{t.seeders ?? 0}</td>
                   <td style={{ color: 'var(--danger)' }}>{t.leechers ?? 0}</td>
                   {!props.hideUploader && <td className="muted">{t.anonymousUpload ? 'Anonyme' : t.uploader ? <UserLink user={t.uploader} /> : '—'}</td>}
@@ -223,7 +245,7 @@ export default function TorrentView(props: TorrentViewProps) {
           <article key={t.id} className="tv-detail-card">
             <Link to={`/torrents/${t.id}`} className="tv-detail-poster" tabIndex={-1} aria-hidden="true"><Cover t={t} /></Link>
             <div className="tv-detail-main">
-              <div className="tv-detail-title">{star(t)}{titleLink(t)}</div>
+              <div className="tv-detail-title">{star(t)}{titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" /></div>
               <div className="tv-detail-badges"><CategoryTag category={t.category} /> <Badges t={t} /></div>
               {metaLine(t) && <div className="muted">{metaLine(t)}</div>}
               {t.synopsis && <p className="tv-detail-synopsis">{t.synopsis}</p>}
@@ -237,6 +259,7 @@ export default function TorrentView(props: TorrentViewProps) {
             <div className="tv-detail-side">
               <div className="tv-detail-stats"><Seeds t={t} /></div>
               <div className="muted">{formatBytes(t.size)}</div>
+              <div className="muted" style={{ fontSize: 12 }} title="Commentaires · téléchargements complétés">💬 {t._count?.comments ?? 0} · ✔ {t.completedCount ?? 0}</div>
               <div className="row" style={{ gap: 4 }}>{actions(t)}</div>
             </div>
           </article>
@@ -254,10 +277,11 @@ export default function TorrentView(props: TorrentViewProps) {
             <div key={t.id} className="tv-compact-row">
               <span className="tv-compact-lead">{star(t)}</span>
               <span className="tv-compact-icon" title={t.category?.name}>{styleOf(t)?.icon || '📦'}</span>
-              <span className="tv-compact-name">{titleLink(t)}</span>
+              <span className="tv-compact-name">{titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" /></span>
               <span className="tv-compact-badges"><Badges t={t} /></span>
               {extras(t)}
               <span className="muted tv-compact-size">{formatBytes(t.size)}</span>
+              <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }} title="Commentaires · complétés">💬{t._count?.comments ?? 0} ✔{t.completedCount ?? 0}</span>
               <span className="tv-compact-seeds"><Seeds t={t} /></span>
               <span className="muted tv-compact-age">{t.createdAt ? timeAgo(t.createdAt) : ''}</span>
               <span className="row tv-compact-actions" style={{ gap: 4 }}>{actions(t)}</span>

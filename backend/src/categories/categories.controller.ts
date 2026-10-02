@@ -23,35 +23,35 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post('simplify-legacy')
   simplifyLegacy() {
     return this.categoriesService.simplifyLegacy();
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post('install-recommended')
   installRecommended() {
     return this.categoriesService.installRecommended();
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post()
   create(@Body() body: { name: string; parentId?: string; contentKind?: string | null; imageUrl?: string | null; adult?: boolean }) {
     return this.categoriesService.create(body.name, body.parentId, body.contentKind, body.imageUrl, body.adult);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Patch(':id')
   update(@Param('id') id: string, @Body() body: { name?: string; parentId?: string | null; contentKind?: string | null; imageUrl?: string | null; adult?: boolean }) {
     return this.categoriesService.update(id, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Delete(':id')
   delete(@Param('id') id: string) {
     return this.categoriesService.delete(id);

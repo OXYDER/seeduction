@@ -200,7 +200,7 @@ function LayoutInner() {
     } catch { /* session expirée : l'intercepteur s'en occupe */ }
   }
 
-  const isStaff = user?.role === 'ADMIN' || user?.role === 'MODERATOR' || user?.role === 'OWNER';
+  const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
 
   // File de modération (staff) : pastille du menu, recomptée à chaque changement de page et toutes les minutes.
   useEffect(() => {

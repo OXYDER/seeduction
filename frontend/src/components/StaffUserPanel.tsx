@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 
-const RANK: Record<string, number> = { USER: 0, UPLOADER: 1, MODERATOR: 2, ADMIN: 3, OWNER: 4 };
-const ROLE_LABEL: Record<string, string> = { USER: 'Membre', UPLOADER: 'Uploader', MODERATOR: 'Modérateur', ADMIN: 'Administrateur', OWNER: 'Propriétaire' };
+import { CLASS_LABEL } from '../lib/memberClass';
+
+const RANK: Record<string, number> = { USER: 0, UPLOADER: 1, MODERATOR: 2, SUPER_MODERATOR: 3, ADMIN: 4, OWNER: 5 };
+const ROLE_LABEL: Record<string, string> = { USER: 'Membre', UPLOADER: 'Uploader', MODERATOR: 'Modérateur', SUPER_MODERATOR: 'Super modérateur', ADMIN: 'Administrateur', OWNER: 'Propriétaire' };
 export { ROLE_LABEL };
 
 const toGo = (bytes: string | number) => (Number(bytes) / 1e9).toFixed(2);
@@ -15,6 +17,10 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
   const [uploaded, setUploaded] = useState('');
   const [downloaded, setDownloaded] = useState('');
   const [bonus, setBonus] = useState('');
+  const [email, setEmail] = useState('');
+  const [minRatio, setMinRatio] = useState('');
+  const [memberClass, setMemberClass] = useState('NOUVEAU');
+  const [tokens, setTokens] = useState('');
   const [warnReason, setWarnReason] = useState('');
   const [banReason, setBanReason] = useState('');
   const [banUntil, setBanUntil] = useState('');
@@ -31,6 +37,10 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
       setUploaded(toGo(d.uploaded));
       setDownloaded(toGo(d.downloaded));
       setBonus(String(Math.round(d.bonusPoints ?? 0)));
+      setEmail(d.email ?? '');
+      setMinRatio(String(d.minRatio ?? 0.5));
+      setMemberClass(d.memberClass ?? 'NOUVEAU');
+      setTokens(String(d.freeleechTokens ?? 0));
     }).catch(() => setDetail(null));
   }
   useEffect(load, [targetId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -39,7 +49,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
 
   const isSelf = targetId === myId;
   const outranks = myRole === 'OWNER' ? !isSelf : (RANK[myRole] ?? 0) > (RANK[detail.role] ?? 0);
-  const canEdit = ['ADMIN', 'OWNER'].includes(myRole) && (outranks || isSelf);
+  const canEdit = ['SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(myRole) && (outranks || isSelf);
   const assignable = Object.keys(RANK).filter((r) => myRole === 'OWNER' || RANK[r] < RANK[myRole]);
 
   async function run(action: () => Promise<any>, success: string) {
@@ -70,6 +80,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
       username: username !== detail.username ? username : undefined,
       role: role !== detail.role ? role : undefined,
       uploaded, downloaded, bonusPoints: bonus,
+      email: email !== detail.email ? email : undefined, minRatio, memberClass, freeleechTokens: tokens,
     }),
     'Profil mis à jour (le nouveau rôle s\'applique à sa prochaine connexion)',
   );
@@ -110,8 +121,45 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
             <div className="muted" style={{ marginBottom: 4 }}>Points bonus</div>
             <input type="number" min="0" value={bonus} onChange={(e) => setBonus(e.target.value)} style={{ width: '100%' }} />
           </div>
+          <div>
+            <div className="muted" style={{ marginBottom: 4 }}>Courriel</div>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <div className="muted" style={{ marginBottom: 4 }}>Rang automatique</div>
+            <select value={memberClass} onChange={(e) => setMemberClass(e.target.value)} style={{ width: '100%' }}>
+              {Object.entries(CLASS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <div className="muted" style={{ marginBottom: 4 }}>Ratio minimum</div>
+            <input type="number" min="0" max="20" step="0.05" value={minRatio} onChange={(e) => setMinRatio(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <div className="muted" style={{ marginBottom: 4 }}>Jetons freeleech</div>
+            <input type="number" min="0" value={tokens} onChange={(e) => setTokens(e.target.value)} style={{ width: '100%' }} />
+          </div>
           <div style={{ display: 'flex', alignItems: 'end' }}>
             <button type="button" onClick={save}>Enregistrer</button>
+          </div>
+        </div>
+      )}
+
+      {canEdit && !isSelf && (
+        <div className="panel" style={{ marginBottom: 12 }}>
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <strong>🔄 Hit &amp; run non régularisés ({detail.hnr?.length ?? 0})</strong>
+            {(detail.hnr?.length ?? 0) > 0 && <button type="button" className="secondary" onClick={() => window.confirm('Effacer tous les hit & run de ce membre (et les avertissements automatiques liés) ?') && run(() => api.post(`/admin/users/${targetId}/clear-hnr`), 'Hit & run effacés')}>Tout effacer</button>}
+          </div>
+          {(detail.hnr ?? []).map((h: any) => (
+            <div key={h.id} className="row muted" style={{ justifyContent: 'space-between', gap: 8, fontSize: 12, padding: '4px 0' }}>
+              <span>{h.name} — {h.seedHours} h de seed</span>
+              <button type="button" className="secondary" style={{ padding: '1px 10px', fontSize: 12 }} onClick={() => run(() => api.post(`/admin/users/${targetId}/clear-hnr`, { snatchId: h.id }), 'Hit & run effacé')}>Effacer</button>
+            </div>
+          ))}
+          {(detail.hnr?.length ?? 0) === 0 && <div className="muted" style={{ fontSize: 12 }}>Aucun hit &amp; run en cours.</div>}
+          <div style={{ marginTop: 8 }}>
+            <button type="button" className="secondary" onClick={() => window.confirm("Générer une nouvelle passkey ? L'ancienne cesse de fonctionner : le membre devra retélécharger ses .torrent.") && run(() => api.post(`/admin/users/${targetId}/passkey`), 'Nouvelle passkey générée')}>🔑 Régénérer la passkey</button>
           </div>
         </div>
       )}
@@ -171,6 +219,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
               <div key={h.id} className="muted" style={{ fontSize: 12, padding: '2px 0' }}>
                 {new Date(h.createdAt).toLocaleDateString('fr-FR')} — {h.kind} par {h.issuedBy} : {h.reason}
                 {h.expiresAt && ` (jusqu'au ${new Date(h.expiresAt).toLocaleDateString('fr-FR')})`}
+                {canEdit && !isSelf && h.kind.includes('Avertissement') && <button type="button" className="secondary" style={{ marginLeft: 8, padding: '0 8px', fontSize: 11 }} onClick={() => run(() => api.delete(`/admin/users/${targetId}/warnings/${h.id}`), 'Avertissement supprimé')}>Supprimer</button>}
               </div>
             ))}
         </div>

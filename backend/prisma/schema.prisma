@@ -20,6 +20,7 @@ enum UserRole {
   USER
   UPLOADER
   MODERATOR
+  SUPER_MODERATOR // modérateur avec droit de modifier les membres (upload, download, points, courriel...)
   ADMIN
   OWNER
 }

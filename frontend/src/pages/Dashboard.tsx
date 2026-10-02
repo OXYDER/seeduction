@@ -94,7 +94,7 @@ function ClassicDashboard() {
                 </div>
                 <div>
                   <strong>{profile.username}</strong>{' '}
-                  {['ADMIN', 'OWNER', 'MODERATOR'].includes(profile.role) && '👑'}
+                  {['ADMIN', 'OWNER', 'MODERATOR', 'SUPER_MODERATOR'].includes(profile.role) && '👑'}
                   <div className="muted">{rank.title}</div>
                 </div>
               </div>

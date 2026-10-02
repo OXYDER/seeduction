@@ -9,7 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 import { AuditService } from '../audit/audit.service';
 import { MailService } from '../mail/mail.service';
-import { CLASS_LABELS, ECONOMY, INVITE_QUOTA } from '../common/utils/economy';
+import { CLASS_LABELS, ECONOMY, INVITE_QUOTA, SITE } from '../common/utils/economy';
 
 const MIN_PASSWORD_LENGTH = 8;
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -116,6 +116,7 @@ export class AuthService {
             email,
             passwordHash,
             invitedById: invite.createdById,
+            minRatio: SITE.defaultMinRatio,
             ...welcomeGift,
           },
         });
@@ -348,7 +349,7 @@ export class AuthService {
   async createInvite(userId: string, expiresInDays = 7) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, memberClass: true } });
     if (!user) throw new UnauthorizedException();
-    const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(user.role);
+    const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role);
     if (!isStaff) {
       const quota = INVITE_QUOTA[user.memberClass] ?? 0;
       const open = await this.prisma.inviteCode.count({ where: { createdById: userId, used: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });

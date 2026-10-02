@@ -47,7 +47,7 @@ export class ChatService {
   async delete(id: string, requester: { userId: string; role: string }) {
     const message = await this.prisma.chatMessage.findUnique({ where: { id }, select: { userId: true } });
     if (!message) return;
-    const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(requester.role);
+    const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(requester.role);
     if (message.userId !== requester.userId && !isStaff) throw new ForbiddenException('Tu ne peux supprimer que tes propres messages');
     await this.prisma.chatMessage.delete({ where: { id } });
   }

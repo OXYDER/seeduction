@@ -13,7 +13,7 @@ const EMPTY_FORM = { title: '', year: '', description: '', bounty: 0, language: 
 
 export default function Requests() {
   const user = useAuthStore((s) => s.user);
-  const isStaff = !!user && ['MODERATOR', 'ADMIN', 'OWNER'].includes(user.role);
+  const isStaff = !!user && ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role);
   // ?title=... : lien "faire une demande" depuis la page d'un film / d'une série (suite ou saison manquante).
   const [searchParams] = useSearchParams();
   const prefill = searchParams.get('title') ?? '';

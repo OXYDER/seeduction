@@ -9,6 +9,7 @@ interface Channel {
 const ROLES: { value: string; label: string }[] = [
   { value: '', label: 'Tout le monde' },
   { value: 'MODERATOR', label: 'Modérateurs et plus' },
+  { value: 'SUPER_MODERATOR', label: 'Super modérateurs et plus' },
   { value: 'ADMIN', label: 'Administrateurs et plus' },
   { value: 'OWNER', label: 'Propriétaire seulement' },
 ];

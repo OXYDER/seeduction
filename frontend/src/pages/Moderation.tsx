@@ -26,7 +26,7 @@ const isOld = (iso: string) => Date.now() - new Date(iso).getTime() > 24 * 3600_
 /** La file de modération du staff : torrents à valider et signalements, avec les actions à portée de clic. */
 export default function Moderation() {
   const role = useAuthStore((s) => s.user?.role);
-  const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
+  const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
   const refreshQueue = useQueue((s) => s.refresh);
   const location = useLocation();
   const [tab, setTab] = useState<'torrents' | 'reports'>((location.state as any)?.tab === 'reports' ? 'reports' : 'torrents');

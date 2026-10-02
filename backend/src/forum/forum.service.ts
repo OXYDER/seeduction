@@ -5,7 +5,7 @@ import { BadgesService } from '../badges/badges.service';
 
 export interface Viewer { userId: string; role: string }
 
-const STAFF = ['MODERATOR', 'ADMIN', 'OWNER'];
+const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const TOPICS_PER_PAGE = 20;
 const POSTS_PER_PAGE = 15;
 const UNREAD_WINDOW_MS = 30 * 86400_000; // au-delà, un sujet n'est plus signalé « non lu »

@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, Re
 import { TemplatesService } from './templates.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
-const STAFF_ROLES = ['MODERATOR', 'ADMIN', 'OWNER'];
+const STAFF_ROLES = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 
 @UseGuards(JwtAuthGuard)
 @Controller('templates')

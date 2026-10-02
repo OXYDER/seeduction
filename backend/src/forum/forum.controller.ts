@@ -82,7 +82,7 @@ export class ForumController {
   // ---------------------------------------------------------------- modération et administration
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post('topics/:id/moderate')
   async moderate(@Param('id') id: string, @Body() body: { action: string; forumId?: string }, @Request() req: any) {
     const result = await this.forumService.moderateTopic(id, body.action, body.forumId);
@@ -91,7 +91,7 @@ export class ForumController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Delete('topics/:id')
   async deleteTopic(@Param('id') id: string, @Request() req: any) {
     const result = await this.forumService.deleteTopic(id);
@@ -100,7 +100,7 @@ export class ForumController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Get('movable-forums')
   movable() {
     return this.forumService.movableForums();
@@ -112,7 +112,7 @@ export class ForumController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post('categories')
   async createCategory(@Body() body: { name: string; parentId?: string; isCategory?: boolean; description?: string; icon?: string; staffOnly?: boolean; locked?: boolean }, @Request() req: any) {
     const result = await this.forumService.createCategory(body.name, body.parentId, !!body.isCategory, body);
@@ -121,7 +121,7 @@ export class ForumController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Patch('categories/:id')
   updateCategory(
     @Param('id') id: string,
@@ -131,14 +131,14 @@ export class ForumController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post('categories/:id/move')
   move(@Param('id') id: string, @Body('direction') direction: 'up' | 'down') {
     return this.forumService.move(id, direction === 'up' ? 'up' : 'down');
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Delete('categories/:id')
   async deleteCategory(@Param('id') id: string, @Request() req: any) {
     const result = await this.forumService.deleteCategory(id);

@@ -5,6 +5,7 @@ import { timeAgo } from '../lib/time';
 import { downloadTorrent } from '../lib/download';
 import CategoryTag from './CategoryTag';
 import UserLink from './UserLink';
+import CopyButton from './CopyButton';
 
 const RES_RANK = (r?: string | null) => (!r ? 0 : /^(4k|2160)/i.test(r) ? 5 : /1080/.test(r) ? 4 : /720/.test(r) ? 3 : /576|480/.test(r) ? 2 : 1);
 
@@ -47,7 +48,7 @@ export function VersionRow({ t, current, showName, actions }: RowProps) {
         {t.status === 'DEAD' && <span className="vr-dead" title="Plus aucun seeder">☠️</span>}
       </div>
       <div className="vr-who">
-        {showName && <Link to={`/torrents/${t.id}`} className="vr-name" title={t.name}>{t.name}</Link>}
+        {showName && <span className="vr-name-line"><Link to={`/torrents/${t.id}`} className="vr-name" title={t.name}>{t.name}</Link><CopyButton text={t.name} title="Copier le nom de la release" /></span>}
         <span className="vr-uploader">{t.uploader && !t.anonymousUpload ? <UserLink user={t.uploader} /> : <span className="muted">Anonyme</span>}</span>
       </div>
       <span className="vr-num vr-age">{timeAgo(t.createdAt)}</span>
@@ -56,6 +57,7 @@ export function VersionRow({ t, current, showName, actions }: RowProps) {
       <span className="vr-num vr-seed" title="Seeders">{t.seeders ?? 0}</span>
       <span className="vr-num vr-leech" title="Leechers">{t.leechers ?? 0}</span>
       <span className="vr-actions">
+        {!showName && <CopyButton text={t.name} title="Copier le nom de la release" />}
         {actions?.(t)}
         <button type="button" className="icon-btn icon-btn-sq" title="Télécharger le .torrent" aria-label="Télécharger le .torrent" onClick={() => downloadTorrent(t.id, t.name)}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" /></svg>

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
 
-const STAFF = ['MODERATOR', 'ADMIN', 'OWNER'];
+const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 export const ENTITY_GROUPS = ['actors', 'directors', 'producers', 'genres', 'creators'] as const;
 export const SUGGEST_SCOPES = ['torrents', 'users', 'categories', 'entities', 'topics', ...ENTITY_GROUPS] as const;
 type Scope = (typeof SUGGEST_SCOPES)[number];

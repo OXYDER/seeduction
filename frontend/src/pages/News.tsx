@@ -36,7 +36,7 @@ function Card({ n, big, canEdit, onEdit }: { n: any; big?: boolean; canEdit: boo
 export default function News() {
   const { id } = useParams();
   const role = useAuthStore((s) => s.user?.role);
-  const canEdit = ['MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
+  const canEdit = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
   const [params, setParams] = useSearchParams();
   const page = parseInt(params.get('page') ?? '1', 10);
   const [feed, setFeed] = useState<any>(null);

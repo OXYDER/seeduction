@@ -103,7 +103,7 @@ export default function Profile() {
         {id && me && id !== me.id && <Link to={`/messages?to=${encodeURIComponent(profile.username)}`} className="icon-btn">✉️ Message</Link>}
         {id && me && id !== me.id && <ReportButton targetType="user" targetId={id} compact />}
       </div>
-      {id && me && ['MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && (
+      {id && me && ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && (
         <StaffUserPanel targetId={id} myRole={me.role} myId={me.id} onChanged={() => setReloadKey((k) => k + 1)} />
       )}
       {own && (

@@ -1,16 +1,17 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AdminService, Actor } from './admin.service';
 import { AdminInvitesService, InviteInput } from './admin-invites.service';
+import { SiteConfigService } from './site-config.service';
 import { AuditService } from '../audit/audit.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('MODERATOR', 'ADMIN', 'OWNER')
+@Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
 @Controller('admin')
 export class AdminController {
-  constructor(private adminService: AdminService, private invites: AdminInvitesService, private audit: AuditService) {}
+  constructor(private adminService: AdminService, private invites: AdminInvitesService, private siteConfig: SiteConfigService, private audit: AuditService) {}
 
   @Get('stats')
   stats() {
@@ -180,6 +181,61 @@ export class AdminController {
   @Get('invites/:id/uses')
   inviteUses(@Param('id') id: string) {
     return this.invites.uses(id);
+  }
+
+  // ---- paramètres du tracker (administrateurs seulement)
+
+  @Roles('ADMIN', 'OWNER')
+  @Get('config')
+  config() {
+    return this.siteConfig.list();
+  }
+
+  @Roles('ADMIN', 'OWNER')
+  @Patch('config')
+  async updateConfig(@Body() body: Record<string, unknown>, @Request() req: any) {
+    const result = await this.siteConfig.update(body ?? {});
+    await this.audit.log(req.user.userId, 'CONFIG_EDIT', { keys: Object.keys(body ?? {}) }, this.ip(req));
+    return result;
+  }
+
+  @Roles('ADMIN', 'OWNER')
+  @Post('config/reset')
+  async resetConfig(@Body('keys') keys: string[] | undefined, @Request() req: any) {
+    const result = await this.siteConfig.reset(Array.isArray(keys) ? keys : undefined);
+    await this.audit.log(req.user.userId, 'CONFIG_RESET', { keys: keys ?? 'all' }, this.ip(req));
+    return result;
+  }
+
+  @Roles('ADMIN', 'OWNER')
+  @Post('config/apply-min-ratio')
+  async applyMinRatio(@Request() req: any) {
+    const result = await this.siteConfig.applyMinRatioToAll();
+    await this.audit.log(req.user.userId, 'CONFIG_MIN_RATIO_ALL', result, this.ip(req));
+    return result;
+  }
+
+  // ---- modification des membres (administrateurs et super modérateurs, vérifié dans le service)
+
+  @Post('users/:id/clear-hnr')
+  async clearHnr(@Param('id') id: string, @Body('snatchId') snatchId: string | undefined, @Request() req: any) {
+    const result = await this.adminService.clearHitAndRun(this.actor(req), id, snatchId);
+    await this.audit.log(req.user.userId, 'USER_CLEAR_HNR', { targetId: id, ...result, snatchId: snatchId ?? null }, this.ip(req));
+    return result;
+  }
+
+  @Delete('users/:id/warnings/:wid')
+  async deleteWarning(@Param('id') id: string, @Param('wid') wid: string, @Request() req: any) {
+    const result = await this.adminService.deleteWarning(this.actor(req), id, wid);
+    await this.audit.log(req.user.userId, 'USER_WARNING_DELETE', { targetId: id, warningId: wid }, this.ip(req));
+    return result;
+  }
+
+  @Post('users/:id/passkey')
+  async regenPasskey(@Param('id') id: string, @Request() req: any) {
+    const result = await this.adminService.regeneratePasskey(this.actor(req), id);
+    await this.audit.log(req.user.userId, 'USER_PASSKEY_RESET', { targetId: id }, this.ip(req));
+    return result;
   }
 
   @Get('reports')

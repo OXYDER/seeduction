@@ -51,7 +51,7 @@ export class UsersService {
 
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
-    const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
+    const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
     const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;

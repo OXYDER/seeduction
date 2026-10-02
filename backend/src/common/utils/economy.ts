@@ -40,6 +40,12 @@ export const ECONOMY = {
   reseedRewardMax: num('RESEED_REWARD_MAX', 200),
 };
 
+/** Réglages du site modifiables depuis Admin > Paramètres (voir SiteConfigService). */
+export const SITE = {
+  /** Ratio minimum donné aux nouveaux membres à l'inscription. */
+  defaultMinRatio: 0.5,
+};
+
 export const ANNOUNCE_INTERVAL_SECONDS = 1800;
 
 /** Rangs automatiques, du plus élevé au plus bas ; le premier dont toutes les conditions sont remplies s'applique. */
