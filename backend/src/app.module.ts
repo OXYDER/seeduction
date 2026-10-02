@@ -38,6 +38,7 @@ import { DmModule } from './dm/dm.module';
 import { StreamModule } from './stream/stream.module';
 import { WikiModule } from './wiki/wiki.module';
 import { MessengerModule } from './messenger/messenger.module';
+import { FamilyModule } from './family/family.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { MessengerModule } from './messenger/messenger.module';
     StreamModule,
     WikiModule,
     MessengerModule,
+    FamilyModule,
   ],
 })
 export class AppModule {}

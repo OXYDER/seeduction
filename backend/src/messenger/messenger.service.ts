@@ -454,7 +454,7 @@ export class MessengerService extends EventEmitter {
   }
 
   private async parseMentions(conv: { id: string; type: string }, content: string) {
-    const names = [...new Set([...content.matchAll(/@([\p{L}\p{N}_.-]{2,32})/gu)].map((m) => m[1].toLowerCase()))].slice(0, 10);
+    const names = [...new Set([...content.matchAll(/@([\p{L}\p{N}_.·-]{2,50})/gu)].map((m) => m[1].toLowerCase()))].slice(0, 10);
     if (names.length === 0) return [];
     const users = await this.prisma.user.findMany({
       where: { OR: names.map((n) => ({ username: { equals: n, mode: 'insensitive' as const } })) },

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { accountOf, assertMaster } from '../common/utils/account';
 
 const ipOf = (req: any): string | null => (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? null;
 
@@ -36,25 +37,29 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('2fa/status')
   twoFactorStatus(@Request() req: any) {
-    return this.authService.twoFactorStatus(req.user.userId);
+    assertMaster(req);
+    return this.authService.twoFactorStatus(accountOf(req));
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/setup')
   setup2FA(@Request() req: any) {
-    return this.authService.setup2FA(req.user.userId);
+    assertMaster(req);
+    return this.authService.setup2FA(accountOf(req));
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/confirm')
   confirm2FA(@Body('token') token: string, @Request() req: any) {
-    return this.authService.confirm2FA(req.user.userId, token, ipOf(req));
+    assertMaster(req);
+    return this.authService.confirm2FA(accountOf(req), token, ipOf(req));
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/disable')
   disable2FA(@Body() body: { password: string; token: string }, @Request() req: any) {
-    return this.authService.disable2FA(req.user.userId, body.password, body.token, ipOf(req));
+    assertMaster(req);
+    return this.authService.disable2FA(accountOf(req), body.password, body.token, ipOf(req));
   }
 
   // ---- mot de passe
@@ -62,7 +67,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   changePassword(@Body() body: { currentPassword: string; newPassword: string }, @Request() req: any) {
-    return this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword, ipOf(req));
+    assertMaster(req);
+    return this.authService.changePassword(accountOf(req), body.currentPassword, body.newPassword, ipOf(req));
   }
 
   @Get('features')
@@ -83,12 +89,14 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('logins')
   recentLogins(@Request() req: any) {
-    return this.authService.recentLogins(req.user.userId);
+    assertMaster(req);
+    return this.authService.recentLogins(accountOf(req));
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('invite')
   createInvite(@Request() req: any) {
-    return this.authService.createInvite(req.user.userId);
+    assertMaster(req);
+    return this.authService.createInvite(accountOf(req));
   }
 }

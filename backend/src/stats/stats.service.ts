@@ -11,7 +11,7 @@ export class StatsService {
 
   async globalStats() {
     const [totalUsers, totalTorrents, totalSeeders, totalLeechers, totalCompleted] = await Promise.all([
-      this.prisma.user.count(),
+      this.prisma.user.count({ where: { parentId: null } }),
       this.prisma.torrent.count({ where: { status: 'APPROVED' } }),
       this.prisma.peer.count({ where: { isSeeder: true } }),
       this.prisma.peer.count({ where: { isSeeder: false } }),

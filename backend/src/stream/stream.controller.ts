@@ -31,7 +31,7 @@ export class StreamController {
   @UseGuards(JwtAuthGuard)
   @Post('session')
   createSession(@Body() body: { torrentId: string; fileIndex?: number }, @Req() req: any) {
-    const token = this.streamService.createPlaySession(req.user.userId, body.torrentId, Number(body.fileIndex) || 0);
+    const token = this.streamService.createPlaySession(req.user.accountId ?? req.user.userId, body.torrentId, Number(body.fileIndex) || 0, req.user.userId);
     return { token };
   }
 
@@ -60,7 +60,7 @@ export class StreamController {
   @UseGuards(JwtAuthGuard)
   @Get('position/:torrentId')
   getPosition(@Param('torrentId') torrentId: string, @Req() req: any) {
-    return this.streamService.getPosition(req.user.userId, torrentId);
+    return this.streamService.getPosition(req.user.accountId ?? req.user.userId, torrentId);
   }
 
   @Get(':torrentId')

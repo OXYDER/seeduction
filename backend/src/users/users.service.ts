@@ -25,15 +25,33 @@ export class UsersService {
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
         watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true,
+        parentId: true, profileName: true, profileType: true, familyEnabled: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
 
+    // Compte famille : un profil montre les chiffres de son compte (ratio, upload, points, rang...), avec le nom du compte à côté.
+    let profile: { name: string; type: string; account: string; accountId: string; isMaster: boolean } | null = null;
+    if (user.parentId) {
+      const owner = await this.prisma.user.findUnique({
+        where: { id: user.parentId },
+        select: { id: true, username: true, uploaded: true, downloaded: true, bonusPoints: true, minRatio: true, memberClass: true, freeleechUntil: true, createdAt: true, _count: { select: { torrentsUploaded: true, invitees: true } } },
+      });
+      if (owner) {
+        profile = { name: user.profileName ?? user.username, type: user.profileType, account: owner.username, accountId: owner.id, isMaster: false };
+        Object.assign(user, { uploaded: owner.uploaded, downloaded: owner.downloaded, bonusPoints: owner.bonusPoints, minRatio: owner.minRatio, memberClass: owner.memberClass, freeleechUntil: owner.freeleechUntil, createdAt: owner.createdAt, _count: owner._count });
+      }
+      user.email = '';
+      user.passkey = '';
+    } else if (user.familyEnabled) {
+      profile = { name: user.username, type: 'MASTER', account: user.username, accountId: user.id, isMaster: true };
+    }
+
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
     const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, parentId, profileName, profileType, familyEnabled, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     const onlineStatus = this.presence.publicStatus(user.id);
@@ -42,6 +60,7 @@ export class UsersService {
     const watching = onlineStatus !== 'OFFLINE' && watchingUntil && watchingUntil > new Date() ? watchingTitle : null;
     return {
       ...publicInfo,
+      ...(profile ? { profile } : {}),
       ratio,
       watching,
       // « onlineStatus » est ce que voient les autres (ONLINE/AWAY/BUSY/OFFLINE, jamais INVISIBLE tel quel) ;
@@ -124,6 +143,7 @@ export class UsersService {
 
   async leaderboard(limit = 50) {
     const users = await this.prisma.user.findMany({
+      where: { parentId: null },
       orderBy: { uploaded: 'desc' },
       take: limit,
       select: { id: true, username: true, uploaded: true, downloaded: true, bonusPoints: true },
@@ -136,7 +156,7 @@ export class UsersService {
 
   /** Job périodique (cron) à appeler pour figer un snapshot de ratio par user. */
   async snapshotAllRatios() {
-    const users = await this.prisma.user.findMany({ select: { id: true, uploaded: true, downloaded: true } });
+    const users = await this.prisma.user.findMany({ where: { parentId: null }, select: { id: true, uploaded: true, downloaded: true } });
     await this.prisma.ratioSnapshot.createMany({
       data: users.map((u) => ({ userId: u.id, uploaded: u.uploaded, downloaded: u.downloaded })),
     });

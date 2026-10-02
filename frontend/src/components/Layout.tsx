@@ -15,6 +15,7 @@ import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
 import { useMessenger, privateUnreadOf, publicUnreadOf } from '../store/messenger';
 import { useQueue } from '../store/queue';
+import { ProfileName } from './UserLink';
 import SeedObligations from './SeedObligations';
 import { useTheme } from '../lib/theme';
 import { PRESENCE_OPTIONS } from '../lib/presence';
@@ -95,8 +96,19 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true },
 ];
 
+/**
+ * Compte famille : tant que le profil n'est pas choisi (jeton « de compte »), aucune page du site ne s'affiche ni ne fait
+ * d'appel — on va droit à l'écran « Qui est-ce ? ».
+ */
 export default function Layout() {
-  const { user, accessToken, logout } = useAuthStore();
+  const token = useAuthStore((s) => s.accessToken);
+  const scope = useAuthStore((s) => s.scope);
+  if (token && scope === 'account') return <Navigate to="/profiles" replace />;
+  return <LayoutInner />;
+}
+
+function LayoutInner() {
+  const { user, accessToken, logout, login } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -161,6 +173,17 @@ export default function Layout() {
     }
   }, [accessToken]);
 
+  // Compte famille : revenir à l'écran « Qui est-ce ? » (nouveau choix de profil, donc nouveau PIN).
+  async function switchProfile() {
+    try {
+      const { data } = await api.post('/family/exit');
+      msgrDisconnect();
+      dmDisconnect();
+      login(data.accessToken, user, 'account');
+      navigate('/profiles');
+    } catch { /* session expirée : l'intercepteur s'en occupe */ }
+  }
+
   const isStaff = user?.role === 'ADMIN' || user?.role === 'MODERATOR' || user?.role === 'OWNER';
 
   // File de modération (staff) : pastille du menu, recomptée à chaque changement de page et toutes les minutes.
@@ -204,7 +227,7 @@ export default function Layout() {
 
   // ---- Thème Prestige : barre latérale (ordinateur) / barre d'onglets (mobile) ----
   if (theme === 'prestige') {
-    const visibleNav = NAV_ITEMS.filter((item) => !item.staffOnly || isStaff);
+    const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && !(item.to === '/upload' && user?.profile?.type === 'CHILD')); // un profil enfant ne peut pas envoyer de torrents
     const tabs = ['/', '/browse', '/upload', '/forum'].map((to) => NAV_ITEMS.find((i) => i.to === to)!);
 
     return (
@@ -247,7 +270,7 @@ export default function Layout() {
                 />
               </span>
               <div style={{ minWidth: 0 }}>
-                <div className="side-user-name">{user?.username}</div>
+                <div className="side-user-name">{user?.username ? <ProfileName username={user.username} /> : null}</div>
                 <div className="side-user-sub">
                   {profile?.watching ? (
                     <span title={profile.watching}>🎬 {profile.watching}</span>
@@ -268,6 +291,12 @@ export default function Layout() {
             </div>
             <button className="secondary side-logout" onClick={() => { logout(); navigate('/login'); }} title="Se déconnecter">⎋</button>
           </div>
+          {user && (
+            <div className="side-family">
+              {user?.profile && <button type="button" className="secondary" onClick={switchProfile} title="Changer de profil (PIN demandé)">↔ Changer de profil</button>}
+              {(!user?.profile || user.profile.isMaster) && <Link to="/family" className={`secondary${starts('/family')(location.pathname) ? ' active' : ''}`} title="Compte famille : profils, activité, conversations des enfants">👨‍👩‍👧 Famille</Link>}
+            </div>
+          )}
           <nav className="side-links">
             {visibleNav.map((item) => {
               const active = item.match(location.pathname);

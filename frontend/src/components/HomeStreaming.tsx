@@ -184,7 +184,7 @@ export default function HomeStreaming() {
         <>
           {featured ? (
             <section key={featured.id} className="hero-plex hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
-              <div className="hero-kicker">{greeting} {user?.username} · À la une</div>
+              <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username} · À la une</div>
               <h1>{featured.name}</h1>
               <div className="hero-meta">
                 {[featured.year, featured.category?.name, featured.resolution, featured.language, formatBytes(featured.size)].filter(Boolean).join('  ·  ')}
@@ -205,7 +205,7 @@ export default function HomeStreaming() {
             </section>
           ) : (
             <section className="hero-plex">
-              <div className="hero-kicker">{greeting} {user?.username}</div>
+              <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username}</div>
               <h1>Bienvenue sur Seeduction</h1>
               <p className="hero-synopsis">Le tracker privé d'exception. Les premiers torrents envoyés apparaîtront ici, en grand.</p>
               <Link to="/upload"><button type="button" className="hero-cta">Envoyer un torrent</button></Link>

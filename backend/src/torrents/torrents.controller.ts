@@ -6,6 +6,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { TorrentsService } from './torrents.service';
 import { RecommendationsService } from './recommendations.service';
+import { accountOf, assertNotChild } from '../common/utils/account';
 import { normalizeOrigin } from '../common/utils/facets';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
@@ -99,7 +100,7 @@ export class TorrentsController {
   @UseGuards(JwtAuthGuard)
   @Get('mine/active')
   active(@Request() req: any) {
-    return this.torrentsService.activeForUser(req.user.userId);
+    return this.torrentsService.activeForUser(accountOf(req), req.user.userId);
   }
 
   @UseGuards(OptionalJwtAuthGuard)
@@ -145,8 +146,9 @@ export class TorrentsController {
     @Body() body: Record<string, string>,
     @Request() req: any,
   ) {
+    assertNotChild(req, 'Envoyer un torrent');
     return this.torrentsService.upload({
-      userId: req.user.userId,
+      userId: accountOf(req),
       fileBuffer: file.buffer,
       name: body.name,
       description: body.description,
@@ -178,7 +180,7 @@ export class TorrentsController {
   @UseGuards(JwtAuthGuard)
   @Get(':id/download')
   async download(@Param('id') id: string, @Request() req: any, @Res() res: Response) {
-    const buf = await this.torrentsService.getDownloadFile(id, req.user.userId);
+    const buf = await this.torrentsService.getDownloadFile(id, accountOf(req), { viewerId: req.user.userId });
     res.set({
       'Content-Type': 'application/x-bittorrent',
       'Content-Disposition': `attachment; filename="${id}.torrent"`,

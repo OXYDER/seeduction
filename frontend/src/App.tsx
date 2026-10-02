@@ -18,6 +18,8 @@ import Profile from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
 import Admin from './pages/Admin';
 import Moderation from './pages/Moderation';
+import Profiles from './pages/Profiles';
+import Family from './pages/Family';
 import Forum from './pages/Forum';
 import ForumTopic from './pages/ForumTopic';
 import Messages from './pages/Messages';
@@ -36,6 +38,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/profiles" element={<Profiles />} />
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -54,6 +57,7 @@ export default function App() {
           <Route path="/entities/:id" element={<EntityPage />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/moderation" element={<Moderation />} />
+          <Route path="/family" element={<Family />} />
           <Route path="/forum" element={<Forum />} />
           <Route path="/forum/f/:id" element={<ForumView />} />
           <Route path="/forum/latest" element={<ForumLatest />} />

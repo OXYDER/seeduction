@@ -9,6 +9,13 @@ import { ROLE_LABEL } from './StaffUserPanel';
 import { useAuthStore } from '../store/auth';
 import { useMessenger } from '../store/messenger';
 import { STATUS_COLOR, STATUS_LABEL, type PublicStatus } from '../lib/presence';
+import { splitProfileName } from '../lib/profileName';
+
+/** « Léa » suivi, en plus petit, du compte auquel appartient ce profil famille (« ·OXYDE »). */
+export function ProfileName({ username }: { username: string }) {
+  const { name, account } = splitProfileName(username);
+  return account ? <>{name}<small className="profile-acct" title={`Profil du compte ${account}`}>·{account}</small></> : <>{username}</>;
+}
 
 function FriendAction({ u }: { u: any }) {
   const me = useAuthStore((s) => s.user);
@@ -65,7 +72,7 @@ function UserCard({ u }: { u: any }) {
         />
       </span>
       <div style={{ minWidth: 0 }}>
-        <div className="tip-title">{u.username}</div>
+        <div className="tip-title"><ProfileName username={u.username} />{u.profile && <span className="tip-meta"> · profil {u.profile.type === 'CHILD' ? 'enfant' : u.profile.type === 'ADULT' ? 'adulte' : 'principal'} du compte {u.profile.account}</span>}</div>
         <div className="tip-meta">{displayRank(u, ROLE_LABEL)}{u.status === 'BANNED' ? ' · 🚫 banni' : ''}</div>
         {u.watching ? (
           <div className="tip-meta" style={{ marginTop: 3 }}>🎬 Regarde {u.watching}</div>
@@ -90,12 +97,12 @@ function UserCard({ u }: { u: any }) {
 /** Pseudo cliquable vers le profil ; au survol, une infobulle résume le membre (texte simple si on n'a pas son identifiant). */
 export default function UserLink({ user, fallback = '' }: { user?: { id?: string; username?: string } | null; fallback?: string }) {
   if (!user?.username) return <>{fallback}</>;
-  if (!user.id) return <>{user.username}</>;
+  if (!user.id) return <ProfileName username={user.username} />;
   const id = user.id;
   return (
     <HoverCard cacheKey={`user:${id}`} load={() => api.get(`/users/${id}`).then((r) => r.data)} render={(u: any) => <UserCard u={u} />}>
       <Link to={`/users/${id}`} onClick={(e) => e.stopPropagation()} className="user-link">
-        {user.username}
+        <ProfileName username={user.username} />
       </Link>
     </HoverCard>
   );

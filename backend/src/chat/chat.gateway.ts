@@ -53,6 +53,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     try {
       const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'change-me-in-.env' });
+      if (payload.scope === 'account') { client.disconnect(); return; } // jeton de choix de profil : pas de chat
       client.data = { userId: payload.sub, username: payload.username, role: payload.role };
       await this.presence.connect(payload.sub, client.id, payload.username);
       client.emit('chat:online-users', this.presence.listOnline());

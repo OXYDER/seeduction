@@ -10,7 +10,7 @@ import GifPicker from './GifPicker';
 const drafts = new Map<string, string>();
 const TYPING_EVERY_MS = 1500;
 const MAX_VOICE_MS = 5 * 60 * 1000;
-const MENTION_AT_CARET = /(^|\s)@([\p{L}\p{N}_.-]{0,32})$/u;
+const MENTION_AT_CARET = /(^|\s)@([\p{L}\p{N}_.·-]{0,50})$/u;
 
 interface Props {
   conversationId: string;

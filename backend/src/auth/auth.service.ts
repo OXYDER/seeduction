@@ -68,6 +68,8 @@ export class AuthService {
    */
   async register(inviteCode: string, username: string, email: string, password: string, ip: string | null = null) {
     this.assertPassword(password);
+    // « · » sépare le nom d'un profil famille du pseudo de son compte : un pseudo ordinaire ne peut pas le contenir.
+    if (String(username ?? '').includes('·')) throw new BadRequestException("Le caractère « · » n'est pas autorisé dans un pseudo");
     const isFirstUser = (await this.prisma.user.count()) === 0;
     const passwordHash = await bcrypt.hash(password, 12);
     // Cadeau de bienvenue : un peu d'upload de départ (pour ne pas commencer à 0/∞) et un freeleech personnel
@@ -153,7 +155,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: { OR: [{ username: usernameOrEmail }, { email: usernameOrEmail }] },
     });
-    if (!user) throw new UnauthorizedException('Identifiants invalides');
+    if (!user || user.parentId) throw new UnauthorizedException('Identifiants invalides'); // un profil famille n'a pas de mot de passe : on entre par son compte
     if (user.status === 'BANNED') throw new UnauthorizedException('Compte banni');
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -204,6 +206,15 @@ export class AuthService {
     this.accountLimiter.reset(accountKey);
     await this.audit.log(user.id, 'LOGIN', { username: user.username }, ip);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(), lastIp: ip ?? undefined } });
+
+    // Compte famille : le mot de passe ne donne qu'un jeton de quelques minutes, qui sert à choisir un profil et saisir son PIN.
+    if (user.familyEnabled) {
+      return {
+        needsProfile: true,
+        accessToken: this.jwt.sign({ sub: user.id, username: user.username, role: user.role, scope: 'account' }, { expiresIn: '10m' }),
+        user: { id: user.id, username: user.username, role: user.role, passkey: '' },
+      };
+    }
 
     const payload = { sub: user.id, username: user.username, role: user.role };
     return {

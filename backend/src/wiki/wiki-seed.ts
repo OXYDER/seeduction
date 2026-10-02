@@ -369,6 +369,28 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]« En train de regarder »[/b] : désactivable complètement (et de toute façon jamais montré pour du contenu adulte).`,
       },
       {
+        title: 'Compte famille : profils et codes PIN',
+        slug: 'compte-famille',
+        keywords: 'famille, profil, profils, pin, code pin, enfant, adulte, parent, contrôle parental, qui est-ce, changer de profil, bloquer',
+        isFaq: true,
+        content:
+          `Plusieurs personnes d'une même famille peuvent utiliser Seeduction avec [b]un seul compte[/b], chacune avec son propre profil.\n\n` +
+          `[b]Comment ça marche[/b]\n` +
+          `• Dans le menu, [b]👨‍👩‍👧 Famille[/b] (visible du profil principal) permet d'activer le compte famille : tu choisis un [b]PIN à 4 chiffres[/b] pour toi, puis tu crées jusqu'à [b]4 profils[/b] au total (le tien compris).\n` +
+          `• Chaque profil a son [b]nom[/b], son [b]avatar[/b] et son [b]PIN[/b] obligatoire. À chaque connexion, après le mot de passe, l'écran [b]« Qui est-ce ? »[/b] demande le profil et son PIN. Pour changer de profil en cours de route : [b]↔ Changer de profil[/b] (PIN demandé).\n` +
+          `• Après 5 PIN erronés, le profil est verrouillé 10 minutes. Le profil principal peut redéfinir le PIN d'un profil à tout moment.\n\n` +
+          `[b]Ce qui est propre à chaque profil[/b] : messagerie et amis, favoris, collections, commentaires, notes, abonnements, notifications, affichage par défaut et recommandations. Dans le chat, les commentaires et le forum, un profil s'affiche sous la forme [b]« Nom·pseudo »[/b] : le compte auquel il appartient reste toujours visible.\n\n` +
+          `[b]Ce qui reste commun au compte[/b] : le ratio, l'upload, le seed et les hit & run, la passkey, les points bonus, les invitations, le mot de passe, la 2FA et le courriel. Seul le profil principal peut y toucher (boutique, jetons freeleech, clés API, sécurité). Les téléchargements de toute la famille comptent sur le même ratio : un profil qui télécharge sans seeder pénalise tout le monde.\n\n` +
+          `[b]Types de profil[/b]\n` +
+          `• [b]Adulte[/b] : comme un compte normal (sauf ce qui est réservé au profil principal). Ses conversations restent privées.\n` +
+          `• [b]Enfant[/b] : contenu adulte toujours masqué, pas d'envoi de torrents ni de demandes avec primes, et [b]ses conversations peuvent être lues par le profil principal[/b].\n\n` +
+          `[b]Supervision par le profil principal[/b]\n` +
+          `• Un [b]journal d'activité[/b] montre qui a fait quoi depuis le site : connexions, PIN erronés, téléchargements, lectures, consultations, recherches, commentaires, messages du forum, favoris, envois, demandes d'ami, signalements. Le seed fait par ton client BitTorrent reste au niveau du compte.\n` +
+          `• Les conversations des [b]profils enfants[/b] se lisent (lecture seule) dans l'onglet « Conversations des enfants ». Préviens les membres de ta famille.\n` +
+          `• Un profil peut être [b]bloqué[/b] (il ne peut plus s'ouvrir, même s'il est déjà connecté) puis débloqué.\n\n` +
+          `Un profil n'a pas de mot de passe : on entre toujours par le compte. Si le compte est banni, tous ses profils le sont.`,
+      },
+      {
         title: 'Clés API et accès développeur',
         slug: 'cles-api',
         keywords: 'api key, developer, automatisation',

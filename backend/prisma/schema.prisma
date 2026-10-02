@@ -116,7 +116,40 @@ model User {
   lastSeenAt       DateTime?
   lastIp           String?
 
+  // ---- Compte famille ----
+  // Un profil est une ligne User rattachée au compte principal (parentId) : messagerie, amis, favoris, collections,
+  // commentaires... sont ainsi propres à chaque profil sans rien changer ailleurs. Le ratio, l'upload, la passkey, le
+  // mot de passe, la 2FA et les points restent ceux du compte principal. Le profil « principal » est le compte lui-même
+  // (profileType MASTER). Le pseudo d'un profil est « <nom>·<pseudo du compte> » : le compte reste toujours visible.
+  parentId         String?
+  parent           User?      @relation("FamilyProfiles", fields: [parentId], references: [id])
+  profiles         User[]     @relation("FamilyProfiles")
+  profileName      String?    @db.VarChar(24)
+  profileType      String     @default("MASTER") @db.VarChar(8) // MASTER | ADULT | CHILD
+  pinHash          String?    // PIN à 4 chiffres (haché) : demandé à chaque connexion et à chaque changement de profil
+  pinFailures      Int        @default(0)
+  pinLockedUntil   DateTime?
+  profileBlocked   Boolean    @default(false) // profil bloqué par le profil principal
+  familyEnabled    Boolean    @default(false) // sur le compte principal : le sélecteur de profils s'affiche à chaque connexion
+
   @@index([status])
+  @@index([parentId])
+}
+
+// Journal « qui a fait quoi » des profils d'un compte famille, lu par le profil principal.
+model FamilyActivity {
+  id         String   @id @default(uuid())
+  accountId  String
+  profileId  String
+  action     String   @db.VarChar(24)
+  targetType String?  @db.VarChar(16)
+  targetId   String?
+  detail     String?  @db.VarChar(200)
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([profileId, createdAt])
 }
 
 model InviteCode {

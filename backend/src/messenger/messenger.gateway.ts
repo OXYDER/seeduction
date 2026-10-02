@@ -76,6 +76,7 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
     if (!token || typeof token !== 'string') { client.disconnect(); return; }
     try {
       const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'change-me-in-.env' });
+      if (payload.scope === 'account') { client.disconnect(); return; }
       client.data = { userId: payload.sub, username: payload.username, role: payload.role };
       client.join(userRoom(payload.sub));
       for (const id of await this.messenger.readableChannelIds({ role: payload.role })) client.join(channelRoom(id));

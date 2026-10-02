@@ -70,6 +70,6 @@ export class SocialController {
   @UseGuards(JwtAuthGuard)
   @Post('reseed/:torrentId')
   reseed(@Param('torrentId') torrentId: string, @Request() req: any) {
-    return this.social.requestReseed(torrentId, req.user.userId);
+    return this.social.requestReseed(torrentId, req.user.accountId ?? req.user.userId);
   }
 }

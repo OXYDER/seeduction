@@ -121,6 +121,12 @@ export class AdminService {
 
   // ------------------------------------------------------------ membres
 
+  /** Un profil famille se modère à travers son compte : avertissement, bannissement et lien de réinitialisation visent le compte principal. */
+  private async accountIdOf(userId: string): Promise<string> {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { parentId: true } });
+    return u?.parentId ?? userId;
+  }
+
   private async loadTarget(userId: string) {
     const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, role: true } });
     if (!target) throw new NotFoundException('Utilisateur introuvable');
@@ -152,6 +158,7 @@ export class AdminService {
 
   /** Rôle, pseudo, upload/download/bonus : réservé aux administrateurs, avec la hiérarchie des rôles. */
   async updateUser(actor: Actor, userId: string, body: Record<string, any>) {
+    userId = await this.accountIdOf(userId);
     if (!['ADMIN', 'OWNER'].includes(actor.role)) throw new ForbiddenException('Réservé aux administrateurs');
     const target = await this.loadTarget(userId);
     if (actor.userId !== target.id) this.assertOutranks(actor, target);
@@ -169,6 +176,9 @@ export class AdminService {
       if (!/^[\w.-]{3,32}$/.test(username)) throw new BadRequestException('Pseudo invalide (3 à 32 caractères : lettres, chiffres, . _ -)');
       if (await this.prisma.user.findUnique({ where: { username }, select: { id: true } })) throw new BadRequestException('Ce pseudo est déjà pris');
       data.username = username;
+      // Les profils famille de ce compte portent son pseudo (« Nom·pseudo ») : on les renomme avec lui.
+      const kids = await this.prisma.user.findMany({ where: { parentId: userId }, select: { id: true, profileName: true } });
+      for (const k of kids) await this.prisma.user.update({ where: { id: k.id }, data: { username: `${k.profileName}·${username}` } });
     }
     for (const field of ['uploaded', 'downloaded'] as const) {
       if (body[field] !== undefined && body[field] !== null && body[field] !== '') {
@@ -193,6 +203,7 @@ export class AdminService {
 
   /** Lien de réinitialisation de mot de passe (1 h, usage unique) à transmettre au membre. */
   async issueResetLink(actor: Actor, userId: string) {
+    userId = await this.accountIdOf(userId);
     this.assertOutranks(actor, await this.loadTarget(userId));
     await this.prisma.passwordReset.deleteMany({ where: { userId, usedAt: null } });
     const token = randomBytes(32).toString('hex');
@@ -202,12 +213,14 @@ export class AdminService {
   }
 
   async warnUser(actor: Actor, userId: string, reason: string) {
+    userId = await this.accountIdOf(userId);
     this.assertOutranks(actor, await this.loadTarget(userId));
     if (!reason?.trim()) throw new BadRequestException('Motif requis');
     return this.prisma.warning.create({ data: { userId, reason: reason.trim(), issuedBy: actor.username } });
   }
 
   async banUser(actor: Actor, userId: string, reason: string, expiresAt?: Date) {
+    userId = await this.accountIdOf(userId);
     this.assertOutranks(actor, await this.loadTarget(userId));
     if (!reason?.trim()) throw new BadRequestException('Motif requis');
     return this.prisma.$transaction([
@@ -217,6 +230,7 @@ export class AdminService {
   }
 
   async unbanUser(actor: Actor, userId: string) {
+    userId = await this.accountIdOf(userId);
     this.assertOutranks(actor, await this.loadTarget(userId));
     return this.prisma.user.update({ where: { id: userId }, data: { status: 'ACTIVE' } });
   }

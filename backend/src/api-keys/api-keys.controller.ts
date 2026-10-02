@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { ApiKeysService, API_SCOPES } from './api-keys.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { accountOf, assertMaster } from '../common/utils/account';
 
 /** Gestion des clés API par leur propriétaire, via une session web normale (JWT) — pas l'API publique elle-même. */
 @UseGuards(JwtAuthGuard)
@@ -15,16 +16,19 @@ export class ApiKeysController {
 
   @Get()
   list(@Request() req: any) {
-    return this.apiKeysService.list(req.user.userId);
+    assertMaster(req);
+    return this.apiKeysService.list(accountOf(req));
   }
 
   @Post()
   create(@Body() body: { label: string; scopes: string[] }, @Request() req: any) {
-    return this.apiKeysService.create(req.user.userId, body.label, body.scopes ?? []);
+    assertMaster(req);
+    return this.apiKeysService.create(accountOf(req), body.label, body.scopes ?? []);
   }
 
   @Delete(':id')
   revoke(@Param('id') id: string, @Request() req: any) {
-    return this.apiKeysService.revoke(req.user.userId, id);
+    assertMaster(req);
+    return this.apiKeysService.revoke(accountOf(req), id);
   }
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-const URL_OR_MENTION = /(https?:\/\/[^\s<]+)|(@[\p{L}\p{N}_.-]{2,32})/gu;
+const URL_OR_MENTION = /(https?:\/\/[^\s<]+)|(@[\p{L}\p{N}_.·-]{2,50})/gu;
 const TRAILING = /[.,;:!?)\]}»"']+$/;
 // Un message fait uniquement d'émojis (3 au plus) s'affiche en grand, comme dans Messenger.
 const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}(?:\uFE0F|\u200D|\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*\s*){1,3}$/u;

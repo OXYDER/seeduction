@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Query, UseGuards, Request } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { accountOf, assertNotChild } from '../common/utils/account';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 
@@ -46,13 +47,14 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Patch('me/adult')
   setAdult(@Body() body: { enabled: boolean; confirmAge?: boolean }, @Request() req: any) {
+    assertNotChild(req, 'Changer ce réglage');
     return this.usersService.setAdultPreference(req.user.userId, !!body?.enabled, !!body?.confirmAge);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me/ratio-history')
   ratioHistory(@Request() req: any, @Query('days') days = '30') {
-    return this.usersService.getRatioHistory(req.user.userId, parseInt(days, 10));
+    return this.usersService.getRatioHistory(accountOf(req), parseInt(days, 10));
   }
 
   @Get('leaderboard')

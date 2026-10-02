@@ -148,13 +148,13 @@ export class TorrentsService {
    * téléchargement : le membre ne pourra jamais continuer à seeder une fois la vidéo fermée, donc le tracker n'en
    * tire aucune obligation « hit & run » (voir tracker.service.ts).
    */
-  async getDownloadFile(torrentId: string, userId: string, opts?: { viaStream?: boolean }): Promise<Buffer> {
+  async getDownloadFile(torrentId: string, userId: string, opts?: { viaStream?: boolean; viewerId?: string }): Promise<Buffer> {
     const torrent = await this.prisma.torrent.findUnique({ where: { id: torrentId } });
     if (!torrent) throw new NotFoundException('Torrent introuvable');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
-    if (!['MODERATOR', 'ADMIN', 'OWNER'].includes(user.role) && (await this.adult.hiddenFor(userId)).includes(torrent.categoryId)) {
+    if (!['MODERATOR', 'ADMIN', 'OWNER'].includes(user.role) && (await this.adult.hiddenFor(opts?.viewerId ?? userId)).includes(torrent.categoryId)) {
       throw new ForbiddenException('Ce contenu est réservé aux adultes : active-le dans ton profil.');
     }
 
@@ -393,8 +393,8 @@ export class TorrentsService {
   }
 
   /** Torrents que le membre télécharge ou seede en ce moment (d'après ses derniers announces), avec leur avancement. */
-  async activeForUser(userId: string) {
-    const hidden = await this.adult.hiddenFor(userId);
+  async activeForUser(userId: string, viewerId?: string) {
+    const hidden = await this.adult.hiddenFor(viewerId ?? userId);
     const peers = await this.prisma.peer.findMany({
       where: { userId, torrent: { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
       orderBy: { lastAnnounceAt: 'desc' },

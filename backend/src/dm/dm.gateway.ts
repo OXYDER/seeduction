@@ -60,6 +60,7 @@ export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect, OnMo
     if (!token || typeof token !== 'string') { client.disconnect(); return; }
     try {
       const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'change-me-in-.env' });
+      if (payload.scope === 'account') { client.disconnect(); return; }
       client.data = { userId: payload.sub, username: payload.username };
       client.join(room(client.data.userId));
       await this.presence.connect(client.data.userId, client.id, client.data.username);

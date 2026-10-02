@@ -24,6 +24,8 @@ interface Session {
 
 interface PlaySession {
   userId: string;
+  /** Profil famille qui a lancé la lecture (pour le contrôle du contenu adulte) ; userId est alors le compte. */
+  viewerId?: string;
   torrentId: string;
   fileIndex: number;
   expiresAt: number;
@@ -56,9 +58,9 @@ export class StreamService {
    * ouvert par le membre laisse le logiciel récupérer le .torrent personnalisé sans jamais exposer sa passkey dans
    * la ligne de commande du processus (visible par d'autres logiciels sur le même PC).
    */
-  createPlaySession(userId: string, torrentId: string, fileIndex: number): string {
+  createPlaySession(userId: string, torrentId: string, fileIndex: number, viewerId?: string): string {
     const token = randomUUID();
-    this.playSessions.set(token, { userId, torrentId, fileIndex, expiresAt: Date.now() + PLAY_SESSION_TTL_MS });
+    this.playSessions.set(token, { userId, viewerId, torrentId, fileIndex, expiresAt: Date.now() + PLAY_SESSION_TTL_MS });
     return token;
   }
 
@@ -68,7 +70,7 @@ export class StreamService {
     if (!session || session.expiresAt < Date.now()) throw new NotFoundException('Lien de lecture invalide ou expiré : relance « Ouvrir dans le lecteur » depuis Seeduction.');
     this.playSessions.delete(token);
     const [buffer, summary] = await Promise.all([
-      this.torrents.getDownloadFile(session.torrentId, session.userId, { viaStream: true }),
+      this.torrents.getDownloadFile(session.torrentId, session.userId, { viaStream: true, viewerId: session.viewerId }),
       this.torrents.getSummary(session.torrentId),
     ]);
     // La pochette (torrent.coverImage) est un chemin relatif (ex: /api/covers/xxx.jpg) : le lecteur desktop n'a pas

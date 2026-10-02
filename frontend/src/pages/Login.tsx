@@ -22,6 +22,8 @@ export default function Login() {
     setError('');
     try {
       const { data } = await api.post('/auth/login', { usernameOrEmail, password, totpToken: totpToken || undefined });
+      // Compte famille : le mot de passe ne suffit pas, on passe par le choix du profil et son PIN.
+      if (data.needsProfile) { login(data.accessToken, data.user, 'account'); navigate('/profiles'); return; }
       login(data.accessToken, data.user);
       navigate('/');
     } catch (err: any) {

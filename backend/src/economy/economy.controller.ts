@@ -5,6 +5,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
+import { accountOf, assertMaster } from '../common/utils/account';
 
 @Controller('bonus')
 export class EconomyController {
@@ -20,32 +21,34 @@ export class EconomyController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   overview(@Request() req: any) {
-    return this.economy.overview(req.user.userId);
+    return this.economy.overview(accountOf(req));
   }
 
   /** Seeds à terminer : torrents téléchargés dont l'obligation de seed n'est pas encore remplie. */
   @UseGuards(JwtAuthGuard)
   @Get('seeds')
   seeds(@Request() req: any) {
-    return this.economy.seedObligations(req.user.userId);
+    return this.economy.seedObligations(accountOf(req));
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('redeem')
   redeem(@Body('item') item: string, @Request() req: any) {
-    return this.economy.redeem(req.user.userId, item);
+    assertMaster(req);
+    return this.economy.redeem(accountOf(req), item);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('token/:torrentId')
   tokenStatus(@Param('torrentId') torrentId: string, @Request() req: any) {
-    return this.economy.tokenStatus(req.user.userId, torrentId);
+    return this.economy.tokenStatus(accountOf(req), torrentId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('token/:torrentId')
   useToken(@Param('torrentId') torrentId: string, @Request() req: any) {
-    return this.economy.useToken(req.user.userId, torrentId);
+    assertMaster(req);
+    return this.economy.useToken(accountOf(req), torrentId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
