@@ -169,9 +169,10 @@ export const WIKI_SEED: WikiSeedCategory[] = [
       {
         title: 'Parcourir, filtrer et trier',
         slug: 'parcourir-et-filtrer',
-        keywords: 'browse, recherche, filtres, période, page size',
+        keywords: 'browse, recherche, filtres, période, page size, acteur, producteur, réalisateur, genre, barre de recherche',
         content:
           `La page Parcourir combine une recherche en langage naturel (tape par exemple « Dune 2024 4K HDR VOSTFR », les critères sont détectés tout seuls) avec des filtres explicites : catégorie et sous-catégorie, qualité, source, langue, codec, audio, taille, nombre de seeders minimum, et [b]période d'ajout[/b] (24 heures / cette semaine / ce mois).\n\n` +
+          `[b]La barre de recherche du haut[/b] (disponible partout) propose des résultats au fil de la frappe : des torrents, mais aussi des [b]acteurs[/b], des [b]réalisateurs[/b], des [b]producteurs et studios[/b], des [b]genres[/b], des artistes, des membres et des catégories. Un clic sur une fiche (acteur, genre...) liste tous les torrents liés ; Entrée (« Voir tous les résultats ») cherche le mot dans les noms de torrents ET dans leurs acteurs, producteurs, studios et genres.\n\n` +
           `Chaque bouton de filtre affiche le nombre de résultats qu'il donnerait, pour ne jamais cliquer à l'aveugle. Le nombre de torrents affichés par page se règle en bas de la liste (25/50/100).\n\n` +
           `La page d'accueil propose aussi des rangées « Derniers torrents » et « Les plus populaires », chacune avec ses propres onglets de période — leur lien « Voir tout » ouvre Parcourir déjà filtré pareil.`,
       },

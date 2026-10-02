@@ -255,7 +255,7 @@ export default function Layout() {
             <button type="button" className="secondary side-burger" onClick={() => setDrawer(true)} aria-label="Ouvrir le menu">☰</button>
             <form className="side-search" onSubmit={submitSearch}>
               <SearchBox
-                placeholder="Rechercher un torrent, un membre, une catégorie..."
+                placeholder="Rechercher un torrent, un acteur, un producteur, un genre, un membre..."
                 value={search}
                 onChange={setSearch}
                 onSubmit={goSearch}
@@ -371,7 +371,7 @@ export default function Layout() {
 
         <form className="search-row" onSubmit={submitSearch}>
           <SearchBox
-            placeholder="Rechercher des torrents, des utilisateurs ou des catégories..."
+            placeholder="Rechercher un torrent, un acteur, un producteur, un genre, un membre..."
             value={search}
             onChange={setSearch}
             onSubmit={goSearch}

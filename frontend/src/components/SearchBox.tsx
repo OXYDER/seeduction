@@ -7,10 +7,18 @@ import { TYPE_LABEL } from '../lib/entityLabels';
 import { displayRank } from '../lib/memberClass';
 import { ROLE_LABEL } from './StaffUserPanel';
 
-export type SuggestScope = 'torrents' | 'users' | 'categories' | 'entities' | 'topics';
+export type EntityGroup = 'actors' | 'directors' | 'producers' | 'genres' | 'creators';
+export type SuggestScope = 'torrents' | 'users' | 'categories' | 'entities' | 'topics' | EntityGroup;
+const ENTITY_GROUPS: EntityGroup[] = ['actors', 'directors', 'producers', 'genres', 'creators'];
 
 const GROUP_LABEL: Record<SuggestScope, string> = {
   torrents: 'Torrents', users: 'Membres', categories: 'Catégories', entities: 'Acteurs, studios, artistes...', topics: 'Sujets du forum',
+  actors: 'Acteurs', directors: 'Réalisateurs', producers: 'Producteurs et studios', genres: 'Genres', creators: 'Artistes et auteurs',
+};
+
+const ROLE_NAME: Record<string, string> = {
+  ACTOR: 'Acteur', DIRECTOR: 'Réalisateur', PRODUCER: 'Producteur', WRITER: 'Scénariste', CREATOR: 'Créateur', ARTIST: 'Artiste', AUTHOR: 'Auteur',
+  STUDIO: 'Studio', NETWORK: 'Chaîne', LABEL: 'Label', PUBLISHER: 'Éditeur', DEVELOPER: 'Développeur', GENRE: 'Genre', PLATFORM: 'Plateforme',
 };
 
 interface Entry { key: string; scope: SuggestScope; data: any }
@@ -39,7 +47,9 @@ export default function SearchBox({
   const [active, setActive] = useState(-1);
   const wrapRef = useRef<HTMLDivElement>(null);
   const requestId = useRef(0);
-  const scopeKey = scopes.join(',');
+  // « entities » est le raccourci de tous les groupes de fiches : acteurs, réalisateurs, producteurs, genres...
+  const shown = useMemo(() => (scopes as SuggestScope[]).flatMap((s) => (s === 'entities' ? ENTITY_GROUPS : [s])), [scopes]);
+  const scopeKey = shown.join(',');
   // Après avoir choisi une suggestion, le texte est rempli sans rouvrir la liste.
   const suppress = useRef(false);
 
@@ -63,8 +73,8 @@ export default function SearchBox({
   }, []);
 
   const entries: Entry[] = useMemo(
-    () => (scopes as SuggestScope[]).flatMap((scope) => (data[scope] ?? []).map((d: any) => ({ key: `${scope}:${d.id}`, scope, data: d }))),
-    [data, scopes],
+    () => shown.flatMap((scope) => (data[scope] ?? []).map((d: any) => ({ key: `${scope}:${d.id}`, scope, data: d }))),
+    [data, shown],
   );
   const hasSubmitRow = !!onSubmit && value.trim().length >= 2;
   const total = entries.length + (hasSubmitRow ? 1 : 0);
@@ -78,7 +88,7 @@ export default function SearchBox({
         if (onPickUser) { suppress.current = true; onChange(d.username); onPickUser(d); } else navigate(`/users/${d.id}`);
         break;
       case 'categories': navigate(`/browse?categoryId=${d.id}`); break;
-      case 'entities': navigate(`/entities/${d.id}`); break;
+      case 'actors': case 'directors': case 'producers': case 'genres': case 'creators': case 'entities': navigate(`/entities/${d.id}`); break;
       case 'topics': navigate(`/forum/topics/${d.id}`); break;
     }
   }
@@ -138,13 +148,13 @@ export default function SearchBox({
           </>
         );
       }
-      case 'entities':
+      case 'actors': case 'directors': case 'producers': case 'genres': case 'creators': case 'entities':
         return (
           <>
-            {d.imageUrl ? <img src={d.imageUrl} alt="" className="sb-thumb" /> : <span className="sb-thumb sb-icon">{d.name.slice(0, 1).toUpperCase()}</span>}
+            {d.imageUrl ? <img src={d.imageUrl} alt="" className="sb-thumb" /> : <span className="sb-thumb sb-icon">{entry.scope === 'genres' ? '🏷️' : d.name.slice(0, 1).toUpperCase()}</span>}
             <span className="sb-text">
               <span className="sb-title">{d.name}</span>
-              <span className="sb-sub">{TYPE_LABEL[d.type] ?? d.type}</span>
+              <span className="sb-sub">{[ROLE_NAME[d.role] ?? TYPE_LABEL[d.type] ?? d.type, d.torrentCount != null ? `${d.torrentCount} torrent${d.torrentCount > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}</span>
             </span>
           </>
         );
@@ -176,7 +186,7 @@ export default function SearchBox({
       />
       {open && total > 0 && (
         <div className="sb-menu" role="listbox">
-          {(scopes as SuggestScope[]).map((scope) => {
+          {shown.map((scope) => {
             const items = entries.filter((e) => e.scope === scope);
             if (items.length === 0) return null;
             return (

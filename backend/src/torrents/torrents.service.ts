@@ -204,6 +204,9 @@ export class TorrentsService {
         { name: { contains: params.search, mode: 'insensitive' } },
         { searchTitles: { contains: params.search, mode: 'insensitive' } },
         ...(plain !== params.search ? [{ searchTitles: { contains: plain, mode: 'insensitive' } }, { name: { contains: plain, mode: 'insensitive' } }] : []),
+        // ... et les torrents dont un acteur, un réalisateur, un producteur, un studio ou un genre porte ce nom.
+        { entities: { some: { entity: { name: { contains: params.search, mode: 'insensitive' } } } } },
+        ...(plain !== params.search ? [{ entities: { some: { entity: { name: { contains: plain, mode: 'insensitive' } } } } }] : []),
       ];
     }
     if (params.uploaderId) where.uploaderId = params.uploaderId;
