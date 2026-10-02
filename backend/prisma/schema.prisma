@@ -342,17 +342,19 @@ model Snatch {
 
 // Dernière position de lecture connue dans le lecteur Seeduction (voir StreamService.pingWatching), pour proposer
 // « Reprendre la lecture à xx:xx » à la place de « Ouvrir dans le lecteur » sur la fiche torrent. Privé au membre :
-// n'a rien à voir avec le statut public « en train de regarder » (watchingTitle sur User).
+// n'a rien à voir avec le statut public « en train de regarder » (watchingTitle sur User). Par fichier (fileIndex),
+// pas juste par torrent : un pack de plusieurs vidéos (épisodes, etc.) ne doit pas mélanger leurs positions.
 model PlaybackPosition {
   id              String   @id @default(uuid())
   torrent         Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
   torrentId       String
   userId          String
+  fileIndex       Int      @default(0)
   positionSeconds Int
   durationSeconds Int?
   updatedAt       DateTime @updatedAt
 
-  @@unique([userId, torrentId])
+  @@unique([userId, torrentId, fileIndex])
 }
 
 // Snapshot périodique du ratio d'un user (pour graphiques d'évolution)

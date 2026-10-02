@@ -727,7 +727,7 @@ function pingWatching(session) {
   fetch(`${SITE_BASE_URL}/api/stream/watching`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      passkey, torrentId: session.torrentId,
+      passkey, torrentId: session.torrentId, fileIndex: session.fileIndex || 0,
       positionSeconds: session.resumePositionSeconds || 0,
       durationSeconds: session.durationSeconds || 0,
     }),

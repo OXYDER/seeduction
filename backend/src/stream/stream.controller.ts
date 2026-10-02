@@ -46,8 +46,8 @@ export class StreamController {
    * transporte aussi la position de lecture courante (voir StreamService.pingWatching).
    */
   @Post('watching')
-  watching(@Body() body: { passkey: string; torrentId: string; positionSeconds?: number; durationSeconds?: number }) {
-    return this.streamService.pingWatching(body?.passkey, body?.torrentId, body?.positionSeconds, body?.durationSeconds);
+  watching(@Body() body: { passkey: string; torrentId: string; positionSeconds?: number; durationSeconds?: number; fileIndex?: number }) {
+    return this.streamService.pingWatching(body?.passkey, body?.torrentId, body?.positionSeconds, body?.durationSeconds, body?.fileIndex);
   }
 
   /** Appelé une fois à la fermeture du lecteur : revient au statut immédiatement plutôt que d'attendre l'expiration. */

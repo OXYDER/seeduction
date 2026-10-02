@@ -16,7 +16,7 @@ export default function WatchOnlineButton({ torrentId, fileList, compact }: { to
   const [chosen, setChosen] = useState<number | null>(null);
   const [installHint, setInstallHint] = useState(false);
   const [sessionError, setSessionError] = useState('');
-  const [resume, setResume] = useState<{ positionSeconds: number; playingNow: boolean; resumable: boolean } | null>(null);
+  const [resume, setResume] = useState<{ fileIndex: number; positionSeconds: number; playingNow: boolean; resumable: boolean } | null>(null);
 
   // Position laissée par une lecture précédente dans le lecteur Seeduction (voir StreamService.pingWatching) :
   // au-delà de 2 minutes et pas déjà terminé, on propose de reprendre plutôt que de rouvrir depuis le début ;
@@ -81,7 +81,7 @@ export default function WatchOnlineButton({ torrentId, fileList, compact }: { to
           <div className="trailer-modal-inner" onClick={(e) => e.stopPropagation()} style={{ aspectRatio: 'auto', width: 'min(480px, 100%)', padding: 24 }}>
             <div className="panel" style={{ background: 'var(--bg-panel)', margin: 0 }}>
               {chosen == null ? (
-                <FilePicker files={allFiles} onPick={play} />
+                <FilePicker files={allFiles} onPick={play} resume={resume} />
               ) : (
                 <>
                   <h3 style={{ marginTop: 0 }}>🖥️ Ouverture du lecteur Seeduction…</h3>
@@ -115,16 +115,32 @@ export default function WatchOnlineButton({ torrentId, fileList, compact }: { to
   );
 }
 
-function FilePicker({ files, onPick }: { files: { index: number; path: string; size: number }[]; onPick: (index: number) => void }) {
+function FilePicker({
+  files, onPick, resume,
+}: {
+  files: { index: number; path: string; size: number }[];
+  onPick: (index: number) => void;
+  resume: { fileIndex: number; positionSeconds: number; playingNow: boolean } | null;
+}) {
   return (
     <div>
       <h3 style={{ marginTop: 0 }}>Quel fichier regarder ?</h3>
       <div className="grid" style={{ gap: 8 }}>
-        {files.map((f) => (
-          <button key={f.index} type="button" className="secondary" style={{ textAlign: 'left' }} onClick={() => onPick(f.index)}>
-            {f.path} <span className="muted">({formatBytes(f.size)})</span>
-          </button>
-        ))}
+        {files.map((f) => {
+          // Position sauvegardée propre à CE fichier du pack (voir PlaybackPosition.fileIndex) : un film et un autre
+          // du même torrent ne doivent jamais se faire passer l'un pour l'autre.
+          const fileResume = resume && resume.fileIndex === f.index ? resume : null;
+          return (
+            <button key={f.index} type="button" className="secondary" style={{ textAlign: 'left' }} onClick={() => onPick(f.index)}>
+              {f.path} <span className="muted">({formatBytes(f.size)})</span>
+              {fileResume && (
+                <span style={{ marginLeft: 8, color: 'var(--acc-link)' }}>
+                  {fileResume.playingNow ? '▶️ En cours de lecture' : `🖥️ Reprendre à ${formatClock(fileResume.positionSeconds)}`}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

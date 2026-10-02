@@ -89,15 +89,16 @@ export class StreamService {
    * la lecture à xx:xx » sur la fiche torrent — privé au membre, donc enregistré indépendamment de showWatchingStatus
    * et du filtre contenu adulte ci-dessous, qui ne concernent que le statut PUBLIC.
    */
-  async pingWatching(passkey: string, torrentId: string, positionSeconds?: number, durationSeconds?: number) {
+  async pingWatching(passkey: string, torrentId: string, positionSeconds?: number, durationSeconds?: number, fileIndex?: number) {
     const user = await this.prisma.user.findUnique({ where: { passkey } });
     if (!user) return { ok: true };
 
     if (typeof positionSeconds === 'number' && Number.isFinite(positionSeconds) && positionSeconds > 0) {
+      const idx = Number.isInteger(fileIndex) && fileIndex! >= 0 ? fileIndex! : 0;
       const data = { positionSeconds: Math.floor(positionSeconds), durationSeconds: durationSeconds ? Math.floor(durationSeconds) : null };
       await this.prisma.playbackPosition.upsert({
-        where: { userId_torrentId: { userId: user.id, torrentId } },
-        create: { userId: user.id, torrentId, ...data },
+        where: { userId_torrentId_fileIndex: { userId: user.id, torrentId, fileIndex: idx } },
+        create: { userId: user.id, torrentId, fileIndex: idx, ...data },
         update: data,
       });
     }
@@ -123,13 +124,15 @@ export class StreamService {
    * déjà fini — dans les 30 dernières secondes, comme le lecteur desktop lui-même avant de repartir de zéro).
    */
   async getPosition(userId: string, torrentId: string) {
-    const row = await this.prisma.playbackPosition.findUnique({ where: { userId_torrentId: { userId, torrentId } } });
+    // Un pack peut avoir plusieurs fichiers suivis séparément (voir PlaybackPosition) : celui qui a servi le plus
+    // récemment est celui qui compte pour le bouton (le plus souvent le seul, pour un film standalone).
+    const row = await this.prisma.playbackPosition.findFirst({ where: { userId, torrentId }, orderBy: { updatedAt: 'desc' } });
     if (!row) return null;
     const playingNow = Date.now() - row.updatedAt.getTime() < 8000;
     const finished = row.durationSeconds != null && row.positionSeconds >= row.durationSeconds - 30;
     const resumable = row.positionSeconds > 120 && !finished;
     if (!playingNow && !resumable) return null;
-    return { positionSeconds: row.positionSeconds, durationSeconds: row.durationSeconds, playingNow, resumable };
+    return { fileIndex: row.fileIndex, positionSeconds: row.positionSeconds, durationSeconds: row.durationSeconds, playingNow, resumable };
   }
 
   /** Appelé une fois à la fermeture du lecteur pour revenir au statut immédiatement (sinon, jusqu'à 30s d'attente). */
