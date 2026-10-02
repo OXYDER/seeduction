@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { MessengerController } from './messenger.controller';
+import { MessengerFilesController } from './messenger-files.controller';
 import { MessengerService } from './messenger.service';
 import { MessengerGateway } from './messenger.gateway';
 import { MessengerMigrationService } from './messenger-migration.service';
@@ -18,7 +19,7 @@ import { ChatModule } from '../chat/chat.module';
     ChatModule, // fournit ChatFilesService (pièces jointes) tant que l'ancien chat existe
     JwtModule.register({ secret: process.env.JWT_SECRET ?? 'change-me-in-.env', signOptions: { expiresIn: '7d' } }),
   ],
-  controllers: [MessengerController],
+  controllers: [MessengerController, MessengerFilesController],
   providers: [MessengerService, MessengerGateway, MessengerMigrationService, PrismaService],
   exports: [MessengerService],
 })

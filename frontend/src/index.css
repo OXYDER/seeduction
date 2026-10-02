@@ -1973,7 +1973,7 @@ td.cat-cell .cat-tag { display: flex; height: 44px; width: 140px; border-radius:
 .msgr-row.them:not(.last) .msgr-bubble { border-bottom-left-radius: 5px; }
 .msgr-row.mine:not(.first) .msgr-bubble { border-top-right-radius: 5px; }
 .msgr-row.mine:not(.last) .msgr-bubble { border-bottom-right-radius: 5px; }
-.msgr-bubble.big-emoji { background: none !important; font-size: 40px; line-height: 1.15; padding: 0 4px; }
+.msgr-bubble.big-emoji { background: none !important; font-size: 56px; line-height: 1.15; padding: 0 4px; }
 .msgr-bubble.pending { opacity: 0.6; }
 .msgr-bubble.failed { background: rgba(224,90,90,0.35) !important; }
 .msgr-bubble.deleted { background: none; border: 1px dashed rgba(255,255,255,0.22); color: var(--text-dim); font-style: italic; font-size: 13px; }
@@ -1984,7 +1984,27 @@ td.cat-cell .cat-tag { display: flex; height: 44px; width: 140px; border-radius:
 .msgr-image { max-width: min(320px, 100%); max-height: 340px; border-radius: 14px; cursor: zoom-in; object-fit: cover; display: block; }
 .msgr-image.pending { opacity: 0.6; }
 .msgr-voice { padding: 6px 8px; }
-.msgr-voice audio { height: 34px; max-width: 250px; }
+.msgr-voice-player { display: flex; align-items: center; gap: 8px; min-width: 210px; max-width: 280px; }
+.msgr-voice-player audio { display: none; }
+.msgr-voice-btn { flex: none; width: 32px; height: 32px; border-radius: 50%; padding: 0; display: grid; place-items: center; font-size: 12px; background: rgba(255,255,255,0.22); border: 0; box-shadow: none; color: inherit; }
+.msgr-voice-bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.25); cursor: pointer; position: relative; }
+.msgr-voice-bar > div { height: 100%; border-radius: 3px; background: currentColor; }
+.msgr-voice-time { flex: none; font-size: 12px; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+.msgr-voice-speed { flex: none; font-size: 11px; padding: 2px 6px; border-radius: 10px; background: rgba(255,255,255,0.18); border: 0; box-shadow: none; color: inherit; }
+.msgr-recording { align-items: center; gap: 10px; }
+.msgr-rec-dot { width: 10px; height: 10px; border-radius: 50%; background: #ff4d5e; animation: msgr-rec-pulse 1s ease-in-out infinite; }
+@keyframes msgr-rec-pulse { 50% { opacity: 0.25; } }
+.msgr-rec-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+.msgr-rec-hint { flex: 1; }
+.msgr-pop-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.msgr-pop-tabs button { flex: 1; padding: 4px 6px; font-size: 12px; border-radius: 6px; background: none; border: 0; box-shadow: none; opacity: 0.7; }
+.msgr-pop-tabs button.on { background: rgba(255,255,255,0.12); opacity: 1; }
+.msgr-sticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; max-height: 240px; overflow-y: auto; }
+.msgr-sticker-grid button { font-size: 34px; line-height: 1.2; padding: 4px; background: none; border: 0; box-shadow: none; border-radius: 8px; }
+.msgr-sticker-grid button:hover { background: rgba(255,255,255,0.1); }
+.msgr-gif-pane { width: 220px; }
+.msgr-gif-pane p { font-size: 12px; margin: 8px 0 0; }
+.msgr-gif-upload { width: 100%; font-size: 13px; }
 .msgr-file { display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-radius: 14px; background: rgba(255,255,255,0.1); color: var(--text); font-size: 13.5px; max-width: 100%; }
 .msgr-file:hover { background: rgba(255,255,255,0.16); color: var(--text); }
 .msgr-file-icon { font-size: 20px; }

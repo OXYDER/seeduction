@@ -10,6 +10,7 @@ const CONTENT_TYPE_BY_EXT: Record<string, string> = {
   jpg: 'image/jpeg',
   png: 'image/png',
   webp: 'image/webp',
+  gif: 'image/gif',
 };
 
 @Controller('covers')
@@ -30,6 +31,7 @@ export class CoversController {
     res.set({
       'Content-Type': CONTENT_TYPE_BY_EXT[ext] ?? 'application/octet-stream',
       'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
     });
     res.send(buffer);
   }

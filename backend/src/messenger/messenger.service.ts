@@ -470,9 +470,8 @@ export class MessengerService extends EventEmitter {
     const data: Prisma.MessageUncheckedCreateInput = { conversationId, senderId: actor.userId, content };
 
     if (input.imageUrl) {
-      const gif = input.type === 'GIF' && /^https:\/\/(media|media1|c)\.tenor\.com\//.test(input.imageUrl);
-      if (!gif && !/^\/api\/covers\/[\w.-]+$/.test(input.imageUrl)) throw new BadRequestException('Image invalide');
-      type = gif ? 'GIF' : 'IMAGE';
+      if (!/^\/api\/covers\/[\w.-]+$/.test(input.imageUrl)) throw new BadRequestException('Image invalide');
+      type = /\.gif$/i.test(input.imageUrl) ? 'GIF' : 'IMAGE';
       data.imageUrl = input.imageUrl;
     } else if (input.fileUrl) {
       if (!/^\/api\/(chat|messenger)\/files\/[^\s]+$/.test(input.fileUrl)) throw new BadRequestException('Fichier invalide');

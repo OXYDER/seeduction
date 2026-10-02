@@ -290,7 +290,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
       {
         title: 'Messenger : discussions, groupes et canaux',
         slug: 'messenger',
-        keywords: 'chat, messagerie, dm, message privé, groupe, canal, salon, mention, répondre, réaction, amis, notifications, son, épingler, sourdine, archiver, partager un torrent',
+        keywords: 'chat, messagerie, vocal, message vocal, micro, gif, autocollant, sticker, dm, message privé, groupe, canal, salon, mention, répondre, réaction, amis, notifications, son, épingler, sourdine, archiver, partager un torrent',
         isFaq: true,
         supersedes: ['amis-et-messagerie', 'chat-public'],
         content:
@@ -300,7 +300,9 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Groupes[/b] : jusqu'à 50 personnes, avec un nom et une image. Seuls tes amis peuvent être ajoutés. Le créateur est propriétaire ; il peut nommer des administrateurs, qui ajoutent et retirent des membres et épinglent des messages. Tu peux quitter un groupe quand tu veux.\n` +
           `• [b]Canaux publics[/b] : des salons ouverts à toute la communauté (le canal « Général » est l'ancien chat public). Le staff en crée d'autres, avec leurs règles (lecture seule, mode lent...).\n\n` +
           `[b]Ce que tu peux faire dans un message[/b]\n` +
-          `• Envoyer du texte, des [b]émojis[/b], des [b]photos[/b] (jpeg, png, webp) et des [b]fichiers[/b] (20 Mo maximum) — par le trombone, en collant une image, ou en glissant un fichier sur la conversation.\n` +
+          `• Envoyer du texte, des [b]émojis[/b], des [b]photos[/b] (jpeg, png, webp), des [b]GIF animés[/b] (10 Mo maximum) et des [b]fichiers[/b] (20 Mo maximum) — par le trombone, en collant une image, ou en glissant un fichier sur la conversation.\n` +
+          `• Envoyer un [b]message vocal[/b] : quand le champ est vide, le bouton 🎤 démarre l'enregistrement (le navigateur te demande l'accès au micro la première fois). Le bouton ➤ l'envoie, 🗑️ l'annule ; 5 minutes maximum. Celui qui l'écoute peut avancer dans l'enregistrement et l'accélérer (x1,5 / x2).\n` +
+          `• Les [b]autocollants[/b] : le bouton 😀 ouvre trois onglets — Émojis (à insérer dans ton texte), Autocollants (de grands émojis qui partent d'un clic) et GIF (envoie un GIF enregistré sur ton ordinateur).\n` +
           `• [b]Partager un torrent[/b] (bouton 🎬) : sa fiche s'affiche dans la bulle avec l'affiche et les seeders. Coller un lien vers une fiche du site fait pareil.\n` +
           `• [b]Répondre[/b] à un message précis (il est cité), [b]réagir[/b] avec un émoji, [b]modifier[/b] ton message ou [b]annuler son envoi[/b] (il disparaît pour tout le monde).\n` +
           `• [b]Mentionner[/b] quelqu'un avec @pseudo : il est prévenu, et son nom ressort dans le message.\n` +

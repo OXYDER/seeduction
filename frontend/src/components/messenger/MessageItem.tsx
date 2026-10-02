@@ -8,6 +8,7 @@ import Avatar from '../Avatar';
 import UserLink from '../UserLink';
 import TorrentCard from './TorrentCard';
 import Lightbox from './Lightbox';
+import VoicePlayer from './VoicePlayer';
 
 export interface Reader { userId: string; username: string; avatarUrl?: string | null }
 
@@ -101,7 +102,7 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
               )}
               {msg.type === 'VOICE' && msg.fileUrl && (
                 <div className={`msgr-bubble msgr-voice${msg.pending ? ' pending' : ''}`}>
-                  <audio controls preload="metadata" src={msg.fileUrl} />
+                  <VoicePlayer src={msg.fileUrl} durationMs={msg.durationMs} />
                 </div>
               )}
               {msg.type === 'FILE' && msg.fileUrl && (

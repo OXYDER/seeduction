@@ -132,9 +132,16 @@ export class MessengerController {
   /** Pièce jointe : une image (jpeg/png/webp) s'affiche en ligne, tout autre fichier devient un lien de téléchargement. */
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
-  async upload(@UploadedFile() file: Express.Multer.File) {
+  async upload(@UploadedFile() file: Express.Multer.File, @Query('voice') voice?: string) {
     if (!file) throw new BadRequestException('Fichier manquant');
-    if (/^image\/(jpe?g|png|webp)$/i.test(file.mimetype)) return { kind: 'image', url: await this.covers.saveUpload(file), name: file.originalname, size: file.size, mime: file.mimetype };
+    if (voice === '1') {
+      // Message vocal : un enregistrement audio du navigateur, servi ensuite en lecture directe (voir MessengerFilesController).
+      if (!/^audio\//i.test(file.mimetype)) throw new BadRequestException('Format audio invalide');
+      const ext = /mp4|aac/i.test(file.mimetype) ? 'm4a' : /ogg/i.test(file.mimetype) ? 'ogg' : /mpeg|mp3/i.test(file.mimetype) ? 'mp3' : /wav/i.test(file.mimetype) ? 'wav' : 'webm';
+      const saved = await this.files.saveUpload({ ...file, originalname: `vocal.${ext}` } as Express.Multer.File);
+      return { kind: 'voice', url: saved.url.replace('/api/chat/files/', '/api/messenger/files/'), name: saved.name, size: saved.size, mime: file.mimetype };
+    }
+    if (/^image\/(jpe?g|png|webp|gif)$/i.test(file.mimetype)) return { kind: 'image', url: await this.covers.saveChatImage(file), name: file.originalname, size: file.size, mime: file.mimetype };
     const saved = await this.files.saveUpload(file);
     return { kind: 'file', url: saved.url, name: saved.name, size: saved.size, mime: file.mimetype };
   }

@@ -1,6 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
 import { WIKI_SEED } from './wiki-seed';
+
+const hashOf = (a: { title: string; content: string; keywords: string | null }) =>
+  createHash('sha1').update(JSON.stringify([a.title, a.content, a.keywords ?? ''])).digest('hex');
 
 function slugify(s: string) {
   return s
@@ -19,36 +23,44 @@ export class WikiService implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Peuple le wiki avec le contenu de départ (voir wiki-seed.ts) : tout au premier démarrage, puis à chaque démarrage
-   * seulement les articles du fichier qui n'existent pas encore (repérés par leur slug) — c'est ce qui fait apparaître
-   * automatiquement la documentation d'une nouvelle fonctionnalité après un déploiement, sans jamais écraser un
-   * article déjà là (donc les retouches du staff sont conservées). Pour retirer définitivement un article du seed,
-   * le supprimer aussi de wiki-seed.ts, sinon il revient au prochain démarrage.
+   * Garde le wiki aligné sur le fichier de départ (voir wiki-seed.ts) à chaque démarrage, sans jamais écraser le travail du staff :
+   * • un article du fichier qui n'existe pas encore est créé (c'est ce qui fait apparaître la documentation d'une nouvelle fonctionnalité) ;
+   * • un article du fichier dont le texte a changé est mis à jour, mais seulement s'il n'a pas été retouché depuis (empreinte `seedHash`) ;
+   * • un article qui en remplace d'anciens (`supersedes`) les retire, s'ils n'ont pas été retouchés non plus.
+   * Pour retirer définitivement un article du seed, le supprimer aussi de wiki-seed.ts, sinon il revient au prochain démarrage.
    */
   async onModuleInit() {
-    // Un article du seed qui en remplace d'anciens (supersedes) les retire, sauf si le staff les a retouchés entre-temps.
+    const untouched = (a: { title: string; content: string; keywords: string | null; seedHash: string | null; createdAt: Date; updatedAt: Date }) =>
+      a.seedHash ? a.seedHash === hashOf(a) : Math.abs(a.updatedAt.getTime() - a.createdAt.getTime()) < 2000; // anciens articles : pas d'empreinte, on se fie aux dates
+
     for (const cat of WIKI_SEED) {
       for (const art of cat.articles) {
         for (const oldSlug of art.supersedes ?? []) {
-          const old = await this.prisma.wikiArticle.findUnique({ where: { slug: oldSlug }, select: { id: true, createdAt: true, updatedAt: true } });
-          if (old && Math.abs(old.updatedAt.getTime() - old.createdAt.getTime()) < 2000) await this.prisma.wikiArticle.delete({ where: { id: old.id } });
+          const old = await this.prisma.wikiArticle.findUnique({ where: { slug: oldSlug } });
+          if (old && untouched(old)) await this.prisma.wikiArticle.delete({ where: { id: old.id } });
         }
       }
     }
+
     for (let i = 0; i < WIKI_SEED.length; i++) {
       const cat = WIKI_SEED[i];
       let category = await this.prisma.wikiCategory.findUnique({ where: { slug: cat.slug } });
-      if (!category) {
-        category = await this.prisma.wikiCategory.create({ data: { name: cat.name, slug: cat.slug, icon: cat.icon, order: i } });
-      }
-      const existing = new Set((await this.prisma.wikiArticle.findMany({ where: { categoryId: category.id }, select: { slug: true } })).map((a) => a.slug));
-      const missing = cat.articles.map((a, j) => ({ a, j })).filter(({ a }) => !existing.has(a.slug));
-      for (const { a, j } of missing) {
-        // Même slug ailleurs (article déplacé vers une autre catégorie par le staff) : on ne le recrée pas.
-        if (await this.prisma.wikiArticle.findUnique({ where: { slug: a.slug }, select: { id: true } })) continue;
-        await this.prisma.wikiArticle.create({
-          data: { categoryId: category.id, title: a.title, slug: a.slug, content: a.content, keywords: a.keywords, isFaq: !!a.isFaq, order: j },
-        });
+      if (!category) category = await this.prisma.wikiCategory.create({ data: { name: cat.name, slug: cat.slug, icon: cat.icon, order: i } });
+
+      for (let j = 0; j < cat.articles.length; j++) {
+        const art = cat.articles[j];
+        const seedHash = hashOf({ title: art.title, content: art.content, keywords: art.keywords ?? null });
+        const existing = await this.prisma.wikiArticle.findUnique({ where: { slug: art.slug } });
+        if (!existing) {
+          await this.prisma.wikiArticle.create({
+            data: { categoryId: category.id, title: art.title, slug: art.slug, content: art.content, keywords: art.keywords ?? null, isFaq: !!art.isFaq, order: j, seedHash },
+          });
+        } else if (untouched(existing) && existing.seedHash !== seedHash) {
+          await this.prisma.wikiArticle.update({
+            where: { id: existing.id },
+            data: { title: art.title, content: art.content, keywords: art.keywords ?? null, isFaq: !!art.isFaq, seedHash },
+          });
+        }
       }
     }
   }

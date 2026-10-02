@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMessenger, type Msg, type MsgUser } from '../../store/messenger';
-import { EMOJI_GRID } from '../../lib/emoji';
-import { uploadAttachment } from '../../lib/messengerUpload';
+import { EMOJI_GRID, STICKERS } from '../../lib/emoji';
+import { canRecordVoice, pickRecorderMime, uploadAttachment, uploadVoice } from '../../lib/messengerUpload';
 import Avatar from '../Avatar';
 import ShareTorrentModal from './ShareTorrentModal';
 
 // Brouillons : ce qu'on a commencé à écrire dans une conversation est gardé quand on passe à une autre.
 const drafts = new Map<string, string>();
 const TYPING_EVERY_MS = 1500;
+const MAX_VOICE_MS = 5 * 60 * 1000;
 const MENTION_AT_CARET = /(^|\s)@([\p{L}\p{N}_.-]{0,32})$/u;
 
 interface Props {
@@ -31,12 +32,17 @@ export default function Composer({ conversationId, writable, people, replyTo, on
   const typingPing = useMessenger((s) => s.typingPing);
   const [text, setText] = useState(() => drafts.get(conversationId) ?? '');
   const [emoji, setEmoji] = useState(false);
+  const [tab, setTab] = useState<'emoji' | 'sticker' | 'gif'>('emoji');
+  const [rec, setRec] = useState<{ startedAt: number } | null>(null);
+  const [recMs, setRecMs] = useState(0);
   const [share, setShare] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [mention, setMention] = useState<{ query: string; index: number } | null>(null);
   const area = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const gifInput = useRef<HTMLInputElement>(null);
+  const recorder = useRef<{ mr: MediaRecorder; stream: MediaStream; chunks: Blob[]; startedAt: number; send: boolean } | null>(null);
   const lastTyping = useRef(0);
 
   // Changement de conversation : on reprend son brouillon.
@@ -76,6 +82,63 @@ export default function Composer({ conversationId, writable, people, replyTo, on
     } finally { setBusy(false); }
   }
 
+  async function startRecording() {
+    if (recorder.current || busy) return;
+    setError('');
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setError("Impossible d'accéder au micro : autorise-le dans les réglages du navigateur.");
+      return;
+    }
+    const mime = pickRecorderMime();
+    const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    const state = { mr, stream, chunks: [] as Blob[], startedAt: Date.now(), send: false };
+    recorder.current = state;
+    mr.ondataavailable = (e) => { if (e.data.size) state.chunks.push(e.data); };
+    mr.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      recorder.current = null;
+      setRec(null);
+      const durationMs = Date.now() - state.startedAt;
+      if (!state.send || durationMs < 600 || !state.chunks.length) return;
+      setBusy(true);
+      try {
+        const part = await uploadVoice(new Blob(state.chunks, { type: mr.mimeType || mime || 'audio/webm' }), durationMs);
+        send(conversationId, { ...part, replyToId: replyTo?.id });
+        onCancelReply();
+      } catch (err: any) {
+        setError(err.response?.data?.message ?? "Impossible d'envoyer le message vocal");
+      } finally { setBusy(false); }
+    };
+    mr.start(250);
+    setRec({ startedAt: state.startedAt });
+    setRecMs(0);
+  }
+
+  function stopRecording(sendIt: boolean) {
+    const r = recorder.current;
+    if (!r) return;
+    r.send = sendIt;
+    if (r.mr.state !== 'inactive') r.mr.stop();
+  }
+
+  // Compteur du vocal en cours ; l'enregistrement s'arrête et part tout seul au bout de 5 minutes.
+  useEffect(() => {
+    if (!rec) return;
+    const t = setInterval(() => {
+      const ms = Date.now() - rec.startedAt;
+      setRecMs(ms);
+      if (ms >= MAX_VOICE_MS) stopRecording(true);
+    }, 200);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rec]);
+
+  // Changer de conversation ou quitter : on abandonne un enregistrement en cours (le micro doit être libéré).
+  useEffect(() => () => { const r = recorder.current; if (r) { r.send = false; if (r.mr.state !== 'inactive') r.mr.stop(); } }, [conversationId]);
+
   // Fichiers déposés sur la conversation.
   useEffect(() => {
     if (!droppedFiles?.length) return;
@@ -84,6 +147,11 @@ export default function Composer({ conversationId, writable, people, replyTo, on
     if (text.trim()) setText('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [droppedFiles]);
+
+  function sendSticker(emoji: string) {
+    send(conversationId, { content: emoji, replyToId: replyTo?.id });
+    setEmoji(false); onCancelReply();
+  }
 
   function onChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const v = e.target.value;
@@ -155,6 +223,15 @@ export default function Composer({ conversationId, writable, people, replyTo, on
           ))}
         </div>
       )}
+      {rec ? (
+        <div className="msgr-composer-row msgr-recording">
+          <button type="button" className="chat-icon-btn lg" title="Annuler" onClick={() => stopRecording(false)}>🗑️</button>
+          <span className="msgr-rec-dot" />
+          <span className="msgr-rec-time">{Math.floor(recMs / 60000)}:{String(Math.floor(recMs / 1000) % 60).padStart(2, '0')}</span>
+          <span className="muted msgr-rec-hint">Enregistrement…</span>
+          <button type="button" className="chat-send-btn" title="Envoyer le vocal" aria-label="Envoyer le vocal" onClick={() => stopRecording(true)}>➤</button>
+        </div>
+      ) : (
       <div className="msgr-composer-row">
         {!editing && (
           <>
@@ -174,16 +251,44 @@ export default function Composer({ conversationId, writable, people, replyTo, on
           onPaste={onPaste}
           aria-label="Message"
         />
-        <div style={{ position: 'relative' }}>
-          <button type="button" className="chat-icon-btn lg" title="Emoji" onClick={() => setEmoji((v) => !v)}>😀</button>
-          {emoji && (
-            <div className="chat-emoji-grid msgr-emoji-pop">
-              {EMOJI_GRID.map((e) => <button key={e} type="button" onClick={() => { setText((v) => v + e); area.current?.focus(); }}>{e}</button>)}
-            </div>
-          )}
-        </div>
-        <button type="button" className="chat-send-btn" disabled={!text.trim() || busy} title={editing ? 'Enregistrer' : 'Envoyer'} aria-label="Envoyer" onClick={submit}>{editing ? '✓' : '➤'}</button>
+        {!editing && (
+          <div style={{ position: 'relative' }}>
+            <button type="button" className="chat-icon-btn lg" title="Émojis, autocollants et GIF" onClick={() => setEmoji((v) => !v)}>😀</button>
+            {emoji && (
+              <div className="msgr-emoji-pop">
+                <div className="msgr-pop-tabs" role="tablist">
+                  {([['emoji', 'Émojis'], ['sticker', 'Autocollants'], ['gif', 'GIF']] as const).map(([k, label]) => (
+                    <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{label}</button>
+                  ))}
+                </div>
+                {tab === 'emoji' && (
+                  <div className="chat-emoji-grid">
+                    {EMOJI_GRID.map((e) => <button key={e} type="button" onClick={() => { setText((v) => v + e); area.current?.focus(); }}>{e}</button>)}
+                  </div>
+                )}
+                {tab === 'sticker' && (
+                  <div className="msgr-sticker-grid">
+                    {STICKERS.map((e) => <button key={e} type="button" onClick={() => sendSticker(e)}>{e}</button>)}
+                  </div>
+                )}
+                {tab === 'gif' && (
+                  <div className="msgr-gif-pane">
+                    <input ref={gifInput} type="file" accept="image/gif" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { setEmoji(false); sendFile(f); } }} />
+                    <button type="button" className="msgr-gif-upload" disabled={busy} onClick={() => gifInput.current?.click()}>🎞️ Envoyer un GIF depuis mon ordinateur</button>
+                    <p className="muted">Tu peux aussi glisser-déposer ou coller un GIF directement dans la conversation (10 Mo max).</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {!editing && !text.trim() && canRecordVoice() ? (
+          <button type="button" className="chat-send-btn mic" disabled={busy} title="Message vocal" aria-label="Enregistrer un message vocal" onClick={startRecording}>🎤</button>
+        ) : (
+          <button type="button" className="chat-send-btn" disabled={!text.trim() || busy} title={editing ? 'Enregistrer' : 'Envoyer'} aria-label="Envoyer" onClick={submit}>{editing ? '✓' : '➤'}</button>
+        )}
       </div>
+      )}
       {share && <ShareTorrentModal onClose={() => setShare(false)} onPick={(torrentId) => { setShare(false); send(conversationId, { torrentId, content: text.trim() || undefined, replyToId: replyTo?.id }); setText(''); drafts.delete(conversationId); onCancelReply(); }} />}
     </div>
   );

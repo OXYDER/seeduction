@@ -41,6 +41,19 @@ export class CoversService {
     return this.saveBuffer(buffer, ext);
   }
 
+  /**
+   * Image envoyée dans une conversation (Messenger) : comme saveUpload, mais les GIF animés sont acceptés (10 Mo max).
+   * Le type est vérifié sur le contenu (signature « GIF87a / GIF89a »), pas seulement sur ce que déclare le navigateur.
+   */
+  async saveChatImage(file: Express.Multer.File): Promise<string> {
+    if (file.mimetype?.toLowerCase() === 'image/gif') {
+      if (file.size > 10 * 1024 * 1024) throw new BadRequestException('GIF trop volumineux (10 Mo max)');
+      if (!/^GIF8[79]a/.test(file.buffer.subarray(0, 6).toString('latin1'))) throw new BadRequestException("Ce fichier n'est pas un GIF valide");
+      return this.saveBuffer(file.buffer, 'gif');
+    }
+    return this.saveUpload(file);
+  }
+
   async saveUpload(file: Express.Multer.File): Promise<string> {
     const ext = EXT_BY_MIME[file.mimetype?.toLowerCase()];
     if (!ext) throw new BadRequestException('Type de fichier non supporté (jpeg/png/webp uniquement)');
@@ -61,7 +74,7 @@ export class CoversService {
     // Un nom de fichier généré par randomUUID() ne peut pas contenir de
     // séparateur de chemin, mais on le vérifie explicitement (paramètre
     // fourni par le client) avant de construire un chemin disque.
-    if (!/^[a-f0-9-]+\.(jpg|png|webp)$/i.test(filename)) throw new BadRequestException('Nom de fichier invalide');
+    if (!/^[a-f0-9-]+\.(jpg|png|webp|gif)$/i.test(filename)) throw new BadRequestException('Nom de fichier invalide');
     return path.join(STORAGE_DIR, filename);
   }
 }

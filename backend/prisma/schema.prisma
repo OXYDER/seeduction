@@ -934,6 +934,9 @@ model WikiArticle {
   // Apparaît aussi dans la FAQ (questions courtes, très consultées) en plus de sa catégorie normale.
   isFaq      Boolean      @default(false)
   order      Int          @default(0)
+  // Empreinte du texte tel que le fichier de départ (wiki-seed.ts) l'a écrit : tant que l'article n'a pas été retouché par le
+  // staff, un changement du fichier de départ le met à jour tout seul (voir WikiService.onModuleInit).
+  seedHash   String?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
