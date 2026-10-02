@@ -35,7 +35,7 @@ export default function TorrentDetail() {
   const [torrent, setTorrent] = useState<any>(null);
   const [loadError, setLoadError] = useState('');
   const theme = useTheme();
-  const [tab, setTab] = useState<'overview' | 'files' | 'comments' | 'related'>('overview');
+  const [tab, setTab] = useState<'overview' | 'files' | 'comments' | 'related' | 'nfo'>('overview');
   const [trailerOpen, setTrailerOpen] = useState(false);
   const downloadAnchorRef = useRef<HTMLDivElement>(null);
   usePageBackdrop(torrent ? (torrent.metadata?.backdrop ?? torrent.coverImage ?? null) : null);
@@ -205,6 +205,7 @@ export default function TorrentDetail() {
       { id: 'files', label: `Fichiers${torrent.fileList?.length ? ` (${torrent.fileList.length})` : ''}` },
       { id: 'comments', label: 'Commentaires' },
       ...(hasRelated ? [{ id: 'related', label: 'Saga & épisodes' }] : []),
+      { id: 'nfo', label: 'NFO' },
     ] as { id: typeof tab; label: string }[];
 
     return (
@@ -288,10 +289,10 @@ export default function TorrentDetail() {
             <TorrentHero torrent={torrent} />
             <TorrentVersions torrentId={torrent.id} />
             {descriptionPanel}
-            <NfoPanel torrentId={torrent.id} />
           </div>
         )}
         {tab === 'files' && filesPanel}
+        {tab === 'nfo' && <NfoPanel key={`nfo-${torrent.id}`} torrentId={torrent.id} alwaysOpen />}
         {tab === 'comments' && <TorrentComments torrentId={torrent.id} />}
         {tab === 'related' && hasRelated && <TorrentRelated torrentId={torrent.id} seriesTitle={torrent.metadata?.originalTitle ?? torrent.name} />}
 
