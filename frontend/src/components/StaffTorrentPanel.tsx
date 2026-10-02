@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import WysiwygEditor from './WysiwygEditor';
@@ -11,7 +11,7 @@ const STATUSES = [
 ];
 
 /** Modifier ou supprimer un torrent directement depuis sa fiche (modérateurs, admins, propriétaire). */
-export default function StaffTorrentPanel({ torrent, startOpen, onSaved }: { torrent: any; startOpen?: boolean; onSaved: (patch: any) => void }) {
+export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSaved }: { torrent: any; startOpen?: boolean; openSignal?: number; onSaved: (patch: any) => void }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(!!startOpen);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -22,6 +22,16 @@ export default function StaffTorrentPanel({ torrent, startOpen, onSaved }: { tor
   const [doubleUpload, setDoubleUpload] = useState(!!torrent.doubleUpload);
   const [description, setDescription] = useState(torrent.description ?? '');
   const [coverImage, setCoverImage] = useState(torrent.coverImage ?? '');
+
+  // Statut et options changés ailleurs (barre de modération de la fiche) : le formulaire les reprend pour ne pas les écraser à l'enregistrement.
+  useEffect(() => { setStatus(torrent.status ?? 'APPROVED'); setFreeleech(!!torrent.freeleech); setDoubleUpload(!!torrent.doubleUpload); }, [torrent.status, torrent.freeleech, torrent.doubleUpload]);
+  // Le bouton « Modifier » de la barre ouvre ce panneau et y amène l'écran.
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!openSignal) return;
+    setOpen(true);
+    requestAnimationFrame(() => root.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  }, [openSignal]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -77,9 +87,9 @@ export default function StaffTorrentPanel({ torrent, startOpen, onSaved }: { tor
   }
 
   return (
-    <div className="panel ornate">
+    <div className="panel ornate" ref={root}>
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div className="panel-title" style={{ margin: 0, padding: 0, border: 0 }}><span className="title-icon">🛡️</span>Modération</div>
+        <div className="panel-title" style={{ margin: 0, padding: 0, border: 0 }}><span className="title-icon">✏️</span>Édition du torrent</div>
         <div className="row">
           <button type="button" className="secondary" onClick={() => setOpen((v) => !v)}>{open ? 'Fermer' : '✏️ Modifier ce torrent'}</button>
           <button type="button" className="danger" onClick={remove} disabled={busy}>🗑️ Supprimer</button>

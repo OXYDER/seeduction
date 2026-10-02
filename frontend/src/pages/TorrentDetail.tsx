@@ -43,6 +43,7 @@ export default function TorrentDetail() {
   const favorites = useFavorites();
   const [searchParams] = useSearchParams();
   const isStaff = ['MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
+  const [editSignal, setEditSignal] = useState(0);
   const [myCollections, setMyCollections] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addedTo, setAddedTo] = useState<Set<string>>(new Set());
@@ -169,10 +170,10 @@ export default function TorrentDetail() {
     </div>
   );
 
-  const staffBanner = isStaff && <StaffQueueBanner key={`q-${torrent.id}`} torrent={torrent} onStatusChange={(status) => setTorrent((t: any) => ({ ...t, status }))} />;
+  const staffBanner = isStaff && <StaffQueueBanner key={`q-${torrent.id}`} torrent={torrent} onPatch={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} onEdit={() => setEditSignal((n) => n + 1)} />;
 
   const staffPanel = isStaff && (
-    <StaffTorrentPanel key={torrent.id} torrent={torrent} startOpen={searchParams.get('edit') === '1'} onSaved={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} />
+    <StaffTorrentPanel key={`staff-${torrent.id}`} torrent={torrent} startOpen={searchParams.get('edit') === '1'} openSignal={editSignal} onSaved={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} />
   );
 
   const descriptionPanel = torrent.description && (

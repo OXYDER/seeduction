@@ -404,7 +404,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Admin[/b] : tout ce que peut faire un modérateur, plus la configuration du site (catégories, freeleech, templates, statistiques du serveur).\n` +
           `• [b]Owner[/b] : accès complet, y compris la promotion d'autres membres au staff.\n\n` +
           `Un badge distinctif identifie chaque rôle partout où le pseudo apparaît.\n\n` +
-          `[b]La page Modération[/b] (menu « Modération », avec une pastille rouge qui compte ce qui attend) regroupe le travail du staff : les [b]torrents à valider[/b] (pochette, envoyeur, extrait de description, approbation ou rejet en un clic avec un motif envoyé au membre, approbation de plusieurs d'un coup) et les [b]signalements[/b] ouverts (résoudre, ignorer, ou retirer le torrent signalé). L'accueil affiche aussi un bandeau « À modérer » quand il y a quelque chose à traiter, et la fiche d'un torrent en attente ou signalé montre un bandeau avec les mêmes boutons.`,
+          `[b]La page Modération[/b] (menu « Modération », avec une pastille rouge qui compte ce qui attend) regroupe le travail du staff : les [b]torrents à valider[/b] (pochette, envoyeur, extrait de description, approbation ou rejet en un clic avec un motif envoyé au membre, approbation de plusieurs d'un coup) et les [b]signalements[/b] ouverts (résoudre, ignorer, ou retirer le torrent signalé). L'accueil affiche aussi un bandeau « À modérer » quand il y a quelque chose à traiter, et la fiche de [b]chaque[/b] torrent porte en haut une barre de modération (visible du staff seulement) : statut actuel, Approuver / Rejeter ou Retirer selon le cas, Marquer mort, Freeleech, Double upload, Modifier, et les signalements ouverts s'il y en a.`,
       },
     ],
   },

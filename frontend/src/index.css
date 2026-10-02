@@ -2288,3 +2288,13 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .seedob-sub { font-size: 11px; opacity: 0.7; }
 .seedob-status { font-size: 12px; }
 .seedob-foot { display: block; padding: 10px 14px; text-align: center; font-size: 13px; background: rgba(255,255,255,0.04); }
+
+.staff-banner.attention { border-left: 3px solid #f59e0b; }
+.staff-banner:not(.attention) { border-left: 3px solid rgba(139,92,246,0.7); }
+.staff-banner-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.staff-banner-actions button.on { background: var(--acc1, #8b5cf6); color: #fff; }
+.staff-status { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,0.12); }
+.staff-status.APPROVED { background: rgba(31,168,85,0.25); color: #6ee7a0; }
+.staff-status.PENDING { background: rgba(245,158,11,0.25); color: #fbbf24; }
+.staff-status.REJECTED { background: rgba(229,56,79,0.25); color: #ff8394; }
+.staff-status.DEAD { background: rgba(148,163,184,0.25); color: #cbd5e1; }
