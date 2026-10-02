@@ -430,6 +430,10 @@ async function startPlayback(torrentBuffer, fileIndex, meta = {}) {
       log('Torrent déjà présent dans le client — reprise de la session existante.');
       const file = existingSession.torrent.files[fileIndex];
       if (file) switchSessionFile(existingSession, file, fileIndex);
+      // Une session restaurée depuis sessions.json (ou créée avant l'ajout de ce champ) peut avoir un torrentId
+      // manquant, ce qui bloquait silencieusement tout ping « en train de regarder »/position — on le corrige ici
+      // à chaque relance, pas seulement torrentName/coverImage qui étaient déjà rafraîchis.
+      if (meta.torrentId) existingSession.torrentId = meta.torrentId;
       if (meta.torrentName) existingSession.torrentName = meta.torrentName;
       if (meta.coverImage) existingSession.coverImage = meta.coverImage;
       persistSessions();
