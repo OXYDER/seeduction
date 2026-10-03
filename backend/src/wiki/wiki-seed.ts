@@ -301,7 +301,9 @@ export const WIKI_SEED: WikiSeedCategory[] = [
         keywords: 'en ligne, absent, occupé, invisible, status text',
         isFaq: true,
         content:
-          `Clique n'importe où sur ta carte (avatar + nom) en haut du menu de gauche pour choisir ton statut :\n\n` +
+          `[b]Le menu du compte[/b] : clique sur ta carte (avatar + nom) en haut du menu de gauche. Il affiche ton ratio, ton upload, ton téléchargé et tes points bonus, puis les liens vers tout ce qui est à toi : profil, mes uploads, mes seeds, hit & run, favoris, collections, messages, mes demandes, boutique bonus, amis et wiki. Son dernier bouton, « Changer mon statut », ouvre le choix ci-dessous.\n\n` +
+          `[b]Choisir ton statut[/b]\n` +
+          `Depuis ce menu, tu peux choisir ton statut :\n\n` +
           `• [b]En ligne[/b], [b]Absent[/b], [b]Occupé[/b], ou [b]Apparaître hors ligne[/b] (les autres te voient alors comme déconnecté, même si tu es bien là).\n` +
           `• Un [b]message personnalisé[/b] libre (100 caractères) s'affiche à côté, visible dans l'infobulle qui apparaît quand on survole ton pseudo n'importe où sur le site.\n\n` +
           `Ce statut (sauf « Apparaître hors ligne ») et ton message sont visibles de tous les membres.`,

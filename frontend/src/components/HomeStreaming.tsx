@@ -97,22 +97,13 @@ function ContinueCard({ t }: { t: any }) {
   );
 }
 
-const TABS = [
-  { id: 'trending', label: 'Tendances' },
-  { id: 'news', label: 'Nouvelles' },
-  { id: 'community', label: 'Activité' },
-  { id: 'me', label: 'Mon compte' },
-] as const;
-type TabId = (typeof TABS)[number]['id'];
-
 /**
- * Accueil du thème Prestige, façon Plex : fond cinématographique (l'image du torrent à la une), onglets en haut,
- * grand titre avec ses infos, puis rangées d'affiches par catégorie.
+ * Accueil du thème Prestige, façon Plex : fond cinématographique (l'image du torrent à la une), les nouvelles, l'activité de la
+ * communauté (forum, top, chiffres), puis le grand titre à la une et les rangées d'affiches par catégorie.
  */
 export default function HomeStreaming() {
-  const { profile, categories } = useOutletContext<LayoutContext>();
+  const { categories } = useOutletContext<LayoutContext>();
   const user = useAuthStore((s) => s.user);
-  const [tab, setTab] = useState<TabId>('trending');
   const [popular, setPopular] = useState<any[]>([]);
   const [latest, setLatest] = useState<any[]>([]);
   const [byCategory, setByCategory] = useState<{ id: string; name: string; slug: string; items: any[] }[]>([]);
@@ -165,10 +156,10 @@ export default function HomeStreaming() {
 
   // Défilement automatique de la vedette (en pause quand la souris est dessus).
   useEffect(() => {
-    if (featuredList.length < 2 || heroPaused || tab !== 'trending') return;
+    if (featuredList.length < 2 || heroPaused) return;
     const timer = window.setInterval(() => setHeroIndex((i) => (i + 1) % featuredList.length), 9000);
     return () => window.clearInterval(timer);
-  }, [featuredList.length, heroPaused, tab]);
+  }, [featuredList.length, heroPaused]);
 
   const hour = new Date().getHours();
   const greeting = hour < 5 ? 'Bonne nuit' : hour < 18 ? 'Bonjour' : 'Bonsoir';
@@ -178,15 +169,45 @@ export default function HomeStreaming() {
       <ModerationRail />
       <FreeleechCalendar compact />
       <HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} />
-      <NewsPanel limit={1} heroOnly />
-      <nav className="tabs" aria-label="Sections de l'accueil">
-        {TABS.map((t) => (
-          <button key={t.id} type="button" className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
-        ))}
-      </nav>
+      <NewsPanel limit={3} />
+        <div className="home-bottom">
+          <div className="panel ornate">
+            <div className="panel-title"><span className="title-icon">💬</span>Derniers sujets du forum</div>
+            {topics.map((t) => (
+              <div key={t.id} className="row" style={{ justifyContent: 'space-between', padding: '7px 0', gap: 12 }}>
+                <Link to={`/forum/topics/${t.id}`} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.unread ? '🟣 ' : ''}{t.title}</Link>
+                <span className="muted" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{t.replies} rép. · {timeAgo(t.lastPostAt)}</span>
+              </div>
+            ))}
+            {topics.length === 0 && <p className="muted">Aucun sujet pour l'instant.</p>}
+            <Link to="/forum" className="muted">Aller au forum →</Link>
+          </div>
+          <div className="panel ornate">
+            <div className="panel-title"><span className="title-icon">👑</span>Top uploaders</div>
+            {topUploaders.map((u, i) => (
+              <div key={u.id} className="row" style={{ justifyContent: 'space-between', padding: '6px 0' }}>
+                <span><span className="muted">{i + 1}.</span> <UserLink user={u} /></span>
+                <span className="muted">{formatBytes(u.uploaded)}</span>
+              </div>
+            ))}
+            {topUploaders.length === 0 && <p className="muted">Pas encore de classement.</p>}
+            <Link to="/leaderboard" className="muted">Voir le Top 100 →</Link>
+          </div>
+          {stats && (
+            <div className="panel ornate">
+              <div className="panel-title"><span className="title-icon">📊</span>La communauté</div>
+              <div className="mini-stats">
+                <div><strong>{formatNumber(stats.totalUsers)}</strong><span className="muted">membres</span></div>
+                <div><strong>{formatNumber(stats.totalTorrents)}</strong><span className="muted">torrents</span></div>
+                <div><strong>{formatNumber(stats.totalSeeders)}</strong><span className="muted">seeders</span></div>
+                <div><strong>{formatBytes(stats.totalTraffic)}</strong><span className="muted">échangés</span></div>
+              </div>
+              <Link to="/stats" className="muted">Toutes les statistiques →</Link>
+            </div>
+          )}
+        </div>
+      
 
-      {tab === 'trending' && (
-        <>
           {featured ? (
             <section key={featured.id} className="panel ornate hero-frame hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
               <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
@@ -237,73 +258,6 @@ export default function HomeStreaming() {
           {byCategory.map((row) => (
             <Rail key={row.id} icon={CATEGORY_STYLE[row.slug]?.icon ?? '📁'} title={row.name} to={`/browse?categoryId=${row.id}`} items={row.items} />
           ))}
-        </>
-      )}
-
-      {tab === 'news' && <NewsPanel limit={6} />}
-
-      {tab === 'community' && (
-        <div className="home-bottom">
-          <div className="panel ornate">
-            <div className="panel-title"><span className="title-icon">💬</span>Derniers sujets du forum</div>
-            {topics.map((t) => (
-              <div key={t.id} className="row" style={{ justifyContent: 'space-between', padding: '7px 0', gap: 12 }}>
-                <Link to={`/forum/topics/${t.id}`} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.unread ? '🟣 ' : ''}{t.title}</Link>
-                <span className="muted" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{t.replies} rép. · {timeAgo(t.lastPostAt)}</span>
-              </div>
-            ))}
-            {topics.length === 0 && <p className="muted">Aucun sujet pour l'instant.</p>}
-            <Link to="/forum" className="muted">Aller au forum →</Link>
-          </div>
-          <div className="panel ornate">
-            <div className="panel-title"><span className="title-icon">👑</span>Top uploaders</div>
-            {topUploaders.map((u, i) => (
-              <div key={u.id} className="row" style={{ justifyContent: 'space-between', padding: '6px 0' }}>
-                <span><span className="muted">{i + 1}.</span> <UserLink user={u} /></span>
-                <span className="muted">{formatBytes(u.uploaded)}</span>
-              </div>
-            ))}
-            {topUploaders.length === 0 && <p className="muted">Pas encore de classement.</p>}
-            <Link to="/leaderboard" className="muted">Voir le Top 100 →</Link>
-          </div>
-          {stats && (
-            <div className="panel ornate">
-              <div className="panel-title"><span className="title-icon">📊</span>La communauté</div>
-              <div className="mini-stats">
-                <div><strong>{formatNumber(stats.totalUsers)}</strong><span className="muted">membres</span></div>
-                <div><strong>{formatNumber(stats.totalTorrents)}</strong><span className="muted">torrents</span></div>
-                <div><strong>{formatNumber(stats.totalSeeders)}</strong><span className="muted">seeders</span></div>
-                <div><strong>{formatBytes(stats.totalTraffic)}</strong><span className="muted">échangés</span></div>
-              </div>
-              <Link to="/stats" className="muted">Toutes les statistiques →</Link>
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === 'me' && profile && (
-        <div className="grid" style={{ gap: 18 }}>
-          <div className="stat-cards">
-            <Link to="/profile" className="stat-card"><span className="muted">Ratio</span><strong>{profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong></Link>
-            <Link to="/profile" className="stat-card"><span className="muted">Upload</span><strong style={{ color: 'var(--success)' }}>{formatBytes(profile.uploaded)}</strong></Link>
-            <Link to="/profile" className="stat-card"><span className="muted">Téléchargé</span><strong style={{ color: 'var(--danger)' }}>{formatBytes(profile.downloaded)}</strong></Link>
-            <Link to="/bonus" className="stat-card"><span className="muted">Points bonus</span><strong style={{ color: '#fbbf24' }}>{formatNumber(Math.round(profile.bonusPoints))}</strong></Link>
-          </div>
-          <div className="panel ornate">
-            <div className="panel-title"><span className="title-icon">⚡</span>Raccourcis</div>
-            <div className="shortcuts">
-              <Link to="/profile">👤 Mon profil</Link>
-              <Link to={`/browse?uploaderId=${user?.id}`}>⬆️ Mes uploads</Link>
-              <Link to="/favorites">⭐ Favoris</Link>
-              <Link to="/bonus">🎁 Boutique bonus</Link>
-              <Link to="/messages">✉️ Messages</Link>
-              <Link to="/requests">💬 Demandes</Link>
-              <Link to="/collections">📚 Collections</Link>
-              <Link to="/wiki">📖 Wiki</Link>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

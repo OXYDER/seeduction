@@ -18,6 +18,7 @@ import { useQueue } from '../store/queue';
 import { useNewsUnseen } from '../lib/news';
 import { ProfileName } from './UserLink';
 import Breadcrumbs from './Breadcrumbs';
+import AccountMenu from './AccountMenu';
 import SeedObligations from './SeedObligations';
 import { useTheme } from '../lib/theme';
 import { PRESENCE_OPTIONS } from '../lib/presence';
@@ -147,6 +148,7 @@ function LayoutInner() {
   const queueTotal = useQueue((s) => s.total);
   const refreshQueue = useQueue((s) => s.refresh);
   const resetQueue = useQueue((s) => s.reset);
+  const [accountOpen, setAccountOpen] = useState(false);
   const newsUnseen = useNewsUnseen((s) => s.unseen);
   const refreshNews = useNewsUnseen((s) => s.refresh);
   useEffect(() => {
@@ -293,8 +295,10 @@ function LayoutInner() {
             <div
               className="side-user-card"
               style={{ position: 'relative', cursor: 'pointer' }}
-              onClick={() => setStatusOpen((v) => !v)}
-              title="Changer de statut"
+              onClick={() => setAccountOpen((v) => !v)}
+              title="Mon compte"
+              aria-haspopup="menu"
+              aria-expanded={accountOpen}
             >
               <span style={{ position: 'relative', display: 'inline-block', width: 38, height: 38, flexShrink: 0 }}>
                 <Avatar user={{ username: user?.username, avatarUrl: profile?.avatarUrl }} size={38} />
@@ -327,6 +331,14 @@ function LayoutInner() {
                 onChange={(v, t) => setProfile((p) => (p ? { ...p, presenceStatus: v, statusText: t } : p))}
               />
             </div>
+            <AccountMenu
+              userId={user?.id}
+              profile={profile}
+              open={accountOpen}
+              onClose={() => setAccountOpen(false)}
+              onStatus={() => { setAccountOpen(false); setStatusOpen(true); }}
+              canUpload={!user?.profile || user.profile.perms?.upload !== false}
+            />
             <button className="secondary side-logout" onClick={() => { logout(); navigate('/login'); }} title="Se déconnecter">⎋</button>
           </div>
           {user && (
