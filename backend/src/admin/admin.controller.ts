@@ -3,6 +3,7 @@ import { AdminService, Actor } from './admin.service';
 import { AdminInvitesService, InviteInput } from './admin-invites.service';
 import { SiteConfigService } from './site-config.service';
 import { AuditService } from '../audit/audit.service';
+import { MemberActivityService } from '../member-activity/member-activity.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -11,7 +12,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
 @Controller('admin')
 export class AdminController {
-  constructor(private adminService: AdminService, private invites: AdminInvitesService, private siteConfig: SiteConfigService, private audit: AuditService) {}
+  constructor(private adminService: AdminService, private invites: AdminInvitesService, private siteConfig: SiteConfigService, private audit: AuditService, private memberActivity: MemberActivityService) {}
 
   @Get('stats')
   stats() {
@@ -81,6 +82,12 @@ export class AdminController {
     const result = await this.adminService.rejectTorrent(id, reason);
     await this.audit.log(req.user.userId, 'TORRENT_REJECT', { torrentId: id, name: result.name, ...(reason ? { reason: String(reason).slice(0, 300) } : {}) }, this.ip(req));
     return result;
+  }
+
+  /** Journal de toutes les actions d'un membre (et de ses profils) : visible par l'équipe Seeduction uniquement. */
+  @Get('users/:id/activity')
+  memberLog(@Param('id') id: string, @Query('page') page?: string, @Query('category') category?: string) {
+    return this.memberActivity.list(id, { page: parseInt(page ?? '1', 10), category: category || undefined });
   }
 
   /** Journal d'audit : réservé aux administrateurs. */

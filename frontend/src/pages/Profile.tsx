@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import StaffUserPanel, { ROLE_LABEL } from '../components/StaffUserPanel';
+import MemberActivityPanel from '../components/MemberActivityPanel';
 import ReportButton from '../components/ReportButton';
 import SecurityPanel from '../components/SecurityPanel';
 import ProfileEditor from '../components/ProfileEditor';
@@ -107,6 +108,7 @@ export default function Profile() {
       {id && me && ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && (
         <StaffUserPanel targetId={id} myRole={me.role} myId={me.id} onChanged={() => setReloadKey((k) => k + 1)} />
       )}
+      {id && me && ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && <MemberActivityPanel userId={id} />}
       {own && (
         <nav className="tabs" aria-label="Sections du profil">
           {([['overview', 'Aperçu'], ['account', 'Compte'], ['security', 'Sécurité'], ['dev', 'Développeur']] as const).map(([key, label]) => (

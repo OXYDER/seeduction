@@ -39,6 +39,7 @@ import { StreamModule } from './stream/stream.module';
 import { WikiModule } from './wiki/wiki.module';
 import { MessengerModule } from './messenger/messenger.module';
 import { FamilyModule } from './family/family.module';
+import { MemberActivityModule } from './member-activity/member-activity.module';
 import { RoadmapModule } from './roadmap/roadmap.module';
 import { TeamsModule } from './teams/teams.module';
 
@@ -84,6 +85,7 @@ import { TeamsModule } from './teams/teams.module';
     WikiModule,
     MessengerModule,
     FamilyModule,
+    MemberActivityModule,
     RoadmapModule,
     TeamsModule,
   ],

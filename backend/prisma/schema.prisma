@@ -154,6 +154,24 @@ model FamilyActivity {
   @@index([profileId, createdAt])
 }
 
+/// Journal de TOUTES les actions d'un membre (consultable par le staff sur son profil). Pas de relation : les lignes survivent à la suppression.
+model MemberActivity {
+  id         String   @id @default(uuid())
+  accountId  String
+  userId     String
+  category   String   @db.VarChar(16)
+  action     String   @db.VarChar(120)
+  targetType String?  @db.VarChar(16)
+  targetId   String?
+  detail     String?  @db.VarChar(300)
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([accountId, category, createdAt])
+  @@index([createdAt])
+}
+
 model InviteCode {
   id         String    @id @default(uuid())
   code       String    @unique
