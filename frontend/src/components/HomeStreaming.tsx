@@ -26,7 +26,7 @@ const COUNT_OPTIONS = [10, 18, 25, 50, 100];
  * Rangée avec ses propres onglets 24h/semaine/mois (et, si `allowCount`, un choix du nombre affiché) — sa propre
  * requête à chaque changement, indépendante des rangées "populaire"/"nouveautés" fixes du reste de la page.
  */
-function TimeRangeRail({ title, sort, allowCount }: { title: string; sort: 'date' | 'seeders'; allowCount?: boolean }) {
+function TimeRangeRail({ title, sort, allowCount, icon }: { title: string; sort: 'date' | 'seeders'; allowCount?: boolean; icon: string }) {
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week');
   const [count, setCount] = useState(18);
   const [items, setItems] = useState<any[]>([]);
@@ -47,10 +47,10 @@ function TimeRangeRail({ title, sort, allowCount }: { title: string; sort: 'date
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' });
 
   return (
-    <section className="rail-section rail-plex">
-      <div className="rail-head">
-        <h2>{title}{total > 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 400, marginLeft: 8 }}>({total})</span>}</h2>
-        <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+    <section className="panel ornate rail-section rail-plex">
+      <div className="panel-title" style={{ flexWrap: 'wrap' }}>
+        <span className="title-icon">{icon}</span>{title}{total > 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>({total})</span>}
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
           <div className="row" style={{ gap: 4 }}>
             {PERIODS.map((p) => (
               <button key={p.value} type="button" className={`secondary${period === p.value ? ' on' : ''}`} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setPeriod(p.value)}>
@@ -188,7 +188,9 @@ export default function HomeStreaming() {
       {tab === 'trending' && (
         <>
           {featured ? (
-            <section key={featured.id} className="hero-plex hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
+            <section key={featured.id} className="panel ornate hero-frame hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
+              <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
+              <div className="hero-plex">
               <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username} · À la une</div>
               <h1>{featured.name}</h1>
               <div className="hero-meta">
@@ -203,33 +205,37 @@ export default function HomeStreaming() {
               {featuredList.length > 1 && (
                 <div className="hero-dots" role="tablist" aria-label="Torrents à la une">
                   {featuredList.map((f, i) => (
-                    <button key={f.id} type="button" role="tab" aria-selected={i === heroIndex % featuredList.length} className={i === heroIndex % featuredList.length ? 'on' : ''} onClick={() => setHeroIndex(i)} aria-label={f.name} />
+                    <button key={f.id} type="button" role="tab" aria-selected={i === heroIndex % featuredList.length} className={i === heroIndex % featuredList.length ? 'on' : ''} onClick={() => setHeroIndex(i)} aria-label={`${i + 1} : ${f.name}`} title={f.name}>{i + 1}</button>
                   ))}
                 </div>
               )}
+              </div>
             </section>
           ) : (
-            <section className="hero-plex">
+            <section className="panel ornate hero-frame">
+              <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
+              <div className="hero-plex">
               <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username}</div>
               <h1>Bienvenue sur Seeduction</h1>
               <p className="hero-synopsis">Le tracker privé d'exception. Les premiers torrents envoyés apparaîtront ici, en grand.</p>
               <Link to="/upload"><button type="button" className="hero-cta">Envoyer un torrent</button></Link>
+              </div>
             </section>
           )}
 
           {active.length > 0 && (
-            <section className="rail-section rail-plex">
-              <div className="rail-head"><h2>Mon activité</h2><span className="muted">Tes téléchargements et seeds en cours</span></div>
+            <section className="panel ornate rail-section rail-plex">
+              <div className="panel-title"><span className="title-icon">⏯️</span>Mon activité<span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 400 }}>Tes téléchargements et seeds en cours</span></div>
               <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
             </section>
           )}
-          <Rail title="⚠️ Torrents à risque (1-2 seeders)" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />
-          <Rail title="De tes abonnements" to="/favorites" items={followed} />
-          <Rail title="Recommandé pour toi" to="/browse" items={recommended} />
-          <TimeRangeRail title="Derniers torrents" sort="date" />
-          <TimeRangeRail title="Les plus populaires" sort="seeders" allowCount />
+          <Rail icon="⚠️" title="Torrents à risque (1-2 seeders)" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />
+          <Rail icon="🔔" title="De tes abonnements" to="/favorites" items={followed} />
+          <Rail icon="✨" title="Recommandé pour toi" to="/browse" items={recommended} />
+          <TimeRangeRail title="Derniers torrents" sort="date" icon="🆕" />
+          <TimeRangeRail title="Les plus populaires" sort="seeders" allowCount icon="🔥" />
           {byCategory.map((row) => (
-            <Rail key={row.id} title={row.name} to={`/browse?categoryId=${row.id}`} items={row.items} />
+            <Rail key={row.id} icon={CATEGORY_STYLE[row.slug]?.icon ?? '📁'} title={row.name} to={`/browse?categoryId=${row.id}`} items={row.items} />
           ))}
         </>
       )}
@@ -238,7 +244,7 @@ export default function HomeStreaming() {
 
       {tab === 'community' && (
         <div className="home-bottom">
-          <div className="panel">
+          <div className="panel ornate">
             <div className="panel-title"><span className="title-icon">💬</span>Derniers sujets du forum</div>
             {topics.map((t) => (
               <div key={t.id} className="row" style={{ justifyContent: 'space-between', padding: '7px 0', gap: 12 }}>
@@ -249,7 +255,7 @@ export default function HomeStreaming() {
             {topics.length === 0 && <p className="muted">Aucun sujet pour l'instant.</p>}
             <Link to="/forum" className="muted">Aller au forum →</Link>
           </div>
-          <div className="panel">
+          <div className="panel ornate">
             <div className="panel-title"><span className="title-icon">👑</span>Top uploaders</div>
             {topUploaders.map((u, i) => (
               <div key={u.id} className="row" style={{ justifyContent: 'space-between', padding: '6px 0' }}>
@@ -261,7 +267,7 @@ export default function HomeStreaming() {
             <Link to="/leaderboard" className="muted">Voir le Top 100 →</Link>
           </div>
           {stats && (
-            <div className="panel">
+            <div className="panel ornate">
               <div className="panel-title"><span className="title-icon">📊</span>La communauté</div>
               <div className="mini-stats">
                 <div><strong>{formatNumber(stats.totalUsers)}</strong><span className="muted">membres</span></div>
@@ -283,7 +289,7 @@ export default function HomeStreaming() {
             <Link to="/profile" className="stat-card"><span className="muted">Téléchargé</span><strong style={{ color: 'var(--danger)' }}>{formatBytes(profile.downloaded)}</strong></Link>
             <Link to="/bonus" className="stat-card"><span className="muted">Points bonus</span><strong style={{ color: '#fbbf24' }}>{formatNumber(Math.round(profile.bonusPoints))}</strong></Link>
           </div>
-          <div className="panel">
+          <div className="panel ornate">
             <div className="panel-title"><span className="title-icon">⚡</span>Raccourcis</div>
             <div className="shortcuts">
               <Link to="/profile">👤 Mon profil</Link>

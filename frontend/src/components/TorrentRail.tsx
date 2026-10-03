@@ -38,15 +38,15 @@ export function PosterCard({ t }: { t: any }) {
 }
 
 /** Rangée d'affiches défilante, façon plateforme de streaming. */
-export function Rail({ title, to, items, loading }: { title: string; to: string; items: any[]; loading?: boolean }) {
+export function Rail({ title, to, items, loading, icon = '🎞️' }: { title: string; to: string; items: any[]; loading?: boolean; icon?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   if (items.length === 0 && !loading) return null;
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' });
   return (
-    <section className="rail-section rail-plex">
-      <div className="rail-head">
-        <h2>{title}</h2>
-        <div className="row" style={{ gap: 6 }}>
+    <section className="panel ornate rail-section rail-plex">
+      <div className="panel-title">
+        <span className="title-icon">{icon}</span>{title}
+        <div className="row" style={{ gap: 6, marginLeft: 'auto' }}>
           <Link to={to} className="rail-all">Tout voir →</Link>
           <button type="button" className="secondary rail-btn" onClick={() => scroll(-1)} aria-label="Précédent">‹</button>
           <button type="button" className="secondary rail-btn" onClick={() => scroll(1)} aria-label="Suivant">›</button>
