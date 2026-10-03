@@ -2723,3 +2723,9 @@ a.seedpage-item:hover { background: rgba(255,255,255,0.07); }
 .facet-section-title { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--acc-link, var(--gold)); }
 .facet-section .facet-rows { margin: 0; }
 .facet-label { min-width: 96px; }
+
+/* Bulle rouge : nombre de filtres appliqués sur le bouton « Filtres » de Parcourir */
+.icon-btn { position: relative; }
+.icon-btn .count.filters-badge { position: absolute; top: -8px; right: -8px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #e5384f; color: #fff; font-size: 11px; box-shadow: 0 0 0 2px var(--bg-panel, #10162a); }
+.reset-filters-btn { color: #f87171; border-color: rgba(229,56,79,0.5); }
+.reset-filters-btn:hover { color: #fff; background: rgba(229,56,79,0.35); border-color: #e5384f; }

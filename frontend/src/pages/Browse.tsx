@@ -190,7 +190,9 @@ export default function Browse() {
 
 
   const activeFilters = ([
+    period && { key: 'period', label: period === 'day' ? 'Ajoutés : 24 heures' : period === 'week' ? 'Ajoutés : cette semaine' : 'Ajoutés : ce mois' },
     year && { key: 'year', label: `Année ${year}` },
+    genre && { key: 'genre', label: `Genre : ${genre}` },
     resolution && { key: 'resolution', label: resolution },
     language && { key: 'language', label: language },
     source && { key: 'source', label: source },
@@ -340,8 +342,13 @@ export default function Browse() {
             <span>☠️</span> Morts
           </button>
           <button type="button" className={`icon-btn${showFilters ? ' active' : ''}`} onClick={() => setShowFilters((v) => !v)} title={showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}>
-            <span>🔎</span> Filtres {hasAdvancedFilters && <span className="count">{activeFilters.length}</span>} {showFilters ? '▴' : '▾'}
+            <span>🔎</span> Filtres {hasAdvancedFilters && <span className="count filters-badge" title={`${activeFilters.length} filtre${activeFilters.length > 1 ? 's' : ''} appliqué${activeFilters.length > 1 ? 's' : ''}`}>{activeFilters.length}</span>} {showFilters ? '▴' : '▾'}
           </button>
+          {hasAdvancedFilters && (
+            <button type="button" className="icon-btn reset-filters-btn" onClick={resetFilters} title="Retirer tous les filtres d'un clic">
+              <span>✕</span> Réinitialiser
+            </button>
+          )}
           <div style={{ position: 'relative' }} ref={sortMenuRef}>
             <button type="button" className={`icon-btn${showSort ? ' active' : ''}`} onClick={() => setShowSort((v) => !v)} title="Trier">
               <span>⇅</span> {currentSortLabel} {order === 'asc' ? '▲' : '▼'}
