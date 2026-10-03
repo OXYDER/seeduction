@@ -1,4 +1,5 @@
 import { FACETS, facetKeysFor, normalizeAttrs } from './facet-schema';
+import { GAME_PLATFORMS, detectPlatformIds } from './game-platforms';
 
 // Les listes de valeurs de chaque filtre (pour matchVocab), tirées du schéma pour rester synchronisées.
 const FACETS_OPTIONS: Record<string, string[]> = new Proxy({} as Record<string, string[]>, { get: (_t, key: string) => FACETS[key]?.options ?? [] });
@@ -84,31 +85,6 @@ const GENRE_GAMES: Record<string, string[]> = {
   Rythme: ['rhythm', 'music game'], Infiltration: ['stealth'], "Shoot'em up": ['shmup', 'shoot em up'], "Beat'em all": ['beat em up', 'brawler'], "Hack'n Slash": ['hack and slash', 'hack n slash'],
   DLC: ['dlc'], Update: ['update', 'patch'], Crack: ['crack', 'cracked', 'crackfix'],
 };
-
-const PLATFORMS: { key: string; value: string; name?: RegExp; ext?: string[] }[] = [
-  { key: 'consoleNintendo', value: 'Switch 2', name: /\bswitch[ ._-]?2\b/i },
-  { key: 'consoleNintendo', value: 'Switch', name: /\b(nintendo[ ._-]?)?switch\b(?![ ._-]?2)|\b(nsp|xci|nsz|xcz)\b/i, ext: ['nsp', 'xci', 'nsz', 'xcz'] },
-  { key: 'consoleNintendo', value: '3DS', name: /\b3ds\b/i, ext: ['3ds', 'cia', 'cci'] },
-  { key: 'consoleNintendo', value: 'DS', name: /\bnds\b|nintendo[ ._-]?ds\b/i, ext: ['nds'] },
-  { key: 'consoleNintendo', value: 'GameCube', name: /game[ ._-]?cube|\bngc\b/i, ext: ['gcm', 'gcz'] },
-  { key: 'consoleNintendo', value: 'WiiU', name: /wii[ ._-]?u\b/i, ext: ['wux', 'wud', 'rpx'] },
-  { key: 'consoleNintendo', value: 'Wii', name: /\bwii\b/i, ext: ['wbfs'] },
-  { key: 'consoleNintendo', value: 'Game Boy / GBA', name: /game[ ._-]?boy|\bgba\b|\bgbc\b/i, ext: ['gba', 'gbc', 'gb'] },
-  { key: 'consoleNintendo', value: 'N64', name: /\bn64\b|nintendo[ ._-]?64/i, ext: ['z64', 'n64', 'v64'] },
-  { key: 'consoleNintendo', value: 'SNES', name: /\bsnes\b|super[ ._-]?nintendo/i, ext: ['sfc', 'smc'] },
-  { key: 'consoleNintendo', value: 'NES', name: /\bnes\b/i, ext: ['nes'] },
-  { key: 'consoleSony', value: 'PlayStation 5', name: /\bps5\b|playstation[ ._-]?5/i },
-  { key: 'consoleSony', value: 'PlayStation 4', name: /\bps4\b|playstation[ ._-]?4/i },
-  { key: 'consoleSony', value: 'PlayStation 3', name: /\bps3\b|playstation[ ._-]?3/i },
-  { key: 'consoleSony', value: 'PlayStation 2', name: /\bps2\b|playstation[ ._-]?2/i },
-  { key: 'consoleSony', value: 'PlayStation', name: /\bpsx\b|\bps1\b|playstation(?![ ._-]?[2-5])/i },
-  { key: 'consoleSony', value: 'PSP', name: /\bpsp\b/i, ext: ['cso'] },
-  { key: 'consoleSony', value: 'Vita', name: /\bps[ ._-]?vita\b|\bvita\b/i, ext: ['vpk'] },
-  { key: 'consoleMicrosoft', value: 'Xbox Series X/S', name: /xbox[ ._-]?series|\bxsx\b|\bxbsx\b/i },
-  { key: 'consoleMicrosoft', value: 'Xbox One', name: /xbox[ ._-]?one|\bxb1\b/i },
-  { key: 'consoleMicrosoft', value: 'Xbox 360', name: /xbox[ ._-]?360|\bx360\b|\bxbla\b/i, ext: ['xex'] },
-  { key: 'consoleMicrosoft', value: 'Xbox', name: /\bxbox\b(?![ ._-]?(360|one|series))/i },
-];
 
 const MOBILE: { value: string; name: RegExp; ext?: string[] }[] = [
   { value: 'Android', name: /\bandroid\b/i, ext: ['apk', 'xapk', 'apks', 'obb'] },
@@ -267,11 +243,11 @@ export function detectAttrs(input: DetectInput): Record<string, string[]> {
   }
   if (allowed.includes('genreApplications')) set('genreApplications', matchVocab(`${input.name} ${genres}`, FACETS_OPTIONS.genreApplications, GENRE_APPS).slice(0, 3));
   if (allowed.includes('genreJeux')) set('genreJeux', matchVocab(`${genres} ${input.name}`, FACETS_OPTIONS.genreJeux, GENRE_GAMES));
+  // Consoles : même reconnaissance que le sélecteur de plateforme de l'envoi (voir game-platforms.ts).
+  const platformIds = detectPlatformIds(all, extList);
   for (const key of ['consoleMicrosoft', 'consoleNintendo', 'consoleSony']) {
     if (!allowed.includes(key)) continue;
-    const hits = PLATFORMS.filter((p) => p.key === key && (p.name?.test(all) || p.ext?.some((e) => exts.has(e)))).map((p) => p.value);
-    // « Switch 2 » prime sur « Switch », « WiiU » sur « Wii », « Xbox Series » sur « Xbox ».
-    set(key, hits.filter((h) => !(h === 'Switch' && hits.includes('Switch 2')) && !(h === 'Wii' && hits.includes('WiiU')) && !(h === 'DS' && hits.includes('3DS'))));
+    set(key, GAME_PLATFORMS.filter((p) => p.facetKey === key && platformIds.includes(p.id)).map((p) => p.facetValue as string));
   }
 
   // ---- Autres catégories

@@ -225,7 +225,7 @@ export class MetadataService {
     return (res.results ?? []).map((g: any) => ({
       id: String(g.id),
       title: g.name ?? 'Sans titre',
-      subtitle: [g.released?.slice(0, 4), (g.platforms ?? []).slice(0, 2).map((p: any) => p.platform?.name).filter(Boolean).join(', ')].filter(Boolean).join(' — '),
+      subtitle: [g.released?.slice(0, 4), unique<string>((g.platforms ?? []).map((p: any) => p.platform?.name).filter(Boolean), (n) => slugify(n)).join(', ')].filter(Boolean).join(' — '),
       thumbnail: g.background_image ?? null,
     }));
   }

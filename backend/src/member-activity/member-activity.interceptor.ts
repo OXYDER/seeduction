@@ -168,7 +168,7 @@ const RULES: Rule[] = [
 /** Requêtes sans intérêt (battements de cœur, accusés de lecture) : jamais notées. */
 const SKIP = new Set([
   '/stream/watching', '/stream/watching/stop', '/users/me/presence', '/notifications/:id/read', '/notifications/read-all',
-  '/forum/mark-read', '/messenger/conversations/:id/read', '/messages/:id/read', '/family/select', '/torrents/analyze',
+  '/forum/mark-read', '/messenger/conversations/:id/read', '/messages/:id/read', '/family/select', '/torrents/analyze', '/torrents/platforms',
 ]);
 
 const STAFF_PREFIXES = ['/admin', '/wiki', '/categories', '/announcements', '/roadmap', '/bonus/events', '/bonus/freeleech', '/messenger/admin'];

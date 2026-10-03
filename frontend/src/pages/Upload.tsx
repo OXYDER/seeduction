@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -10,6 +10,7 @@ import { summarizeTorrent } from '../lib/torrentSummary';
 import { resolveContentKind } from '../lib/categoryKind';
 import DuplicateWarning from '../components/DuplicateWarning';
 import FacetFields from '../components/FacetFields';
+import GamePlatformPicker, { type GamePlatformInfo } from '../components/GamePlatformPicker';
 import type { FacetDef, FacetValues } from '../lib/facets';
 import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeFromRelease, detectVideoType, matchGenres } from '../lib/uploadMeta';
 
@@ -60,6 +61,10 @@ export default function Upload() {
   const [facetFound, setFacetFound] = useState<Set<string>>(new Set());
   const facetTouched = useRef<Set<string>>(new Set());
   const [metaGenres, setMetaGenres] = useState<string[]>([]);
+  // Jeux : plateforme choisie (Windows, Switch, PS5...) et celles de la fiche RAWG ; elle règle la sous-catégorie et le filtre de console.
+  const [platformId, setPlatformId] = useState<string | null>(null);
+  const platformChoice = useRef<GamePlatformInfo | null>(null);
+  const [fichePlatforms, setFichePlatforms] = useState('');
 
   const selectedCategory = categories.flatMap((c) => [c, ...(c.children ?? [])]).find((c) => c.id === categoryId);
   // Le type de contenu du générateur vient de la catégorie choisie (configuré dans
@@ -76,6 +81,7 @@ export default function Upload() {
 
   /** Une fiche choisie dans le générateur remplit les genres et l'année si rien n'a été trouvé avant. */
   function onGeneratorDetail(data: Record<string, any>) {
+    if (typeof data.plateformes === 'string') setFichePlatforms(data.plateformes);
     if (typeof data.genre === 'string' && data.genre) {
       setMetaGenres(data.genre.split(/[,/;|]+/).map((g: string) => g.trim()).filter(Boolean));
       const found = matchGenres(data.genre);
@@ -84,6 +90,15 @@ export default function Upload() {
     const y = typeof data['année'] === 'string' ? data['année'].match(/\d{4}/)?.[0] : undefined;
     if (y) setYear((cur) => cur || y);
   }
+  const mainCategory = categories.find((c) => c.id === mainId);
+  const isGamesMain = (mainCategory?.name ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().startsWith('jeux video');
+  const pickPlatform = useCallback((p: GamePlatformInfo, auto: boolean) => {
+    const sub = mainCategory?.children?.find((c: any) => c.name === p.category);
+    if (!sub) return;
+    platformChoice.current = p;
+    setPlatformId(p.id);
+    if (!auto || !categoryId) setCategoryId(sub.id);
+  }, [mainCategory, categoryId]);
   const searchInfo = cleanTitleForSearch(name);
   const summary = useMemo(() => summarizeTorrent(fileList), [fileList]);
   // "Artiste - Album" : la partie avant le premier " - " sert d'artiste pour les modèles musique.
@@ -110,6 +125,8 @@ export default function Upload() {
     api.get('/categories').then((r) => setCategories(r.data));
   }, []);
 
+  useEffect(() => { platformChoice.current = null; setPlatformId(null); setFichePlatforms(''); }, [mainId]);
+
   // Changer de catégorie repart de zéro : ce n'est plus la même liste de filtres.
   useEffect(() => { facetTouched.current = new Set(); setFacetValues({}); setFacetFound(new Set()); setFacetDefs([]); }, [categoryId]);
 
@@ -125,6 +142,9 @@ export default function Upload() {
           setFacetValues((cur) => {
             const next: FacetValues = {};
             for (const d of defs) next[d.key] = facetTouched.current.has(d.key) ? cur[d.key] ?? [] : detected[d.key] ?? cur[d.key] ?? [];
+            // La plateforme choisie (Switch, PS5...) prime sur la détection.
+            const pc = platformChoice.current;
+            if (pc?.facetKey && pc.facetValue && defs.some((d) => d.key === pc.facetKey)) { next[pc.facetKey] = [pc.facetValue]; facetTouched.current.add(pc.facetKey); }
             return next;
           });
           setFacetFound(new Set(Object.keys(detected)));
@@ -355,6 +375,16 @@ export default function Upload() {
               </select>
             )}
           </div>
+          {isGamesMain && (
+            <GamePlatformPicker
+              name={name}
+              files={fileList}
+              nfo={nfoText}
+              fichePlatforms={fichePlatforms}
+              selectedId={platformId && mainCategory?.children?.find((c: any) => c.id === categoryId)?.name === (platformChoice.current?.category) ? platformId : null}
+              onPick={pickPlatform}
+            />
+          )}
 
           </Step>
 
