@@ -31,6 +31,13 @@ export class EconomyController {
     return this.economy.seedObligations(accountOf(req));
   }
 
+  /** Page « Mon activité » : seeds, téléchargements en cours, historique des téléchargements terminés et envois du membre. */
+  @UseGuards(JwtAuthGuard)
+  @Get('activity')
+  activity(@Request() req: any) {
+    return this.economy.activity(accountOf(req));
+  }
+
   /** Page « Mes seeds » : tout ce que le membre seede ou a téléchargé, avec l'état de l'obligation de partage. */
   @UseGuards(JwtAuthGuard)
   @Get('my-seeds')

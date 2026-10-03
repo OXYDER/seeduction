@@ -37,6 +37,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
   const links: [string, string, string][] = [
     ['/profile', '👤', 'Mon profil'],
     ...(canUpload && userId ? [[`/browse?uploaderId=${userId}`, '⬆️', 'Mes uploads'] as [string, string, string]] : []),
+    ['/activity', '📈', 'Mon activité'],
     ['/seeds', '🌱', 'Mes seeds'],
     ['/hit-and-run', '⚠️', 'Hit & run'],
     ['/favorites', '⭐', 'Favoris'],

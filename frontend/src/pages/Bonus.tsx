@@ -39,7 +39,7 @@ export default function Bonus() {
   const { rules } = data;
 
   return (
-    <div className="grid page-narrow" style={{ gap: 16 }}>
+    <div className="grid" style={{ gap: 16 }}>
       <h1>🎁 Points bonus</h1>
       <FreeleechCalendar />
 

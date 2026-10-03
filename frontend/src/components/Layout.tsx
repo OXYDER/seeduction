@@ -381,7 +381,7 @@ function LayoutInner() {
                 <span className="pill down" title="Téléchargé">▼ {formatBytes(profile.downloaded)}</span>
                 <Link to="/bonus" className="pill gold" title="Points bonus : boutique et règle du seed">✦ {formatNumber(Math.round(profile.bonusPoints))}</Link>
                 <span className={`pill ${Number(profile.uploaded) >= Number(profile.downloaded) ? 'up' : 'down'}`} title="Différentiel : upload moins téléchargé (ta marge avant de passer sous un ratio de 1)">Δ {Number(profile.uploaded) >= Number(profile.downloaded) ? '+' : '−'}{formatBytes(Math.abs(Number(profile.uploaded) - Number(profile.downloaded)))}</span>
-                {econ && <Link to="/seeds" className="pill up" title="Mes seeds : ce que tu seedes et ton obligation de partage">🌱 {econ.seeding}</Link>}
+                {econ && <Link to="/activity" className="pill up" title="Mon activité : ce que tu seedes et télécharges">🌱 {econ.seeding}</Link>}
                 {econ && <Link to="/hit-and-run" className={`pill ${econ.hnr > 0 ? 'down' : ''}`} title={econ.hnr > 0 ? `${econ.hnr} hit & run non régularisé${econ.hnr > 1 ? 's' : ''}` : 'Aucun hit & run : parfait !'}>H&amp;R {econ.hnr}</Link>}
               </div>
             )}

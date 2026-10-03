@@ -184,6 +184,71 @@ export class EconomyService {
   }
 
   /**
+   * Page « Mon activité » : tout ce que le membre télécharge et partage — seeds et téléchargements en cours (pairs actifs),
+   * historique des téléchargements terminés, et ses propres envois — avec les volumes échangés.
+   */
+  async activity(userId: string) {
+    const fresh = new Date(Date.now() - 45 * 60_000);
+    const [user, peers, snatches, uploads] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId }, select: { uploaded: true, downloaded: true } }),
+      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh } }, include: { torrent: { select: { id: true, name: true, size: true, coverImage: true } } } }),
+      this.prisma.snatch.findMany({
+        where: { userId }, orderBy: { completedAt: 'desc' }, take: 300,
+        include: { torrent: { select: { id: true, name: true, size: true, coverImage: true, uploaderId: true } } },
+      }),
+      this.prisma.torrent.findMany({
+        where: { uploaderId: userId }, orderBy: { createdAt: 'desc' }, take: 200,
+        select: { id: true, name: true, size: true, coverImage: true, status: true, seeders: true, leechers: true, completedCount: true, createdAt: true },
+      }),
+    ]);
+
+    // Un même torrent peut avoir plusieurs pairs (plusieurs clients) : on les réunit.
+    const byTorrent = new Map<string, { t: (typeof peers)[number]['torrent']; seeding: boolean; leeching: boolean; left: number; up: number; down: number; last: Date }>();
+    for (const p of peers) {
+      const cur = byTorrent.get(p.torrentId) ?? { t: p.torrent, seeding: false, leeching: false, left: Number.MAX_SAFE_INTEGER, up: 0, down: 0, last: p.lastAnnounceAt };
+      if (p.isSeeder) cur.seeding = true; else cur.leeching = true;
+      cur.left = Math.min(cur.left, Number(p.left));
+      cur.up += Number(p.uploaded);
+      cur.down += Number(p.downloaded);
+      if (p.lastAnnounceAt > cur.last) cur.last = p.lastAnnounceAt;
+      byTorrent.set(p.torrentId, cur);
+    }
+    const snatchByTorrent = new Map<string, (typeof snatches)[number]>();
+    for (const s of snatches) if (!snatchByTorrent.has(s.torrentId)) snatchByTorrent.set(s.torrentId, s);
+    const required = ECONOMY.hnrSeedHours * 3600;
+    const row = (id: string, c: { t: any; up: number; down: number; left: number; last: Date }) => {
+      const size = Number(c.t.size);
+      const sn = snatchByTorrent.get(id);
+      return {
+        torrentId: id, name: c.t.name, coverImage: c.t.coverImage, size,
+        uploaded: c.up, downloaded: c.down, ratio: c.down > 0 ? Math.round((c.up / c.down) * 100) / 100 : c.up > 0 ? null : 0,
+        progress: size > 0 ? Math.max(0, Math.min(1, 1 - c.left / size)) : 1, lastAnnounceAt: c.last,
+        seedSeconds: sn?.seedSeconds ?? 0, requiredSeconds: required, obligationDone: sn ? sn.satisfied : null,
+      };
+    };
+    const live = [...byTorrent.entries()];
+    const seeding = live.filter(([, c]) => c.seeding).map(([id, c]) => row(id, c)).sort((a, b) => b.uploaded - a.uploaded);
+    const leeching = live.filter(([, c]) => c.leeching && !c.seeding).map(([id, c]) => row(id, c)).sort((a, b) => b.progress - a.progress);
+    const seedingNow = new Set(seeding.map((r) => r.torrentId));
+
+    const completed = [...snatchByTorrent.values()].map((s) => ({
+      torrentId: s.torrentId, name: s.torrent.name, coverImage: s.torrent.coverImage, size: Number(s.torrent.size), completedAt: s.completedAt,
+      seedSeconds: s.seedSeconds, requiredSeconds: required, satisfied: s.satisfied, hnr: s.hnr, own: s.torrent.uploaderId === userId, seedingNow: seedingNow.has(s.torrentId),
+    }));
+
+    return {
+      totals: {
+        seeding: seeding.length, leeching: leeching.length, completed: completed.length, uploads: uploads.length,
+        uploadedBytes: Number(user?.uploaded ?? 0), downloadedBytes: Number(user?.downloaded ?? 0),
+        seedingBytes: seeding.reduce((n, r) => n + r.size, 0),
+      },
+      seeding, leeching, completed,
+      uploads: uploads.map((u) => ({ ...u, size: Number(u.size) })),
+      rules: { hnrSeedHours: ECONOMY.hnrSeedHours },
+    };
+  }
+
+  /**
    * Page « Mes seeds » : ce que le membre seede en ce moment et ce qu'il a téléchargé, avec le temps de seed cumulé et
    * l'état de l'obligation de partage (terminée, en cours, à relancer, hit & run).
    */

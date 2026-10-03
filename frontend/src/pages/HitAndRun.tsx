@@ -40,7 +40,7 @@ export default function HitAndRun() {
   const { rules } = data;
 
   return (
-    <div className="grid page-narrow" style={{ gap: 16 }}>
+    <div className="grid" style={{ gap: 16 }}>
       <h1 style={{ margin: 0 }}>⚠️ Hit & run</h1>
 
       <div className="panel">

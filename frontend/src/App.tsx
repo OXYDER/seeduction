@@ -7,6 +7,7 @@ import Browse from './pages/Browse';
 import Favorites from './pages/Favorites';
 import Bonus from './pages/Bonus';
 import MySeeds from './pages/MySeeds';
+import MyActivity from './pages/MyActivity';
 import HitAndRun from './pages/HitAndRun';
 import Stats from './pages/Stats';
 import News from './pages/News';
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="/rules" element={<Navigate to="/wiki" replace />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/bonus" element={<Bonus />} />
+          <Route path="/activity" element={<MyActivity />} />
           <Route path="/seeds" element={<MySeeds />} />
           <Route path="/hit-and-run" element={<HitAndRun />} />
           <Route path="/stats" element={<Stats />} />

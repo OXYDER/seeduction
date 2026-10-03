@@ -6,6 +6,7 @@ import { isUnseenNews, kindOf } from '../lib/news';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { timeAgo } from '../lib/time';
 
+const ambient = (url?: string | null) => (url ? ({ '--ambient': `url("${url.replace(/"/g, '%22')}")` } as React.CSSProperties) : undefined);
 const plain = (t: string) => t.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
 
 /** Accueil : la dernière nouvelle en grand (image, type, extrait, réactions et commentaires), puis les suivantes en liste. */
@@ -34,7 +35,7 @@ export default function NewsPanel({ limit = 3, heroOnly = false }: { limit?: num
 
       {first && k && (
         <Link to={`/news/${first.id}`} className="news-hero">
-          <span className="news-hero-img">{first.imageUrl ? <img src={first.imageUrl} alt="" /> : k.icon}</span>
+          <span className={`news-hero-img${first.imageUrl ? ' ambient' : ''}`} style={ambient(first.imageUrl)}>{first.imageUrl ? <img src={first.imageUrl} alt="" /> : k.icon}</span>
           <span className="news-hero-body">
             <span className="row" style={{ gap: 8 }}>
               <span className={`news-kind k-${(first.kind ?? 'NEWS').toLowerCase()}`}>{k.icon} {k.label}</span>
@@ -46,6 +47,7 @@ export default function NewsPanel({ limit = 3, heroOnly = false }: { limit?: num
             <span className="news-hero-meta">
               {first.author && <Avatar user={first.author} size={22} />}
               <span>{first.author?.username} · {timeAgo(first.createdAt)}</span>
+              <span className="news-readmore">Lire la nouvelle →</span>
               <span className="news-counts">
                 {first._count?.reactions > 0 && <span>❤️ {first._count.reactions}</span>}
                 <span>💬 {first._count?.comments ?? 0}</span>

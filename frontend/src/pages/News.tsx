@@ -12,6 +12,7 @@ import Avatar from '../components/Avatar';
 import NewsEditor from '../components/NewsEditor';
 import { useCrumbTitle } from '../store/crumbs';
 
+const ambient = (url?: string | null) => (url ? ({ '--ambient': `url("${url.replace(/"/g, '%22')}")` } as React.CSSProperties) : undefined);
 const plain = (t: string) => t.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 
@@ -24,7 +25,7 @@ function Card({ n, big, canEdit, onEdit }: { n: any; big?: boolean; canEdit: boo
   const text = n.summary || plain(n.content).slice(0, big ? 280 : 160);
   return (
     <article className={`news-card${big ? ' big' : ''}`} id={`news-${n.id}`}>
-      <Link to={`/news/${n.id}`} className={`news-card-img${n.imageUrl ? '' : ' none'}`} aria-label={n.title}>
+      <Link to={`/news/${n.id}`} className={`news-card-img${n.imageUrl ? ' ambient' : ' none'}`} style={ambient(n.imageUrl)} aria-label={n.title}>
         {n.imageUrl ? <img src={n.imageUrl} alt="" loading="lazy" /> : <span>{kindOf(n.kind).icon}</span>}
         {n.pinned && <span className="news-pin">📌 Épinglée</span>}
       </Link>
@@ -158,7 +159,7 @@ function NewsArticle({ n, canEdit, onEdit, onChanged }: { n: any; canEdit: boole
   return (
     <div className="grid" style={{ gap: 14 }}>
       <article className="panel ornate news-full">
-        {n.imageUrl && <img src={n.imageUrl} alt="" className="news-full-img" />}
+        {n.imageUrl && <div className="news-banner ambient" style={ambient(n.imageUrl)}><img src={n.imageUrl} alt="" /></div>}
         <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}><KindBadge kind={n.kind} />{n.pinned && <span className="news-kind">📌 Épinglée</span>}</div>
           <div className="row" style={{ gap: 6 }}>

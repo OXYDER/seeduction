@@ -2755,3 +2755,29 @@ a.seedpage-item:hover { background: rgba(255,255,255,0.07); }
 /* Nouvelles : l'image s'affiche en entier (bandes sombres si son format diffère), sans être rognée */
 .news-hero-img img, .news-card.big .news-card-img img { object-fit: contain; background: #0b0f1e; }
 .news-full-img { object-fit: contain; background: #0b0f1e; max-height: 360px; }
+
+/* Nouvelles : l'image entière sur un fond flou de ses propres couleurs (plus de bandes sombres) */
+.ambient { position: relative; overflow: hidden; isolation: isolate; background: #0b0f1e; }
+.ambient::before { content: ''; position: absolute; inset: -24px; z-index: -1; background-image: var(--ambient); background-size: cover; background-position: center; filter: blur(26px) saturate(1.25) brightness(0.55); }
+.ambient > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.news-banner { height: clamp(180px, 22vw, 300px); border-radius: 12px; margin-bottom: 14px; }
+.news-hero-img { flex: 0 0 clamp(260px, 28%, 380px); aspect-ratio: 2 / 1; }
+.news-hero-img.ambient > img, .news-card.big .news-card-img > img, .news-card-img.ambient > img { object-fit: contain; background: none; }
+.news-hero-body { padding: 16px 20px; }
+.news-hero-body h2 { font-size: 22px; line-height: 1.2; }
+.news-readmore { font-weight: 700; color: var(--acc-link, #b9a4ff); margin-left: auto; }
+.news-hero:hover .news-readmore { text-decoration: underline; }
+.news-hero-meta .news-counts { margin-left: 0; }
+.news-full-img { display: none; }
+
+/* Mon activité */
+.act-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.act-tile { padding: 14px 16px; }
+.act-tile-value { font-size: 24px; font-weight: 800; }
+.act-table { width: 100%; }
+.act-table th { text-align: left; white-space: nowrap; }
+.act-table td { vertical-align: middle; }
+.act-name { max-width: 560px; }
+.act-name a { color: inherit; }
+.act-thumb { flex: none; width: 34px; height: 48px; border-radius: 5px; object-fit: cover; background: rgba(255,255,255,0.07); }
+.act-thumb.plain { display: grid; place-items: center; font-size: 16px; }
