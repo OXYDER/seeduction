@@ -72,7 +72,8 @@ export default function Browse() {
   const authUser = useAuthStore((s) => s.user);
   const currentUserId = authUser?.id;
   const [view, setView] = useViewMode('browse');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(() => { try { return localStorage.getItem('browse-filters') !== 'closed'; } catch { return true; } });
+  useEffect(() => { try { localStorage.setItem('browse-filters', showFilters ? 'open' : 'closed'); } catch { /* navigation privée */ } }, [showFilters]);
   const [showSort, setShowSort] = useState(false);
   const [closedCatId, setClosedCatId] = useState<string | null>(null);
   const sortMenuRef = useRef<HTMLDivElement>(null);
@@ -217,6 +218,104 @@ export default function Browse() {
   );
   const full = { width: '100%' };
 
+  // ------------------------------------------------------------------ filtres : une seule carte, en sections
+  type AttrFacet = { key: string; label: string; values: { value: string; count: number }[] };
+  const attrFacets: AttrFacet[] = Array.isArray(facets.attrs) ? facets.attrs : [];
+
+  /** Ligne de pastilles d'un filtre « simple » (une seule valeur) : qualité, source, langue... avec le nombre de résultats. */
+  const classicRow = (key: string, label: string, current: string, order: string[], show: (v: string) => string, withHdr = false) => {
+    const available: { value: string; count: number }[] = facets[key] ?? [];
+    const rank = (v: string) => { const i = order.findIndex((o) => o.toLowerCase() === v.toLowerCase()); return i === -1 ? 999 : i; };
+    const values = [...available].sort((x, y) => rank(x.value) - rank(y.value) || y.count - x.count);
+    if (current && !values.some((v) => v.value.toLowerCase() === current.toLowerCase())) values.unshift({ value: current, count: 0 });
+    const showHdr = withHdr && ((facets.hdr?.length ?? 0) > 0 || hdr) && !attrFacets.some((a) => a.key === 'hdrFormat');
+    if (values.length === 0 && !showHdr) return null;
+    return (
+      <div className="facet-row" key={key}>
+        <span className="facet-label">{label}</span>
+        <button type="button" className={!current ? 'on' : ''} onClick={() => updateParam(key, '')}>Toutes</button>
+        {values.map((v) => (
+          <button key={v.value} type="button" className={current.toLowerCase() === v.value.toLowerCase() ? 'on' : ''} onClick={() => updateParam(key, current.toLowerCase() === v.value.toLowerCase() ? '' : v.value)}>
+            {show(v.value)} <span style={{ opacity: 0.6, fontSize: 11 }}>{v.count}</span>
+          </button>
+        ))}
+        {showHdr && (
+          <button type="button" className={hdr ? 'on' : ''} onClick={() => updateParam('hdr', hdr ? 'false' : 'true')}>
+            HDR <span style={{ opacity: 0.6, fontSize: 11 }}>{facets.hdr?.[0]?.count ?? ''}</span>
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  /** Ligne de pastilles d'un filtre de catégorie : plusieurs valeurs cochables (OU). */
+  const attrRow = (key: string) => {
+    const f = attrFacets.find((a) => a.key === key);
+    if (!f) return null;
+    const selected = attrSel[f.key] ?? [];
+    const expanded = openFacets.has(f.key);
+    const LIMIT = 14;
+    // Les valeurs choisies restent toujours visibles, même si la liste est repliée.
+    const shown = expanded || f.values.length <= LIMIT ? f.values : f.values.filter((v, i) => i < LIMIT || selected.includes(v.value));
+    const toggle = (value: string) => {
+      const next = selected.includes(value) ? selected.filter((x) => x !== value) : [...selected, value];
+      updateParam(`f.${f.key}`, next.join('|'));
+    };
+    return (
+      <div className="facet-row" key={f.key}>
+        <span className="facet-label">{f.label}</span>
+        <button type="button" className={selected.length === 0 ? 'on' : ''} onClick={() => updateParam(`f.${f.key}`, '')}>Toutes</button>
+        {shown.map((v) => (
+          <button key={v.value} type="button" className={selected.includes(v.value) ? 'on' : ''} onClick={() => toggle(v.value)}>
+            {v.value} <span style={{ opacity: 0.6, fontSize: 11 }}>{v.count}</span>
+          </button>
+        ))}
+        {f.values.length > LIMIT && (
+          <button type="button" className="secondary" onClick={() => setOpenFacets((cur) => { const n = new Set(cur); if (n.has(f.key)) n.delete(f.key); else n.add(f.key); return n; })}>
+            {expanded ? 'Moins' : `+ ${f.values.length - shown.length} autres`}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const periodRow = (
+    <div className="facet-row" key="period">
+      <span className="facet-label">Ajoutés</span>
+      <button type="button" className={!period ? 'on' : ''} onClick={() => updateParam('period', '')}>Toujours</button>
+      <button type="button" className={period === 'day' ? 'on' : ''} onClick={() => updateParam('period', 'day')}>24 heures</button>
+      <button type="button" className={period === 'week' ? 'on' : ''} onClick={() => updateParam('period', 'week')}>Cette semaine</button>
+      <button type="button" className={period === 'month' ? 'on' : ''} onClick={() => updateParam('period', 'month')}>Ce mois</button>
+    </div>
+  );
+
+  // Les filtres propres à une catégorie sont rangés par thème ; seuls ceux que portent les résultats affichés apparaissent.
+  const SPECIFIC_GROUPS: [string, string[]][] = [
+    ['Musique et audio', ['formatMusique', 'qualiteMusique', 'typeMusique', 'genreMusique', 'formatSamples', 'genreSamples', 'formatPodcast', 'genrePodcast', 'formatAudio', 'typeAudio']],
+    ['Ebooks', ['formatFichier', 'langueEbook', 'genreEbook', 'genreAudioEbook', 'styleLitteraire', 'demographique']],
+    ['Jeux', ['genreJeux', 'consoleMicrosoft', 'consoleNintendo', 'consoleSony']],
+    ['Applications et mobile', ['systemeMobile', 'genreApplications']],
+    ['Autres', ['gpsMarque', 'nulledType', 'cms', 'format3d', 'techno3d']],
+  ];
+  const sections: { title: string; hint?: string; nodes: React.ReactNode[] }[] = [
+    { title: 'Période', nodes: [periodRow] },
+    {
+      title: 'Qualité vidéo',
+      nodes: [
+        classicRow('resolution', 'Qualité', resolution, RESOLUTIONS, (v) => (v === '4K/2160p' ? '4K UHD' : v === '480p' ? 'SD' : v), true),
+        classicRow('source', 'Source', source, SOURCES, (v) => v),
+        classicRow('codec', 'Codec', codec, CODECS, (v) => v),
+        classicRow('containerFormat', 'Format', containerFormat, CONTAINERS, (v) => v),
+        attrRow('hdrFormat'),
+      ],
+    },
+    { title: 'Audio', nodes: [classicRow('audio', 'Audio', audio, AUDIO_FORMATS, (v) => v), attrRow('channels'), attrRow('audioQuality')] },
+    { title: 'Langue et origine', nodes: [classicRow('language', 'Langue', language, LANGUAGES, (v) => v), classicRow('origin', 'Origine', origin, ORIGINS, (v) => v)] },
+    { title: 'Contenu', nodes: [classicRow('genre', 'Genre', genre, [], (v) => v), attrRow('serieType')] },
+    ...SPECIFIC_GROUPS.map(([title, keys]) => ({ title, nodes: keys.map(attrRow) })),
+  ];
+  const visibleSections = sections.map((s) => ({ ...s, nodes: s.nodes.filter(Boolean) })).filter((s) => s.nodes.length > 0);
+
   return (
     <div className="grid">
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
@@ -240,8 +339,8 @@ export default function Browse() {
           >
             <span>☠️</span> Morts
           </button>
-          <button type="button" className={`icon-btn${showFilters ? ' active' : ''}`} onClick={() => setShowFilters((v) => !v)} title="Filtres">
-            <span>🔎</span> Filtres {hasAdvancedFilters && <span className="count">{activeFilters.length}</span>}
+          <button type="button" className={`icon-btn${showFilters ? ' active' : ''}`} onClick={() => setShowFilters((v) => !v)} title={showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}>
+            <span>🔎</span> Filtres {hasAdvancedFilters && <span className="count">{activeFilters.length}</span>} {showFilters ? '▴' : '▾'}
           </button>
           <div style={{ position: 'relative' }} ref={sortMenuRef}>
             <button type="button" className={`icon-btn${showSort ? ' active' : ''}`} onClick={() => setShowSort((v) => !v)} title="Trier">
@@ -299,80 +398,6 @@ export default function Browse() {
         </nav>
       )}
 
-      <div className="facet-rows">
-        <div className="facet-row">
-          <span className="facet-label">Ajoutés</span>
-          <button type="button" className={!period ? 'on' : ''} onClick={() => updateParam('period', '')}>Toujours</button>
-          <button type="button" className={period === 'day' ? 'on' : ''} onClick={() => updateParam('period', 'day')}>24 heures</button>
-          <button type="button" className={period === 'week' ? 'on' : ''} onClick={() => updateParam('period', 'week')}>Cette semaine</button>
-          <button type="button" className={period === 'month' ? 'on' : ''} onClick={() => updateParam('period', 'month')}>Ce mois</button>
-        </div>
-        {([
-          ['resolution', 'Qualité', resolution, RESOLUTIONS, (v: string) => (v === '4K/2160p' ? '4K UHD' : v === '480p' ? 'SD' : v)],
-          ['source', 'Source', source, SOURCES, (v: string) => v],
-          ['origin', 'Origine', origin, ORIGINS, (v: string) => v],
-          ['language', 'Langue', language, LANGUAGES, (v: string) => v],
-          ['codec', 'Codec', codec, CODECS, (v: string) => v],
-          ['audio', 'Audio', audio, AUDIO_FORMATS, (v: string) => v],
-          ['genre', 'Genre', genre, [] as string[], (v: string) => v],
-        ] as [string, string, string, string[], (v: string) => string][]).map(([key, label, current, order, show]) => {
-          const available = facets[key] ?? [];
-          const rank = (v: string) => { const i = order.findIndex((o) => o.toLowerCase() === v.toLowerCase()); return i === -1 ? 999 : i; };
-          const values = [...available].sort((x, y) => rank(x.value) - rank(y.value) || y.count - x.count);
-          if (current && !values.some((v) => v.value.toLowerCase() === current.toLowerCase())) values.unshift({ value: current, count: 0 });
-          const showHdr = key === 'resolution' && ((facets.hdr?.length ?? 0) > 0 || hdr);
-          if (values.length === 0 && !showHdr) return null;
-          return (
-            <div className="facet-row" key={key}>
-              <span className="facet-label">{label}</span>
-              <button type="button" className={!current ? 'on' : ''} onClick={() => updateParam(key, '')}>Toutes</button>
-              {values.map((v) => (
-                <button key={v.value} type="button" className={current.toLowerCase() === v.value.toLowerCase() ? 'on' : ''} onClick={() => updateParam(key, current.toLowerCase() === v.value.toLowerCase() ? '' : v.value)}>
-                  {show(v.value)} <span style={{ opacity: 0.6, fontSize: 11 }}>{v.count}</span>
-                </button>
-              ))}
-              {showHdr && (
-                <button type="button" className={hdr ? 'on' : ''} onClick={() => updateParam('hdr', hdr ? 'false' : 'true')}>
-                  HDR <span style={{ opacity: 0.6, fontSize: 11 }}>{facets.hdr?.[0]?.count ?? ''}</span>
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {Array.isArray(facets.attrs) && facets.attrs.length > 0 && (
-        <div className="facet-rows">
-          {(facets.attrs as { key: string; label: string; values: { value: string; count: number }[] }[]).map((f) => {
-            const selected = attrSel[f.key] ?? [];
-            const expanded = openFacets.has(f.key);
-            const LIMIT = 14;
-            // Les valeurs choisies restent toujours visibles, même si la liste est repliée.
-            const shown = expanded || f.values.length <= LIMIT ? f.values : f.values.filter((v, i) => i < LIMIT || selected.includes(v.value));
-            const toggle = (value: string) => {
-              const next = selected.includes(value) ? selected.filter((x) => x !== value) : [...selected, value];
-              updateParam(`f.${f.key}`, next.join('|'));
-            };
-            return (
-              <div className="facet-row" key={f.key}>
-                <span className="facet-label">{f.label}</span>
-                <button type="button" className={selected.length === 0 ? 'on' : ''} onClick={() => updateParam(`f.${f.key}`, '')}>Toutes</button>
-                {shown.map((v) => (
-                  <button key={v.value} type="button" className={selected.includes(v.value) ? 'on' : ''} onClick={() => toggle(v.value)}>
-                    {v.value} <span style={{ opacity: 0.6, fontSize: 11 }}>{v.count}</span>
-                  </button>
-                ))}
-                {f.values.length > LIMIT && (
-                  <button type="button" className="secondary" onClick={() => setOpenFacets((cur) => { const n = new Set(cur); if (n.has(f.key)) n.delete(f.key); else n.add(f.key); return n; })}>
-                    {expanded ? 'Moins' : `+ ${f.values.length - shown.length} autres`}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {uploaderId && (
         <button className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => updateParam('uploaderId', '')}>
           ← Voir tous les torrents
@@ -398,78 +423,55 @@ export default function Browse() {
         </div>
       )}
 
-      {showFilters && (
-        <div className="panel ornate">
-          <div className="filter-grid">
-            {field('Année', <input type="number" placeholder="2024" value={year} onChange={(e) => updateParam('year', e.target.value)} style={full} />)}
-            {field('Résolution', (
-              <select value={resolution} onChange={(e) => updateParam('resolution', e.target.value)} style={full}>
-                <option value="">Toutes</option>
-                {RESOLUTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-            ))}
-            {field('Langue', (
-              <select value={language} onChange={(e) => updateParam('language', e.target.value)} style={full}>
-                <option value="">Toutes</option>
-                {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
-              </select>
-            ))}
-            {field('Source', (
-              <select value={source} onChange={(e) => updateParam('source', e.target.value)} style={full}>
-                <option value="">Toutes</option>
-                {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            ))}
-            {field('Codec', (
-              <select value={codec} onChange={(e) => updateParam('codec', e.target.value)} style={full}>
-                <option value="">Tous</option>
-                {CODECS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            ))}
-            {field('Audio', (
-              <select value={audio} onChange={(e) => updateParam('audio', e.target.value)} style={full}>
-                <option value="">Tous</option>
-                {AUDIO_FORMATS.map((a) => <option key={a} value={a}>{a}</option>)}
-              </select>
-            ))}
-            {field('Format', (
-              <select value={containerFormat} onChange={(e) => updateParam('containerFormat', e.target.value)} style={full}>
-                <option value="">Tous</option>
-                {CONTAINERS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            ))}
-            {field('Origine', (
-              <select value={origin} onChange={(e) => updateParam('origin', e.target.value)} style={full}>
-                <option value="">Toutes</option>
-                {ORIGINS.map((o) => <option key={o} value={o}>{o}</option>)}
-              </select>
-            ))}
-            {field('Taille min (Go)', <input type="number" value={minSizeGo} onChange={(e) => updateParam('minSize', e.target.value)} style={full} />)}
-            {field('Taille max (Go)', <input type="number" value={maxSizeGo} onChange={(e) => updateParam('maxSize', e.target.value)} style={full} />)}
-            {field('État', (
-              <select value={state} onChange={(e) => updateParam('state', e.target.value)} style={full}>
-                <option value="">Torrents actifs</option>
-                <option value="noseeders">🔁 Sans seeder (à reseeder)</option>
-                <option value="dead">☠️ Morts (retirés des listes)</option>
-              </select>
-            ))}
-            {field('Seeders minimum', <input type="number" value={minSeeders} onChange={(e) => updateParam('minSeeders', e.target.value)} style={full} />)}
-            {field('Seeders maximum', <input type="number" value={maxSeeders} onChange={(e) => updateParam('maxSeeders', e.target.value)} style={full} />)}
-            <label className="row muted" style={{ gap: 6, paddingBottom: 8 }}>
-              <input type="checkbox" style={{ width: 'auto' }} checked={hdr} onChange={(e) => updateParam('hdr', e.target.checked ? 'true' : 'false')} />
-              HDR uniquement
-            </label>
+      {/* Une seule carte de filtres : pastilles en sections (avec le nombre de résultats), puis les critères précis. */}
+      {showFilters ? (
+        <div className="panel ornate filters-card">
+          <div className="filters-head">
+            <strong>🔎 Filtres</strong>
+            <span className="muted">Clique sur une pastille pour filtrer ; le nombre indique les résultats. Seules les valeurs présentes dans la liste sont proposées.</span>
+            {hasAdvancedFilters && <button type="button" className="secondary" style={{ padding: '3px 12px', fontSize: 12, marginLeft: 'auto' }} onClick={resetFilters}>Tout effacer</button>}
+          </div>
+          {hasAdvancedFilters && (
+            <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+              <span className="muted" style={{ fontSize: 12 }}>Actifs :</span>
+              {activeFilters.map((f) => (
+                <span key={f.key} className="filter-chip" onClick={() => updateParam(f.key, '')} title="Retirer ce filtre">{f.label} ✕</span>
+              ))}
+            </div>
+          )}
+          {visibleSections.map((s) => (
+            <div className="facet-section" key={s.title}>
+              <div className="facet-section-title">{s.title}</div>
+              <div className="facet-rows">{s.nodes}</div>
+            </div>
+          ))}
+          <div className="facet-section">
+            <div className="facet-section-title">Critères précis</div>
+            <div className="filter-grid">
+              {field('Année', <input type="number" placeholder="2024" value={year} onChange={(e) => updateParam('year', e.target.value)} style={full} />)}
+              {field('Taille min (Go)', <input type="number" value={minSizeGo} onChange={(e) => updateParam('minSize', e.target.value)} style={full} />)}
+              {field('Taille max (Go)', <input type="number" value={maxSizeGo} onChange={(e) => updateParam('maxSize', e.target.value)} style={full} />)}
+              {field('Seeders minimum', <input type="number" value={minSeeders} onChange={(e) => updateParam('minSeeders', e.target.value)} style={full} />)}
+              {field('Seeders maximum', <input type="number" value={maxSeeders} onChange={(e) => updateParam('maxSeeders', e.target.value)} style={full} />)}
+              {field('État', (
+                <select value={state} onChange={(e) => updateParam('state', e.target.value)} style={full}>
+                  <option value="">Torrents actifs</option>
+                  <option value="noseeders">🔁 Sans seeder (à reseeder)</option>
+                  <option value="dead">☠️ Morts (retirés des listes)</option>
+                </select>
+              ))}
+            </div>
           </div>
         </div>
-      )}
-
-      {hasAdvancedFilters && (
-        <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-          {activeFilters.map((f) => (
-            <span key={f.key} className="filter-chip" onClick={() => updateParam(f.key, '')} title="Retirer ce filtre">{f.label} ✕</span>
-          ))}
-          <button type="button" className="secondary" style={{ padding: '2px 10px', fontSize: 12 }} onClick={resetFilters}>Tout réinitialiser</button>
-        </div>
+      ) : (
+        hasAdvancedFilters && (
+          <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+            {activeFilters.map((f) => (
+              <span key={f.key} className="filter-chip" onClick={() => updateParam(f.key, '')} title="Retirer ce filtre">{f.label} ✕</span>
+            ))}
+            <button type="button" className="secondary" style={{ padding: '2px 10px', fontSize: 12 }} onClick={resetFilters}>Tout effacer</button>
+          </div>
+        )
       )}
 
       <div className="panel">
