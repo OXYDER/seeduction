@@ -270,8 +270,29 @@ function TorrentViewBody(props: TorrentViewProps) {
 
   // ------------------------------------------------------------------ compact (une ligne fine)
   if (view === 'compact') {
+    const hd = (field: string, label: string, cls: string, title?: string) => (
+      <span
+        className={`${cls}${props.onSort ? ' sortable' : ''}${props.sort === field ? ' sorted' : ''}`}
+        title={props.onSort ? `Trier par ${label.toLowerCase()}` : title}
+        onClick={props.onSort ? () => props.onSort!(field) : undefined}
+      >
+        {label}{props.onSort && <span className="sort-arrow">{props.sort === field ? (props.order === 'asc' ? '▲' : '▼') : '⇅'}</span>}
+      </span>
+    );
     return (
       <div className="tv-compact">
+        <div className="tv-compact-row tv-compact-head" aria-hidden="true">
+          <span className="tv-compact-lead" />
+          <span className="tv-compact-icon" />
+          {hd('nom', 'Nom', 'tv-compact-name')}
+          <span className="tv-compact-badges">Qualité</span>
+          {props.extraColumns?.map((c) => <span key={c.header} className="tv-extra">{c.header}</span>)}
+          {hd('taille', 'Taille', 'tv-compact-size')}
+          <span className="tv-compact-counts" title="Commentaires · téléchargements complétés">💬 / Compl.</span>
+          {hd('seeders', 'S / L', 'tv-compact-seeds', 'Seeders / leechers')}
+          {hd('date', 'Ajouté', 'tv-compact-age')}
+          <span className="tv-compact-actions">Actions</span>
+        </div>
         {items.map((t) => {
           return (
             <div key={t.id} className="tv-compact-row">

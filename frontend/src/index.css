@@ -1805,6 +1805,15 @@ td.cat-cell .cat-tag { display: flex; height: 44px; width: 140px; border-radius:
 .tv-compact-age { width: 82px; text-align: right; flex-shrink: 0; }
 .tv-compact-actions { width: 62px; flex-shrink: 0; justify-content: flex-end; }
 .tv-compact-counts { width: 74px; flex-shrink: 0; font-size: 12px; white-space: nowrap; text-align: right; }
+.tv-compact-head { min-height: 30px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, rgba(255,255,255,0.55)); background: rgba(255,255,255,0.03); }
+.tv-compact-head:hover { background: rgba(255,255,255,0.03); }
+.tv-compact-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-compact-head .tv-compact-badges, .tv-compact-head .tv-compact-counts, .tv-compact-head .tv-compact-seeds, .tv-compact-head .tv-compact-actions { justify-content: flex-end; text-align: right; }
+.tv-compact-head .tv-compact-actions { display: block; }
+.tv-compact-head .sortable { cursor: pointer; user-select: none; }
+.tv-compact-head .sortable:hover { color: var(--gold); }
+.tv-compact-head .sort-arrow { display: inline-block; width: 12px; margin-left: 3px; font-size: 9px; opacity: 0.35; }
+.tv-compact-head .sorted .sort-arrow, .tv-compact-head .sorted { opacity: 1; }
 @media (max-width: 900px) { .tv-compact-age, .tv-compact-badges { display: none; } }
 @media (max-width: 560px) { .tv-compact-size { display: none; } }
 
