@@ -37,7 +37,7 @@ export default function ProfileEditor({ profile, onSaved }: { profile: any; onSa
     <div className="panel">
       <h3>🖼️ Mon profil</h3>
       <div className="row" style={{ gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div style={{ textAlign: 'center' }}>
+        <div className="avatar-center" style={{ textAlign: 'center' }}>
           <Avatar user={{ username: profile.username, avatarUrl }} size={96} />
           <label className="secondary" style={{ cursor: 'pointer', display: 'inline-block', marginTop: 8, padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13 }}>
             Changer l'avatar
