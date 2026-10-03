@@ -20,7 +20,7 @@ export default function TorrentVersions({ torrentId }: { torrentId: string }) {
       </button>
       {open && (
         <div className="vg-rows flat vg-list">
-          <div className="vg-legend"><span /><span>Version</span><span className="vr-num">Âge</span><span className="vr-num">Taille</span><span className="vr-num">Compl.</span><span className="vr-num">Seed</span><span className="vr-num">Leech</span><span /></div>
+          <div className="vg-legend"><span /><span>Version</span><span className="vr-num" title="Commentaires">💬</span><span className="vr-num">Âge</span><span className="vr-num">Taille</span><span className="vr-num">Compl.</span><span className="vr-num">Seed</span><span className="vr-num">Leech</span><span /></div>
           {sortVersions(rows).map((r) => <VersionRow key={r.id} t={r} current={r.current} nameLink />)}
         </div>
       )}

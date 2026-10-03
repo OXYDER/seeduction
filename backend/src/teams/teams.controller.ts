@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { TeamsService, Viewer } from './teams.service';
 
@@ -10,7 +10,11 @@ export class TeamsController {
   constructor(private teams: TeamsService) {}
 
   @Get()
-  list(@Request() req: any) { return this.teams.list(viewerOf(req)); }
+  list(@Query() q: { q?: string; filter?: string; page?: string }, @Request() req: any) { return this.teams.list(viewerOf(req), { q: q.q, filter: q.filter, page: q.page ? Number(q.page) : 1 }); }
+
+  /** Résout le nom d'une team (clé normalisée) en identifiant : lien depuis le nom d'une release. */
+  @Get('slug/:slug')
+  bySlug(@Param('slug') slug: string) { return this.teams.idBySlug(slug); }
 
   @Post()
   create(@Body() body: any, @Request() req: any) { return this.teams.create(viewerOf(req), body ?? {}); }
@@ -31,7 +35,7 @@ export class TeamsController {
   remove(@Param('id') id: string, @Request() req: any) { return this.teams.remove(id, viewerOf(req)); }
 
   @Post(':id/apply')
-  apply(@Param('id') id: string, @Body('message') message: string, @Request() req: any) { return this.teams.apply(id, viewerOf(req), message); }
+  apply(@Param('id') id: string, @Body() body: { message: string; proof?: string }, @Request() req: any) { return this.teams.apply(id, viewerOf(req), body?.message, body?.proof); }
 
   @Delete(':id/apply')
   withdraw(@Param('id') id: string, @Request() req: any) { return this.teams.withdraw(id, viewerOf(req)); }

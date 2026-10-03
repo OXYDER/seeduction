@@ -16,6 +16,7 @@ export default function TeamDetail() {
   const [team, setTeam] = useState<any>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [proof, setProof] = useState('');
   const [flash, setFlash] = useState('');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ name: '', tag: '', description: '', requirements: '' });
@@ -47,7 +48,7 @@ export default function TeamDetail() {
         <div className="team-logo big">{team.logoUrl ? <img src={team.logoUrl} alt="" /> : <span>{(team.tag || team.name).slice(0, 2).toUpperCase()}</span>}</div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <h1 style={{ margin: 0 }}>{team.name} {team.tag && <span className="team-tag">[{team.tag}]</span>}</h1>
-          <div className="muted" style={{ margin: '4px 0 8px' }}>{team.members.length} membre{team.members.length > 1 ? 's' : ''} · créée {timeAgo(team.createdAt)} · <span className={team.recruiting ? 'team-rec on' : 'team-rec'}>{team.recruiting ? '🟢 Recrute' : '⚪ Ne recrute pas'}</span></div>
+          <div className="muted" style={{ margin: '4px 0 8px' }}>{team.members.length} membre{team.members.length > 1 ? 's' : ''} · créée {timeAgo(team.createdAt)} · {team.hasOwner ? <span className={team.recruiting ? 'team-rec on' : 'team-rec'}>{team.recruiting ? '🟢 Recrute' : '⚪ Ne recrute pas'}</span> : <span className="team-noowner">Sans propriétaire</span>} · 📦 {team.releaseCount} release{team.releaseCount > 1 ? 's' : ''}</div>
           <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{team.description || 'Aucune description.'}</p>
           {team.requirements && <div style={{ marginTop: 10 }}><strong>Ce que la team attend :</strong><p style={{ whiteSpace: 'pre-wrap', margin: '4px 0 0' }}>{team.requirements}</p></div>}
         </div>
@@ -57,6 +58,16 @@ export default function TeamDetail() {
           {team.canDelete && <button type="button" className="danger" onClick={() => window.confirm(`Supprimer la team ${team.name} ?`) && api.delete(`/teams/${id}`).then(() => navigate('/teams'))}>Supprimer</button>}
         </div>
       </div>
+
+      {!team.hasOwner && (
+        <div className="panel team-claim-info">
+          <strong>🤖 Cette team n'a pas de propriétaire</strong>
+          <p style={{ margin: '6px 0 0' }}>
+            Elle a été <strong>ajoutée automatiquement par le système</strong> : son nom a été détecté à la fin du nom de releases partagées sur le site (« …-{team.name} »). Personne n'a encore prouvé qu'il en fait partie.
+            Si tu es un <strong>véritable membre</strong> de cette team, tu peux en <strong>prendre possession</strong> : envoie une candidature avec une preuve ci-dessous. L'administration vérifie, et le premier membre validé devient le propriétaire (chef) ; les candidats suivants passent ensuite par lui.
+          </p>
+        </div>
+      )}
 
       {editing && (
         <div className="panel" style={{ display: 'grid', gap: 10 }}>
@@ -79,15 +90,16 @@ export default function TeamDetail() {
       {/* Candidature */}
       {!team.myRole && (
         <div className="panel">
-          <h3 style={{ marginTop: 0 }}>Postuler</h3>
+          <h3 style={{ marginTop: 0 }}>{team.hasOwner ? 'Postuler' : 'Prendre possession de cette team'}</h3>
           {team.myApplicationId ? (
-            <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}><span>⏳ Ta candidature est en attente.</span><button type="button" className="secondary" onClick={() => run(() => api.delete(`/teams/${id}/apply`), 'Candidature retirée')}>Retirer ma candidature</button></div>
+            <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}><span>⏳ Ta candidature est en attente{team.hasOwner ? '' : " de vérification par l'administration"}.</span><button type="button" className="secondary" onClick={() => run(() => api.delete(`/teams/${id}/apply`), 'Candidature retirée')}>Retirer ma candidature</button></div>
           ) : team.inOtherTeam ? <p className="muted" style={{ margin: 0 }}>Tu fais déjà partie d'une autre team : quitte-la pour postuler ici.</p>
-            : !team.recruiting ? <p className="muted" style={{ margin: 0 }}>Cette team ne recrute pas pour le moment.</p>
+            : team.hasOwner && !team.recruiting ? <p className="muted" style={{ margin: 0 }}>Cette team ne recrute pas pour le moment.</p>
             : (
               <div style={{ display: 'grid', gap: 8 }}>
-                <textarea rows={4} placeholder="Présente-toi : ce que tu sais faire, ton expérience, pourquoi cette team…" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={1000} />
-                <div><button type="button" disabled={message.trim().length < 10} onClick={() => run(async () => { await api.post(`/teams/${id}/apply`, { message }); setMessage(''); }, '✓ Candidature envoyée')}>Envoyer ma candidature</button></div>
+                <textarea rows={3} placeholder={team.hasOwner ? 'Présente-toi : ce que tu sais faire, ton expérience, pourquoi cette team…' : 'Présente-toi : ton rôle dans la team, depuis quand tu en fais partie…'} value={message} onChange={(e) => setMessage(e.target.value)} maxLength={1000} />
+                {!team.hasOwner && <textarea rows={3} placeholder="Preuve que tu fais vraiment partie de cette team : lien vers une annonce ou un post de la team, NFO, capture d'écran hébergée, contact d'un membre connu…" value={proof} onChange={(e) => setProof(e.target.value)} maxLength={1500} />}
+                <div><button type="button" disabled={message.trim().length < 10 || (!team.hasOwner && proof.trim().length < 10)} onClick={() => run(async () => { await api.post(`/teams/${id}/apply`, { message, proof: proof || undefined }); setMessage(''); setProof(''); }, '✓ Candidature envoyée')}>{team.hasOwner ? 'Envoyer ma candidature' : 'Envoyer ma demande avec preuve'}</button></div>
               </div>
             )}
         </div>
@@ -104,11 +116,12 @@ export default function TeamDetail() {
                   <div className="row" style={{ gap: 10, flexWrap: 'wrap', justifyContent: 'space-between' }}>
                     <div className="row" style={{ gap: 8 }}>{a.user && <Avatar user={a.user} size={32} />}<strong>{a.user && <UserLink user={a.user} />}</strong><span className="muted" style={{ fontSize: 12 }}>{CLASS_LABEL[a.user?.memberClass] ?? ''} · ⬆ {formatBytes(a.uploaded)} · ⬇ {formatBytes(a.downloaded)} · {a.torrents} torrent{a.torrents > 1 ? 's' : ''} · {timeAgo(a.createdAt)}</span></div>
                     <div className="row" style={{ gap: 6 }}>
-                      <button type="button" onClick={() => run(() => api.post(`/teams/applications/${a.id}/accept`), '✓ Candidat accepté')}>✓ Accepter</button>
+                      <button type="button" onClick={() => run(() => api.post(`/teams/applications/${a.id}/accept`), team.hasOwner ? '✓ Candidat accepté' : '✓ Propriétaire nommé')}>{team.hasOwner ? '✓ Accepter' : '✓ Valider : devient propriétaire'}</button>
                       <button type="button" className="danger" onClick={() => run(() => api.post(`/teams/applications/${a.id}/decline`), 'Candidature refusée')}>✕ Refuser</button>
                     </div>
                   </div>
                   <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>« {a.message} »</p>
+                  {a.proof && <p className="team-proof"><strong>Preuve :</strong> <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{a.proof}</span></p>}
                 </div>
               ))}
             </div>
@@ -116,9 +129,27 @@ export default function TeamDetail() {
         </div>
       )}
 
+      {/* Releases */}
+      {team.releases.length > 0 && (
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>📦 Dernières releases ({team.releaseCount})</h3>
+          <table><tbody>
+            {team.releases.map((r: any) => (
+              <tr key={r.id}>
+                <td><Link to={`/torrents/${r.id}`}>{r.name}</Link></td>
+                <td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatBytes(r.size)}</td>
+                <td style={{ whiteSpace: 'nowrap' }}><span style={{ color: 'var(--success)' }}>{r.seeders} S</span> <span style={{ color: 'var(--danger)' }}>{r.leechers} L</span></td>
+                <td className="muted" style={{ whiteSpace: 'nowrap' }}>{timeAgo(r.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody></table>
+        </div>
+      )}
+
       {/* Membres */}
       <div className="panel">
         <h3 style={{ marginTop: 0 }}>Membres ({team.members.length})</h3>
+        {team.members.length === 0 && <p className="muted" style={{ margin: 0 }}>Aucun membre officiel pour le moment.</p>}
         <div style={{ overflowX: 'auto' }}>
           <table>
             <thead><tr><th>Membre</th><th>Rôle</th><th>Rang</th><th>Upload</th><th>Torrents</th><th>Depuis</th>{team.canManage && <th />}</tr></thead>

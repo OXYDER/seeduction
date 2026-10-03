@@ -275,6 +275,8 @@ model Torrent {
   reseedRequestedAt DateTime?
   // Titres du film / de la série dans plusieurs langues et régions (une ligne par titre), pour retrouver un torrent quel que soit le titre cherché.
   searchTitles   String?       @db.Text
+  // Team de la release (clé normalisée du nom après le dernier tiret) : '' = aucune, vide = pas encore examiné (voir TeamsService).
+  releaseGroup   String?       @db.VarChar(40)
   // Origine de production (Québec, France, Canada anglais, International) : un filtre, pas une catégorie.
   origin         String?
   // Date à laquelle le synopsis et le slogan affichés sur la fiche ont été traduits en français (vide = pas encore fait).
@@ -1138,7 +1140,9 @@ model Team {
   description  String   @default("") @db.Text
   requirements String?  @db.Text // ce que la team attend d'un candidat
   logoUrl      String?
-  leaderId     String
+  leaderId     String?  // vide = team sans propriétaire (détectée automatiquement, en attente d'un vrai membre)
+  auto         Boolean  @default(false) // ajoutée par le système d'après le nom des releases partagées
+  releaseCount Int      @default(0) // releases partagées sous son nom
   recruiting   Boolean  @default(true)
   createdAt    DateTime @default(now())
   members      TeamMember[]
@@ -1160,6 +1164,7 @@ model TeamApplication {
   teamId      String
   userId      String
   message     String    @db.Text
+  proof       String?   @db.Text // preuve d'appartenance (obligatoire pour revendiquer une team sans propriétaire)
   status      String    @default("PENDING") @db.VarChar(10) // PENDING | ACCEPTED | DECLINED | WITHDRAWN
   createdAt   DateTime  @default(now())
   decidedAt   DateTime?

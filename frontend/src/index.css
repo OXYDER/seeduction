@@ -2414,8 +2414,8 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 @media (max-width: 800px) { .news-card.big { flex-direction: column; } .news-card.big .news-card-img { flex: none; aspect-ratio: 16 / 9; min-height: 0; } .news-item.with-thumb { flex-direction: column; } .news-thumb { width: 100%; } }
 
 /* ---- Affichage groupé et versions : toutes les lignes partagent les mêmes colonnes (alignement garanti) ---- */
-.vg-list { --vg-cols: 44px minmax(0, 1fr) 84px 160px 56px 56px 56px 88px; display: grid; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-panel, #10162a); }
-.vg-legend, .vg-head, .vr-row { display: grid; grid-template-columns: var(--vg-cols); gap: 8px; align-items: center; }
+.vg-list { --vg-cols: 44px minmax(0, 1fr) 44px 84px 160px 56px 56px 56px 88px; display: grid; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-panel, #10162a); }
+.vg-legend, .vg-head, .vr-row, .vg-sub { display: grid; grid-template-columns: var(--vg-cols); gap: 8px; align-items: center; }
 .vg-legend { padding: 8px 14px; font-size: 12px; opacity: 0.6; border-bottom: 1px solid var(--border); }
 .vg { border-bottom: 1px solid rgba(255,255,255,0.06); }
 .vg.open { background: rgba(255,255,255,0.03); }
@@ -2526,3 +2526,25 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .team-app { padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); }
 .vr-sub-name { font-size: 12px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vg-rows.flat.vg-list { display: grid; border: 1px solid var(--border); }
+.vr-row.clickable { cursor: pointer; }
+.vr-cm { opacity: 0.75; }
+.vr-group { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 5px; background: rgba(255,255,255,0.1); letter-spacing: 0.3px; opacity: 0.95; }
+.vr-group.big { margin-left: 8px; font-size: 12px; vertical-align: middle; background: rgba(229,56,79,0.85); color: #fff; }
+.vg-runtime { font-size: 12px; opacity: 0.8; }
+.vg-mode { padding: 1px 10px; border-radius: 6px; font-size: 12px; background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.4); box-shadow: none; color: #c4b5fd; }
+.vg-mode.on { background: var(--acc1, #8b5cf6); color: #fff; }
+.vg-sub { padding: 9px 14px; border-top: 1px solid rgba(255,255,255,0.05); cursor: pointer; font-size: 13px; }
+.vg-sub:hover { background: rgba(255,255,255,0.05); }
+.vg-sub.d1 { background: rgba(255,255,255,0.025); }
+.vg-sub-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vg-sub.d2 .vg-sub-line { padding-left: 18px; }
+.vr-row.d1 { border-left: 3px solid rgba(255,165,0,0.55); padding-left: 11px; }
+.vr-row.d2 .vr-main { padding-left: 14px; }
+.vr-row.d3 .vr-main { padding-left: 28px; }
+.vr-row.d2, .vr-row.d3 { border-left: 3px solid rgba(255,165,0,0.35); padding-left: 11px; }
+@media (max-width: 900px) { .vg-list { --vg-cols: 44px minmax(0, 1fr) auto; } }
+
+.team-card.unowned { border-style: dashed; }
+.team-noowner { padding: 1px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(245,158,11,0.2); color: #fbbf24; }
+.team-info, .team-claim-info { border-left: 3px solid #f59e0b; }
+.team-proof { margin: 6px 0 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,0.1); font-size: 13px; }

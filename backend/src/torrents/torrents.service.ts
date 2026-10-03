@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { TeamsService } from '../teams/teams.service';
 import { AdultService } from '../adult/adult.service';
 import { PrismaService } from '../common/prisma.service';
 import { parseTorrentFile, rewriteTorrentForUser, sanitizeTorrentForUpload } from '../common/utils/torrent-file';
@@ -39,12 +40,13 @@ export function toListRow({ metadata, ...t }: any) {
   const synopsis = typeof overview === 'string' && overview.trim() ? overview.trim().replace(/\s+/g, ' ') : null;
   const backdrop = (metadata as any)?.backdrop;
   const mainTitle = (metadata as any)?.titles?.[0]?.title;
-  return { ...t, displayTitle: typeof mainTitle === 'string' && mainTitle.trim() ? mainTitle.trim() : null, backdrop: typeof backdrop === 'string' ? backdrop : null, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
+  const runtime = Number((metadata as any)?.runtime) || t.durationMinutes || null;
+  return { ...t, metaKind: (metadata as any)?.kind ?? null, runtime, displayTitle: typeof mainTitle === 'string' && mainTitle.trim() ? mainTitle.trim() : null, backdrop: typeof backdrop === 'string' ? backdrop : null, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
 }
 
 @Injectable()
 export class TorrentsService {
-  constructor(private prisma: PrismaService, private metadata: MetadataService, private adult: AdultService) {}
+  constructor(private prisma: PrismaService, private metadata: MetadataService, private adult: AdultService, private teams: TeamsService) {}
 
   /** Une catégorie principale qui a des sous-catégories n'est pas sélectionnable : il faut choisir une sous-catégorie. */
   private async assertSelectableCategory(categoryId: string) {
@@ -100,10 +102,13 @@ export class TorrentsService {
     const storedPath = path.join(STORAGE_DIR, `${parsed.infoHash}.torrent`);
     await fs.writeFile(storedPath, cleanBuffer);
 
+    const releaseName = params.name || parsed.name;
+    const releaseGroup = await this.teams.noteRelease(releaseName); // team détectée dans le nom (créée automatiquement si elle est nouvelle)
     const torrent = await this.prisma.torrent.create({
       data: {
         infoHash: parsed.infoHash,
-        name: params.name || parsed.name,
+        releaseGroup,
+        name: releaseName,
         description: params.description,
         filePath: storedPath,
         size: BigInt(parsed.totalSize),
@@ -314,7 +319,7 @@ export class TorrentsService {
       },
       select: {
         id: true, name: true, size: true, resolution: true, source: true, codec: true, audio: true, language: true, hdr: true, containerFormat: true,
-        seeders: true, leechers: true, freeleech: true, createdAt: true, anonymousUpload: true, completedCount: true, season: true, episode: true, status: true, uploader: { select: { id: true, username: true } },
+        seeders: true, leechers: true, freeleech: true, createdAt: true, anonymousUpload: true, completedCount: true, season: true, episode: true, status: true, releaseGroup: true, _count: { select: { comments: true } }, uploader: { select: { id: true, username: true } },
       },
       take: 60,
     });

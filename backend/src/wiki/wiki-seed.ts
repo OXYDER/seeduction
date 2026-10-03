@@ -340,6 +340,9 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• Ta team s'affiche sur ton profil.
 
 ` +
+          `[b]Teams détectées automatiquement[/b] : quand une release est partagée, le système lit la team à la fin de son nom (« …x264-TOXIC ») et l'ajoute à la liste, [b]sans propriétaire[/b] (les mentions génériques comme NOTAG sont ignorées). Si tu fais vraiment partie d'une de ces teams, ouvre sa page et [b]prends-en possession[/b] : envoie une demande avec une [b]preuve[/b] (lien vers une annonce, NFO, capture…). L'administration la vérifie ; le premier membre validé devient le propriétaire de la team et gère ensuite ses candidatures. Le nom de la team sur chaque release est cliquable.
+
+` +
           `[b]Roadmap[/b] : la page Statistiques (et le numéro de version en bas du menu) mène au journal des modifications du site, rempli automatiquement avec la date et l'heure de chaque mise à jour, et à la liste de ce qui est prévu.`,
       },
       {
