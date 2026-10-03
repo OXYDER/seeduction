@@ -324,6 +324,25 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `[b]Amis[/b] : envoie une demande depuis un profil ou la page Amis ; une fois acceptée, tu peux créer des groupes avec cette personne. Tu n'as pas besoin d'être ami pour discuter à deux.`,
       },
       {
+        title: 'Teams',
+        slug: 'teams',
+        keywords: 'team, équipe, postuler, candidature, chef, officier, recrute',
+        content:
+          `La page [b]Teams[/b] (menu) liste les équipes du site avec leur chef, leurs membres, leur upload cumulé et si elles recrutent.
+
+` +
+          `• [b]Postuler[/b] : ouvre la team, lis ce qu'elle attend des candidats, écris un message de présentation et envoie ta candidature. Tu peux avoir [b]3 candidatures en attente[/b] et tu peux la retirer quand tu veux ; tu es prévenu de la réponse.
+` +
+          `• [b]Une seule team[/b] par compte : pour en rejoindre une autre, quitte d'abord la tienne.
+` +
+          `• Le [b]chef[/b] (nommé par l'administration) et ses [b]officiers[/b] examinent les candidatures, acceptent ou refusent, et retirent des membres ; le chef peut nommer des officiers, modifier la présentation, le logo et ouvrir ou fermer le recrutement.
+` +
+          `• Ta team s'affiche sur ton profil.
+
+` +
+          `[b]Roadmap[/b] : la page Statistiques (et le numéro de version en bas du menu) mène au journal des modifications du site, rempli automatiquement avec la date et l'heure de chaque mise à jour, et à la liste de ce qui est prévu.`,
+      },
+      {
         title: 'Forum',
         slug: 'forum',
         keywords: 'sujets, discussions, sous-forum',

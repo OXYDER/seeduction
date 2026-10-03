@@ -20,6 +20,9 @@ import Admin from './pages/Admin';
 import Moderation from './pages/Moderation';
 import Profiles from './pages/Profiles';
 import Family from './pages/Family';
+import Roadmap from './pages/Roadmap';
+import Teams from './pages/Teams';
+import TeamDetail from './pages/TeamDetail';
 import Forum from './pages/Forum';
 import ForumTopic from './pages/ForumTopic';
 import Messages from './pages/Messages';
@@ -58,6 +61,9 @@ export default function App() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/moderation" element={<Moderation />} />
           <Route path="/family" element={<Family />} />
+          <Route path="/roadmap" element={<Roadmap />} />
+          <Route path="/teams" element={<Teams />} />
+          <Route path="/teams/:id" element={<TeamDetail />} />
           <Route path="/forum" element={<Forum />} />
           <Route path="/forum/f/:id" element={<ForumView />} />
           <Route path="/forum/latest" element={<ForumLatest />} />

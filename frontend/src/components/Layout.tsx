@@ -88,6 +88,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/favorites', icon: '⭐', cls: 'c-collections', label: 'Favoris', match: starts('/favorites') },
   { to: '/collections', icon: '📚', cls: 'c-collections', label: 'Collections', match: starts('/collections') },
   { to: '/friends', icon: '👫', cls: 'c-collections', label: 'Amis', match: starts('/friends') },
+  { to: '/teams', icon: '🏴', cls: 'c-forum', label: 'Teams', match: starts('/teams') },
   { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat') },
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
@@ -132,6 +133,8 @@ function LayoutInner() {
   const onlineMap = useMessenger((s) => s.online);
   const friendsOnline = friendIds.filter((id) => (onlineMap[id] ?? 'OFFLINE') !== 'OFFLINE').length;
   const [econ, setEcon] = useState<{ seeding: number; hnr: number } | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => { api.get('/roadmap/version').then((r) => setVersion(r.data.version)).catch(() => {}); }, []);
   const dmConnect = useDmStore((s) => s.connect);
   const dmDisconnect = useDmStore((s) => s.disconnect);
   const dmBump = useDmStore((s) => s.friendRequestBump);
@@ -333,6 +336,7 @@ function LayoutInner() {
               );
             })}
           </nav>
+          {version && <Link to="/roadmap" className="side-version" title="Roadmap et journal des modifications">v{version}</Link>}
 
         </aside>
 

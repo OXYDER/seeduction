@@ -91,6 +91,7 @@ export default function Profile() {
         <h1 style={{ margin: 0 }}>{profile.username}</h1>
         {profile.onlineStatus && <span className="muted" style={{ fontSize: 13 }}>{STATUS_LABEL[profile.onlineStatus as keyof typeof STATUS_LABEL]}</span>}
         {profile.role && <span className="badge double">{displayRank(profile, ROLE_LABEL)}</span>}
+        {profile.team && <Link to={`/teams/${profile.team.id}`} className="badge new" title={`Team ${profile.team.name}`}>🏴 {profile.team.tag ? `[${profile.team.tag}] ` : ''}{profile.team.name}</Link>}
         {profile.status === 'BANNED' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>Banni</span>}
         <span className="muted">
           Membre depuis le {new Date(profile.createdAt).toLocaleDateString('fr-FR')}

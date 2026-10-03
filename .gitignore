@@ -5,3 +5,4 @@ storage/
 *.log
 backups/
 desktop-player/vendor/
+backend/changelog.txt

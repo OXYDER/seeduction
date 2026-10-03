@@ -38,7 +38,8 @@ export function toListRow({ metadata, ...t }: any) {
   const overview = (metadata as any)?.overview;
   const synopsis = typeof overview === 'string' && overview.trim() ? overview.trim().replace(/\s+/g, ' ') : null;
   const backdrop = (metadata as any)?.backdrop;
-  return { ...t, backdrop: typeof backdrop === 'string' ? backdrop : null, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
+  const mainTitle = (metadata as any)?.titles?.[0]?.title;
+  return { ...t, displayTitle: typeof mainTitle === 'string' && mainTitle.trim() ? mainTitle.trim() : null, backdrop: typeof backdrop === 'string' ? backdrop : null, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
 }
 
 @Injectable()

@@ -19,6 +19,9 @@ git reset --hard origin/main
 # git clean respecte déjà .gitignore (storage/, .env, node_modules/, dist/ ne sont jamais touchés)
 git clean -fd
 
+# Journal des modifications (page Roadmap) et numéro de version : écrits depuis l'historique git, avant la construction de l'image.
+{ echo "COUNT=$(git rev-list --count HEAD)"; git log -n 400 --pretty=format:'%H%x1f%aI%x1f%s%x1f%b%x1e'; } > backend/changelog.txt
+
 # Docker (surtout sur Synology) refuse de monter un dossier hôte qui n'existe pas :
 # les sauvegardes automatiques écrivent dans ./backups.
 mkdir -p backups/db backups/files

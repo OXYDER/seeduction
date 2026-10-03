@@ -82,7 +82,8 @@ function Group({ rows, defaultOpen, actions, star }: { rows: any[]; defaultOpen:
   sorted.forEach((r) => r.resolution && byRes.set(r.resolution, (byRes.get(r.resolution) ?? 0) + 1));
   const newest = rows.reduce((a, b) => (new Date(a.createdAt) > new Date(b.createdAt) ? a : b));
   const cover = sorted.find((r) => r.coverImage)?.coverImage;
-  const title = releaseTitle(first.name);
+  // Titre du film / de la série (fiche TMDB) : jamais le nom d'une release ; sans fiche, le nom nettoyé de la release.
+  const title = rows.find((r) => r.displayTitle)?.displayTitle ?? releaseTitle(first.name);
 
   return (
     <div className={`vg${open ? ' open' : ''}`}>

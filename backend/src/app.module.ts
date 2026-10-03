@@ -39,6 +39,8 @@ import { StreamModule } from './stream/stream.module';
 import { WikiModule } from './wiki/wiki.module';
 import { MessengerModule } from './messenger/messenger.module';
 import { FamilyModule } from './family/family.module';
+import { RoadmapModule } from './roadmap/roadmap.module';
+import { TeamsModule } from './teams/teams.module';
 
 @Module({
   imports: [
@@ -82,6 +84,8 @@ import { FamilyModule } from './family/family.module';
     WikiModule,
     MessengerModule,
     FamilyModule,
+    RoadmapModule,
+    TeamsModule,
   ],
 })
 export class AppModule {}

@@ -13,6 +13,8 @@ WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
+# Journal des modifications écrit par deploy.sh (facultatif : le joker évite l'échec s'il est absent)
+COPY --from=build /app/changelog.tx[t] ./
 COPY package.json ./
 RUN mkdir -p /app/storage/torrents
 EXPOSE 3000

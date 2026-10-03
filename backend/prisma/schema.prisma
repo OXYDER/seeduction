@@ -1125,3 +1125,46 @@ model MessageReaction {
   @@unique([messageId, userId])
   @@index([messageId])
 }
+
+// ---------------------------------------------------------------------------
+// TEAMS : équipes de membres auxquelles on peut postuler (une seule team par compte).
+// ---------------------------------------------------------------------------
+
+model Team {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  slug         String   @unique
+  tag          String?  @db.VarChar(8)
+  description  String   @default("") @db.Text
+  requirements String?  @db.Text // ce que la team attend d'un candidat
+  logoUrl      String?
+  leaderId     String
+  recruiting   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  members      TeamMember[]
+}
+
+model TeamMember {
+  id       String   @id @default(uuid())
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId   String
+  userId   String   @unique // un compte ne fait partie que d'une seule team
+  role     String   @default("MEMBER") @db.VarChar(8) // LEADER | OFFICER | MEMBER
+  joinedAt DateTime @default(now())
+
+  @@index([teamId])
+}
+
+model TeamApplication {
+  id          String    @id @default(uuid())
+  teamId      String
+  userId      String
+  message     String    @db.Text
+  status      String    @default("PENDING") @db.VarChar(10) // PENDING | ACCEPTED | DECLINED | WITHDRAWN
+  createdAt   DateTime  @default(now())
+  decidedAt   DateTime?
+  decidedById String?
+
+  @@index([teamId, status])
+  @@index([userId, status])
+}

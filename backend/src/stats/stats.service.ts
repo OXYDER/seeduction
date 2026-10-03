@@ -33,6 +33,70 @@ export class StatsService {
     };
   }
 
+  /** Chiffres supplémentaires de la page Statistiques : activité, répartitions, classements, économie. */
+  private async extraStats(visible: object) {
+    const approved = { status: 'APPROVED' as const, ...visible };
+    const since = (days: number) => new Date(Date.now() - days * 86400_000);
+    const [
+      comments, collections, forumPosts, forumTopics, favorites, messages, friendships, requestsOpen, requestsFilled,
+      newMembersWeek, uploadsWeek, uploadsMonth, snatchesPerDay, commentsPerDay, byResolution, byLanguage, uploaders, seedersNow,
+      commented, biggest, classes, roles, bonus, avgRatio, hnrOpen, activeNow,
+    ] = await Promise.all([
+      this.prisma.torrentComment.count(),
+      this.prisma.collection.count(),
+      this.prisma.forumPost.count(),
+      this.prisma.forumTopic.count(),
+      this.prisma.favorite.count(),
+      this.prisma.message.count({ where: { type: { not: 'SYSTEM' }, deletedAt: null } }),
+      this.prisma.friendship.count({ where: { status: 'ACCEPTED' } }),
+      this.prisma.torrentRequest.count({ where: { filledById: null } }),
+      this.prisma.torrentRequest.count({ where: { filledById: { not: null } } }),
+      this.prisma.user.count({ where: { parentId: null, createdAt: { gt: since(7) } } }),
+      this.prisma.torrent.count({ where: { ...approved, createdAt: { gt: since(7) } } }),
+      this.prisma.torrent.count({ where: { ...approved, createdAt: { gt: since(30) } } }),
+      this.prisma.$queryRaw<{ d: string; n: bigint }[]>`
+        SELECT to_char(date_trunc('day', "completedAt"), 'YYYY-MM-DD') AS d, COUNT(*) AS n FROM "Snatch"
+        WHERE "completedAt" > now() - interval '30 days' GROUP BY 1 ORDER BY 1`,
+      this.prisma.$queryRaw<{ d: string; n: bigint }[]>`
+        SELECT to_char(date_trunc('day', "createdAt"), 'YYYY-MM-DD') AS d, COUNT(*) AS n FROM "TorrentComment"
+        WHERE "createdAt" > now() - interval '30 days' GROUP BY 1 ORDER BY 1`,
+      this.prisma.torrent.groupBy({ by: ['resolution'], where: { ...approved, resolution: { not: null } }, _count: { _all: true }, orderBy: { _count: { resolution: 'desc' } }, take: 8 }),
+      this.prisma.torrent.groupBy({ by: ['language'], where: { ...approved, language: { not: null } }, _count: { _all: true }, orderBy: { _count: { language: 'desc' } }, take: 8 }),
+      this.prisma.torrent.groupBy({ by: ['uploaderId'], where: { ...approved, anonymousUpload: false }, _count: { _all: true }, orderBy: { _count: { uploaderId: 'desc' } }, take: 10 }),
+      this.prisma.$queryRaw<{ userId: string; n: bigint }[]>`
+        SELECT p."userId", COUNT(DISTINCT p."torrentId") AS n FROM "Peer" p
+        WHERE p."isSeeder" = true AND p."lastAnnounceAt" > now() - interval '45 minutes' GROUP BY p."userId" ORDER BY n DESC LIMIT 10`,
+      this.prisma.torrentComment.groupBy({ by: ['torrentId'], _count: { _all: true }, orderBy: { _count: { torrentId: 'desc' } }, take: 10 }),
+      this.prisma.torrent.findMany({ where: approved, orderBy: { size: 'desc' }, take: 5, select: { id: true, name: true, size: true, coverImage: true } }),
+      this.prisma.user.groupBy({ by: ['memberClass'], where: { parentId: null }, _count: { _all: true } }),
+      this.prisma.user.groupBy({ by: ['role'], where: { parentId: null }, _count: { _all: true } }),
+      this.prisma.user.aggregate({ where: { parentId: null }, _sum: { bonusPoints: true } }),
+      this.prisma.$queryRaw<{ r: number | null }[]>`SELECT AVG(uploaded::float8 / NULLIF(downloaded::float8, 0)) AS r FROM "User" WHERE "parentId" IS NULL AND downloaded > 0`,
+      this.prisma.snatch.count({ where: { hnr: true, satisfied: false } }),
+      this.prisma.peer.count({ where: { lastAnnounceAt: { gt: new Date(Date.now() - 45 * 60_000) } } }),
+    ]);
+    const userIds = [...new Set([...uploaders.map((u) => u.uploaderId), ...seedersNow.map((u) => u.userId)])];
+    const users = userIds.length ? await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, username: true, avatarUrl: true } }) : [];
+    const uById = new Map(users.map((u) => [u.id, u]));
+    const cIds = commented.map((c) => c.torrentId);
+    const cTorrents = cIds.length ? await this.prisma.torrent.findMany({ where: { id: { in: cIds }, ...(visible as object) }, select: { id: true, name: true, coverImage: true } }) : [];
+    const cById = new Map(cTorrents.map((t) => [t.id, t]));
+    return {
+      counts: { comments, collections, forumPosts, forumTopics, favorites, messages, friendships, requestsOpen, requestsFilled, newMembersWeek, uploadsWeek, uploadsMonth, activePeers: activeNow, hnrOpen },
+      economy: { bonusInCirculation: Math.round(bonus._sum.bonusPoints ?? 0), averageRatio: avgRatio[0]?.r ?? null },
+      snatchesPerDay: snatchesPerDay.map((r) => ({ date: r.d, count: Number(r.n) })),
+      commentsPerDay: commentsPerDay.map((r) => ({ date: r.d, count: Number(r.n) })),
+      byResolution: byResolution.map((r) => ({ name: r.resolution ?? '?', count: r._count._all })),
+      byLanguage: byLanguage.map((r) => ({ name: r.language ?? '?', count: r._count._all })),
+      topUploaders: uploaders.map((u) => ({ user: uById.get(u.uploaderId) ?? null, count: u._count._all })).filter((u) => u.user),
+      topSeeders: seedersNow.map((u) => ({ user: uById.get(u.userId) ?? null, count: Number(u.n) })).filter((u) => u.user),
+      mostCommented: commented.map((c) => ({ torrent: cById.get(c.torrentId) ?? null, count: c._count._all })).filter((c) => c.torrent),
+      biggest: biggest.map((t) => ({ ...t, size: Number(t.size) })),
+      memberClasses: classes.map((c) => ({ name: c.memberClass, count: c._count._all })),
+      roles: roles.map((r) => ({ name: r.role, count: r._count._all })),
+    };
+  }
+
   /** Statistiques détaillées de la communauté (page Statistiques) : activité sur 30 jours, catégories, torrents à reseeder. */
   async overview(userId?: string) {
     const hidden = await this.adult.hiddenFor(userId);
@@ -63,6 +127,7 @@ export class StatsService {
     const nameById = new Map(categories.map((c) => [c.id, c.name]));
 
     return {
+      extra: await this.extraStats(visible),
       global: await this.globalStats(),
       torrentsPerDay: torrentsPerDay.map((r) => ({ date: r.d, count: Number(r.n) })),
       membersPerDay: membersPerDay.map((r) => ({ date: r.d, count: Number(r.n) })),

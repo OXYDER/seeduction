@@ -59,8 +59,10 @@ export class UsersService {
     // Ce qu'on regarde en ce moment ne s'affiche que si le membre n'apparaît pas hors ligne (ça reviendrait à
     // trahir un statut "invisible" volontairement choisi) et que watchingUntil n'a pas expiré.
     const watching = onlineStatus !== 'OFFLINE' && watchingUntil && watchingUntil > new Date() ? watchingTitle : null;
+    const teamRow = await this.prisma.teamMember.findFirst({ where: { userId: user.parentId ?? user.id }, include: { team: { select: { id: true, name: true, tag: true } } } });
     return {
       ...publicInfo,
+      ...(teamRow ? { team: { ...teamRow.team, role: teamRow.role } } : {}),
       ...(profile ? { profile } : {}),
       ratio,
       watching,
