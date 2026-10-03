@@ -356,6 +356,23 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `[b]Roadmap[/b] : la page Statistiques (et le numéro de version en bas du menu) mène au journal des modifications du site, rempli automatiquement avec la date et l'heure de chaque mise à jour, et à la liste de ce qui est prévu.`,
       },
       {
+        title: 'Les nouvelles',
+        slug: 'les-nouvelles',
+        keywords: 'nouvelles, annonces, actualités, réactions, commentaires, mise à jour, maintenance, événement',
+        content:
+          `La page Nouvelles est l'endroit où le staff annonce ce qui change sur le site. La [b]dernière nouvelle[/b] est aussi mise en avant en haut de l'accueil.\n\n` +
+          `[b]Lire et filtrer[/b]\n` +
+          `Chaque nouvelle a un [b]type[/b] : 📯 Nouveauté, 🆕 Mise à jour, 🎉 Événement, 🛠️ Maintenance ou ⚠️ Important. Les boutons en haut de la page filtrent par type, et la recherche trouve un mot dans le titre, le chapeau et le texte. Une pastille rouge sur « Nouvelles » dans le menu compte celles publiées depuis ta dernière visite.\n\n` +
+          `[b]Réagir[/b]\n` +
+          `Sous chaque nouvelle, choisis une réaction (👍 ❤️ 😂 😮 😢 🎉 🔥). Tu n'as qu'une réaction par nouvelle : en choisir une autre remplace la première, et cliquer de nouveau sur la tienne la retire.\n\n` +
+          `[b]Commenter[/b]\n` +
+          `Les commentaires s'écrivent sous la nouvelle (3 000 caractères maximum). Tu peux modifier ou supprimer les tiens ; le staff peut supprimer n'importe quel commentaire et fermer les commentaires d'une nouvelle. L'auteur de la nouvelle est prévenu quand quelqu'un la commente.\n\n` +
+          `[b]Aussi sur la page[/b]\n` +
+          `Le nombre de membres qui l'ont lue, le temps de lecture, un bouton pour copier le lien, la nouvelle précédente et la suivante, et d'autres nouvelles à lire.\n\n` +
+          `[b]Pour le staff[/b]\n` +
+          `Le bouton « Nouvelle nouvelle » (et ✏️ Modifier) ouvre l'éditeur : titre, chapeau, image principale, type, épinglage et fermeture des commentaires. À la publication, tous les membres reçoivent une notification.`,
+      },
+      {
         title: 'Forum',
         slug: 'forum',
         keywords: 'sujets, discussions, sous-forum',

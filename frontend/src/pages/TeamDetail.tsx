@@ -42,7 +42,6 @@ export default function TeamDetail() {
 
   return (
     <div className="grid" style={{ gap: 16 }}>
-      <div className="forum-crumbs"><Link to="/teams">Teams</Link> › <strong>{team.name}</strong></div>
       {error && <div className="panel" style={{ borderColor: 'var(--danger)' }}>{error}</div>}
       {flash && <div className="mod-flash" role="status">{flash}</div>}
 

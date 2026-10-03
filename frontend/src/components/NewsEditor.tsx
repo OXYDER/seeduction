@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import WysiwygEditor from './WysiwygEditor';
+import { NEWS_KINDS } from '../lib/news';
 
-export interface NewsItem { id?: string; title: string; content: string; summary?: string | null; imageUrl?: string | null; pinned?: boolean }
+export interface NewsItem { id?: string; title: string; content: string; summary?: string | null; imageUrl?: string | null; pinned?: boolean; kind?: string; commentsLocked?: boolean }
 
 /** Éditeur rapide d'une nouvelle (titre, chapeau, image principale, contenu, épinglage) — utilisé directement dans la page Nouvelles. */
 export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsItem; onSaved: () => void; onCancel: () => void }) {
@@ -11,6 +12,8 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
   const [imageUrl, setImageUrl] = useState<string | null>(item?.imageUrl ?? null);
   const [content, setContent] = useState(item?.content ?? '');
   const [pinned, setPinned] = useState(!!item?.pinned);
+  const [kind, setKind] = useState(item?.kind ?? 'NEWS');
+  const [locked, setLocked] = useState(!!item?.commentsLocked);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -27,7 +30,7 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
     if (!title.trim() || !content.trim()) { setError('Titre et contenu requis'); return; }
     setBusy(true);
     try {
-      const body = { title, content, pinned, summary: summary.trim() || null, imageUrl };
+      const body = { title, content, pinned, kind, commentsLocked: locked, summary: summary.trim() || null, imageUrl };
       if (item?.id) await api.patch(`/announcements/${item.id}`, body); else await api.post('/announcements', body);
       onSaved();
     } catch (err: any) { setError(err.response?.data?.message ?? 'Enregistrement impossible'); setBusy(false); }
@@ -49,7 +52,13 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
         {imageUrl && <button type="button" className="secondary" onClick={() => setImageUrl(null)}>Retirer</button>}
       </div>
       <WysiwygEditor value={content} onChange={setContent} minHeight={220} placeholder="Contenu de la nouvelle..." />
-      <label className="row muted" style={{ gap: 6 }}><input type="checkbox" style={{ width: 'auto' }} checked={pinned} onChange={(e) => setPinned(e.target.checked)} /> 📌 Épingler en haut</label>
+      <div className="row" style={{ gap: 14, flexWrap: 'wrap' }}>
+        <label className="row muted" style={{ gap: 6 }}>Type :
+          <select value={kind} onChange={(e) => setKind(e.target.value)}>{Object.entries(NEWS_KINDS).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}</select>
+        </label>
+        <label className="row muted" style={{ gap: 6 }}><input type="checkbox" style={{ width: 'auto' }} checked={pinned} onChange={(e) => setPinned(e.target.checked)} /> 📌 Épingler en haut</label>
+        <label className="row muted" style={{ gap: 6 }}><input type="checkbox" style={{ width: 'auto' }} checked={locked} onChange={(e) => setLocked(e.target.checked)} /> 🔒 Fermer les commentaires</label>
+      </div>
       {error && <div style={{ color: 'var(--danger)' }}>{error}</div>}
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <button type="button" disabled={busy} onClick={save}>{item?.id ? 'Enregistrer' : 'Publier'}</button>

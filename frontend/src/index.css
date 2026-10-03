@@ -1797,9 +1797,11 @@ td.cat-cell .cat-tag { display: flex; height: 44px; width: 140px; border-radius:
 .tv-compact-row:hover { background: rgba(255,255,255,0.045); }
 .tv-compact-lead { width: 22px; flex-shrink: 0; display: flex; justify-content: center; }
 .tv-compact-icon { width: 20px; text-align: center; flex-shrink: 0; }
-.tv-compact-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-compact-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.tv-compact-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-compact-extra { width: 84px; flex-shrink: 0; text-align: right; white-space: nowrap; font-size: 12px; }
 .tv-compact-name a { overflow: hidden; text-overflow: ellipsis; }
-.tv-compact-badges { width: 96px; flex-shrink: 0; white-space: nowrap; display: flex; justify-content: flex-end; gap: 4px; }
+.tv-compact-badges { flex-shrink: 0; white-space: nowrap; display: flex; justify-content: flex-start; gap: 4px; }
 .tv-compact-size { width: 78px; text-align: right; flex-shrink: 0; }
 .tv-compact-seeds { width: 74px; display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0; }
 .tv-compact-age { width: 82px; text-align: right; flex-shrink: 0; }
@@ -1808,7 +1810,7 @@ td.cat-cell .cat-tag { display: flex; height: 44px; width: 140px; border-radius:
 .tv-compact-head { min-height: 30px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, rgba(255,255,255,0.55)); background: rgba(255,255,255,0.03); }
 .tv-compact-head:hover { background: rgba(255,255,255,0.03); }
 .tv-compact-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tv-compact-head .tv-compact-badges, .tv-compact-head .tv-compact-counts, .tv-compact-head .tv-compact-seeds, .tv-compact-head .tv-compact-actions { justify-content: flex-end; text-align: right; }
+.tv-compact-head .tv-compact-counts, .tv-compact-head .tv-compact-seeds, .tv-compact-head .tv-compact-actions { justify-content: flex-end; text-align: right; }
 .tv-compact-head .tv-compact-actions { display: block; }
 .tv-compact-head .sortable { cursor: pointer; user-select: none; }
 .tv-compact-head .sortable:hover { color: var(--gold); }
@@ -2645,3 +2647,36 @@ a.seedpage-item:hover { background: rgba(255,255,255,0.07); }
   .wiki-body { padding: 4px 16px 16px 16px; }
   .wiki-prevnext { grid-template-columns: 1fr; }
 }
+
+/* Nouvelles : avatar collé au pseudo (le style de base centre l'avatar avec des marges automatiques), types, réactions, commentaires */
+.row > .forum-avatar, .news-card-meta > .forum-avatar, .news-comment > .forum-avatar, .news-hero-meta > .forum-avatar { margin: 0; flex: none; }
+.news-kind { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,0.1); }
+.news-kind.k-news { background: rgba(var(--acc-rgb, 139, 92, 246), 0.22); color: var(--acc-link, #b9a4ff); }
+.news-kind.k-update { background: rgba(56,189,248,0.2); color: #7dd3fc; }
+.news-kind.k-event { background: rgba(236,72,153,0.2); color: #f9a8d4; }
+.news-kind.k-maintenance { background: rgba(245,158,11,0.2); color: #fbbf24; }
+.news-kind.k-important { background: rgba(229,56,79,0.22); color: #f87171; }
+.news-counts { display: inline-flex; gap: 10px; margin-left: auto; }
+.news-reactions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.news-react { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 18px; line-height: 1.2; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: inherit; cursor: pointer; transition: transform 0.12s; }
+.news-react:hover:not(:disabled) { transform: translateY(-2px); background: rgba(255,255,255,0.12); }
+.news-react.on { background: rgba(var(--acc-rgb, 139, 92, 246), 0.28); border-color: var(--acc-link, #b9a4ff); }
+.news-react b { font-size: 13px; }
+.news-comments { display: grid; gap: 4px; margin-top: 6px; }
+.news-comment { display: flex; gap: 10px; padding: 10px 4px; border-top: 1px solid rgba(255,255,255,0.06); align-items: flex-start; }
+.news-comment-text { margin: 4px 0 0; white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
+.news-mini { padding: 2px 8px; font-size: 12px; }
+.news-more { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.news-more-item { display: flex; gap: 10px; align-items: center; color: inherit; padding: 8px; border-radius: 10px; background: rgba(255,255,255,0.04); }
+.news-more-item:hover { background: rgba(255,255,255,0.08); text-decoration: none; }
+.news-more-item img, .news-more-ph { flex: none; width: 76px; aspect-ratio: 16 / 9; border-radius: 6px; object-fit: cover; background: rgba(255,255,255,0.07); display: grid; place-items: center; font-size: 22px; }
+.news-hero { display: flex; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-panel, #10162a); color: inherit; }
+.news-hero:hover { text-decoration: none; border-color: var(--acc-link, #b9a4ff); }
+.news-hero-img { flex: 0 0 46%; min-height: 220px; background: rgba(255,255,255,0.05); display: grid; place-items: center; font-size: 48px; overflow: hidden; }
+.news-hero-img img { width: 100%; height: 100%; object-fit: cover; }
+.news-hero-body { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; min-width: 0; flex: 1; }
+.news-hero-body h2 { margin: 0; font-size: 24px; }
+.news-hero-body p { margin: 0; opacity: 0.85; }
+.news-hero-meta { display: flex; align-items: center; gap: 8px; margin-top: auto; font-size: 12.5px; opacity: 0.9; flex-wrap: wrap; }
+.news-new { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; background: #e5384f; color: #fff; }
+@media (max-width: 700px) { .news-hero { flex-direction: column; } .news-hero-img { flex: none; aspect-ratio: 16 / 9; min-height: 0; } }

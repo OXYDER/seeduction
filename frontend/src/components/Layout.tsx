@@ -15,6 +15,7 @@ import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
 import { useMessenger, privateUnreadOf, publicUnreadOf } from '../store/messenger';
 import { useQueue } from '../store/queue';
+import { useNewsUnseen } from '../lib/news';
 import { ProfileName } from './UserLink';
 import Breadcrumbs from './Breadcrumbs';
 import SeedObligations from './SeedObligations';
@@ -146,6 +147,14 @@ function LayoutInner() {
   const queueTotal = useQueue((s) => s.total);
   const refreshQueue = useQueue((s) => s.refresh);
   const resetQueue = useQueue((s) => s.reset);
+  const newsUnseen = useNewsUnseen((s) => s.unseen);
+  const refreshNews = useNewsUnseen((s) => s.refresh);
+  useEffect(() => {
+    if (!accessToken) return;
+    void refreshNews();
+    const t = setInterval(() => { if (!document.hidden) void refreshNews(); }, 5 * 60_000);
+    return () => clearInterval(t);
+  }, [accessToken, refreshNews]);
 
   // Compteur de messages non lus (thème Prestige) : rafraîchi à chaque changement de page.
   useEffect(() => {
@@ -236,6 +245,7 @@ function LayoutInner() {
         </>
       );
     }
+    if (item.to === '/news' && newsUnseen > 0) return <span className="side-badge red" title={`${newsUnseen} nouvelle${newsUnseen > 1 ? 's' : ''} non lue${newsUnseen > 1 ? 's' : ''}`}>{fmt(newsUnseen)}</span>;
     if (item.to === '/moderation' && queueTotal > 0) return <span className="side-badge red" title={`${queueTotal} élément${queueTotal > 1 ? 's' : ''} à modérer`}>{fmt(queueTotal)}</span>;
     return null;
   };

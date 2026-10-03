@@ -624,13 +624,55 @@ model Announcement {
   content   String   @db.Text
   summary   String?  @db.VarChar(300) // chapeau affiché dans les listes
   imageUrl  String?  // image principale (téléversée sur Seeduction : /api/covers/...)
+  // Type de nouvelle (badge) : NEWS, UPDATE, EVENT, MAINTENANCE, IMPORTANT
+  kind      String   @default("NEWS") @db.VarChar(12)
+  commentsLocked Boolean @default(false)
   pinned    Boolean  @default(false)
   author    User     @relation(fields: [authorId], references: [id])
   authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  comments  AnnouncementComment[]
+  reactions AnnouncementReaction[]
+  views     AnnouncementView[]
 
   @@index([pinned, createdAt])
+}
+
+/// Commentaire sous une nouvelle (pas de relation vers User : l'auteur se retrouve par authorId).
+model AnnouncementComment {
+  id             String       @id @default(uuid())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  announcementId String
+  authorId       String
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+  editedAt       DateTime?
+
+  @@index([announcementId, createdAt])
+}
+
+/// Une réaction (émoji) par membre et par nouvelle.
+model AnnouncementReaction {
+  id             String       @id @default(uuid())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  announcementId String
+  userId         String
+  emoji          String       @db.VarChar(8)
+  createdAt      DateTime     @default(now())
+
+  @@unique([announcementId, userId])
+}
+
+/// Qui a lu quelle nouvelle (un membre compte une fois).
+model AnnouncementView {
+  id             String       @id @default(uuid())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  announcementId String
+  userId         String
+  createdAt      DateTime     @default(now())
+
+  @@unique([announcementId, userId])
 }
 
 model ActivityLog {

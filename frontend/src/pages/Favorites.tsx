@@ -54,7 +54,7 @@ export default function Favorites() {
             view={view}
             hideUploader
             leading={(t) => <FavoriteStar active onToggle={() => remove(t.id)} />}
-            extraColumns={[{ header: 'Mis de côté', render: (t) => (t.favoritedAt ? timeAgo(t.favoritedAt) : '') }]}
+            extraColumns={[{ header: 'Ajouté', render: (t) => (t.favoritedAt ? timeAgo(t.favoritedAt) : '') }]}
           />
         )}
       </div>

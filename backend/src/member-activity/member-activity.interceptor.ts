@@ -42,6 +42,11 @@ const RULES: Rule[] = [
   { m: 'GET', p: '/forum/search', cat: 'search', label: 'Cherche dans le forum', detail: (r) => r.query?.q, when: (r) => !!String(r.query?.q ?? '').trim(), dedupe: 60_000 },
   { m: 'GET', p: '/users/:id', cat: 'view', label: 'Consulte un profil', tt: 'user', tid: param('id'), dedupe: TEN_MIN, when: (r) => r.params?.id !== r.user?.userId && r.params?.id !== r.user?.accountId },
   // Commentaires et forum
+  { m: 'POST', p: '/announcements/:id/comments', cat: 'comment', label: 'Commente une nouvelle', detail: body('content') },
+  { m: 'PATCH', p: '/announcements/comments/:cid', cat: 'comment', label: 'Modifie un commentaire de nouvelle', detail: body('content') },
+  { m: 'DELETE', p: '/announcements/comments/:cid', cat: 'comment', label: 'Supprime un commentaire de nouvelle' },
+  { m: 'PUT', p: '/announcements/:id/reaction', cat: 'social', label: 'Réagit à une nouvelle', detail: body('emoji') },
+  { m: 'DELETE', p: '/announcements/:id/reaction', cat: 'social', label: 'Retire sa réaction à une nouvelle' },
   { m: 'POST', p: '/comments/torrent/:torrentId', cat: 'comment', label: 'Commente un torrent', tt: 'torrent', tid: param('torrentId'), detail: body('content') },
   { m: 'PATCH', p: '/comments/:id', cat: 'comment', label: 'Modifie un commentaire', detail: body('content') },
   { m: 'DELETE', p: '/comments/:id', cat: 'comment', label: 'Supprime un commentaire' },

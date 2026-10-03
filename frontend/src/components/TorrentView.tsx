@@ -284,9 +284,8 @@ function TorrentViewBody(props: TorrentViewProps) {
         <div className="tv-compact-row tv-compact-head" aria-hidden="true">
           <span className="tv-compact-lead" />
           <span className="tv-compact-icon" />
-          {hd('nom', 'Nom', 'tv-compact-name')}
-          <span className="tv-compact-badges">Qualité</span>
-          {props.extraColumns?.map((c) => <span key={c.header} className="tv-extra">{c.header}</span>)}
+          {hd('nom', 'Nom / Qualité', 'tv-compact-main')}
+          {props.extraColumns?.map((c) => <span key={c.header} className="tv-compact-extra">{c.header}</span>)}
           {hd('taille', 'Taille', 'tv-compact-size')}
           <span className="tv-compact-counts" title="Commentaires · téléchargements complétés">💬 / Compl.</span>
           {hd('seeders', 'S / L', 'tv-compact-seeds', 'Seeders / leechers')}
@@ -298,9 +297,11 @@ function TorrentViewBody(props: TorrentViewProps) {
             <div key={t.id} className="tv-compact-row">
               <span className="tv-compact-lead">{star(t)}</span>
               <span className="tv-compact-icon" title={t.category?.name}>{styleOf(t)?.icon || '📦'}</span>
-              <span className="tv-compact-name">{titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" /></span>
-              <span className="tv-compact-badges"><Badges t={t} /></span>
-              {extras(t)}
+              <span className="tv-compact-main">
+                <span className="tv-compact-name">{titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" /></span>
+                <span className="tv-compact-badges"><Badges t={t} /></span>
+              </span>
+              {props.extraColumns?.map((c) => <span key={c.header} className="muted tv-compact-extra">{c.render(t)}</span>)}
               <span className="muted tv-compact-size">{formatBytes(t.size)}</span>
               <span className="muted tv-compact-counts" title="Commentaires · complétés">💬{t._count?.comments ?? 0} ✔{t.completedCount ?? 0}</span>
               <span className="tv-compact-seeds"><Seeds t={t} /></span>

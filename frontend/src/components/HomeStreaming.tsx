@@ -178,6 +178,7 @@ export default function HomeStreaming() {
       <ModerationRail />
       <FreeleechCalendar compact />
       <HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} />
+      <NewsPanel limit={1} heroOnly />
       <nav className="tabs" aria-label="Sections de l'accueil">
         {TABS.map((t) => (
           <button key={t.id} type="button" className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
