@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import WysiwygEditor from './WysiwygEditor';
+import FacetFields from './FacetFields';
+import type { FacetDef, FacetValues } from '../lib/facets';
 
 const STATUSES = [
   { value: 'APPROVED', label: 'Approuvé' },
@@ -22,6 +24,9 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
   const [doubleUpload, setDoubleUpload] = useState(!!torrent.doubleUpload);
   const [description, setDescription] = useState(torrent.description ?? '');
   const [coverImage, setCoverImage] = useState(torrent.coverImage ?? '');
+  // Filtres de la catégorie (format, genre, console...) : ceux de la catégorie choisie, avec les valeurs actuelles du torrent.
+  const [facetDefs, setFacetDefs] = useState<FacetDef[]>([]);
+  const [attrs, setAttrs] = useState<FacetValues>((torrent.attrs as FacetValues) ?? {});
 
   // Statut et options changés ailleurs (barre de modération de la fiche) : le formulaire les reprend pour ne pas les écraser à l'enregistrement.
   useEffect(() => { setStatus(torrent.status ?? 'APPROVED'); setFreeleech(!!torrent.freeleech); setDoubleUpload(!!torrent.doubleUpload); }, [torrent.status, torrent.freeleech, torrent.doubleUpload]);
@@ -45,6 +50,11 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
     }).catch(() => {});
   }, [open, categories.length]);
 
+  useEffect(() => {
+    if (!open || !categoryId) return;
+    api.post('/torrents/analyze', { categoryId, name: '', files: [] }).then((r) => setFacetDefs(r.data.facets ?? [])).catch(() => {});
+  }, [open, categoryId]);
+
   async function uploadCover(file: File | undefined) {
     if (!file) return;
     const form = new FormData();
@@ -61,7 +71,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
     setBusy(true);
     setError('');
     setMessage('');
-    const patch = { name, categoryId, status, freeleech, doubleUpload, description, coverImage: coverImage || null };
+    const patch = { name, categoryId, status, freeleech, doubleUpload, description, coverImage: coverImage || null, attrs };
     try {
       await api.patch(`/admin/torrents/${torrent.id}`, patch);
       const category = categories.find((c) => c.id === categoryId);
@@ -131,6 +141,12 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
             </label>
             {coverImage && <button type="button" className="secondary" onClick={() => setCoverImage('')}>Retirer</button>}
           </div>
+          {facetDefs.length > 0 && (
+            <div>
+              <div className="muted" style={{ marginBottom: 6 }}>Filtres de la catégorie</div>
+              <FacetFields defs={facetDefs} values={attrs} onChange={(key, next) => setAttrs((cur) => ({ ...cur, [key]: next }))} />
+            </div>
+          )}
           <div>
             <div className="muted" style={{ marginBottom: 4 }}>Description</div>
             <WysiwygEditor value={description} onChange={setDescription} minHeight={260} />

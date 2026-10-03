@@ -1,4 +1,7 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { FACETS, facetKeysFor, normalizeAttrs } from '../common/utils/facet-schema';
+import { detectAttrs } from '../common/utils/attr-detect';
 import { TeamsService } from '../teams/teams.service';
 import { AdultService } from '../adult/adult.service';
 import { PrismaService } from '../common/prisma.service';
@@ -12,6 +15,8 @@ const STORAGE_DIR = process.env.TORRENT_STORAGE_DIR ?? './storage/torrents';
 const ANNOUNCE_BASE_URL = process.env.ANNOUNCE_BASE_URL ?? 'https://tracker.example.com/tracker';
 
 export interface TorrentFilters {
+    /** Filtres propres à la catégorie : { clé: [valeurs acceptées] } (OU entre les valeurs d'une clé, ET entre les clés). */
+    attrFilters?: Record<string, string[]>;
     categoryId?: string; search?: string; uploaderId?: string; page?: number; pageSize?: number;
     sort?: string;
     order?: 'asc' | 'desc';
@@ -45,7 +50,9 @@ export function toListRow({ metadata, ...t }: any) {
 }
 
 @Injectable()
-export class TorrentsService {
+export class TorrentsService implements OnModuleInit {
+  private readonly log = new Logger(TorrentsService.name);
+
   constructor(private prisma: PrismaService, private metadata: MetadataService, private adult: AdultService, private teams: TeamsService) {}
 
   /** Une catégorie principale qui a des sous-catégories n'est pas sélectionnable : il faut choisir une sous-catégorie. */
@@ -82,6 +89,8 @@ export class TorrentsService {
     genres?: string[];
     videoType?: string;
     nfo?: string;
+    /** Filtres de la catégorie choisis ou confirmés par le membre ; complétés par la détection automatique. */
+    attrs?: unknown;
   }) {
     // On stocke (et on calcule l'info_hash sur) la version nettoyée : trackers
     // externes retirés, flag private forcé — voir sanitizeTorrentForUpload.
@@ -103,6 +112,7 @@ export class TorrentsService {
     await fs.writeFile(storedPath, cleanBuffer);
 
     const releaseName = params.name || parsed.name;
+    const attrs = await this.resolveAttrs(params.categoryId, releaseName, parsed.files, params.nfo, params.genres ?? [], params.attrs);
     const releaseGroup = await this.teams.noteRelease(releaseName); // team détectée dans le nom (créée automatiquement si elle est nouvelle)
     const torrent = await this.prisma.torrent.create({
       data: {
@@ -133,6 +143,7 @@ export class TorrentsService {
         episode: params.episode,
         genres: params.genres ?? [],
         videoType: params.videoType,
+        attrs: attrs as any,
         ...(params.nfo ? { nfoFile: { create: { content: params.nfo } } } : {}),
       },
     });
@@ -190,6 +201,78 @@ export class TorrentsService {
     });
   }
 
+  // ------------------------------------------------------------------ filtres propres à la catégorie (attrs)
+
+  onModuleInit() {
+    // Les torrents déjà en base sont analysés en arrière-plan (nom, fichiers, NFO) pour que les filtres existent aussi pour eux.
+    setTimeout(() => { void this.backfillAttrs().catch((err) => this.log.warn(`Analyse des filtres interrompue : ${err?.message}`)); }, 30_000);
+  }
+
+  /** Catégorie principale + sous-catégorie d'un torrent (ou de la catégorie choisie à l'envoi). */
+  private async categoryPath(categoryId: string): Promise<{ top: string; leaf: string }> {
+    const c = await this.prisma.category.findUnique({ where: { id: categoryId }, select: { name: true, parent: { select: { name: true } } } });
+    return { top: c?.parent?.name ?? c?.name ?? '', leaf: c?.name ?? '' };
+  }
+
+  /** Valeurs fournies par le membre (validées contre le schéma) complétées par ce que la détection a trouvé. */
+  private async resolveAttrs(categoryId: string, name: string, files: { path: string; size: number }[], nfo: string | undefined, genres: string[], provided: unknown) {
+    const { top, leaf } = await this.categoryPath(categoryId);
+    const allowed = facetKeysFor(top, leaf);
+    const chosen = normalizeAttrs(provided, allowed);
+    const detected = detectAttrs({ name, files, nfo, top, leaf, metaGenres: genres });
+    return { ...detected, ...chosen };
+  }
+
+  /** Aperçu pour le formulaire d'envoi : filtres de la catégorie et valeurs déjà trouvées (nom, fichiers, NFO, genres de la fiche). */
+  async analyze(input: { categoryId: string; name: string; files: { path: string; size?: number }[]; nfo?: string; genres?: string[] }) {
+    const { top, leaf } = await this.categoryPath(input.categoryId);
+    const keys = facetKeysFor(top, leaf);
+    return {
+      facets: keys.map((k) => FACETS[k]),
+      detected: detectAttrs({ name: input.name ?? '', files: input.files ?? [], nfo: input.nfo, top, leaf, metaGenres: input.genres }),
+    };
+  }
+
+  /** Analyse (par lots) les torrents qui n'ont pas encore leurs filtres ; ceux où rien n'est trouvé reçoivent {} pour ne pas être relus. */
+  async backfillAttrs() {
+    let total = 0;
+    for (;;) {
+      const batch = await this.prisma.torrent.findMany({
+        where: { attrs: { equals: Prisma.DbNull } },
+        take: 100,
+        select: { id: true, name: true, fileList: true, genres: true, category: { select: { name: true, parent: { select: { name: true } } } }, nfoFile: { select: { content: true } } },
+      });
+      if (batch.length === 0) break;
+      for (const t of batch) {
+        const files = Array.isArray(t.fileList) ? (t.fileList as any[]).map((f) => ({ path: String(f?.path ?? ''), size: Number(f?.size) || 0 })) : [];
+        const attrs = detectAttrs({ name: t.name, files, nfo: t.nfoFile?.content, top: t.category.parent?.name ?? t.category.name, leaf: t.category.name, metaGenres: t.genres });
+        await this.prisma.torrent.update({ where: { id: t.id }, data: { attrs: attrs as any } });
+      }
+      total += batch.length;
+    }
+    if (total) this.log.log(`Filtres de catégorie : ${total} torrent(s) analysé(s)`);
+    return total;
+  }
+
+  /** Filtre d'un torrent modifié à la main (staff / envoyeur) : seules les clés et valeurs du schéma sont acceptées. */
+  async setAttrs(id: string, input: unknown) {
+    const t = await this.prisma.torrent.findUnique({ where: { id }, select: { categoryId: true } });
+    if (!t) throw new NotFoundException('Torrent introuvable');
+    const { top, leaf } = await this.categoryPath(t.categoryId);
+    const attrs = normalizeAttrs(input, facetKeysFor(top, leaf));
+    await this.prisma.torrent.update({ where: { id }, data: { attrs: attrs as any } });
+    return attrs;
+  }
+
+  private attrConditions(attrFilters?: Record<string, string[]>) {
+    const out: any[] = [];
+    for (const [key, values] of Object.entries(attrFilters ?? {})) {
+      if (!FACETS[key] || values.length === 0) continue;
+      out.push({ OR: values.map((v) => ({ attrs: { path: [key], array_contains: [v] } })) });
+    }
+    return out;
+  }
+
   private async buildWhere(params: TorrentFilters) {
     const where: any = { status: params.state === 'dead' ? 'DEAD' : 'APPROVED' };
     if (params.state === 'noseeders') where.seeders = 0;
@@ -239,6 +322,8 @@ export class TorrentsService {
     if (params.genre) where.genres = { has: params.genre };
     if (params.containerFormat) where.containerFormat = { equals: params.containerFormat, mode: 'insensitive' };
     if (params.origin) where.origin = params.origin;
+    const attrConds = this.attrConditions(params.attrFilters);
+    if (attrConds.length) where.AND = [...(where.AND ?? []), ...attrConds];
     if (params.period) {
       const ms = { day: 86400_000, week: 7 * 86400_000, month: 30 * 86400_000 }[params.period];
       where.createdAt = { gte: new Date(Date.now() - ms) };
@@ -265,6 +350,32 @@ export class TorrentsService {
     out.genre = [...counts].map(([value, count]) => ({ value, count })).sort((x, y) => y.count - x.count);
     const hdrWhere = await this.buildWhere({ ...params, hdr: undefined });
     out.hdr = [{ value: 'HDR', count: await this.prisma.torrent.count({ where: { ...hdrWhere, hdr: true } }) }].filter((x) => x.count > 0);
+    return { ...out, attrs: await this.attrFacets(params) };
+  }
+
+  /**
+   * Filtres de catégorie disponibles pour la liste affichée : seules les valeurs portées par au moins un résultat sont proposées,
+   * chaque filtre étant compté sans tenir compte de sa propre sélection (comme pour les autres filtres).
+   */
+  private async attrFacets(params: TorrentFilters) {
+    const baseWhere = await this.buildWhere({ ...params, attrFilters: undefined });
+    const rows = await this.prisma.torrent.findMany({ where: { ...baseWhere, attrs: { not: Prisma.DbNull } }, select: { attrs: true }, take: 5000 });
+    const selected = params.attrFilters ?? {};
+    const out: { key: string; label: string; multi: boolean; values: { value: string; count: number }[] }[] = [];
+    for (const def of Object.values(FACETS)) {
+      const counts = new Map<string, number>();
+      for (const row of rows) {
+        const a = row.attrs as Record<string, string[]> | null;
+        if (!a) continue;
+        // La ligne doit respecter les AUTRES filtres sélectionnés.
+        if (Object.entries(selected).some(([k, vals]) => k !== def.key && vals.length && !vals.some((v) => (a[k] ?? []).includes(v)))) continue;
+        for (const v of a[def.key] ?? []) counts.set(v, (counts.get(v) ?? 0) + 1);
+      }
+      for (const v of selected[def.key] ?? []) if (!counts.has(v)) counts.set(v, 0); // une sélection active reste visible
+      if (counts.size === 0) continue;
+      const rank = (v: string) => { const i = def.options.indexOf(v); return i === -1 ? 999 : i; };
+      out.push({ key: def.key, label: def.label, multi: def.multi, values: [...counts].map(([value, count]) => ({ value, count })).sort((x, y) => rank(x.value) - rank(y.value)) });
+    }
     return out;
   }
 

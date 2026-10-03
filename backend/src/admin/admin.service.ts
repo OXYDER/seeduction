@@ -5,6 +5,7 @@ import { BadgesService } from '../badges/badges.service';
 import { ReportsService } from '../reports/reports.service';
 import { SocialService } from '../social/social.service';
 import { normalizeOrigin } from '../common/utils/facets';
+import { facetKeysFor, normalizeAttrs } from '../common/utils/facet-schema';
 
 import { createHash, randomBytes, randomUUID } from 'crypto';
 
@@ -113,6 +114,12 @@ export class AdminService {
     if (typeof body.resolution === 'string') data.resolution = body.resolution.trim() || null;
     if (typeof body.source === 'string') data.source = body.source.trim() || null;
     if (typeof body.language === 'string') data.language = body.language.trim() || null;
+    if (body.attrs && typeof body.attrs === 'object' && !Array.isArray(body.attrs)) {
+      const t = await this.prisma.torrent.findUnique({ where: { id }, select: { categoryId: true } });
+      const catId = data.categoryId ?? t?.categoryId;
+      const c = catId ? await this.prisma.category.findUnique({ where: { id: catId }, select: { name: true, parent: { select: { name: true } } } }) : null;
+      data.attrs = normalizeAttrs(body.attrs, facetKeysFor(c?.parent?.name ?? c?.name ?? '', c?.name ?? ''));
+    }
     if (typeof body.freeleech === 'boolean') data.freeleech = body.freeleech;
     if (typeof body.doubleUpload === 'boolean') data.doubleUpload = body.doubleUpload;
     if (body.coverImage === null || typeof body.coverImage === 'string') data.coverImage = body.coverImage || null;

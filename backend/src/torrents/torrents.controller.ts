@@ -8,12 +8,28 @@ import { TorrentsService } from './torrents.service';
 import { RecommendationsService } from './recommendations.service';
 import { accountOf, assertPerm } from '../common/utils/account';
 import { normalizeOrigin } from '../common/utils/facets';
+import { FACETS } from '../common/utils/facet-schema';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
+
+/** Filtres de catégorie de l'adresse : `f.formatMusique=FLAC (24 bit)|MP3` (OU entre valeurs, ET entre filtres). */
+const attrFiltersOf = (query: Record<string, string>) => {
+  const out: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(query)) {
+    if (k.startsWith('f.') && typeof v === 'string' && v) out[k.slice(2)] = v.split('|').map((x) => x.trim()).filter(Boolean).slice(0, 12);
+  }
+  return out;
+};
 
 @Controller('torrents')
 export class TorrentsController {
   constructor(private torrentsService: TorrentsService, private recommendations: RecommendationsService) {}
+
+  /** Libellés et valeurs de tous les filtres de catégorie (fiche d'un torrent, édition). */
+  @Get('facet-schema')
+  facetSchema() {
+    return FACETS;
+  }
 
   @UseGuards(OptionalJwtAuthGuard)
   @Get('facets')
@@ -24,6 +40,7 @@ export class TorrentsController {
       hideAnonymous: !!query.uploaderId && !seesAnonymous,
       viewerId: req.user?.userId,
       state: query.state === 'dead' ? 'dead' : query.state === 'noseeders' ? 'noseeders' : undefined,
+      attrFilters: attrFiltersOf(query),
       categoryId: query.categoryId,
       search: query.search,
       uploaderId: query.uploaderId,
@@ -57,6 +74,7 @@ export class TorrentsController {
       hideAnonymous: !!query.uploaderId && !seesAnonymous,
       viewerId: req.user?.userId,
       state: query.state === 'dead' ? 'dead' : query.state === 'noseeders' ? 'noseeders' : undefined,
+      attrFilters: attrFiltersOf(query),
       categoryId: query.categoryId,
       search: query.search,
       uploaderId: query.uploaderId,
@@ -101,6 +119,20 @@ export class TorrentsController {
   @Get('mine/active')
   active(@Request() req: any) {
     return this.torrentsService.activeForUser(accountOf(req), req.user.userId);
+  }
+
+  /** Formulaire d'envoi : filtres de la catégorie choisie et valeurs déjà trouvées (nom, fichiers du .torrent, NFO, genres de la fiche). */
+  @UseGuards(JwtAuthGuard)
+  @Post('analyze')
+  analyze(@Body() body: { categoryId?: string; name?: string; files?: { path: string; size?: number }[]; nfo?: string; genres?: string[] }) {
+    if (!body?.categoryId) return { facets: [], detected: {} };
+    return this.torrentsService.analyze({
+      categoryId: body.categoryId,
+      name: String(body.name ?? '').slice(0, 400),
+      files: (Array.isArray(body.files) ? body.files : []).slice(0, 400).map((f) => ({ path: String(f?.path ?? '').slice(0, 400), size: Number(f?.size) || 0 })),
+      nfo: typeof body.nfo === 'string' ? body.nfo.slice(0, 100_000) : undefined,
+      genres: Array.isArray(body.genres) ? body.genres.map(String).slice(0, 20) : undefined,
+    });
   }
 
   @UseGuards(OptionalJwtAuthGuard)
@@ -174,6 +206,7 @@ export class TorrentsController {
       genres: body.genres ? body.genres.split(',').map((g) => g.trim()).filter(Boolean).slice(0, 8) : [],
       videoType: body.videoType || undefined,
       nfo: body.nfo && body.nfo.trim() ? body.nfo.slice(0, 200_000) : undefined,
+      attrs: (() => { try { return body.attrs ? JSON.parse(body.attrs) : undefined; } catch { return undefined; } })(),
     });
   }
 

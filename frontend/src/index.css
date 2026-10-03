@@ -2689,3 +2689,16 @@ a.seedpage-item:hover { background: rgba(255,255,255,0.07); }
 .news-hero-meta { display: flex; align-items: center; gap: 8px; margin-top: auto; font-size: 12.5px; opacity: 0.9; flex-wrap: wrap; }
 .news-new { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; background: #e5384f; color: #fff; }
 @media (max-width: 700px) { .news-hero { flex-direction: column; } .news-hero-img { flex: none; aspect-ratio: 16 / 9; min-height: 0; } }
+
+/* Filtres propres à la catégorie : formulaire d'envoi et fiche */
+.facet-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 18px; align-items: start; }
+.facet-pick { display: grid; gap: 6px; grid-column: 1 / -1; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); }
+.facet-found { display: grid; gap: 2px; }
+.facet-filter { max-width: 280px; padding: 4px 8px; font-size: 13px; }
+.facet-detail { display: grid; gap: 6px; margin-top: 8px; }
+.facet-detail-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.facet-detail-row > .muted { min-width: 110px; font-size: 12px; }
+.vr-chip.gen { color: #f9a8d4; background: rgba(236,72,153,0.16); }
+.vr-chip.fmt { color: #c4b5fd; background: rgba(139,92,246,0.18); }
+.vr-chip.lang { color: #5eead4; background: rgba(20,184,166,0.16); }
+.vr-chip.oth { color: #cbd5e1; background: rgba(148,163,184,0.16); }

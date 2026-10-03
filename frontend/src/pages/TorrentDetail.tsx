@@ -1,3 +1,4 @@
+import FacetChips from '../components/FacetChips';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import UserLink from '../components/UserLink';
@@ -239,6 +240,7 @@ export default function TorrentDetail() {
               {torrent.doubleUpload && <span className="badge double">DOUBLE UPLOAD</span>}
               {torrent.metadata?.tagline && <span className="muted" style={{ fontStyle: 'italic' }}>« {torrent.metadata.tagline} »</span>}
             </div>
+            <FacetChips attrs={torrent.attrs} categoryId={torrent.categoryId ?? torrent.category?.id} />
             {synopsis && <p className="hero-synopsis">{synopsis}</p>}
             <div className="detail-stats">
               <span><HealthDot seeders={torrent.seeders} /><strong>{torrent.seeders}</strong> seeders</span>

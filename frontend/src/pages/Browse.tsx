@@ -1,3 +1,4 @@
+import { facetsFromParams } from '../lib/facets';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SearchBox from '../components/SearchBox';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -58,6 +59,12 @@ export default function Browse() {
   const state = params.get('state') === 'dead' ? 'dead' : params.get('state') === 'noseeders' ? 'noseeders' : '';
   const period = params.get('period') === 'day' || params.get('period') === 'week' || params.get('period') === 'month' ? params.get('period')! : '';
 
+  // Filtres propres à la catégorie : `f.formatMusique=FLAC|MP3` dans l'adresse (OU entre valeurs, ET entre filtres).
+  const attrSel = useMemo(() => facetsFromParams(params), [params]);
+  const attrKey = JSON.stringify(attrSel);
+  const attrParams = useMemo(() => Object.fromEntries(Object.entries(attrSel).map(([k, v]) => [`f.${k}`, v.join('|')])), [attrKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [openFacets, setOpenFacets] = useState<Set<string>>(new Set());
+
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
@@ -83,15 +90,16 @@ export default function Browse() {
         maxSeeders: maxSeeders || undefined,
         state: state || undefined,
         period: period || undefined,
+        ...attrParams,
       },
     }).then((r) => {
       setItems(r.data.items);
       setTotal(r.data.total);
     });
-  }, [parsed.name, categoryId, uploaderId, page, pageSize, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period]);
+  }, [parsed.name, categoryId, uploaderId, page, pageSize, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period, attrKey]);
 
   // Valeurs de filtres réellement disponibles pour la liste affichée (avec nombre de torrents).
-  const [facets, setFacets] = useState<Record<string, { value: string; count: number }[]>>({});
+  const [facets, setFacets] = useState<Record<string, any>>({});
   useEffect(() => {
     api.get('/torrents/facets', {
       params: {
@@ -105,9 +113,10 @@ export default function Browse() {
         maxSeeders: maxSeeders || undefined,
         state: state || undefined,
         period: period || undefined,
+        ...attrParams,
       },
     }).then((r) => setFacets(r.data)).catch(() => {});
-  }, [parsed.name, categoryId, uploaderId, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period]);
+  }, [parsed.name, categoryId, uploaderId, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period, attrKey]);
 
 
   useEffect(() => {
@@ -194,6 +203,7 @@ export default function Browse() {
     minSeeders && { key: 'minSeeders', label: `≥ ${minSeeders} seeders` },
     maxSeeders && { key: 'maxSeeders', label: `≤ ${maxSeeders} seeders` },
     state && { key: 'state', label: state === 'dead' ? '☠️ Torrents morts' : '🔁 Sans seeder' },
+    ...Object.entries(attrSel).map(([k, v]) => ({ key: `f.${k}`, label: `${(facets.attrs as any[] | undefined)?.find((f) => f.key === k)?.label ?? k} : ${v.join(', ')}` })),
   ] as (false | '' | { key: string; label: string })[]).filter(Boolean) as { key: string; label: string }[];
   const hasAdvancedFilters = activeFilters.length > 0;
   const currentSortLabel = SORTS.find((s) => s.value === sort)?.label ?? 'Date';
@@ -330,6 +340,38 @@ export default function Browse() {
           );
         })}
       </div>
+
+      {Array.isArray(facets.attrs) && facets.attrs.length > 0 && (
+        <div className="facet-rows">
+          {(facets.attrs as { key: string; label: string; values: { value: string; count: number }[] }[]).map((f) => {
+            const selected = attrSel[f.key] ?? [];
+            const expanded = openFacets.has(f.key);
+            const LIMIT = 14;
+            // Les valeurs choisies restent toujours visibles, même si la liste est repliée.
+            const shown = expanded || f.values.length <= LIMIT ? f.values : f.values.filter((v, i) => i < LIMIT || selected.includes(v.value));
+            const toggle = (value: string) => {
+              const next = selected.includes(value) ? selected.filter((x) => x !== value) : [...selected, value];
+              updateParam(`f.${f.key}`, next.join('|'));
+            };
+            return (
+              <div className="facet-row" key={f.key}>
+                <span className="facet-label">{f.label}</span>
+                <button type="button" className={selected.length === 0 ? 'on' : ''} onClick={() => updateParam(`f.${f.key}`, '')}>Toutes</button>
+                {shown.map((v) => (
+                  <button key={v.value} type="button" className={selected.includes(v.value) ? 'on' : ''} onClick={() => toggle(v.value)}>
+                    {v.value} <span style={{ opacity: 0.6, fontSize: 11 }}>{v.count}</span>
+                  </button>
+                ))}
+                {f.values.length > LIMIT && (
+                  <button type="button" className="secondary" onClick={() => setOpenFacets((cur) => { const n = new Set(cur); if (n.has(f.key)) n.delete(f.key); else n.add(f.key); return n; })}>
+                    {expanded ? 'Moins' : `+ ${f.values.length - shown.length} autres`}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {uploaderId && (
         <button className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => updateParam('uploaderId', '')}>

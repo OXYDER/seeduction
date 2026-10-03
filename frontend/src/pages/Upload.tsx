@@ -9,6 +9,8 @@ import { parseTorrentInfo } from '../lib/bencode';
 import { summarizeTorrent } from '../lib/torrentSummary';
 import { resolveContentKind } from '../lib/categoryKind';
 import DuplicateWarning from '../components/DuplicateWarning';
+import FacetFields from '../components/FacetFields';
+import type { FacetDef, FacetValues } from '../lib/facets';
 import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeFromRelease, detectVideoType, matchGenres } from '../lib/uploadMeta';
 
 export default function Upload() {
@@ -52,6 +54,12 @@ export default function Upload() {
   const [coverUploading, setCoverUploading] = useState(false);
   const autoName = useRef('');
   const [sessionKey, setSessionKey] = useState('');
+  // Filtres propres à la catégorie (format audio, console, genre...) : trouvés automatiquement, corrigeables d'un clic.
+  const [facetDefs, setFacetDefs] = useState<FacetDef[]>([]);
+  const [facetValues, setFacetValues] = useState<FacetValues>({});
+  const [facetFound, setFacetFound] = useState<Set<string>>(new Set());
+  const facetTouched = useRef<Set<string>>(new Set());
+  const [metaGenres, setMetaGenres] = useState<string[]>([]);
 
   const selectedCategory = categories.flatMap((c) => [c, ...(c.children ?? [])]).find((c) => c.id === categoryId);
   // Le type de contenu du générateur vient de la catégorie choisie (configuré dans
@@ -69,6 +77,7 @@ export default function Upload() {
   /** Une fiche choisie dans le générateur remplit les genres et l'année si rien n'a été trouvé avant. */
   function onGeneratorDetail(data: Record<string, any>) {
     if (typeof data.genre === 'string' && data.genre) {
+      setMetaGenres(data.genre.split(/[,/;|]+/).map((g: string) => g.trim()).filter(Boolean));
       const found = matchGenres(data.genre);
       if (found.length > 0) setGenres((cur) => (cur.length > 0 ? cur : found));
     }
@@ -100,6 +109,30 @@ export default function Upload() {
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data));
   }, []);
+
+  // Changer de catégorie repart de zéro : ce n'est plus la même liste de filtres.
+  useEffect(() => { facetTouched.current = new Set(); setFacetValues({}); setFacetFound(new Set()); setFacetDefs([]); }, [categoryId]);
+
+  // Le serveur lit le nom, les fichiers, le NFO et les genres de la fiche, et renvoie les filtres de la catégorie avec ce qu'il a trouvé.
+  useEffect(() => {
+    if (!categoryId || !name.trim()) return;
+    const t = setTimeout(() => {
+      api.post('/torrents/analyze', { categoryId, name, files: fileList.slice(0, 400), nfo: nfoText || undefined, genres: [...genres, ...metaGenres] })
+        .then((r) => {
+          const defs: FacetDef[] = r.data.facets ?? [];
+          const detected: FacetValues = r.data.detected ?? {};
+          setFacetDefs(defs);
+          setFacetValues((cur) => {
+            const next: FacetValues = {};
+            for (const d of defs) next[d.key] = facetTouched.current.has(d.key) ? cur[d.key] ?? [] : detected[d.key] ?? cur[d.key] ?? [];
+            return next;
+          });
+          setFacetFound(new Set(Object.keys(detected)));
+        })
+        .catch(() => {});
+    }, 500);
+    return () => clearTimeout(t);
+  }, [categoryId, name, fileList, nfoText, genres, metaGenres]);
 
   // Remplissage automatique (nom, fichiers, NFO) : ne touche jamais à un champ déjà rempli.
   useEffect(() => {
@@ -234,6 +267,7 @@ export default function Upload() {
       form.append('videoType', videoType);
     }
     if (nfoText) form.append('nfo', nfoText);
+    if (Object.values(facetValues).some((v) => v.length)) form.append('attrs', JSON.stringify(facetValues));
     try {
       const { data } = await api.post('/torrents/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
       navigate(`/torrents/${data.id}`, { state: { justUploaded: true } });
@@ -383,6 +417,19 @@ export default function Upload() {
                     </div>
                   </FoundOrInput>
                 </div>
+              </div>
+            )}
+            {facetDefs.length > 0 && (
+              <div className="grid" style={{ gap: 10 }}>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  <strong>Détails de « {selectedCategory?.name} »</strong> — trouvés automatiquement d'après le nom, les fichiers, le NFO et la fiche choisie. Corrige ou complète d'un clic : ils servent de filtres sur Parcourir.
+                </p>
+                <FacetFields
+                  defs={facetDefs}
+                  values={facetValues}
+                  found={facetFound}
+                  onChange={(key, next) => { facetTouched.current.add(key); setFacetValues((cur) => ({ ...cur, [key]: next })); }}
+                />
               </div>
             )}
           <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => setShowMeta((v) => !v)}>
