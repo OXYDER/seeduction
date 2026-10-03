@@ -19,9 +19,9 @@ export default function TorrentVersions({ torrentId }: { torrentId: string }) {
         {open ? '▾' : '▸'} 📚 Versions <span className="muted">(+{rows.length - 1})</span>
       </button>
       {open && (
-        <div className="vg-rows flat">
-          <div className="vg-legend"><span>Version</span><span /><span className="vr-num">Âge</span><span className="vr-num">Taille</span><span className="vr-num">Compl.</span><span className="vr-num">Seed</span><span className="vr-num">Leech</span><span /></div>
-          {sortVersions(rows).map((r) => <VersionRow key={r.id} t={r} current={r.current} showName={!r.current} />)}
+        <div className="vg-rows flat vg-list">
+          <div className="vg-legend"><span /><span>Version</span><span className="vr-num">Âge</span><span className="vr-num">Taille</span><span className="vr-num">Compl.</span><span className="vr-num">Seed</span><span className="vr-num">Leech</span><span /></div>
+          {sortVersions(rows).map((r) => <VersionRow key={r.id} t={r} current={r.current} nameLink />)}
         </div>
       )}
     </div>

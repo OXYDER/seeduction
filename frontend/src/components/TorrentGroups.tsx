@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { downloadTorrent } from '../lib/download';
+import { CATEGORY_STYLE } from './Layout';
 import CategoryTag from './CategoryTag';
 import UserLink from './UserLink';
 import CopyButton from './CopyButton';
@@ -35,28 +36,47 @@ export function groupKey(t: any): string {
   return `t:${releaseTitle(t.name).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}|${t.category?.slug ?? ''}`;
 }
 
-const chip = (text: ReactNode, cls: string) => (text ? <span className={`vr-chip ${cls}`}>{text}</span> : <span />);
+const chip = (text: ReactNode, cls: string) => (text ? <span className={`vr-chip ${cls}`}>{text}</span> : null);
+const catIcon = (t: any) => (CATEGORY_STYLE[t.category?.slug ?? ''] ?? CATEGORY_STYLE[t.category?.parent?.slug ?? ''])?.icon ?? '📦';
 
-interface RowProps { t: any; current?: boolean; showName?: boolean; actions?: (t: any) => ReactNode }
+interface RowProps { t: any; current?: boolean; /** Release seule (sans titre de groupe au-dessus) : affiche son nom, en gras, avec sa pochette. */ standalone?: boolean; /** Dans la liste des versions d'une fiche : lien vers la release sous les puces. */ nameLink?: boolean; star?: ReactNode; actions?: (t: any) => ReactNode }
 
-/** Une version d'un contenu : langue, qualité, source, audio, codec, équipe, âge, taille, complétés, seeders, leechers. */
-export function VersionRow({ t, current, showName, actions }: RowProps) {
+/**
+ * Une release : langue, qualité, source, audio, codec, équipe, âge, taille, complétés, seeders, leechers. Toutes les lignes
+ * (titres de groupe, releases dépliées, releases seules) partagent les mêmes colonnes, donc tout reste aligné.
+ */
+export function VersionRow({ t, current, standalone, nameLink, star, actions }: RowProps) {
+  const group = releaseGroup(t.name);
   return (
-    <div className={`vr-row${current ? ' current' : ''}`}>
-      <div className="vr-chips">
-        {t.season && chip(`${t.season}${t.episode ? ` ${t.episode}` : ''}`, 'ep')}
-        {chip(t.language, 'lang')}
-        {chip(t.resolution, 'res')}
-        {chip([t.source, t.hdr ? 'HDR' : ''].filter(Boolean).join(' '), 'src')}
-        {chip(t.audio, 'aud')}
-        {t.codec && <span className="vr-codec">{t.codec}</span>}
-        {releaseGroup(t.name) && <span className="vr-group" title="Équipe de la release">{releaseGroup(t.name)}</span>}
-        {t.freeleech && <span className="badge freeleech">FL</span>}
-        {t.status === 'DEAD' && <span className="vr-dead" title="Plus aucun seeder">☠️</span>}
-      </div>
-      <div className="vr-who">
-        {showName && <span className="vr-name-line"><Link to={`/torrents/${t.id}`} className="vr-name" title={t.name}>{t.name}</Link><CopyButton text={t.name} title="Copier le nom de la release" /></span>}
-        <span className="vr-uploader">{t.uploader && !t.anonymousUpload ? <UserLink user={t.uploader} /> : <span className="muted">Anonyme</span>}</span>
+    <div className={`vr-row${current ? ' current' : ''}${standalone ? ' standalone' : ''}`}>
+      <span className="vr-lead">
+        {standalone
+          ? (t.coverImage ? <img className="vg-cover" src={t.coverImage} alt="" loading="lazy" /> : <span className="vg-cover none">{catIcon(t)}</span>)
+          : star}
+      </span>
+      <div className="vr-main">
+        {standalone && (
+          <div className="vr-name-line">
+            <Link to={`/torrents/${t.id}`} className="vr-name" title={t.name}>{t.name}</Link>
+            <CopyButton text={t.name} title="Copier le nom de la release" />
+          </div>
+        )}
+        <div className="vr-chips">
+          {standalone && t.category && <CategoryTag category={t.category} />}
+          {t.season && chip(`${t.season}${t.episode ? ` ${t.episode}` : ''}`, 'ep')}
+          {chip(t.language, 'lang')}
+          {chip(t.resolution, 'res')}
+          {chip([t.source, t.hdr ? 'HDR' : ''].filter(Boolean).join(' '), 'src')}
+          {chip(t.audio, 'aud')}
+          {t.codec && <span className="vr-codec">{t.codec}</span>}
+          {!standalone && group && <span className="vr-group" title="Équipe de la release">{group}</span>}
+          {t.freeleech && <span className="badge freeleech">FL</span>}
+          {t.status === 'DEAD' && <span className="vr-dead" title="Plus aucun seeder">☠️</span>}
+          <span className="vr-uploader">{t.uploader && !t.anonymousUpload ? <UserLink user={t.uploader} /> : <span className="muted">Anonyme</span>}</span>
+          {standalone && star}
+          {!standalone && <CopyButton text={t.name} title="Copier le nom de la release" />}
+        </div>
+        {nameLink && !standalone && !current && <Link to={`/torrents/${t.id}`} className="vr-sub-name" title={t.name}>{t.name}</Link>}
       </div>
       <span className="vr-num vr-age">{timeAgo(t.createdAt)}</span>
       <span className="vr-num vr-size">{formatBytes(t.size)}</span>
@@ -64,7 +84,6 @@ export function VersionRow({ t, current, showName, actions }: RowProps) {
       <span className="vr-num vr-seed" title="Seeders">{t.seeders ?? 0}</span>
       <span className="vr-num vr-leech" title="Leechers">{t.leechers ?? 0}</span>
       <span className="vr-actions">
-        {!showName && <CopyButton text={t.name} title="Copier le nom de la release" />}
         {actions?.(t)}
         <button type="button" className="icon-btn icon-btn-sq" title="Télécharger le .torrent" aria-label="Télécharger le .torrent" onClick={() => downloadTorrent(t.id, t.name)}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" /></svg>
@@ -81,8 +100,8 @@ export const sortVersions = (rows: any[]) => [...rows].sort((a, b) =>
 const range = (nums: number[]) => (nums.length === 0 ? '0' : Math.min(...nums) === Math.max(...nums) ? String(nums[0]) : `${Math.min(...nums)}-${Math.max(...nums)}`);
 const sizeRange = (sizes: number[]) => (Math.min(...sizes) === Math.max(...sizes) ? formatBytes(sizes[0]) : `${formatBytes(Math.min(...sizes))}-${formatBytes(Math.max(...sizes))}`);
 
-function Group({ rows, defaultOpen, actions, star }: { rows: any[]; defaultOpen: boolean; actions?: (t: any) => ReactNode; star?: (t: any) => ReactNode }) {
-  const [open, setOpen] = useState(defaultOpen);
+function Group({ rows, actions, star }: { rows: any[]; actions?: (t: any) => ReactNode; star?: (t: any) => ReactNode }) {
+  const [open, setOpen] = useState(false);
   const sorted = sortVersions(rows);
   const first = sorted[0];
   const byRes = new Map<string, number>();
@@ -94,13 +113,12 @@ function Group({ rows, defaultOpen, actions, star }: { rows: any[]; defaultOpen:
 
   return (
     <div className={`vg${open ? ' open' : ''}`}>
-      <div className="vg-head" onClick={(e) => { if (!(e.target as HTMLElement).closest('a,button')) setOpen((v) => !v); }}>
-        {cover ? <img className="vg-cover" src={cover} alt="" loading="lazy" /> : <span className="vg-cover none">🎬</span>}
-        <div className="vg-title">
-          <div className="vg-name">
-            <Link to={`/torrents/${first.id}`}>{title}</Link>
-            {first.year && <span className="muted"> ({first.year})</span>}
-          </div>
+      {/* Toute la ligne du titre se clique pour déplier / replier les releases. */}
+      <div className="vg-head" onClick={() => setOpen((v) => !v)} role="button" tabIndex={0} aria-expanded={open}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((v) => !v); } }}>
+        <span className="vr-lead">{cover ? <img className="vg-cover" src={cover} alt="" loading="lazy" /> : <span className="vg-cover none">{catIcon(first)}</span>}</span>
+        <div className="vr-main">
+          <div className="vg-name">{title}{first.year && <span className="muted"> ({first.year})</span>}</div>
           <div className="vg-tags">
             {first.category && <CategoryTag category={first.category} />}
             {[...byRes.entries()].map(([res, n]) => <span key={res} className="vg-res">{res} <span className="muted">({n})</span></span>)}
@@ -112,17 +130,17 @@ function Group({ rows, defaultOpen, actions, star }: { rows: any[]; defaultOpen:
         <span className="vr-num">{rows.reduce((n, r) => n + (r.completedCount ?? 0), 0)}</span>
         <span className="vr-num vr-seed">{range(rows.map((r) => r.seeders ?? 0))}</span>
         <span className="vr-num vr-leech">{range(rows.map((r) => r.leechers ?? 0))}</span>
-        <button type="button" className="vg-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? 'Replier les versions' : 'Voir les versions'}>{open ? '⌃' : '⌄'}</button>
+        <span className="vg-toggle" aria-hidden="true">{open ? '⌃' : '⌄'}</span>
       </div>
-      {open && <div className="vg-rows">{sorted.map((t) => <div key={t.id} className="vg-row-wrap">{star?.(t)}<VersionRow t={t} actions={actions} /></div>)}</div>}
+      {open && <div className="vg-rows">{sorted.map((t) => <VersionRow key={t.id} t={t} star={star?.(t)} actions={actions} />)}</div>}
     </div>
   );
 }
 
 /**
- * Affichage « Groupé » : les releases d'un même film, d'une même série, d'un même album ou logiciel sont regroupées sous
- * une seule ligne (affiche, titre, qualités disponibles, totaux) qui se déplie sur chaque version. Une release seule
- * reste une ligne simple.
+ * Affichage « Groupé » : un film, une série, un album... reconnu (fiche TMDB, Deezer...) apparaît sous son seul titre, même
+ * avec une seule release ; un clic sur la ligne déplie les releases, qui gardent leur nom d'origine. Une release sans fiche
+ * reste une ligne simple avec son nom (en gras, aligné comme les titres).
  */
 export default function TorrentGroups({ items, star, actions }: { items: any[]; star?: (t: any) => ReactNode; actions?: (t: any) => ReactNode }) {
   const order: string[] = [];
@@ -135,23 +153,15 @@ export default function TorrentGroups({ items, star, actions }: { items: any[]; 
   return (
     <div className="vg-list">
       <div className="vg-legend">
-        <span>Titre / version</span><span /><span className="vr-num">Âge</span><span className="vr-num">Taille</span><span className="vr-num">Compl.</span><span className="vr-num">Seed</span><span className="vr-num">Leech</span><span />
+        <span /><span>Titre / version</span><span className="vr-num">Âge</span><span className="vr-num">Taille</span><span className="vr-num">Compl.</span><span className="vr-num">Seed</span><span className="vr-num">Leech</span><span />
       </div>
       {order.map((k) => {
         const rows = map.get(k)!;
-        // Un film / une série reconnu (fiche TMDB) est toujours présenté sous son titre, même avec une seule release ; sans fiche, une release seule reste une ligne simple avec son nom.
         if (rows.length === 1 && !rows[0].displayTitle) {
           const t = rows[0];
-          return (
-            <div key={k} className="vg single">
-              <div className="vg-row-wrap">
-                {star?.(t)}
-                <VersionRow t={t} showName actions={actions} />
-              </div>
-            </div>
-          );
+          return <div key={k} className="vg single"><VersionRow t={t} standalone star={star?.(t)} actions={actions} /></div>;
         }
-        return <Group key={k} rows={rows} defaultOpen={false} actions={actions} star={star} />;
+        return <Group key={k} rows={rows} actions={actions} star={star} />;
       })}
     </div>
   );

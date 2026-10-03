@@ -2413,29 +2413,30 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .news-thumb img { width: 100%; height: 100%; object-fit: cover; }
 @media (max-width: 800px) { .news-card.big { flex-direction: column; } .news-card.big .news-card-img { flex: none; aspect-ratio: 16 / 9; min-height: 0; } .news-item.with-thumb { flex-direction: column; } .news-thumb { width: 100%; } }
 
-/* ---- Affichage groupé et versions ---- */
-.vg-list { display: grid; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-panel, #10162a); }
-.vg-legend { display: grid; grid-template-columns: minmax(0, 1fr) 0 70px 120px 56px 56px 56px 44px; gap: 8px; padding: 8px 14px; font-size: 12px; opacity: 0.6; border-bottom: 1px solid var(--border); }
+/* ---- Affichage groupé et versions : toutes les lignes partagent les mêmes colonnes (alignement garanti) ---- */
+.vg-list { --vg-cols: 44px minmax(0, 1fr) 84px 160px 56px 56px 56px 88px; display: grid; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-panel, #10162a); }
+.vg-legend, .vg-head, .vr-row { display: grid; grid-template-columns: var(--vg-cols); gap: 8px; align-items: center; }
+.vg-legend { padding: 8px 14px; font-size: 12px; opacity: 0.6; border-bottom: 1px solid var(--border); }
 .vg { border-bottom: 1px solid rgba(255,255,255,0.06); }
 .vg.open { background: rgba(255,255,255,0.03); }
-.vg-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) 70px 120px 56px 56px 56px 44px; gap: 8px; align-items: center; padding: 10px 14px; cursor: pointer; }
+.vg-head { padding: 10px 14px; cursor: pointer; }
 .vg-head:hover { background: rgba(255,255,255,0.04); }
+.vr-lead { display: flex; align-items: center; justify-content: center; min-width: 0; }
+.vr-main { min-width: 0; display: grid; gap: 4px; }
 .vg-cover { width: 40px; height: 56px; object-fit: cover; border-radius: 4px; }
 .vg-cover.none { display: grid; place-items: center; background: rgba(255,255,255,0.07); font-size: 18px; }
 .vg-name { font-weight: 700; font-size: 16px; }
-.vg-tags { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; margin-top: 3px; }
+.vg-tags { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; }
 .vg-res { padding: 0 8px; border-radius: 5px; background: rgba(56,189,248,0.14); color: #7dd3fc; }
-.vg-toggle { width: 32px; height: 32px; padding: 0; border-radius: 50%; background: none; border: 0; box-shadow: none; font-size: 18px; opacity: 0.7; }
+.vg-toggle { justify-self: end; width: 32px; text-align: center; font-size: 18px; opacity: 0.7; }
 .vg-rows { display: grid; }
 .vg-rows.flat { gap: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
-.vg-row-wrap { display: flex; align-items: center; }
-.vg-row-wrap > .vr-row { flex: 1; min-width: 0; }
-.vg-star { flex: none; padding-left: 10px; }
-.vr-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 70px 120px 56px 56px 56px 84px; gap: 8px; align-items: center; padding: 9px 14px; border-top: 1px solid rgba(255,255,255,0.05); border-left: 3px solid transparent; font-size: 13px; }
-.vg-rows .vr-row { padding-left: 24px; border-left-color: rgba(255,165,0,0.55); }
+.vr-row { padding: 9px 14px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+.vg-rows .vr-row { border-left: 3px solid rgba(255,165,0,0.55); padding-left: 11px; }
+.vr-row.standalone { border-top: 0; padding: 10px 14px; }
 .vr-row.current { background: rgba(124,92,255,0.16); border-left-color: var(--acc1, #8b5cf6); }
 .vr-row:hover { background: rgba(255,255,255,0.05); }
-.vr-chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-width: 0; }
+.vr-chips { display: flex; flex-wrap: wrap; gap: 5px 6px; align-items: center; min-width: 0; }
 .vr-chip { padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: 700; white-space: nowrap; background: rgba(255,255,255,0.08); }
 .vr-chip.lang { color: #5eead4; background: rgba(20,184,166,0.16); }
 .vr-chip.res { color: #38bdf8; background: rgba(56,189,248,0.14); }
@@ -2443,19 +2444,18 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .vr-chip.aud { color: #fbbf24; background: rgba(245,158,11,0.16); }
 .vr-chip.ep { color: #f9a8d4; background: rgba(236,72,153,0.16); }
 .vr-codec { opacity: 0.6; font-size: 12px; }
-.vr-who { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
-.vr-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-.vr-uploader { font-size: 12px; opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-group { font-size: 12px; font-weight: 700; opacity: 0.8; letter-spacing: 0.3px; }
+.vr-uploader { font-size: 12px; opacity: 0.8; }
+.vr-name-line { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.vr-name { min-width: 0; font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vr-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .vr-seed { color: var(--success); } .vr-leech { color: var(--danger); }
 .vr-actions { display: flex; gap: 4px; justify-content: flex-end; }
 @media (max-width: 900px) {
   .vg-legend { display: none; }
-  .vg-head { grid-template-columns: 44px minmax(0, 1fr) 44px; }
-  .vg-head > .vr-num { display: none; }
-  .vr-row { grid-template-columns: 1fr auto; row-gap: 4px; }
-  .vr-row > .vr-chips, .vr-row > .vr-who { grid-column: 1 / -1; }
-  .vr-row > .vr-num { text-align: left; }
+  .vg-list { --vg-cols: 44px minmax(0, 1fr) auto; }
+  .vg-head > .vr-num, .vr-row > .vr-num { display: none; }
+  .vr-actions { grid-column: 3; }
 }
 
 /* ---- Accès rapides de l'accueil ---- */
@@ -2524,4 +2524,5 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .team-hero { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
 .team-actions { display: flex; flex-direction: column; gap: 6px; }
 .team-app { padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); }
-.vr-group { font-size: 12px; font-weight: 600; opacity: 0.75; letter-spacing: 0.3px; }
+.vr-sub-name { font-size: 12px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vg-rows.flat.vg-list { display: grid; border: 1px solid var(--border); }
