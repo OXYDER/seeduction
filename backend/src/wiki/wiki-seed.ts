@@ -222,6 +222,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• La récompense est calculée selon la taille du torrent et le temps qu'il est resté mort (avec un plafond), et n'est [b]jamais versée à quelqu'un qui le seedait déjà juste avant sa mort[/b] — impossible donc de couper son propre seed puis de le relancer pour gagner des points.\n` +
           `• Elle n'est [b]confirmée[/b] que lorsqu'un autre membre finit vraiment de le télécharger (preuve que ça a servi), ou, à défaut, si tu as tenu le seed tout seul pendant 72 heures.\n` +
           `• Si tu abandonnes le seed avant l'une de ces deux conditions, rien n'est payé.\n\n` +
+          `[b]Où les trouver[/b] : Statistiques > Top torrents > « À reseeder » liste tous les torrents sans seeder (les morts ☠️ comme ceux qui vont bientôt l'être), les plus téléchargés d'abord, avec le temps écoulé sans seed.\n\n` +
           `Depuis la fiche d'un torrent à 0 seeder, le bouton « Demander un reseed » prévient (au plus une fois par semaine) tous les membres qui l'ont déjà téléchargé.`,
       },
       {

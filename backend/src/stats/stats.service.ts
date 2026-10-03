@@ -116,10 +116,10 @@ export class StatsService {
         where: { status: 'APPROVED', ...visible }, orderBy: { completedCount: 'desc' }, take: 10,
         select: { id: true, name: true, completedCount: true, seeders: true, coverImage: true },
       }),
-      this.prisma.torrent.count({ where: { status: 'APPROVED', seeders: 0, ...visible } }),
+      this.prisma.torrent.count({ where: { status: { in: ['APPROVED', 'DEAD'] }, seeders: 0, ...visible } }),
       this.prisma.torrent.findMany({
-        where: { status: 'APPROVED', seeders: 0, completedCount: { gt: 0 }, ...visible }, orderBy: { completedCount: 'desc' }, take: 15,
-        select: { id: true, name: true, completedCount: true, coverImage: true },
+        where: { status: { in: ['APPROVED', 'DEAD'] }, seeders: 0, ...visible }, orderBy: [{ completedCount: 'desc' }, { createdAt: 'asc' }], take: 30,
+        select: { id: true, name: true, completedCount: true, coverImage: true, status: true, size: true, zeroSeedersSince: true, diedAt: true, createdAt: true },
       }),
     ]);
 
@@ -181,7 +181,10 @@ export class StatsService {
         this.prisma.peer.count({ where: { torrentId, isSeeder: true } }),
         this.prisma.peer.count({ where: { torrentId, isSeeder: false } }),
       ]);
-      await this.prisma.torrent.update({ where: { id: torrentId }, data: { seeders, leechers } }).catch(() => {}); // torrent supprimé entre-temps : ignoré
+      await this.prisma.torrent.update({ where: { id: torrentId }, data: { seeders, leechers, ...(seeders > 0 ? { zeroSeedersSince: null } : {}) } }).catch(() => {}); // torrent supprimé entre-temps : ignoré
+      // Le dernier seeder vient de disparaître : le délai avant « mort » démarre ici (comme quand il annonce « stopped »).
+      // Sans ça, un seeder qui s'éteint sans prévenir laissait le torrent à 0 seeder pour toujours sans qu'il passe DEAD.
+      if (seeders === 0) await this.prisma.torrent.updateMany({ where: { id: torrentId, zeroSeedersSince: null }, data: { zeroSeedersSince: new Date(), revivedByUserId: null, revivedAt: null, diedAt: null } });
     }));
   }
 }

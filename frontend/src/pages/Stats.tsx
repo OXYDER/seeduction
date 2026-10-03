@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../api/client';
 import { formatBytes, formatNumber } from '../lib/format';
+import { timeAgo } from '../lib/time';
 import TorrentLink from '../components/TorrentLink';
 import UserLink from '../components/UserLink';
 import { CLASS_LABEL } from '../lib/memberClass';
@@ -212,8 +213,11 @@ function TopTorrents({ data }: { data: any }) {
       key: 'dead', label: `🔁 À reseeder (${data.deadCount})`,
       body: (
         <>
-          <p className="muted" style={{ marginTop: 0 }}>Torrents complétés par des membres mais sans aucun seeder : si tu les as encore, remets-les en seed (et gagne des points bonus).</p>
-          {rows(data.dead, (t, i) => <>{rank(i)}<td><TorrentLink torrent={t} /></td><td className="muted" style={{ whiteSpace: 'nowrap' }}>{t.completedCount} ✓</td></>, '✓ Tous les torrents ont des seeders.')}
+          <p className="muted" style={{ marginTop: 0 }}>Torrents sans aucun seeder en ce moment, les plus téléchargés d'abord : si tu les as encore, remets-les en seed (et gagne des points bonus, surtout pour un torrent « mort »).</p>
+          {rows(data.dead, (t, i) => {
+            const since = t.diedAt ?? t.zeroSeedersSince ?? t.createdAt;
+            return <>{rank(i)}<td><TorrentLink torrent={t} />{t.status === 'DEAD' && <span title="Torrent mort : sans seeder depuis plus de 48 h"> ☠️</span>}</td><td className="muted" style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{t.completedCount} ✓ · {formatBytes(t.size)}<br />sans seed {timeAgo(since).replace('il y a ', 'depuis ')}</td></>;
+          }, '✓ Tous les torrents ont des seeders.')}
         </>
       ),
     },

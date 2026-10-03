@@ -45,6 +45,9 @@ export class EconomyService {
    */
   @Cron('*/15 * * * *')
   async markDeadTorrents() {
+    // Rattrapage : un torrent resté à 0 seeder sans que le début de la panne ait été noté (ancienne purge des peers inactifs)
+    // reçoit sa date de dernière modification comme début, pour qu'il puisse enfin passer DEAD.
+    await this.prisma.$executeRaw`UPDATE "Torrent" SET "zeroSeedersSince" = "updatedAt" WHERE status = 'APPROVED' AND seeders = 0 AND "zeroSeedersSince" IS NULL`;
     const cutoff = new Date(Date.now() - ECONOMY.deadAfterHours * 3600_000);
     const { count } = await this.prisma.torrent.updateMany({
       where: { status: 'APPROVED', seeders: 0, zeroSeedersSince: { lte: cutoff } },
