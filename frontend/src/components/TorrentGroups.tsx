@@ -23,6 +23,12 @@ export function releaseTitle(name: string): string {
   return title.length >= 2 ? title : name;
 }
 
+/** Équipe de release : ce qui suit le dernier tiret du nom (« …x264-NOTAG » → NOTAG). */
+export function releaseGroup(name: string): string | null {
+  const m = /-([A-Za-z0-9]{2,16})(?:\.[A-Za-z0-9]{2,4})?$/.exec(name.replace(/\[[^\]]*\]\s*$/, '').trim());
+  return m ? m[1] : null;
+}
+
 /** Clé de regroupement : la même fiche (TMDB, Deezer...) si elle est connue, sinon le titre nettoyé de la release. */
 export function groupKey(t: any): string {
   if (t.metaSource && t.metaExternalId) return `m:${t.metaSource}:${t.metaExternalId}`;
@@ -44,6 +50,7 @@ export function VersionRow({ t, current, showName, actions }: RowProps) {
         {chip([t.source, t.hdr ? 'HDR' : ''].filter(Boolean).join(' '), 'src')}
         {chip(t.audio, 'aud')}
         {t.codec && <span className="vr-codec">{t.codec}</span>}
+        {releaseGroup(t.name) && <span className="vr-group" title="Équipe de la release">{releaseGroup(t.name)}</span>}
         {t.freeleech && <span className="badge freeleech">FL</span>}
         {t.status === 'DEAD' && <span className="vr-dead" title="Plus aucun seeder">☠️</span>}
       </div>
@@ -97,7 +104,7 @@ function Group({ rows, defaultOpen, actions, star }: { rows: any[]; defaultOpen:
           <div className="vg-tags">
             {first.category && <CategoryTag category={first.category} />}
             {[...byRes.entries()].map(([res, n]) => <span key={res} className="vg-res">{res} <span className="muted">({n})</span></span>)}
-            <span className="muted">{rows.length} versions</span>
+            {rows.length > 1 && <span className="muted">{rows.length} versions</span>}
           </div>
         </div>
         <span className="vr-num vr-age">{timeAgo(newest.createdAt)}</span>
@@ -132,7 +139,8 @@ export default function TorrentGroups({ items, star, actions }: { items: any[]; 
       </div>
       {order.map((k) => {
         const rows = map.get(k)!;
-        if (rows.length === 1) {
+        // Un film / une série reconnu (fiche TMDB) est toujours présenté sous son titre, même avec une seule release ; sans fiche, une release seule reste une ligne simple avec son nom.
+        if (rows.length === 1 && !rows[0].displayTitle) {
           const t = rows[0];
           return (
             <div key={k} className="vg single">

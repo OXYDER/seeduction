@@ -2524,3 +2524,4 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .team-hero { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
 .team-actions { display: flex; flex-direction: column; gap: 6px; }
 .team-app { padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); }
+.vr-group { font-size: 12px; font-weight: 600; opacity: 0.75; letter-spacing: 0.3px; }
