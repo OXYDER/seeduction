@@ -281,7 +281,7 @@ function TorrentViewBody(props: TorrentViewProps) {
               <span className="tv-compact-badges"><Badges t={t} /></span>
               {extras(t)}
               <span className="muted tv-compact-size">{formatBytes(t.size)}</span>
-              <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }} title="Commentaires · complétés">💬{t._count?.comments ?? 0} ✔{t.completedCount ?? 0}</span>
+              <span className="muted tv-compact-counts" title="Commentaires · complétés">💬{t._count?.comments ?? 0} ✔{t.completedCount ?? 0}</span>
               <span className="tv-compact-seeds"><Seeds t={t} /></span>
               <span className="muted tv-compact-age">{t.createdAt ? timeAgo(t.createdAt) : ''}</span>
               <span className="row tv-compact-actions" style={{ gap: 4 }}>{actions(t)}</span>

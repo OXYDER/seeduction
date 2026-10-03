@@ -1799,11 +1799,12 @@ td.cat-cell .cat-tag { display: flex; height: 44px; width: 140px; border-radius:
 .tv-compact-icon { width: 20px; text-align: center; flex-shrink: 0; }
 .tv-compact-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-compact-name a { overflow: hidden; text-overflow: ellipsis; }
-.tv-compact-badges { flex-shrink: 0; white-space: nowrap; }
+.tv-compact-badges { width: 96px; flex-shrink: 0; white-space: nowrap; display: flex; justify-content: flex-end; gap: 4px; }
 .tv-compact-size { width: 78px; text-align: right; flex-shrink: 0; }
 .tv-compact-seeds { width: 74px; display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0; }
 .tv-compact-age { width: 82px; text-align: right; flex-shrink: 0; }
-.tv-compact-actions { flex-shrink: 0; }
+.tv-compact-actions { width: 62px; flex-shrink: 0; justify-content: flex-end; }
+.tv-compact-counts { width: 74px; flex-shrink: 0; font-size: 12px; white-space: nowrap; text-align: right; }
 @media (max-width: 900px) { .tv-compact-age, .tv-compact-badges { display: none; } }
 @media (max-width: 560px) { .tv-compact-size { display: none; } }
 
