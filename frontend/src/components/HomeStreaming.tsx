@@ -210,6 +210,8 @@ export default function HomeStreaming() {
 
           {featured ? (
             <section key={featured.id} className="panel ornate hero-frame hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
+              {/* La même image que le fond de la page, bien visible à droite du texte. */}
+              <span className="hero-frame-bg" aria-hidden="true" style={{ backgroundImage: `url("${String(featured.backdrop ?? featured.coverImage).replace(/"/g, '%22')}")` }} />
               <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
               <div className="hero-plex">
               <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username} · À la une</div>

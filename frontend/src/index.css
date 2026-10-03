@@ -2729,3 +2729,25 @@ a.seedpage-item:hover { background: rgba(255,255,255,0.07); }
 .icon-btn .count.filters-badge { position: absolute; top: -8px; right: -8px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #e5384f; color: #fff; font-size: 11px; box-shadow: 0 0 0 2px var(--bg-panel, #10162a); }
 .reset-filters-btn { color: #f87171; border-color: rgba(229,56,79,0.5); }
 .reset-filters-btn:hover { color: #fff; background: rgba(229,56,79,0.35); border-color: #e5384f; }
+
+/* Nouvelles : cartes plus sobres sur les grands écrans (l'image ne grandit plus avec la largeur de la page) */
+.news-hero { align-items: stretch; }
+.news-hero-img { flex: 0 0 clamp(220px, 24%, 300px); min-height: 0; aspect-ratio: 16 / 9; align-self: flex-start; font-size: 34px; }
+.news-hero-body { padding: 14px 18px; gap: 6px; justify-content: flex-start; }
+.news-hero-body h2 { font-size: 20px; }
+.news-hero-body p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; }
+.news-hero-meta { margin-top: auto; padding-top: 4px; }
+.news-card.big .news-card-img { flex: 0 0 clamp(260px, 32%, 420px); min-height: 0; aspect-ratio: 16 / 9; align-self: flex-start; }
+.news-card.big .news-card-body h2 { font-size: 22px; }
+.news-card.big .news-card-body p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.news-card.big { grid-column: 1 / -1; max-width: 1100px; }
+.news-full-img { max-height: 280px; }
+@media (max-width: 800px) { .news-card.big .news-card-img { flex: none; width: 100%; align-self: auto; } }
+@media (max-width: 700px) { .news-hero-img { flex: none; width: 100%; align-self: auto; } }
+
+/* « À la une » : l'image de la release (la même que le fond de la page) occupe la section, un dégradé garde le texte lisible */
+.home-plex .hero-frame { position: relative; overflow: hidden; min-height: 300px; }
+.hero-frame-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center 25%; background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 18%, #000 62%); mask-image: linear-gradient(90deg, transparent 0%, transparent 18%, #000 62%); opacity: 0.95; }
+.home-plex .hero-frame > .panel-title, .home-plex .hero-frame > .hero-plex { position: relative; z-index: 1; }
+@media (max-width: 800px) { .hero-frame-bg { -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 70%); mask-image: linear-gradient(180deg, transparent 0%, #000 70%); opacity: 0.55; } }
