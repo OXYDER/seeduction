@@ -2455,6 +2455,11 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .vr-chip.src { color: #6ee7b7; background: rgba(16,185,129,0.14); }
 .vr-chip.aud { color: #fbbf24; background: rgba(245,158,11,0.16); }
 .vr-chip.ep { color: #f9a8d4; background: rgba(236,72,153,0.16); }
+.vr-chip.yr { color: #cbd5e1; background: rgba(148,163,184,0.16); }
+.vr-chip.org { color: #fda4af; background: rgba(244,63,94,0.15); }
+.vr-chip.cod { color: #c4b5fd; background: rgba(139,92,246,0.18); }
+.tv-meta-chips { margin-top: 4px; }
+.tv-meta-chips .vr-chip { font-size: 11.5px; padding: 1px 7px; }
 .vr-codec { opacity: 0.6; font-size: 12px; }
 .vr-group { font-size: 12px; font-weight: 700; opacity: 0.8; letter-spacing: 0.3px; }
 .vr-uploader { font-size: 12px; opacity: 0.8; }

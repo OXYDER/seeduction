@@ -114,7 +114,7 @@ export function VersionRow({ t, current, standalone, nameLink, star, actions, de
           {chip(t.resolution, 'res')}
           {chip([t.source, t.hdr ? 'HDR' : ''].filter(Boolean).join(' '), 'src')}
           {chip(t.audio, 'aud')}
-          {t.codec && <span className="vr-codec">{t.codec}</span>}
+          {chip(t.codec, 'cod')}
           {!standalone && group && <Link to={`/team/${teamSlug(group)}`} className="vr-group" title={`Team ${group}`}>{group}</Link>}
           {t.freeleech && <span className="badge freeleech">FL</span>}
           {t.status === 'DEAD' && <span className="vr-dead" title="Plus aucun seeder">☠️</span>}

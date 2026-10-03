@@ -1,3 +1,4 @@
+import MetaChips from './MetaChips';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -68,7 +69,6 @@ const COLUMNS: { label: string; sort: string; key: 'cat' | 'name' | 'date' | 'si
 /** Icône / couleur de la catégorie du torrent (la sienne si elle en a une, sinon celle de sa catégorie principale). */
 const styleOf = (t: any) => CATEGORY_STYLE[t.category?.slug ?? ''] ?? CATEGORY_STYLE[t.category?.parent?.slug ?? ''];
 
-const metaLine = (t: any) => [t.year, t.origin, t.language, t.source, t.codec, t.audio].filter(Boolean).join(' · ');
 const previewLoader = (t: any) => () => api.get(`/torrents/${t.id}/preview`).then((r) => r.data);
 
 function Badges({ t }: { t: any }) {
@@ -214,7 +214,7 @@ function TorrentViewBody(props: TorrentViewProps) {
                         {isStaff && <Link to={`/torrents/${t.id}?edit=1`} title="Modifier / supprimer (staff)" style={{ marginRight: 6 }}>✏️</Link>}
                         {titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" />{' '}
                         <Badges t={t} />
-                        {metaLine(t) && <div className="muted" style={{ fontSize: 11 }}>{metaLine(t)}</div>}
+                        <MetaChips t={t} className="tv-meta-chips" />
                         {t.reason && <div className="tv-reason">✨ {t.reason}</div>}
                       </span>
                     </div>
@@ -247,7 +247,7 @@ function TorrentViewBody(props: TorrentViewProps) {
             <div className="tv-detail-main">
               <div className="tv-detail-title">{star(t)}{titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" /></div>
               <div className="tv-detail-badges"><CategoryTag category={t.category} /> <Badges t={t} /></div>
-              {metaLine(t) && <div className="muted">{metaLine(t)}</div>}
+              <MetaChips t={t} className="tv-meta-chips" />
               {t.synopsis && <p className="tv-detail-synopsis">{t.synopsis}</p>}
               {t.reason && <div className="tv-reason">✨ {t.reason}</div>}
               <div className="muted tv-detail-foot">
