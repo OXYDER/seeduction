@@ -16,12 +16,14 @@ import DefaultViewPanel from '../components/DefaultViewPanel';
 import Avatar from '../components/Avatar';
 import { displayRank } from '../lib/memberClass';
 import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
+import { useCrumbTitle } from '../store/crumbs';
 
 export default function Profile() {
   const { id } = useParams();
   const me = useAuthStore((s) => s.user);
   const targetId = id ?? me?.id;
   const [profile, setProfile] = useState<any>(null);
+  useCrumbTitle(id ? profile?.username : null);
   const [history, setHistory] = useState<any[]>([]);
   const [badges, setBadges] = useState<any[]>([]);
   const [apiKeys, setApiKeys] = useState<any[]>([]);

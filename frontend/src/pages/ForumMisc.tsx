@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
-import { Breadcrumb } from '../components/ForumBits';
 import { TopicTable } from './ForumView';
 
 /** Derniers messages du forum, tous forums confondus. */
@@ -10,7 +9,6 @@ export function ForumLatest() {
   useEffect(() => { api.get('/forum/latest').then((r) => setTopics(r.data)).catch(() => setTopics([])); }, []);
   return (
     <div className="grid" style={{ width: '100%', gap: 14 }}>
-      <Breadcrumb crumbs={[]} last="Derniers messages" />
       <h1>🕒 Derniers messages</h1>
       <div className="forum-table panel ornate">
         {topics ? <TopicTable topics={topics} showForum /> : <p className="muted" style={{ padding: 14 }}>Chargement...</p>}
@@ -34,7 +32,6 @@ export function ForumSearch() {
 
   return (
     <div className="grid" style={{ width: '100%', gap: 14 }}>
-      <Breadcrumb crumbs={[]} last="Recherche" />
       <h1>🔍 Résultats pour « {q} »</h1>
       {error && <p className="muted" style={{ color: 'var(--danger)' }}>{error}</p>}
       <div className="forum-table panel ornate">

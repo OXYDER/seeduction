@@ -4,8 +4,9 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import UserLink from '../components/UserLink';
 import WysiwygEditor from '../components/WysiwygEditor';
-import { Breadcrumb, Pagination, LastPostCell } from '../components/ForumBits';
+import { Pagination, LastPostCell } from '../components/ForumBits';
 import { timeAgo } from '../lib/time';
+import { useCrumbTitle } from '../store/crumbs';
 
 /** Lignes de sujets : utilisées par la vue d'un forum, les derniers messages et la recherche. */
 export function TopicTable({ topics, showForum }: { topics: any[]; showForum?: boolean }) {
@@ -84,6 +85,7 @@ export default function ForumView() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState('');
   const [composing, setComposing] = useState(false);
+  useCrumbTitle(data?.forum?.name, (data?.breadcrumb ?? []).slice(0, -1).map((c: any) => ({ label: c.name, to: c.isCategory ? '/forum' : `/forum/f/${c.id}` })));
 
   useEffect(() => {
     setData(null);
@@ -94,11 +96,10 @@ export default function ForumView() {
   if (error) return <div className="panel"><p className="muted">{error}</p><Link to="/forum">← Retour au forum</Link></div>;
   if (!data) return <p className="muted">Chargement...</p>;
 
-  const { forum, breadcrumb } = data;
+  const { forum } = data;
 
   return (
     <div className="grid" style={{ width: '100%', gap: 14 }}>
-      <Breadcrumb crumbs={breadcrumb.slice(0, -1)} last={forum.name} />
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <div>
           <h1>{forum.icon} {forum.name} {forum.locked && <span title="Verrouillé">🔒</span>}</h1>

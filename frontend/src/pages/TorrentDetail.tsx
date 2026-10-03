@@ -26,6 +26,7 @@ import { usePageBackdrop } from '../lib/backdrop';
 import { useTheme } from '../lib/theme';
 import { formatBytes } from '../lib/format';
 import { resolveContentKind } from '../lib/categoryKind';
+import { useCrumbTitle } from '../store/crumbs';
 
 // Types de contenu pour lesquels « Ouvrir dans le lecteur Seeduction » a un sens (vidéo à regarder).
 const VIDEO_KINDS = new Set(['FILM', 'SERIE', 'XXX', 'DOCUMENT']);
@@ -78,6 +79,7 @@ export default function TorrentDetail() {
 
   // « L'accent suit la catégorie » (option cochable, voir ThemeSwitcher) : sans effet si elle est désactivée.
   const topCategorySlug = torrent?.category?.parent?.slug ?? torrent?.category?.slug ?? null;
+  useCrumbTitle(torrent?.name, [torrent?.category?.parent, torrent?.category].filter(Boolean).map((c: any) => ({ label: c.name, to: `/browse?categoryId=${c.id}` })));
   useEffect(() => {
     applyCategoryAccent(topCategorySlug ? CATEGORY_STYLE[topCategorySlug]?.color ?? null : null);
     return () => applyCategoryAccent(null);

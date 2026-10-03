@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { bbcodeToHtml } from '../lib/bbcode';
+import { useCrumbTitle } from '../store/crumbs';
 
 interface WikiArticleListItem {
   id: string;
@@ -175,6 +176,7 @@ function FaqView({ articles }: { articles: any[] }) {
 
 function WikiArticleView({ slug }: { slug: string }) {
   const [article, setArticle] = useState<any>(null);
+  useCrumbTitle(article?.title);
   const [error, setError] = useState('');
 
   useEffect(() => {

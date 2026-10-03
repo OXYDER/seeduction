@@ -7,6 +7,7 @@ import SearchBox from '../components/SearchBox';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
+import { useCrumbTitle } from '../store/crumbs';
 
 const VISIBILITY_LABEL: Record<string, string> = {
   PRIVATE: '🔒 Privée',
@@ -19,6 +20,7 @@ export default function CollectionDetail() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const [collection, setCollection] = useState<any>(null);
+  useCrumbTitle(collection?.name);
   const [error, setError] = useState('');
   const [editForm, setEditForm] = useState({ name: '', description: '', visibility: 'PRIVATE' });
   const [collaboratorName, setCollaboratorName] = useState('');

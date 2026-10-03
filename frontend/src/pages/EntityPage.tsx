@@ -5,6 +5,7 @@ import { ROLE_LABEL, TYPE_LABEL } from '../lib/entityLabels';
 import FollowButton from '../components/FollowButton';
 import { useViewMode } from '../lib/viewMode';
 import TorrentView, { ViewSwitcher } from '../components/TorrentView';
+import { useCrumbTitle } from '../store/crumbs';
 
 const PAGE_SIZE = 24;
 
@@ -12,6 +13,7 @@ const PAGE_SIZE = 24;
 export default function EntityPage() {
   const { id } = useParams();
   const [entity, setEntity] = useState<any>(null);
+  useCrumbTitle(entity?.name);
   const [role, setRole] = useState('');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<any[]>([]);

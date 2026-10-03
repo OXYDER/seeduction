@@ -6,6 +6,7 @@ import { timeAgo } from '../lib/time';
 import { CLASS_LABEL } from '../lib/memberClass';
 import Avatar from '../components/Avatar';
 import UserLink from '../components/UserLink';
+import { useCrumbTitle } from '../store/crumbs';
 
 const ROLE = { LEADER: '👑 Chef', OFFICER: '⭐ Officier', MEMBER: 'Membre' } as Record<string, string>;
 
@@ -14,6 +15,7 @@ export default function TeamDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [team, setTeam] = useState<any>(null);
+  useCrumbTitle(team?.name);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [proof, setProof] = useState('');

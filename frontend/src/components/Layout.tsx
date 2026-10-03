@@ -16,6 +16,7 @@ import { useDmStore } from '../store/dm';
 import { useMessenger, privateUnreadOf, publicUnreadOf } from '../store/messenger';
 import { useQueue } from '../store/queue';
 import { ProfileName } from './UserLink';
+import Breadcrumbs from './Breadcrumbs';
 import SeedObligations from './SeedObligations';
 import { useTheme } from '../lib/theme';
 import { PRESENCE_OPTIONS } from '../lib/presence';
@@ -378,6 +379,7 @@ function LayoutInner() {
           <FreeleechBanner />
 
           <main className="container">
+            <Breadcrumbs />
             <div key={location.pathname} className="page-enter">
               <Outlet context={{ profile, categories } satisfies LayoutContext} />
             </div>
@@ -504,6 +506,7 @@ function LayoutInner() {
       </div>
 
       <div className="container">
+        <Breadcrumbs />
         <Outlet context={{ profile, categories } satisfies LayoutContext} />
       </div>
 

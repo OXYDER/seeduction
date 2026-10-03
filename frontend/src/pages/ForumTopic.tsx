@@ -4,12 +4,13 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import UserLink from '../components/UserLink';
 import WysiwygEditor from '../components/WysiwygEditor';
-import { Breadcrumb, Pagination } from '../components/ForumBits';
+import { Pagination } from '../components/ForumBits';
 import ReportButton from '../components/ReportButton';
 import { ROLE_LABEL } from '../components/StaffUserPanel';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { displayRank } from '../lib/memberClass';
 import Avatar from '../components/Avatar';
+import { useCrumbTitle } from '../store/crumbs';
 
 const isStaffRole = (role?: string) => ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
 
@@ -30,6 +31,7 @@ export default function ForumTopic() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [forums, setForums] = useState<{ id: string; name: string }[]>([]);
+  useCrumbTitle(data?.topic?.title, (data?.breadcrumb ?? []).map((c: any) => ({ label: c.name, to: c.isCategory ? '/forum' : `/forum/f/${c.id}` })));
   const replyRef = useRef<HTMLDivElement>(null);
 
   function load() {
@@ -107,12 +109,11 @@ export default function ForumTopic() {
   if (error) return <div className="panel"><p className="muted">{error}</p><Link to="/forum">← Retour au forum</Link></div>;
   if (!data) return <p className="muted">Chargement...</p>;
 
-  const { topic, breadcrumb, posts } = data;
+  const { topic, posts } = data;
   const pager = <Pagination page={data.page} total={data.total} pageSize={data.pageSize} onPage={(p) => setParams({ page: String(p) })} />;
 
   return (
     <div className="grid" style={{ width: '100%', gap: 14 }}>
-      <Breadcrumb crumbs={breadcrumb} last={topic.title} />
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <h1>{topic.sticky && '📌 '}{topic.locked && '🔒 '}{topic.title}</h1>
         <div className="muted">{topic.viewCount} vue(s) · {data.total} message(s)</div>

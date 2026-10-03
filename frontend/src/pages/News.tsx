@@ -8,6 +8,7 @@ import { Pagination } from '../components/ForumBits';
 import UserLink from '../components/UserLink';
 import Avatar from '../components/Avatar';
 import NewsEditor from '../components/NewsEditor';
+import { useCrumbTitle } from '../store/crumbs';
 
 const plain = (t: string) => t.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
 
@@ -41,6 +42,7 @@ export default function News() {
   const page = parseInt(params.get('page') ?? '1', 10);
   const [feed, setFeed] = useState<any>(null);
   const [single, setSingle] = useState<any>(null);
+  useCrumbTitle(single?.title);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<string | 'new' | null>(null);
   const [rev, setRev] = useState(0);
@@ -79,7 +81,6 @@ export default function News() {
           <div className="ornate-divider" />
           <div className="bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(single.content) }} />
         </article>
-        <Link to="/news">← Toutes les nouvelles</Link>
       </div>
     );
   }
