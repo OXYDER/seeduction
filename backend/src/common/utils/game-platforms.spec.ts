@@ -1,4 +1,5 @@
-import { detectPlatformIds, platformIdsFromRawg } from './game-platforms';
+import { detectGamePlatforms, detectPlatformIds, platformIdsFromRawg } from './game-platforms';
+import { detectAttrs } from './attr-detect';
 
 describe('plateformes de jeux', () => {
   it('reconnaît une console dans le nom', () => {
@@ -30,5 +31,21 @@ describe('plateformes de jeux', () => {
     expect(platformIdsFromRawg('PC, PlayStation 5, Xbox Series S/X, Nintendo Switch, iOS').sort()).toEqual(['ios', 'ps5', 'switch', 'windows', 'xboxseries'].sort());
     expect(platformIdsFromRawg('PlayStation 4')).toEqual(['ps4']);
     expect(platformIdsFromRawg('')).toEqual([]);
+  });
+});
+
+describe('plateforme lue dans le NFO', () => {
+  const nfo = 'Metal Gear Solid The Twin Snakes\n\nGenre(s) : Action, Adventure\nPlateforme(s) : GameCube\n\nPour Wii (je ne connais pas la procédure)\nremake de la version Playstation\nFormat : ISO';
+  it('la ligne « Plateforme(s) » prime sur le reste du texte', () => {
+    expect(detectGamePlatforms('GGSPA4', ['GGSPA4/game.iso'], nfo)).toEqual(['gamecube']);
+  });
+  it('sans ligne étiquetée, seul le nom compte', () => {
+    expect(detectGamePlatforms('GGSPA4', ['game.iso'], 'pour Wii et PlayStation')).toEqual([]);
+    expect(detectGamePlatforms('[NGC] Metal.Gear.Solid.The.Twin.Snakes [PAL-MULTI] ISO', [], undefined)).toEqual(['gamecube']);
+  });
+  it('les filtres du jeu viennent aussi du NFO', () => {
+    const a = detectAttrs({ name: 'GGSPA4', files: [{ path: 'game.iso' }], nfo, top: 'Jeux Vidéo', leaf: 'Jeux Nintendo' });
+    expect(a.consoleNintendo).toEqual(['GameCube']);
+    expect(a.genreJeux).toEqual(['Action', 'Aventure']);
   });
 });

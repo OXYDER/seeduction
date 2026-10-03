@@ -58,6 +58,8 @@ interface Props {
   autoStart: boolean;
   /** Change quand un nouveau fichier .torrent est choisi, pour relancer la recherche automatique. */
   sessionKey: string;
+  /** Change quand ce qui sert à la recherche change (catégorie, titre, année, NFO) : la recherche repart toute seule, sauf si le titre a été tapé à la main. */
+  refreshKey?: string;
   currentDescription: string;
   onGenerate: (bbcode: string) => void;
   onCoverChange?: (url: string) => void;
@@ -74,6 +76,7 @@ export default function DescriptionGenerator({
   searchYear,
   autoStart,
   sessionKey,
+  refreshKey,
   currentDescription,
   onGenerate,
   onCoverChange,
@@ -104,6 +107,9 @@ export default function DescriptionGenerator({
   const searchSupported = supportedKinds.includes(kind);
   const lastGenerated = useRef('');
   const lastAuto = useRef({ session: '', kind: '' });
+  const userEdited = useRef(false); // le titre ou l'année de la recherche ont été saisis à la main
+  const lastRun = useRef(0);
+  const lastRefresh = useRef(refreshKey);
 
   useEffect(() => {
     api.get('/templates').then((r) => setTemplates(r.data)).catch(() => {});
@@ -143,6 +149,7 @@ export default function DescriptionGenerator({
   async function runSearch(query: string, yearStr: string, k: string) {
     const q = query.trim();
     if (!q || !supportedKinds.includes(k)) return;
+    lastRun.current = Date.now();
     setSearchLoading(true);
     setSearchError('');
     setSearchNote('');
@@ -181,6 +188,7 @@ export default function DescriptionGenerator({
 
     // Nouveau fichier : on repart des infos de CE torrent (pas de synopsis/pochette de l'ancien).
     if (newSession) {
+      userEdited.current = false;
       setValues(syncKnown({}, {}, knownValues));
       prevKnown.current = knownValues;
     }
@@ -194,6 +202,27 @@ export default function DescriptionGenerator({
     if (supportedKinds.includes(kind)) runSearch(q, y, kind);
     else setSearchResults([]);
   }, [autoStart, sessionKey, kind, supportedKinds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Le NFO, la catégorie, le nom ou l'année changent après coup : la recherche de fiche repart toute seule (sauf si
+  // le membre a tapé son propre titre, qu'on ne remplace jamais).
+  useEffect(() => {
+    if (refreshKey === undefined || lastRefresh.current === refreshKey) return;
+    lastRefresh.current = refreshKey;
+    if (!autoStart || supportedKinds.length === 0) return;
+    const t = setTimeout(() => {
+      if (lastAuto.current.session !== sessionKey) return; // nouveau fichier : la recherche de départ s'en charge
+      if (Date.now() - lastRun.current < 1200) return; // une recherche vient déjà de partir
+      const q = userEdited.current && searchQuery.trim() ? searchQuery : searchTitle;
+      const y = userEdited.current ? searchYearInput : (searchYear ?? '');
+      if (!q.trim() || !supportedKinds.includes(kind)) return;
+      setSearchQuery(q);
+      setSearchYearInput(y);
+      setSearched(false);
+      setNotice('');
+      runSearch(q, y, kind);
+    }, 700);
+    return () => clearTimeout(t);
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dès que le contenu du torrent est analysé et que la description est vide, on
   // en génère une base tout de suite (taille, liste de fichiers, sous-titres...),
@@ -307,7 +336,7 @@ export default function DescriptionGenerator({
                 style={{ flex: 1 }}
                 placeholder="Titre à rechercher..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { userEdited.current = true; setSearchQuery(e.target.value); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setSearched(false); runSearch(searchQuery, searchYearInput, kind); } }}
               />
               <input
@@ -315,7 +344,7 @@ export default function DescriptionGenerator({
                 placeholder="Année"
                 inputMode="numeric"
                 value={searchYearInput}
-                onChange={(e) => setSearchYearInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={(e) => { userEdited.current = true; setSearchYearInput(e.target.value.replace(/\D/g, '').slice(0, 4)); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setSearched(false); runSearch(searchQuery, searchYearInput, kind); } }}
               />
               <button type="button" className="secondary" disabled={searchLoading || !searchQuery.trim()} onClick={() => { setSearched(false); runSearch(searchQuery, searchYearInput, kind); }}>

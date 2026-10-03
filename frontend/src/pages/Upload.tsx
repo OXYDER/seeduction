@@ -12,7 +12,7 @@ import DuplicateWarning from '../components/DuplicateWarning';
 import FacetFields from '../components/FacetFields';
 import GamePlatformPicker, { type GamePlatformInfo } from '../components/GamePlatformPicker';
 import type { FacetDef, FacetValues } from '../lib/facets';
-import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeFromRelease, detectVideoType, matchGenres } from '../lib/uploadMeta';
+import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeFromRelease, detectVideoType, matchGenres, looksLikeCode, titleFromNfo } from '../lib/uploadMeta';
 
 export default function Upload() {
   const [name, setName] = useState('');
@@ -177,6 +177,16 @@ export default function Upload() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, fileList, nfoText]);
 
+  // Toujours un code comme nom, mais un NFO arrive : son titre remplace le code, et la recherche de fiche repart avec.
+  useEffect(() => {
+    if (!nfoText || name !== autoName.current || !looksLikeCode(name)) return;
+    const t = titleFromNfo(nfoText);
+    if (!t) return;
+    setName(t);
+    autoName.current = t;
+    setSessionKey((k) => `${k}:nfo`);
+  }, [nfoText, name]);
+
   async function onNfoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) { setNfoText(''); return; }
@@ -199,7 +209,13 @@ export default function Upload() {
       setFileList(parsed.files);
       setFoundTrackers(parsed.trackers);
       // Le nom se remplit depuis le fichier, sauf si l'utilisateur l'a déjà personnalisé.
-      if (!name.trim() || name === autoName.current) { setName(parsed.name); autoName.current = parsed.name; }
+      // Un nom interne qui n'est qu'un code (dossier d'une image de console : « GGSPA4 ») ne sert à rien : on prend le nom du fichier .torrent.
+      let shownName = parsed.name;
+      if (looksLikeCode(shownName)) {
+        const fromFile = f.name.replace(/\.torrent$/i, '').trim();
+        if (fromFile.length >= 6 && !looksLikeCode(fromFile)) shownName = fromFile;
+      }
+      if (!name.trim() || name === autoName.current) { setName(shownName); autoName.current = shownName; }
 
       const detected = detectFromReleaseName([parsed.name, ...parsed.files.map((x) => x.path)].join(' '));
       const newlyDetected = new Set<string>();
@@ -396,6 +412,7 @@ export default function Upload() {
             searchYear={year || searchInfo.year}
             autoStart={!!file && !!categoryId && !!name.trim()}
             sessionKey={sessionKey}
+            refreshKey={`${categoryId}|${searchInfo.title}|${year}|${nfoText.length}:${nfoText.slice(0, 40)}`}
             currentDescription={description}
             onGenerate={setDescription}
             onCoverChange={setCoverImage}

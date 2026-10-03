@@ -1,5 +1,5 @@
 import { FACETS, facetKeysFor, normalizeAttrs } from './facet-schema';
-import { GAME_PLATFORMS, detectPlatformIds } from './game-platforms';
+import { GAME_PLATFORMS, detectGamePlatforms, nfoLine } from './game-platforms';
 
 // Les listes de valeurs de chaque filtre (pour matchVocab), tirées du schéma pour rester synchronisées.
 const FACETS_OPTIONS: Record<string, string[]> = new Proxy({} as Record<string, string[]>, { get: (_t, key: string) => FACETS[key]?.options ?? [] });
@@ -78,7 +78,7 @@ const GENRE_APPS: Record<string, string[]> = {
   Accessibilité: ['accessibilite', 'screen reader', 'nvda'], 'Album et visionneuse': ['visionneuse', 'viewer', 'irfanview', 'xnview', 'acdsee'], Utilitaire: ['utility', 'utilities', 'utilitaire', 'tool', 'tools', 'toolkit'],
 };
 const GENRE_GAMES: Record<string, string[]> = {
-  Simulation: ['simulator', 'simulation'], Gestion: ['tycoon', 'manager', 'management'], Course: ['racing', 'rally', 'motogp', 'formula', 'forza', 'need for speed'], 'Jeu de rôle': ['rpg', 'role playing'],
+  Simulation: ['simulator', 'simulation'], Aventure: ['adventure', 'action adventure'], Gestion: ['tycoon', 'manager', 'management'], Course: ['racing', 'rally', 'motogp', 'formula', 'forza', 'need for speed'], 'Jeu de rôle': ['rpg', 'role playing'],
   Roguelike: ['roguelike', 'rogue like', 'roguelite', 'rogue lite'], 'Visual novel': ['visual novel'], 'Tower defense': ['tower defense', 'tower defence'], 'City builder': ['city builder', 'city building'],
   Stratégie: ['strategy', 'rts', '4x'], 'Survival-horror': ['survival horror'], 'Plates-formes': ['platformer', 'platform'], Combat: ['fighting', 'fighter'], Sport: ['sports', 'football', 'fifa', 'nba', 'nhl', 'pga'],
   FPS: ['shooter', 'fps', 'first person shooter'], TPS: ['third person shooter', 'tps'], MMO: ['massively multiplayer', 'mmorpg', 'mmo'], Éducatif: ['educational'], 'Puzzle-game': ['puzzle'],
@@ -130,7 +130,8 @@ export function detectAttrs(input: DetectInput): Record<string, string[]> {
   const extList = [...exts.keys()];
   const found: Record<string, string[]> = {};
   const set = (key: string, values: string[]) => { if (allowed.includes(key) && values.length) found[key] = [...new Set(values)]; };
-  const genres = (input.metaGenres ?? []).join(' ; ');
+  // Genres : ceux de la fiche choisie, et la ligne « Genre(s) : » du NFO.
+  const genres = [...(input.metaGenres ?? []), nfoLine(nfo, 'genres?|style|cat[eé]gorie') ?? ''].join(' ; ');
 
   // ---- Films & séries
   const hasVideoFile = extList.some((e) => ['mkv', 'mp4', 'avi', 'm2ts', 'ts', 'mov', 'wmv', 'mpg', 'm4v', 'webm', 'iso'].includes(e));
@@ -228,7 +229,7 @@ export function detectAttrs(input: DetectInput): Record<string, string[]> {
     if (t) set('typeMusique', [t]);
   }
   // Le genre musical ne se devine PAS du nom (« Daft Punk » n'est pas du punk) : fiche (Deezer...) ou ligne « Genre » du NFO seulement.
-  if (allowed.includes('genreMusique')) set('genreMusique', matchVocab(`${genres} ${nfo.match(/^\s*genres?\s*[:.]+\s*(.+)$/im)?.[1] ?? ''}`, FACETS_OPTIONS.genreMusique, GENRE_MUSIC));
+  if (allowed.includes('genreMusique')) set('genreMusique', matchVocab(genres, FACETS_OPTIONS.genreMusique, GENRE_MUSIC));
   if (allowed.includes('formatSamples')) {
     const map: Record<string, string> = { wav: 'WAV', aif: 'AIFF', aiff: 'AIFF', mp3: 'MP3', rex: 'REX', rx2: 'REX', mid: 'MIDI', midi: 'MIDI' };
     const f = [...new Set(extList.map((e) => map[e]).filter(Boolean))];
@@ -244,7 +245,7 @@ export function detectAttrs(input: DetectInput): Record<string, string[]> {
   if (allowed.includes('genreApplications')) set('genreApplications', matchVocab(`${input.name} ${genres}`, FACETS_OPTIONS.genreApplications, GENRE_APPS).slice(0, 3));
   if (allowed.includes('genreJeux')) set('genreJeux', matchVocab(`${genres} ${input.name}`, FACETS_OPTIONS.genreJeux, GENRE_GAMES));
   // Consoles : même reconnaissance que le sélecteur de plateforme de l'envoi (voir game-platforms.ts).
-  const platformIds = detectPlatformIds(all, extList);
+  const platformIds = detectGamePlatforms(input.name, paths, nfo);
   for (const key of ['consoleMicrosoft', 'consoleNintendo', 'consoleSony']) {
     if (!allowed.includes(key)) continue;
     set(key, GAME_PLATFORMS.filter((p) => p.facetKey === key && platformIds.includes(p.id)).map((p) => p.facetValue as string));

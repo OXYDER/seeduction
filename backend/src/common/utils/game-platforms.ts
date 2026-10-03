@@ -72,3 +72,24 @@ export function platformIdsFromRawg(list: string): string[] {
   const names = list.split(/[,;]+/).map(lower).filter(Boolean);
   return GAME_PLATFORMS.filter((p) => p.rawg.some((r) => names.includes(r))).map((p) => p.id);
 }
+
+/** Valeur d'une ligne étiquetée d'un NFO (« Plateforme(s) : GameCube », « Genre(s) : Action, Adventure »...). */
+export function nfoLine(nfo: string | null | undefined, labels: string): string | null {
+  if (!nfo) return null;
+  const m = new RegExp(`^\\s*(?:${labels})\\s*(?:\\([sx]\\))?\\s*[:.\\-]+\\s*(.+)$`, 'im').exec(nfo);
+  return m ? m[1].trim() : null;
+}
+
+/**
+ * Plateformes d'une release de jeu. Ordre de confiance : la ligne « Plateforme(s) : » du NFO, puis le nom et les fichiers du torrent.
+ * Le texte libre d'un NFO n'est PAS lu (il parle souvent d'autres plateformes : « pour Wii... », « remake de la version PlayStation »).
+ */
+export function detectGamePlatforms(name: string, paths: string[], nfo?: string | null): string[] {
+  const exts = paths.map((p) => (p.includes('.') ? p.split('.').pop()!.toLowerCase() : '')).filter(Boolean);
+  const labeled = nfoLine(nfo, 'plateformes?|platforms?|plate-?forme|consoles?|syst[eè]mes?');
+  if (labeled) {
+    const ids = detectPlatformIds(labeled, []);
+    if (ids.length) return ids;
+  }
+  return detectPlatformIds([name, ...paths.slice(0, 120)].join(' '), exts);
+}

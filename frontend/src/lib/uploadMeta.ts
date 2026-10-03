@@ -155,3 +155,17 @@ export function parseNfo(text: string): NfoInfo {
   Object.assign(out, detectEpisodeInfo(relLine));
   return out;
 }
+
+/** Un nom interne de .torrent qui n'est qu'un code (« GGSPA4 », « SLUS-20152 ») : dossier d'une image de console, pas un titre. */
+export const looksLikeCode = (name: string) => /^[A-Z0-9][A-Z0-9_-]{3,11}$/.test(name.trim()) && /\d/.test(name) && /[A-Z]/.test(name);
+
+/** Titre lisible tiré d'un NFO : sa première ligne non vide (hors lignes « clé : valeur » et codes). */
+export function titleFromNfo(nfo: string): string | null {
+  for (const raw of nfo.split(/\r?\n/).slice(0, 12)) {
+    const line = raw.replace(/^[\s=*#_\-~]+|[\s=*#_\-~]+$/g, '').trim();
+    if (!line) continue;
+    if (line.length < 4 || line.length > 120 || /^[^:]{1,30}:\s/.test(line) || looksLikeCode(line)) return null;
+    return line;
+  }
+  return null;
+}

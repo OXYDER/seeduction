@@ -106,7 +106,7 @@ export function detectFromReleaseName(text: string): ParsedQuery {
 }
 
 // Étiquettes techniques ou de sortie qui ne font pas partie du titre d'une oeuvre.
-const NON_TITLE_TOKEN = /^(s\d{1,2}(e\d{1,3})?|saison\d*|complete|complet|integrale|intégrale|discographie|repack|proper|extended|unrated|remastered|multi|truefrench|french|vff|vfq|vostfr|subforced|dvdrip|bdrip|brrip|webrip|web-dl|webdl|hdlight|4klight|hdr10?|dv|x26[45]|h26[45]|hevc|aac|ac3|dts|flac|mp3|\d{3,4}p|\d+kbps|\d+k)$/i;
+const NON_TITLE_TOKEN = /^(s\d{1,2}(e\d{1,3})?|saison\d*|complete|complet|integrale|intégrale|discographie|repack|proper|extended|unrated|remastered|multi|truefrench|french|vff|vfq|vostfr|subforced|dvdrip|bdrip|brrip|webrip|web-dl|webdl|iso|nsp|xci|nsz|rvz|wbfs|cia|hdlight|4klight|hdr10?|dv|x26[45]|h26[45]|hevc|aac|ac3|dts|flac|mp3|\d{3,4}p|\d+kbps|\d+k)$/i;
 
 /**
  * Nettoie un nom de release ("Dune.Part.Two.2024.MULTI.1080p.WEB-DL.x264-GRP")

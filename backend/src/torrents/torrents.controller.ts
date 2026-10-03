@@ -9,7 +9,7 @@ import { RecommendationsService } from './recommendations.service';
 import { accountOf, assertPerm } from '../common/utils/account';
 import { normalizeOrigin } from '../common/utils/facets';
 import { FACETS } from '../common/utils/facet-schema';
-import { GAME_PLATFORMS, detectPlatformIds, platformIdsFromRawg } from '../common/utils/game-platforms';
+import { GAME_PLATFORMS, detectGamePlatforms, platformIdsFromRawg } from '../common/utils/game-platforms';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 
@@ -144,11 +144,9 @@ export class TorrentsController {
   @Post('platforms')
   platforms(@Body() body: { name?: string; files?: { path: string }[]; nfo?: string; rawg?: string }) {
     const files = (Array.isArray(body?.files) ? body.files : []).slice(0, 400).map((f) => String(f?.path ?? ''));
-    const exts = files.map((p) => (p.includes('.') ? p.split('.').pop()!.toLowerCase() : '')).filter(Boolean);
-    const text = [String(body?.name ?? '').slice(0, 400), ...files.slice(0, 120), String(body?.nfo ?? '').slice(0, 20_000)].join(' ');
     return {
       platforms: GAME_PLATFORMS.map(({ id, label, group, category, facetKey, facetValue }) => ({ id, label, group, category, facetKey, facetValue })),
-      detected: detectPlatformIds(text, exts),
+      detected: detectGamePlatforms(String(body?.name ?? '').slice(0, 400), files, typeof body?.nfo === 'string' ? body.nfo.slice(0, 20_000) : undefined),
       onFiche: platformIdsFromRawg(String(body?.rawg ?? '').slice(0, 1000)),
     };
   }
