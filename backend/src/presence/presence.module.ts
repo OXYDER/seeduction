@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { PresenceService } from './presence.service';
-import { PrismaService } from '../common/prisma.service';
 
 @Module({
-  providers: [PresenceService, PrismaService],
+  providers: [PresenceService],
   exports: [PresenceService],
 })
 export class PresenceModule {}

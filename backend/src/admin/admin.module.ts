@@ -3,7 +3,6 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminInvitesService } from './admin-invites.service';
 import { SiteConfigService } from './site-config.service';
-import { PrismaService } from '../common/prisma.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { BadgesModule } from '../badges/badges.module';
 import { ReportsModule } from '../reports/reports.module';
@@ -12,6 +11,6 @@ import { SocialModule } from '../social/social.module';
 @Module({
   imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule],
   controllers: [AdminController],
-  providers: [AdminService, AdminInvitesService, SiteConfigService, PrismaService],
+  providers: [AdminService, AdminInvitesService, SiteConfigService],
 })
 export class AdminModule {}

@@ -4,7 +4,6 @@ import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
 import { ChatFilesService } from './chat-files.service';
-import { PrismaService } from '../common/prisma.service';
 import { PresenceModule } from '../presence/presence.module';
 import { CoversModule } from '../covers/covers.module';
 
@@ -18,7 +17,7 @@ import { CoversModule } from '../covers/covers.module';
     }),
   ],
   controllers: [ChatController],
-  providers: [ChatService, ChatGateway, ChatFilesService, PrismaService],
+  providers: [ChatService, ChatGateway, ChatFilesService],
   exports: [ChatGateway, ChatFilesService],
 })
 export class ChatModule {}

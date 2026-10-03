@@ -39,12 +39,14 @@ import { StreamModule } from './stream/stream.module';
 import { WikiModule } from './wiki/wiki.module';
 import { MessengerModule } from './messenger/messenger.module';
 import { FamilyModule } from './family/family.module';
+import { PrismaModule } from './common/prisma.module';
 import { MemberActivityModule } from './member-activity/member-activity.module';
 import { RoadmapModule } from './roadmap/roadmap.module';
 import { TeamsModule } from './teams/teams.module';
 
 @Module({
   imports: [
+    PrismaModule,
     ScheduleModule.forRoot(), // active les @Cron (snapshots ratio, purge peers)
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]), // rate-limit anti-abus API générale
     AuthModule,
