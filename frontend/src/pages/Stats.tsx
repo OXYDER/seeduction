@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../api/client';
@@ -99,35 +99,8 @@ export default function Stats() {
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))' }}>
-        <div className="panel">
-          <h3>🏆 Les plus téléchargés</h3>
-          <table>
-            <tbody>
-              {data.topCompleted.map((t: any) => (
-                <tr key={t.id}>
-                  <td><TorrentLink torrent={t} /></td>
-                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{t.completedCount} ✓ · {t.seeders} S</td>
-                </tr>
-              ))}
-              {data.topCompleted.length === 0 && <tr><td className="muted">Rien pour l'instant.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-        <div className="panel">
-          <h3>🔁 À reseeder</h3>
-          <p className="muted">Torrents complétés par des membres mais sans aucun seeder actuellement : si tu les as encore, remets-les en seed (et gagne des points bonus).</p>
-          <table>
-            <tbody>
-              {data.dead.map((t: any) => (
-                <tr key={t.id}>
-                  <td><TorrentLink torrent={t} /></td>
-                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{t.completedCount} ✓</td>
-                </tr>
-              ))}
-              {data.dead.length === 0 && <tr><td style={{ color: 'var(--success)' }}>✓ Tous les torrents ont des seeders.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        <TopTorrents data={data} />
+        <TopMembers x={x} />
       </div>
 
       {x && (
@@ -194,37 +167,81 @@ export default function Stats() {
             ))}
           </div>
 
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
-            <div className="panel">
-              <h3>⬆️ Plus gros uploaders (torrents)</h3>
-              <table><tbody>
-                {x.topUploaders.map((u: any) => <tr key={u.user.id}><td><UserLink user={u.user} /></td><td className="muted" style={{ textAlign: 'right' }}>{u.count} torrent{u.count > 1 ? 's' : ''}</td></tr>)}
-                {x.topUploaders.length === 0 && <tr><td className="muted">Rien pour l'instant.</td></tr>}
-              </tbody></table>
-            </div>
-            <div className="panel">
-              <h3>🌱 Qui seede le plus (en ce moment)</h3>
-              <table><tbody>
-                {x.topSeeders.map((u: any) => <tr key={u.user.id}><td><UserLink user={u.user} /></td><td className="muted" style={{ textAlign: 'right' }}>{u.count} torrent{u.count > 1 ? 's' : ''}</td></tr>)}
-                {x.topSeeders.length === 0 && <tr><td className="muted">Personne ne seede en ce moment.</td></tr>}
-              </tbody></table>
-            </div>
-            <div className="panel">
-              <h3>💬 Les plus commentés</h3>
-              <table><tbody>
-                {x.mostCommented.map((c: any) => <tr key={c.torrent.id}><td><TorrentLink torrent={c.torrent} /></td><td className="muted" style={{ whiteSpace: 'nowrap' }}>{c.count} 💬</td></tr>)}
-                {x.mostCommented.length === 0 && <tr><td className="muted">Aucun commentaire.</td></tr>}
-              </tbody></table>
-            </div>
-            <div className="panel">
-              <h3>📦 Les plus gros torrents</h3>
-              <table><tbody>
-                {x.biggest.map((t: any) => <tr key={t.id}><td><TorrentLink torrent={t} /></td><td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatBytes(t.size)}</td></tr>)}
-              </tbody></table>
-            </div>
-          </div>
         </>
       )}
     </div>
   );
+}
+
+interface Tab { key: string; label: string; body: ReactNode }
+
+/** Plusieurs classements dans un seul encadré : on change de liste avec les onglets. */
+function TabbedTop({ title, tabs, footer }: { title: string; tabs: Tab[]; footer?: ReactNode }) {
+  const [key, setKey] = useState(tabs[0]?.key);
+  const current = tabs.find((t) => t.key === key) ?? tabs[0];
+  return (
+    <div className="panel">
+      <h3 style={{ marginTop: 0 }}>{title}</h3>
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        {tabs.map((t) => <button key={t.key} type="button" className={`secondary${t.key === current.key ? ' on' : ''}`} onClick={() => setKey(t.key)}>{t.label}</button>)}
+      </div>
+      {current.body}
+      {footer && <div style={{ marginTop: 10 }}>{footer}</div>}
+    </div>
+  );
+}
+
+const rows = (list: any[], render: (item: any, i: number) => ReactNode, empty = "Rien pour l'instant.") => (
+  <table><tbody>
+    {list.map((item, i) => <tr key={item.id ?? item.user?.id ?? item.torrent?.id ?? i}>{render(item, i)}</tr>)}
+    {list.length === 0 && <tr><td className="muted">{empty}</td></tr>}
+  </tbody></table>
+);
+const rank = (i: number) => <td className="muted" style={{ width: 28 }}>{i + 1}</td>;
+
+/** Tous les classements de torrents, regroupés. */
+function TopTorrents({ data }: { data: any }) {
+  const x = data.extra;
+  const tabs: Tab[] = [
+    { key: 'dl', label: '⬇️ Plus téléchargés', body: rows(data.topCompleted, (t, i) => <>{rank(i)}<td><TorrentLink torrent={t} /></td><td className="muted" style={{ whiteSpace: 'nowrap' }}>{t.completedCount} ✓ · {t.seeders} S</td></>) },
+    ...(x ? [
+      { key: 'cm', label: '💬 Plus commentés', body: rows(x.mostCommented, (c, i) => <>{rank(i)}<td><TorrentLink torrent={c.torrent} /></td><td className="muted" style={{ whiteSpace: 'nowrap' }}>{c.count} 💬</td></>, 'Aucun commentaire.') },
+      { key: 'big', label: '📦 Plus gros', body: rows(x.biggest, (t, i) => <>{rank(i)}<td><TorrentLink torrent={t} /></td><td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatBytes(t.size)}</td></>) },
+    ] : []),
+    {
+      key: 'dead', label: `🔁 À reseeder (${data.deadCount})`,
+      body: (
+        <>
+          <p className="muted" style={{ marginTop: 0 }}>Torrents complétés par des membres mais sans aucun seeder : si tu les as encore, remets-les en seed (et gagne des points bonus).</p>
+          {rows(data.dead, (t, i) => <>{rank(i)}<td><TorrentLink torrent={t} /></td><td className="muted" style={{ whiteSpace: 'nowrap' }}>{t.completedCount} ✓</td></>, '✓ Tous les torrents ont des seeders.')}
+        </>
+      ),
+    },
+  ];
+  return <TabbedTop title="🏆 Top torrents" tabs={tabs} />;
+}
+
+/** Tous les classements de membres, regroupés (upload, envois, seed, badges). */
+function TopMembers({ x }: { x: any }) {
+  const [board, setBoard] = useState<any[] | null>(null);
+  const [fame, setFame] = useState<any[] | null>(null);
+  useEffect(() => {
+    api.get('/users/leaderboard', { params: { limit: 10 } }).then((r) => setBoard(r.data)).catch(() => setBoard([]));
+    api.get('/badges/hall-of-fame').then((r) => setFame(r.data.slice(0, 10))).catch(() => setFame([]));
+  }, []);
+  const tabs: Tab[] = [
+    {
+      key: 'up', label: '⬆️ Upload',
+      body: board === null ? <p className="muted">Chargement…</p> : rows(board, (u, i) => <>{rank(i)}<td><UserLink user={u} /></td><td className="muted" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{formatBytes(u.uploaded)} · ratio {u.ratio ? u.ratio.toFixed(2) : '∞'}</td></>),
+    },
+    ...(x ? [
+      { key: 'send', label: "📤 Plus d'envois", body: rows(x.topUploaders, (u, i) => <>{rank(i)}<td><UserLink user={u.user} /></td><td className="muted" style={{ textAlign: 'right' }}>{u.count} torrent{u.count > 1 ? 's' : ''}</td></>) },
+      { key: 'seed', label: '🌱 Seeders', body: rows(x.topSeeders, (u, i) => <>{rank(i)}<td><UserLink user={u.user} /></td><td className="muted" style={{ textAlign: 'right' }}>{u.count} torrent{u.count > 1 ? 's' : ''}</td></>, 'Personne ne seede en ce moment.') },
+    ] : []),
+    {
+      key: 'badges', label: '🎖️ Badges',
+      body: fame === null ? <p className="muted">Chargement…</p> : rows(fame, (e, i) => <>{rank(i)}<td><UserLink user={e.user} /></td><td className="muted" style={{ textAlign: 'right' }}>{e.badgeCount} badge{e.badgeCount > 1 ? 's' : ''}</td></>, "Aucun badge décerné pour l'instant."),
+    },
+  ];
+  return <TabbedTop title="👥 Top membres" tabs={tabs} footer={<span className="muted"><Link to="/leaderboard">Classement complet →</Link> · <Link to="/hall-of-fame">Hall of Fame →</Link></span>} />;
 }
