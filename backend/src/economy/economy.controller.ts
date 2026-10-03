@@ -31,6 +31,40 @@ export class EconomyController {
     return this.economy.seedObligations(accountOf(req));
   }
 
+  /** Page « Mes seeds » : tout ce que le membre seede ou a téléchargé, avec l'état de l'obligation de partage. */
+  @UseGuards(JwtAuthGuard)
+  @Get('my-seeds')
+  mySeeds(@Request() req: any) {
+    return this.economy.mySeeds(accountOf(req));
+  }
+
+  /** Page « Hit & run » : les hit & run confirmés et le prix pour les effacer avec des points. */
+  @UseGuards(JwtAuthGuard)
+  @Get('hnr')
+  hitAndRuns(@Request() req: any) {
+    return this.economy.hitAndRuns(accountOf(req));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('hnr/:snatchId/clear')
+  clearHnr(@Param('snatchId') snatchId: string, @Request() req: any) {
+    assertPerm(req, 'spend');
+    return this.economy.clearHitAndRun(accountOf(req), snatchId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('transfers')
+  transfers(@Request() req: any) {
+    return this.economy.transfers(accountOf(req));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('transfer')
+  transfer(@Body() body: { userId?: string; username?: string; amount: number; message?: string }, @Request() req: any) {
+    assertPerm(req, 'spend');
+    return this.economy.transfer(accountOf(req), { userId: body?.userId, username: body?.username }, body?.amount, body?.message);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('redeem')
   redeem(@Body('item') item: string, @Request() req: any) {

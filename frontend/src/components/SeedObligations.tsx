@@ -85,7 +85,7 @@ export default function SeedObligations() {
               );
             })}
           </div>
-          <Link to="/bonus" className="seedob-foot" onClick={() => setOpen(false)}>Règle du seed et points bonus →</Link>
+          <Link to="/seeds" className="seedob-foot" onClick={() => setOpen(false)}>Voir tous mes seeds →</Link>
         </div>
       )}
     </div>

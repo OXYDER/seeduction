@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import FreeleechCalendar from '../components/FreeleechCalendar';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import TorrentLink from '../components/TorrentLink';
+import TransferPoints from '../components/TransferPoints';
+import { timeAgo } from '../lib/time';
 
 /** Points bonus, boutique, jetons freeleech et suivi des « hit & run ». */
 export default function Bonus() {
@@ -10,11 +11,13 @@ export default function Bonus() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
+  const [transfers, setTransfers] = useState<any>(null);
 
   function load() {
     api.get('/bonus/me').then((r) => setData(r.data)).catch(() => setError('Impossible de charger tes points bonus'));
   }
-  useEffect(load, []);
+  const loadTransfers = () => api.get('/bonus/transfers').then((r) => setTransfers(r.data)).catch(() => {});
+  useEffect(() => { load(); void loadTransfers(); }, []);
 
   async function buy(id: string) {
     setBusy(id);
@@ -70,29 +73,33 @@ export default function Bonus() {
       </div>
 
       <div className="panel">
-        <h3>Règle du seed (« hit & run »)</h3>
-        <p className="muted">
-          Après avoir complété un téléchargement, seede-le au moins <strong>{rules.hnrSeedHours} h</strong> (ou jusqu'à un ratio de <strong>{rules.hnrRatio}</strong> sur ce torrent).
-          Si tu l'abandonne avant, {rules.hnrGraceHours} h après la fin du téléchargement, tu reçois un avertissement automatique.
-          À {rules.hnrLimit} torrents abandonnés non régularisés, les nouveaux téléchargements sont bloqués jusqu'à ce que tu reprennes leur seed.
-          Le ratio minimum ne s'applique qu'après {rules.ratioGraceGb} Go téléchargés.
-        </p>
-        {data.unresolved.length === 0 ? (
-          <p style={{ color: 'var(--success)' }}>✓ Aucun hit & run à régulariser.</p>
-        ) : (
-          <table>
-            <thead><tr><th>Torrent à reseeder</th><th>Seed cumulé</th><th>Complété le</th></tr></thead>
+        <h3 style={{ marginTop: 0 }}>🤝 Transférer des points à un membre</h3>
+        <p className="muted" style={{ marginTop: 0 }}>Envoie des points bonus à un autre membre (un cadeau, un remerciement…). Tu peux aussi le faire depuis son profil.</p>
+        <TransferPoints onDone={() => { load(); void loadTransfers(); }} />
+        {transfers && transfers.items.length > 0 && (
+          <table style={{ marginTop: 12 }}>
+            <thead><tr><th>Quand</th><th>Membre</th><th style={{ textAlign: 'right' }}>Points</th><th>Message</th></tr></thead>
             <tbody>
-              {data.unresolved.map((u: any) => (
-                <tr key={u.id}>
-                  <td><TorrentLink torrent={{ id: u.torrentId, name: u.name }} /></td>
-                  <td className="muted">{u.seedHours} h / {rules.hnrSeedHours} h</td>
-                  <td className="muted">{new Date(u.completedAt).toLocaleDateString('fr-FR')}</td>
+              {transfers.items.map((t: any) => (
+                <tr key={t.id}>
+                  <td className="muted">{timeAgo(t.createdAt)}</td>
+                  <td>{t.direction === 'out' ? '→ ' : '← '}<Link to={`/users/${t.other.id}`}>{t.other.username}</Link></td>
+                  <td style={{ textAlign: 'right', color: t.direction === 'out' ? 'var(--danger)' : 'var(--success)' }}>{t.direction === 'out' ? '−' : '+'}{t.amount}</td>
+                  <td className="muted">{t.message}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="panel">
+        <h3 style={{ marginTop: 0 }}>Règle du seed</h3>
+        <p className="muted" style={{ margin: 0 }}>
+          Après avoir complété un téléchargement, seede-le au moins <strong>{rules.hnrSeedHours} h</strong> (ou jusqu'à un ratio de <strong>{rules.hnrRatio}</strong> sur ce torrent).
+          Suis ton avancement sur <Link to="/seeds">🌱 Mes seeds</Link> ; les hit & run confirmés ({data.unresolved.length} actuellement) sont sur la page <Link to="/hit-and-run">⚠️ Hit & run</Link>.
+          Le ratio minimum ne s'applique qu'après {rules.ratioGraceGb} Go téléchargés.
+        </p>
       </div>
     </div>
   );

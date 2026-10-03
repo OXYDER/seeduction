@@ -38,6 +38,18 @@ export const ECONOMY = {
   reseedRewardPerDay: num('RESEED_REWARD_PER_DAY', 5),
   reseedRewardDaysCap: num('RESEED_REWARD_DAYS_CAP', 50),
   reseedRewardMax: num('RESEED_REWARD_MAX', 200),
+  /**
+   * Effacer un hit & run avec des points : base + un prix par heure de seed qui manquait + un supplément pour chaque effacement
+   * déjà acheté ces 30 derniers jours, le tout plafonné. Volontairement bien plus cher que de simplement reprendre le seed
+   * (seeder un torrent rapporte 1 point par heure) : le temps de partage obligatoire doit rester la voie normale.
+   */
+  hnrClearBase: num('HNR_CLEAR_BASE', 250),
+  hnrClearPerHour: num('HNR_CLEAR_PER_HOUR', 5),
+  hnrClearRepeat: num('HNR_CLEAR_REPEAT', 100),
+  hnrClearMax: num('HNR_CLEAR_MAX', 900),
+  /** Transfert de points entre membres : montant minimum et total envoyable par 24 h. */
+  transferMin: num('TRANSFER_MIN', 10),
+  transferDailyMax: num('TRANSFER_DAILY_MAX', 2000),
 };
 
 /** Réglages du site modifiables depuis Admin > Paramètres (voir SiteConfigService). */

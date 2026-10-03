@@ -358,8 +358,8 @@ function LayoutInner() {
                 <span className="pill down" title="Téléchargé">▼ {formatBytes(profile.downloaded)}</span>
                 <Link to="/bonus" className="pill gold" title="Points bonus : boutique et règle du seed">✦ {formatNumber(Math.round(profile.bonusPoints))}</Link>
                 <span className={`pill ${Number(profile.uploaded) >= Number(profile.downloaded) ? 'up' : 'down'}`} title="Différentiel : upload moins téléchargé (ta marge avant de passer sous un ratio de 1)">Δ {Number(profile.uploaded) >= Number(profile.downloaded) ? '+' : '−'}{formatBytes(Math.abs(Number(profile.uploaded) - Number(profile.downloaded)))}</span>
-                {econ && <Link to="/bonus" className="pill up" title="Torrents que tu seedes en ce moment">🌱 {econ.seeding}</Link>}
-                {econ && <Link to="/bonus" className={`pill ${econ.hnr > 0 ? 'down' : ''}`} title={econ.hnr > 0 ? `${econ.hnr} hit & run non régularisé${econ.hnr > 1 ? 's' : ''}` : 'Aucun hit & run : parfait !'}>H&amp;R {econ.hnr}</Link>}
+                {econ && <Link to="/seeds" className="pill up" title="Mes seeds : ce que tu seedes et ton obligation de partage">🌱 {econ.seeding}</Link>}
+                {econ && <Link to="/hit-and-run" className={`pill ${econ.hnr > 0 ? 'down' : ''}`} title={econ.hnr > 0 ? `${econ.hnr} hit & run non régularisé${econ.hnr > 1 ? 's' : ''}` : 'Aucun hit & run : parfait !'}>H&amp;R {econ.hnr}</Link>}
               </div>
             )}
             <div className="row" style={{ gap: 8 }}>
@@ -435,7 +435,7 @@ function LayoutInner() {
               <span className="label">Différentiel :</span>
               <span className="value">{Number(profile.uploaded) >= Number(profile.downloaded) ? '+' : '−'}{formatBytes(Math.abs(Number(profile.uploaded) - Number(profile.downloaded)))}</span>
             </div>
-            {econ && <Link to="/bonus" className="topbar-stat" title="Torrents en seed / hit & run"><span className="label">Seeds / H&amp;R :</span><span className="value">{econ.seeding} / {econ.hnr}</span></Link>}
+            {econ && <Link to="/seeds" className="topbar-stat" title="Torrents en seed / hit & run"><span className="label">Seeds / H&amp;R :</span><span className="value">{econ.seeding} / {econ.hnr}</span></Link>}
             <div className="topbar-stat">
               <span className="label">Invitations :</span>
               <span className="value">{profile._count.invitees}</span>

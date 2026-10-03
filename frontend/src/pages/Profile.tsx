@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import StaffUserPanel, { ROLE_LABEL } from '../components/StaffUserPanel';
 import MemberActivityPanel from '../components/MemberActivityPanel';
+import TransferPoints from '../components/TransferPoints';
 import ReportButton from '../components/ReportButton';
 import SecurityPanel from '../components/SecurityPanel';
 import ProfileEditor from '../components/ProfileEditor';
@@ -30,6 +31,9 @@ export default function Profile() {
   const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [tab, setTab] = useState<'overview' | 'account' | 'security' | 'dev'>('overview');
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [friendBusy, setFriendBusy] = useState(false);
+  const [friendError, setFriendError] = useState('');
 
   useEffect(() => {
     if (!targetId) return;
@@ -64,6 +68,11 @@ export default function Profile() {
   async function revokeKey(keyId: string) {
     await api.delete(`/keys/${keyId}`);
     setApiKeys((prev) => prev.map((k) => (k.id === keyId ? { ...k, revoked: true } : k)));
+  }
+
+  async function friendAction(fn: () => Promise<unknown>) {
+    setFriendBusy(true); setFriendError('');
+    try { await fn(); setReloadKey((k) => k + 1); } catch (e: any) { setFriendError(e.response?.data?.message ?? 'Action impossible'); } finally { setFriendBusy(false); }
   }
 
   if (!profile) return <p className="muted">Chargement...</p>;
@@ -103,8 +112,33 @@ export default function Profile() {
           <Link to={`/browse?uploaderId=${profile.id}`} className="muted">Voir ses torrents →</Link>
         )}
         {id && me && id !== me.id && <Link to={`/messages?to=${encodeURIComponent(profile.username)}`} className="icon-btn">✉️ Message</Link>}
+        {id && me && id !== me.id && profile.friendStatus === 'NONE' && (
+          <button type="button" className="icon-btn" disabled={friendBusy} onClick={() => friendAction(() => api.post('/friends/request', { username: profile.username }))}>➕ Ajouter en ami</button>
+        )}
+        {id && me && id !== me.id && profile.friendStatus === 'PENDING_OUT' && (
+          <button type="button" className="icon-btn" disabled={friendBusy} title="Annuler ta demande d'ami" onClick={() => friendAction(() => api.delete(`/friends/${profile.friendshipId}`))}>⏳ Demande envoyée · Annuler</button>
+        )}
+        {id && me && id !== me.id && profile.friendStatus === 'PENDING_IN' && (
+          <>
+            <button type="button" className="icon-btn" disabled={friendBusy} onClick={() => friendAction(() => api.post(`/friends/${profile.friendshipId}/accept`))}>✅ Accepter sa demande d'ami</button>
+            <button type="button" className="icon-btn" disabled={friendBusy} onClick={() => friendAction(() => api.delete(`/friends/${profile.friendshipId}`))}>Refuser</button>
+          </>
+        )}
+        {id && me && id !== me.id && profile.friendStatus === 'FRIENDS' && (
+          <button type="button" className="icon-btn" disabled={friendBusy} title="Retirer de mes amis" onClick={() => { if (window.confirm(`Retirer ${profile.username} de tes amis ?`)) void friendAction(() => api.delete(`/friends/${profile.friendshipId}`)); }}>✓ Ami · Retirer</button>
+        )}
+        {id && me && id !== me.id && (
+          <button type="button" className="icon-btn" onClick={() => setShowTransfer((v) => !v)}>🎁 Transférer des points</button>
+        )}
         {id && me && id !== me.id && <ReportButton targetType="user" targetId={id} compact />}
       </div>
+      {friendError && <div style={{ color: 'var(--danger)' }}>{friendError}</div>}
+      {showTransfer && id && me && id !== me.id && (
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>🎁 Transférer des points à {profile.username}</h3>
+          <TransferPoints to={{ id: profile.id, username: profile.username }} onCancel={() => setShowTransfer(false)} />
+        </div>
+      )}
       {id && me && ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && (
         <StaffUserPanel targetId={id} myRole={me.role} myId={me.id} onChanged={() => setReloadKey((k) => k + 1)} />
       )}

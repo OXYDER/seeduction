@@ -422,6 +422,7 @@ model Snatch {
   lastSeedAt  DateTime?
   satisfied   Boolean  @default(false) // temps de seed ou ratio sur ce torrent atteint
   hnr         Boolean  @default(false) // a arrêté de seeder trop tôt (avertissement envoyé)
+  hnrClearedAt DateTime? // hit & run effacé avec des points bonus
 
   @@index([userId, torrentId])
   @@index([satisfied, hnr, completedAt])
@@ -431,6 +432,19 @@ model Snatch {
 // « Reprendre la lecture à xx:xx » à la place de « Ouvrir dans le lecteur » sur la fiche torrent. Privé au membre :
 // n'a rien à voir avec le statut public « en train de regarder » (watchingTitle sur User). Par fichier (fileIndex),
 // pas juste par torrent : un pack de plusieurs vidéos (épisodes, etc.) ne doit pas mélanger leurs positions.
+/// Points bonus envoyés d'un membre à un autre (comptes principaux, jamais les profils d'un compte famille).
+model PointTransfer {
+  id        String   @id @default(uuid())
+  fromId    String
+  toId      String
+  amount    Int
+  message   String?  @db.VarChar(140)
+  createdAt DateTime @default(now())
+
+  @@index([fromId, createdAt])
+  @@index([toId, createdAt])
+}
+
 model PlaybackPosition {
   id              String   @id @default(uuid())
   torrent         Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)

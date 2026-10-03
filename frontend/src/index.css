@@ -2558,3 +2558,19 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .team-noowner { padding: 1px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(245,158,11,0.2); color: #fbbf24; }
 .team-info, .team-claim-info { border-left: 3px solid #f59e0b; }
 .team-proof { margin: 6px 0 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,0.1); font-size: 13px; }
+
+/* Pages « Mes seeds » et « Hit & run » */
+.seedpage-list { display: grid; gap: 8px; }
+.seedpage-item { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: inherit; }
+a.seedpage-item:hover { background: rgba(255,255,255,0.07); }
+.seedpage-item .seedob-cover { width: 48px; height: 70px; }
+.seedpage-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.seedpage-chip { font-size: 12px; padding: 1px 9px; border-radius: 999px; background: rgba(255,255,255,0.08); }
+.seedpage-chip.seeding { background: rgba(31,168,85,0.2); color: #4ade80; }
+.seedpage-chip.done { background: rgba(31,168,85,0.25); color: #4ade80; font-weight: 600; }
+.seedpage-chip.idle { background: rgba(245,158,11,0.2); color: #fbbf24; }
+.seedpage-chip.hnr { background: rgba(229,56,79,0.2); color: #f87171; }
+.seedob-bar .done { background: #1fa855; }
+.hnr-actions { display: grid; gap: 6px; flex: none; justify-items: stretch; text-align: center; }
+.transfer-form { display: grid; gap: 2px; }
+@media (max-width: 640px) { .seedpage-item.hnr-item { flex-wrap: wrap; } .hnr-actions { width: 100%; grid-auto-flow: column; } }

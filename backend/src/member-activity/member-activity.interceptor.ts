@@ -96,6 +96,8 @@ const RULES: Rule[] = [
   { m: 'DELETE', p: '/chat/messages/:id', cat: 'message', label: 'Supprime un message du chat' },
   // Économie
   { m: 'POST', p: '/bonus/redeem', cat: 'economy', label: 'Dépense ses points bonus', detail: (r) => r.body?.item ?? r.body?.itemId ?? r.body?.type },
+  { m: 'POST', p: '/bonus/hnr/:snatchId/clear', cat: 'economy', label: 'Efface un hit & run avec des points' },
+  { m: 'POST', p: '/bonus/transfer', cat: 'economy', label: 'Transfère des points à un membre', detail: (r, res) => `${res?.amount ?? r.body?.amount} pts${res?.to ? ` à ${res.to}` : ''}` },
   { m: 'POST', p: '/bonus/token/:torrentId', cat: 'economy', label: 'Utilise un jeton freeleech', tt: 'torrent', tid: param('torrentId') },
   // Réglages
   { m: 'PATCH', p: '/users/me/profile', cat: 'settings', label: 'Modifie son profil' },

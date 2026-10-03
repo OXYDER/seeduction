@@ -102,6 +102,11 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `Un délai de grâce de [b]48 heures[/b] après la fin du téléchargement est toujours accordé avant qu'un manquement soit compté comme un hit & run.\n\n` +
           `[b]Suivre tes seeds en un coup d'œil[/b]\n` +
           `Dès que tu as au moins un téléchargement à terminer, une icône [b]🌱[/b] apparaît en haut de l'écran, à côté de la cloche. Sa pastille indique combien de torrents sont concernés et sa couleur résume la situation : [b]verte[/b] (tout est en seed), [b]orange[/b] (un torrent ne seede pas en ce moment — relance-le), [b]rouge[/b] (un hit & run est déjà compté). Un clic ouvre la liste, du plus urgent au moins urgent : pour chacun, le temps de seed accompli sur les 72 h requises, ton ratio sur ce torrent, et la date limite du délai de grâce. L'icône disparaît toute seule quand tout est régularisé.\n\n` +
+          `[b]Deux pages dédiées[/b] (clique sur les pastilles 🌱 et H&R en haut de l'écran) :\n` +
+          `• [b]🌱 Mes seeds[/b] : ce que tu seedes en ce moment, depuis combien de temps (seed cumulé), ton ratio sur chaque torrent, et si l'obligation de partage est [b]terminée ✅[/b], en cours ⏳, à relancer 🟠 ou un hit & run 🔴. Quatre onglets : en seed maintenant, obligation à terminer, obligation terminée, tout.\n` +
+          `• [b]⚠️ Hit & run[/b] : seulement les hit & run [b]confirmés[/b] (avertissement déjà reçu). Pour chacun : reprendre le seed (gratuit, la bonne façon) ou [b]l'effacer avec des points bonus[/b].\n\n` +
+          `[b]Effacer un hit & run avec des points[/b]\n` +
+          `Le temps de partage reste la règle, donc effacer coûte volontairement bien plus cher que de seeder (un torrent seedé rapporte 1 point par heure) : [b]250 points de base + 5 points par heure de seed manquante[/b], + 100 points pour chaque hit & run déjà effacé ces 30 derniers jours, maximum 900 points. Le torrent est alors considéré comme régularisé et l'avertissement automatique correspondant est retiré. Le staff peut ajuster ces prix dans Admin > Paramètres.\n\n` +
           `[b]Ce qui se passe si tu accumules des hit & run non régularisés[/b]\n` +
           `Au-delà de [b]5 hit & run non régularisés[/b], tes nouveaux téléchargements sont bloqués (le seed, lui, continue normalement) jusqu'à ce que tu en régularises assez — reprends le seed des torrents concernés (visibles sur ton profil) pour débloquer ton compte.\n\n` +
           `[b]Le lecteur Seeduction compte pareil[/b]\n` +
@@ -135,7 +140,10 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `[b]Ce qu'on peut acheter[/b] (voir la page Boutique)\n` +
           `• De l'upload supplémentaire (5 Go ou 20 Go, le paquet de 20 Go coûtant proportionnellement un peu moins cher).\n` +
           `• Un jeton freeleech, à dépenser sur le torrent de ton choix.\n` +
-          `• Un code d'invitation supplémentaire.`,
+          `• Un code d'invitation supplémentaire.\n\n` +
+          `[b]Transférer des points à un autre membre[/b]\n` +
+          `Dans la page Points bonus (section « Transférer des points ») ou directement sur le profil du membre (bouton 🎁 [b]Transférer des points[/b]) : choisis un montant (minimum 10 points, maximum 2 000 points envoyés par 24 h) et un petit mot facultatif. Le membre est prévenu par une notification. Un transfert est définitif, et les derniers envois et réceptions sont listés sous le formulaire.\n\n` +
+          `[b]Amis depuis un profil[/b] : le profil d'un membre propose aussi ➕ Ajouter en ami, ✅ Accepter / Refuser sa demande, ou ✓ Retirer de mes amis, sans passer par la page Amis.`,
       },
       {
         title: 'Rangs et classes de membre',
