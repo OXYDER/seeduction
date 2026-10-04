@@ -180,7 +180,7 @@ export default function SupportTicket() {
                 {ticket.assignee && <span className="muted">· pris en charge par <strong>{ticket.assignee.username}</strong></span>}
               </div>
             </div>
-            <Link to={isStaff ? '/admin?tab=Support' : '/support'} className="secondary" style={{ padding: '8px 14px', alignSelf: 'flex-start' }}>← {isStaff ? 'File des billets' : 'Mes billets'}</Link>
+            <Link to={isStaff ? '/moderation?tab=billets' : '/support'} className="secondary" style={{ padding: '8px 14px', alignSelf: 'flex-start' }}>← {isStaff ? 'File des billets' : 'Mes billets'}</Link>
           </div>
         </div>
 

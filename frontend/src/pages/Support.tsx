@@ -38,7 +38,7 @@ export default function Support() {
           <p className="muted" style={{ margin: '4px 0 0' }}>Une question, un souci ? Cherche d’abord dans le wiki, discute en direct avec l’assistant et l’équipe SDT, ou ouvre un billet : on te répond en privé.</p>
           {overview?.hoursText && <p className="muted" style={{ margin: '6px 0 0' }}>🕒 {overview.hoursText}</p>}
         </div>
-        {isStaff && <Link to="/admin?tab=Support" className="secondary" style={{ whiteSpace: 'nowrap' }}>🛠️ Gérer les billets{staffBadge ? ` (${staffBadge})` : ''}</Link>}
+        {isStaff && <Link to="/moderation?tab=billets" className="secondary" style={{ whiteSpace: 'nowrap' }}>🛡️ Gérer les billets{staffBadge ? ` (${staffBadge})` : ''}</Link>}
       </div>
 
       {closed && <div className="panel" style={{ borderColor: 'var(--danger)' }}>Le support est temporairement fermé. Reviens plus tard, ou consulte le wiki.</div>}

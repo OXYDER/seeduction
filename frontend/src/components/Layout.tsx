@@ -274,15 +274,17 @@ function LayoutInner() {
     }
     if (item.to === '/dead' && deadMine > 0) return <span className="side-badge red" title={`${deadMine} torrent${deadMine > 1 ? 's' : ''} sans seeder que tu peux relancer`}>{fmt(deadMine)}</span>;
     if (item.to === '/news' && newsUnseen > 0) return <span className="side-badge red" title={`${newsUnseen} nouvelle${newsUnseen > 1 ? 's' : ''} non lue${newsUnseen > 1 ? 's' : ''}`}>{fmt(newsUnseen)}</span>;
-    if (item.to === '/support' && (supportMine > 0 || (supportStaff ?? 0) > 0)) {
+    if (item.to === '/support' && supportMine > 0) {
       return (
         <>
           {supportMine > 0 && <span className="side-badge red" title={`${supportMine} réponse${supportMine > 1 ? 's' : ''} à tes billets`}>{fmt(supportMine)}</span>}
-          {(supportStaff ?? 0) > 0 && <span className="side-badge red outline" title={`${supportStaff} billet${(supportStaff ?? 0) > 1 ? 's' : ''} en attente de l'équipe`}>🎫 {fmt(supportStaff ?? 0)}</span>}
         </>
       );
     }
-    if (item.to === '/moderation' && queueTotal > 0) return <span className="side-badge red" title={`${queueTotal} élément${queueTotal > 1 ? 's' : ''} à modérer`}>{fmt(queueTotal)}</span>;
+    if (item.to === '/moderation' && queueTotal + (supportStaff ?? 0) > 0) {
+      const all = queueTotal + (supportStaff ?? 0);
+      return <span className="side-badge red" title={`${queueTotal} élément${queueTotal > 1 ? 's' : ''} à modérer et ${supportStaff ?? 0} billet${(supportStaff ?? 0) > 1 ? 's' : ''} de support en attente`}>{fmt(all)}</span>;
+    }
     return null;
   };
 

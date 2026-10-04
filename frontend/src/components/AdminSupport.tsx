@@ -7,23 +7,22 @@ import { timeAgo } from '../lib/time';
 import Avatar from './Avatar';
 import { PriorityChip, StatusChip } from './SupportBits';
 
-type Sub = 'Billets' | 'Statistiques' | 'Réponses types' | 'Catégories' | 'Assistant et réglages';
+type Sub = 'Réponses types' | 'Catégories' | 'Assistant et réglages';
 interface Category { id: string; name: string; icon: string | null; description: string | null; order: number; active: boolean }
 interface Canned { id: string; title: string; content: string; order: number }
 
-/** Support (Staff) : file des billets, statistiques, réponses types, catégories et réglages de l'assistant du canal Support. */
+/** Support (Staff) : réponses types, catégories et réglages de l'assistant du canal Support. La file des billets et les statistiques sont dans Modération. */
 export function SupportAdmin() {
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === 'ADMIN' || role === 'OWNER';
-  const [sub, setSub] = useState<Sub>('Billets');
-  const subs: Sub[] = isAdmin ? ['Billets', 'Statistiques', 'Réponses types', 'Catégories', 'Assistant et réglages'] : ['Billets', 'Statistiques', 'Réponses types'];
+  const [sub, setSub] = useState<Sub>('Réponses types');
+  const subs: Sub[] = isAdmin ? ['Réponses types', 'Catégories', 'Assistant et réglages'] : ['Réponses types'];
   return (
     <div className="grid" style={{ gap: 14 }}>
       <div className="row tabs sub" style={{ flexWrap: 'wrap' }}>
         {subs.map((s) => <button key={s} className={sub === s ? 'on' : ''} onClick={() => setSub(s)}>{s}</button>)}
       </div>
-      {sub === 'Billets' && <Queue />}
-      {sub === 'Statistiques' && <Stats />}
+      <p className="muted" style={{ margin: 0 }}>La file des billets et les statistiques du support se trouvent maintenant dans <Link to="/moderation?tab=billets">🛡️ Modération</Link>.</p>
       {sub === 'Réponses types' && <CannedAdmin editable={isAdmin} />}
       {sub === 'Catégories' && <CategoriesAdmin />}
       {sub === 'Assistant et réglages' && <SettingsAdmin />}
@@ -33,7 +32,7 @@ export function SupportAdmin() {
 
 // ---------------------------------------------------------------------------------------------- file des billets
 
-function Queue() {
+export function SupportQueue() {
   const navigate = useNavigate();
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
   const [data, setData] = useState<{ tickets: TicketSummary[]; total: number; page: number; pages: number } | null>(null);
@@ -128,7 +127,7 @@ function Queue() {
 
 const minutes = (m: number | null) => (m === null ? '—' : m < 90 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`);
 
-function Stats() {
+export function SupportStats() {
   const [days, setDays] = useState(30);
   const [s, setS] = useState<any>(null);
   useEffect(() => { api.get('/support/staff/stats', { params: { days } }).then((r) => setS(r.data)).catch(() => {}); }, [days]);

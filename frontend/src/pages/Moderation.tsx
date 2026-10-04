@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { useQueue } from '../store/queue';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import RejectReason from '../components/RejectReason';
+import { SupportQueue, SupportStats } from '../components/AdminSupport';
+import { useSupport } from '../store/support';
 
 interface PendingTorrent {
   id: string; name: string; size: number; coverImage: string | null; createdAt: string; year: number | null; resolution: string | null;
@@ -29,7 +31,14 @@ export default function Moderation() {
   const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
   const refreshQueue = useQueue((s) => s.refresh);
   const location = useLocation();
-  const [tab, setTab] = useState<'torrents' | 'reports'>((location.state as any)?.tab === 'reports' ? 'reports' : 'torrents');
+  const [params, setParams] = useSearchParams();
+  type Tab = 'torrents' | 'reports' | 'billets' | 'support-stats';
+  const fromUrl = params.get('tab');
+  const tab: Tab = fromUrl === 'billets' || fromUrl === 'support-stats' || fromUrl === 'reports' || fromUrl === 'torrents' ? fromUrl : (location.state as any)?.tab === 'reports' ? 'reports' : 'torrents';
+  const setTab = (t: Tab) => { const next = new URLSearchParams(params); if (t === 'torrents') next.delete('tab'); else next.set('tab', t); setParams(next, { replace: true }); };
+  const openTickets = useSupport((s) => s.staff);
+  const refreshSupport = useSupport((s) => s.refreshBadge);
+  useEffect(() => { void refreshSupport(); }, [refreshSupport]);
   const [pending, setPending] = useState<PendingTorrent[] | null>(null);
   const [reports, setReports] = useState<ReportRow[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -127,10 +136,19 @@ export default function Moderation() {
         <button type="button" role="tab" aria-selected={tab === 'reports'} className={tab === 'reports' ? 'on' : ''} onClick={() => setTab('reports')}>
           Signalements {reports ? <span className={`mod-count${reports.length ? ' hot' : ''}`}>{reports.length}</span> : null}
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'billets'} className={tab === 'billets' ? 'on' : ''} onClick={() => setTab('billets')}>
+          🎫 Billets de support {openTickets !== null ? <span className={`mod-count${openTickets ? ' hot' : ''}`}>{openTickets}</span> : null}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'support-stats'} className={tab === 'support-stats' ? 'on' : ''} onClick={() => setTab('support-stats')}>
+          📊 Statistiques du support
+        </button>
       </div>
 
       {error && <div className="panel" style={{ borderColor: 'var(--danger)' }}>{error}</div>}
       {flash && <div className="mod-flash" role="status">{flash}</div>}
+
+      {tab === 'billets' && <SupportQueue />}
+      {tab === 'support-stats' && <SupportStats />}
 
       {tab === 'torrents' && (
         <>
