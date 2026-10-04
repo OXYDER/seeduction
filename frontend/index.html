@@ -28,9 +28,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      /* Écran de chargement (logo Seeduction) : défini ici pour s'afficher avant même que le site soit téléchargé ;
+         le composant GlobalLoader (React) reprend exactement le même rendu. */
+      .sd-loader { position: fixed; inset: 0; z-index: 100000; display: grid; place-items: center; background: radial-gradient(circle at 50% 38%, #1d2450 0%, #0b0f24 55%, #060812 100%); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .28s ease, visibility .28s ease; }
+      .sd-loader.on { opacity: 1; visibility: visible; pointer-events: all; cursor: progress; }
+      .sd-loader-box { display: grid; justify-items: center; gap: 18px; padding: 24px; text-align: center; }
+      .sd-loader-logo { width: min(280px, 62vw); height: auto; user-select: none; animation: sd-pulse 2.2s ease-in-out infinite; filter: drop-shadow(0 0 22px rgba(245, 197, 66, .35)); }
+      .sd-loader-bar { width: min(190px, 46vw); height: 3px; border-radius: 3px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+      .sd-loader-bar span { display: block; width: 40%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, transparent, #f5c542, #a78bfa, transparent); animation: sd-slide 1.25s ease-in-out infinite; }
+      .sd-loader-label { font: 600 12px/1 Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
+      @keyframes sd-pulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 16px rgba(245, 197, 66, .25)); } 50% { transform: scale(1.045); filter: drop-shadow(0 0 30px rgba(245, 197, 66, .5)); } }
+      @keyframes sd-slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
+      @media (prefers-reduced-motion: reduce) { .sd-loader-logo, .sd-loader-bar span { animation: none; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Remplacé dès que React démarre (GlobalLoader affiche alors le même écran). -->
+      <div class="sd-loader on" role="status"><div class="sd-loader-box"><img src="/logo-full.png" alt="Seeduction" class="sd-loader-logo" /><div class="sd-loader-bar"><span></span></div><div class="sd-loader-label">Chargement…</div></div></div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
