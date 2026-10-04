@@ -64,7 +64,10 @@ export class SupportService implements OnModuleInit {
 
   async config(): Promise<SupportConfig> {
     const stored = await this.settings.get<Partial<SupportConfig>>(SETTING_KEY);
-    return { ...DEFAULT_SUPPORT, ...(stored ?? {}) };
+    const merged = { ...DEFAULT_SUPPORT, ...(stored ?? {}) };
+    // L'ancien nom par défaut de l'assistant devient « Seeduction ».
+    if (merged.botName === 'Assistant SDT') merged.botName = DEFAULT_SUPPORT.botName;
+    return merged;
   }
 
   async saveConfig(input: any): Promise<SupportConfig> {
@@ -451,7 +454,7 @@ export class SupportService implements OnModuleInit {
       avgResolutionMin: avgMin(tickets.filter((t) => t.resolvedAt).map((t) => t.resolvedAt!.getTime() - t.createdAt.getTime())),
       satisfaction: rated._avg.rating ? Math.round(rated._avg.rating * 10) / 10 : null, ratings: rated._count.rating,
       byCategory: byCategory.map((r) => ({ category: cats.find((c) => c.id === r.categoryId) ?? null, count: r._count._all })).sort((a, b) => b.count - a.count),
-      assistant: { answers: ev.ANSWER ?? 0, solved: ev.RESOLVED ?? 0, notSolved: ev.NOT_SOLVED ?? 0, offers: ev.OFFER ?? 0, ticketsFromChat: ev.TICKET ?? 0, human: ev.HUMAN ?? 0 },
+      assistant: { answers: ev.ANSWER ?? 0, solved: ev.RESOLVED ?? 0, notSolved: ev.NOT_SOLVED ?? 0, offers: ev.OFFER ?? 0, ticketsFromChat: ev.TICKET ?? 0, human: ev.HUMAN ?? 0, handoffs: ev.HANDOFF ?? 0 },
     };
   }
 

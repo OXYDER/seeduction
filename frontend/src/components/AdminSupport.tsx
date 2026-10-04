@@ -156,7 +156,8 @@ function Stats() {
           <div className="tk-tile"><strong>{a.notSolved}</strong><span>« pas résolu »</span></div>
           <div className="tk-tile"><strong>{a.offers}</strong><span>billets proposés</span></div>
           <div className="tk-tile"><strong>{a.ticketsFromChat}</strong><span>billets ouverts depuis le chat</span></div>
-          <div className="tk-tile"><strong>{a.human}</strong><span>reprises par l’équipe</span></div>
+          <div className="tk-tile"><strong>{a.handoffs}</strong><span>aides de l’équipe demandées</span></div>
+          <div className="tk-tile"><strong>{a.human}</strong><span>réponses de l’équipe</span></div>
         </div>
         {answered > 0 && <p className="muted" style={{ marginBottom: 0 }}>Parmi les membres qui ont donné leur avis, {Math.round((a.solved / answered) * 100)} % ont été aidés directement par l’assistant.</p>}
       </div>
@@ -281,7 +282,7 @@ function CategoriesAdmin() {
 
 interface Config {
   enabled: boolean; channelId: string | null; aiEnabled: boolean; aiMode: 'ALWAYS' | 'NO_STAFF'; aiProvider: 'auto' | 'anthropic' | 'gemini'; aiModel: string; aiExtra: string;
-  botName: string; maxAnswersBeforeOffer: number; aiHourlyLimit: number; takeoverMinutes: number; maxOpenPerMember: number; autoResolveDays: number; autoCloseDays: number;
+  botName: string; maxAnswersBeforeOffer: number; aiHourlyLimit: number; takeoverMinutes: number; handoffMinutes: number; maxOpenPerMember: number; autoResolveDays: number; autoCloseDays: number;
   notifyStaff: boolean; emailOnReply: boolean; hoursText: string; welcome: string;
 }
 interface AiStatus { configured: boolean; provider: string | null; model: string | null; anthropicKey: boolean; geminiKey: boolean }
@@ -351,7 +352,7 @@ function SettingsAdmin() {
       <div className="panel grid" style={{ gap: 12 }}>
         <h3 style={{ margin: 0 }}>🤖 Assistant du canal Support</h3>
         <p className="muted" style={{ margin: 0 }}>
-          L’assistant répond dans le canal à partir du <strong>wiki</strong> (il cite ses sources) et se tait dès qu’un membre de l’équipe répond à la personne. Quand il ne trouve pas la réponse, ne règle pas le problème ou après plusieurs réponses, il propose d’ouvrir un billet (l’échange y est joint).
+          L’assistant répond <strong>automatiquement</strong> dans le canal à partir du <strong>wiki</strong> (il cite ses sources) tant que le membre ne demande pas l’aide de l’équipe. Sous chaque réponse, le bouton « Demander l’aide de l’équipe » (ou le message « je veux parler à un humain ») prévient l’équipe par notification et l’assistant se retire. S’il ne trouve pas la réponse ou après plusieurs réponses, il propose aussi ce bouton et l’ouverture d’un billet (l’échange y est joint). Pour le tester avec ton compte du staff, écris « /ia ta question » dans le canal.
         </p>
         <div className={`tk-note panel ${ai?.configured ? 'ok' : 'bad'}`}>
           {ai?.configured
@@ -379,6 +380,7 @@ function SettingsAdmin() {
           <label className="muted">Réponses sans résultat avant de proposer un billet<input type="number" min={1} max={10} value={cfg.maxAnswersBeforeOffer} onChange={num('maxAnswersBeforeOffer')} /></label>
           <label className="muted">Réponses maximum par heure et par membre<input type="number" min={1} max={200} value={cfg.aiHourlyLimit} onChange={num('aiHourlyLimit')} /></label>
           <label className="muted">Silence après une réponse de l’équipe (minutes, 0 = jamais)<input type="number" min={0} max={240} value={cfg.takeoverMinutes} onChange={num('takeoverMinutes')} /></label>
+          <label className="muted">Silence après « Demander l’aide de l’équipe » (minutes, 0 = il continue de répondre)<input type="number" min={0} max={1440} value={cfg.handoffMinutes} onChange={num('handoffMinutes')} /></label>
         </div>
         <label className="muted">Message d’accueil (salutation de l’assistant)<textarea rows={2} value={cfg.welcome} maxLength={600} onChange={(e) => up('welcome', e.target.value)} /></label>
         <label className="muted">Consignes supplémentaires pour l’assistant (ton, règles propres au site…)

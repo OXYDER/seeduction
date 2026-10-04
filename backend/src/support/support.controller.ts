@@ -55,6 +55,10 @@ export class SupportController {
   @Post('chat/feedback')
   feedback(@Body() body: { messageId: string; solved: boolean }, @Request() req: any) { return this.bot.feedback(actorOf(req), body?.messageId, !!body?.solved); }
 
+  /** « Demander l'aide de l'équipe » : l'assistant se retire et l'équipe est prévenue. */
+  @Post('chat/handoff')
+  handoff(@Request() req: any) { return this.bot.requestHuman(actorOf(req)); }
+
   // --- Équipe ---
 
   @Roles(...STAFF)

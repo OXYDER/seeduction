@@ -422,50 +422,36 @@ export const WIKI_SEED: WikiSeedCategory[] = [
       {
         title: 'Support : chat en direct et billets',
         slug: 'support-chat-et-billets',
-        keywords: 'aide, assistance, ticket, billet, support, contacter le staff, problème, question, assistant, bot, ia',
+        keywords: 'aide, assistance, ticket, billet, support, contacter le staff, parler à un humain, problème, question, assistant, bot, ia, seeduction',
         isFaq: true,
         content:
-          `Besoin d'aide ? La section [b]Support[/b] du menu rassemble tout au même endroit : une recherche dans le wiki, le chat en direct et tes billets.
-
-` +
-          `[b]1. Cherche dans le wiki[/b]
-` +
-          `Décris ton problème en quelques mots : les articles du wiki les plus proches s'affichent aussitôt. Beaucoup de réponses y sont déjà (ratio, hit & run, upload, lecteur, compte...).
-
-` +
-          `[b]2. Discute en direct dans le canal « Support »[/b]
-` +
-          `Dans le chat, le canal #Support est surveillé par l'[b]assistant de Seeduction[/b] et par l'équipe SDT. L'assistant répond tout de suite en s'appuyant sur le wiki et te montre les articles utilisés. Dès qu'un membre de l'équipe te répond, l'assistant se tait et laisse l'humain continuer. Sous chaque réponse de l'assistant, dis-lui si ça règle ton problème ou non. Attention : ce canal est [b]public[/b], n'y écris jamais de mot de passe, de passkey ni d'information privée.
-
-` +
-          `[b]3. Ouvre un billet si ça ne suffit pas[/b]
-` +
-          `Quand l'assistant ne trouve pas la réponse, ne règle pas ton problème, ou si tu cliques sur « Pas résolu », il te propose d'ouvrir un [b]billet de support[/b] (tu peux aussi en ouvrir un à tout moment depuis la page Support). Un billet est une conversation [b]privée[/b] avec l'équipe :
-` +
-          `• choisis une catégorie, donne un titre et décris le problème (captures d'écran et fichiers acceptés, 4 au maximum) ;
-` +
-          `• ton échange avec l'assistant est joint automatiquement, tu n'as rien à répéter ;
-` +
-          `• pendant que tu écris, le wiki te suggère des articles qui répondent peut-être déjà ;
-` +
-          `• tu es prévenu (cloche, pastille du menu et, si le courriel du site est configuré, par courriel) dès que l'équipe répond, et tu réponds directement dans le billet.
-
-` +
-          `[b]Les états d'un billet[/b]
-` +
-          `• [b]Ouvert[/b] : en attente de l'équipe. • [b]Répondu[/b] : à toi de répondre. • [b]Résolu[/b] : réglé — réponds-y si le problème revient, il se rouvre. • [b]Fermé[/b] : terminé, ouvre un nouveau billet si besoin. Un billet « répondu » sans nouvelle de ta part est marqué résolu au bout de quelques jours, puis fermé.
-` +
-          `Une fois le billet résolu, tu peux noter le support (1 à 5 étoiles).
-
-` +
-          `[b]Bon à savoir[/b]
-` +
-          `Le nombre de billets ouverts en même temps est limité. Pour signaler un torrent ou un message précis, utilise plutôt le bouton de signalement (voir « Signaler un problème »).
-
-` +
-          `[b]Pour le staff[/b]
-` +
-          `Staff > [b]Support[/b] : la file des billets (filtres par statut, responsable, catégorie, priorité), le traitement d'un billet (statut, priorité, catégorie, assignation, notes internes invisibles du membre), les [b]réponses types[/b], l'insertion d'un article du wiki dans une réponse et le bouton « ✨ Brouillon IA » qui prépare une réponse d'après le billet et le wiki. Dans le canal Support, le menu ⋯ d'un message de membre permet d'« Ouvrir un billet pour ce membre ». Les administrateurs règlent aussi les catégories, les délais de clôture automatique et l'assistant (activation, fournisseur d'IA Claude ou Gemini, nombre de réponses avant de proposer un billet, consignes supplémentaires) et peuvent le tester avant de le laisser répondre aux membres. Les clés d'IA se placent dans backend/.env (ANTHROPIC_API_KEY ou GEMINI_API_KEY).`,
+          `Besoin d'aide ? La section [b]Support[/b] du menu rassemble tout au même endroit : une recherche dans le wiki, le chat en direct et tes billets.\n` +
+          `\n` +
+          `[b]1. Cherche dans le wiki[/b]\n` +
+          `Décris ton problème en quelques mots : les articles du wiki les plus proches s'affichent aussitôt. Beaucoup de réponses y sont déjà (ratio, hit & run, upload, lecteur, compte...).\n` +
+          `\n` +
+          `[b]2. Discute en direct dans le canal « Support »[/b]\n` +
+          `Dans le chat, le canal #Support est tenu par [b]Seeduction[/b], l'assistant du site, et par l'équipe SDT. Écris ta question : Seeduction répond tout de suite, automatiquement, en s'appuyant sur le wiki, et te montre les articles utilisés. Il continue de répondre à tes questions tant que tu n'as pas demandé l'aide d'une personne.\n` +
+          `Sous chaque réponse, deux boutons : « ✅ Ça règle mon problème » ou « 🙋 Demander l'aide de l'équipe ». Tu peux aussi l'écrire (« je veux parler à quelqu'un de l'équipe »). L'équipe SDT est alors prévenue, Seeduction se retire et un membre de l'équipe te répond dans le canal dès qu'il est disponible. Si l'assistant ne trouve pas la réponse, il te propose lui-même ce bouton. Attention : ce canal est [b]public[/b], n'y écris jamais de mot de passe, de passkey ni d'information privée.\n` +
+          `\n` +
+          `[b]3. Ouvre un billet pour un suivi privé[/b]\n` +
+          `Si tu ne veux pas attendre devant le chat, ou pour un sujet privé, ouvre un [b]billet de support[/b] (le bouton « 🎫 Ouvrir un billet » apparaît dans le chat, ou depuis la page Support). Un billet est une conversation [b]privée[/b] avec l'équipe :\n` +
+          `• choisis une catégorie, donne un titre et décris le problème (captures d'écran et fichiers acceptés, 4 au maximum) ;\n` +
+          `• ton échange avec l'assistant est joint automatiquement, tu n'as rien à répéter ;\n` +
+          `• pendant que tu écris, le wiki te suggère des articles qui répondent peut-être déjà ;\n` +
+          `• tu es prévenu (cloche, pastille du menu et, si le courriel du site est configuré, par courriel) dès que l'équipe répond, et tu réponds directement dans le billet.\n` +
+          `\n` +
+          `[b]Les états d'un billet[/b]\n` +
+          `• [b]Ouvert[/b] : en attente de l'équipe. • [b]Répondu[/b] : à toi de répondre. • [b]Résolu[/b] : réglé — réponds-y si le problème revient, il se rouvre. • [b]Fermé[/b] : terminé, ouvre un nouveau billet si besoin. Un billet « répondu » sans nouvelle de ta part est marqué résolu au bout de quelques jours, puis fermé.\n` +
+          `Une fois le billet résolu, tu peux noter le support (1 à 5 étoiles).\n` +
+          `\n` +
+          `[b]Bon à savoir[/b]\n` +
+          `Le nombre de billets ouverts en même temps est limité. Pour signaler un torrent ou un message précis, utilise plutôt le bouton de signalement (voir « Signaler un problème »).\n` +
+          `\n` +
+          `[b]Pour le staff[/b]\n` +
+          `Staff > [b]Support[/b] : la file des billets (filtres par statut, responsable, catégorie, priorité), le traitement d'un billet (statut, priorité, catégorie, assignation, notes internes invisibles du membre), les [b]réponses types[/b], l'insertion d'un article du wiki dans une réponse et le bouton « ✨ Brouillon IA » qui prépare une réponse d'après le billet et le wiki.\n` +
+          `Quand un membre demande l'aide de l'équipe dans le canal Support, tout le staff reçoit une notification qui mène au canal : réponds-lui directement (en répondant à son message), l'assistant reste en retrait. Le menu ⋯ d'un message de membre permet aussi d'« Ouvrir un billet pour ce membre ». L'assistant ignore normalement les messages du staff : pour l'essayer avec ton compte, écris « /ia ta question ».\n` +
+          `Les administrateurs règlent aussi les catégories, les délais de clôture automatique et l'assistant (activation, nom, fournisseur d'IA Claude ou Gemini, nombre de réponses avant de proposer l'aide de l'équipe, durée de silence après une demande, consignes supplémentaires) et peuvent le tester avant de le laisser répondre aux membres. Les clés d'IA se placent dans backend/.env (ANTHROPIC_API_KEY ou GEMINI_API_KEY).\n`,
       },
     ],
   },

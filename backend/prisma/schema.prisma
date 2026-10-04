@@ -1115,7 +1115,8 @@ enum MessageType {
   GIF
   SYSTEM
   BOT_ANSWER   // réponse de l'assistant du canal Support
-  TICKET_OFFER // l'assistant propose d'ouvrir un billet de support
+  TICKET_OFFER // l'assistant propose de demander l'équipe ou d'ouvrir un billet de support
+  HANDOFF      // l'assistant confirme avoir prévenu l'équipe et se retire
 }
 
 model Conversation {

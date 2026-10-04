@@ -22,6 +22,8 @@ export interface SupportConfig {
   aiHourlyLimit: number;
   /** Quand l'équipe répond à un membre, l'assistant se tait pour lui pendant ce nombre de minutes. */
   takeoverMinutes: number;
+  /** Après que le membre a demandé l'aide de l'équipe, l'assistant n'intervient plus pendant ce nombre de minutes (0 = il continue de répondre). */
+  handoffMinutes: number;
   maxOpenPerMember: number;
   /** Un billet « répondu » sans nouvelle du membre devient « résolu » après ce nombre de jours (0 = jamais). */
   autoResolveDays: number;
@@ -43,17 +45,18 @@ export const DEFAULT_SUPPORT: SupportConfig = {
   aiProvider: 'auto',
   aiModel: '',
   aiExtra: '',
-  botName: 'Assistant SDT',
+  botName: 'Seeduction',
   maxAnswersBeforeOffer: 3,
   aiHourlyLimit: 20,
   takeoverMinutes: 15,
+  handoffMinutes: 180,
   maxOpenPerMember: 5,
   autoResolveDays: 5,
   autoCloseDays: 7,
   notifyStaff: true,
   emailOnReply: true,
   hoursText: '',
-  welcome: 'Bonjour ! Je suis l’assistant de Seeduction. Pose ta question ici : je cherche la réponse dans le wiki, et si je n’y arrive pas, l’équipe SDT ou un billet de support prendra le relais.',
+  welcome: 'Bonjour ! Je suis Seeduction, l’assistant du site. Pose ta question ici : je réponds à partir du wiki. Si je ne règle pas ton problème, demande l’aide d’un membre de l’équipe SDT ou ouvre un billet de support.',
 };
 
 const clampInt = (v: unknown, min: number, max: number, fallback: number) => {
@@ -81,6 +84,7 @@ export function sanitizeSupportConfig(input: any, base: SupportConfig = DEFAULT_
     maxAnswersBeforeOffer: clampInt(input.maxAnswersBeforeOffer, 1, 10, base.maxAnswersBeforeOffer),
     aiHourlyLimit: clampInt(input.aiHourlyLimit, 1, 200, base.aiHourlyLimit),
     takeoverMinutes: clampInt(input.takeoverMinutes, 0, 240, base.takeoverMinutes),
+    handoffMinutes: clampInt(input.handoffMinutes, 0, 1440, base.handoffMinutes),
     maxOpenPerMember: clampInt(input.maxOpenPerMember, 1, 50, base.maxOpenPerMember),
     autoResolveDays: clampInt(input.autoResolveDays, 0, 90, base.autoResolveDays),
     autoCloseDays: clampInt(input.autoCloseDays, 0, 365, base.autoCloseDays),

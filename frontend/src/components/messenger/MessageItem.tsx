@@ -55,6 +55,15 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
   const botId = useSupport((s) => s.overview?.botUserId);
   const supportChannelId = useSupport((s) => s.overview?.channelId);
   const [feedbackDone, setFeedbackDone] = useState(false);
+  const [handoffBusy, setHandoffBusy] = useState(false);
+
+  /** « Demander l'aide de l'équipe » : l'assistant se retire, l'équipe est prévenue. */
+  async function askTeam() {
+    setHandoffBusy(true);
+    try { await api.post('/support/chat/handoff'); setFeedbackDone(true); }
+    catch (err: any) { window.alert(err.response?.data?.message ?? "Impossible de prévenir l'équipe pour le moment"); }
+    finally { setHandoffBusy(false); }
+  }
   const isBot = !!botId && msg.sender.id === botId;
   const isPinned = !!conv.pinnedMessageIds?.includes(msg.id);
   const react = useMessenger((s) => s.react);
@@ -71,14 +80,18 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
 
   if (msg.type === 'SYSTEM') return <div className="msgr-system">{msg.content}</div>;
 
-  // L'assistant propose un billet à UNE personne : elle voit la carte, les autres une simple ligne discrète.
-  if (msg.type === 'TICKET_OFFER') {
-    if (!me || !msg.mentionIds.includes(me.id)) return <div className="msgr-system">🎫 Un billet de support a été proposé{msg.replyTo ? ` à ${msg.replyTo.senderUsername}` : ''}</div>;
+  // L'assistant s'adresse à UNE personne : elle voit la carte, les autres une simple ligne discrète.
+  if (msg.type === 'TICKET_OFFER' || msg.type === 'HANDOFF') {
+    const target = msg.replyTo?.senderUsername;
+    if (!me || !msg.mentionIds.includes(me.id)) {
+      return <div className="msgr-system">{msg.type === 'HANDOFF' ? `🙋 ${target ?? 'Un membre'} a demandé l'aide de l'équipe` : `🎫 L'assistant a proposé de l'aide de l'équipe${target ? ` à ${target}` : ''}`}</div>;
+    }
     return (
       <div id={`msg-${msg.id}`} className="msgr-offer">
-        <div className="msgr-offer-text">🎫 {msg.content}</div>
+        <div className="msgr-offer-text">{msg.type === 'HANDOFF' ? '' : '🎫 '}{msg.content}</div>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" onClick={() => navigate('/support/new?from=chat')}>🎫 Ouvrir un billet de support</button>
+          {msg.type === 'TICKET_OFFER' && <button type="button" disabled={handoffBusy} onClick={askTeam}>🙋 Demander l'aide de l'équipe</button>}
+          <button type="button" className={msg.type === 'TICKET_OFFER' ? 'secondary' : undefined} onClick={() => navigate('/support/new?from=chat')}>🎫 Ouvrir un billet</button>
           <Link to="/support" className="secondary" style={{ padding: '8px 14px' }}>Mes billets</Link>
         </div>
       </div>
@@ -101,9 +114,9 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
     catch (err: any) { window.alert(err.response?.data?.message ?? "Impossible d'ouvrir le billet"); }
   }
 
-  async function sendFeedback(solved: boolean) {
+  async function sendFeedback() {
     setFeedbackDone(true);
-    try { await api.post('/support/chat/feedback', { messageId: msg.id, solved }); }
+    try { await api.post('/support/chat/feedback', { messageId: msg.id, solved: true }); }
     catch { setFeedbackDone(false); }
   }
 
@@ -176,8 +189,8 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
         {feedbackOpen && !feedbackDone && msg.type === 'BOT_ANSWER' && me && msg.mentionIds.includes(me.id) && (
           <div className="msgr-feedback">
             <span className="muted">Cette réponse t'a aidé ?</span>
-            <button type="button" onClick={() => sendFeedback(true)}>✅ Ça règle mon problème</button>
-            <button type="button" className="secondary" onClick={() => sendFeedback(false)}>🎫 Pas résolu</button>
+            <button type="button" onClick={sendFeedback}>✅ Ça règle mon problème</button>
+            <button type="button" className="secondary" disabled={handoffBusy} onClick={askTeam}>🙋 Demander l'aide de l'équipe</button>
           </div>
         )}
 

@@ -555,7 +555,7 @@ export class MessengerService extends EventEmitter {
    * Message écrit par un compte automatique (assistant du canal Support) : pas de contrôle d'accès ni de notification de présence,
    * mais le message est stocké et diffusé exactement comme les autres. La personne visée est notifiée si elle est mentionnée.
    */
-  async postAsBot(botUserId: string, conversationId: string, content: string, opts: { type?: 'TEXT' | 'BOT_ANSWER' | 'TICKET_OFFER'; replyToId?: string | null; mentionIds?: string[] } = {}) {
+  async postAsBot(botUserId: string, conversationId: string, content: string, opts: { type?: 'TEXT' | 'BOT_ANSWER' | 'TICKET_OFFER' | 'HANDOFF'; replyToId?: string | null; mentionIds?: string[] } = {}) {
     const conv = await this.prisma.conversation.findUnique({ where: { id: conversationId } });
     if (!conv) throw new NotFoundException('Conversation introuvable');
     let replyToId: string | null = null;
