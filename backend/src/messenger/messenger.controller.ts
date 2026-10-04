@@ -8,6 +8,7 @@ import { ChatFilesService } from '../chat/chat-files.service';
 import { Actor, MessengerService, SendInput } from './messenger.service';
 import { MessengerGifsService } from './messenger-gifs.service';
 import { MessengerCallsService } from './messenger-calls.service';
+import { AuditService } from '../audit/audit.service';
 
 const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.user.username, role: req.user.role });
 
@@ -15,7 +16,7 @@ const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.u
 @UseGuards(JwtAuthGuard)
 @Controller('messenger')
 export class MessengerController {
-  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService, private gifs: MessengerGifsService, private calls: MessengerCallsService) {}
+  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService, private gifs: MessengerGifsService, private calls: MessengerCallsService, private audit: AuditService) {}
 
   @Get('conversations')
   list(@Query('archived') archived: string | undefined, @Request() req: any) {
@@ -158,6 +159,20 @@ export class MessengerController {
   @Patch('admin/channels/:id')
   updateChannel(@Param('id') id: string, @Body() body: any, @Request() req: any) {
     return this.messenger.updateChannel(actorOf(req), id, body ?? {});
+  }
+
+  /** Combien de messages seraient supprimés si on vidait le canal (tous, ou depuis `since`). */
+  @Get('admin/channels/:id/purge-preview')
+  purgePreview(@Param('id') id: string, @Query('since') since: string | undefined, @Request() req: any) {
+    return this.messenger.purgePreview(actorOf(req), id, since);
+  }
+
+  /** Vider un canal : suppression définitive, confirmée par le nom du canal. */
+  @Post('admin/channels/:id/purge')
+  async purge(@Param('id') id: string, @Body() body: { since?: string | null; confirm?: string }, @Request() req: any) {
+    const result = await this.messenger.purgeChannel(actorOf(req), id, body ?? {});
+    await this.audit.log(req.user.userId, 'CHANNEL_PURGE', { channel: result.name, deleted: result.deleted, since: result.since }, req.ip ?? null);
+    return result;
   }
 
   @Delete('admin/channels/:id')

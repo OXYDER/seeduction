@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import PurgeChannelModal from './PurgeChannelModal';
 
 interface Channel {
   id: string; name: string; slug: string; description: string | null; motd: string | null; readRole: string | null; writeRole: string | null;
@@ -24,6 +25,7 @@ export function ChannelsAdmin() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [purging, setPurging] = useState<Channel | null>(null);
 
   const load = () => api.get('/messenger/admin/channels').then((r) => setChannels(r.data)).catch((e) => setError(e.response?.data?.message ?? 'Impossible de charger les canaux'));
   useEffect(() => { load(); }, []);
@@ -112,6 +114,7 @@ export function ChannelsAdmin() {
                   <td className="muted">{c.messageCount}</td>
                   <td className="row" style={{ justifyContent: 'flex-end' }}>
                     <button type="button" className="secondary" onClick={() => startEdit(c)}>Éditer</button>
+                    <button type="button" className="secondary" onClick={() => setPurging(c)} title="Supprimer les messages du canal (tous, ou depuis une date)">🧹 Vider</button>
                     {c.slug !== 'general' && <button type="button" className="secondary" onClick={() => patch(c, { archived: !c.archived })}>{c.archived ? 'Désarchiver' : 'Archiver'}</button>}
                     {c.slug !== 'general' && <button type="button" className="danger" onClick={() => remove(c)}>Supprimer</button>}
                   </td>
@@ -122,6 +125,7 @@ export function ChannelsAdmin() {
           </table>
         </div>
       </div>
+      {purging && <PurgeChannelModal channel={purging} onClose={() => setPurging(null)} onDone={() => load()} />}
     </div>
   );
 }

@@ -294,6 +294,16 @@ export const useMessenger = create<MsgrState>((set, get) => {
         get().patchConversation(conversationId, { pinnedMessageIds });
       });
       socket.on('conversation:changed', () => scheduleRefresh());
+      // Un canal a été vidé (en entier, ou depuis une date) : on retire les messages concernés de l'écran.
+      socket.on('conversation:purged', ({ conversationId, since }: { conversationId: string; since: string | null }) => {
+        set((s) => {
+          const t = s.threads[conversationId];
+          if (!t) return s;
+          const from = since ? new Date(since).getTime() : null;
+          return { threads: { ...s.threads, [conversationId]: { ...t, messages: from === null ? [] : t.messages.filter((m) => new Date(m.createdAt).getTime() < from) } } };
+        });
+        scheduleRefresh();
+      });
 
       set({ socket });
     },

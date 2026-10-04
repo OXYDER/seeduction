@@ -7,6 +7,7 @@ import { STATUS_COLOR, STATUS_LABEL } from '../../lib/presence';
 import { formatBytes } from '../../lib/format';
 import Avatar from '../Avatar';
 import ConvAvatar from './ConvAvatar';
+import PurgeChannelModal from '../PurgeChannelModal';
 import Lightbox from './Lightbox';
 
 const ROLE_LABEL: Record<string, string> = { OWNER: 'Propriétaire', SUPER_MODERATOR: 'Super modérateur', ADMIN: 'Administrateur', MEMBER: '' };
@@ -27,6 +28,7 @@ export default function ConversationInfo({ conversationId, onClose, onLeft }: { 
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [purging, setPurging] = useState(false);
 
   useEffect(() => { setName(conv?.name ?? ''); setAdding(false); setPicked(new Set()); setError(''); }, [conversationId, conv?.name]);
   useEffect(() => {
@@ -122,6 +124,14 @@ export default function ConversationInfo({ conversationId, onClose, onLeft }: { 
             )}
             </div>
           ))}
+        </section>
+      )}
+
+      {conv.type === 'CHANNEL' && ['ADMIN', 'OWNER'].includes(me?.role ?? '') && (
+        <section className="msgr-info-section">
+          <div className="msgr-info-title"><span>Administration du canal</span></div>
+          <button type="button" className="danger" onClick={() => setPurging(true)}>🧹 Vider le canal…</button>
+          {purging && <PurgeChannelModal channel={{ id: conv.id, name: conv.name ?? '' }} onClose={() => setPurging(false)} />}
         </section>
       )}
 

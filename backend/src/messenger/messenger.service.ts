@@ -837,6 +837,60 @@ export class MessengerService extends EventEmitter {
     return { ok: true };
   }
 
+  // ------------------------------------------------------------------ vider un canal (ADMIN / OWNER)
+
+  private parseSince(since?: string | null): Date | null {
+    if (since === undefined || since === null || since === '') return null;
+    const d = new Date(since);
+    if (Number.isNaN(d.getTime())) throw new BadRequestException('Date invalide');
+    return d;
+  }
+
+  private async channelOrThrow(id: string) {
+    const channel = await this.prisma.conversation.findUnique({ where: { id } });
+    if (!channel || channel.type !== 'CHANNEL') throw new NotFoundException('Canal introuvable');
+    return channel;
+  }
+
+  /** Combien de messages seraient supprimés (tous, ou depuis une date) : montré dans la confirmation avant de vider un canal. */
+  async purgePreview(actor: Actor, id: string, since?: string | null) {
+    this.assertAdmin(actor);
+    await this.channelOrThrow(id);
+    const from = this.parseSince(since);
+    const [count, total, oldest] = await Promise.all([
+      this.prisma.message.count({ where: { conversationId: id, ...(from ? { createdAt: { gte: from } } : {}) } }),
+      this.prisma.message.count({ where: { conversationId: id } }),
+      this.prisma.message.findFirst({ where: { conversationId: id, ...(from ? { createdAt: { gte: from } } : {}) }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
+    ]);
+    return { count, total, oldest: oldest?.createdAt ?? null, since: from };
+  }
+
+  /**
+   * Vide un canal : supprime DÉFINITIVEMENT ses messages (tous, ou ceux envoyés depuis une date), avec leurs réactions et leurs épingles.
+   * `confirm` doit être le nom exact du canal. Pour le canal Général, l'ancien chat public est vidé de la même façon, sinon la
+   * migration du démarrage (MessengerMigrationService) recopierait les anciens messages.
+   */
+  async purgeChannel(actor: Actor, id: string, body: { since?: string | null; confirm?: string }) {
+    this.assertAdmin(actor);
+    const channel = await this.channelOrThrow(id);
+    if ((body.confirm ?? '').trim().toLowerCase() !== (channel.name ?? '').trim().toLowerCase()) {
+      throw new BadRequestException('Confirmation incorrecte : écris exactement le nom du canal pour le vider');
+    }
+    const from = this.parseSince(body.since);
+    const where = { conversationId: id, ...(from ? { createdAt: { gte: from } } : {}) };
+    const { count } = await this.prisma.message.deleteMany({ where });
+    if (channel.slug === 'general') {
+      await this.prisma.chatMessage.deleteMany({ where: from ? { createdAt: { gte: from } } : {} }).catch((err) => this.logger.warn(`Ancien chat non vidé : ${err?.message}`));
+    }
+    const newest = await this.prisma.message.findFirst({ where: { conversationId: id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
+    await this.prisma.conversation.update({ where: { id }, data: { lastMessageAt: newest?.createdAt ?? channel.createdAt, pinnedMessageId: null } });
+    await this.publish(channel, 'conversation:purged', { conversationId: id, since: from });
+    await this.publishPins(channel);
+    this.emit('channel:changed', { id });
+    this.logger.warn(`Canal « ${channel.name} » vidé par ${actor.username} : ${count} message(s)${from ? ` depuis ${from.toISOString()}` : ''}`);
+    return { ok: true, deleted: count, name: channel.name, since: from };
+  }
+
   /** Amis et personnes avec qui on discute : pour afficher leur présence. */
   async peerIds(userId: string) {
     const [friends, directs] = await Promise.all([

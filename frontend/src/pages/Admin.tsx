@@ -48,7 +48,7 @@ export default function Admin() {
 }
 
 const AUDIT_LABELS: Record<string, string> = {
-  TORRENT_EDIT: '✏️ Torrent modifié', TORRENT_DELETE: '🗑️ Torrent supprimé', TORRENT_APPROVE: '✅ Torrent approuvé', TORRENT_REJECT: '⛔ Torrent rejeté',
+  CHANNEL_PURGE: '🧹 Canal vidé', TORRENT_EDIT: '✏️ Torrent modifié', TORRENT_DELETE: '🗑️ Torrent supprimé', TORRENT_APPROVE: '✅ Torrent approuvé', TORRENT_REJECT: '⛔ Torrent rejeté',
   USER_EDIT: '👤 Membre modifié', USER_WARN: '⚠️ Avertissement', USER_BAN: '🚫 Bannissement', USER_UNBAN: '✅ Débannissement',
   FORUM_TOPIC_DELETE: '🗑️ Sujet supprimé', FORUM_TOPIC_LOCK: '🔒 Sujet verrouillé', FORUM_TOPIC_UNLOCK: '🔓 Sujet déverrouillé',
   FORUM_TOPIC_STICKY: '📌 Sujet épinglé', FORUM_TOPIC_UNSTICKY: 'Sujet désépinglé', FORUM_TOPIC_MOVE: '➜ Sujet déplacé',
