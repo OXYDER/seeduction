@@ -64,7 +64,7 @@ function UserCard({ u }: { u: any }) {
   const onlineStatus: PublicStatus = u.onlineStatus ?? 'OFFLINE';
   return (
     <>
-      <span style={{ position: 'relative', display: 'inline-block', flexShrink: 0 }}>
+      <span style={{ position: 'relative', display: 'block', flexShrink: 0, alignSelf: 'flex-start', width: 64, height: 64, lineHeight: 0 }}>
         <Avatar user={u} size={64} />
         <span
           title={STATUS_LABEL[onlineStatus]}
