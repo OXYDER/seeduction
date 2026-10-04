@@ -115,21 +115,24 @@ export class SupportAiService {
     }
   }
 
-  /** Meilleur modèle rapide et économique parmi ceux proposés : le plus récent « flash » (Gemini) ou « haiku » (Claude). */
-  pickModel(provider: Provider, models: string[]): string | null {
+  /** Les modèles rapides et économiques proposés, du meilleur au moins bon : « flash » (Gemini) ou « haiku » (Claude) les plus récents d'abord. */
+  rankModels(provider: Provider, models: string[]): string[] {
     const bad = /preview|exp|image|tts|thinking|live|audio|vision|embedding|robotics|computer|learnlm|gemma/i;
     const version = (m: string) => { const v = /(\d+)(?:[.-](\d+))?/.exec(m.replace(/^gemini-|^claude-/, '')); return v ? Number(v[1]) * 100 + Number(v[2] ?? 0) : 0; };
     const sorted = (re: RegExp) => models.filter((m) => re.test(m) && !bad.test(m)).sort((a, b) => version(b) - version(a) || a.length - b.length);
     const order = provider === 'gemini' ? [/flash$/, /flash-lite$/, /pro$/] : [/haiku/, /sonnet/];
-    for (const re of order) { const hit = sorted(re)[0]; if (hit) return hit; }
-    return null;
+    return order.flatMap((re) => sorted(re));
+  }
+
+  pickModel(provider: Provider, models: string[]): string | null {
+    return this.rankModels(provider, models)[0] ?? null;
   }
 
   /** Appel brut au fournisseur : renvoie le texte de la réponse. */
-  private async complete(cfg: SupportConfig, system: string, turns: AiTurn[], maxTokens: number, retried = false): Promise<string> {
+  private async complete(cfg: SupportConfig, system: string, turns: AiTurn[], maxTokens: number, attempt = 0): Promise<string> {
     const provider = this.provider(cfg);
     if (!provider) throw new SupportAiError('Aucune clé IA configurée (ANTHROPIC_API_KEY ou GEMINI_API_KEY dans backend/.env).', 503);
-    if (!retried) this.throttle();
+    if (attempt === 0) this.throttle();
     const model = this.modelFor(cfg, provider);
     // Les tours doivent alterner et commencer par le membre.
     const merged: AiTurn[] = [];
@@ -172,14 +175,31 @@ export class SupportAiService {
         this.log.warn(`${provider} ${res.status} (modèle ${model}) : ${detail}`);
         if (res.status === 429) throw new SupportAiError('Le service d\'IA est saturé (quota atteint).', 429);
         if (res.status === 401 || res.status === 403 || (res.status === 400 && /API key/i.test(detail))) throw new SupportAiError('La clé IA est refusée : vérifie-la dans backend/.env.', 502);
-        if (res.status === 404 && !retried && !cfg.aiModel && !process.env.SUPPORT_AI_MODEL) {
+        if ([500, 502, 503, 504].includes(res.status) || /high demand|overloaded|unavailable/i.test(detail)) {
+          // Service surchargé (passager) : on réessaie deux fois avec une courte attente, puis on tente un autre modèle.
+          if (attempt < 2) {
+            clearTimeout(timer);
+            await new Promise((r) => setTimeout(r, 900 * (attempt + 1)));
+            return this.complete(cfg, system, turns, maxTokens, attempt + 1);
+          }
+          if (attempt === 2) {
+            const alt = this.rankModels(provider, (await this.listModels(cfg)).models).find((m) => m !== model);
+            if (alt) {
+              this.log.warn(`Modèle « ${model} » surchargé : essai avec « ${alt} »`);
+              clearTimeout(timer);
+              return this.complete({ ...cfg, aiModel: alt }, system, turns, maxTokens, 3);
+            }
+          }
+          throw new SupportAiError(`Le service d'IA est très sollicité en ce moment (${res.status}) : réessaie dans un instant.`, 503);
+        }
+        if (res.status === 404 && attempt === 0 && !cfg.aiModel && !process.env.SUPPORT_AI_MODEL) {
           // Le modèle par défaut n'existe plus (ou pas pour cette clé) : on cherche un modèle disponible et on réessaie une fois.
           const picked = this.pickModel(provider, (await this.listModels(cfg)).models);
           if (picked && picked !== model) {
             this.log.warn(`Modèle « ${model} » introuvable : bascule automatique vers « ${picked} »`);
             this.autoModel[provider] = picked;
             clearTimeout(timer);
-            return this.complete({ ...cfg, aiModel: picked }, system, turns, maxTokens, true);
+            return this.complete({ ...cfg, aiModel: picked }, system, turns, maxTokens, 1);
           }
         }
         if (res.status === 404) throw new SupportAiError(`Modèle « ${model} » introuvable pour cette clé : choisis-en un autre dans les réglages (« Lister les modèles disponibles »). ${detail}`.trim(), 502);
