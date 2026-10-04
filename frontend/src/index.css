@@ -1503,7 +1503,8 @@ a.pill:hover { background: rgba(var(--acc-rgb),0.12); color: var(--gold-bright);
   background: var(--bg-panel-raised); border: 1px solid var(--border-gold); border-radius: 4px;
   box-shadow: 0 12px 32px rgba(0,0,0,0.6);
 }
-.cat-tab-wrap:hover .cat-tab-dropdown, .cat-tab-wrap:focus-within .cat-tab-dropdown { display: flex; }
+/* Ouvert au survol, ou au clavier (focus visible) : un clic à la souris ne doit pas le laisser ouvert (voir pickCategory dans Browse.tsx). */
+.cat-tab-wrap:hover .cat-tab-dropdown, .cat-tab-wrap:has(:focus-visible) .cat-tab-dropdown { display: flex; }
 /* Forcé fermé juste après un clic sur un sous-lien (voir Browse.tsx) : sans ça, le survol CSS garde le menu ouvert
    tant que la souris ne bouge pas, même si on vient de choisir une sous-catégorie. */
 .cat-tab-wrap.force-closed .cat-tab-dropdown { display: none !important; }
