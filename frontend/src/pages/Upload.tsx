@@ -45,6 +45,7 @@ export default function Upload() {
   const [videoType, setVideoType] = useState('2D');
   const videoTouched = useRef(false);
   const [nfoText, setNfoText] = useState('');
+  const [nfoMissing, setNfoMissing] = useState(false);
   const [missing, setMissing] = useState<string[]>([]);
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [autoDetected, setAutoDetected] = useState<Set<string>>(new Set());
@@ -268,6 +269,11 @@ export default function Upload() {
     e.preventDefault();
     if (!file) { setError('Sélectionne un fichier .torrent'); return; }
     if (!categoryId) { setError('Choisis une catégorie'); return; }
+    if (nfoText.replace(/\s+/g, ' ').trim().length < 20) {
+      setNfoMissing(true);
+      setError('Le NFO ou le MediaInfo est obligatoire : ajoute le fichier .nfo ou colle le texte du MediaInfo.');
+      return;
+    }
     if (isVideoKind) {
       const lacks = [
         defaultKind === 'SERIE' && !season && 'Saison',
@@ -359,9 +365,9 @@ export default function Upload() {
             </p>
           )}
             <div className="grid" style={{ gap: 6 }}>
-              <div className="muted">NFO / MediaInfo (optionnel) — sert à remplir automatiquement les métadonnées</div>
+              <div className="muted"><strong style={{ color: nfoMissing && nfoText.trim().length < 20 ? 'var(--danger)' : undefined }}>NFO ou MediaInfo (obligatoire)</strong> — décrit la release et remplit automatiquement les métadonnées</div>
               <input type="file" accept=".nfo,.txt" onChange={onNfoChange} />
-              <textarea rows={nfoText ? 5 : 2} placeholder="…ou colle ici le texte du NFO ou de MediaInfo" value={nfoText} onChange={(e) => setNfoText(e.target.value.slice(0, 200_000))} style={{ fontFamily: 'Consolas, monospace', fontSize: 12 }} />
+              <textarea rows={nfoText ? 5 : 2} placeholder="…ou colle ici le texte du NFO ou de MediaInfo" value={nfoText} onChange={(e) => setNfoText(e.target.value.slice(0, 200_000))} style={{ fontFamily: 'Consolas, monospace', fontSize: 12, ...(nfoMissing && nfoText.trim().length < 20 ? { borderColor: 'var(--danger)' } : {}) }} />
             </div>
           <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
           <DuplicateWarning name={name} metaId={meta?.id} />

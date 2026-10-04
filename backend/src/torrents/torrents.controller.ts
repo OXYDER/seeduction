@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Body, Param, Query, UseGuards, Request,
-  UseInterceptors, UploadedFile, Res,
+  UseInterceptors, UploadedFile, Res, BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -195,6 +195,11 @@ export class TorrentsController {
     @Request() req: any,
   ) {
     assertPerm(req, 'upload');
+    // Le NFO ou le MediaInfo est obligatoire : il décrit la release (qualité, audio, langues...) et remplit les filtres.
+    if (!file) throw new BadRequestException('Fichier .torrent manquant');
+    if (!body.nfo || body.nfo.replace(/\s+/g, ' ').trim().length < 20) {
+      throw new BadRequestException('Le NFO ou le MediaInfo de la release est obligatoire : ajoute le fichier .nfo ou colle le texte du MediaInfo.');
+    }
     return this.torrentsService.upload({
       userId: accountOf(req),
       fileBuffer: file.buffer,
