@@ -9,7 +9,7 @@ function escapeXml(text: string) {
 function formatBytes(bytes: bigint | number) {
   const units = ['o', 'Ko', 'Mo', 'Go', 'To', 'Po'];
   let n = Number(bytes), i = 0;
-  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+  while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
   return `${n.toFixed(2)} ${units[i]}`;
 }
 

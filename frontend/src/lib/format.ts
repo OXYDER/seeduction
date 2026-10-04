@@ -2,7 +2,7 @@ export function formatBytes(bytes: number | string | bigint) {
   const b = Number(bytes);
   const units = ['o', 'Ko', 'Mo', 'Go', 'To', 'Po'];
   let i = 0, n = b;
-  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+  while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
   return `${n.toFixed(2)} ${units[i]}`;
 }
 

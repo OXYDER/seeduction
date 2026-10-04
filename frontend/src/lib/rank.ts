@@ -1,5 +1,5 @@
-const GB = 1024 ** 3;
-const TB = 1024 ** 4;
+const GB = 1000 ** 3;
+const TB = 1000 ** 4;
 
 // Paliers basés sur le volume total uploadé, purement côté front (aucune
 // donnée persistée) : le titre est toujours dérivé de `user.uploaded`.

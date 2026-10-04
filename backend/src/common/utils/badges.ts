@@ -17,8 +17,8 @@ export interface BadgeDefinition {
   check: (s: BadgeStats) => boolean;
 }
 
-const GB = 1024 ** 3;
-const TB = 1024 ** 4;
+const GB = 1000 ** 3;
+const TB = 1000 ** 4;
 
 export const BADGES: BadgeDefinition[] = [
   {
