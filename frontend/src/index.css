@@ -2741,7 +2741,7 @@ a.seedpage-item:hover { background: rgba(255,255,255,0.07); }
 .news-card.big .news-card-img { flex: 0 0 clamp(260px, 32%, 420px); min-height: 0; aspect-ratio: 16 / 9; align-self: flex-start; }
 .news-card.big .news-card-body h2 { font-size: 22px; }
 .news-card.big .news-card-body p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-.news-card.big { grid-column: 1 / -1; max-width: 1100px; }
+.news-card.big { grid-column: 1 / -1; }
 .news-full-img { max-height: 280px; }
 @media (max-width: 800px) { .news-card.big .news-card-img { flex: none; width: 100%; align-self: auto; } }
 @media (max-width: 700px) { .news-hero-img { flex: none; width: 100%; align-self: auto; } }
