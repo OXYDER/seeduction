@@ -66,10 +66,15 @@ services:
       # "Authentication failed" : deux fichiers .env différents avaient
       # chacun leur propre mot de passe codé en dur).
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracker}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-tracker}?schema=public
+      LOCKDOWN_DIR: /app/storage/lockdown
+      BACKUPS_DIR: /app/backups
     volumes:
       - torrent_storage:/app/storage/torrents
       - cover_storage:/app/storage/covers
       - chat_file_storage:/app/storage/chat-files
+      # Alerte générale : coffre chiffré (jamais effacé automatiquement) et sauvegardes du NAS, chiffrées elles aussi pendant le verrouillage.
+      - lockdown_storage:/app/storage/lockdown
+      - ./backups:/app/backups
     networks:
       - tracker_net
     # Pas de port exposé publiquement ici — passe par Nginx Proxy Manager
@@ -122,3 +127,4 @@ volumes:
   torrent_storage:
   cover_storage:
   chat_file_storage:
+  lockdown_storage:

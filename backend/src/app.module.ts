@@ -10,6 +10,7 @@ import { ForumModule } from './forum/forum.module';
 import { MessagesModule } from './messages/messages.module';
 import { RequestsModule } from './requests/requests.module';
 import { AdminModule } from './admin/admin.module';
+import { LockdownModule } from './lockdown/lockdown.module';
 import { CategoriesModule } from './categories/categories.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { TemplatesModule } from './templates/templates.module';
@@ -59,6 +60,7 @@ import { SupportModule } from './support/support.module';
     MessagesModule,
     RequestsModule,
     AdminModule,
+    LockdownModule,
     CategoriesModule,
     AnnouncementsModule,
     TemplatesModule,

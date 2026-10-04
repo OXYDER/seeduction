@@ -1,4 +1,8 @@
+import { useEffect } from 'react';
+import axios from 'axios';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import LockScreen from './components/LockScreen';
+import { useLockdownStore } from './store/lockdown';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -17,6 +21,7 @@ import SupportNew from './pages/SupportNew';
 import SupportTicket from './pages/SupportTicket';
 import ResetPassword from './pages/ResetPassword';
 import ForgotPassword from './pages/ForgotPassword';
+import VerifyLink from './pages/VerifyLink';
 import ForumView from './pages/ForumView';
 import { ForumLatest, ForumSearch } from './pages/ForumMisc';
 import TorrentDetail from './pages/TorrentDetail';
@@ -45,6 +50,12 @@ import Chat from './pages/Chat';
 import EntityPage from './pages/EntityPage';
 
 export default function App() {
+  const locked = useLockdownStore((s) => s.locked);
+  // Si une alerte générale est en cours, on le sait dès l'ouverture de la page (sans attendre une requête refusée).
+  useEffect(() => {
+    axios.get('/api/lockdown/status').then((r) => { if (r.data?.locked) useLockdownStore.getState().setLocked(true); }).catch(() => {});
+  }, []);
+  if (locked) return <LockScreen />;
   return (
     <BrowserRouter>
       <Routes>
@@ -53,6 +64,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify" element={<VerifyLink />} />
         {/* Layout redirige vers /login si aucune session valide : le site
             entier est privé, rien n'est visible aux non-membres. */}
         <Route element={<Layout />}>

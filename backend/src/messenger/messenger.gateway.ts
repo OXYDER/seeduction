@@ -1,3 +1,4 @@
+import { lockState } from '../lockdown/lockdown-state';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer,
@@ -32,7 +33,7 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
   private sentAt = new Map<string, number[]>();
   private presenceTimer: NodeJS.Timeout | null = null;
 
-  constructor(private jwtService: JwtService, private messenger: MessengerService, private presence: PresenceService, private calls: MessengerCallsService) {}
+  constructor(private jwtService: JwtService, private messenger: MessengerService, private presence: PresenceService, private calls: MessengerCallsService) { lockState.onLock(() => this.server?.disconnectSockets(true)); }
 
   onModuleInit() {
     this.calls.attach({
@@ -76,6 +77,7 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
     if (!token || typeof token !== 'string') { client.disconnect(); return; }
     try {
       const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'change-me-in-.env' });
+      if (lockState.blocking || lockState.tokenRevoked(payload.iat)) { client.disconnect(); return; } // alerte générale / session révoquée
       if (payload.scope === 'account') { client.disconnect(); return; }
       client.data = { userId: payload.sub, username: payload.username, role: payload.role };
       client.join(userRoom(payload.sub));

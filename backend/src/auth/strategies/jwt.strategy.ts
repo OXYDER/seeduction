@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../common/prisma.service';
 import { ALL_PERMS, permsOf, type Perms } from '../../common/utils/family-perms';
+import { lockState } from '../../lockdown/lockdown-state';
 
 export interface JwtPayload {
   sub: string;
@@ -14,6 +15,7 @@ export interface JwtPayload {
   scope?: 'account';
   /** Compte famille actif (le sélecteur de profil a été passé). */
   fam?: boolean;
+  iat?: number;
 }
 
 /** Ce que les contrôleurs lisent dans req.user. `userId` est le PROFIL actif ; `accountId` le compte (ratio, points, passkey, sécurité). */
@@ -45,6 +47,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthUser> {
+    // Après une alerte générale, toutes les sessions ouvertes avant elle sont coupées : tout le monde doit se reconnecter.
+    if (lockState.tokenRevoked(payload.iat)) throw new UnauthorizedException('Session expirée : reconnecte-toi');
     if (payload.scope === 'account') {
       return { userId: payload.sub, accountId: payload.sub, username: payload.username, role: payload.role, scope: 'account', isMaster: true, fam: false, perms: ALL_PERMS };
     }

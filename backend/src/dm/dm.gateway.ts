@@ -1,3 +1,4 @@
+import { lockState } from '../lockdown/lockdown-state';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect,
@@ -34,7 +35,7 @@ export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect, OnMo
     private prisma: PrismaService,
     private dmService: DmService,
     private presence: PresenceService,
-  ) {}
+  ) { lockState.onLock(() => this.server?.disconnectSockets(true)); }
 
   /** Relaie les changements de présence (connexion/déconnexion/statut) aux amis du membre concerné, sans coupler les gateways entre elles. */
   onModuleInit() {
@@ -60,6 +61,7 @@ export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect, OnMo
     if (!token || typeof token !== 'string') { client.disconnect(); return; }
     try {
       const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'change-me-in-.env' });
+      if (lockState.blocking || lockState.tokenRevoked(payload.iat)) { client.disconnect(); return; } // alerte générale / session révoquée
       if (payload.scope === 'account') { client.disconnect(); return; }
       client.data = { userId: payload.sub, username: payload.username };
       client.join(room(client.data.userId));
