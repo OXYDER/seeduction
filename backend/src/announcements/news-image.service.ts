@@ -101,7 +101,17 @@ export class NewsImageService {
     const json: any = await res.json().catch(() => null);
     if (!res.ok) {
       this.log.warn(`Gemini ${res.status} : ${json?.error?.message ?? 'erreur'}`);
-      if (res.status === 429) throw new HttpException('Quota Gemini atteint : réessaie dans quelques minutes.', 429);
+      if (res.status === 429) {
+        const detail = String(json?.error?.message ?? '');
+        // Une clé gratuite n'a pas de quota pour la génération d'images (« limit: 0 ») : il faut activer la facturation du projet Google.
+        const freeTier = /limit:\s*0|free[_ ]?tier|billing|RESOURCE_EXHAUSTED/i.test(`${detail} ${json?.error?.status ?? ''}`) && /limit:\s*0|free[_ ]?tier/i.test(detail);
+        throw new HttpException(
+          freeTier
+            ? 'Gemini refuse : ta clé est sur l’offre gratuite, qui n’inclut pas la génération d’images. Active la facturation du projet Google associé à la clé (Google AI Studio > Facturation), puis réessaie.'
+            : `Quota Gemini atteint (${detail.slice(0, 140) || 'trop de demandes'}). Réessaie dans quelques minutes.`,
+          429,
+        );
+      }
       if (res.status === 400 && /API key/i.test(json?.error?.message ?? '')) throw new BadGatewayException('La clé Gemini est refusée : vérifie GEMINI_API_KEY.');
       throw new BadGatewayException(`Gemini a refusé la demande (${res.status}) : ${String(json?.error?.message ?? 'erreur inconnue').slice(0, 160)}`);
     }
