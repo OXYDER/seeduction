@@ -85,21 +85,44 @@ export class AdminInvitesService {
     return { codes: created };
   }
 
-  async update(id: string, body: { disabled?: boolean; maxUses?: number; expiresAt?: string | null; label?: string; perIpOnce?: boolean }) {
+  /**
+   * Modifie un code déjà créé : texte du code, note, début, fin, nombre d'inscriptions, une seule inscription par IP, activation.
+   * Seuls les champs envoyés changent. Les inscriptions déjà faites ne sont pas touchées.
+   */
+  async update(id: string, body: { code?: string; disabled?: boolean; maxUses?: number; startsAt?: string | null; expiresAt?: string | null; label?: string; perIpOnce?: boolean }) {
     const invite = await this.prisma.inviteCode.findUnique({ where: { id } });
     if (!invite) throw new NotFoundException('Code introuvable');
     const data: Record<string, any> = {};
     if (typeof body.disabled === 'boolean') data.disabled = body.disabled;
+
+    if (body.code !== undefined) {
+      const code = String(body.code).trim().toUpperCase();
+      if (code !== invite.code) {
+        if (!invite.generic) throw new BadRequestException("Le texte du code d'un membre ne se modifie pas");
+        if (!CODE_FORMAT.test(code)) throw new BadRequestException('Le code doit faire 4 à 32 caractères : lettres, chiffres, - ou _');
+        if (await this.prisma.inviteCode.findUnique({ where: { code }, select: { id: true } })) throw new BadRequestException('Ce code existe déjà');
+        data.code = code;
+      }
+    }
+
     if (body.maxUses !== undefined) {
       const n = Math.floor(Number(body.maxUses));
       if (!Number.isFinite(n) || n < 1 || n > 1000) throw new BadRequestException("Le nombre d'inscriptions doit être entre 1 et 1000");
+      if (n < invite.useCount) throw new BadRequestException(`Ce code a déjà été utilisé ${invite.useCount} fois : le maximum ne peut pas être plus bas`);
       data.maxUses = n;
-      // Relever le plafond d'un code épuisé le remet en service.
-      if (invite.used && n > invite.useCount) data.used = false;
+      // Relever le plafond d'un code épuisé le remet en service ; l'atteindre exactement le marque épuisé.
+      data.used = n <= invite.useCount;
     }
-    if (body.expiresAt !== undefined) data.expiresAt = this.parseDate(body.expiresAt, 'Fin');
+
+    const startsAt = body.startsAt !== undefined ? this.parseDate(body.startsAt, 'Début') : invite.startsAt;
+    const expiresAt = body.expiresAt !== undefined ? this.parseDate(body.expiresAt, 'Fin') : invite.expiresAt;
+    if (body.startsAt !== undefined) data.startsAt = startsAt;
+    if (body.expiresAt !== undefined) data.expiresAt = expiresAt;
+    if ((body.startsAt !== undefined || body.expiresAt !== undefined) && startsAt && expiresAt && startsAt >= expiresAt) throw new BadRequestException('Le début doit être avant la fin');
+
     if (typeof body.label === 'string') data.label = body.label.trim().slice(0, 80) || null;
     if (typeof body.perIpOnce === 'boolean') data.perIpOnce = body.perIpOnce;
+    if (Object.keys(data).length === 0) return invite;
     return this.prisma.inviteCode.update({ where: { id }, data });
   }
 

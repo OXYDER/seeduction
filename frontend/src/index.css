@@ -3060,3 +3060,7 @@ a.st-torrent:hover { color: var(--gold-bright); text-decoration: underline; }
 
 .st-dead-banner, .st-dead-banner:hover { color: var(--text); }
 .st-dead-banner strong { color: var(--text); font-size: 16px; }
+
+.inv-edit { grid-column: 1 / -1; display: grid; gap: 10px; padding: 12px; border-radius: 8px; background: rgba(0,0,0,.22); border: 1px solid var(--border); }
+
+@media (max-width: 1100px) { .inv-row { grid-template-columns: minmax(0, 1fr); } .inv-actions { justify-content: flex-start; } }

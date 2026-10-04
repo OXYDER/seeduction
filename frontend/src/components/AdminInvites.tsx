@@ -29,6 +29,12 @@ export function InvitesAdmin() {
   const [uses, setUses] = useState<InviteUse[]>([]);
   const [copied, setCopied] = useState('');
 
+  // Modification d'un code existant
+  const [editing, setEditing] = useState<string | null>(null);
+  const [edit, setEdit] = useState({ code: '', label: '', startsAt: '', expiresAt: '', maxUses: 1, perIpOnce: false });
+  const [editError, setEditError] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+
   // Formulaire
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
@@ -79,6 +85,28 @@ export function InvitesAdmin() {
     if (openUses === i.id) { setOpenUses(null); return; }
     setOpenUses(i.id); setUses([]);
     api.get(`/admin/invites/${i.id}/uses`).then((r) => setUses(r.data)).catch(() => {});
+  }
+
+  function startEdit(i: Invite) {
+    if (editing === i.id) { setEditing(null); return; }
+    setEditing(i.id); setEditError('');
+    setEdit({ code: i.code, label: i.label ?? '', startsAt: i.startsAt ? localInput(new Date(i.startsAt)) : '', expiresAt: i.expiresAt ? localInput(new Date(i.expiresAt)) : '', maxUses: i.maxUses, perIpOnce: i.perIpOnce });
+  }
+
+  async function saveEdit(i: Invite) {
+    setEditError(''); setEditBusy(true);
+    try {
+      const body: Record<string, any> = {
+        label: edit.label, maxUses: edit.maxUses, perIpOnce: edit.perIpOnce,
+        startsAt: edit.startsAt ? new Date(edit.startsAt).toISOString() : null,
+        expiresAt: edit.expiresAt ? new Date(edit.expiresAt).toISOString() : null,
+      };
+      if (i.generic && edit.code !== i.code) body.code = edit.code;
+      await api.patch(`/admin/invites/${i.id}`, body);
+      setEditing(null);
+      load();
+    } catch (err: any) { setEditError(err.response?.data?.message ?? 'Modification impossible'); }
+    finally { setEditBusy(false); }
   }
 
   function copy(text: string) {
@@ -186,6 +214,7 @@ export function InvitesAdmin() {
                 <div className="inv-actions">
                   <button type="button" className="secondary" onClick={() => copy(link(i.code))}>{copied === link(i.code) ? '✓' : '🔗 Lien'}</button>
                   <button type="button" className="secondary" onClick={() => toggleUses(i)}>Inscriptions ({i.useCount})</button>
+                  <button type="button" className={`secondary${editing === i.id ? ' on' : ''}`} onClick={() => startEdit(i)}>✏️ Modifier</button>
                   {i.status === 'expired' || i.status === 'active' || i.status === 'scheduled' || i.status === 'exhausted'
                     ? <>
                         <button type="button" className="secondary" onClick={() => patch(i, { expiresAt: new Date(Math.max(Date.now(), i.expiresAt ? new Date(i.expiresAt).getTime() : Date.now()) + 7 * 86400_000).toISOString() })}>+7 j</button>
@@ -195,6 +224,42 @@ export function InvitesAdmin() {
                     : <button type="button" onClick={() => patch(i, { disabled: false })}>Réactiver</button>}
                   <button type="button" className="danger" onClick={() => remove(i)}>Supprimer</button>
                 </div>
+                {editing === i.id && (
+                  <form className="inv-edit" onSubmit={(e) => { e.preventDefault(); void saveEdit(i); }}>
+                    <div className="inv-grid">
+                      <label>
+                        <span className="muted">Code</span>
+                        <input value={edit.code} disabled={!i.generic} maxLength={32} onChange={(e) => setEdit({ ...edit, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '') })} />
+                      </label>
+                      <label>
+                        <span className="muted">Note interne</span>
+                        <input value={edit.label} maxLength={80} onChange={(e) => setEdit({ ...edit, label: e.target.value })} placeholder="ex : amis du hockey" />
+                      </label>
+                      <label>
+                        <span className="muted">Valable à partir du (vide = tout de suite)</span>
+                        <input type="datetime-local" value={edit.startsAt} onChange={(e) => setEdit({ ...edit, startsAt: e.target.value })} />
+                      </label>
+                      <label>
+                        <span className="muted">Valable jusqu'au (vide = sans limite)</span>
+                        <input type="datetime-local" value={edit.expiresAt} onChange={(e) => setEdit({ ...edit, expiresAt: e.target.value })} />
+                      </label>
+                      <label>
+                        <span className="muted">Inscriptions permises (déjà {i.useCount})</span>
+                        <input type="number" min={Math.max(1, i.useCount)} max={1000} value={edit.maxUses} onChange={(e) => setEdit({ ...edit, maxUses: Math.max(1, Math.min(1000, Number(e.target.value) || 1)) })} />
+                      </label>
+                    </div>
+                    <label className="inv-check">
+                      <input type="checkbox" checked={edit.perIpOnce} onChange={(e) => setEdit({ ...edit, perIpOnce: e.target.checked })} />
+                      <span>Une seule inscription par adresse IP <span className="muted">(ne s'applique qu'aux nouvelles inscriptions)</span></span>
+                    </label>
+                    {i.generic && edit.code !== i.code && <div className="muted" style={{ color: '#ffb347' }}>⚠️ Changer le texte du code : l'ancien code et les liens d'inscription déjà envoyés ne fonctionneront plus.</div>}
+                    {editError && <div style={{ color: 'var(--danger)' }}>{editError}</div>}
+                    <div className="row" style={{ gap: 8 }}>
+                      <button type="submit" disabled={editBusy || edit.code.length < 4}>{editBusy ? 'Enregistrement…' : 'Enregistrer'}</button>
+                      <button type="button" className="secondary" onClick={() => setEditing(null)}>Annuler</button>
+                    </div>
+                  </form>
+                )}
                 {openUses === i.id && (
                   <div className="inv-uses">
                     {uses.length === 0 ? <span className="muted">Aucune inscription pour le moment.</span> : (
