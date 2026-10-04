@@ -297,11 +297,14 @@ function TorrentViewBody(props: TorrentViewProps) {
                 <span className="tv-compact-name">{titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" /></span>
                 <span className="tv-compact-badges"><Badges t={t} /></span>
               </span>
-              {props.extraColumns?.map((c) => <span key={c.header} className="muted tv-compact-extra">{c.render(t)}</span>)}
-              <span className="muted tv-compact-size">{formatBytes(t.size)}</span>
-              <span className="muted tv-compact-counts" title="Commentaires · complétés">💬{t._count?.comments ?? 0} ✔{t.completedCount ?? 0}</span>
-              <span className="tv-compact-seeds"><Seeds t={t} /></span>
-              <span className="muted tv-compact-age">{t.createdAt ? timeAgo(t.createdAt) : ''}</span>
+              {/* Sur ordinateur ce conteneur « disparaît » (display: contents) : les colonnes restent alignées. Sur téléphone, il forme la 2e ligne. */}
+              <span className="tv-compact-meta">
+                {props.extraColumns?.map((c) => <span key={c.header} className="muted tv-compact-extra">{c.render(t)}</span>)}
+                <span className="muted tv-compact-size">{formatBytes(t.size)}</span>
+                <span className="muted tv-compact-counts" title="Commentaires · complétés">💬{t._count?.comments ?? 0} ✔{t.completedCount ?? 0}</span>
+                <span className="tv-compact-seeds"><Seeds t={t} /></span>
+                <span className="muted tv-compact-age">{t.createdAt ? timeAgo(t.createdAt) : ''}</span>
+              </span>
               <span className="row tv-compact-actions" style={{ gap: 4 }}>{actions(t)}</span>
             </div>
           );

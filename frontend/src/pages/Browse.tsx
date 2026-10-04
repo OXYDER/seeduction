@@ -72,7 +72,8 @@ export default function Browse() {
   const authUser = useAuthStore((s) => s.user);
   const currentUserId = authUser?.id;
   const [view, setView] = useViewMode('browse');
-  const [showFilters, setShowFilters] = useState(() => { try { return localStorage.getItem('browse-filters') !== 'closed'; } catch { return true; } });
+  // Les filtres sont ouverts par défaut sur ordinateur, fermés sur téléphone (ils prendraient tout l'écran avant la liste) ; le choix du membre est ensuite retenu.
+  const [showFilters, setShowFilters] = useState(() => { try { const saved = localStorage.getItem('browse-filters'); return saved ? saved === 'open' : !window.matchMedia('(max-width: 760px)').matches; } catch { return true; } });
   useEffect(() => { try { localStorage.setItem('browse-filters', showFilters ? 'open' : 'closed'); } catch { /* navigation privée */ } }, [showFilters]);
   const [showSort, setShowSort] = useState(false);
   const [closedCatId, setClosedCatId] = useState<string | null>(null);
