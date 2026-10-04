@@ -145,6 +145,23 @@ export class AdminController {
     return result;
   }
 
+  @Roles('ADMIN', 'OWNER')
+  @Post('users/:id/delete')
+  async deleteMember(@Param('id') id: string, @Body() body: { password?: string; totpToken?: string; confirmUsername?: string }, @Request() req: any) {
+    const before = await this.adminService.userDetail(id);
+    const result = await this.adminService.deleteMember(this.actor(req), id, body ?? {}, this.ip(req));
+    await this.audit.log(req.user.userId, 'USER_DELETE', { targetId: id, target: before.username, email: before.email, reassigned: result.reassigned, erased: result.erased }, this.ip(req));
+    return result;
+  }
+
+  @Roles('ADMIN', 'OWNER')
+  @Post('users/:id/activate')
+  async activateMember(@Param('id') id: string, @Request() req: any) {
+    const result = await this.adminService.activateMember(this.actor(req), id);
+    await this.audit.log(req.user.userId, 'USER_ACTIVATE', { targetId: id }, this.ip(req));
+    return result;
+  }
+
   @Post('users/:id/unban')
   async unban(@Param('id') id: string, @Request() req: any) {
     const result = await this.adminService.unbanUser(this.actor(req), id);

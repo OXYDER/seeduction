@@ -66,14 +66,27 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
-  changePassword(@Body() body: { currentPassword: string; newPassword: string }, @Request() req: any) {
+  changePassword(@Body() body: { currentPassword: string; newPassword: string; totpToken?: string }, @Request() req: any) {
     assertMaster(req);
-    return this.authService.changePassword(accountOf(req), body.currentPassword, body.newPassword, ipOf(req));
+    return this.authService.changePassword(accountOf(req), body.currentPassword, body.newPassword, body.totpToken, ipOf(req));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-email')
+  changeEmail(@Body() body: { currentPassword: string; newEmail: string; totpToken?: string }, @Request() req: any) {
+    assertMaster(req);
+    return this.authService.changeEmail(accountOf(req), body.currentPassword, body.newEmail, body.totpToken, ipOf(req));
+  }
+
+  /** Confirmation par courriel (inscription, changement de mot de passe ou de courriel) : code à 6 chiffres + identifiant de la demande, ou lien. */
+  @Post('verify-email')
+  verifyEmail(@Body() body: { challengeId?: string; code?: string; token?: string }, @Request() req: any) {
+    return this.authService.verifyEmail(body ?? {}, ipOf(req));
   }
 
   @Get('features')
   features() {
-    return { emailReset: this.authService.emailResetAvailable };
+    return { emailReset: this.authService.emailResetAvailable, emailVerification: this.authService.emailVerificationRequired };
   }
 
   @Post('forgot-password')

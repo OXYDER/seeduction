@@ -43,7 +43,10 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• Chaque code d'invitation n'est utilisable qu'une seule fois et peut avoir une date d'expiration.\n` +
           `• Le nombre d'invitations que tu peux créer toi-même dépend de ton rang (voir [url=/wiki/rangs-et-classes]Rangs et classes[/url]) : 0 pour un Nouveau ou un Membre, 2 pour un Power User, 5 pour un Élite, 10 pour un Vétéran. Le staff n'a pas de limite.\n` +
           `• [b]Tu es responsable des membres que tu invites[/b] : des abus répétés de leur part peuvent retomber sur ton propre compte.\n\n` +
-          `Pour inviter quelqu'un, va dans ton profil et génère un code depuis l'onglet Invitations (si ton rang le permet).`,
+          `Pour inviter quelqu'un, va dans ton profil et génère un code depuis l'onglet Invitations (si ton rang le permet).
+
+` +
+          `[b]Confirmation du courriel[/b] : à l'inscription, un [b]code à 6 chiffres[/b] (et un lien) est envoyé à ton adresse. Entre le code sur la page d'inscription, ou clique sur le lien : ton compte n'est actif qu'après cette confirmation. Le code est valable 24 heures et n'accepte que 5 essais (ensuite il faut en redemander un). Rien reçu ? Regarde dans les courriels indésirables, puis demande un nouveau code depuis l'écran de confirmation (ou en te reconnectant). Un compte jamais confirmé est supprimé automatiquement après 48 heures et ton invitation redevient utilisable.`,
       },
       {
         title: 'Le cadeau de bienvenue',
@@ -67,7 +70,21 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `Active la 2FA depuis Profil > Sécurité pour ajouter une couche de protection avec une application comme Google Authenticator ou Authy (standard TOTP). Une fois activée :\n` +
           `• Chaque connexion demande le code à 6 chiffres en plus du mot de passe.\n` +
           `• Des codes de secours à usage unique sont générés à l'activation : garde-les en lieu sûr, ils permettent de te reconnecter si tu perds ton téléphone.\n\n` +
-          `Le staff ne peut pas désactiver ta 2FA à ta place sans passer par la procédure de vérification d'identité habituelle — ne perds pas tes codes de secours.`,
+          `Le staff ne peut pas désactiver ta 2FA à ta place sans passer par la procédure de vérification d'identité habituelle — ne perds pas tes codes de secours.
+
+` +
+          `[b]Changer ton mot de passe ou ton courriel[/b]
+` +
+          `Depuis Profil > Sécurité. Pour ta protection, ces changements demandent plusieurs preuves :
+` +
+          `• ton mot de passe actuel (et ton code 2FA si elle est activée) ;
+` +
+          `• puis un [b]code à 6 chiffres[/b] reçu par courriel (ou le lien du même courriel) : le changement n'est appliqué qu'après cette confirmation. Pour un nouveau courriel, le code part vers la [i]nouvelle[/i] adresse, et l'[i]ancienne[/i] reçoit une alerte une fois le changement fait.
+` +
+          `Si tu reçois une alerte pour un changement que tu n'as pas fait, contacte le staff tout de suite.
+
+` +
+          `[b]Supprimer mon compte[/b] : demande-le au staff (les torrents, commentaires et messages que tu as publiés restent, attribués à « [compte supprimé] »).`,
       },
     ],
   },

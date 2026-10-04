@@ -27,6 +27,10 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [resetLink, setResetLink] = useState('');
+  const [showDelete, setShowDelete] = useState(false);
+  const [delUsername, setDelUsername] = useState('');
+  const [delPassword, setDelPassword] = useState('');
+  const [delTotp, setDelTotp] = useState('');
 
   function load() {
     api.get(`/admin/users/${targetId}`).then((r) => {
@@ -89,7 +93,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
     <div className="panel ornate">
       <div className="panel-title"><span className="title-icon">🛡️</span>Modération du membre</div>
       <div className="muted" style={{ marginBottom: 10 }}>
-        {detail.email} · {ROLE_LABEL[detail.role]} · {detail.status === 'BANNED' ? '🚫 Banni' : 'Actif'}
+        {detail.email} · {ROLE_LABEL[detail.role]} · {detail.status === 'BANNED' ? '🚫 Banni' : detail.status === 'PENDING_EMAIL' ? '📧 Courriel non confirmé' : 'Actif'}
       </div>
 
       {!isSelf && !outranks && (
@@ -203,6 +207,48 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
               <code style={{ wordBreak: 'break-all', display: 'block', margin: '6px 0' }}>{resetLink}</code>
               <button type="button" className="secondary" onClick={() => navigator.clipboard?.writeText(resetLink)}>Copier</button>
             </div>
+          )}
+        </div>
+      )}
+
+      {detail.status === 'PENDING_EMAIL' && ['ADMIN', 'OWNER'].includes(myRole) && (
+        <div style={{ marginTop: 12 }}>
+          <div className="muted" style={{ marginBottom: 6 }}>Ce membre n'a pas encore confirmé son courriel (le compte est supprimé automatiquement après 48 h). Tu peux l'activer à la main si son courriel est inaccessible.</div>
+          <button type="button" className="secondary" onClick={() => window.confirm(`Activer le compte de ${detail.username} sans confirmation par courriel ?`) && run(() => api.post(`/admin/users/${targetId}/activate`), 'Compte activé')}>✅ Activer le compte maintenant</button>
+        </div>
+      )}
+
+      {outranks && ['ADMIN', 'OWNER'].includes(myRole) && (
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(224,90,90,0.35)' }}>
+          {!showDelete ? (
+            <button type="button" className="secondary" style={{ color: 'var(--danger)' }} onClick={() => setShowDelete(true)}>🗑️ Supprimer définitivement ce compte…</button>
+          ) : (
+            <form
+              className="grid"
+              style={{ gap: 8, maxWidth: 420 }}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setError(''); setMessage('');
+                try {
+                  await api.post(`/admin/users/${targetId}/delete`, { confirmUsername: delUsername, password: delPassword, totpToken: delTotp || undefined });
+                  window.alert(`Le compte « ${detail.username} » a été supprimé.`);
+                  window.location.assign('/leaderboard');
+                } catch (err: any) { setError(err.response?.data?.message ?? 'Suppression impossible'); }
+              }}
+            >
+              <strong style={{ color: 'var(--danger)' }}>Suppression définitive — irréversible</strong>
+              <div className="muted" style={{ fontSize: 12 }}>
+                Son profil, ses favoris, amis, messages reçus, notifications, clés et historique disparaissent. Ses torrents, commentaires, messages du forum et du chat restent, attribués à « [compte supprimé] ».
+                Si c'est pour sanctionner, préfère le <strong>bannissement</strong> (réversible).
+              </div>
+              <input placeholder={`Tape le pseudo « ${detail.username} » pour confirmer`} value={delUsername} onChange={(e) => setDelUsername(e.target.value)} required />
+              <input type="password" placeholder="Ton mot de passe" autoComplete="current-password" value={delPassword} onChange={(e) => setDelPassword(e.target.value)} required />
+              <input inputMode="numeric" placeholder="Ton code 2FA (si activée)" value={delTotp} onChange={(e) => setDelTotp(e.target.value)} />
+              <div className="row">
+                <button type="submit" className="danger" disabled={delUsername !== detail.username || !delPassword}>Supprimer le compte</button>
+                <button type="button" className="secondary" onClick={() => { setShowDelete(false); setDelUsername(''); setDelPassword(''); setDelTotp(''); }}>Annuler</button>
+              </div>
+            </form>
           )}
         </div>
       )}

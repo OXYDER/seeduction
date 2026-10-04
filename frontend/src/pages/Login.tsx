@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
+import CodeConfirm from '../components/CodeConfirm';
 
 export default function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
@@ -10,6 +11,7 @@ export default function Login() {
   const [need2FA, setNeed2FA] = useState(false);
   const [error, setError] = useState('');
   const [emailReset, setEmailReset] = useState(false);
+  const [pending, setPending] = useState<{ challengeId: string; email: string } | null>(null);
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
 
@@ -22,6 +24,8 @@ export default function Login() {
     setError('');
     try {
       const { data } = await api.post('/auth/login', { usernameOrEmail, password, totpToken: totpToken || undefined });
+      // Compte jamais confirmé : un nouveau code vient d'être envoyé, on ouvre l'écran de confirmation.
+      if (data.needsVerification) { setPending({ challengeId: data.challengeId, email: data.email }); return; }
       // Compte famille : le mot de passe ne suffit pas, on passe par le choix du profil et son PIN.
       if (data.needsProfile) { login(data.accessToken, data.user, 'account'); navigate('/profiles'); return; }
       login(data.accessToken, data.user);
@@ -48,6 +52,16 @@ export default function Login() {
             <img src="/logo-icon.png" alt="" width={56} height={56} />
             <h2 style={{ marginTop: 10 }}>Se connecter</h2>
           </div>
+          {pending ? (
+            <CodeConfirm
+              challengeId={pending.challengeId}
+              email={pending.email}
+              intro="Confirme ton courriel pour activer ton compte"
+              onVerified={() => { setPending(null); setError(''); submit({ preventDefault() {} } as any); }}
+              onResend={async () => (await api.post('/auth/login', { usernameOrEmail, password })).data.challengeId}
+              onCancel={() => setPending(null)}
+            />
+          ) : (
           <form onSubmit={submit} className="grid">
             <input placeholder="Nom d'utilisateur ou email" value={usernameOrEmail} onChange={(e) => setUsernameOrEmail(e.target.value)} required />
             <input placeholder="Mot de passe" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
@@ -61,6 +75,7 @@ export default function Login() {
               {emailReset ? <Link to="/forgot-password">Mot de passe oublié ?</Link> : 'Mot de passe oublié ? Demande un lien de réinitialisation au staff.'}
             </div>
           </form>
+          )}
 
           <div className="ornate-divider" />
           <div className="muted" style={{ fontSize: 12 }}>

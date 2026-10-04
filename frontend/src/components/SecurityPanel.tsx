@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import CodeConfirm from './CodeConfirm';
 
 /** Sécurité du compte : double authentification (2FA), changement de mot de passe, dernières connexions. */
 export default function SecurityPanel() {
@@ -12,6 +13,12 @@ export default function SecurityPanel() {
   const [showDisable, setShowDisable] = useState(false);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
+  const [pwTotp, setPwTotp] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailTotp, setEmailTotp] = useState('');
+  // Modification en attente de confirmation par courriel (le changement n'est appliqué qu'après le code à 6 chiffres).
+  const [pendingChange, setPendingChange] = useState<{ kind: 'password' | 'email'; challengeId: string; email: string } | null>(null);
   const [logins, setLogins] = useState<any[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -55,9 +62,21 @@ export default function SecurityPanel() {
     e.preventDefault();
     setError(''); setMessage('');
     try {
-      await api.post('/auth/change-password', { currentPassword: current, newPassword: next });
-      setCurrent(''); setNext('');
-      setMessage('✓ Mot de passe modifié');
+      const { data } = await api.post('/auth/change-password', { currentPassword: current, newPassword: next, totpToken: pwTotp || undefined });
+      setCurrent(''); setNext(''); setPwTotp('');
+      if (data.verificationRequired) setPendingChange({ kind: 'password', challengeId: data.challengeId, email: data.email });
+      else setMessage('✓ Mot de passe modifié');
+    } catch (err) { fail(err); }
+  }
+
+  async function changeEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setError(''); setMessage('');
+    try {
+      const { data } = await api.post('/auth/change-email', { currentPassword: emailPassword, newEmail, totpToken: emailTotp || undefined });
+      setEmailPassword(''); setEmailTotp('');
+      if (data.verificationRequired) setPendingChange({ kind: 'email', challengeId: data.challengeId, email: data.email });
+      else { setNewEmail(''); setMessage('✓ Courriel modifié'); }
     } catch (err) { fail(err); }
   }
 
@@ -117,12 +136,41 @@ export default function SecurityPanel() {
           )}
         </div>
 
-        <form onSubmit={changePassword} className="grid" style={{ gap: 8, maxWidth: 360 }}>
-          <strong>Changer mon mot de passe</strong>
-          <input type="password" placeholder="Mot de passe actuel" value={current} onChange={(e) => setCurrent(e.target.value)} required />
-          <input type="password" placeholder="Nouveau mot de passe (8 caractères minimum)" value={next} onChange={(e) => setNext(e.target.value)} minLength={8} required />
-          <button type="submit" style={{ alignSelf: 'flex-start' }}>Modifier</button>
-        </form>
+        {pendingChange ? (
+          <div className="panel ornate" style={{ maxWidth: 380 }}>
+            <CodeConfirm
+              challengeId={pendingChange.challengeId}
+              email={pendingChange.email}
+              intro={pendingChange.kind === 'password' ? 'Confirme le changement de mot de passe' : 'Confirme ta nouvelle adresse courriel'}
+              onVerified={() => {
+                setMessage(pendingChange.kind === 'password' ? '✓ Mot de passe modifié' : '✓ Courriel modifié');
+                if (pendingChange.kind === 'email') setNewEmail('');
+                setPendingChange(null);
+              }}
+              onCancel={() => setPendingChange(null)}
+            />
+          </div>
+        ) : (
+          <>
+            <form onSubmit={changePassword} className="grid" style={{ gap: 8, maxWidth: 360 }}>
+              <strong>Changer mon mot de passe</strong>
+              <input type="password" placeholder="Mot de passe actuel" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+              <input type="password" placeholder="Nouveau mot de passe (8 caractères minimum)" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} minLength={8} required />
+              {status?.enabled && <input inputMode="numeric" placeholder="Code 2FA (application)" value={pwTotp} onChange={(e) => setPwTotp(e.target.value)} required />}
+              <div className="muted" style={{ fontSize: 12 }}>Un code à 6 chiffres sera envoyé à ton adresse courriel pour confirmer le changement.</div>
+              <button type="submit" style={{ alignSelf: 'flex-start' }}>Modifier</button>
+            </form>
+
+            <form onSubmit={changeEmail} className="grid" style={{ gap: 8, maxWidth: 360 }}>
+              <strong>Changer mon adresse courriel</strong>
+              <input type="email" placeholder="Nouvelle adresse courriel" autoComplete="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required />
+              <input type="password" placeholder="Mot de passe actuel" autoComplete="current-password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required />
+              {status?.enabled && <input inputMode="numeric" placeholder="Code 2FA (application)" value={emailTotp} onChange={(e) => setEmailTotp(e.target.value)} required />}
+              <div className="muted" style={{ fontSize: 12 }}>Le code est envoyé à la nouvelle adresse ; l'ancienne reçoit une alerte une fois le changement fait.</div>
+              <button type="submit" style={{ alignSelf: 'flex-start' }}>Changer le courriel</button>
+            </form>
+          </>
+        )}
 
         <div>
           <strong>Dernières connexions</strong>

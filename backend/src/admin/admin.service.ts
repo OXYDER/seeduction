@@ -14,11 +14,14 @@ const MEMBER_EDITORS = ['SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const MEMBER_CLASSES = ['NOUVEAU', 'MEMBRE', 'POWER_USER', 'ELITE', 'VETERAN'];
 const TORRENT_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'DEAD'];
 
+import { AccountDeletionService, DELETED_USER_ID } from './account-deletion.service';
+import { AuthService } from '../auth/auth.service';
+
 export interface Actor { userId: string; username: string; role: string }
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService, private social: SocialService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService, private social: SocialService, private deletion: AccountDeletionService, private auth: AuthService) {}
 
   async approveTorrent(id: string) {
     const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED' } });
@@ -254,6 +257,34 @@ export class AdminService {
     this.assertOutranks(actor, await this.loadTarget(userId));
     if (!reason?.trim()) throw new BadRequestException('Motif requis');
     return this.prisma.warning.create({ data: { userId, reason: reason.trim(), issuedBy: actor.username } });
+  }
+
+  /**
+   * Suppression définitive d'un compte : réservée aux administrateurs, sur un membre de rang inférieur, après avoir saisi son propre
+   * mot de passe (+ code 2FA si activée) et le pseudo exact du compte visé. Irréversible : préfère le bannissement quand c'est possible.
+   */
+  async deleteMember(actor: Actor, userId: string, body: { password?: string; totpToken?: string; confirmUsername?: string }, ip?: string | null) {
+    // Action irréversible : on relit le rôle en base (le jeton peut dater de plusieurs jours).
+    const fresh = await this.prisma.user.findUnique({ where: { id: actor.userId }, select: { role: true, status: true } });
+    if (!fresh || fresh.status !== 'ACTIVE' || !['ADMIN', 'OWNER'].includes(fresh.role)) throw new ForbiddenException('Réservé aux administrateurs');
+    actor = { ...actor, role: fresh.role };
+    userId = await this.accountIdOf(userId);
+    if (userId === DELETED_USER_ID) throw new BadRequestException('Ce compte système ne peut pas être supprimé');
+    const target = await this.loadTarget(userId);
+    this.assertOutranks(actor, target);
+    if (String(body.confirmUsername ?? '').trim() !== target.username) throw new BadRequestException('Pseudo de confirmation incorrect');
+    await this.auth.assertStaffReauth(actor.userId, String(body.password ?? ''), body.totpToken, ip);
+    const summary = await this.deletion.deleteAccount(userId);
+    return { deleted: true, username: target.username, ...summary };
+  }
+
+  /** Active à la main un compte dont le courriel n'a jamais été confirmé (courriel perdu, boîte pleine...). */
+  async activateMember(actor: Actor, userId: string) {
+    if (!['ADMIN', 'OWNER'].includes(actor.role)) throw new ForbiddenException('Réservé aux administrateurs');
+    userId = await this.accountIdOf(userId);
+    const ok = await this.auth.activate(userId);
+    if (!ok) throw new BadRequestException("Ce compte n'attend pas de confirmation");
+    return { activated: true };
   }
 
   async banUser(actor: Actor, userId: string, reason: string, expiresAt?: Date) {

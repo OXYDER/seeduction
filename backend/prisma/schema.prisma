@@ -30,6 +30,7 @@ enum UserStatus {
   BANNED
   DISABLED
   PENDING_INVITE
+  PENDING_EMAIL // inscription faite, courriel pas encore confirmé (code à 6 chiffres ou lien)
 }
 
 model User {
@@ -999,6 +1000,24 @@ model PasswordReset {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+// Confirmation par courriel (code à 6 chiffres ET lien) : inscription, changement de mot de passe, changement de courriel.
+// Le code et le lien ne sont jamais stockés en clair ; `payload` garde la modification en attente (nouveau hash ou nouveau courriel).
+model EmailChallenge {
+  id        String    @id @default(uuid())
+  userId    String
+  purpose   String // SIGNUP | PASSWORD_CHANGE | EMAIL_CHANGE
+  codeHash  String
+  tokenHash String    @unique
+  sentTo    String
+  payload   Json?
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, purpose])
 }
 
 // « Merci » / « J'aime » sur un torrent (un par membre).

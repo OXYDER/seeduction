@@ -9,6 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 import { AuditService } from '../audit/audit.service';
 import { MailService } from '../mail/mail.service';
+import { EmailVerificationService, maskEmail } from './email-verification.service';
 import { CLASS_LABELS, ECONOMY, INVITE_QUOTA, SITE } from '../common/utils/economy';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -53,6 +54,7 @@ export class AuthService {
     private badges: BadgesService,
     private audit: AuditService,
     private mail: MailService,
+    private verification: EmailVerificationService,
   ) {}
 
   private assertPassword(password: string) {
@@ -68,6 +70,8 @@ export class AuthService {
    */
   async register(inviteCode: string, username: string, email: string, password: string, ip: string | null = null) {
     this.assertPassword(password);
+    email = String(email ?? '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Courriel invalide');
     // « · » sépare le nom d'un profil famille du pseudo de son compte : un pseudo ordinaire ne peut pas le contenir.
     if (String(username ?? '').includes('·')) throw new BadRequestException("Le caractère « · » n'est pas autorisé dans un pseudo");
     const isFirstUser = (await this.prisma.user.count()) === 0;
@@ -117,6 +121,8 @@ export class AuthService {
             passwordHash,
             invitedById: invite.createdById,
             minRatio: SITE.defaultMinRatio,
+            // Courriel à confirmer (code à 6 chiffres ou lien) avant de pouvoir se connecter, si l'envoi de courriels est configuré.
+            ...(this.verification.required ? { status: 'PENDING_EMAIL' as const } : {}),
             ...welcomeGift,
           },
         });
@@ -127,12 +133,26 @@ export class AuthService {
       });
     } catch (err: any) {
       // Deux inscriptions depuis la même IP au même instant : la contrainte d'unicité refuse la seconde.
+      if (err?.code === 'P2002' && String(err?.meta?.target ?? '').includes('username')) throw new BadRequestException("Ce nom d'utilisateur est déjà pris");
+      if (err?.code === 'P2002' && String(err?.meta?.target ?? '').includes('email')) throw new BadRequestException('Ce courriel est déjà utilisé');
       if (err?.code === 'P2002' && String(err?.meta?.target ?? '').includes('ipKey')) {
         throw new BadRequestException('Ce code a déjà servi à créer un compte depuis cette connexion (une inscription par adresse IP)');
       }
       throw err;
     }
 
+    if (user.status === 'PENDING_EMAIL') {
+      // Les notifications de bienvenue et d'invitation attendent la confirmation du courriel (voir activate).
+      const challengeId = await this.verification.issue(user, 'SIGNUP', user.email);
+      await this.audit.log(user.id, 'SIGNUP_VERIFICATION_SENT', undefined, ip);
+      return { id: user.id, username: user.username, pendingVerification: true, challengeId, email: maskEmail(user.email) };
+    }
+    await this.welcome(user, invite);
+    return { id: user.id, username: user.username, passkey: user.passkey };
+  }
+
+  /** Notifications d'arrivée (invitant + nouveau membre) et badges : au moment où le compte devient réellement actif. */
+  private async welcome(user: { id: string; username: string }, invite: { createdById: string; generic: boolean; maxUses: number }) {
     if (!invite.generic || invite.maxUses <= 10) await this.notifications.notify({
       userId: invite.createdById,
       type: 'INVITE_USED',
@@ -148,8 +168,20 @@ export class AuthService {
       link: '/profile',
     });
     await this.badges.checkAndAward(invite.createdById);
+  }
 
-    return { id: user.id, username: user.username, passkey: user.passkey };
+  /** Active un compte en attente de confirmation (courriel confirmé, ou validation manuelle par le staff). */
+  async activate(userId: string) {
+    const claimed = await this.prisma.user.updateMany({ where: { id: userId, status: 'PENDING_EMAIL' }, data: { status: 'ACTIVE' } });
+    if (claimed.count === 0) return false;
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, invitedById: true } });
+    if (user?.invitedById) {
+      const invite = await this.prisma.inviteCode.findFirst({ where: { uses: { some: { userId } } }, select: { createdById: true, generic: true, maxUses: true } });
+      await this.welcome(user, invite ?? { createdById: user.invitedById, generic: false, maxUses: 1 });
+    } else if (user) {
+      await this.notifications.notify({ userId: user.id, type: 'SYSTEM', title: `Bienvenue sur Seeduction, ${user.username} !`, body: 'Ton compte est actif.', link: '/profile' });
+    }
+    return true;
   }
 
   async validateUser(usernameOrEmail: string, password: string) {
@@ -204,6 +236,13 @@ export class AuthService {
       }
     }
 
+    if (user.status === 'PENDING_EMAIL') {
+      // Mot de passe juste mais courriel jamais confirmé : on (re)envoie un code et on ouvre l'écran de confirmation.
+      this.accountLimiter.reset(accountKey);
+      if (!this.verification.required) { await this.activate(user.id); return this.login(usernameOrEmail, password, totpToken, ip); }
+      const challengeId = await this.verification.issue(user, 'SIGNUP', user.email);
+      return { needsVerification: true, challengeId, email: maskEmail(user.email) };
+    }
     this.accountLimiter.reset(accountKey);
     await this.audit.log(user.id, 'LOGIN', { username: user.username }, ip);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(), lastIp: ip ?? undefined } });
@@ -274,14 +313,106 @@ export class AuthService {
 
   // ------------------------------------------------------------------ mot de passe
 
-  async changePassword(userId: string, current: string, next: string, ip?: string | null) {
+  /** Vérifie le mot de passe actuel et, si la 2FA est active, le code 2FA : exigé avant tout changement sensible. */
+  private async assertSensitiveChange(user: { id: string; passwordHash: string; twoFactorEnabled: boolean; twoFactorSecret: string | null; twoFactorRecovery: string[] }, current: string, totpToken: string | undefined, ip?: string | null) {
+    const key = `sens:${user.id}`;
+    this.accountLimiter.assertAllowed(key);
+    if (!(await bcrypt.compare(current ?? '', user.passwordHash))) {
+      this.accountLimiter.fail(key);
+      await this.audit.log(user.id, 'SENSITIVE_CHANGE_DENIED', { reason: 'password' }, ip);
+      throw new UnauthorizedException('Mot de passe actuel incorrect');
+    }
+    if (user.twoFactorEnabled && !(await this.verifySecondFactor(user, String(totpToken ?? '')))) {
+      this.accountLimiter.fail(key);
+      await this.audit.log(user.id, 'SENSITIVE_CHANGE_DENIED', { reason: '2FA' }, ip);
+      throw new UnauthorizedException('Code 2FA requis ou invalide');
+    }
+    this.accountLimiter.reset(key);
+  }
+
+  /** Ré-authentification d'un membre du staff avant une action destructrice : son mot de passe (+ code 2FA s'il l'a activée). */
+  async assertStaffReauth(userId: string, password: string, totpToken?: string, ip?: string | null) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException();
+    await this.assertSensitiveChange(user, password, totpToken, ip);
+  }
+
+  /**
+   * Changement de mot de passe : mot de passe actuel (+ code 2FA si activée), puis confirmation par un code à 6 chiffres / un lien
+   * envoyé à l'adresse du compte — le nouveau mot de passe n'est appliqué qu'à ce moment-là.
+   */
+  async changePassword(userId: string, current: string, next: string, totpToken?: string, ip?: string | null) {
     this.assertPassword(next);
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
-    if (!(await bcrypt.compare(current ?? '', user.passwordHash))) throw new UnauthorizedException('Mot de passe actuel incorrect');
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(next, 12) } });
-    await this.audit.log(userId, 'PASSWORD_CHANGE', undefined, ip);
-    return { changed: true };
+    await this.assertSensitiveChange(user, current, totpToken, ip);
+    const passwordHash = await bcrypt.hash(next, 12);
+    if (!this.verification.required) {
+      await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+      await this.audit.log(userId, 'PASSWORD_CHANGE', undefined, ip);
+      return { changed: true };
+    }
+    const challengeId = await this.verification.issue(user, 'PASSWORD_CHANGE', user.email, { passwordHash });
+    await this.audit.log(userId, 'PASSWORD_CHANGE_REQUESTED', undefined, ip);
+    return { verificationRequired: true, challengeId, email: maskEmail(user.email) };
+  }
+
+  /** Changement de courriel : mêmes garde-fous ; le code part vers la NOUVELLE adresse, et l'ancienne reçoit une alerte une fois fait. */
+  async changeEmail(userId: string, current: string, newEmail: string, totpToken?: string, ip?: string | null) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException();
+    const email = String(newEmail ?? '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Courriel invalide');
+    if (email.toLowerCase() === user.email.toLowerCase()) throw new BadRequestException("C'est déjà ton adresse actuelle");
+    await this.assertSensitiveChange(user, current, totpToken, ip);
+    if (await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' }, id: { not: userId } }, select: { id: true } })) {
+      throw new BadRequestException('Ce courriel est déjà utilisé');
+    }
+    if (!this.verification.required) {
+      await this.prisma.user.update({ where: { id: userId }, data: { email } });
+      await this.audit.log(userId, 'EMAIL_CHANGE', { from: user.email, to: email }, ip);
+      return { changed: true, email };
+    }
+    const challengeId = await this.verification.issue(user, 'EMAIL_CHANGE', email, { newEmail: email, oldEmail: user.email });
+    await this.audit.log(userId, 'EMAIL_CHANGE_REQUESTED', { to: email }, ip);
+    return { verificationRequired: true, challengeId, email: maskEmail(email) };
+  }
+
+  /** Confirmation par code (avec l'identifiant de la demande) ou par lien : applique la demande en attente. */
+  async verifyEmail(input: { challengeId?: string; code?: string; token?: string }, ip?: string | null) {
+    const done = await this.verification.consume(input, ip);
+    const user = await this.prisma.user.findUnique({ where: { id: done.userId } });
+    if (!user) throw new BadRequestException('Compte introuvable');
+
+    if (done.purpose === 'SIGNUP') {
+      if (user.status === 'BANNED') throw new UnauthorizedException('Compte banni');
+      await this.activate(user.id);
+      await this.audit.log(user.id, 'SIGNUP_VERIFIED', undefined, ip);
+      return { verified: true, purpose: done.purpose, username: user.username };
+    }
+    if (done.purpose === 'PASSWORD_CHANGE') {
+      if (typeof done.payload.passwordHash !== 'string') throw new BadRequestException('Demande invalide');
+      await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash: done.payload.passwordHash } });
+      await this.audit.log(user.id, 'PASSWORD_CHANGE', undefined, ip);
+      await this.verification.notifyChange(user.email, user.username, "Le mot de passe de ton compte Seeduction vient d'être modifié.");
+      return { verified: true, purpose: done.purpose, username: user.username };
+    }
+    if (done.purpose === 'EMAIL_CHANGE') {
+      const next = String(done.payload.newEmail ?? '');
+      if (!next) throw new BadRequestException('Demande invalide');
+      if (await this.prisma.user.findFirst({ where: { email: { equals: next, mode: 'insensitive' }, id: { not: user.id } }, select: { id: true } })) {
+        throw new BadRequestException('Ce courriel est déjà utilisé');
+      }
+      await this.prisma.user.update({ where: { id: user.id }, data: { email: next } });
+      await this.audit.log(user.id, 'EMAIL_CHANGE', { from: user.email, to: next }, ip);
+      await this.verification.notifyChange(user.email, user.username, `L'adresse courriel de ton compte Seeduction vient d'être remplacée par ${maskEmail(next)}.`);
+      return { verified: true, purpose: done.purpose, username: user.username };
+    }
+    throw new BadRequestException('Demande invalide');
+  }
+
+  get emailVerificationRequired() {
+    return this.verification.required;
   }
 
   get emailResetAvailable() {
