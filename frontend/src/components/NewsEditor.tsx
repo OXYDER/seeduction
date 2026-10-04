@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import WysiwygEditor from './WysiwygEditor';
 import { NEWS_KINDS } from '../lib/news';
+import { canvasToBlob, drawBanner, loadLogo, type BannerKind } from '../lib/newsBanner';
 
 export interface NewsItem { id?: string; title: string; content: string; summary?: string | null; imageUrl?: string | null; pinned?: boolean; kind?: string; commentsLocked?: boolean }
 
@@ -16,6 +17,42 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
   const [locked, setLocked] = useState(!!item?.commentsLocked);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Bannières instantanées (gratuites, dans le navigateur) : le vrai logo, le titre et les couleurs du type de nouvelle.
+  const [banners, setBanners] = useState<string[]>([]);
+  const [bannerBusy, setBannerBusy] = useState(false);
+  const [bannerError, setBannerError] = useState('');
+
+  async function makeBanners() {
+    setBannerBusy(true); setBannerError('');
+    try {
+      const logo = await loadLogo();
+      const canvas = document.createElement('canvas');
+      const out: string[] = [];
+      for (let variant = 0; variant < 3; variant++) {
+        drawBanner(canvas, logo, { kind: kind as BannerKind, title, summary, variant });
+        out.push(canvas.toDataURL('image/png'));
+      }
+      setBanners(out);
+    } catch (err: any) { setBannerError(err?.message ?? 'Impossible de créer les bannières'); } finally { setBannerBusy(false); }
+  }
+
+  /** Choisir une bannière l'envoie sur Seeduction (comme une image téléversée) et la sélectionne. */
+  async function pickBanner(dataUrl: string) {
+    setBannerError('');
+    try {
+      const canvas = document.createElement('canvas');
+      const img = new Image();
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(new Error('Image illisible')); img.src = dataUrl; });
+      canvas.width = img.width; canvas.height = img.height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0);
+      const blob = await canvasToBlob(canvas);
+      const form = new FormData();
+      form.append('file', new File([blob], 'banniere.png', { type: 'image/png' }));
+      const { data } = await api.post('/covers/upload', form);
+      setImageUrl(data.url);
+    } catch (err: any) { setBannerError(err.response?.data?.message ?? err?.message ?? 'Enregistrement impossible'); }
+  }
+
   // Image générée par l'IA (Gemini) : le logo de Seeduction est joint à chaque génération.
   const [ai, setAi] = useState<{ configured: boolean; logo: boolean } | null>(null);
   const [aiHint, setAiHint] = useState('');
@@ -66,10 +103,33 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
         <label className="secondary fam-file">🖼️ {imageUrl ? "Changer l'image principale" : 'Ajouter une image principale'}<input type="file" accept="image/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ''; }} /></label>
         {imageUrl && <button type="button" className="secondary" onClick={() => setImageUrl(null)}>Retirer</button>}
       </div>
+      <div className="panel" style={{ display: 'grid', gap: 8, background: 'rgba(255,255,255,0.03)' }}>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <strong>🎨 Bannière instantanée</strong>
+          <span className="muted" style={{ fontSize: 12 }}>Gratuite, sans service externe : le vrai logo de Seeduction, le titre et les couleurs du type de nouvelle.</span>
+        </div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" disabled={bannerBusy || !title.trim()} onClick={makeBanners}>{bannerBusy ? 'Création…' : banners.length ? '🔄 Autres bannières' : '🎨 Créer 3 bannières'}</button>
+          {!title.trim() && <span className="muted" style={{ fontSize: 12 }}>Écris d'abord le titre.</span>}
+        </div>
+        {bannerError && <div style={{ color: 'var(--danger)' }}>{bannerError}</div>}
+        {banners.length > 0 && (
+          <>
+            <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
+              {banners.map((u) => (
+                <button key={u.slice(-60)} type="button" onClick={() => pickBanner(u)} title="Utiliser cette bannière" style={{ padding: 0, border: '3px solid transparent', borderRadius: 10, background: 'none', cursor: 'pointer', overflow: 'hidden' }}>
+                  <img src={u} alt="Proposition de bannière" style={{ display: 'block', width: 300, maxWidth: '100%', aspectRatio: '16 / 9' }} />
+                </button>
+              ))}
+            </div>
+            <span className="muted" style={{ fontSize: 12 }}>Clique sur la bannière à utiliser, puis publie ou enregistre la nouvelle. Change le titre, le chapeau ou le type et recrée-les pour les mettre à jour.</span>
+          </>
+        )}
+      </div>
       {ai && (
         <div className="panel" style={{ display: 'grid', gap: 8, background: 'rgba(255,255,255,0.03)' }}>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <strong>✨ Image automatique (Gemini)</strong>
+            <strong>✨ Image par IA (Gemini, facultatif)</strong>
             <span className="muted" style={{ fontSize: 12 }}>Le logo de Seeduction est joint à chaque génération ; le titre, le résumé et le type de la nouvelle guident l'image.</span>
           </div>
           {!ai.configured ? (
