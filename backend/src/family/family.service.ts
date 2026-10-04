@@ -112,7 +112,7 @@ export class FamilyService {
       data: {
         username, email: `profil-${randomBytes(8).toString('hex')}@profils.invalid`, passwordHash: await bcrypt.hash(randomBytes(24).toString('hex'), 4), // aucun mot de passe utilisable : on entre par le compte
         parentId: accountId, profileName: name, profileType: 'PROFILE', profilePerms: normalizePerms(input.perms), pinHash: await bcrypt.hash(input.pin, 10), avatarUrl,
-        role: 'USER', showAdult: false, defaultView: owner.defaultView,
+        role: 'USER', showAdult: false, defaultView: owner.defaultView, tipStyle: owner.tipStyle,
       },
     });
     return this.card(created, owner);

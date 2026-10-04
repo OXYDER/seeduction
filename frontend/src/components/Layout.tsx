@@ -1,4 +1,5 @@
 import { applyDefaultView } from '../lib/viewMode';
+import { applyTipStyle } from '../lib/tipStyle';
 import { useEffect, useState, FormEvent } from 'react';
 import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
@@ -203,7 +204,7 @@ function LayoutInner() {
 
   useEffect(() => {
     if (accessToken) {
-      api.get('/users/me').then((r) => { setProfile(r.data); applyDefaultView(r.data.defaultView); }).catch(() => {});
+      api.get('/users/me').then((r) => { setProfile(r.data); applyDefaultView(r.data.defaultView); applyTipStyle(r.data.tipStyle); }).catch(() => {});
     } else {
       setProfile(null);
     }

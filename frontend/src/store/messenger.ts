@@ -62,7 +62,11 @@ export interface ConvSummary {
   pinned: boolean;
   archived: boolean;
   myRole: string;
-  pinnedMessageId: string | null;
+  /** Messages épinglés (le plus ancien d'abord) ; la liste complète se charge à part. */
+  pinnedMessageIds: string[];
+  /** Message du jour d'un canal et sa date de dernière modification. */
+  motd?: string | null;
+  motdAt?: string | null;
   writable: boolean;
   position: number;
   lastMessageAt: string;
@@ -286,8 +290,8 @@ export const useMessenger = create<MsgrState>((set, get) => {
       socket.on('conversation:read-self', ({ conversationId }: { conversationId: string }) => {
         set((s) => ({ conversations: s.conversations.map((c) => (c.id === conversationId ? { ...c, unread: 0, mentions: 0 } : c)) }));
       });
-      socket.on('conversation:pinned', ({ conversationId, pinnedMessageId }: { conversationId: string; pinnedMessageId: string | null }) => {
-        get().patchConversation(conversationId, { pinnedMessageId });
+      socket.on('conversation:pinned', ({ conversationId, pinnedMessageIds }: { conversationId: string; pinnedMessageIds: string[] }) => {
+        get().patchConversation(conversationId, { pinnedMessageIds });
       });
       socket.on('conversation:changed', () => scheduleRefresh());
 

@@ -1,10 +1,8 @@
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { CATEGORY_STYLE } from './Layout';
-import HoverCard from './HoverCard';
-import { TorrentPreview } from './TorrentLink';
+import { TorrentHover } from './TorrentLink';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
 
@@ -12,7 +10,7 @@ import CategoryTag from './CategoryTag';
 export function PosterCard({ t }: { t: any }) {
   const catStyle = t.category?.slug ? CATEGORY_STYLE[t.category.slug] : undefined;
   return (
-    <HoverCard cacheKey={`torrent:${t.id}`} inline={false} load={() => api.get(`/torrents/${t.id}/preview`).then((r) => r.data)} render={(d: any) => <TorrentPreview t={d} />}>
+    <TorrentHover id={t.id} inline={false}>
       <Link to={`/torrents/${t.id}`} className="poster-card rail-card">
         {t.coverImage
           ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
@@ -33,7 +31,7 @@ export function PosterCard({ t }: { t: any }) {
           {t.reason && <div className="tv-reason">✨ {t.reason}</div>}
         </div>
       </Link>
-    </HoverCard>
+    </TorrentHover>
   );
 }
 

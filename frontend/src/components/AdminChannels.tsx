@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 
 interface Channel {
-  id: string; name: string; slug: string; description: string | null; readRole: string | null; writeRole: string | null;
+  id: string; name: string; slug: string; description: string | null; motd: string | null; readRole: string | null; writeRole: string | null;
   slowModeSeconds: number; position: number; archived: boolean; messageCount: number;
 }
 
@@ -15,7 +15,7 @@ const ROLES: { value: string; label: string }[] = [
 ];
 const roleLabel = (v: string | null) => ROLES.find((r) => r.value === (v ?? ''))?.label ?? v ?? '';
 
-const emptyForm = { name: '', description: '', readRole: '', writeRole: '', slowModeSeconds: 0 };
+const emptyForm = { name: '', description: '', motd: '', readRole: '', writeRole: '', slowModeSeconds: 0 };
 
 /** Canaux publics du Messenger : créer, régler qui peut lire / écrire, mode lent, ordre, archiver (administrateurs). */
 export function ChannelsAdmin() {
@@ -33,7 +33,7 @@ export function ChannelsAdmin() {
   async function save() {
     setError(''); setMessage('');
     if (!form.name.trim()) { setError('Donne un nom au canal'); return; }
-    const body = { ...form, readRole: form.readRole || null, writeRole: form.writeRole || null, slowModeSeconds: Number(form.slowModeSeconds) || 0 };
+    const body = { ...form, motd: form.motd, readRole: form.readRole || null, writeRole: form.writeRole || null, slowModeSeconds: Number(form.slowModeSeconds) || 0 };
     try {
       if (editingId) await api.patch(`/messenger/admin/channels/${editingId}`, body);
       else await api.post('/messenger/admin/channels', body);
@@ -57,7 +57,7 @@ export function ChannelsAdmin() {
 
   function startEdit(c: Channel) {
     setEditingId(c.id);
-    setForm({ name: c.name, description: c.description ?? '', readRole: c.readRole ?? '', writeRole: c.writeRole ?? '', slowModeSeconds: c.slowModeSeconds });
+    setForm({ name: c.name, description: c.description ?? '', motd: c.motd ?? '', readRole: c.readRole ?? '', writeRole: c.writeRole ?? '', slowModeSeconds: c.slowModeSeconds });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -72,6 +72,9 @@ export function ChannelsAdmin() {
         <div className="grid" style={{ gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
           <input placeholder="Nom (ex. Films, Aide, Staff…)" value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input placeholder="Description (facultative)" value={form.description} maxLength={300} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <label className="muted" style={{ gridColumn: '1 / -1' }}>📢 Message du jour (affiché en haut du canal ; laisse vide pour ne rien afficher)
+            <textarea rows={3} maxLength={1000} placeholder="Bienvenue ! Les règles du canal, une annonce, un lien utile…" value={form.motd} onChange={(e) => setForm({ ...form, motd: e.target.value })} />
+          </label>
           <label className="muted">Qui peut <strong>lire</strong>
             <select value={form.readRole} onChange={(e) => setForm({ ...form, readRole: e.target.value })}>{ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
           </label>

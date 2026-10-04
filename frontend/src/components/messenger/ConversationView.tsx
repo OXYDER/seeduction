@@ -10,6 +10,8 @@ import { clock, dayLabel, isSameDay } from '../../lib/chatFormat';
 import ConvAvatar from './ConvAvatar';
 import MessageItem, { type Reader } from './MessageItem';
 import Composer from './Composer';
+import PinBar from './PinBar';
+import MotdBanner from './MotdBanner';
 
 const TYPING_TTL_MS = 4500;
 const CLUSTER_GAP_MS = 5 * 60_000;
@@ -49,6 +51,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   const [dragging, setDragging] = useState(false);
   const [dropped, setDropped] = useState<File[]>([]);
   const [missing, setMissing] = useState(false);
+  const [motdEditing, setMotdEditing] = useState(false);
 
   const scroller = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -132,10 +135,11 @@ export default function ConversationView({ conversationId, variant, onClose, onM
 
   const jumpTo = useCallback((id: string) => {
     const el = document.getElementById(`msg-${id}`);
-    if (!el) return;
+    if (!el) return false;
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
     setFlash(id);
     window.setTimeout(() => setFlash((f) => (f === id ? null : f)), 1800);
+    return true;
   }, []);
 
   // Recherche dans la conversation
@@ -218,11 +222,12 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   const isStaff = STAFF.includes(me?.role ?? '');
   const canModerate = conv.type === 'CHANNEL' ? isStaff : conv.type === 'GROUP' ? conv.myRole !== 'MEMBER' : false;
   const canPin = conv.type === 'DIRECT' || canModerate;
-  const pinned = conv.pinnedMessageId ? messages.find((m) => m.id === conv.pinnedMessageId) : null;
   const status = statusOf(online, conv.other?.id);
 
   async function togglePin(m: Msg) {
-    await api.post(`/messenger/conversations/${conversationId}/pin`, { messageId: conv!.pinnedMessageId === m.id ? null : m.id }).catch((err) => window.alert(err.response?.data?.message ?? 'Impossible d\'épingler'));
+    const isPinned = conv!.pinnedMessageIds.includes(m.id);
+    const call = isPinned ? api.delete(`/messenger/conversations/${conversationId}/pins/${m.id}`) : api.post(`/messenger/conversations/${conversationId}/pins`, { messageId: m.id });
+    await call.catch((err) => window.alert(err.response?.data?.message ?? "Impossible d'épingler"));
   }
 
   const canCall = callPhase === 'idle' && status !== 'OFFLINE';
@@ -259,6 +264,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
             </>
           )}
           <button type="button" className={`dm-icon-btn${searchOpen ? ' on' : ''}`} title="Rechercher dans la conversation" onClick={() => setSearchOpen((v) => !v)}>🔍</button>
+          {conv.type === 'CHANNEL' && isStaff && <button type="button" className={`dm-icon-btn${motdEditing ? ' on' : ''}`} title="Message du jour du canal" onClick={() => setMotdEditing((v) => !v)}>📢</button>}
           {onOpenInfo && <button type="button" className={`dm-icon-btn${infoOpen ? ' on' : ''}`} title="Infos et réglages" onClick={onOpenInfo}>ⓘ</button>}
           {variant === 'dock' && onMinimize && <button type="button" className="dm-icon-btn" title="Réduire" onClick={onMinimize}>⌄</button>}
           {variant === 'dock' && onClose && <button type="button" className="dm-icon-btn" title="Fermer" onClick={onClose}>✕</button>}
@@ -294,11 +300,9 @@ export default function ConversationView({ conversationId, variant, onClose, onM
         </div>
       )}
 
-      {pinned && (
-        <button type="button" className="msgr-pinned" onClick={() => jumpTo(pinned.id)}>
-          📌 <strong>{pinned.sender.username}</strong> {(pinned.content || 'pièce jointe').slice(0, 90)}
-        </button>
-      )}
+      {conv.type === 'CHANNEL' && <MotdBanner conv={conv} editing={motdEditing} onCloseEditor={() => setMotdEditing(false)} />}
+
+      <PinBar conversationId={conversationId} pinnedIds={conv.pinnedMessageIds ?? []} canPin={canPin} onJump={jumpTo} me={me?.id} />
 
       <div className="msgr-scroll" ref={scroller} onScroll={onScroll}>
         <div className="msgr-content" ref={content}>

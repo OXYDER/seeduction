@@ -26,10 +26,21 @@ export class MessengerMigrationService implements OnModuleInit {
   }
 
   async run() {
+    await this.migrateLegacyPins();
     const general = await this.ensureGeneralChannel();
     const chat = await this.copyPublicChat(general.id);
     const direct = await this.copyDirectMessages();
     if (chat || direct) this.logger.log(`Messenger : ${chat} message(s) du chat public et ${direct} message(s) privés recopiés`);
+  }
+
+  /** L'ancien épinglage (un seul message par conversation) devient la première épingle de la nouvelle liste. */
+  private async migrateLegacyPins() {
+    const rows = await this.prisma.conversation.findMany({ where: { pinnedMessageId: { not: null } }, select: { id: true, pinnedMessageId: true } });
+    for (const c of rows) {
+      const exists = await this.prisma.message.findFirst({ where: { id: c.pinnedMessageId!, conversationId: c.id }, select: { id: true } });
+      if (exists) await this.prisma.conversationPin.upsert({ where: { conversationId_messageId: { conversationId: c.id, messageId: exists.id } }, update: {}, create: { conversationId: c.id, messageId: exists.id } });
+      await this.prisma.conversation.update({ where: { id: c.id }, data: { pinnedMessageId: null } });
+    }
   }
 
   private async ensureGeneralChannel() {

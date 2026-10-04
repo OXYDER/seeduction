@@ -211,6 +211,13 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `[b]En haut de l'écran[/b] : en plus de l'upload, du téléchargé et des points, tu vois ton [b]différentiel[/b] (upload moins téléchargé), le nombre de torrents que tu [b]seedes[/b] et tes [b]hit & run[/b] ; l'icône 👫 montre une pastille rouge pour les demandes d'ami et une verte pour les amis en ligne (la même chose à côté de « Amis » dans le menu). Le [b]calendrier freeleech[/b] (accueil et page Points bonus) affiche le freeleech en cours et les prochains, avec un décompte.\n\n` +
           `[b]Ton affichage par défaut[/b]\n` +
           `Dans Profil > Compte > « Affichage des listes de torrents », choisis celui qui s'applique partout par défaut. Tu peux ensuite changer l'affichage d'une page précise avec les boutons en haut de la liste : ce choix est retenu pour cette page, dans ce navigateur. Changer ton réglage par défaut dans ton compte remet toutes les pages sur celui-ci.\n\n` +
+          `[b]Info-bulles des torrents : 4 styles au choix[/b]\n` +
+          `Quand tu passes la souris sur un titre ou une affiche, une info-bulle montre le détail du torrent. Dans Profil > Compte > « Info-bulles des torrents », choisis son style (un aperçu de chacun est affiché) :\n` +
+          `• [b]Affiche[/b] (par défaut) : grande affiche avec le titre dessus, année, note, durée, genres, synopsis et casting.\n` +
+          `• [b]Cinéma[/b] : bandeau panoramique avec la petite affiche, synopsis et casting.\n` +
+          `• [b]Classique[/b] : petite affiche à gauche et le détail à droite.\n` +
+          `• [b]Minimal[/b] : sans image, juste le titre, les infos essentielles et un court résumé.\n` +
+          `Une case permet aussi de ne plus afficher d'info-bulles. Ton choix te suit sur tous tes appareils. Sur écran tactile, il n'y a pas d'info-bulle (pas de survol).\n\n` +
           `[b]« Tu pourrais aimer » : les offres de torrents[/b]\n` +
           `Sur l'accueil, sur chaque fiche torrent (« Dans la même veine »), dans tes favoris, tes collections et quand une recherche ne donne rien, le site te propose des torrents que tu n'as pas encore, d'après ton activité :\n` +
           `• ce que tu as téléchargé, regardé dans le lecteur Seeduction, mis de côté, remercié, noté ou rangé dans une collection, et ce que tu seedes en ce moment ;\n` +
@@ -333,7 +340,11 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Répondre[/b] à un message précis (il est cité), [b]réagir[/b] avec un émoji, [b]modifier[/b] ton message ou [b]annuler son envoi[/b] (il disparaît pour tout le monde).\n` +
           `• [b]Mentionner[/b] quelqu'un avec @pseudo : il est prévenu, et son nom ressort dans le message.\n` +
           `• Voir quand l'autre est en train d'écrire, et le « Vu » une fois ton message lu.\n` +
-          `• Chercher un mot dans une conversation (🔍), épingler un message important, voir les photos et fichiers partagés (ⓘ).\n\n` +
+          `• Chercher un mot dans une conversation (🔍) et voir les photos et fichiers partagés (ⓘ).\n\n` +
+          `[b]Messages épinglés[/b]\n` +
+          `On peut épingler [b]plusieurs messages[/b] (25 au maximum) dans une conversation, comme sur Discord ou Telegram : menu ⋯ d'un message > « Épingler ». Dans un canal public, seul le staff épingle ; dans un groupe, les administrateurs ; dans une discussion privée, les deux personnes. Une barre en haut de la conversation montre le dernier message épinglé (un clic y amène et passe au suivant), et le bouton ☰ ouvre la liste de tous les messages épinglés avec leur contenu, même anciens. Une ligne « X a épinglé un message » apparaît dans le fil, et une 📌 marque le message. Désépingler se fait par le menu ⋯ ou depuis la liste.\n\n` +
+          `[b]Message du jour d'un canal[/b]\n` +
+          `Un canal peut avoir un [b]message du jour[/b] (règles, annonce, lien utile) affiché dans un bandeau en haut du canal. Tu peux le replier avec ✕ : il revient automatiquement quand le staff le modifie. Le staff l'écrit, le modifie ou l'efface avec le bouton 📢 de l'en-tête du canal (ou dans Staff > Canaux, champ « Message du jour »).\n\n` +
           `[b]Appels audio et vidéo[/b]\n` +
           `Dans une conversation privée, 📞 lance un appel audio et 🎥 un appel vidéo (les boutons sont grisés si l'autre n'est pas en ligne). Chez lui, ça sonne en haut de l'écran : il peut répondre, répondre sans caméra (🎤) ou refuser. Pendant l'appel tu peux couper ton micro, activer ou couper ta caméra (même si l'appel a commencé en audio), partager ton écran (ordinateur seulement) et réduire la fenêtre pour continuer à naviguer — le son continue. L'appel et sa durée (ou « manqué » / « refusé ») restent écrits dans la conversation. Le navigateur te demande l'accès au micro et à la caméra la première fois ; si tu as refusé, réautorise-les depuis le cadenas de la barre d'adresse. Les appels sont directs d'un navigateur à l'autre : si l'appel reste sur « Connexion… », l'un de vous est sans doute sur un réseau très restrictif (4G, entreprise) — essaie un autre réseau ou préviens le staff. Un seul appel à la fois ; les statuts « Occupé » ne reçoivent pas d'appels.\n\n` +
           `[b]S'organiser[/b]\n` +

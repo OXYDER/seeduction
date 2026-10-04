@@ -56,6 +56,7 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
   const supportChannelId = useSupport((s) => s.overview?.channelId);
   const [feedbackDone, setFeedbackDone] = useState(false);
   const isBot = !!botId && msg.sender.id === botId;
+  const isPinned = !!conv.pinnedMessageIds?.includes(msg.id);
   const react = useMessenger((s) => s.react);
   const remove = useMessenger((s) => s.remove);
   const retry = useMessenger((s) => s.retry);
@@ -132,6 +133,7 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
                 <div className={`msgr-bubble${big ? ' big-emoji' : ''}${msg.pending ? ' pending' : ''}${msg.failed ? ' failed' : ''}`}>
                   <ChatText text={msg.content} myUsername={me?.username} />
                   {msg.editedAt && <span className="msgr-edited"> (modifié)</span>}
+                  {isPinned && <span className="msgr-pinned-mark" title="Message épinglé"> 📌</span>}
                 </div>
               )}
               {(msg.type === 'IMAGE' || msg.type === 'GIF') && msg.imageUrl && (
@@ -163,7 +165,7 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
                   {msg.content && <button type="button" onClick={() => { navigator.clipboard?.writeText(msg.content).catch(() => {}); setMenu(false); }}>📋 Copier le texte</button>}
                   {canMakeTicket && <button type="button" onClick={() => { setMenu(false); void makeTicket(); }}>🎫 Ouvrir un billet pour ce membre</button>}
                   {canEdit && <button type="button" onClick={() => { setMenu(false); onEdit(msg); }}>✏️ Modifier</button>}
-                  {canPin && <button type="button" onClick={() => { setMenu(false); onPin(msg); }}>{conv.pinnedMessageId === msg.id ? '📌 Désépingler' : '📌 Épingler'}</button>}
+                  {canPin && <button type="button" onClick={() => { setMenu(false); onPin(msg); }}>{conv.pinnedMessageIds?.includes(msg.id) ? '📌 Désépingler' : '📌 Épingler'}</button>}
                   {canDelete && <button type="button" className="danger" onClick={doDelete}>🗑️ {mine ? 'Annuler l\'envoi' : 'Supprimer'}</button>}
                 </div>
               )}

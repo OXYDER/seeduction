@@ -2901,3 +2901,77 @@ button.tk-tile:hover { border-color: var(--border-gold); filter: none; transform
 .sup-settings input[type=number] { max-width: 140px; }
 
 label.tk-field { display: grid; gap: 6px; }
+
+/* ---------------------------------------------------------------------------------------------- Info-bulles de torrents : 4 styles au choix du membre */
+.torrent-tip.tip-poster, .torrent-tip.tip-cinema, .torrent-tip.tip-minimal { display: block; padding: 0; overflow: hidden; }
+.torrent-tip.tip-poster { width: 340px; border-radius: 14px; border-color: rgba(255,255,255,.14); background: linear-gradient(180deg, #0d1a14, #08110d); }
+.torrent-tip.tip-cinema { width: 440px; border-radius: 14px; background: linear-gradient(180deg, #0d1a14, #08110d); }
+.torrent-tip.tip-minimal { width: 320px; border-radius: 12px; }
+.torrent-tip.tip-classic { width: 380px; }
+.torrent-tip.static { animation: none !important; position: relative; left: auto !important; top: auto !important; visibility: visible !important; pointer-events: none; box-shadow: none; max-width: none; }
+
+.torrent-tip .tp-hero { position: relative; height: clamp(210px, 44vh, 400px); background: #0b0f1e; }
+.torrent-tip .tp-hero img { width: 100%; height: 100%; object-fit: cover; object-position: top center; border-radius: 0; display: block; }
+.torrent-tip .tp-hero-fade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(8,17,13,.55) 70%, #08110d 100%); pointer-events: none; }
+.torrent-tip .tp-hero-title { position: absolute; left: 14px; right: 14px; bottom: 8px; font-weight: 800; font-size: 15.5px; line-height: 1.25; color: #fff; overflow-wrap: anywhere; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+.torrent-tip .tp-nocover { display: grid; place-items: center; font-size: 46px; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(var(--acc-rgb, 224,184,74), .25), rgba(60,90,160,.25)); }
+.torrent-tip .tp-body { padding: 10px 14px 14px; display: grid; gap: 8px; }
+.torrent-tip .tp-hero + .tp-body { padding-top: 4px; }
+.torrent-tip .tp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.torrent-tip .tp-chip { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 7px; background: rgba(255,255,255,.1); color: #e9f2ea; }
+.torrent-tip .tp-chip.rating { color: #fbbf24; }
+.torrent-tip .tp-chip small { color: var(--text-dim); font-weight: 500; }
+.torrent-tip .tp-genres { display: flex; flex-wrap: wrap; gap: 6px; }
+.torrent-tip .tp-genre { font-size: 12px; font-weight: 600; padding: 2px 11px; border-radius: 999px; color: #3ddc97; border: 1px solid rgba(61,220,151,.5); background: rgba(61,220,151,.08); }
+.torrent-tip .tp-synopsis { margin: 0; font-size: 13.5px; line-height: 1.5; color: #e4ece6; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.torrent-tip .tp-credits { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; }
+.torrent-tip .tp-credits dt { color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-size: 11px; padding-top: 1px; }
+.torrent-tip .tp-credits dd { margin: 0; font-weight: 600; color: #f1f6f2; }
+.torrent-tip .tp-stats { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 12px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.08); }
+.torrent-tip .tp-title { font-weight: 800; font-size: 14.5px; line-height: 1.3; color: var(--gold-bright); overflow-wrap: anywhere; }
+.torrent-tip .tp-mini-meta { font-size: 12px; color: var(--text-dim); }
+
+.torrent-tip .tp-banner { position: relative; height: 130px; background: linear-gradient(135deg, rgba(var(--acc-rgb, 224,184,74), .28), rgba(60,90,160,.28)) center / cover no-repeat; }
+.torrent-tip .tp-cin-head { display: flex; gap: 12px; align-items: flex-end; padding: 0 14px; margin-top: -46px; position: relative; }
+.torrent-tip .tp-thumb { width: 86px; height: 126px; object-fit: cover; border-radius: 8px; border: 2px solid rgba(255,255,255,.22); box-shadow: 0 8px 20px rgba(0,0,0,.6); flex: none; background: #0b0f1e; }
+.torrent-tip .tp-thumb.tp-nocover { display: grid; font-size: 30px; }
+.torrent-tip .tp-cin-head > div:last-child { display: grid; gap: 6px; padding-bottom: 4px; }
+.torrent-tip .tp-cin-head .tp-title { color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+.torrent-tip img.tp-side-img { width: 84px; height: 120px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+
+@media (hover: none) { .torrent-tip { display: none; } }
+
+/* Aperçus dans le choix du style (profil > compte) */
+.tip-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.tip-choice { display: grid; gap: 4px; align-content: start; text-align: left; padding: 10px; border-radius: 10px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text); font-weight: 400; }
+.tip-choice:hover:not(:disabled) { border-color: var(--border-gold); transform: none; filter: none; }
+.tip-choice.on { border-color: var(--acc1, #8b5cf6); box-shadow: 0 0 0 2px rgba(var(--acc-rgb, 139,92,246), .35); }
+.tip-choice-preview { height: 300px; overflow: hidden; border-radius: 8px; background: rgba(0,0,0,.25); margin-bottom: 6px; position: relative; }
+.tip-choice-preview .torrent-tip { transform-origin: top left; max-width: none; }
+.tip-choice-preview .tp-hero { height: 230px; }
+
+/* Messenger : épingles multiples et message du jour */
+.msgr-pinbar-wrap { position: relative; border-bottom: 1px solid rgba(255,255,255,.07); }
+.msgr-pinbar { display: flex; align-items: stretch; background: rgba(var(--acc-rgb, 224,184,74), .1); }
+.msgr-pinbar-main { flex: 1; min-width: 0; display: flex; gap: 10px; align-items: center; text-align: left; padding: 6px 14px; background: none; border: 0; box-shadow: none; border-radius: 0; color: var(--text); font-weight: 400; border-left: 3px solid var(--acc1, #e0b84a); }
+.msgr-pinbar-main:hover { background: rgba(255,255,255,.05); filter: none; transform: none; }
+.msgr-pin-text { display: grid; min-width: 0; font-size: 12.5px; }
+.msgr-pin-text strong { color: var(--acc-link, var(--gold-bright)); font-size: 12px; }
+.msgr-pin-text span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); }
+.msgr-pinbar-all { background: none; border: 0; box-shadow: none; border-radius: 0; color: var(--text-dim); padding: 0 14px; font-size: 12.5px; }
+.msgr-pinbar-all:hover { color: var(--text); filter: none; transform: none; background: rgba(255,255,255,.05); }
+.msgr-pinpanel { position: absolute; z-index: 30; left: 0; right: 0; top: 100%; max-height: min(60vh, 440px); overflow-y: auto; background: var(--bg-panel-raised); border-bottom: 1px solid var(--border-gold); box-shadow: 0 16px 32px rgba(0,0,0,.5); }
+.msgr-pinpanel-head { padding: 10px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-panel-raised); }
+.msgr-pinitem { display: grid; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.msgr-pinitem-head { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.msgr-pinitem-body { font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 120px; overflow: hidden; }
+.msgr-pinitem-body img { max-height: 90px; border-radius: 8px; display: block; margin-top: 4px; }
+.msgr-pinitem .row button { padding: 4px 10px; font-size: 12.5px; }
+.msgr-pinned-mark { font-size: 11px; opacity: .8; }
+.msgr-motd { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; background: linear-gradient(135deg, rgba(var(--acc-rgb, 224,184,74), .16), rgba(var(--acc-rgb, 224,184,74), .05)); border-bottom: 1px solid var(--border-gold); font-size: 13.5px; }
+.msgr-motd-text { flex: 1; min-width: 0; display: grid; gap: 3px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow-y: auto; }
+.msgr-motd-close { background: none; border: 0; box-shadow: none; color: var(--text-dim); padding: 0 4px; }
+.msgr-motd-close:hover { color: var(--text); filter: none; transform: none; }
+.msgr-motd.editing { display: grid; gap: 8px; }
+.msgr-motd.editing textarea { width: 100%; }
+.msgr-motd-chip { align-self: flex-start; margin: 4px 14px; padding: 2px 10px; font-size: 12px; font-weight: 600; border-radius: 999px; background: rgba(var(--acc-rgb, 224,184,74), .14); border: 1px solid var(--border-gold); color: var(--text); }

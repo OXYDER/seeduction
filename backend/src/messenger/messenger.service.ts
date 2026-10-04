@@ -14,6 +14,8 @@ export const isStaff = (role?: string | null) => rank(role) >= rank('MODERATOR')
 const USER_SELECT = { id: true, username: true, avatarUrl: true, role: true } as const;
 const MAX_LENGTH = 4000;
 const MAX_GROUP_MEMBERS = 50;
+const MAX_PINS = 25;
+const MOTD_MAX = 1000;
 const PAGE_SIZE = 40;
 
 export interface Actor { userId: string; username: string; role: string }
@@ -205,7 +207,7 @@ export class MessengerService extends EventEmitter {
     const ids = visible.map((m) => m.conversationId);
     if (ids.length === 0) return [];
 
-    const [lasts, unreadRows, participants] = await Promise.all([
+    const [lasts, unreadRows, participants, pinRows] = await Promise.all([
       this.prisma.$queryRaw<{ id: string; conversationId: string; type: string; content: string; fileName: string | null; senderId: string; createdAt: Date; deletedAt: Date | null; username: string }[]>`
         SELECT DISTINCT ON (m."conversationId") m.id, m."conversationId", m.type::text AS type, m.content, m."fileName", m."senderId", m."createdAt", m."deletedAt", u.username
         FROM "Message" m JOIN "User" u ON u.id = m."senderId"
@@ -220,7 +222,10 @@ export class MessengerService extends EventEmitter {
         where: { conversationId: { in: visible.filter((m) => m.conversation.type !== 'CHANNEL').map((m) => m.conversationId) } },
         include: { user: { select: USER_SELECT } },
       }),
+      this.prisma.conversationPin.findMany({ where: { conversationId: { in: ids } }, orderBy: { createdAt: 'asc' }, select: { conversationId: true, messageId: true } }),
     ]);
+    const pinsBy = new Map<string, string[]>();
+    for (const p of pinRows) pinsBy.set(p.conversationId, [...(pinsBy.get(p.conversationId) ?? []), p.messageId]);
     const lastBy = new Map(lasts.map((l) => [l.conversationId, l]));
     const unreadBy = new Map(unreadRows.map((u) => [u.conversationId, u]));
     const peopleBy = new Map<string, typeof participants>();
@@ -250,7 +255,9 @@ export class MessengerService extends EventEmitter {
         pinned: m.pinned,
         archived: m.archived,
         myRole: m.role,
-        pinnedMessageId: c.pinnedMessageId,
+        pinnedMessageIds: pinsBy.get(c.id) ?? [],
+        motd: c.motd,
+        motdAt: c.motdAt,
         writable: !(c.type === 'CHANNEL' && c.writeRole && rank(actor.role) < rank(c.writeRole)),
         position: c.position,
         lastMessageAt: last?.createdAt ?? c.lastMessageAt,
@@ -274,7 +281,7 @@ export class MessengerService extends EventEmitter {
     return {
       id: conv.id, type: conv.type, name: conv.type === 'DIRECT' ? other?.username ?? 'Membre' : conv.name, slug: conv.slug, description: conv.description,
       iconUrl: conv.iconUrl, other: other ? { ...other, status: this.presence.publicStatus(other.id) } : null, members: undefined, memberCount: conv.members.length,
-      last: null, unread: 0, mentions: 0, mutedUntil: null, pinned: false, archived: false, myRole: 'MEMBER', pinnedMessageId: null, writable: true, position: conv.position, lastMessageAt: conv.lastMessageAt,
+      last: null, unread: 0, mentions: 0, mutedUntil: null, pinned: false, archived: false, myRole: 'MEMBER', pinnedMessageIds: [] as string[], motd: conv.motd, motdAt: conv.motdAt, writable: true, position: conv.position, lastMessageAt: conv.lastMessageAt,
     };
   }
 
@@ -620,7 +627,7 @@ export class MessengerService extends EventEmitter {
       include: MESSAGE_INCLUDE,
     });
     await this.prisma.messageReaction.deleteMany({ where: { messageId } });
-    if (msg.conversation.pinnedMessageId === messageId) await this.prisma.conversation.update({ where: { id: msg.conversationId }, data: { pinnedMessageId: null } });
+    if ((await this.prisma.conversationPin.deleteMany({ where: { messageId } })).count > 0) await this.publishPins(msg.conversation);
     const dto = messageToDto({ ...row, reactions: [] });
     await this.publish(msg.conversation, 'message:updated', dto);
     return { ok: true };
@@ -659,18 +666,75 @@ export class MessengerService extends EventEmitter {
     return { userIds: await this.memberIds(conv.id) };
   }
 
-  /** Épingler (ou désépingler avec `null`) un message : administrateurs d'un groupe, modération d'un canal. */
-  async pinMessage(actor: Actor, conversationId: string, messageId: string | null) {
+  // ------------------------------------------------------------------ messages épinglés (plusieurs par conversation, comme Discord / Telegram)
+
+  private async canPin(actor: Actor, conversationId: string) {
     const { conv, member } = await this.access(actor, conversationId);
     const allowed = conv.type === 'CHANNEL' ? isStaff(actor.role) : conv.type === 'GROUP' ? member.role !== 'MEMBER' : true;
     if (!allowed) throw new ForbiddenException("Tu ne peux pas épingler de message ici");
-    if (messageId) {
-      const msg = await this.prisma.message.findFirst({ where: { id: messageId, conversationId, deletedAt: null }, select: { id: true } });
-      if (!msg) throw new NotFoundException('Message introuvable');
+    return conv;
+  }
+
+  /** Avertit tout le monde de la nouvelle liste d'épingles (les clients rechargent la liste complète). */
+  private async publishPins(conv: { id: string; type: string }) {
+    const ids = (await this.prisma.conversationPin.findMany({ where: { conversationId: conv.id }, orderBy: { createdAt: 'asc' }, select: { messageId: true } })).map((p) => p.messageId);
+    await this.publish(conv, 'conversation:pinned', { conversationId: conv.id, pinnedMessageIds: ids });
+    return ids;
+  }
+
+  /** Les messages épinglés, le plus récemment épinglé d'abord. */
+  async pins(actor: Actor, conversationId: string) {
+    await this.access(actor, conversationId);
+    const rows = await this.prisma.conversationPin.findMany({
+      where: { conversationId, message: { deletedAt: null } },
+      orderBy: { createdAt: 'desc' },
+      include: { message: { include: MESSAGE_INCLUDE } },
+    });
+    return rows.map((r) => ({ ...messageToDto(r.message), pinnedAt: r.createdAt }));
+  }
+
+  async addPin(actor: Actor, conversationId: string, messageId: string) {
+    const conv = await this.canPin(actor, conversationId);
+    const msg = await this.prisma.message.findFirst({ where: { id: messageId, conversationId, deletedAt: null }, select: { id: true } });
+    if (!msg) throw new NotFoundException('Message introuvable');
+    if ((await this.prisma.conversationPin.count({ where: { conversationId } })) >= MAX_PINS) throw new BadRequestException(`${MAX_PINS} messages épinglés au maximum : désépingle-en un d'abord`);
+    const existing = await this.prisma.conversationPin.findUnique({ where: { conversationId_messageId: { conversationId, messageId } } });
+    if (!existing) {
+      await this.prisma.conversationPin.create({ data: { conversationId, messageId, pinnedById: actor.userId } });
+      // Une ligne dans le fil, comme Discord : « X a épinglé un message ».
+      const row = await this.prisma.message.create({ data: { conversationId, senderId: actor.userId, type: 'SYSTEM', content: `📌 ${actor.username} a épinglé un message` }, include: MESSAGE_INCLUDE });
+      await this.prisma.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: row.createdAt } });
+      await this.publish(conv, 'message:new', messageToDto(row));
     }
-    await this.prisma.conversation.update({ where: { id: conversationId }, data: { pinnedMessageId: messageId } });
-    await this.publish(conv, 'conversation:pinned', { conversationId, pinnedMessageId: messageId });
-    return { ok: true, pinnedMessageId: messageId };
+    return { ok: true, pinnedMessageIds: await this.publishPins(conv) };
+  }
+
+  async removePin(actor: Actor, conversationId: string, messageId: string) {
+    const conv = await this.canPin(actor, conversationId);
+    await this.prisma.conversationPin.deleteMany({ where: { conversationId, messageId } });
+    return { ok: true, pinnedMessageIds: await this.publishPins(conv) };
+  }
+
+  /** Ancienne route (un seul message épinglé) : `messageId` ajoute une épingle, `null` les retire toutes. */
+  async pinMessage(actor: Actor, conversationId: string, messageId: string | null) {
+    if (messageId) return this.addPin(actor, conversationId, messageId);
+    const conv = await this.canPin(actor, conversationId);
+    await this.prisma.conversationPin.deleteMany({ where: { conversationId } });
+    return { ok: true, pinnedMessageIds: await this.publishPins(conv) };
+  }
+
+  // ------------------------------------------------------------------ message du jour d'un canal
+
+  /** Écrire (ou effacer, avec un texte vide) le message du jour d'un canal : réservé à l'équipe. */
+  async setMotd(actor: Actor, conversationId: string, text: string | null) {
+    const { conv } = await this.access(actor, conversationId);
+    if (conv.type !== 'CHANNEL') throw new BadRequestException('Seuls les canaux ont un message du jour');
+    if (!isStaff(actor.role)) throw new ForbiddenException("Réservé à l'équipe");
+    const motd = (text ?? '').trim().slice(0, MOTD_MAX) || null;
+    const changed = motd !== conv.motd;
+    await this.prisma.conversation.update({ where: { id: conversationId }, data: { motd, motdAt: motd && changed ? new Date() : motd ? conv.motdAt : null } });
+    if (changed) this.emit('channel:changed', { id: conversationId });
+    return this.get(actor, conversationId);
   }
 
   async setSettings(actor: Actor, conversationId: string, data: { mutedUntil?: string | null; pinned?: boolean; archived?: boolean }) {
@@ -717,7 +781,7 @@ export class MessengerService extends EventEmitter {
     return rows.map(({ _count, ...c }) => ({ ...c, messageCount: _count.messages }));
   }
 
-  async createChannel(actor: Actor, data: { name: string; description?: string; readRole?: string | null; writeRole?: string | null; slowModeSeconds?: number; position?: number }) {
+  async createChannel(actor: Actor, data: { name: string; description?: string; motd?: string | null; readRole?: string | null; writeRole?: string | null; slowModeSeconds?: number; position?: number }) {
     this.assertAdmin(actor);
     const name = (data.name ?? '').trim().slice(0, 80);
     if (!name) throw new BadRequestException('Donne un nom au canal');
@@ -729,6 +793,7 @@ export class MessengerService extends EventEmitter {
       data: {
         type: 'CHANNEL', name, slug, createdById: actor.userId,
         description: data.description?.trim().slice(0, 300) || null,
+        ...(data.motd?.trim() ? { motd: data.motd.trim().slice(0, MOTD_MAX), motdAt: new Date() } : {}),
         readRole: this.validRole(data.readRole), writeRole: this.validRole(data.writeRole),
         slowModeSeconds: Math.max(0, Math.min(3600, Math.floor(Number(data.slowModeSeconds) || 0))),
         position: Number.isFinite(data.position) ? Math.floor(data.position as number) : (last?.position ?? 0) + 1,
@@ -738,13 +803,17 @@ export class MessengerService extends EventEmitter {
     return channel;
   }
 
-  async updateChannel(actor: Actor, id: string, data: { name?: string; description?: string | null; readRole?: string | null; writeRole?: string | null; slowModeSeconds?: number; position?: number; archived?: boolean }) {
+  async updateChannel(actor: Actor, id: string, data: { name?: string; description?: string | null; motd?: string | null; readRole?: string | null; writeRole?: string | null; slowModeSeconds?: number; position?: number; archived?: boolean }) {
     this.assertAdmin(actor);
     const channel = await this.prisma.conversation.findUnique({ where: { id } });
     if (!channel || channel.type !== 'CHANNEL') throw new NotFoundException('Canal introuvable');
     const patch: Prisma.ConversationUpdateInput = {};
     if (data.name !== undefined) { const n = data.name.trim().slice(0, 80); if (!n) throw new BadRequestException('Le nom ne peut pas être vide'); patch.name = n; }
     if (data.description !== undefined) patch.description = data.description?.trim().slice(0, 300) || null;
+    if (data.motd !== undefined) {
+      const motd = (data.motd ?? '').trim().slice(0, MOTD_MAX) || null;
+      if (motd !== channel.motd) { patch.motd = motd; patch.motdAt = motd ? new Date() : null; }
+    }
     if (data.readRole !== undefined) patch.readRole = this.validRole(data.readRole);
     if (data.writeRole !== undefined) patch.writeRole = this.validRole(data.writeRole);
     if (data.slowModeSeconds !== undefined) patch.slowModeSeconds = Math.max(0, Math.min(3600, Math.floor(Number(data.slowModeSeconds) || 0)));

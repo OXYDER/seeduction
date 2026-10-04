@@ -109,6 +109,7 @@ const RULES: Rule[] = [
   { m: 'PATCH', p: '/users/me/profile', cat: 'settings', label: 'Modifie son profil' },
   { m: 'PATCH', p: '/users/me/dm-privacy', cat: 'settings', label: 'Modifie la confidentialité des messages' },
   { m: 'PATCH', p: '/users/me/default-view', cat: 'settings', label: 'Change son affichage par défaut' },
+  { m: 'PATCH', p: '/users/me/tip-style', cat: 'settings', label: 'Change le style des info-bulles' },
   { m: 'PATCH', p: '/users/me/watching-visibility', cat: 'settings', label: "Change la visibilité de ce qu'il regarde" },
   { m: 'PATCH', p: '/users/me/adult', cat: 'settings', label: "Change l'option contenu adulte" },
   // Sécurité

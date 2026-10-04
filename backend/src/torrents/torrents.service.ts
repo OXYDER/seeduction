@@ -563,6 +563,7 @@ export class TorrentsService implements OnModuleInit {
       synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis,
       rating: typeof meta.rating === 'number' ? meta.rating : null,
       runtime: typeof meta.runtime === 'number' ? meta.runtime : null,
+      backdrop: typeof meta.backdrop === 'string' ? meta.backdrop : null,
       director: entities.find((e) => e.role === 'DIRECTOR')?.entity.name ?? null,
       cast: entities.filter((e) => e.role === 'ACTOR').slice(0, 4).map((e) => e.entity.name),
     };

@@ -1,5 +1,5 @@
 import {
-  BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UploadedFile, UseGuards, UseInterceptors,
+  BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Request, UploadedFile, UseGuards, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -101,6 +101,26 @@ export class MessengerController {
   @Patch('conversations/:id/settings')
   settings(@Param('id') id: string, @Body() body: { mutedUntil?: string | null; pinned?: boolean; archived?: boolean }, @Request() req: any) {
     return this.messenger.setSettings(actorOf(req), id, body ?? {});
+  }
+
+  @Get('conversations/:id/pins')
+  pins(@Param('id') id: string, @Request() req: any) {
+    return this.messenger.pins(actorOf(req), id);
+  }
+
+  @Post('conversations/:id/pins')
+  addPin(@Param('id') id: string, @Body('messageId') messageId: string, @Request() req: any) {
+    return this.messenger.addPin(actorOf(req), id, messageId);
+  }
+
+  @Delete('conversations/:id/pins/:messageId')
+  removePin(@Param('id') id: string, @Param('messageId') messageId: string, @Request() req: any) {
+    return this.messenger.removePin(actorOf(req), id, messageId);
+  }
+
+  @Put('conversations/:id/motd')
+  setMotd(@Param('id') id: string, @Body('motd') motd: string | null, @Request() req: any) {
+    return this.messenger.setMotd(actorOf(req), id, motd);
   }
 
   @Post('conversations/:id/pin')

@@ -1,7 +1,6 @@
 import MetaChips from './MetaChips';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
@@ -12,8 +11,7 @@ import { VIEW_MODES, type ViewMode } from '../lib/viewMode';
 import { CATEGORY_STYLE } from './Layout';
 import CategoryTag from './CategoryTag';
 import UserLink from './UserLink';
-import HoverCard from './HoverCard';
-import { TorrentPreview } from './TorrentLink';
+import { TorrentHover } from './TorrentLink';
 import { FavoriteStar, HealthDot } from './TorrentBits';
 import WatchOnlineButton from './WatchOnlineButton';
 import TorrentGroups from './TorrentGroups';
@@ -68,8 +66,6 @@ const COLUMNS: { label: string; sort: string; key: 'cat' | 'name' | 'date' | 'si
 
 /** Icône / couleur de la catégorie du torrent (la sienne si elle en a une, sinon celle de sa catégorie principale). */
 const styleOf = (t: any) => CATEGORY_STYLE[t.category?.slug ?? ''] ?? CATEGORY_STYLE[t.category?.parent?.slug ?? ''];
-
-const previewLoader = (t: any) => () => api.get(`/torrents/${t.id}/preview`).then((r) => r.data);
 
 function Badges({ t }: { t: any }) {
   return (
@@ -143,9 +139,9 @@ function TorrentViewBody(props: TorrentViewProps) {
   );
 
   const titleLink = (t: any) => (
-    <HoverCard cacheKey={`torrent:${t.id}`} load={previewLoader(t)} render={(d: any) => <TorrentPreview t={d} />}>
+    <TorrentHover id={t.id}>
       <Link to={`/torrents/${t.id}`}>{t.name}</Link>
-    </HoverCard>
+    </TorrentHover>
   );
 
   const extras = (t: any) => props.extraColumns?.map((c) => (
@@ -319,7 +315,7 @@ function TorrentViewBody(props: TorrentViewProps) {
   return (
     <div className={`poster-grid ${postersOnly ? 'tv-posters' : 'tv-grid'}`}>
       {items.map((t) => (
-        <HoverCard key={t.id} cacheKey={`torrent:${t.id}`} inline={false} load={previewLoader(t)} render={(d: any) => <TorrentPreview t={d} />}>
+        <TorrentHover key={t.id} id={t.id} inline={false}>
           <Link to={`/torrents/${t.id}`} className="poster-card">
             <Cover t={t} />
             <div className="poster-badges">
@@ -342,7 +338,7 @@ function TorrentViewBody(props: TorrentViewProps) {
               {extras(t)}
             </div>
           </Link>
-        </HoverCard>
+        </TorrentHover>
       ))}
     </div>
   );

@@ -39,6 +39,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/tip-style')
+  setTipStyle(@Body('style') style: string, @Request() req: any) {
+    return this.usersService.setTipStyle(req.user.userId, style);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('me/watching-visibility')
   setShowWatchingStatus(@Body('enabled') enabled: boolean, @Request() req: any) {
     return this.usersService.setShowWatchingStatus(req.user.userId, enabled);

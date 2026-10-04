@@ -113,6 +113,8 @@ model User {
   showWatchingStatus Boolean   @default(true)
   // Affichage par défaut des listes de torrents (list | details | grid | posters | compact) — voir frontend/src/lib/viewMode.ts.
   defaultView      String     @default("grid") @db.VarChar(12)
+  // Style des info-bulles de torrents au survol : poster | classic | cinema | minimal | off (voir frontend/src/lib/tipStyle.ts).
+  tipStyle         String     @default("poster") @db.VarChar(10)
   dmPrivacy        DmPrivacy      @default(EVERYONE) // qui peut lui écrire en chat privé sans être son ami
   adultAcceptedAt  DateTime?
   signature        String?    @db.Text
@@ -1131,7 +1133,11 @@ model Conversation {
   readRole        UserRole?
   writeRole       UserRole?
   slowModeSeconds Int                  @default(0)
-  pinnedMessageId String?
+  pinnedMessageId String? // ancien épinglage (un seul message) : recopié dans ConversationPin au démarrage, plus utilisé
+  // Message du jour d'un canal : affiché en haut du canal, avec la date de dernière modification (pour le ré-afficher à ceux qui l'avaient masqué).
+  motd            String?              @db.VarChar(1000)
+  motdAt          DateTime?
+  pins            ConversationPin[]
   position        Int                  @default(0)
   archived        Boolean              @default(false)
   createdAt       DateTime             @default(now())
@@ -1191,12 +1197,27 @@ model Message {
   legacyChatId   String?           @unique
   legacyPmId     String?           @unique
   reactions      MessageReaction[]
+  pins           ConversationPin[]
 
   @@index([conversationId, createdAt])
   @@index([senderId])
 }
 
 // Une réaction (émoji) par membre et par message ; en choisir une nouvelle remplace la précédente.
+// Messages épinglés d'une conversation (plusieurs, comme sur Discord et Telegram).
+model ConversationPin {
+  id             String       @id @default(uuid())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  message        Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId      String
+  pinnedById     String?
+  createdAt      DateTime     @default(now())
+
+  @@unique([conversationId, messageId])
+  @@index([conversationId, createdAt])
+}
+
 model MessageReaction {
   id        String   @id @default(uuid())
   message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
