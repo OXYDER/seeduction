@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import WysiwygEditor from './WysiwygEditor';
 import { NEWS_KINDS } from '../lib/news';
@@ -16,6 +16,21 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
   const [locked, setLocked] = useState(!!item?.commentsLocked);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Image générée par l'IA (Gemini) : le logo de Seeduction est joint à chaque génération.
+  const [ai, setAi] = useState<{ configured: boolean; logo: boolean } | null>(null);
+  const [aiHint, setAiHint] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiImages, setAiImages] = useState<string[]>([]);
+  const [aiError, setAiError] = useState('');
+  useEffect(() => { api.get('/announcements/image-ai').then((r) => setAi(r.data)).catch(() => setAi(null)); }, []);
+
+  async function generateImage() {
+    setAiBusy(true); setAiError(''); setAiImages([]);
+    try {
+      const { data } = await api.post('/announcements/generate-image', { title, summary, content, kind, hint: aiHint, count: 2 }, { timeout: 150_000 });
+      setAiImages(data.images.map((i: { url: string }) => i.url));
+    } catch (err: any) { setAiError(err.response?.data?.message ?? "La génération a échoué"); } finally { setAiBusy(false); }
+  }
 
   async function upload(file?: File) {
     if (!file) return;
@@ -51,6 +66,37 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
         <label className="secondary fam-file">🖼️ {imageUrl ? "Changer l'image principale" : 'Ajouter une image principale'}<input type="file" accept="image/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ''; }} /></label>
         {imageUrl && <button type="button" className="secondary" onClick={() => setImageUrl(null)}>Retirer</button>}
       </div>
+      {ai && (
+        <div className="panel" style={{ display: 'grid', gap: 8, background: 'rgba(255,255,255,0.03)' }}>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <strong>✨ Image automatique (Gemini)</strong>
+            <span className="muted" style={{ fontSize: 12 }}>Le logo de Seeduction est joint à chaque génération ; le titre, le résumé et le type de la nouvelle guident l'image.</span>
+          </div>
+          {!ai.configured ? (
+            <p className="muted" style={{ margin: 0 }}>Non configurée : ajoute <code>GEMINI_API_KEY</code> dans <code>backend/.env</code> sur le serveur (voir le wiki).</p>
+          ) : (
+            <>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <input style={{ flex: 1, minWidth: 220 }} placeholder="Mots-clés en plus (facultatif) : ex. rouages, fête, bleu…" value={aiHint} onChange={(e) => setAiHint(e.target.value)} maxLength={200} />
+                <button type="button" disabled={aiBusy || !title.trim()} onClick={generateImage}>{aiBusy ? 'Génération…' : aiImages.length ? '🔄 Régénérer' : '✨ Générer 2 images'}</button>
+              </div>
+              {!title.trim() && <span className="muted" style={{ fontSize: 12 }}>Écris d'abord le titre.</span>}
+              {aiBusy && <span className="muted">Création en cours, compte 15 à 40 secondes…</span>}
+              {aiError && <div style={{ color: 'var(--danger)' }}>{aiError}</div>}
+              {aiImages.length > 0 && (
+                <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
+                  {aiImages.map((u) => (
+                    <button key={u} type="button" onClick={() => setImageUrl(u)} title="Utiliser cette image" style={{ padding: 0, border: imageUrl === u ? '3px solid var(--acc-link, #b9a4ff)' : '3px solid transparent', borderRadius: 10, background: 'none', cursor: 'pointer', overflow: 'hidden' }}>
+                      <img src={u} alt="Proposition d'image" style={{ display: 'block', width: 300, maxWidth: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }} />
+                    </button>
+                  ))}
+                </div>
+              )}
+              {aiImages.length > 0 && <span className="muted" style={{ fontSize: 12 }}>Clique sur l'image à utiliser, puis publie ou enregistre la nouvelle.</span>}
+            </>
+          )}
+        </div>
+      )}
       <WysiwygEditor value={content} onChange={setContent} minHeight={220} placeholder="Contenu de la nouvelle..." />
       <div className="row" style={{ gap: 14, flexWrap: 'wrap' }}>
         <label className="row muted" style={{ gap: 6 }}>Type :

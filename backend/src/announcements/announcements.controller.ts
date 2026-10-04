@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AnnouncementsService } from './announcements.service';
+import { NewsImageService } from './news-image.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -10,7 +11,7 @@ interface NewsBody { title?: string; content?: string; pinned?: boolean; summary
 
 @Controller('announcements')
 export class AnnouncementsController {
-  constructor(private announcementsService: AnnouncementsService) {}
+  constructor(private announcementsService: AnnouncementsService, private newsImage: NewsImageService) {}
 
   @Get()
   list(@Query('limit') limit = '5') {
@@ -26,6 +27,22 @@ export class AnnouncementsController {
   @Get('feed')
   feed(@Query('page') page = '1', @Query('pageSize') pageSize = '10', @Query('kind') kind?: string, @Query('q') q?: string) {
     return this.announcementsService.feed(parseInt(page, 10), Math.min(30, parseInt(pageSize, 10) || 10), { kind, q });
+  }
+
+  /** Génération d'image par IA (Gemini) : état de la configuration. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
+  @Get('image-ai')
+  imageStatus() {
+    return this.newsImage.status();
+  }
+
+  /** Propositions de bannière pour une nouvelle : le logo de Seeduction est joint à chaque génération. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
+  @Post('generate-image')
+  generateImage(@Body() body: { title?: string; summary?: string; content?: string; kind?: string; hint?: string; count?: number }, @Request() req: any) {
+    return this.newsImage.generate(req.user.userId, { title: String(body?.title ?? ''), summary: body?.summary, content: body?.content, kind: body?.kind, hint: body?.hint }, Number(body?.count) || 2);
   }
 
   @UseGuards(JwtAuthGuard)

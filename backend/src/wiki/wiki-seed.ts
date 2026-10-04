@@ -379,7 +379,8 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `[b]Aussi sur la page[/b]\n` +
           `Le nombre de membres qui l'ont lue, le temps de lecture, un bouton pour copier le lien, la nouvelle précédente et la suivante, et d'autres nouvelles à lire.\n\n` +
           `[b]Pour le staff[/b]\n` +
-          `Le bouton « Nouvelle nouvelle » (et ✏️ Modifier) ouvre l'éditeur : titre, chapeau, image principale, type, épinglage et fermeture des commentaires. À la publication, tous les membres reçoivent une notification.`,
+          `Le bouton « Nouvelle nouvelle » (et ✏️ Modifier) ouvre l'éditeur : titre, chapeau, image principale, type, épinglage et fermeture des commentaires. À la publication, tous les membres reçoivent une notification.\n\n` +
+          `[b]Image automatique (staff)[/b] : sous le titre, le bloc « ✨ Image automatique (Gemini) » crée 2 propositions de bannière en 16:9. Le [b]logo de Seeduction est envoyé à chaque génération[/b] comme image de référence, avec le titre, le résumé, le type de la nouvelle (chaque type a ses couleurs et ses motifs : rouages pour une maintenance, confettis pour un événement, circuits pour une mise à jour...) et les mots-clés que tu ajoutes. Clique sur l'image choisie, puis publie ; « Régénérer » en propose d'autres. La limite est de 12 images par heure et par membre du staff. L'administrateur du serveur active la fonction en ajoutant GEMINI_API_KEY dans backend/.env.`,
       },
       {
         title: 'Forum',

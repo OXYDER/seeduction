@@ -61,6 +61,17 @@ export class CoversService {
     return this.saveBuffer(file.buffer, ext);
   }
 
+  /** Image produite par une IA : type vérifié sur le contenu (signature PNG / JPEG / WebP), 8 Mo maximum. */
+  async saveGenerated(buffer: Buffer): Promise<string> {
+    if (buffer.length > MAX_BYTES) throw new BadRequestException('Image générée trop volumineuse (8 Mo max)');
+    const isPng = buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const isJpg = buffer[0] === 0xff && buffer[1] === 0xd8;
+    const isWebp = buffer.subarray(0, 4).toString('latin1') === 'RIFF' && buffer.subarray(8, 12).toString('latin1') === 'WEBP';
+    const ext = isPng ? 'png' : isJpg ? 'jpg' : isWebp ? 'webp' : null;
+    if (!ext) throw new BadRequestException("L'image renvoyée n'est pas un PNG, un JPEG ou un WebP valide");
+    return this.saveBuffer(buffer, ext);
+  }
+
   private async saveBuffer(buffer: Buffer, ext: string): Promise<string> {
     await fs.mkdir(STORAGE_DIR, { recursive: true });
     const filename = `${randomUUID()}.${ext}`;

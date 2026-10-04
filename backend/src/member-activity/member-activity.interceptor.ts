@@ -45,6 +45,7 @@ const RULES: Rule[] = [
   { m: 'POST', p: '/announcements/:id/comments', cat: 'comment', label: 'Commente une nouvelle', detail: body('content') },
   { m: 'PATCH', p: '/announcements/comments/:cid', cat: 'comment', label: 'Modifie un commentaire de nouvelle', detail: body('content') },
   { m: 'DELETE', p: '/announcements/comments/:cid', cat: 'comment', label: 'Supprime un commentaire de nouvelle' },
+  { m: 'POST', p: '/announcements/generate-image', cat: 'staff', label: "Génère une image de nouvelle avec l'IA", detail: body('title') },
   { m: 'PUT', p: '/announcements/:id/reaction', cat: 'social', label: 'Réagit à une nouvelle', detail: body('emoji') },
   { m: 'DELETE', p: '/announcements/:id/reaction', cat: 'social', label: 'Retire sa réaction à une nouvelle' },
   { m: 'POST', p: '/comments/torrent/:torrentId', cat: 'comment', label: 'Commente un torrent', tt: 'torrent', tid: param('torrentId'), detail: body('content') },
