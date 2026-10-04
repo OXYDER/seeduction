@@ -124,6 +124,17 @@ export class SupportAiService {
     return order.flatMap((re) => sorted(re));
   }
 
+  /**
+   * Modèles à essayer quand celui en cours est surchargé : les plus légers d'abord (« flash-lite », bien moins sollicités), puis les
+   * « flash » du plus récent au plus ancien (les tout derniers modèles sont souvent les plus encombrés), puis les « pro ».
+   */
+  fallbackModels(provider: Provider, models: string[], exclude: string): string[] {
+    const ranked = this.rankModels(provider, models);
+    const lite = ranked.filter((m) => /lite$/.test(m));
+    const rest = ranked.filter((m) => !/lite$/.test(m));
+    return [...lite, ...rest].filter((m, i, all) => m !== exclude && all.indexOf(m) === i).slice(0, 5);
+  }
+
   pickModel(provider: Provider, models: string[]): string | null {
     return this.rankModels(provider, models)[0] ?? null;
   }
@@ -183,11 +194,19 @@ export class SupportAiService {
             return this.complete(cfg, system, turns, maxTokens, attempt + 1);
           }
           if (attempt === 2) {
-            const alt = this.rankModels(provider, (await this.listModels(cfg)).models).find((m) => m !== model);
-            if (alt) {
+            // Toujours surchargé : on essaie d'autres modèles à la suite, et on retient celui qui répond.
+            const alternates = this.fallbackModels(provider, (await this.listModels(cfg)).models, model);
+            for (const alt of alternates) {
               this.log.warn(`Modèle « ${model} » surchargé : essai avec « ${alt} »`);
-              clearTimeout(timer);
-              return this.complete({ ...cfg, aiModel: alt }, system, turns, maxTokens, 3);
+              try {
+                const text = await this.complete({ ...cfg, aiModel: alt }, system, turns, maxTokens, 3);
+                if (!cfg.aiModel && !process.env.SUPPORT_AI_MODEL) this.autoModel[provider] = alt;
+                clearTimeout(timer);
+                return text;
+              } catch (err: any) {
+                if (err instanceof HttpException && [404, 503].includes(err.getStatus())) continue;
+                throw err;
+              }
             }
           }
           throw new SupportAiError(`Le service d'IA est très sollicité en ce moment (${res.status}) : réessaie dans un instant.`, 503);
@@ -202,7 +221,7 @@ export class SupportAiService {
             return this.complete({ ...cfg, aiModel: picked }, system, turns, maxTokens, 1);
           }
         }
-        if (res.status === 404) throw new SupportAiError(`Modèle « ${model} » introuvable pour cette clé : choisis-en un autre dans les réglages (« Lister les modèles disponibles »). ${detail}`.trim(), 502);
+        if (res.status === 404) throw new SupportAiError(`Modèle « ${model} » introuvable pour cette clé : choisis-en un autre dans les réglages (« Lister les modèles disponibles »). ${detail}`.trim(), 404);
         throw new SupportAiError(`Le service d'IA a refusé la demande (${res.status}) : ${detail || 'sans détail'}`, 502);
       }
       const text = provider === 'anthropic'
