@@ -27,6 +27,7 @@ const NODES: Node[] = [
   { path: '/forum/search', label: 'Recherche', parent: '/forum' },
   { path: '/forum/topics/:id', label: 'Sujet', parent: '/forum' },
   { path: '/stats', label: 'Stats' },
+  { path: '/dead', label: 'Réanimation', parent: '/stats' },
   { path: '/leaderboard', label: 'Classement', parent: '/stats' },
   { path: '/hall-of-fame', label: 'Hall of Fame', parent: '/stats' },
   { path: '/support', label: 'Support' },

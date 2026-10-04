@@ -52,6 +52,24 @@ export const ECONOMY = {
   transferDailyMax: num('TRANSFER_DAILY_MAX', 2000),
 };
 
+/**
+ * Points gagnés pour avoir remis en seed un torrent mort : base + une part par Go (plafonnée) + une part par jour resté mort
+ * (plafonnée), le tout re-plafonné. Même calcul pour la récompense réelle (TrackerService) et pour l'estimation affichée aux membres.
+ */
+export function reseedReward(sizeBytes: bigint | number, diedAt: Date | null, now = Date.now()): number {
+  if (!diedAt) return 0;
+  const sizeGb = Number(sizeBytes) / 1e9;
+  const daysDead = Math.max(0, (now - diedAt.getTime()) / 86400_000);
+  return Math.min(
+    ECONOMY.reseedRewardMax,
+    Math.round(
+      ECONOMY.reseedRewardBase
+      + Math.min(sizeGb * ECONOMY.reseedRewardPerGb, ECONOMY.reseedRewardSizeCap)
+      + Math.min(daysDead * ECONOMY.reseedRewardPerDay, ECONOMY.reseedRewardDaysCap),
+    ),
+  );
+}
+
 /** Réglages du site modifiables depuis Admin > Paramètres (voir SiteConfigService). */
 export const SITE = {
   /** Ratio minimum donné aux nouveaux membres à l'inscription. */

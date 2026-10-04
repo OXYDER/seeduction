@@ -97,6 +97,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat') },
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
+  { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead') },
   { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p) },
   { to: '/support', icon: '🛟', cls: 'c-livechat', label: 'Support', match: starts('/support') },
   { to: '/moderation', icon: '🛡️', cls: 'c-staff', label: 'Modération', match: starts('/moderation'), staffOnly: true },
@@ -120,6 +121,8 @@ function LayoutInner() {
   const location = useLocation();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  // Torrents sans seeder que ce membre a déjà téléchargés : la pastille « Réanimation » l'invite à les remettre en seed.
+  const [deadMine, setDeadMine] = useState(0);
   const [search, setSearch] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
   const theme = useTheme();
@@ -234,6 +237,14 @@ function LayoutInner() {
     return () => clearInterval(t);
   }, [accessToken, isStaff, refreshQueue]);
 
+  useEffect(() => {
+    if (!accessToken) return;
+    const load = () => api.get('/stats/dead/mine-count').then((r) => setDeadMine(r.data.count ?? 0)).catch(() => {});
+    void load();
+    const t = setInterval(() => { if (!document.hidden) void load(); }, 10 * 60_000);
+    return () => clearInterval(t);
+  }, [accessToken]);
+
   // Pastille du support : réponses non lues à mes billets (et, pour l'équipe, billets en attente).
   useEffect(() => {
     if (!accessToken) return;
@@ -261,6 +272,7 @@ function LayoutInner() {
         </>
       );
     }
+    if (item.to === '/dead' && deadMine > 0) return <span className="side-badge red" title={`${deadMine} torrent${deadMine > 1 ? 's' : ''} sans seeder que tu peux relancer`}>{fmt(deadMine)}</span>;
     if (item.to === '/news' && newsUnseen > 0) return <span className="side-badge red" title={`${newsUnseen} nouvelle${newsUnseen > 1 ? 's' : ''} non lue${newsUnseen > 1 ? 's' : ''}`}>{fmt(newsUnseen)}</span>;
     if (item.to === '/support' && (supportMine > 0 || (supportStaff ?? 0) > 0)) {
       return (

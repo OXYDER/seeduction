@@ -305,6 +305,7 @@ model Torrent {
   // Date à laquelle le synopsis et le slogan affichés sur la fiche ont été traduits en français (vide = pas encore fait).
   overviewTranslatedAt DateTime?
   snatches       Snatch[]
+  revivals       TorrentRevival[]
   playbackPositions PlaybackPosition[]
   chatShares     Message[]
   requestFilled  TorrentRequest?
@@ -1378,4 +1379,19 @@ model SupportChatEvent {
 
   @@index([userId, createdAt])
   @@index([kind, createdAt])
+}
+
+
+// Mémoire des torrents ressuscités (récompense de reseed versée) : héros de la page « Réanimation » et torrents revenus à la vie récemment.
+model TorrentRevival {
+  id        String   @id @default(uuid())
+  torrent   Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId String
+  userId    String
+  points    Int
+  deadDays  Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }

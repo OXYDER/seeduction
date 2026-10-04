@@ -3,7 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { PeerEvent } from '@prisma/client';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY } from '../common/utils/economy';
+import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY, reseedReward } from '../common/utils/economy';
 
 export interface AnnounceParams {
   infoHash: string;   // hex
@@ -43,18 +43,11 @@ export class TrackerService {
   private async payReseedReward(torrent: { id: string; name: string; size: bigint; diedAt: Date | null }, userId: string) {
     try {
       if (!torrent.diedAt) return;
-      const sizeGb = Number(torrent.size) / 1e9;
-      const daysDead = Math.max(0, (Date.now() - torrent.diedAt.getTime()) / 86400_000);
-      const points = Math.min(
-        ECONOMY.reseedRewardMax,
-        Math.round(
-          ECONOMY.reseedRewardBase
-          + Math.min(sizeGb * ECONOMY.reseedRewardPerGb, ECONOMY.reseedRewardSizeCap)
-          + Math.min(daysDead * ECONOMY.reseedRewardPerDay, ECONOMY.reseedRewardDaysCap),
-        ),
-      );
+      const points = reseedReward(torrent.size, torrent.diedAt);
       if (points <= 0) return;
       await this.prisma.user.update({ where: { id: userId }, data: { bonusPoints: { increment: points } } });
+      // Mémoire des réanimations (page « Réanimation » : héros du mois, torrents ressuscités récemment).
+      await this.prisma.torrentRevival.create({ data: { torrentId: torrent.id, userId, points, deadDays: Math.round(((Date.now() - torrent.diedAt.getTime()) / 86400_000) * 10) / 10 } }).catch(() => {});
       await this.notifications.notify({
         userId,
         type: 'SYSTEM',

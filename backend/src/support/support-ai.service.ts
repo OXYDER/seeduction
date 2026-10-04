@@ -41,6 +41,8 @@ export class SupportAiError extends HttpException {}
 export class SupportAiService {
   private readonly log = new Logger(SupportAiService.name);
   private calls: number[] = [];
+  /** Modèle trouvé automatiquement quand celui par défaut n'existe plus. */
+  private autoModel: Partial<Record<Provider, string>> = {};
 
   constructor(private wiki: WikiService) {}
 
@@ -57,7 +59,7 @@ export class SupportAiService {
     return {
       configured: !!provider,
       provider,
-      model: provider ? cfg.aiModel || process.env.SUPPORT_AI_MODEL || DEFAULT_MODEL[provider] : null,
+      model: provider ? this.modelFor(cfg, provider) : null,
       anthropicKey: !!process.env.ANTHROPIC_API_KEY,
       geminiKey: !!process.env.GEMINI_API_KEY,
     };
@@ -83,12 +85,52 @@ export class SupportAiService {
     this.calls.push(now);
   }
 
+  /** Modèle réellement utilisé : celui des réglages, sinon celui du fichier .env, sinon un modèle trouvé automatiquement, sinon le défaut. */
+  private modelFor(cfg: SupportConfig, provider: Provider) {
+    return cfg.aiModel || process.env.SUPPORT_AI_MODEL || this.autoModel[provider] || DEFAULT_MODEL[provider];
+  }
+
+  /** Les modèles que la clé peut utiliser (pour choisir dans les réglages, et pour retrouver un modèle quand celui par défaut n'existe plus). */
+  async listModels(cfg: SupportConfig): Promise<{ provider: Provider | null; models: string[]; error?: string }> {
+    const provider = this.provider(cfg);
+    if (!provider) return { provider: null, models: [], error: 'Aucune clé IA configurée.' };
+    try {
+      if (provider === 'gemini') {
+        const base = (process.env.GEMINI_API_BASE ?? 'https://generativelanguage.googleapis.com').replace(/\/$/, '');
+        const res = await fetch(`${base}/v1beta/models?pageSize=200`, { headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY as string }, signal: AbortSignal.timeout(15_000) });
+        const json: any = await res.json().catch(() => null);
+        if (!res.ok) return { provider, models: [], error: `Gemini ${res.status} : ${String(json?.error?.message ?? 'erreur').slice(0, 160)}` };
+        const models = (json?.models ?? [])
+          .filter((m: any) => (m.supportedGenerationMethods ?? []).includes('generateContent') && /^models\/gemini/.test(m.name))
+          .map((m: any) => String(m.name).replace(/^models\//, ''));
+        return { provider, models };
+      }
+      const base = (process.env.ANTHROPIC_API_BASE ?? 'https://api.anthropic.com').replace(/\/$/, '');
+      const res = await fetch(`${base}/v1/models?limit=100`, { headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' }, signal: AbortSignal.timeout(15_000) });
+      const json: any = await res.json().catch(() => null);
+      if (!res.ok) return { provider, models: [], error: `Anthropic ${res.status} : ${String(json?.error?.message ?? 'erreur').slice(0, 160)}` };
+      return { provider, models: (json?.data ?? []).map((m: any) => String(m.id)) };
+    } catch {
+      return { provider, models: [], error: 'Le service d\'IA est injoignable.' };
+    }
+  }
+
+  /** Meilleur modèle rapide et économique parmi ceux proposés : le plus récent « flash » (Gemini) ou « haiku » (Claude). */
+  pickModel(provider: Provider, models: string[]): string | null {
+    const bad = /preview|exp|image|tts|thinking|live|audio|vision|embedding|robotics|computer|learnlm|gemma/i;
+    const version = (m: string) => { const v = /(\d+)(?:[.-](\d+))?/.exec(m.replace(/^gemini-|^claude-/, '')); return v ? Number(v[1]) * 100 + Number(v[2] ?? 0) : 0; };
+    const sorted = (re: RegExp) => models.filter((m) => re.test(m) && !bad.test(m)).sort((a, b) => version(b) - version(a) || a.length - b.length);
+    const order = provider === 'gemini' ? [/flash$/, /flash-lite$/, /pro$/] : [/haiku/, /sonnet/];
+    for (const re of order) { const hit = sorted(re)[0]; if (hit) return hit; }
+    return null;
+  }
+
   /** Appel brut au fournisseur : renvoie le texte de la réponse. */
-  private async complete(cfg: SupportConfig, system: string, turns: AiTurn[], maxTokens: number): Promise<string> {
+  private async complete(cfg: SupportConfig, system: string, turns: AiTurn[], maxTokens: number, retried = false): Promise<string> {
     const provider = this.provider(cfg);
     if (!provider) throw new SupportAiError('Aucune clé IA configurée (ANTHROPIC_API_KEY ou GEMINI_API_KEY dans backend/.env).', 503);
-    this.throttle();
-    const model = cfg.aiModel || process.env.SUPPORT_AI_MODEL || DEFAULT_MODEL[provider];
+    if (!retried) this.throttle();
+    const model = this.modelFor(cfg, provider);
     // Les tours doivent alterner et commencer par le membre.
     const merged: AiTurn[] = [];
     for (const t of turns) {
@@ -127,15 +169,29 @@ export class SupportAiService {
       const json: any = await res.json().catch(() => null);
       if (!res.ok) {
         const detail = String(json?.error?.message ?? '').slice(0, 200);
-        this.log.warn(`${provider} ${res.status} : ${detail}`);
+        this.log.warn(`${provider} ${res.status} (modèle ${model}) : ${detail}`);
         if (res.status === 429) throw new SupportAiError('Le service d\'IA est saturé (quota atteint).', 429);
         if (res.status === 401 || res.status === 403 || (res.status === 400 && /API key/i.test(detail))) throw new SupportAiError('La clé IA est refusée : vérifie-la dans backend/.env.', 502);
-        throw new SupportAiError(`Le service d'IA a refusé la demande (${res.status}).`, 502);
+        if (res.status === 404 && !retried && !cfg.aiModel && !process.env.SUPPORT_AI_MODEL) {
+          // Le modèle par défaut n'existe plus (ou pas pour cette clé) : on cherche un modèle disponible et on réessaie une fois.
+          const picked = this.pickModel(provider, (await this.listModels(cfg)).models);
+          if (picked && picked !== model) {
+            this.log.warn(`Modèle « ${model} » introuvable : bascule automatique vers « ${picked} »`);
+            this.autoModel[provider] = picked;
+            clearTimeout(timer);
+            return this.complete({ ...cfg, aiModel: picked }, system, turns, maxTokens, true);
+          }
+        }
+        if (res.status === 404) throw new SupportAiError(`Modèle « ${model} » introuvable pour cette clé : choisis-en un autre dans les réglages (« Lister les modèles disponibles »). ${detail}`.trim(), 502);
+        throw new SupportAiError(`Le service d'IA a refusé la demande (${res.status}) : ${detail || 'sans détail'}`, 502);
       }
       const text = provider === 'anthropic'
         ? (json?.content ?? []).map((c: any) => c?.text ?? '').join('')
         : (json?.candidates?.[0]?.content?.parts ?? []).map((p: any) => p?.text ?? '').join('');
-      if (!text.trim()) throw new SupportAiError('Le service d\'IA n\'a rien répondu.', 502);
+      if (!text.trim()) {
+        const why = provider === 'gemini' ? (json?.promptFeedback?.blockReason ?? json?.candidates?.[0]?.finishReason) : null;
+        throw new SupportAiError(`Le service d'IA n'a rien répondu${why ? ` (${why})` : ''}.`, 502);
+      }
       return text;
     } catch (err: any) {
       if (err instanceof HttpException) throw err;

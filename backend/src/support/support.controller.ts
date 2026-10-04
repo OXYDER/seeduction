@@ -116,6 +116,11 @@ export class SupportController {
     return { config: cfg, ai: this.ai.status(cfg), overview: await this.bot.overview() };
   }
 
+  /** Modèles d'IA que la clé configurée peut utiliser. */
+  @Roles(...ADMINS)
+  @Get('admin/ai-models')
+  async aiModels() { return this.ai.listModels(await this.support.config()); }
+
   @Roles(...ADMINS)
   @Post('admin/test')
   test(@Body('question') question: string) { return this.bot.test(question); }

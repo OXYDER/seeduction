@@ -10,6 +10,7 @@ import MySeeds from './pages/MySeeds';
 import MyActivity from './pages/MyActivity';
 import HitAndRun from './pages/HitAndRun';
 import Stats from './pages/Stats';
+import Dead from './pages/Dead';
 import News from './pages/News';
 import Support from './pages/Support';
 import SupportNew from './pages/SupportNew';
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="/seeds" element={<MySeeds />} />
           <Route path="/hit-and-run" element={<HitAndRun />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/dead" element={<Dead />} />
           <Route path="/support" element={<Support />} />
           <Route path="/support/new" element={<SupportNew />} />
           <Route path="/support/:id" element={<SupportTicket />} />

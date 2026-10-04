@@ -55,7 +55,7 @@ export default function SupportNew() {
   }
 
   return (
-    <div className="grid" style={{ gap: 16, maxWidth: 860 }}>
+    <div className="grid" style={{ gap: 16 }}>
       <div>
         <h1 style={{ margin: 0 }}>🎫 Ouvrir un billet</h1>
         <p className="muted" style={{ margin: '4px 0 0' }}>L’équipe SDT te répond en privé ; tu es prévenu dès qu’elle écrit. Plus ta description est précise, plus vite on règle ça.</p>

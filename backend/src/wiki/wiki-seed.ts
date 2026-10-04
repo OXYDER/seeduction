@@ -236,8 +236,26 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• La récompense est calculée selon la taille du torrent et le temps qu'il est resté mort (avec un plafond), et n'est [b]jamais versée à quelqu'un qui le seedait déjà juste avant sa mort[/b] — impossible donc de couper son propre seed puis de le relancer pour gagner des points.\n` +
           `• Elle n'est [b]confirmée[/b] que lorsqu'un autre membre finit vraiment de le télécharger (preuve que ça a servi), ou, à défaut, si tu as tenu le seed tout seul pendant 72 heures.\n` +
           `• Si tu abandonnes le seed avant l'une de ces deux conditions, rien n'est payé.\n\n` +
-          `[b]Où les trouver[/b] : Statistiques > Top torrents > « À reseeder » liste tous les torrents sans seeder (les morts ☠️ comme ceux qui vont bientôt l'être), les plus téléchargés d'abord, avec le temps écoulé sans seed.\n\n` +
-          `Depuis la fiche d'un torrent à 0 seeder, le bouton « Demander un reseed » prévient (au plus une fois par semaine) tous les membres qui l'ont déjà téléchargé.`,
+          `[b]La page Réanimation[/b] (menu « Réanimation », pastille rouge = nombre de torrents sans seeder que [b]tu[/b] as déjà téléchargés et que tu peux donc relancer) liste tous les torrents sans seeder : ceux qui sont officiellement morts ☠️ et ceux qui sont encore dans le délai de grâce.\n` +
+          `• Chaque ligne montre la taille, le nombre de téléchargements, depuis quand il est sans seeder, combien de membres attendent (leechers) et les [b]points bonus que tu gagnerais[/b] en le relançant.\n` +
+          `• Un cadre vert signale ceux que [b]tu[/b] as déjà téléchargés ; le bouton « ⬇ Je le relance » télécharge le .torrent à rouvrir dans ton client, en pointant vers tes fichiers.\n` +
+          `• « 🔁 Demander un reseed » prévient (au plus une fois par semaine par torrent) tous les membres qui l'ont déjà téléchargé.\n` +
+          `• Tu peux trier (plus téléchargés, morts depuis le plus longtemps, plus gros, meilleure récompense), chercher, filtrer par catégorie ou n'afficher que ceux que tu as téléchargés.\n` +
+          `• La page affiche aussi les [b]réanimateurs du mois[/b] et les torrents ressuscités récemment : une façon de remercier ceux qui redonnent vie au catalogue.\n` +
+          `\n` +
+          `Depuis la fiche d'un torrent à 0 seeder, le même bouton « Demander un reseed » est disponible.\n`,
+      },
+      {
+        title: 'Statistiques et classements',
+        slug: 'statistiques-et-classements',
+        keywords: 'stats, classement, top, ratio, hit and run, records, tendance, meilleurs, plus bas, assidus, torrents populaires',
+        content:
+          `La page [b]Statistiques[/b] (menu « Stats ») est découpée en onglets :\n` +
+          `• [b]📈 Aperçu[/b] : ta place dans les classements, les chiffres clés de la période (7, 30 ou 90 jours) comparés à la période précédente (▲ en hausse, ▼ en baisse), la croissance du site, les téléchargements par catégorie et les records.\n` +
+          `• [b]👥 Membres[/b] : meilleurs et plus bas ratios, plus de points bonus, plus gros uploadeurs et téléchargeurs, plus longs seeders, plus de hit & run, les plus assidus (jours d'activité sur 30 jours), plus de commentaires, de messages au forum et au chat, plus remerciés, plus d'amis, les plus anciens, ainsi que la fréquentation, la répartition des ratios, de l'ancienneté et l'activité par heure et par jour.\n` +
+          `• [b]🎞️ Torrents[/b] : santé du réseau, plus populaires (téléchargés, demandés, mieux notés, remerciés, favoris, commentés), moins populaires (moins téléchargés, un seul seeder, les plus difficiles à obtenir), plus petits et plus gros, plus anciens, morts depuis le plus longtemps, et un tableau par catégorie. Le site ne mesure pas les vitesses de transfert : « les plus difficiles à obtenir » compare le nombre de leechers au nombre de seeders.\n` +
+          `• [b]💬 Communauté[/b] et [b]⚙️ Économie[/b] : participation, demandes, points en circulation, hit & run, répartitions par résolution, langue, rang et rôle.\n` +
+          `Le ratio n'est classé que pour les membres qui ont téléchargé au moins 1 Go. Les classements se mettent à jour toutes les 5 minutes, et les contenus pour adultes n'y apparaissent que si tu as activé leur affichage.\n`,
       },
       {
         title: 'Favoris et collections',

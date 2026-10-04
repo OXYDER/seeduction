@@ -297,6 +297,9 @@ function SettingsAdmin() {
   const [question, setQuestion] = useState('Comment fonctionne le hit and run ?');
   const [test, setTest] = useState<any>(null);
   const [testing, setTesting] = useState(false);
+  const [models, setModels] = useState<string[]>([]);
+  const [modelsMsg, setModelsMsg] = useState('');
+  const [loadingModels, setLoadingModels] = useState(false);
 
   const apply = (d: any) => { setCfg(d.config); setAi(d.ai); setOverview(d.overview); };
   useEffect(() => {
@@ -317,6 +320,15 @@ function SettingsAdmin() {
     setError('');
     try { await api.post('/support/admin/channel'); const r = await api.get('/support/admin/config'); apply(r.data); const c = await api.get('/messenger/admin/channels'); setChannels(c.data); setMsg('✓ Canal Support créé'); }
     catch (e: any) { setError(e.response?.data?.message ?? 'Création impossible'); }
+  }
+  async function loadModels() {
+    setLoadingModels(true); setModelsMsg('');
+    try {
+      const { data } = await api.get('/support/admin/ai-models');
+      setModels(data.models ?? []);
+      setModelsMsg(data.error ? data.error : `${data.models.length} modèle(s) disponible(s) : clique dans le champ pour choisir`);
+    } catch (e: any) { setModelsMsg(e.response?.data?.message ?? 'Liste indisponible'); }
+    finally { setLoadingModels(false); }
   }
   async function runTest() {
     setTesting(true); setTest(null);
@@ -375,7 +387,14 @@ function SettingsAdmin() {
               <option value="gemini">Gemini (Google)</option>
             </select>
           </label>
-          <label className="muted">Modèle (vide = celui par défaut)<input value={cfg.aiModel} maxLength={80} placeholder="claude-haiku-4-5-20251001 · gemini-2.5-flash" onChange={(e) => up('aiModel', e.target.value)} /></label>
+          <label className="muted">Modèle (vide = automatique)
+            <input list="ai-models" value={cfg.aiModel} maxLength={80} placeholder="claude-haiku-4-5-20251001 · gemini-2.5-flash" onChange={(e) => up('aiModel', e.target.value)} />
+            <datalist id="ai-models">{models.map((m) => <option key={m} value={m} />)}</datalist>
+            <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="secondary" onClick={loadModels} disabled={loadingModels}>{loadingModels ? 'Recherche…' : 'Lister les modèles disponibles'}</button>
+              {modelsMsg && <span style={{ color: models.length ? 'var(--success)' : 'var(--danger)' }}>{modelsMsg}</span>}
+            </span>
+          </label>
           <label className="muted">Nom de l’assistant<input value={cfg.botName} maxLength={40} onChange={(e) => up('botName', e.target.value)} /></label>
           <label className="muted">Réponses sans résultat avant de proposer un billet<input type="number" min={1} max={10} value={cfg.maxAnswersBeforeOffer} onChange={num('maxAnswersBeforeOffer')} /></label>
           <label className="muted">Réponses maximum par heure et par membre<input type="number" min={1} max={200} value={cfg.aiHourlyLimit} onChange={num('aiHourlyLimit')} /></label>

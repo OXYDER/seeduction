@@ -4,10 +4,11 @@ import { PrismaService } from '../common/prisma.service';
 import { UsersService } from '../users/users.service';
 import { BadgesService } from '../badges/badges.service';
 import { AdultService } from '../adult/adult.service';
+import { PresenceService } from '../presence/presence.service';
 
 @Injectable()
 export class StatsService {
-  constructor(private prisma: PrismaService, private usersService: UsersService, private badges: BadgesService, private adult: AdultService) {}
+  constructor(private prisma: PrismaService, private usersService: UsersService, private badges: BadgesService, private adult: AdultService, private presence: PresenceService) {}
 
   async globalStats() {
     const [totalUsers, totalTorrents, totalSeeders, totalLeechers, totalCompleted] = await Promise.all([
@@ -34,7 +35,7 @@ export class StatsService {
   }
 
   /** Chiffres supplémentaires de la page Statistiques : activité, répartitions, classements, économie. */
-  private async extraStats(visible: object) {
+  private async extraStats(visible: object, days: number) {
     const approved = { status: 'APPROVED' as const, ...visible };
     const since = (days: number) => new Date(Date.now() - days * 86400_000);
     const [
@@ -56,10 +57,10 @@ export class StatsService {
       this.prisma.torrent.count({ where: { ...approved, createdAt: { gt: since(30) } } }),
       this.prisma.$queryRaw<{ d: string; n: bigint }[]>`
         SELECT to_char(date_trunc('day', "completedAt"), 'YYYY-MM-DD') AS d, COUNT(*) AS n FROM "Snatch"
-        WHERE "completedAt" > now() - interval '30 days' GROUP BY 1 ORDER BY 1`,
+        WHERE "completedAt" > now() - make_interval(days => ${days}::int) GROUP BY 1 ORDER BY 1`,
       this.prisma.$queryRaw<{ d: string; n: bigint }[]>`
         SELECT to_char(date_trunc('day', "createdAt"), 'YYYY-MM-DD') AS d, COUNT(*) AS n FROM "TorrentComment"
-        WHERE "createdAt" > now() - interval '30 days' GROUP BY 1 ORDER BY 1`,
+        WHERE "createdAt" > now() - make_interval(days => ${days}::int) GROUP BY 1 ORDER BY 1`,
       this.prisma.torrent.groupBy({ by: ['resolution'], where: { ...approved, resolution: { not: null } }, _count: { _all: true }, orderBy: { _count: { resolution: 'desc' } }, take: 8 }),
       this.prisma.torrent.groupBy({ by: ['language'], where: { ...approved, language: { not: null } }, _count: { _all: true }, orderBy: { _count: { language: 'desc' } }, take: 8 }),
       this.prisma.torrent.groupBy({ by: ['uploaderId'], where: { ...approved, anonymousUpload: false }, _count: { _all: true }, orderBy: { _count: { uploaderId: 'desc' } }, take: 10 }),
@@ -98,19 +99,21 @@ export class StatsService {
   }
 
   /** Statistiques détaillées de la communauté (page Statistiques) : activité sur 30 jours, catégories, torrents à reseeder. */
-  async overview(userId?: string) {
+  /** `days` : période des courbes (7, 30 ou 90 jours). */
+  async overview(userId?: string, rawDays = 30) {
+    const days = [7, 30, 90].includes(rawDays) ? rawDays : 30;
     const hidden = await this.adult.hiddenFor(userId);
     const visible = hidden.length ? { categoryId: { notIn: hidden } } : {};
     const [torrentsPerDay, membersPerDay, trafficPerDay, byCategory, topCompleted, deadCount, dead] = await Promise.all([
       this.prisma.$queryRaw<{ d: string; n: bigint }[]>`
         SELECT to_char(date_trunc('day', "createdAt"), 'YYYY-MM-DD') AS d, COUNT(*) AS n FROM "Torrent"
-        WHERE status = 'APPROVED' AND "createdAt" > now() - interval '30 days' GROUP BY 1 ORDER BY 1`,
+        WHERE status = 'APPROVED' AND "createdAt" > now() - make_interval(days => ${days}::int) GROUP BY 1 ORDER BY 1`,
       this.prisma.$queryRaw<{ d: string; n: bigint }[]>`
         SELECT to_char(date_trunc('day', "createdAt"), 'YYYY-MM-DD') AS d, COUNT(*) AS n FROM "User"
-        WHERE "createdAt" > now() - interval '30 days' GROUP BY 1 ORDER BY 1`,
+        WHERE "parentId" IS NULL AND "createdAt" > now() - make_interval(days => ${days}::int) GROUP BY 1 ORDER BY 1`,
       this.prisma.$queryRaw<{ d: string; up: number; down: number }[]>`
         SELECT to_char(date_trunc('day', "takenAt"), 'YYYY-MM-DD') AS d, SUM(uploaded)::float8 AS up, SUM(downloaded)::float8 AS down FROM "RatioSnapshot"
-        WHERE "takenAt" > now() - interval '30 days' GROUP BY 1 ORDER BY 1`,
+        WHERE "takenAt" > now() - make_interval(days => ${days}::int) GROUP BY 1 ORDER BY 1`,
       this.prisma.torrent.groupBy({ by: ['categoryId'], where: { status: 'APPROVED', ...visible }, _count: { _all: true } }),
       this.prisma.torrent.findMany({
         where: { status: 'APPROVED', ...visible }, orderBy: { completedCount: 'desc' }, take: 10,
@@ -126,8 +129,43 @@ export class StatsService {
     const categories = await this.prisma.category.findMany({ where: { id: { in: byCategory.map((c) => c.categoryId) } }, select: { id: true, name: true } });
     const nameById = new Map(categories.map((c) => [c.id, c.name]));
 
+    const sinceWindow = new Date(Date.now() - days * 86400_000);
+    const sincePrev = new Date(Date.now() - 2 * days * 86400_000);
+    const approvedVisible = { status: 'APPROVED' as const, ...visible };
+    const [membersBefore, torrentsBefore, prevMembers, prevTorrents, prevSnatches, prevComments, snatchesByCategory] = await Promise.all([
+      this.prisma.user.count({ where: { parentId: null, createdAt: { lt: sinceWindow } } }),
+      this.prisma.torrent.count({ where: { ...approvedVisible, createdAt: { lt: sinceWindow } } }),
+      this.prisma.user.count({ where: { parentId: null, createdAt: { gte: sincePrev, lt: sinceWindow } } }),
+      this.prisma.torrent.count({ where: { ...approvedVisible, createdAt: { gte: sincePrev, lt: sinceWindow } } }),
+      this.prisma.snatch.count({ where: { completedAt: { gte: sincePrev, lt: sinceWindow } } }),
+      this.prisma.torrentComment.count({ where: { createdAt: { gte: sincePrev, lt: sinceWindow } } }),
+      this.prisma.$queryRaw<{ name: string; n: number }[]>`
+        SELECT COALESCE(p.name, c.name) AS name, COUNT(*)::int AS n FROM "Snatch" s JOIN "Torrent" t ON t.id = s."torrentId"
+        JOIN "Category" c ON c.id = t."categoryId" LEFT JOIN "Category" p ON p.id = c."parentId"
+        WHERE s."completedAt" > now() - make_interval(days => ${days}::int) AND (${hidden.length === 0} OR t."categoryId" <> ALL(${hidden}::text[]))
+        GROUP BY 1 ORDER BY n DESC LIMIT 8`,
+    ]);
+    const extra = await this.extraStats(visible, days);
+    const total = (list: { count: number }[]) => list.reduce((n, r) => n + r.count, 0);
+    const series = {
+      torrents: torrentsPerDay.map((r) => ({ date: r.d, count: Number(r.n) })),
+      members: membersPerDay.map((r) => ({ date: r.d, count: Number(r.n) })),
+    };
+    const cumulative = (list: { date: string; count: number }[], start: number) => { let acc = start; return list.map((d) => ({ date: d.date, total: (acc += d.count) })); };
+    const peak = (list: { date: string; count: number }[]) => list.reduce<{ date: string; count: number } | null>((best, d) => (!best || d.count > best.count ? d : best), null);
+    const trend = (cur: number, prev: number) => ({ cur, prev, pct: prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null });
     return {
-      extra: await this.extraStats(visible),
+      days,
+      trends: {
+        members: trend(total(series.members), prevMembers), torrents: trend(total(series.torrents), prevTorrents),
+        snatches: trend(total(extra.snatchesPerDay), prevSnatches), comments: trend(total(extra.commentsPerDay), prevComments),
+      },
+      records: { torrents: peak(series.torrents), members: peak(series.members), snatches: peak(extra.snatchesPerDay), comments: peak(extra.commentsPerDay) },
+      membersCumulative: cumulative(series.members, membersBefore),
+      torrentsCumulative: cumulative(series.torrents, torrentsBefore),
+      snatchesByCategory: snatchesByCategory.map((r) => ({ name: r.name, count: r.n })),
+      online: this.presence.listOnline().length,
+      extra,
       global: await this.globalStats(),
       torrentsPerDay: torrentsPerDay.map((r) => ({ date: r.d, count: Number(r.n) })),
       membersPerDay: membersPerDay.map((r) => ({ date: r.d, count: Number(r.n) })),
