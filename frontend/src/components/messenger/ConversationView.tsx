@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import { statusOf, useMessenger, type Msg, type MsgUser } from '../../store/messenger';
 import { useCalls } from '../../store/calls';
+import { useSupport } from '../../store/support';
 import { STATUS_LABEL } from '../../lib/presence';
 import { clock, dayLabel, isSameDay } from '../../lib/chatFormat';
 import ConvAvatar from './ConvAvatar';
@@ -34,6 +35,8 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   const callPhase = useCalls((s) => s.phase);
   const onlineList = useMessenger((s) => s.onlineList);
   const { loadThread, loadOlder, setVisible, markRead, ensureConversation } = useMessenger.getState();
+  const support = useSupport((s) => s.overview);
+  const loadSupport = useSupport((s) => s.loadOverview);
 
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
   const [editing, setEditing] = useState<Msg | null>(null);
@@ -62,6 +65,8 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     loadThread(conversationId);
     return () => { alive = false; };
   }, [conversationId, ensureConversation, loadThread]);
+
+  useEffect(() => { if (!support) void loadSupport(); }, [support, loadSupport]);
 
   // Visible = affichée et la page est au premier plan : les nouveaux messages sont alors lus tout de suite.
   useEffect(() => {
@@ -196,6 +201,17 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     return out;
   }, [messages, me?.id]);
 
+  // Réponse de l'assistant à laquelle le membre peut encore répondre « résolu » / « pas résolu » : la dernière qui lui est adressée, tant qu'il n'a pas écrit depuis.
+  const feedbackId = useMemo(() => {
+    if (!support?.botUserId || !me) return null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.sender.id === me.id) return null;
+      if (m.sender.id === support.botUserId && m.mentionIds.includes(me.id)) return m.type === 'BOT_ANSWER' ? m.id : null;
+    }
+    return null;
+  }, [messages, support?.botUserId, me]);
+
   if (missing) return <div className="msgr-view-empty"><p className="muted">Cette conversation n'est plus disponible.</p>{onClose && <button type="button" onClick={onClose}>Fermer</button>}</div>;
   if (!conv) return <div className="msgr-view-empty"><p className="muted">Chargement…</p></div>;
 
@@ -266,6 +282,18 @@ export default function ConversationView({ conversationId, variant, onClose, onM
         </div>
       )}
 
+      {support?.channelId === conversationId && (
+        <div className="msgr-support-bar">
+          <span>🛟 <strong>Aide en direct</strong> · {support.aiActive ? `${support.botName} répond à partir du wiki` : 'l’équipe SDT répond ici'}{support.staffOnline > 0 ? ` · 🟢 ${support.staffOnline} de l’équipe en ligne` : ''}</span>
+          <span className="row" style={{ gap: 6 }}>
+            <Link to="/support/new?from=chat" className="secondary">🎫 Ouvrir un billet</Link>
+            <Link to="/support" className="secondary">Mes billets</Link>
+            <Link to="/wiki" className="secondary">📖 Wiki</Link>
+          </span>
+          <span className="muted msgr-support-hint">Ce canal est public : pour un sujet privé, ouvre un billet.</span>
+        </div>
+      )}
+
       {pinned && (
         <button type="button" className="msgr-pinned" onClick={() => jumpTo(pinned.id)}>
           📌 <strong>{pinned.sender.username}</strong> {(pinned.content || 'pièce jointe').slice(0, 90)}
@@ -292,7 +320,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
             <Fragment key={it.key}>
               <MessageItem
                 msg={m} conv={conv} first={!!it.first} last={!!it.last} readers={readersByMessage.get(m.id) ?? []}
-                highlighted={flash === m.id} canModerate={canModerate} canPin={canPin}
+                highlighted={flash === m.id} canModerate={canModerate} canPin={canPin} feedbackOpen={feedbackId === m.id}
                 onReply={(x) => { setEditing(null); setReplyTo(x); }} onEdit={(x) => { setReplyTo(null); setEditing(x); }} onJump={jumpTo} onPin={togglePin}
               />
             </Fragment>

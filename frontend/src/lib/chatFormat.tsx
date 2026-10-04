@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-const URL_OR_MENTION = /(https?:\/\/[^\s<]+)|(@[\p{L}\p{N}_.·-]{2,50})/gu;
+// Adresses complètes, @mentions, et chemins internes (/wiki/..., /support/...) que l'assistant du canal Support écrit.
+const URL_OR_MENTION = /(https?:\/\/[^\s<]+)|(@[\p{L}\p{N}_.·-]{2,50})|(?<![\w/])(\/(?:wiki|support|torrents|forum|news)(?:\/[\w\-.%~]+)*)/gu;
 const TRAILING = /[.,;:!?)\]}»"']+$/;
 // Un message fait uniquement d'émojis (3 au plus) s'affiche en grand, comme dans Messenger.
 const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}(?:\uFE0F|\u200D|\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*\s*){1,3}$/u;
@@ -34,6 +35,8 @@ export function ChatText({ text, myUsername }: { text: string; myUsername?: stri
         ? <Link key={i++} to={inner}>{url.replace(/^https?:\/\//, '')}</Link>
         : <a key={i++} href={url} target="_blank" rel="noopener noreferrer nofollow">{url}</a>);
       if (trail) nodes.push(trail);
+    } else if (m[3]) {
+      nodes.push(<Link key={i++} to={m[3]}>{m[3]}</Link>);
     } else {
       const name = m[2].slice(1);
       nodes.push(<span key={i++} className={`msgr-mention${myUsername && name.toLowerCase() === myUsername.toLowerCase() ? ' me' : ''}`}>{m[2]}</span>);

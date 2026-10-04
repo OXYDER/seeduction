@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -7,13 +8,15 @@ import { WikiAdmin } from '../components/AdminWiki';
 import { ChannelsAdmin } from '../components/AdminChannels';
 import { InvitesAdmin } from '../components/AdminInvites';
 import { ConfigAdmin } from '../components/AdminConfig';
+import { SupportAdmin } from '../components/AdminSupport';
 
-const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki'] as const;
+const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki', 'Support'] as const;
 type Tab = typeof BASE_TABS[number] | 'Paramètres' | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal';
 
 export default function Admin() {
   const role = useAuthStore((s) => s.user?.role);
-  const [tab, setTab] = useState<Tab>('Vue d\'ensemble');
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => ((BASE_TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'Vue d\'ensemble'));
   // Le monitoring expose des détails d'infrastructure : réservé ADMIN/OWNER (les modérateurs voient le reste).
   const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Paramètres', 'Invitations', 'Canaux', 'Journal', 'Monitoring'] : [...BASE_TABS];
 
@@ -34,6 +37,7 @@ export default function Admin() {
       {tab === 'Forum' && <ForumAdmin />}
       {tab === 'Templates' && <TemplatesAdmin />}
       {tab === 'Wiki' && <WikiAdmin />}
+      {tab === 'Support' && <SupportAdmin />}
       {tab === 'Paramètres' && <ConfigAdmin />}
       {tab === 'Invitations' && <InvitesAdmin />}
       {tab === 'Canaux' && <ChannelsAdmin />}

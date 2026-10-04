@@ -1,4 +1,7 @@
 import { memo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../../api/client';
+import { useSupport } from '../../store/support';
 import { useMessenger, type ConvSummary, type Msg } from '../../store/messenger';
 import { useAuthStore } from '../../store/auth';
 import { QUICK_REACTIONS, EMOJI_GRID } from '../../lib/emoji';
@@ -26,6 +29,8 @@ interface Props {
   onEdit: (m: Msg) => void;
   onJump: (id: string) => void;
   onPin: (m: Msg) => void;
+  /** Réponse de l'assistant à laquelle on peut encore répondre « résolu » / « pas résolu ». */
+  feedbackOpen?: boolean;
 }
 
 function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) {
@@ -44,8 +49,13 @@ function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) {
   );
 }
 
-function MessageItemBase({ msg, conv, first, last, readers, highlighted, canModerate, canPin, onReply, onEdit, onJump, onPin }: Props) {
+function MessageItemBase({ msg, conv, first, last, readers, highlighted, canModerate, canPin, onReply, onEdit, onJump, onPin, feedbackOpen }: Props) {
   const me = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
+  const botId = useSupport((s) => s.overview?.botUserId);
+  const supportChannelId = useSupport((s) => s.overview?.channelId);
+  const [feedbackDone, setFeedbackDone] = useState(false);
+  const isBot = !!botId && msg.sender.id === botId;
   const react = useMessenger((s) => s.react);
   const remove = useMessenger((s) => s.remove);
   const retry = useMessenger((s) => s.retry);
@@ -55,8 +65,24 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
   const [lightbox, setLightbox] = useState<string | null>(null);
   const mine = msg.sender.id === me?.id;
   const group = conv.type !== 'DIRECT';
+  const isSupportChannel = !!supportChannelId && conv.id === supportChannelId;
+  const canMakeTicket = isSupportChannel && canModerate && !mine && !isBot && msg.type === 'TEXT' && !['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(msg.sender.role ?? '');
 
   if (msg.type === 'SYSTEM') return <div className="msgr-system">{msg.content}</div>;
+
+  // L'assistant propose un billet à UNE personne : elle voit la carte, les autres une simple ligne discrète.
+  if (msg.type === 'TICKET_OFFER') {
+    if (!me || !msg.mentionIds.includes(me.id)) return <div className="msgr-system">🎫 Un billet de support a été proposé{msg.replyTo ? ` à ${msg.replyTo.senderUsername}` : ''}</div>;
+    return (
+      <div id={`msg-${msg.id}`} className="msgr-offer">
+        <div className="msgr-offer-text">🎫 {msg.content}</div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" onClick={() => navigate('/support/new?from=chat')}>🎫 Ouvrir un billet de support</button>
+          <Link to="/support" className="secondary" style={{ padding: '8px 14px' }}>Mes billets</Link>
+        </div>
+      </div>
+    );
+  }
 
   const big = !msg.deleted && msg.type === 'TEXT' && !msg.replyTo && isBigEmoji(msg.content);
   const canEdit = mine && msg.type === 'TEXT' && !msg.deleted && !msg.pending && !msg.failed;
@@ -69,6 +95,17 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
     if (err) window.alert(err);
   }
 
+  async function makeTicket() {
+    try { const { data } = await api.post('/support/staff/from-message', { messageId: msg.id }); navigate(`/support/${data.id}`); }
+    catch (err: any) { window.alert(err.response?.data?.message ?? "Impossible d'ouvrir le billet"); }
+  }
+
+  async function sendFeedback(solved: boolean) {
+    setFeedbackDone(true);
+    try { await api.post('/support/chat/feedback', { messageId: msg.id, solved }); }
+    catch { setFeedbackDone(false); }
+  }
+
   const avatar = !mine && group ? (
     <span className="msgr-avatar-slot">{last ? <Avatar user={msg.sender} size={28} /> : null}</span>
   ) : null;
@@ -77,7 +114,7 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
     <div id={`msg-${msg.id}`} className={`msgr-row ${mine ? 'mine' : 'them'}${first ? ' first' : ''}${last ? ' last' : ''}${highlighted ? ' flash' : ''}`}>
       {avatar}
       <div className="msgr-col">
-        {first && group && !mine && <div className="msgr-sender"><UserLink user={msg.sender} /></div>}
+        {first && group && !mine && <div className="msgr-sender">{isBot ? <><strong>{msg.sender.username}</strong> <span className="msgr-bot-badge">🤖 Assistant</span></> : <UserLink user={msg.sender} />}</div>}
 
         {msg.replyTo && !msg.deleted && (
           <button type="button" className="msgr-reply-quote" onClick={() => onJump(msg.replyTo!.id)} title="Voir le message d'origine">
@@ -124,6 +161,7 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
               {menu && (
                 <div className="msgr-menu" onClick={(e) => e.stopPropagation()}>
                   {msg.content && <button type="button" onClick={() => { navigator.clipboard?.writeText(msg.content).catch(() => {}); setMenu(false); }}>📋 Copier le texte</button>}
+                  {canMakeTicket && <button type="button" onClick={() => { setMenu(false); void makeTicket(); }}>🎫 Ouvrir un billet pour ce membre</button>}
                   {canEdit && <button type="button" onClick={() => { setMenu(false); onEdit(msg); }}>✏️ Modifier</button>}
                   {canPin && <button type="button" onClick={() => { setMenu(false); onPin(msg); }}>{conv.pinnedMessageId === msg.id ? '📌 Désépingler' : '📌 Épingler'}</button>}
                   {canDelete && <button type="button" className="danger" onClick={doDelete}>🗑️ {mine ? 'Annuler l\'envoi' : 'Supprimer'}</button>}
@@ -132,6 +170,14 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
             </div>
           )}
         </div>
+
+        {feedbackOpen && !feedbackDone && msg.type === 'BOT_ANSWER' && me && msg.mentionIds.includes(me.id) && (
+          <div className="msgr-feedback">
+            <span className="muted">Cette réponse t'a aidé ?</span>
+            <button type="button" onClick={() => sendFeedback(true)}>✅ Ça règle mon problème</button>
+            <button type="button" className="secondary" onClick={() => sendFeedback(false)}>🎫 Pas résolu</button>
+          </div>
+        )}
 
         {msg.reactions.length > 0 && (
           <div className="msgr-reactions">

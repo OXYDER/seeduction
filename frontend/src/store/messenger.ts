@@ -9,7 +9,7 @@ export interface TorrentCardData {
   id: string; adult: boolean; name?: string; coverImage?: string | null; size?: number; seeders?: number; leechers?: number;
   resolution?: string | null; year?: number | null; category?: string | null;
 }
-export type MsgType = 'TEXT' | 'IMAGE' | 'FILE' | 'VOICE' | 'GIF' | 'SYSTEM';
+export type MsgType = 'TEXT' | 'IMAGE' | 'FILE' | 'VOICE' | 'GIF' | 'SYSTEM' | 'BOT_ANSWER' | 'TICKET_OFFER';
 export interface Msg {
   id: string;
   conversationId: string;

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from
 import { createHash } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
 import { WIKI_SEED } from './wiki-seed';
+import { WikiHit, WikiIndex } from './wiki-search';
 
 const hashOf = (a: { title: string; content: string; keywords: string | null }) =>
   createHash('sha1').update(JSON.stringify([a.title, a.content, a.keywords ?? ''])).digest('hex');
@@ -65,6 +66,28 @@ export class WikiService implements OnModuleInit {
     }
   }
 
+  // --- Recherche par pertinence (support, assistant du canal Support) ------------
+
+  private indexCache: { at: number; index: WikiIndex } | null = null;
+
+  private async index(): Promise<WikiIndex> {
+    if (this.indexCache && Date.now() - this.indexCache.at < 60_000) return this.indexCache.index;
+    const rows = await this.prisma.wikiArticle.findMany({ select: { id: true, slug: true, title: true, keywords: true, content: true, isFaq: true, category: { select: { name: true } } } });
+    const index = new WikiIndex(rows.map((r) => ({ id: r.id, slug: r.slug, title: r.title, keywords: r.keywords, content: r.content, isFaq: r.isFaq, category: r.category.name })));
+    this.indexCache = { at: Date.now(), index };
+    return index;
+  }
+
+  /** Les articles qui répondent le mieux à une question en langage naturel. */
+  async ranked(question: string, limit = 5, minScore = 2): Promise<WikiHit[]> {
+    return (await this.index()).search(question, limit, minScore);
+  }
+
+  /** Texte brut d'un article (tronqué) pour le donner à lire à l'assistant. */
+  async articleText(slug: string, maxChars = 1800): Promise<string | null> {
+    return (await this.index()).articleText(slug, maxChars);
+  }
+
   /** Arborescence complète (catégories + leurs articles, sans le contenu) pour la navigation. */
   async tree() {
     return this.prisma.wikiCategory.findMany({
@@ -110,6 +133,7 @@ export class WikiService implements OnModuleInit {
   // --- Administration (staff) ---------------------------------------------
 
   createCategory(data: { name: string; icon?: string; order?: number }) {
+    this.indexCache = null;
     if (!data.name?.trim()) throw new BadRequestException('Nom requis');
     return this.prisma.wikiCategory.create({
       data: { name: data.name.trim(), slug: slugify(data.name), icon: data.icon || null, order: data.order ?? 0 },
@@ -117,6 +141,7 @@ export class WikiService implements OnModuleInit {
   }
 
   async updateCategory(id: string, data: { name?: string; icon?: string; order?: number }) {
+    this.indexCache = null;
     const payload: any = {};
     if (data.name?.trim()) { payload.name = data.name.trim(); payload.slug = slugify(data.name); }
     if (data.icon !== undefined) payload.icon = data.icon || null;
@@ -126,10 +151,12 @@ export class WikiService implements OnModuleInit {
   }
 
   deleteCategory(id: string) {
+    this.indexCache = null;
     return this.prisma.wikiCategory.delete({ where: { id } });
   }
 
   createArticle(data: { categoryId: string; title: string; content: string; keywords?: string; isFaq?: boolean; order?: number }) {
+    this.indexCache = null;
     if (!data.title?.trim() || !data.content?.trim() || !data.categoryId) throw new BadRequestException('Catégorie, titre et contenu requis');
     return this.prisma.wikiArticle.create({
       data: {
@@ -145,6 +172,7 @@ export class WikiService implements OnModuleInit {
   }
 
   async updateArticle(id: string, data: { categoryId?: string; title?: string; content?: string; keywords?: string; isFaq?: boolean; order?: number }) {
+    this.indexCache = null;
     const payload: any = {};
     if (data.categoryId) payload.categoryId = data.categoryId;
     if (data.title?.trim()) { payload.title = data.title.trim(); payload.slug = slugify(data.title); }
@@ -157,6 +185,7 @@ export class WikiService implements OnModuleInit {
   }
 
   deleteArticle(id: string) {
+    this.indexCache = null;
     return this.prisma.wikiArticle.delete({ where: { id } });
   }
 }

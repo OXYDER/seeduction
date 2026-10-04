@@ -43,6 +43,7 @@ import { PrismaModule } from './common/prisma.module';
 import { MemberActivityModule } from './member-activity/member-activity.module';
 import { RoadmapModule } from './roadmap/roadmap.module';
 import { TeamsModule } from './teams/teams.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { TeamsModule } from './teams/teams.module';
     MemberActivityModule,
     RoadmapModule,
     TeamsModule,
+    SupportModule,
   ],
 })
 export class AppModule {}

@@ -11,6 +11,9 @@ import MyActivity from './pages/MyActivity';
 import HitAndRun from './pages/HitAndRun';
 import Stats from './pages/Stats';
 import News from './pages/News';
+import Support from './pages/Support';
+import SupportNew from './pages/SupportNew';
+import SupportTicket from './pages/SupportTicket';
 import ResetPassword from './pages/ResetPassword';
 import ForgotPassword from './pages/ForgotPassword';
 import ForumView from './pages/ForumView';
@@ -89,6 +92,9 @@ export default function App() {
           <Route path="/seeds" element={<MySeeds />} />
           <Route path="/hit-and-run" element={<HitAndRun />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/support/new" element={<SupportNew />} />
+          <Route path="/support/:id" element={<SupportTicket />} />
           <Route path="/news" element={<News />} />
           <Route path="/news/:id" element={<News />} />
         </Route>

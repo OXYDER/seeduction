@@ -408,6 +408,54 @@ export const WIKI_SEED: WikiSeedCategory[] = [
         content:
           `Le bouton de signalement (sur un torrent, un profil, un message...) prévient directement le staff avec un lien vers l'élément concerné et le motif choisi — plus rapide et mieux suivi qu'un message privé à un modérateur au hasard.`,
       },
+      {
+        title: 'Support : chat en direct et billets',
+        slug: 'support-chat-et-billets',
+        keywords: 'aide, assistance, ticket, billet, support, contacter le staff, problème, question, assistant, bot, ia',
+        isFaq: true,
+        content:
+          `Besoin d'aide ? La section [b]Support[/b] du menu rassemble tout au même endroit : une recherche dans le wiki, le chat en direct et tes billets.
+
+` +
+          `[b]1. Cherche dans le wiki[/b]
+` +
+          `Décris ton problème en quelques mots : les articles du wiki les plus proches s'affichent aussitôt. Beaucoup de réponses y sont déjà (ratio, hit & run, upload, lecteur, compte...).
+
+` +
+          `[b]2. Discute en direct dans le canal « Support »[/b]
+` +
+          `Dans le chat, le canal #Support est surveillé par l'[b]assistant de Seeduction[/b] et par l'équipe SDT. L'assistant répond tout de suite en s'appuyant sur le wiki et te montre les articles utilisés. Dès qu'un membre de l'équipe te répond, l'assistant se tait et laisse l'humain continuer. Sous chaque réponse de l'assistant, dis-lui si ça règle ton problème ou non. Attention : ce canal est [b]public[/b], n'y écris jamais de mot de passe, de passkey ni d'information privée.
+
+` +
+          `[b]3. Ouvre un billet si ça ne suffit pas[/b]
+` +
+          `Quand l'assistant ne trouve pas la réponse, ne règle pas ton problème, ou si tu cliques sur « Pas résolu », il te propose d'ouvrir un [b]billet de support[/b] (tu peux aussi en ouvrir un à tout moment depuis la page Support). Un billet est une conversation [b]privée[/b] avec l'équipe :
+` +
+          `• choisis une catégorie, donne un titre et décris le problème (captures d'écran et fichiers acceptés, 4 au maximum) ;
+` +
+          `• ton échange avec l'assistant est joint automatiquement, tu n'as rien à répéter ;
+` +
+          `• pendant que tu écris, le wiki te suggère des articles qui répondent peut-être déjà ;
+` +
+          `• tu es prévenu (cloche, pastille du menu et, si le courriel du site est configuré, par courriel) dès que l'équipe répond, et tu réponds directement dans le billet.
+
+` +
+          `[b]Les états d'un billet[/b]
+` +
+          `• [b]Ouvert[/b] : en attente de l'équipe. • [b]Répondu[/b] : à toi de répondre. • [b]Résolu[/b] : réglé — réponds-y si le problème revient, il se rouvre. • [b]Fermé[/b] : terminé, ouvre un nouveau billet si besoin. Un billet « répondu » sans nouvelle de ta part est marqué résolu au bout de quelques jours, puis fermé.
+` +
+          `Une fois le billet résolu, tu peux noter le support (1 à 5 étoiles).
+
+` +
+          `[b]Bon à savoir[/b]
+` +
+          `Le nombre de billets ouverts en même temps est limité. Pour signaler un torrent ou un message précis, utilise plutôt le bouton de signalement (voir « Signaler un problème »).
+
+` +
+          `[b]Pour le staff[/b]
+` +
+          `Staff > [b]Support[/b] : la file des billets (filtres par statut, responsable, catégorie, priorité), le traitement d'un billet (statut, priorité, catégorie, assignation, notes internes invisibles du membre), les [b]réponses types[/b], l'insertion d'un article du wiki dans une réponse et le bouton « ✨ Brouillon IA » qui prépare une réponse d'après le billet et le wiki. Dans le canal Support, le menu ⋯ d'un message de membre permet d'« Ouvrir un billet pour ce membre ». Les administrateurs règlent aussi les catégories, les délais de clôture automatique et l'assistant (activation, fournisseur d'IA Claude ou Gemini, nombre de réponses avant de proposer un billet, consignes supplémentaires) et peuvent le tester avant de le laisser répondre aux membres. Les clés d'IA se placent dans backend/.env (ANTHROPIC_API_KEY ou GEMINI_API_KEY).`,
+      },
     ],
   },
   {

@@ -15,6 +15,7 @@ import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
 import { useMessenger, privateUnreadOf, publicUnreadOf } from '../store/messenger';
 import { useQueue } from '../store/queue';
+import { useSupport } from '../store/support';
 import { useNewsUnseen } from '../lib/news';
 import { ProfileName } from './UserLink';
 import Breadcrumbs from './Breadcrumbs';
@@ -96,6 +97,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
   { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p) },
+  { to: '/support', icon: '🛟', cls: 'c-livechat', label: 'Support', match: starts('/support') },
   { to: '/moderation', icon: '🛡️', cls: 'c-staff', label: 'Modération', match: starts('/moderation'), staffOnly: true },
   { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true },
 ];
@@ -148,6 +150,9 @@ function LayoutInner() {
   const queueTotal = useQueue((s) => s.total);
   const refreshQueue = useQueue((s) => s.refresh);
   const resetQueue = useQueue((s) => s.reset);
+  const supportMine = useSupport((s) => s.mine);
+  const supportStaff = useSupport((s) => s.staff);
+  const refreshSupport = useSupport((s) => s.refreshBadge);
   const [accountOpen, setAccountOpen] = useState(false);
   const newsUnseen = useNewsUnseen((s) => s.unseen);
   const refreshNews = useNewsUnseen((s) => s.refresh);
@@ -228,6 +233,14 @@ function LayoutInner() {
     return () => clearInterval(t);
   }, [accessToken, isStaff, refreshQueue]);
 
+  // Pastille du support : réponses non lues à mes billets (et, pour l'équipe, billets en attente).
+  useEffect(() => {
+    if (!accessToken) return;
+    void refreshSupport();
+    const t = setInterval(() => { if (!document.hidden) void refreshSupport(); }, 60_000);
+    return () => clearInterval(t);
+  }, [accessToken, refreshSupport, location.pathname]);
+
   /** Pastilles d'un lien du menu : messages privés / publics non lus pour « Chat », éléments à traiter pour « Modération ». */
   const badgesFor = (item: NavItem) => {
     const fmt = (n: number) => (n > 99 ? '99+' : String(n));
@@ -248,6 +261,14 @@ function LayoutInner() {
       );
     }
     if (item.to === '/news' && newsUnseen > 0) return <span className="side-badge red" title={`${newsUnseen} nouvelle${newsUnseen > 1 ? 's' : ''} non lue${newsUnseen > 1 ? 's' : ''}`}>{fmt(newsUnseen)}</span>;
+    if (item.to === '/support' && (supportMine > 0 || (supportStaff ?? 0) > 0)) {
+      return (
+        <>
+          {supportMine > 0 && <span className="side-badge red" title={`${supportMine} réponse${supportMine > 1 ? 's' : ''} à tes billets`}>{fmt(supportMine)}</span>}
+          {(supportStaff ?? 0) > 0 && <span className="side-badge red outline" title={`${supportStaff} billet${(supportStaff ?? 0) > 1 ? 's' : ''} en attente de l'équipe`}>🎫 {fmt(supportStaff ?? 0)}</span>}
+        </>
+      );
+    }
     if (item.to === '/moderation' && queueTotal > 0) return <span className="side-badge red" title={`${queueTotal} élément${queueTotal > 1 ? 's' : ''} à modérer`}>{fmt(queueTotal)}</span>;
     return null;
   };

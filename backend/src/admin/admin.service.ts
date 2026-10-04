@@ -324,7 +324,7 @@ export class AdminService {
 
   stats() {
     return Promise.all([
-      this.prisma.user.count(),
+      this.prisma.user.count({ where: { profileType: { not: 'BOT' } } }),
       this.prisma.torrent.count({ where: { status: 'APPROVED' } }),
       this.prisma.peer.count(),
       this.prisma.report.count({ where: { status: 'OPEN' } }),

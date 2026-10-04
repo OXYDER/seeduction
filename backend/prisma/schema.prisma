@@ -91,6 +91,9 @@ model User {
   msgrMemberships          ConversationMember[] @relation("ConversationMembers")
   msgrMessages             Message[]            @relation("MessagesSent")
   msgrReactions            MessageReaction[]
+  supportTickets           SupportTicket[]        @relation("TicketRequester")
+  supportAssigned          SupportTicket[]        @relation("TicketAssignee")
+  supportMessages          SupportTicketMessage[]
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
 
@@ -705,6 +708,7 @@ enum NotificationType {
   SYSTEM
   FOLLOW
   RESEED_REQUEST
+  SUPPORT
 }
 
 model Notification {
@@ -1108,6 +1112,8 @@ enum MessageType {
   VOICE
   GIF
   SYSTEM
+  BOT_ANSWER   // réponse de l'assistant du canal Support
+  TICKET_OFFER // l'assistant propose d'ouvrir un billet de support
 }
 
 model Conversation {
@@ -1248,4 +1254,106 @@ model TeamApplication {
 
   @@index([teamId, status])
   @@index([userId, status])
+}
+
+
+// ---------------------------------------------------------------------------
+// SUPPORT — billets (tickets) liés au canal de chat « Support » (assistant IA + équipe) et au wiki.
+// ---------------------------------------------------------------------------
+
+enum TicketStatus {
+  OPEN     // en attente d'une réponse de l'équipe
+  ANSWERED // l'équipe a répondu : en attente du membre
+  RESOLVED // réglé (le membre peut encore répondre pour le rouvrir)
+  CLOSED   // définitif
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketMessageKind {
+  MEMBER // écrit par le membre
+  STAFF  // écrit par l'équipe (`internal` = note privée, invisible du membre)
+  EVENT  // changement de statut, d'assignation... (`internal` = visible du staff seulement)
+  CHAT   // historique du chat de support joint à l'ouverture du billet
+}
+
+model SupportCategory {
+  id          String   @id @default(uuid())
+  name        String
+  icon        String?  @db.VarChar(8)
+  description String?  @db.VarChar(200)
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  tickets     SupportTicket[]
+}
+
+model SupportTicket {
+  id              String         @id @default(uuid())
+  number          Int            @unique @default(autoincrement())
+  subject         String         @db.VarChar(140)
+  requester       User           @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterId     String
+  category        SupportCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId      String?
+  status          TicketStatus   @default(OPEN)
+  priority        TicketPriority @default(NORMAL)
+  assignee        User?          @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId      String?
+  source          String         @default("WEB") @db.VarChar(8) // WEB | CHAT | STAFF
+  // Qui doit lire la dernière réponse (pastille « nouveau »)
+  unreadByRequester Boolean      @default(false)
+  unreadByStaff     Boolean      @default(true)
+  firstResponseAt DateTime?
+  lastReplyAt     DateTime       @default(now())
+  lastReplyBy     String         @default("MEMBER") @db.VarChar(8) // MEMBER | STAFF
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  rating          Int?
+  ratingComment   String?        @db.VarChar(500)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  messages        SupportTicketMessage[]
+
+  @@index([requesterId, status])
+  @@index([status, lastReplyAt])
+  @@index([assigneeId])
+}
+
+model SupportTicketMessage {
+  id         String            @id @default(uuid())
+  ticket     SupportTicket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId   String
+  author     User?             @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId   String?
+  kind       TicketMessageKind
+  internal   Boolean           @default(false)
+  content    String            @db.Text // BBCode (comme les commentaires et le forum)
+  attachments Json?            // [{ url, name, kind: 'image' | 'file', size }]
+  createdAt  DateTime          @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+model SupportCanned {
+  id        String   @id @default(uuid())
+  title     String   @db.VarChar(80)
+  content   String   @db.Text
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// Activité de l'assistant du canal Support : limite de débit, nombre de tentatives avant de proposer un billet, statistiques.
+model SupportChatEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  kind      String   @db.VarChar(12) // ANSWER | RESOLVED | NOT_SOLVED | OFFER | TICKET | HUMAN
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
 }

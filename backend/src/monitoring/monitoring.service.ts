@@ -22,7 +22,7 @@ export class MonitoringService {
     const since24h = new Date(Date.now() - 86_400_000);
     const [database, users, approved, pending, seeders, leechers, openReports, chatMessages24h] = await Promise.all([
       this.checkDatabase(),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where: { profileType: { not: 'BOT' } } }),
       this.prisma.torrent.count({ where: { status: 'APPROVED' } }),
       this.prisma.torrent.count({ where: { status: 'PENDING' } }),
       this.prisma.peer.count({ where: { isSeeder: true } }),

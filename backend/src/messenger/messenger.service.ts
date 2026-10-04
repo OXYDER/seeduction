@@ -539,7 +539,33 @@ export class MessengerService extends EventEmitter {
     const dto = messageToDto(row);
     await this.publish(conv, 'message:new', dto);
     this.notifyRecipients(actor, conv, dto).catch((err) => this.logger.warn(`Notification de message échouée : ${err?.message}`));
+    // Les modules qui réagissent aux messages (assistant du canal Support...) s'abonnent à cet événement.
+    this.emit('message:sent', { conv: { id: conv.id, type: conv.type, slug: conv.slug }, message: dto, actor });
     return dto;
+  }
+
+  /**
+   * Message écrit par un compte automatique (assistant du canal Support) : pas de contrôle d'accès ni de notification de présence,
+   * mais le message est stocké et diffusé exactement comme les autres. La personne visée est notifiée si elle est mentionnée.
+   */
+  async postAsBot(botUserId: string, conversationId: string, content: string, opts: { type?: 'TEXT' | 'BOT_ANSWER' | 'TICKET_OFFER'; replyToId?: string | null; mentionIds?: string[] } = {}) {
+    const conv = await this.prisma.conversation.findUnique({ where: { id: conversationId } });
+    if (!conv) throw new NotFoundException('Conversation introuvable');
+    let replyToId: string | null = null;
+    if (opts.replyToId) replyToId = (await this.prisma.message.findFirst({ where: { id: opts.replyToId, conversationId, deletedAt: null }, select: { id: true } }))?.id ?? null;
+    const row = await this.prisma.message.create({
+      data: { conversationId, senderId: botUserId, type: opts.type ?? 'TEXT', content: content.slice(0, MAX_LENGTH), replyToId, mentionIds: opts.mentionIds ?? [] },
+      include: MESSAGE_INCLUDE,
+    });
+    await this.prisma.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: row.createdAt } });
+    const dto = messageToDto(row);
+    await this.publish(conv, 'message:new', dto);
+    return dto;
+  }
+
+  /** « Quelqu'un écrit… » pour un compte automatique pendant qu'il prépare sa réponse. */
+  botTyping(conversationId: string, bot: { id: string; username: string }) {
+    this.emit('realtime', { event: 'conversation:typing', payload: { conversationId, userId: bot.id, username: bot.username }, channel: conversationId } satisfies RealtimeEvent);
   }
 
   /** Notifie hors ligne les membres d'un 1 à 1 / groupe (non muets), et toute personne mentionnée ; une seule notification non lue par conversation. */
