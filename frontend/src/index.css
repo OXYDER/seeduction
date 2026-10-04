@@ -2977,5 +2977,5 @@ label.tk-field { display: grid; gap: 6px; }
 .msgr-motd-chip { align-self: flex-start; margin: 4px 14px; padding: 2px 10px; font-size: 12px; font-weight: 600; border-radius: 999px; background: rgba(var(--acc-rgb, 224,184,74), .14); border: 1px solid var(--border-gold); color: var(--text); }
 
 /* Messenger : les options d'un message restent affichées quand la souris traverse l'espace qui les sépare du message (zone de survol invisible) */
-.msgr-tools::before, .msgr-tools .msgr-menu::before, .msgr-reaction-picker::before { content: ''; position: absolute; inset: -10px; }
+.msgr-tools::before, .msgr-tools .msgr-menu::before, .msgr-reaction-picker::before { content: ""; position: absolute; inset: -10px; z-index: -1; }
 .msgr-tools::before { inset: -8px; }
