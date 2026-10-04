@@ -3077,3 +3077,73 @@ a.st-torrent:hover { color: var(--gold-bright); text-decoration: underline; }
 .purge-count { padding: 8px 12px; border-radius: 8px; background: rgba(255,179,71,.1); border: 1px solid rgba(255,179,71,.45); font-size: 14px; }
 .purge-count.none { background: rgba(255,255,255,.05); border-color: var(--border); color: var(--text-dim); }
 .purge-box code { padding: 1px 7px; border-radius: 6px; background: rgba(255,255,255,.1); }
+
+/* ---------------------------------------------------------------------------------------------- Messagerie privée (page Messages) */
+.pm-page { display: grid; gap: 14px; }
+.pm-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pm-layout { display: grid; grid-template-columns: minmax(280px, 350px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.pm-list { padding: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); height: calc(100vh - 190px); min-height: 460px; overflow: hidden; }
+.pm-main { padding: 0; height: calc(100vh - 190px); min-height: 460px; overflow: hidden; display: flex; flex-direction: column; }
+.pm-search { padding: 12px 12px 6px; }
+.pm-search input { width: 100%; }
+.pm-filters { display: flex; gap: 6px; padding: 4px 12px 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.pm-filters button { padding: 4px 12px; font-size: 12.5px; }
+.pm-filters button.on { background: var(--acc1, #8b5cf6); color: #fff; }
+.pm-items { overflow-y: auto; padding: 6px; display: grid; gap: 2px; align-content: start; }
+.pm-item { display: flex; gap: 11px; align-items: center; width: 100%; text-align: left; padding: 9px 10px; border-radius: 10px; background: none; border: 1px solid transparent; box-shadow: none; color: var(--text); font-weight: 400; }
+.pm-item:hover { background: rgba(255,255,255,.06); filter: none; transform: none; }
+.pm-item.active { background: rgba(var(--acc-rgb, 224,184,74), .13); border-color: var(--border-gold); }
+.pm-item-body { display: grid; gap: 1px; min-width: 0; flex: 1; }
+.pm-item-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.pm-item-top .muted { font-size: 11.5px; white-space: nowrap; }
+.pm-item-subject { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-item-snippet { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-item.unread .pm-item-top strong, .pm-item.unread .pm-item-subject { color: var(--gold-bright); font-weight: 700; }
+.pm-empty-list { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 34px 16px; }
+.pm-avatar { position: relative; display: inline-block; flex: none; line-height: 0; }
+.pm-avatar .forum-avatar { margin: 0; }
+.pm-dot { position: absolute; right: -1px; bottom: -1px; width: 28%; height: 28%; min-width: 8px; min-height: 8px; border-radius: 50%; border: 2px solid var(--bg-panel-raised, #10162a); }
+
+.pm-main-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.pm-back { display: none; }
+.pm-subject { margin: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-thread-view { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.pm-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; display: grid; gap: 10px; align-content: start; }
+.pm-day { text-align: center; margin: 6px 0; }
+.pm-day span { font-size: 12px; color: var(--text-dim); padding: 2px 12px; border-radius: 999px; background: rgba(255,255,255,.06); }
+.pm-msg { display: flex; gap: 10px; align-items: flex-start; max-width: 88%; }
+.pm-msg.mine { align-self: flex-end; flex-direction: row-reverse; margin-left: auto; }
+.pm-bubble { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 9px 13px; min-width: 0; position: relative; }
+.pm-msg.mine .pm-bubble { background: rgba(var(--acc-rgb, 224,184,74), .13); border-color: var(--border-gold); }
+.pm-bubble-head { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; margin-bottom: 3px; }
+.pm-bubble-tools { display: none; gap: 4px; margin-top: 6px; }
+.pm-bubble:hover .pm-bubble-tools { display: flex; }
+.pm-bubble-tools button { background: none; border: 0; box-shadow: none; padding: 2px 8px; font-size: 12px; color: var(--text-dim); border-radius: 6px; }
+.pm-bubble-tools button:hover { background: rgba(255,255,255,.09); color: var(--text); filter: none; transform: none; }
+.pm-reply { border-top: 1px solid var(--border); padding: 12px 16px; display: grid; gap: 8px; background: rgba(0,0,0,.14); }
+.pm-hint { font-size: 12px; }
+
+.pm-compose { padding: 0 0 16px; display: grid; gap: 12px; overflow-y: auto; align-content: start; }
+.pm-compose > :not(.pm-main-head) { margin-left: 18px; margin-right: 18px; }
+.pm-field { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; align-items: center; }
+.pm-label { font-weight: 700; font-size: 13px; color: var(--text-dim); }
+.pm-chip { display: inline-flex; gap: 7px; align-items: center; padding: 3px 10px 3px 4px; border-radius: 999px; background: var(--bg-panel); border: 1px solid var(--border-gold); color: var(--text); font-size: 13.5px; font-weight: 600; width: fit-content; }
+.pm-chip button { background: none; border: 0; box-shadow: none; padding: 0 2px; color: var(--text-dim); }
+button.pm-chip.pick { cursor: pointer; border-color: var(--border); font-weight: 500; }
+button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; transform: none; }
+.pm-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 66px; }
+.pm-welcome { margin: auto; display: grid; gap: 10px; justify-items: center; text-align: center; padding: 30px; max-width: 520px; }
+.pm-welcome h2 { margin: 0; }
+
+@media (max-width: 1100px) {
+  .pm-layout { grid-template-columns: minmax(0, 1fr); }
+  .pm-list, .pm-main { height: auto; min-height: 0; max-height: none; }
+  .pm-items { max-height: 62vh; }
+  .pm-layout.has-right .pm-list { display: none; }
+  .pm-layout:not(.has-right) .pm-main { display: none; }
+  .pm-main { min-height: 70vh; }
+  .pm-back { display: inline-block; }
+  .pm-msg { max-width: 100%; }
+  .pm-field { grid-template-columns: 1fr; gap: 4px; }
+  .pm-quick { padding-left: 0; }
+}

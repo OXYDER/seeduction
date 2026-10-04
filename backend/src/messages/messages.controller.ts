@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -23,8 +23,18 @@ export class MessagesController {
   }
 
   @Get('threads')
-  threads(@Request() req: any) {
-    return this.messagesService.threads(req.user.userId);
+  threads(@Query('q') q: string | undefined, @Request() req: any) {
+    return this.messagesService.threads(req.user.userId, q);
+  }
+
+  @Post('threads/read-all')
+  readAll(@Request() req: any) {
+    return this.messagesService.markAllRead(req.user.userId);
+  }
+
+  @Post('thread/:threadId/unread')
+  unread(@Param('threadId') threadId: string, @Request() req: any) {
+    return this.messagesService.markUnread(threadId, req.user.userId);
   }
 
   @Get('thread/:threadId')

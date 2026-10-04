@@ -45,7 +45,27 @@ export class MessagesService {
   }
 
   /** Liste des conversations du membre, la plus récente d'abord, avec le nombre de messages non lus. */
-  async threads(userId: string) {
+  async threads(userId: string, q?: string) {
+    const term = (q ?? '').trim().slice(0, 80);
+    // Recherche : sujet, texte des messages ou pseudo de l'interlocuteur ; on garde toute la conversation qui contient un message trouvé.
+    let matchingThreads: string[] | null = null;
+    if (term.length >= 2) {
+      const hits = await this.prisma.privateMessage.findMany({
+        where: {
+          NOT: { threadId: { startsWith: 'dm-' } },
+          AND: [
+            { OR: [{ senderId: userId, deletedBySender: false }, { recipientId: userId, deletedByRecipient: false }] },
+            { OR: [
+              { subject: { contains: term, mode: 'insensitive' } }, { content: { contains: term, mode: 'insensitive' } },
+              { sender: { username: { contains: term, mode: 'insensitive' } } }, { recipient: { username: { contains: term, mode: 'insensitive' } } },
+            ] },
+          ],
+        },
+        select: { id: true, threadId: true }, take: 500,
+      });
+      matchingThreads = [...new Set(hits.map((h) => h.threadId ?? h.id))];
+      if (matchingThreads.length === 0) return [];
+    }
     const messages = await this.prisma.privateMessage.findMany({
       where: {
         // Le chat privé entre amis (fils « dm-... ») a sa propre page (Amis) : il n'apparaît pas dans la messagerie classique.
@@ -54,6 +74,7 @@ export class MessagesService {
           { senderId: userId, deletedBySender: false },
           { recipientId: userId, deletedByRecipient: false },
         ],
+        ...(matchingThreads ? { AND: [{ OR: [{ threadId: { in: matchingThreads } }, { id: { in: matchingThreads }, threadId: null }] }] } : {}),
       },
       orderBy: { createdAt: 'desc' },
       take: 1000,
@@ -104,6 +125,35 @@ export class MessagesService {
     };
   }
 
+  /** Mêmes règles que le chat : jamais avec un blocage, et si le destinataire a restreint ses messages à ses amis, seulement entre amis. */
+  private async assertCanWrite(fromId: string, toId: string) {
+    const [target, blocked, friends] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: toId }, select: { dmPrivacy: true } }),
+      this.prisma.friendship.findFirst({ where: { status: 'BLOCKED', OR: [{ requesterId: fromId, addresseeId: toId }, { requesterId: toId, addresseeId: fromId }] }, select: { id: true } }),
+      this.prisma.friendship.findFirst({ where: { status: 'ACCEPTED', OR: [{ requesterId: fromId, addresseeId: toId }, { requesterId: toId, addresseeId: fromId }] }, select: { id: true } }),
+    ]);
+    if (blocked) throw new ForbiddenException('Tu ne peux pas écrire à ce membre');
+    if (target?.dmPrivacy === 'FRIENDS_ONLY' && !friends) throw new ForbiddenException("Ce membre n'accepte les messages que de ses amis");
+  }
+
+  /** Remet la conversation en « non lue » (le dernier message reçu). */
+  async markUnread(threadId: string, userId: string) {
+    const last = await this.prisma.privateMessage.findFirst({
+      where: { OR: [{ threadId }, { id: threadId, threadId: null }], recipientId: userId, deletedByRecipient: false },
+      orderBy: { createdAt: 'desc' }, select: { id: true },
+    });
+    if (!last) throw new NotFoundException('Aucun message reçu dans cette conversation');
+    await this.prisma.privateMessage.update({ where: { id: last.id }, data: { read: false } });
+    return { ok: true };
+  }
+
+  async markAllRead(userId: string) {
+    const r = await this.prisma.privateMessage.updateMany({
+      where: { recipientId: userId, read: false, deletedByRecipient: false, NOT: { threadId: { startsWith: 'dm-' } } }, data: { read: true },
+    });
+    return { ok: true, count: r.count };
+  }
+
   async send(senderId: string, senderUsername: string, recipientUsername: string, subject: string, content: string) {
     const text = content?.trim();
     if (!text || !subject?.trim()) throw new BadRequestException('Sujet et message requis');
@@ -111,6 +161,7 @@ export class MessagesService {
     const recipient = await this.prisma.user.findUnique({ where: { username: String(recipientUsername ?? '').trim() }, select: { id: true, status: true } });
     if (!recipient) throw new NotFoundException(`Aucun membre nommé « ${recipientUsername} »`);
     if (recipient.id === senderId) throw new BadRequestException('Tu ne peux pas t\'écrire à toi-même');
+    await this.assertCanWrite(senderId, recipient.id);
 
     const id = randomUUID();
     const message = await this.prisma.privateMessage.create({
@@ -135,6 +186,7 @@ export class MessagesService {
     const first = messages[0];
     if (first.senderId !== userId && first.recipientId !== userId) throw new ForbiddenException('Cette conversation ne te concerne pas');
     const otherId = first.senderId === userId ? first.recipientId : first.senderId;
+    await this.assertCanWrite(userId, otherId);
 
     const message = await this.prisma.privateMessage.create({
       data: {
