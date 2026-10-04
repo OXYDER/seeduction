@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { htmlToBbcode } from '../lib/htmlToBbcode';
+import { autocorrectKey } from '../lib/autocorrect';
 
 interface WysiwygEditorProps {
   /** Contenu en BBCode (format stocké). */
@@ -31,6 +32,9 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
   const lastValue = useRef<string>('');
   const savedRange = useRef<Range | null>(null);
   const [sourceMode, setSourceMode] = useState(false);
+  // Correction automatique en français (accents, majuscules, typographie) : activée par défaut, mémorisée.
+  const [autoFix, setAutoFix] = useState(() => { try { return localStorage.getItem('wysiwyg-autocorrect') !== 'off'; } catch { return true; } });
+  const toggleAutoFix = () => setAutoFix((v) => { const n = !v; try { localStorage.setItem('wysiwyg-autocorrect', n ? 'on' : 'off'); } catch { /* navigation privée */ } return n; });
   const [uploading, setUploading] = useState(false);
   const colorWrap = useRef<HTMLDivElement>(null);
   const [colorOpen, setColorOpen] = useState(false);
@@ -239,6 +243,9 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
         </select>
         <span className="tb-sep" />
         <Btn title="Effacer la mise en forme" onClick={() => exec('removeFormat')}>⌫ Format</Btn>
+        <Btn title={autoFix ? "Correction automatique activée : accents des fautes courantes, majuscule en début de phrase, … ’ « » et espace avant ? et !. Cliquer pour la couper (Ctrl+Z annule une correction)." : 'Correction automatique désactivée. Cliquer pour l’activer.'} onClick={toggleAutoFix}>
+          {autoFix ? '✓ Correction auto' : '✗ Correction auto'}
+        </Btn>
         <Btn title={sourceMode ? 'Revenir à l’éditeur visuel' : 'Voir / modifier le code BBCode'} onClick={() => setSourceMode((v) => !v)}>
           {sourceMode ? '👁️ Visuel' : '⌨️ BBCode'}
         </Btn>
@@ -249,6 +256,9 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
         className="wysiwyg-area bbcode-content"
         contentEditable
         suppressContentEditableWarning
+        spellCheck
+        lang="fr"
+        onKeyDown={(e) => { if (autoFix) autocorrectKey(e, ref.current); }}
         data-placeholder={placeholder ?? 'Écris ta description ici...'}
         onInput={sync}
         onBlur={sync}
@@ -263,7 +273,8 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          spellCheck={false}
+          spellCheck
+          lang="fr"
           style={{ width: '100%', minHeight, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }}
         />
       )}

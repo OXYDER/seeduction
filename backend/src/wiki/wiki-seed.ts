@@ -243,12 +243,14 @@ export const WIKI_SEED: WikiSeedCategory[] = [
       {
         title: 'Notes, « Merci » et commentaires',
         slug: 'notes-merci-commentaires',
-        keywords: 'étoiles, rating, like, thanks',
+        keywords: 'étoiles, rating, like, thanks, correction automatique, orthographe, éditeur',
         content:
           `Sur chaque fiche torrent :\n` +
           `• [b]Note en étoiles[/b] (1 à 5) : ton avis personnel sur le contenu, moyenné avec celui des autres membres.\n` +
           `• [b]👍 Merci[/b] : remercie l'uploader, qui gagne 1 point bonus (tu ne peux pas te remercier toi-même).\n` +
-          `• [b]Commentaires[/b] : pour poser une question ou signaler un souci technique avec le fichier.`,
+          `• [b]Commentaires[/b] : pour poser une question ou signaler un souci technique avec le fichier.\n\n` +
+          `[b]Correction automatique (toutes les zones d'écriture)[/b]\n` +
+          `Dans l'éditeur (commentaires, forum, messages, nouvelles, descriptions...), le français est corrigé pendant que tu écris : majuscule en début de phrase, accents des fautes courantes (tres → très, deja → déjà, ca → ça, l'ete → l'été...), « ... » devient « … », l'apostrophe et les guillemets deviennent typographiques (’ et « »), et l'espace insécable est ajoutée avant ? et !. Les adresses, @pseudo, #mots-clés et le code ne sont jamais touchés. Une correction qui ne te convient pas s'annule avec Ctrl+Z. Le bouton « ✓ Correction auto » de la barre d'outils l'active ou la désactive (ton choix est mémorisé), et le correcteur de ton navigateur souligne en rouge les autres fautes.`,
       },
     ],
   },
