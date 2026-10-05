@@ -38,9 +38,21 @@
       .sd-loader-bar { width: min(190px, 46vw); height: 3px; border-radius: 3px; background: rgba(255, 255, 255, .12); overflow: hidden; }
       .sd-loader-bar span { display: block; width: 40%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, transparent, #f5c542, #a78bfa, transparent); animation: sd-slide 1.25s ease-in-out infinite; }
       .sd-loader-label { font: 600 12px/1 Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
+      /* Voile léger (connexion / inscription) : le site reste visible derrière, flouté, avec un petit logo. */
+      .sd-loader.soft { background: rgba(6, 8, 18, .55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+      .sd-loader.soft .sd-loader-logo { width: min(150px, 40vw); }
+      .sd-loader.soft .sd-loader-label { display: none; }
+      /* Chargement discret : fine barre en haut + petite pastille en bas à droite. Rien n'est bloqué (pointer-events: none). */
+      .sd-top { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 99999; overflow: hidden; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+      .sd-top.on { opacity: 1; }
+      .sd-top span { display: block; width: 35%; height: 100%; background: linear-gradient(90deg, transparent, #f5c542, #a78bfa, transparent); animation: sd-slide 1.1s ease-in-out infinite; }
+      .sd-chip { position: fixed; right: 16px; bottom: 16px; z-index: 99999; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 999px; background: rgba(14, 18, 40, .88); border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 6px 20px rgba(0, 0, 0, .4); font: 600 12px/1 Inter, system-ui, sans-serif; color: rgba(255, 255, 255, .8); opacity: 0; transform: translateY(8px); visibility: hidden; pointer-events: none; transition: opacity .25s ease, transform .25s ease, visibility .25s; }
+      .sd-chip.on { opacity: 1; transform: none; visibility: visible; }
+      .sd-chip img { width: 22px; height: 22px; animation: sd-pulse 1.4s ease-in-out infinite; }
+      @media (max-width: 760px) { .sd-chip { bottom: 78px; right: 12px; } }
       @keyframes sd-pulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 16px rgba(245, 197, 66, .25)); } 50% { transform: scale(1.045); filter: drop-shadow(0 0 30px rgba(245, 197, 66, .5)); } }
       @keyframes sd-slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
-      @media (prefers-reduced-motion: reduce) { .sd-loader-logo, .sd-loader-bar span { animation: none; } }
+      @media (prefers-reduced-motion: reduce) { .sd-loader-logo, .sd-loader-bar span, .sd-top span, .sd-chip img { animation: none; } }
     </style>
   </head>
   <body>

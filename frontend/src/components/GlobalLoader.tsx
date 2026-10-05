@@ -4,24 +4,40 @@ import { sweepLoading, useLoading } from '../store/loading';
 
 const MIN_VISIBLE_MS = 450; // une fois affiché, l'écran reste assez longtemps pour ne pas clignoter
 
-/** Écran de chargement : logo Seeduction animé sur le fond du site. Même rendu que le splash de index.html, pour un démarrage sans saut. */
-export function LoadingScreen({ on, label = 'Chargement…' }: { on: boolean; label?: string }) {
+type Mode = 'full' | 'soft' | 'subtle' | null;
+
+/**
+ * Chargement en trois niveaux, du plus au moins intrusif :
+ *  - full   : plein écran avec le logo, seulement à l'ouverture du site ;
+ *  - soft   : voile léger et petit logo, pour la connexion / l'inscription (évite un double envoi) ;
+ *  - subtle : fine barre en haut + petite pastille en bas, qui ne bloquent rien — changements de page et actions un peu longues.
+ */
+export function LoadingScreen({ mode, label = 'Chargement…' }: { mode: Mode; label?: string }) {
+  const overlay = mode === 'full' || mode === 'soft';
   return (
-    <div className={`sd-loader${on ? ' on' : ''}`} role="status" aria-live="polite" aria-hidden={!on}>
-      <div className="sd-loader-box">
-        <img src="/logo-full.png" alt="Seeduction" className="sd-loader-logo" draggable={false} />
-        <div className="sd-loader-bar"><span /></div>
-        <div className="sd-loader-label">{label}</div>
+    <>
+      <div className={`sd-loader${overlay ? ' on' : ''}${mode === 'soft' ? ' soft' : ''}`} role="status" aria-live="polite" aria-hidden={!overlay}>
+        <div className="sd-loader-box">
+          <img src="/logo-full.png" alt="Seeduction" className="sd-loader-logo" draggable={false} />
+          <div className="sd-loader-bar"><span /></div>
+          <div className="sd-loader-label">{label}</div>
+        </div>
       </div>
-    </div>
+      <div className={`sd-top${mode === 'subtle' ? ' on' : ''}`} aria-hidden="true"><span /></div>
+      <div className={`sd-chip${mode === 'subtle' ? ' on' : ''}`} role="status" aria-hidden={mode !== 'subtle'}>
+        <img src="/logo-icon.png" alt="" draggable={false} />
+        <span>{label}</span>
+      </div>
+    </>
   );
 }
 
 /**
- * Affiche l'écran de chargement tant que ça charge, partout :
- *  - au démarrage du site ;
- *  - à chaque changement de page, jusqu'à ce que toutes ses données soient arrivées ;
- *  - pendant les actions qui prennent du temps, et tout de suite pour la connexion / l'inscription.
+ * Indique que ça charge, partout, sans gêner :
+ *  - au démarrage du site : plein écran, le temps du premier chargement ;
+ *  - à la connexion / inscription : voile léger tout de suite ;
+ *  - à chaque changement de page et pour les actions qui traînent : barre fine + pastille, qui n'apparaissent qu'après un petit
+ *    délai (rien du tout pour une page qui charge vite) et qui laissent la page utilisable.
  * Les rafraîchissements automatiques en arrière-plan (notifications, compteurs...) ne le déclenchent jamais.
  */
 export default function GlobalLoader() {
@@ -32,7 +48,7 @@ export default function GlobalLoader() {
 
   const [pageWindow, setPageWindow] = useState(true); // fenêtre de chargement d'une page, ouverte à chaque changement de page
   const [booting, setBooting] = useState(true);
-  const [visible, setVisible] = useState(true); // visible dès le premier rendu (le splash de index.html prend le relais)
+  const [shown, setShown] = useState<Mode>('full'); // plein écran dès le premier rendu (le splash de index.html prend le relais)
   const shownAt = useRef(Date.now());
 
   // Nouvelle page : on ouvre la fenêtre ; sans aucune requête au bout de 300 ms, il n'y a rien à attendre.
@@ -53,20 +69,20 @@ export default function GlobalLoader() {
   useEffect(() => { const t = setInterval(sweepLoading, 5000); return () => clearInterval(t); }, []);
 
   const waitingPage = pageWindow && page > 0;
-  const want = booting || waitingPage || mutation > 0 || immediate > 0;
-  // Délai avant d'afficher : aucun pour le démarrage et la connexion ; court pour une page ; plus long pour une simple action.
-  const delay = booting || immediate > 0 ? 0 : waitingPage ? 150 : 500;
+  const want: Mode = booting ? 'full' : immediate > 0 ? 'soft' : (waitingPage || mutation > 0) ? 'subtle' : null;
+  // Délai avant d'afficher : aucun pour le démarrage et la connexion ; une page doit traîner un peu avant qu'on s'en préoccupe.
+  const delay = want === 'full' || want === 'soft' ? 0 : waitingPage ? 350 : 700;
 
   useEffect(() => {
-    if (want && !visible) {
-      const t = setTimeout(() => { shownAt.current = Date.now(); setVisible(true); }, delay);
+    if (want === shown) return;
+    if (want) {
+      const t = setTimeout(() => { shownAt.current = Date.now(); setShown(want); }, shown ? 0 : delay);
       return () => clearTimeout(t);
     }
-    if (!want && visible) {
-      const t = setTimeout(() => setVisible(false), Math.max(0, MIN_VISIBLE_MS - (Date.now() - shownAt.current)));
-      return () => clearTimeout(t);
-    }
-  }, [want, visible, delay]);
+    // Une fois affiché, l'indicateur reste assez longtemps pour ne pas clignoter.
+    const t = setTimeout(() => setShown(null), Math.max(0, MIN_VISIBLE_MS - (Date.now() - shownAt.current)));
+    return () => clearTimeout(t);
+  }, [want, shown, delay]);
 
-  return <LoadingScreen on={visible} />;
+  return <LoadingScreen mode={shown} />;
 }
