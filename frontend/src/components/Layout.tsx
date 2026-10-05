@@ -375,7 +375,7 @@ function LayoutInner() {
               onStatus={() => { setAccountOpen(false); setStatusOpen(true); }}
               canUpload={!user?.profile || user.profile.perms?.upload !== false}
             />
-            <button className="secondary side-logout" onClick={() => { logout(); navigate('/login'); }} title="Se déconnecter">⎋</button>
+            <button className="secondary side-logout" onClick={() => { logout(); window.location.assign('/login'); }} title="Se déconnecter">⎋</button>
           </div>
           {user && (
             <div className="side-family">
@@ -509,7 +509,7 @@ function LayoutInner() {
           <Link to="/messages" className={`top-link${starts('/messages')(location.pathname) ? ' active' : ''}`}>Messages</Link>
           <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{pendingFriendRequests > 0 ? ` (${pendingFriendRequests})` : ''}{friendsOnline > 0 && <span className="online-count" title="Amis en ligne"> ● {friendsOnline}</span>}</Link>
           <Link to="/profile" className={`top-link${starts('/profile')(location.pathname) || starts('/users')(location.pathname) ? ' active' : ''}`}>{user?.username}</Link>
-          <button className="secondary" onClick={() => { logout(); navigate('/login'); }}>
+          <button className="secondary" onClick={() => { logout(); window.location.assign('/login'); }}>
             Déconnexion
           </button>
         </div>
