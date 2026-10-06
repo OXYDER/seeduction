@@ -267,6 +267,6 @@ try {
     if (flag('watch')) await sleep(Math.max(1, Number(cfg.intervalMinutes ?? 15)) * 60_000);
   } while (flag('watch'));
 } catch (e) {
-  console.error(e instanceof Fatal ? `Arrêt : ${e.message}` : e);
+  console.error(e instanceof Fatal ? `Arrêt : ${e.message}` : /fetch failed/.test(String(e?.message)) ? `Arrêt : impossible de joindre ton site (${SITE}). Vérifie l'adresse « site » dans config.json, et que le site est bien à jour (git pull && ./deploy.sh).` : e);
   process.exit(1);
 }
