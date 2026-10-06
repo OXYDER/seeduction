@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
 
@@ -44,6 +44,22 @@ export class PublicApiService {
       take: limit,
       select: TORRENT_LIST_SELECT,
     });
+  }
+
+  /** Catégories où l'on peut envoyer un torrent (les sous-catégories), avec leur identifiant, pour configurer l'outil d'import. */
+  async uploadCategories() {
+    const all = await this.prisma.category.findMany({ select: { id: true, name: true, parentId: true }, orderBy: { name: 'asc' } });
+    const byId = new Map(all.map((c) => [c.id, c]));
+    const parents = new Set(all.map((c) => c.parentId).filter(Boolean));
+    return all
+      .filter((c) => !parents.has(c.id))
+      .map((c) => ({ id: c.id, name: c.name, path: c.parentId ? `${byId.get(c.parentId)?.name} > ${c.name}` : c.name }));
+  }
+
+  /** Une clé d'envoi ne sert plus si son propriétaire est banni ou désactivé. */
+  async assertCanUpload(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
+    if (!user || user.status !== 'ACTIVE') throw new ForbiddenException("Le compte propriétaire de cette clé ne peut pas envoyer de torrents");
   }
 
   async torrentDetail(id: string) {

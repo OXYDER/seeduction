@@ -1,0 +1,33 @@
+{
+  "site": "https://seeduction.org",
+  "apiKeyEnv": "SEEDUCTION_API_KEY",
+  "stateFile": "./state.json",
+  "intervalMinutes": 15,
+  "maxPerRun": 10,
+  "delaySeconds": 20,
+  "description": "Importé automatiquement depuis {source}",
+
+  "defaultCategory": "Films",
+  "categoryRules": [
+    { "match": "S\\d{2}E\\d{2}|\\bS\\d{2}\\b", "category": "Séries TV" },
+    { "match": "FLAC|MP3|\\bCD\\b", "category": "Musique" }
+  ],
+
+  "sources": [
+    {
+      "name": "Flux RSS d'exemple",
+      "type": "rss",
+      "url": "https://exemple.org/rss?cle=TA_CLE_FOURNIE_PAR_LA_SOURCE",
+      "nfo": "description",
+      "include": ["1080p|2160p"],
+      "exclude": ["\\bCAM\\b|\\bTS\\b"],
+      "maxAgeHours": 48,
+      "minSizeGb": 1
+    },
+    {
+      "name": "Dossier à importer",
+      "type": "folder",
+      "path": "./a-importer"
+    }
+  ]
+}
