@@ -1,12 +1,9 @@
-import { Body, Controller, Get, Param, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Controller, Get, Param, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { PublicApiService } from './public-api.service';
 import { ApiKeyGuard } from '../api-keys/api-key.guard';
 import { RequireScope } from '../api-keys/scope.decorator';
-import { TorrentsService } from '../torrents/torrents.service';
-import { uploadParamsOf } from '../torrents/upload-params';
 
 /**
  * API publique en lecture seule, authentifiée par clé API (voir ApiKeysModule)
@@ -18,7 +15,7 @@ import { uploadParamsOf } from '../torrents/upload-params';
 @Throttle({ default: { limit: 60, ttl: 60_000 } })
 @Controller('public')
 export class PublicApiController {
-  constructor(private publicApi: PublicApiService, private torrentsService: TorrentsService) {}
+  constructor(private publicApi: PublicApiService) {}
 
   @RequireScope('torrents:read')
   @Get('torrents')
@@ -30,28 +27,6 @@ export class PublicApiController {
   @Get('torrents/:id')
   torrent(@Param('id') id: string) {
     return this.publicApi.torrentDetail(id);
-  }
-
-  /** Catégories (sous-catégories) où envoyer un torrent : sert à relier les catégories d'une source aux tiennes. */
-  @RequireScope('torrents:read')
-  @Get('categories')
-  categories() {
-    return this.publicApi.uploadCategories();
-  }
-
-  /**
-   * Envoi d'un torrent par clé API (outil d'import automatique, voir tools/auto-upload). Mêmes règles que le formulaire du site :
-   * .torrent + NFO obligatoires, doublons refusés, le torrent attend la validation du staff.
-   * Champs multipart : torrentFile, name, categoryId, nfo, description, year, language, resolution, codec, source, genres...
-   */
-  @RequireScope('torrents:upload')
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  @Post('torrents')
-  @UseInterceptors(FileInterceptor('torrentFile'))
-  async upload(@UploadedFile() file: Express.Multer.File, @Body() body: Record<string, string>, @Req() req: Request & { apiKey: { userId: string } }) {
-    await this.publicApi.assertCanUpload(req.apiKey.userId);
-    const t = await this.torrentsService.upload(uploadParamsOf(file, body, req.apiKey.userId));
-    return { id: t.id, name: t.name, infoHash: t.infoHash, status: t.status };
   }
 
   @RequireScope('user:read')
