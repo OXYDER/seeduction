@@ -9,7 +9,7 @@
 
   "defaultCategory": "Films",
   "categoryRules": [
-    { "match": "S\d{2}E\d{2}|\bS\d{2}\b", "category": "Séries TV" },
+    { "match": "S\\d{2}E\\d{2}|\\bS\\d{2}\\b", "category": "Séries TV" },
     { "match": "FLAC|MP3|Discograph", "category": "Musique" }
   ],
 

@@ -31,7 +31,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let cfg;
 try { cfg = JSON.parse(await fs.readFile(configPath, 'utf8')); }
-catch (e) { console.error(`Configuration illisible (${configPath}) : ${e.message}\nCopie config.example.json en config.json et adapte-le.`); process.exit(1); }
+catch (e) { console.error(`Configuration illisible (${configPath}) : ${e.message}\nCopie le modèle de configuration (config.qbittorrent.example.json ou config.seedbox.example.json) en config.json et adapte-le.`); process.exit(1); }
 
 /** `${NOM}` dans la configuration est remplacé par la variable d'environnement NOM : les clés des sources restent hors du fichier. */
 const expand = (v) => typeof v === 'string'
