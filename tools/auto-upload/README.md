@@ -33,6 +33,30 @@ Il n'agit que sur les torrents de la catégorie choisie, et qu'une seule fois pa
 
 Pour publier une release : dans qBittorrent, mets-la dans la catégorie `a-publier` une fois terminée. C'est tout.
 
+## Si qBittorrent est chez un hébergeur de seedbox (Appbox, etc.)
+
+Le plus simple : **lance l'outil sur la seedbox elle-même**, en SSH. Les fichiers sont sur place (aucun partage, aucun `pathMap`), MediaInfo les lit sur place
+et rien de vidéo ne transite par ton PC. Il faut Node.js et, pour les releases sans `.nfo`, MediaInfo en ligne de commande.
+
+1. **Connecte-toi en SSH** (adresse, port, identifiant : dans le panneau de l'hébergeur ; sous Windows, PowerShell : `ssh utilisateur@adresse -p port`).
+2. **Vérifie ce qui existe déjà** : `node --version` (il faut 18 ou plus) et `mediainfo --Version`. Beaucoup de seedboxes ont MediaInfo ; Node, souvent pas.
+3. **Node.js sans droits administrateur** (dans ton dossier personnel) :
+
+   ```bash
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+   . ~/.nvm/nvm.sh && nvm install --lts
+   ```
+4. **Envoie le dossier `tools/auto-upload`** de ton PC sur la seedbox (WinSCP, FileZilla ou `scp -r`), dans un dossier à toi, par exemple `~/auto-upload`.
+5. **Les clés** : `cp cles.exemple.env cles.env`, puis `nano cles.env` : la clé de ton site, l'identifiant et le mot de passe de l'interface web de qBittorrent.
+6. **La configuration** : lance une première fois `./lancer-seedbox.sh --inspect` (il crée `config.json` d'après `config.seedbox.example.json`), puis ouvre `config.json` et adapte :
+   `url` = l'adresse de l'interface web de qBittorrent **vue depuis la seedbox** (souvent `http://localhost:` + son port : regarde dans les réglages de l'application chez l'hébergeur),
+   et `defaultCategory` / `categoryRules` = les catégories de ton site.
+7. `./lancer-seedbox.sh --inspect` : la liste des releases de `a-publier` et la présence de leur NFO. Puis `./lancer-seedbox.sh --dry-run` (essai), puis **`./lancer-seedbox.sh --watch`**.
+8. **Pour qu'il continue quand tu fermes SSH** : `nohup ./lancer-seedbox.sh --watch > import.log 2>&1 &` (ou dans `tmux` / `screen` si l'hébergeur les propose). Les lignes de suivi sont dans `import.log`. Pour l'arrêter : `pkill -f auto-upload.mjs`.
+
+Si MediaInfo n'est pas installé chez l'hébergeur, demande à son support de l'ajouter, ou dépose une version Linux dans ton dossier personnel et mets son chemin complet à la place de `true` dans `"mediainfo"`.
+Si la seedbox redémarre, relance la commande de l'étape 8 (le fichier `state.json` garde la mémoire de ce qui est déjà fait).
+
 ## Le NFO
 
 Seeduction exige un NFO ou un MediaInfo pour chaque torrent. L'outil le cherche dans cet ordre :
