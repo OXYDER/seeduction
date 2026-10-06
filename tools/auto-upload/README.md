@@ -47,6 +47,22 @@ docker run -d --name auto-upload --restart unless-stopped \
   node auto-upload.mjs --config config.json --watch
 ```
 
+## Exemple : une source Torznab (c411, Prowlarr, Jackett...)
+
+Un flux Torznab est un flux RSS : `config.c411.example.json` en est un modèle. **La clé de la source ne s'écrit jamais dans le fichier** :
+elle est lue dans une variable d'environnement grâce à `${NOM}` (ça marche partout dans la configuration, y compris dans `headers`).
+
+```bash
+export C411_API_KEY="la_clé_fournie_par_la_source"     # sur ta machine seulement
+export SEEDUCTION_API_KEY="sd_...."
+node auto-upload.mjs --config config.json --inspect      # que fournit la source ? le NFO est-il là ?
+node auto-upload.mjs --config config.json --dry-run
+```
+
+`--inspect` affiche, pour les 3 premiers éléments de chaque source : titre, taille, attributs Torznab et **présence du NFO**. Un flux Torznab
+standard ne contient en général pas de NFO : si l'inspection dit « ABSENT », ces éléments seront mis de côté (le NFO est obligatoire sur ton site).
+Dans ce cas, regarde si la source donne le NFO ailleurs (`"nfo": "url"` avec `nfoUrl`) ; sinon il faut une autre source de NFO.
+
 ## Configuration
 
 | Champ | Rôle |

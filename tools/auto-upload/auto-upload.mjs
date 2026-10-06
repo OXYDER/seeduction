@@ -10,6 +10,7 @@
  *   node auto-upload.mjs --config config.json --watch          repasse toutes les `intervalMinutes`
  *   node auto-upload.mjs --config config.json --dry-run        montre ce qui serait envoyé, sans rien envoyer
  *   node auto-upload.mjs --config config.json --list-categories   liste les catégories de ton site (pour la configuration)
+ *   node auto-upload.mjs --config config.json --inspect       montre ce que chaque source fournit (titre, taille, NFO...), sans rien envoyer
  *   node auto-upload.mjs --config config.json --retry-skipped  retente les éléments mis de côté (NFO manquant...)
  */
 import fs from 'node:fs/promises';
@@ -28,6 +29,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let cfg;
 try { cfg = JSON.parse(await fs.readFile(configPath, 'utf8')); }
 catch (e) { console.error(`Configuration illisible (${configPath}) : ${e.message}\nCopie config.example.json en config.json et adapte-le.`); process.exit(1); }
+
+/** `${NOM}` dans la configuration est remplacé par la variable d'environnement NOM : les clés des sources restent hors du fichier. */
+const expand = (v) => typeof v === 'string'
+  ? v.replace(/\$\{([A-Z0-9_]+)\}/gi, (_, name) => { if (process.env[name] === undefined) { console.error(`Variable d'environnement ${name} non définie (utilisée dans la configuration).`); process.exit(1); } return process.env[name]; })
+  : Array.isArray(v) ? v.map(expand) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, expand(x)])) : v;
+cfg = expand(cfg);
 
 const SITE = String(cfg.site ?? '').replace(/\/$/, '');
 const API_KEY = process.env[cfg.apiKeyEnv ?? 'SEEDUCTION_API_KEY'] || cfg.apiKey;
@@ -170,6 +177,23 @@ async function upload(src, it, catName, nfo, buf) {
   return site('/public/torrents', { method: 'POST', body: form });
 }
 
+/** Aide à la configuration : ce que la source donne vraiment (le NFO est-il fourni ? où ?). Rien n'est envoyé. */
+async function inspect() {
+  for (const src of cfg.sources ?? []) {
+    let items;
+    try { items = await itemsOf(src); } catch (e) { console.log(`✗ « ${src.name} » : ${e.message}`); continue; }
+    console.log(`
+« ${src.name} » (${src.type}) : ${items.length} élément(s)`);
+    for (const it of items.slice(0, 3)) {
+      const nfo = await it.nfoText().catch((e) => `(erreur : ${e.message})`);
+      console.log(`  • ${it.title}`);
+      console.log(`      taille : ${it.size ? (it.size / 1e9).toFixed(2) + ' Go' : 'inconnue'} · catégorie source : ${it.feedCategory || '—'} · date : ${it.pubDate?.toISOString?.() ?? '—'}`);
+      if (it.torznab) console.log(`      attributs Torznab : ${Object.keys(it.torznab).join(', ') || 'aucun'}`);
+      console.log(`      NFO (mode « ${src.nfo ?? 'description'} ») : ${nfo.replace(/\s+/g, ' ').length >= 20 ? 'trouvé (' + nfo.length + ' caractères)' : 'ABSENT → ces éléments seraient mis de côté'}`);
+    }
+  }
+}
+
 async function runOnce() {
   await loadCategories();
   if (flag('retry-skipped')) for (const [k, v] of Object.entries(state.items)) if (v.status === 'skipped') delete state.items[k];
@@ -236,6 +260,7 @@ try {
     for (const c of categories) console.log(c.path);
     process.exit(0);
   }
+  if (flag('inspect')) { await inspect(); process.exit(0); }
   do {
     try { await runOnce(); }
     catch (e) { if (e instanceof Fatal) throw e; log(`✗ Passe échouée : ${e.message}`); }
