@@ -1,95 +1,95 @@
-# Import automatique de torrents
+# De qBittorrent à Seeduction, automatiquement
 
-Surveille des **sources que tu configures** (flux RSS / Torznab, ou un dossier de fichiers `.torrent`) et envoie les nouveautés sur ton site
-par l'API. Aucune dépendance : il suffit de Node 18 ou plus (sur ton PC, ou sur le NAS avec Docker, voir plus bas).
+Tu marques une release dans qBittorrent (catégorie `a-publier`). Quand elle est **terminée**, l'outil :
 
-Ce que l'outil fait, et ne fait pas :
+1. récupère son `.torrent` dans qBittorrent et son **NFO** (un fichier `.nfo` dans le dossier de la release, sinon le MediaInfo du fichier vidéo) ;
+2. l'envoie sur Seeduction, qui le garde **en attente de validation** : le staff valide comme pour n'importe quel envoi (mêmes règles : NFO obligatoire, doublons refusés) ;
+3. dès que le staff a validé, ajoute dans qBittorrent la version de Seeduction (avec ton passkey) **sur les mêmes fichiers**, sans revérifier : tu seedes aussi sur Seeduction.
 
-- Il envoie **par le même chemin que le formulaire d'envoi** : mêmes règles (NFO ou MediaInfo obligatoire, doublons refusés, catégories,
-  trackers externes retirés du `.torrent`, drapeau « private » forcé) et **le torrent attend la validation du staff**.
-- Il ne se connecte à aucun site à ta place : pas de mot de passe, pas de contournement d'accès. Pour une source qui demande une clé
-  ou un cookie, tu fournis toi-même l'adresse du flux (ou l'en-tête dans `headers`), dans ton fichier de configuration local.
-- Il ne copie que ce que ta source met à disposition (flux, `.torrent`, NFO). Sans NFO, l'élément est mis de côté, jamais inventé.
-- **À toi de vérifier** que tu as le droit de reprendre et de partager le contenu, et que la source autorise ce genre de reprise
-  (beaucoup de trackers privés l'interdisent dans leur règlement).
+Il n'agit que sur les torrents de la catégorie choisie, et qu'une seule fois par torrent. Il ne supprime rien et ne déplace aucun fichier.
 
-## Mise en route
+## Ce qu'il te faut
 
-1. **Crée une clé API** sur ton site : Profil > Développeur, portées `torrents:upload` **et** `torrents:read`. La clé n'est affichée qu'une fois.
-2. Copie `config.example.json` en `config.json` et adapte-le (adresse du site, sources, filtres).
-3. Donne la clé à l'outil par une variable d'environnement (elle ne doit jamais être écrite dans un fichier partagé ni dans git) :
+- **qBittorrent 4.5 ou plus récent**, avec l'interface web activée : *Outils > Options > Interface Web*, coche « Interface utilisateur Web », note le port, choisis un nom d'utilisateur et un mot de passe.
+- **Node.js** (version LTS) sur la machine qui lance l'outil : https://nodejs.org
+- **Accès aux fichiers des releases** depuis cette machine (pour lire le NFO). Deux cas :
+  - l'outil tourne sur ton PC : le dossier de téléchargement du NAS doit être un lecteur réseau (par exemple `Z:`) ;
+  - l'outil tourne sur le NAS (Docker) : il voit directement les mêmes dossiers.
 
-   ```bash
-   export SEEDUCTION_API_KEY="sd_...."
-   ```
-4. Vois les catégories de ton site, pour écrire les règles :
+  Dans les deux cas, `pathMap` dit à l'outil comment traduire le chemin vu par qBittorrent en chemin vu par l'outil (voir plus bas).
+- **Une clé API de ton site Seeduction** : Profil > Développeur, portées `torrents:upload` et `torrents:read`. Elle n'est affichée qu'une fois.
 
-   ```bash
-   node auto-upload.mjs --config config.json --list-categories
-   ```
-5. Essaie sans rien envoyer, puis pour de vrai :
+## Mise en route (Windows)
 
-   ```bash
-   node auto-upload.mjs --config config.json --dry-run
-   node auto-upload.mjs --config config.json
-   ```
-6. En continu (repasse toutes les `intervalMinutes`) :
+1. Dans qBittorrent, crée la catégorie **`a-publier`** (clic droit sur un torrent > Catégorie > Nouvelle).
+2. Dans ce dossier, copie `cles.exemple.bat` en **`cles.bat`**, ouvre-le avec le Bloc-notes et remplis : la clé de ton site, l'identifiant et le mot de passe de l'interface web de qBittorrent.
+3. Double-clique **`1-voir-la-source.bat`** une première fois : il crée `config.json` à partir du modèle. Ferme, puis ouvre `config.json` avec le Bloc-notes et adapte :
+   - `url` : l'adresse de l'interface web de qBittorrent, par exemple `http://192.168.1.50:8080` ;
+   - `pathMap` : `from` = le dossier tel que qBittorrent le voit (celui qu'on lit dans ses options, par exemple `/volume1/downloads`), `to` = le même dossier vu depuis ton PC (par exemple `Z:/downloads`) ;
+   - `defaultCategory` et `categoryRules` : les catégories de ton site (le fichier `0-voir-mes-categories.bat` les affiche).
+4. Double-clique **`1-voir-la-source.bat`** : il liste les releases de la catégorie `a-publier` et dit, pour chacune, si son NFO est trouvé. Rien n'est envoyé.
+5. **`2-essai-sans-envoyer.bat`** : montre ce qui serait envoyé.
+6. **`3-lancer-en-continu.bat`** : lance l'import (une passe toutes les `intervalMinutes`). Laisse la fenêtre ouverte, ferme-la pour arrêter.
 
-   ```bash
-   node auto-upload.mjs --config config.json --watch
-   ```
+Pour publier une release : dans qBittorrent, mets-la dans la catégorie `a-publier` une fois terminée. C'est tout.
+
+## Le NFO
+
+Seeduction exige un NFO ou un MediaInfo pour chaque torrent. L'outil le cherche dans cet ordre :
+
+1. un fichier `.nfo` dans le dossier de la release (ou à côté du fichier, s'il n'y en a qu'un) ;
+2. `nfoDir` : un dossier à toi où le fichier s'appelle `<nom de la release>.nfo` ;
+3. si `"mediainfo": true` : le MediaInfo du plus gros fichier vidéo (il faut **MediaInfo en ligne de commande** installé : https://mediaarea.net/fr/MediaInfo/Download ; tu peux aussi donner son chemin complet à la place de `true`). Le chemin de ton NAS est retiré du texte.
+
+Si rien n'est trouvé, la release attend : ajoute un `.nfo` dans son dossier, elle sera prise à la passe suivante.
+
+## Configuration (`config.json`)
+
+| Champ | Rôle |
+|---|---|
+| `site` | adresse de ton site Seeduction |
+| `maxPerRun`, `delaySeconds` | au plus 5 envois par passe, avec 30 s de pause entre deux (on ne noie pas la file de modération) |
+| `defaultCategory`, `categoryRules` | catégorie de ton site selon le nom de la release (expressions régulières, la première qui correspond gagne) |
+| `description` | texte ajouté à la description (vide par défaut) |
+
+Dans `sources` (type `qbittorrent`) :
+
+| Champ | Rôle |
+|---|---|
+| `url`, `username`, `password` | l'interface web de qBittorrent. `${QBIT_USER}` et `${QBIT_PASS}` sont lus dans `cles.bat` : ne les écris pas dans ce fichier. Sans identifiant, l'outil se connecte sans (si qBittorrent l'autorise sur ton réseau) |
+| `qbitCategory` / `qbitTag` | quelles releases publier : celles de cette catégorie et/ou portant cette étiquette |
+| `pathMap` | traduction des chemins (voir plus haut). Liste vide si l'outil voit les mêmes chemins que qBittorrent |
+| `nfoDir`, `mediainfo` | où chercher le NFO (voir plus haut) |
+| `seedOnSeeduction` | `true` : ajoute le torrent de Seeduction dans qBittorrent après validation. `false` : s'arrête à l'envoi |
+| `seedCategory` | catégorie qBittorrent donnée au torrent de Seeduction (`seeduction`) |
+| `skipChecking` | `true` par défaut : pas de revérification des fichiers (ce sont les mêmes) |
+| `doneTag` | étiquette posée sur ta release une fois envoyée (`seeduction-envoye`) |
+| `include`, `exclude`, `maxAgeHours`, `minSizeGb`, `maxSizeGb` | filtres facultatifs |
+
+## Commandes (si tu préfères le terminal)
+
+```bash
+node auto-upload.mjs --config config.json --inspect         # ce que l'outil voit, NFO compris (rien n'est envoyé)
+node auto-upload.mjs --config config.json --dry-run         # essai sans rien envoyer ni ajouter
+node auto-upload.mjs --config config.json                   # une passe
+node auto-upload.mjs --config config.json --watch           # en continu
+node auto-upload.mjs --config config.json --list-categories # les catégories de ton site
+node auto-upload.mjs --config config.json --retry-skipped   # retente ce qui avait été mis de côté
+```
 
 Sur le NAS, sans installer Node :
 
 ```bash
-docker run -d --name auto-upload --restart unless-stopped \
-  -e SEEDUCTION_API_KEY="sd_...." -v "$PWD":/app -w /app node:20-alpine \
+docker run -d --name qbit-to-seeduction --restart unless-stopped \
+  -e SEEDUCTION_API_KEY="sd_...." -e QBIT_USER="admin" -e QBIT_PASS="..." \
+  -v "$PWD":/app -v /volume1/downloads:/volume1/downloads:ro -w /app node:20-alpine \
   node auto-upload.mjs --config config.json --watch
 ```
 
-## Exemple : ton site Saloon (flux RSS avec jeton)
-
-`config.saloon.example.json` en est le modèle. **Le jeton ne s'écrit jamais dans le fichier de configuration** : l'adresse complète du flux
-(avec son `auth=`) va dans `cles.bat`, sur ta machine seulement, et la configuration la lit avec `${SALOON_RSS_URL}`
-(`${NOM}` marche partout dans la configuration, y compris dans `headers`).
-
-```bash
-export SALOON_RSS_URL="https://lesaloonv2-0.net/advanced_rss.php?...&auth=..."
-export SEEDUCTION_API_KEY="sd_...."
-node auto-upload.mjs --config config.json --inspect      # que fournit le flux ? le NFO est-il là ?
-node auto-upload.mjs --config config.json --dry-run
-```
-
-`--inspect` affiche, pour les 3 premiers éléments de chaque source : titre, taille, catégorie, attributs et **présence du NFO**. Si le flux ne contient pas
-de NFO, ces éléments seront mis de côté (le NFO est obligatoire sur ton site) : regarde si le flux le donne ailleurs (`"nfo": "url"` avec `nfoUrl`).
-
-## Configuration
-
-| Champ | Rôle |
-|---|---|
-| `site` | adresse de ton site |
-| `apiKeyEnv` | nom de la variable d'environnement qui contient la clé (par défaut `SEEDUCTION_API_KEY`) |
-| `maxPerRun` | nombre maximum d'envois par passe (10 par défaut) |
-| `delaySeconds` | pause entre deux envois (20 s par défaut) : on ne noie pas la file de modération |
-| `defaultCategory`, `categoryRules` | catégorie de ton site selon le titre ou la catégorie de la source (expressions régulières, la première qui correspond gagne) |
-| `description` | texte ajouté à la description, `{source}` = nom de la source |
-
-Chaque source (`sources[]`) :
-
-| Champ | Rôle |
-|---|---|
-| `type` | `rss` (flux RSS 2.0 ou Torznab) ou `folder` (dossier de `.torrent`) |
-| `url` / `path` | adresse du flux / dossier |
-| `nfo` | d'où vient le NFO : `description` (texte du flux, par défaut), `url` (voir `nfoUrl`, avec `{guid}`, `{title}`, `{infohash}`), ou rien. Pour un dossier : le fichier `.nfo` de même nom, à côté du `.torrent` |
-| `include` / `exclude` | filtres (expressions régulières) sur le titre |
-| `maxAgeHours`, `minSizeGb`, `maxSizeGb` | limites d'âge et de taille |
-| `category`, `categoryRules` | catégorie propre à cette source |
-| `headers` | en-têtes ajoutés aux requêtes vers la source |
-
 ## Bon à savoir
 
-- `state.json` garde la mémoire de ce qui est envoyé, en doublon, refusé ou mis de côté. Supprime-le pour tout recommencer.
-  `--retry-skipped` retente seulement ce qui avait été mis de côté (NFO manquant, catégorie introuvable...).
-- Une erreur temporaire (source ou site indisponible) n'est pas mémorisée : l'élément sera retenté à la passe suivante.
-- Une clé qui n'a pas la bonne portée, ou dont le compte est banni, arrête l'outil avec un message clair.
-- Révoque la clé dans Profil > Développeur au moindre doute : l'outil s'arrête aussitôt.
+- `state.json` garde la mémoire de ce qui est envoyé, en doublon, refusé ou déjà ajouté pour le seed. Supprime-le pour tout recommencer.
+- Une erreur temporaire (qBittorrent éteint, site indisponible) n'est pas mémorisée : on réessaie à la passe suivante.
+- Une clé sans la bonne portée, ou dont le compte est banni, arrête l'outil avec un message clair. Révoque la clé dans Profil > Développeur au moindre doute.
+- Le torrent de Seeduction n'a pas le même identifiant que l'original (Seeduction retire les trackers externes et force le mode privé) : c'est normal, il apparaît comme un second torrent dans qBittorrent, sur les mêmes fichiers.
+- Ne publie que des contenus que tu as le droit de partager.

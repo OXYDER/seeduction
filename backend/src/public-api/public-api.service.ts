@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
+import { TorrentsService } from '../torrents/torrents.service';
 
 function escapeXml(text: string) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -28,7 +29,7 @@ const TORRENT_LIST_SELECT = {
 
 @Injectable()
 export class PublicApiService {
-  constructor(private prisma: PrismaService, private adult: AdultService) {}
+  constructor(private prisma: PrismaService, private adult: AdultService, private torrents: TorrentsService) {}
 
   async listTorrents(params: { search?: string; categoryId?: string; limit?: number }) {
     const limit = Math.min(Math.max(params.limit ?? 25, 1), 100);
@@ -60,6 +61,19 @@ export class PublicApiService {
   async assertCanUpload(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
     if (!user || user.status !== 'ACTIVE') throw new ForbiddenException("Le compte propriétaire de cette clé ne peut pas envoyer de torrents");
+  }
+
+  /**
+   * Le .torrent personnalisé (avec le passkey du propriétaire de la clé) d'un torrent QUE CETTE CLÉ A ENVOYÉ, pour le seeder à partir de qBittorrent.
+   * Réservé à ses propres envois (une clé d'envoi ne sert pas à télécharger les torrents des autres) et seulement une fois le torrent
+   * validé par le staff : avant, le tracker ne l'accepterait pas.
+   */
+  async ownTorrentFile(userId: string, id: string): Promise<{ pending: true } | { file: Buffer }> {
+    const t = await this.prisma.torrent.findFirst({ where: { id, uploaderId: userId }, select: { id: true, status: true } });
+    if (!t) throw new NotFoundException('Torrent introuvable (ou envoyé par un autre compte)');
+    if (t.status === 'PENDING') return { pending: true };
+    if (t.status !== 'APPROVED') throw new ForbiddenException(`Ce torrent n'est plus disponible (statut ${t.status})`);
+    return { file: await this.torrents.getDownloadFile(id, userId) };
   }
 
   async torrentDetail(id: string) {

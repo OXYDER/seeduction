@@ -54,6 +54,16 @@ export class PublicApiController {
     return { id: t.id, name: t.name, infoHash: t.infoHash, status: t.status };
   }
 
+  /** Le .torrent à seeder (avec ton passkey) d'un torrent que cette clé a envoyé : 409 tant qu'il attend la validation du staff. */
+  @RequireScope('torrents:upload')
+  @Get('torrents/:id/file')
+  async ownFile(@Param('id') id: string, @Req() req: Request & { apiKey: { userId: string } }, @Res() res: Response) {
+    await this.publicApi.assertCanUpload(req.apiKey.userId);
+    const r = await this.publicApi.ownTorrentFile(req.apiKey.userId, id);
+    if ('pending' in r) return res.status(409).json({ statusCode: 409, message: 'En attente de validation par le staff' });
+    res.type('application/x-bittorrent').send(r.file);
+  }
+
   @RequireScope('user:read')
   @Get('me')
   me(@Req() req: Request & { apiKey: { userId: string } }) {

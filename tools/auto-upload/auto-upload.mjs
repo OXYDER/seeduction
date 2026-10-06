@@ -15,6 +15,9 @@
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const run = promisify(execFile);
 
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(`--${n}`);
@@ -81,6 +84,125 @@ function categoryId(name) {
 }
 class Fatal extends Error {}
 
+// ------------------------------------------------------------------ qBittorrent (API web)
+
+/** Client minimal de l'API web de qBittorrent (v4.5 ou plus récent : il faut l'export des .torrent). */
+class Qbit {
+  constructor(src) { this.base = String(src.url ?? '').replace(/\/$/, ''); this.user = src.username; this.pass = src.password; this.cookie = ''; }
+  async login() {
+    if (!this.user) return; // accès sans identifiant (réseau local autorisé dans qBittorrent)
+    const res = await fetch(this.base + '/api/v2/auth/login', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', referer: this.base, origin: this.base }, body: new URLSearchParams({ username: this.user, password: this.pass ?? '' }), signal: AbortSignal.timeout(20_000) });
+    if (!/^ok/i.test((await res.text()).trim())) throw new Error("qBittorrent a refusé la connexion : vérifie QBIT_USER et QBIT_PASS (et que l'interface web est activée)");
+    this.cookie = (res.headers.get('set-cookie') ?? '').match(/SID=[^;]+/)?.[0] ?? '';
+  }
+  async req(p, init = {}, retry = true) {
+    let res;
+    try { res = await fetch(this.base + '/api/v2' + p, { ...init, headers: { referer: this.base, origin: this.base, ...(this.cookie ? { cookie: this.cookie } : {}), ...(init.headers ?? {}) }, signal: AbortSignal.timeout(60_000) }); }
+    catch { throw new Error(`qBittorrent injoignable (${this.base}) : adresse, port et interface web activée ?`); }
+    if ((res.status === 403 || res.status === 401) && retry) { await this.login(); return this.req(p, init, false); }
+    return res;
+  }
+  async completed(src) {
+    const q = new URLSearchParams({ filter: 'completed' });
+    if (src.qbitCategory) q.set('category', src.qbitCategory);
+    if (src.qbitTag) q.set('tag', src.qbitTag);
+    const res = await this.req('/torrents/info?' + q);
+    if (!res.ok) throw new Error(`qBittorrent a répondu ${res.status} à la liste des torrents`);
+    return res.json();
+  }
+  async exportTorrent(hash) {
+    const res = await this.req('/torrents/export?hash=' + hash);
+    if (!res.ok) throw new Error(`export du .torrent impossible (qBittorrent ${res.status}) : il faut qBittorrent 4.5 ou plus récent`);
+    return Buffer.from(await res.arrayBuffer());
+  }
+  async addTags(hash, tags) { await this.req('/torrents/addTags', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ hashes: hash, tags }) }); }
+  async add(buf, o) {
+    const form = new FormData();
+    form.set('torrents', new Blob([buf], { type: 'application/x-bittorrent' }), 'seeduction.torrent');
+    form.set('savepath', o.savepath); form.set('autoTMM', 'false'); form.set('skip_checking', o.skipChecking ? 'true' : 'false');
+    if (o.category) form.set('category', o.category);
+    if (o.tags) form.set('tags', o.tags);
+    const res = await this.req('/torrents/add', { method: 'POST', body: form });
+    const txt = (await res.text()).trim();
+    if (!res.ok || /^fails/i.test(txt)) throw new Error(`qBittorrent a refusé l'ajout (${res.status} ${txt})`);
+  }
+}
+const qbits = new Map();
+const qbitFor = async (src) => { let q = qbits.get(src.name); if (!q) { q = new Qbit(src); await q.login(); qbits.set(src.name, q); } return q; };
+
+/** Chemin vu par qBittorrent -> chemin vu par ce script (dossiers partagés / montés différemment). */
+function mapPath(src, p) {
+  for (const m of src.pathMap ?? []) {
+    const from = String(m.from).replace(/\\/g, '/').replace(/\/$/, ''), q = String(p).replace(/\\/g, '/');
+    if (q === from || q.startsWith(from + '/')) return path.normalize(String(m.to) + q.slice(from.length));
+  }
+  return path.normalize(p);
+}
+const VIDEO = /\.(mkv|mp4|avi|ts|m2ts|mov|wmv|mpg|mpeg|iso)$/i;
+async function listFiles(dir, depth = 2) {
+  const out = [];
+  let entries; try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { return out; }
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory() && depth > 0) out.push(...await listFiles(full, depth - 1));
+    else if (e.isFile()) out.push(full);
+  }
+  return out;
+}
+const readText = async (f) => { const b = await fs.readFile(f); const u = b.toString('utf8'); return u.includes('�') ? b.toString('latin1') : u; }; // les NFO anciens sont en CP437/latin1
+
+/** NFO d'une release terminée : un .nfo dans ses fichiers, sinon `nfoDir`, sinon le MediaInfo du plus gros fichier vidéo (si `mediainfo` est installé). */
+async function nfoFor(src, t) {
+  const local = mapPath(src, t.content_path);
+  let st; try { st = await fs.stat(local); } catch { throw new Error(`dossier introuvable pour ce script : ${local} (voir « pathMap » dans la configuration)`); }
+  const files = st.isDirectory() ? await listFiles(local) : [local];
+  const nfo = st.isDirectory() ? files.find((f) => /\.nfo$/i.test(f)) : local.replace(/\.[^.]+$/, '.nfo');
+  for (const f of [nfo, src.nfoDir && path.join(path.resolve(baseDir, src.nfoDir), `${t.name}.nfo`)].filter(Boolean)) { try { return await readText(f); } catch { /* suivant */ } }
+  if (src.mediainfo) {
+    const sizes = await Promise.all(files.filter((f) => VIDEO.test(f)).map(async (f) => [f, (await fs.stat(f)).size]));
+    const big = sizes.sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (big) {
+      try {
+        const { stdout } = await run(src.mediainfo === true ? 'mediainfo' : src.mediainfo, [big], { timeout: 120_000, maxBuffer: 5_000_000 });
+        return stdout.replace(/^(Complete name\s*:\s*).*$/m, (_, a) => a + path.basename(big)); // ne pas publier le chemin de ton NAS
+      } catch (e) { throw new Error(`mediainfo a échoué (${e.code === 'ENOENT' ? 'programme introuvable' : e.message})`); }
+    }
+  }
+  return '';
+}
+
+async function qbitItems(src) {
+  const q = await qbitFor(src);
+  const list = await q.completed(src);
+  return list.map((t) => ({
+    key: `qbit:${t.hash}`, title: t.name, size: t.size ?? 0, pubDate: new Date((t.completion_on > 0 ? t.completion_on : t.added_on) * 1000), feedCategory: t.category ?? '',
+    qbit: { src: src.name, hash: t.hash, savePath: t.save_path }, keepIfNoNfo: true, // pas d'abandon définitif : tu peux ajouter le NFO plus tard
+    load: () => q.exportTorrent(t.hash),
+    nfoText: () => nfoFor(src, t),
+    afterUpload: () => q.addTags(t.hash, src.doneTag ?? 'seeduction-envoye'),
+  }));
+}
+
+/** Torrents envoyés puis validés par le staff : on ajoute la version de Seeduction (avec ton passkey) dans qBittorrent, sur les MÊMES fichiers, pour seeder là-bas aussi. */
+async function seedPass() {
+  for (const v of Object.values(state.items)) {
+    if (v.status !== 'uploaded' || !v.qbit || v.seeded || !v.id) continue;
+    const src = (cfg.sources ?? []).find((x) => x.type === 'qbittorrent' && x.name === v.qbit.src);
+    if (!src || src.seedOnSeeduction === false) continue;
+    const res = await fetch(`${SITE}/api/public/torrents/${v.id}/file`, { headers: { 'x-api-key': API_KEY, 'user-agent': UA }, signal: AbortSignal.timeout(60_000) });
+    if (res.status === 409) { log(`⏳ ${v.name} — en attente de validation par le staff (le seed démarrera ensuite)`); continue; }
+    if (res.status === 401 || res.status === 403) throw new Fatal(`Seed refusé (${res.status}) : clé sans la portée torrents:upload, ou compte désactivé`);
+    if (res.status === 404) { log(`✗ ${v.name} — introuvable sur ton site (supprimé ?) : seed abandonné`); v.seeded = 'indisponible'; await saveState(); continue; }
+    if (!res.ok) { log(`✗ ${v.name} — erreur ${res.status} en récupérant le .torrent`); continue; }
+    if (DRY) { log(`(essai) ajouterait le torrent de Seeduction dans qBittorrent : ${v.name}`); continue; }
+    try {
+      await (await qbitFor(src)).add(Buffer.from(await res.arrayBuffer()), { savepath: v.qbit.savePath, category: src.seedCategory ?? 'seeduction', tags: 'seeduction', skipChecking: src.skipChecking !== false });
+      v.seeded = true; v.seededAt = new Date().toISOString(); await saveState();
+      log(`🌱 ${v.name} — ajouté dans qBittorrent pour seeder sur Seeduction`);
+    } catch (e) { log(`✗ ${v.name} — ${e.message}`); }
+  }
+}
+
 // ------------------------------------------------------------------ lecture des sources
 
 const decode = (s) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&');
@@ -115,6 +237,7 @@ async function fetchSource(url, headers) {
 
 /** Éléments d'une source : { key, title, load(): Buffer, nfoText(): string, size, pubDate, feedCategory } */
 async function itemsOf(src) {
+  if (src.type === 'qbittorrent') return qbitItems(src);
   if (src.type === 'folder') {
     const dir = path.resolve(baseDir, src.path);
     const files = (await fs.readdir(dir)).filter((f) => f.toLowerCase().endsWith('.torrent'));
@@ -185,17 +308,20 @@ async function inspect() {
     console.log(`
 « ${src.name} » (${src.type}) : ${items.length} élément(s)`);
     for (const it of items.slice(0, 3)) {
-      const nfo = await it.nfoText().catch((e) => `(erreur : ${e.message})`);
+      let nfo = '', err = '';
+      try { nfo = await it.nfoText(); } catch (e) { err = e.message; }
       console.log(`  • ${it.title}`);
       console.log(`      taille : ${it.size ? (it.size / 1e9).toFixed(2) + ' Go' : 'inconnue'} · catégorie source : ${it.feedCategory || '—'} · date : ${it.pubDate?.toISOString?.() ?? '—'}`);
-      if (it.torznab) console.log(`      attributs Torznab : ${Object.keys(it.torznab).join(', ') || 'aucun'}`);
-      console.log(`      NFO (mode « ${src.nfo ?? 'description'} ») : ${nfo.replace(/\s+/g, ' ').length >= 20 ? 'trouvé (' + nfo.length + ' caractères)' : 'ABSENT → ces éléments seraient mis de côté'}`);
+      if (it.qbit) console.log(`      dossier (vu par qBittorrent) : ${it.qbit.savePath}`);
+      console.log(`      NFO : ${nfo.replace(/\s+/g, ' ').length >= 20 ? 'trouvé (' + nfo.length + ' caractères)' : 'ABSENT' + (err ? ' — ' + err : '') + ' → cette release serait mise de côté'}`);
     }
   }
 }
 
+const warned = new Set();
 async function runOnce() {
   await loadCategories();
+  try { await seedPass(); } catch (e) { if (e instanceof Fatal) throw e; log(`✗ Seed sur Seeduction : ${e.message}`); }
   if (flag('retry-skipped')) for (const [k, v] of Object.entries(state.items)) if (v.status === 'skipped') delete state.items[k];
   let sent = 0, seen = 0, skipped = 0;
 
@@ -224,6 +350,7 @@ async function runOnce() {
         nfo = (await it.nfoText()).trim();
       } catch (e) { log(`✗ ${it.title} — ${e.message}`); continue; } // erreur temporaire : on réessaiera à la prochaine passe
       if (nfo.replace(/\s+/g, ' ').length < 20) {
+        if (it.keepIfNoNfo) { if (!warned.has(it.key)) { warned.add(it.key); log(`⏭ ${it.title} — NFO / MediaInfo introuvable (obligatoire) : ajoute un .nfo dans le dossier de la release (ou installe mediainfo) ; il sera pris à la prochaine passe`); } skipped++; continue; }
         log(`⏭ ${it.title} — NFO / MediaInfo introuvable (obligatoire sur ton site) : mis de côté`);
         mark(it.key, 'skipped', { name: it.title, why: 'NFO manquant' }); skipped++; continue;
       }
@@ -232,7 +359,8 @@ async function runOnce() {
       const r = await upload(src, it, catName, nfo, buf);
       if (r.status === 201 || r.status === 200) {
         log(`✓ ${it.title} → ${catName} (${r.body?.status ?? 'envoyé'})`);
-        mark(it.key, 'uploaded', { name: it.title, id: r.body?.id }); sent++;
+        mark(it.key, 'uploaded', { name: it.title, id: r.body?.id, ...(it.qbit ? { qbit: it.qbit } : {}) }); sent++;
+        if (it.afterUpload) { try { await it.afterUpload(); } catch { /* l'étiquette est facultative */ } }
       } else if (r.status === 400 && /dupe|existe déjà/i.test(r.body?.message ?? '')) {
         log(`= ${it.title} — déjà sur ton site`); mark(it.key, 'dupe', { name: it.title });
       } else if (r.status === 400) {
