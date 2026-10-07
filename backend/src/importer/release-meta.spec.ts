@@ -143,4 +143,10 @@ describe('autres notations rencontrees dans les noms de releases', () => {
     expect(lang('Fall.2.Deadpoint.2026.MULTi.1080p.WEB.x265-GRP', MEDIAINFO(['French', 'English']))).toBe('MULTI.VFF');
     expect(lang('Film.2025.MULTi.1080p.WEB-GRP', 'Audio ........: Français VFQ / Anglais\n')).toBe('MULTI.VFQ');
   });
+
+  it('NFO scene encadre : « │ Audio : French (Canadien) » = VFQ, les sous-titres ne comptent pas', () => {
+    const nfo = ['┌────────┐', '│ Audio    : French (Canadien) E-AC-3 5.1 ↔ Untouched ↔ 640 kb/s ↔ │', '│ Subtitle : French (Canadien) Forced ↔ SRT ↔ 38 Lines ↔ │', '└────────┘'].join('\n');
+    expect(lang('Onslaught.2026.MULTi.CA.1080p.WEB.H265-SUPPLY', nfo)).toBe('MULTI.VFQ');
+    expect(lang('Film.2026.1080p.WEB-GRP', '│ Subtitle : French (Canadien) SDH ↔ SRT │')).toBeUndefined();
+  });
 });
