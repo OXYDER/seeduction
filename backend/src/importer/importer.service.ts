@@ -5,7 +5,7 @@ import { TorrentsService } from '../torrents/torrents.service';
 import { AdminService } from '../admin/admin.service';
 import { ImportConfig, ImportSecrets, openSecrets, sealSecrets } from './importer.types';
 import { Qbit, QbitTorrent } from './qbit.client';
-import { hasNfo, nfoFor } from './release-files';
+import { FtpConnectError, hasNfo, nfoFor, probeFor } from './release-files';
 import { detectReleaseMeta } from './release-meta';
 import { MetadataService } from '../metadata/metadata.service';
 import { SupportBotService } from '../support/support-bot.service';
@@ -72,7 +72,7 @@ export class ImporterService {
     }
     const f = raw?.ftp;
     if (f && str(f.host, 200)) {
-      cfg.ftp = { host: str(f.host, 200), port: num(f.port, 1, 65535, 21), username: str(f.username, 100), secure: f.secure !== false, rejectUnauthorized: f.rejectUnauthorized !== false, headMB: num(f.headMB, 1, 64, 16), searchDepth: num(f.searchDepth, 1, 6, 3) };
+      cfg.ftp = { host: str(f.host, 200), port: num(f.port, 1, 65535, 21), username: str(f.username, 100), secure: f.secure !== false, rejectUnauthorized: f.rejectUnauthorized !== false, headMB: num(f.headMB, 1, 64, 16), searchDepth: num(f.searchDepth, 1, 8, 6) };
     }
     return cfg;
   }
@@ -393,8 +393,29 @@ export class ImporterService {
     }
   }
 
-  /** « Tester » : ce que la source contient et si le NFO de chaque release est trouvable, sans rien envoyer. */
-  async inspect(id: string) {
+  // ------------------------------------------------------------------ test d'une source (tâche de fond : le résultat se lit par interrogation)
+
+  private inspections = new Map<string, { status: 'running' | 'done' | 'error'; startedAt: number; result?: any; error?: string }>();
+
+  /** Lance le test en arrière-plan : il peut durer (FTP lent) et un serveur web devant le site coupe les réponses trop longues (504). */
+  async startInspect(id: string) {
+    if (!(await this.prisma.importSource.findUnique({ where: { id }, select: { id: true } }))) throw new NotFoundException('Source introuvable');
+    const cur = this.inspections.get(id);
+    if (cur?.status === 'running' && Date.now() - cur.startedAt < 180_000) return { started: true };
+    this.inspections.set(id, { status: 'running', startedAt: Date.now() });
+    const deadline = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('le test a dépassé 2 minutes : le FTP ou qBittorrent répond trop lentement')), 120_000));
+    void Promise.race([this.inspectNow(id), deadline])
+      .then((result) => this.inspections.set(id, { status: 'done', startedAt: Date.now(), result }))
+      .catch((e: any) => this.inspections.set(id, { status: 'error', startedAt: Date.now(), error: String(e?.message ?? e) }));
+    return { started: true };
+  }
+
+  getInspect(id: string) {
+    return this.inspections.get(id) ?? { status: 'none' as const };
+  }
+
+  /** Ce que la source contient et si le NFO de chaque release est trouvable, sans rien envoyer ni télécharger de vidéo. */
+  private async inspectNow(id: string) {
     const src = await this.prisma.importSource.findUnique({ where: { id } });
     if (!src) throw new NotFoundException('Source introuvable');
     const cfg = src.config as unknown as ImportConfig;
@@ -405,18 +426,31 @@ export class ImporterService {
       await q.login();
       list = await this.listCompleted(q, cfg);
     } catch (e: any) {
-      throw new BadRequestException(String(e?.message ?? e)); // message clair dans l'interface (mot de passe, adresse...)
+      throw new Error(String(e?.message ?? e)); // message clair dans l'interface (mot de passe, adresse...)
     }
     const known = new Map((await this.prisma.importItem.findMany({ where: { sourceId: id } })).map((i) => [i.key, i.status]));
+    const shown = list.slice(0, 6);
+    const labels = await this.feedLabels(q, cfg, shown);
     const out: any[] = [];
-    const labels = await this.feedLabels(q, cfg, list.slice(0, 8));
-    for (const t of list.slice(0, 8)) {
-      let nfo = '', note = '';
-      try { nfo = await nfoFor(cfg, secrets, id, t); } catch (e: any) { note = e.message; }
+    let ftpError: string | null = null; // si le FTP est en panne, on ne le réessaie pas pour chaque release
+    for (const t of shown) {
+      let source: 'NFO' | 'VIDEO' | 'NONE' = 'NONE', nfo = '', note = '';
+      if (!cfg.ftp) note = 'aucun FTP configuré : le NFO ne peut pas être lu';
+      else if (ftpError) note = ftpError;
+      else {
+        try { const r = await probeFor(cfg, secrets, id, t); source = r.source; nfo = r.nfo ?? ''; if (source === 'VIDEO') note = 'pas de .nfo : le MediaInfo sera calculé sur le début de la vidéo à l\'import'; }
+        catch (e: any) { note = String(e?.message ?? e); if (e instanceof FtpConnectError) ftpError = note; }
+      }
       const meta = detectReleaseMeta(t.name, nfo);
       const chosen = await this.chooseCategory(cfg, t, labels.get(t.hash) ?? '');
-      out.push({ name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null, nfo: hasNfo(nfo) ? 'FOUND' : 'MISSING', note, language: meta.language ?? null, resolution: meta.resolution ?? null, category: chosen?.name ?? null, categoryHow: chosen?.how ?? null, feedLabel: labels.get(t.hash) ?? null, fiche: chosen?.meta ? `${chosen.meta.title}${chosen.meta.year ? ` (${chosen.meta.year})` : ''}` : null });
+      out.push({
+        name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null,
+        nfo: source === 'NFO' && hasNfo(nfo) ? 'FOUND' : source === 'VIDEO' ? 'MEDIAINFO' : 'MISSING', note,
+        language: meta.language ?? null, resolution: meta.resolution ?? null,
+        category: chosen?.name ?? null, categoryHow: chosen?.how ?? null, feedLabel: labels.get(t.hash) ?? null,
+        fiche: chosen?.meta ? `${chosen.meta.title}${chosen.meta.year ? ` (${chosen.meta.year})` : ''}` : null,
+      });
     }
-    return { total: list.length, shown: out };
+    return { total: list.length, shown: out, ftp: cfg.ftp ? (ftpError ? { ok: false, message: ftpError } : { ok: true }) : null };
   }
 }

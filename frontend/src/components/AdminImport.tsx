@@ -67,7 +67,17 @@ export function ImportAdmin() {
   }
   async function test(s: Source) {
     setInspect({ id: s.id, busy: true });
-    try { const r = await api.post(`/importer/sources/${s.id}/inspect`); setInspect({ id: s.id, busy: false, result: r.data }); } catch (e: any) { setInspect({ id: s.id, busy: false, error: e.response?.data?.message ?? e.message }); }
+    // Le test tourne en arrière-plan sur le serveur (un serveur web devant le site coupe les réponses trop longues) : on l'interroge jusqu'au résultat.
+    try {
+      await api.post(`/importer/sources/${s.id}/inspect`);
+      for (let i = 0; i < 100; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const r = (await api.get(`/importer/sources/${s.id}/inspect`)).data;
+        if (r.status === 'done') return setInspect({ id: s.id, busy: false, result: r.result });
+        if (r.status === 'error') return setInspect({ id: s.id, busy: false, error: r.error });
+      }
+      setInspect({ id: s.id, busy: false, error: 'Le test prend trop de temps : réessaie dans un instant.' });
+    } catch (e: any) { setInspect({ id: s.id, busy: false, error: e.response?.data?.message ?? e.message }); }
   }
   async function showItems(s: Source) {
     if (openItems === s.id) { setOpenItems(null); return; }
@@ -170,13 +180,14 @@ export function ImportAdmin() {
               {inspect.error && <div style={{ color: 'var(--danger)' }}>✗ {inspect.error}</div>}
               {inspect.result && (
                 <>
-                  <div className="muted">{inspect.result.total} release(s) terminée(s) dans cette catégorie (les 8 premières sont analysées) :</div>
+                  <div className="muted">{inspect.result.total} release(s) terminée(s) dans cette catégorie (les 6 premières sont analysées) :</div>
+                  {inspect.result.ftp && (inspect.result.ftp.ok ? <div style={{ fontSize: 12, color: 'var(--success)' }}>✓ FTP : connexion réussie</div> : <div style={{ fontSize: 12, color: 'var(--danger)' }}>✗ FTP : {inspect.result.ftp.message}</div>)}
                   <table>
                     <tbody>
                       {inspect.result.shown.map((r: any) => (
                         <tr key={r.name}>
                           <td style={{ wordBreak: 'break-all' }}>{r.name}<div className="muted" style={{ fontSize: 11 }}>{Go(r.size)} · {r.savePath}</div></td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{r.nfo === 'FOUND' ? <span style={{ color: 'var(--success)' }}>NFO ✓</span> : <span style={{ color: 'var(--danger)' }} title={r.note}>NFO absent</span>}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{r.nfo === 'FOUND' ? <span style={{ color: 'var(--success)' }}>NFO ✓</span> : r.nfo === 'MEDIAINFO' ? <span style={{ color: 'var(--success)' }} title={r.note}>MediaInfo ✓</span> : <span style={{ color: 'var(--danger)' }} title={r.note}>NFO absent</span>}</td>
                           <td style={{ whiteSpace: 'nowrap' }}>
                             {r.language ? <span className="badge" style={{ background: /VFQ|VF2/.test(r.language) ? 'rgba(80,200,120,0.25)' : 'rgba(255,255,255,0.1)', fontWeight: 700 }} title="Langue détectée">{r.language}</span> : <span className="muted" style={{ fontSize: 12 }} title="Aucune langue repérable dans le nom ni le MediaInfo">langue ?</span>}
                             {r.resolution && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>{r.resolution}</span>}

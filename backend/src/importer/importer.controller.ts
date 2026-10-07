@@ -53,9 +53,15 @@ export class ImporterController {
     return r;
   }
 
+  /** Lance le test de la source en arrière-plan (réponse immédiate) ; le résultat se lit avec GET. */
   @Post('sources/:id/inspect')
   inspect(@Param('id') id: string) {
-    return this.importer.inspect(id);
+    return this.importer.startInspect(id);
+  }
+
+  @Get('sources/:id/inspect')
+  inspectResult(@Param('id') id: string) {
+    return this.importer.getInspect(id);
   }
 
   @Post('sources/:id/run')

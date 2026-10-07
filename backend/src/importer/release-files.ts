@@ -38,10 +38,30 @@ async function mediainfoOf(file: string): Promise<string> {
   }
 }
 
+/** Message lisible pour un échec FTP (délai, identifiants, chiffrement, adresse). */
+function ftpFriendly(e: any, f: NonNullable<ImportConfig['ftp']>): string {
+  const msg = String(e?.message ?? e);
+  const code = e?.code ?? e?.cause?.code ?? '';
+  if (/timeout|timed out/i.test(msg) || code === 'ETIMEDOUT') return `le FTP ${f.host}:${f.port ?? 21} ne répond pas (délai dépassé) : vérifie l'hôte et le port${f.secure !== false ? ", ou décoche « FTP sur TLS »" : ", ou coche « FTP sur TLS »"}`;
+  if (code === 'ENOTFOUND') return `hôte FTP introuvable : ${f.host}`;
+  if (code === 'ECONNREFUSED') return `connexion FTP refusée sur ${f.host}:${f.port ?? 21} (port fermé ? Pure-FTPd démarré chez l'hébergeur ?)`;
+  if (/\b530\b|login|authentication failed|incorrect/i.test(msg)) return `identifiant ou mot de passe FTP refusé (530) : vérifie-les dans AppBox Manager, ligne Pure-FTPd`;
+  if (/ssl|tls|handshake|wrong version|certificate|self[- ]signed/i.test(msg)) return `échec de la connexion FTP chiffrée (${msg.slice(0, 80)}) : essaie en décochant « FTP sur TLS »`;
+  if (/\b(421|425|426|500|502|503|504|550)\b/.test(msg)) return `le serveur FTP a répondu : ${msg.slice(0, 120)}`;
+  return `erreur FTP : ${msg.slice(0, 140)}`;
+}
+
+export class FtpConnectError extends Error {}
+
 export async function ftpConnect(cfg: ImportConfig, secrets: ImportSecrets): Promise<Client> {
   const f = cfg.ftp!;
-  const c = new Client(60_000);
-  await c.access({ host: f.host, port: f.port ?? 21, user: f.username, password: secrets.ftpPassword ?? '', secure: f.secure ?? true, secureOptions: { rejectUnauthorized: f.rejectUnauthorized !== false } });
+  const c = new Client(20_000); // 20 s par commande : un FTP qui ne répond pas ne doit pas bloquer des minutes
+  try {
+    await c.access({ host: f.host, port: f.port ?? 21, user: f.username, password: secrets.ftpPassword ?? '', secure: f.secure ?? true, secureOptions: { rejectUnauthorized: f.rejectUnauthorized !== false } });
+  } catch (e) {
+    try { c.close(); } catch { /* ignoré */ }
+    throw new FtpConnectError(ftpFriendly(e, f));
+  }
   return c;
 }
 
@@ -60,13 +80,23 @@ async function locate(c: Client, cfg: ImportConfig, memKey: string, t: QbitTorre
     if (e) { memory.set(memKey + '|' + parentQ, dir); return { dir: dir === '/' ? '' : dir, entry: e }; }
   }
   const queue: [string, number][] = [['/', 0]];
-  while (queue.length) {
+  const deadline = Date.now() + 20_000;
+  let lists = 0;
+  while (queue.length && lists < 80 && Date.now() < deadline) { // recherche bornée : un gros arbre de dossiers ne doit pas tout bloquer
+    lists++;
     const [dir, depth] = queue.shift()!;
     let list: Awaited<ReturnType<Client['list']>> = [];
     try { list = await c.list(dir); } catch { continue; }
     const hit = list.find((e) => e.name === name);
     if (hit) { memory.set(memKey + '|' + parentQ, dir); return { dir: dir === '/' ? '' : dir, entry: hit }; }
-    if (depth < (cfg.ftp?.searchDepth ?? 3)) for (const e of list) if (e.isDirectory) queue.push([path.posix.join(dir, e.name), depth + 1]);
+    if (depth < (cfg.ftp?.searchDepth ?? 6)) {
+      // les dossiers qui portent le même nom qu'un dossier du chemin qBittorrent (« completed », « torrents »...) sont explorés d'abord
+      const same = new Set(parentQ.split('/').filter(Boolean).map((x) => x.toLowerCase()));
+      const dirs = list.filter((e) => e.isDirectory).sort((a, b) => Number(same.has(b.name.toLowerCase())) - Number(same.has(a.name.toLowerCase())));
+      const first = dirs.filter((e) => same.has(e.name.toLowerCase())), rest = dirs.filter((e) => !same.has(e.name.toLowerCase()));
+      queue.unshift(...first.map((e) => [path.posix.join(dir, e.name), depth + 1] as [string, number]));
+      queue.push(...rest.map((e) => [path.posix.join(dir, e.name), depth + 1] as [string, number]));
+    }
   }
   return null;
 }
@@ -109,27 +139,42 @@ async function readHead(cfg: ImportConfig, secrets: ImportSecrets, remote: strin
   return Buffer.concat(chunks).subarray(0, max);
 }
 
-/** NFO d'une release qui est sur la seedbox : son .nfo, sinon le MediaInfo du début de la vidéo. Aucune vidéo n'est téléchargée en entier. */
-export async function nfoFor(cfg: ImportConfig, secrets: ImportSecrets, memKey: string, t: QbitTorrent): Promise<string> {
-  if (!cfg.ftp) return '';
+/** Dossier de la release sur le FTP : son .nfo (texte lu) et sa plus grosse vidéo. Aucune vidéo n'est téléchargée. */
+async function scan(cfg: ImportConfig, secrets: ImportSecrets, memKey: string, t: QbitTorrent) {
   const c = await ftpConnect(cfg, secrets);
   let nfo: string | null = null;
   let video: { path: string; name: string; size: number } | null = null;
   try {
     const found = await locate(c, cfg, memKey, t);
-    if (!found) throw new Error(`release introuvable sur le serveur FTP : ${t.name} (identifiants FTP justes ? dossier accessible à ce compte ?)`);
+    if (!found) throw new Error(`release introuvable sur le serveur FTP : ${t.name} (dossier accessible à ce compte ? essaie d'augmenter la profondeur de recherche)`);
     const base = path.posix.join(found.dir, found.entry.name);
     const files = found.entry.isDirectory ? await listFiles(c, base) : [{ path: base, name: found.entry.name, size: found.entry.size }];
     const nfoFile = files.find((f) => /\.nfo$/i.test(f.name));
     if (nfoFile) {
       const raw = await readAll(c, nfoFile.path);
       const u = raw.toString('utf8');
-      nfo = u.includes('�') ? raw.toString('latin1') : u; // les NFO anciens sont en CP437 / latin1
+      nfo = u.includes('\uFFFD') ? raw.toString('latin1') : u; // les NFO anciens sont en CP437 / latin1
     }
     if (!nfo || !longEnough(nfo)) { nfo = null; video = files.filter((f) => VIDEO.test(f.name)).sort((a, b) => b.size - a.size)[0] ?? null; }
   } finally {
     try { c.close(); } catch { /* déjà fermé */ }
   }
+  return { nfo, video };
+}
+
+/** Pour le test : où est le NFO ? (.nfo trouvé, vidéo dont le MediaInfo sera calculé à l'import, ou rien). Rapide : rien n'est téléchargé. */
+export async function probeFor(cfg: ImportConfig, secrets: ImportSecrets, memKey: string, t: QbitTorrent): Promise<{ source: 'NFO' | 'VIDEO' | 'NONE'; nfo?: string; videoName?: string }> {
+  if (!cfg.ftp) return { source: 'NONE' };
+  const { nfo, video } = await scan(cfg, secrets, memKey, t);
+  if (nfo) return { source: 'NFO', nfo };
+  if (video && cfg.mediainfo) return { source: 'VIDEO', videoName: video.name };
+  return { source: 'NONE' };
+}
+
+/** NFO d'une release qui est sur la seedbox : son .nfo, sinon le MediaInfo du début de la vidéo. Aucune vidéo n'est téléchargée en entier. */
+export async function nfoFor(cfg: ImportConfig, secrets: ImportSecrets, memKey: string, t: QbitTorrent): Promise<string> {
+  if (!cfg.ftp) return '';
+  const { nfo, video } = await scan(cfg, secrets, memKey, t);
   if (nfo) return nfo;
   if (!video || !cfg.mediainfo) return '';
   const head = await readHead(cfg, secrets, video.path, (cfg.ftp.headMB ?? 16) * 1024 * 1024);
