@@ -28,6 +28,9 @@ const strip = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerC
 
 type Variant = typeof FR_VARIANTS[number];
 
+/** Titres de sections d'un MediaInfo (anglais ou français) -> section. */
+const SECTIONS: Record<string, string> = { general: 'general', video: 'video', audio: 'audio', text: 'text', texte: 'text', menu: 'menu', other: 'other', autre: 'other' };
+
 /** Ce que dit le NOM : variantes françaises annoncées, MULTI, MUET, VOSTFR. */
 function fromName(tokens: string[]) {
   const all = tokens.flatMap((t) => [t.toLowerCase(), ...t.toLowerCase().split('-')]);
@@ -72,19 +75,28 @@ function fromNfo(nfo: string) {
     return 'VFF';
   };
   for (const line of nfo.split(/\r?\n/)) {
-    const head = line.match(/^\s*(General|Video|Audio|Text|Menu|Other)(?:\s*#\d+)?\s*$/i);
-    if (head) { endAudio(); section = head[1].toLowerCase(); continue; }
-    const lang = line.match(/^\s*Language\s*:\s*(.+)$/i)?.[1]?.trim();
+    const head = SECTIONS[strip(line.replace(/#\s*\d+/, ''))]; // « Audio #2 », « Général », « Vidéo », « Texte » (MediaInfo en français)
+    if (head) { endAudio(); section = head; continue; }
+    const lang = line.match(/^\s*(?:Language|Langue)(?:\s*\/[^:]*)?[\s.]*:\s*(.+)$/i)?.[1]?.trim();
     if (lang) {
       const code = LANG_CODE[strip(lang.split(/[\s/(]/)[0])] ?? strip(lang).slice(0, 2);
       if (section === 'audio') { trackLang = code; trackTitle = lang + ' ' + trackTitle; }
       if (section === 'text' && code === 'fr') subsFr = true;
     }
-    if (section === 'audio' && /^\s*Title\s*:/i.test(line)) trackTitle += ' ' + line;
+    if (section === 'audio' && /^\s*(?:Title|Titre)\s*:/i.test(line)) trackTitle += ' ' + line;
   }
   endAudio();
-  // Mention explicite dans un NFO texte (« Langue : VFQ »).
-  for (const line of nfo.split(/\r?\n/)) if (/^\s*(release|nom|name|titre|langue|language|audio)\b.*[:.]/i.test(line) && /\bvfq\b|qu[eé]b/i.test(line)) fr.add('VFQ');
+  // Mention explicite dans un NFO texte (« Langue : VFQ », « Audio : Français (Canada) »).
+  for (const line of nfo.split(/\r?\n/)) {
+    if (!/^\s*(release|nom|name|titre|langues?|language|audio|son)\b.*[:.]/i.test(line)) continue;
+    if (/\bvf2\b/i.test(line)) { fr.add('VFF'); fr.add('VFQ'); }
+    if (/\bvfq\b|\bvq\b|qu[eé]b|canad|\((?:ca|qc)\)|fr-?ca/i.test(line)) fr.add('VFQ');
+    if (/\bvff\b/i.test(line)) fr.add('VFF');
+    if (/\bvfi\b/i.test(line)) fr.add('VFI');
+    if (/\bvfb\b/i.test(line)) fr.add('VFB');
+    if (/\bvof\b/i.test(line)) fr.add('VOF');
+    if (/truefrench/i.test(line)) fr.add('TRUEFRENCH');
+  }
   return { fr, nonFr, subsFr };
 }
 

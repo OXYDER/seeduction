@@ -554,15 +554,27 @@ export class ImporterService {
       if (!cfg.ftp) note = 'aucun FTP configuré : le NFO ne peut pas être lu';
       else if (ftpError) note = ftpError;
       else {
-        try { const r = await probeFor(cfg, secrets, id, t); source = r.source; nfo = r.nfo ?? ''; if (source === 'VIDEO') note = 'pas de .nfo : le MediaInfo sera calculé sur le début de la vidéo à l\'import'; }
+        try {
+          const r = await probeFor(cfg, secrets, id, t); source = r.source; nfo = r.nfo ?? '';
+          if (source === 'VIDEO') {
+            note = 'pas de .nfo : le MediaInfo sera calculé sur le début de la vidéo à l\'import';
+            // Le nom ne dit pas la langue : on calcule le MediaInfo maintenant pour montrer la langue lue dans les pistes audio (ce que fera l'import).
+            if (!detectReleaseMeta(t.name, '').language) {
+              try { nfo = await nfoFor(cfg, secrets, id, t); if (hasNfo(nfo)) note = 'pas de .nfo : MediaInfo calculé sur le début de la vidéo (langue lue dans les pistes audio)'; else nfo = ''; }
+              catch (e: any) { note = `MediaInfo non calculé : ${String(e?.message ?? e).slice(0, 120)}`; }
+            }
+          }
+        }
         catch (e: any) { note = String(e?.message ?? e); if (e instanceof FtpConnectError) ftpError = note; }
       }
       const meta = detectReleaseMeta(t.name, nfo);
+      // Langue introuvable malgré un NFO / MediaInfo : on montre les lignes qui parlent de langue pour comprendre pourquoi.
+      const nfoHint = !meta.language && nfo ? nfo.split(/\r?\n/).filter((l) => /langu|audio|fran[cç]ais|french|\bvf[fqib2]\b|\bvo(?:st)?f?\b|qu[eé]b|canad/i.test(l)).slice(0, 6).map((l) => l.trim().slice(0, 110)) : [];
       const chosen = await this.chooseCategory(cfg, t, labels.get(t.hash) ?? '');
       out.push({
         name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null,
         nfo: source === 'NFO' && hasNfo(nfo) ? 'FOUND' : source === 'VIDEO' ? 'MEDIAINFO' : 'MISSING', note,
-        language: meta.language ?? null, resolution: meta.resolution ?? null,
+        language: meta.language ?? null, resolution: meta.resolution ?? null, nfoHint,
         category: chosen?.name ?? null, categoryHow: chosen?.how ?? null, feedLabel: labels.get(t.hash) ?? null,
         fiche: chosen?.meta ? `${chosen.meta.title}${chosen.meta.year ? ` (${chosen.meta.year})` : ''}` : null,
       });

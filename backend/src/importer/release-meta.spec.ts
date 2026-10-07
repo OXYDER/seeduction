@@ -135,4 +135,12 @@ describe('autres notations rencontrees dans les noms de releases', () => {
     expect(lang('Film.2025.MULTI.2F.1080p.WEB.H264-GRP', MEDIAINFO(['French (FR)', 'French (CA)', 'English']))).toBe('MULTI.VF2');
     expect(lang('Film.2025.MULTI.VF.1080p.WEB.H264-GRP', MEDIAINFO(['French (CA)', 'English']))).toBe('MULTI.VFQ');
   });
+
+  it('MediaInfo en francais (Langue, Audio #n, Texte) et NFO texte', () => {
+    const fr = 'Général\nFormat : Matroska\n\nVidéo\nFormat : HEVC\n\nAudio #1\nLangue : Français (Canada)\n\nAudio #2\nLangue : Anglais\n\nTexte #1\nLangue : Français\n';
+    expect(lang('Onslaught.2026.MULTi.CA.1080p.WEB.H265-SUPPLY', fr)).toBe('MULTI.VFQ');
+    expect(lang('Coeur.de.Motard.2026.DOC.FRENCH.AD.1080p.WEB.AAC.2.0.H264-MTLQC', MEDIAINFO(['French (CA)']))).toBe('VFQ');
+    expect(lang('Fall.2.Deadpoint.2026.MULTi.1080p.WEB.x265-GRP', MEDIAINFO(['French', 'English']))).toBe('MULTI.VFF');
+    expect(lang('Film.2025.MULTi.1080p.WEB-GRP', 'Audio ........: Français VFQ / Anglais\n')).toBe('MULTI.VFQ');
+  });
 });

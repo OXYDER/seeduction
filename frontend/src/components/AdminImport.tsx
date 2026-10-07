@@ -193,6 +193,7 @@ export function ImportAdmin() {
                           <td style={{ whiteSpace: 'nowrap' }}>
                             {r.language ? <span className="badge" style={{ background: /VFQ|VF2/.test(r.language) ? 'rgba(80,200,120,0.25)' : 'rgba(255,255,255,0.1)', fontWeight: 700 }} title="Langue détectée">{r.language}</span> : <span className="muted" style={{ fontSize: 12 }} title="Aucune langue repérable dans le nom ni le MediaInfo">langue ?</span>}
                             {r.resolution && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>{r.resolution}</span>}
+                            {!r.language && r.nfoHint?.length > 0 && <div className="muted" style={{ fontSize: 10, whiteSpace: 'pre-wrap', maxWidth: 360, wordBreak: 'break-word' }} title="Lignes du NFO / MediaInfo qui parlent de langue : aucune n'a permis de trancher">NFO : {r.nfoHint.join(' | ')}</div>}
                             <div className="muted" style={{ fontSize: 11 }}>→ {r.category ?? 'catégorie ?'}{r.categoryHow ? ` (${r.categoryHow})` : ''}</div>
                             {r.feedLabel && <div className="muted" style={{ fontSize: 11 }}>flux : {r.feedLabel}</div>}
                             {r.fiche ? <div style={{ fontSize: 11, color: 'var(--success)' }}>fiche TMDB : {r.fiche}</div> : <div style={{ fontSize: 11, color: 'var(--gold-bright, #f5c542)' }}>fiche : aucune correspondance sûre → ira dans « À vérifier »</div>}
