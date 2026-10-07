@@ -330,7 +330,7 @@ export class ImporterService {
 
       const list = (await this.listCompleted(q, cfg)).sort((a, b) => (a.completion_on || a.added_on) - (b.completion_on || b.added_on));
       await this.readyPass(id, uploaderId, cfg, secrets, q, list, dryRun, ev);
-      if (onlyReady) return;
+      if (onlyReady) { await this.seedPass(src.id, uploaderId, cfg, q, dryRun, ev); return; }
       const known = new Set((await this.prisma.importItem.findMany({ where: { sourceId: id }, select: { key: true } })).map((i) => i.key));
       const labels = await this.feedLabels(q, cfg, list);
       let sent = 0;
@@ -365,6 +365,7 @@ export class ImporterService {
         if (await this.publish(id, uploaderId, cfg, q, t, buf, nfo, chosen, ev)) sent++;
         if (cfg.delaySeconds) await sleep(cfg.delaySeconds * 1000);
       }
+      await this.seedPass(src.id, uploaderId, cfg, q, dryRun, ev); // les torrents envoyés pendant cette passe partent seeder tout de suite, sans attendre la passe suivante
       await ev('INFO', `Passe terminée : ${sent} ${dryRun ? 'à envoyer' : 'envoyé(s)'} sur ${list.length} release(s) terminée(s).`);
     } catch (e: any) {
       lastError = String(e?.message ?? e);

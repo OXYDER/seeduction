@@ -42,7 +42,7 @@ interface RichMetadata {
   overviewOk?: boolean;
 }
 
-const TMDB_IMG = 'https://image.tmdb.org/t/p';
+const TMDB_IMG = (process.env.TMDB_IMAGE_BASE_URL || 'https://image.tmdb.org/t/p').replace(/\/$/, ''); // modifiable pour les essais en local
 const TMDB_API = (process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3').replace(/\/$/, ''); // modifiable pour les essais en local
 const SEARCHABLE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'] as const;
 
@@ -766,7 +766,7 @@ export class MetadataService {
       if (e.imageUrl && !entity.imageUrl) pendingImages.push({ entityId: entity.id, url: e.imageUrl });
     }
 
-    void this.downloadImages(torrentId, pendingImages, rich.backdropUrl).catch((err) =>
+    void this.downloadImages(torrentId, pendingImages, rich.backdropUrl, rich.coverUrl).catch((err) =>
       this.logger.warn(`Téléchargement des images de la fiche échoué : ${err?.message ?? err}`),
     );
   }
@@ -799,7 +799,34 @@ export class MetadataService {
     }
   }
 
-  private async downloadImages(torrentId: string, images: { entityId: string; url: string }[], backdropUrl: string | null) {
+  /**
+   * Torrents importés automatiquement dont la fiche TMDB est rattachée mais qui n'ont pas de pochette (l'import ne passe pas par le formulaire d'envoi,
+   * qui enregistre l'affiche) : on la télécharge petit à petit (quelques-unes toutes les 10 minutes). Un torrent dont la fiche n'a pas d'affiche n'est pas réessayé.
+   */
+  @Cron('*/10 * * * *')
+  async backfillImportedCovers() {
+    if (!this.tmdbKey) return;
+    const imported = await this.prisma.importItem.findMany({ where: { torrentId: { not: null } }, select: { torrentId: true } });
+    if (imported.length === 0) return;
+    const torrents = await this.prisma.torrent.findMany({
+      where: { id: { in: imported.map((i) => i.torrentId!) }, metaSource: 'tmdb', metaExternalId: { not: null }, coverImage: null },
+      select: { id: true, metaExternalId: true, metadata: true },
+      take: 40,
+    });
+    for (const t of torrents.filter((x) => !(x.metadata as any)?.coverTried).slice(0, 5)) {
+      try {
+        const kind = (t.metadata as any)?.kind === 'tv' ? 'tv' : 'movie';
+        const rich = await this.richTmdb(kind, t.metaExternalId!);
+        const local = await this.saveCover(rich.coverUrl);
+        await this.prisma.torrent.update({ where: { id: t.id }, data: local ? { coverImage: local } : { metadata: { ...((t.metadata as object) ?? {}), coverTried: true } as any } });
+      } catch (err: any) {
+        if (err instanceof NotFoundException) await this.prisma.torrent.update({ where: { id: t.id }, data: { metadata: { ...((t.metadata as object) ?? {}), coverTried: true } as any } });
+        else this.logger.warn(`Pochette des torrents importés : ${err?.message ?? err}`);
+      }
+    }
+  }
+
+  private async downloadImages(torrentId: string, images: { entityId: string; url: string }[], backdropUrl: string | null, coverUrl: string | null = null) {
     await Promise.all(
       images.map(async ({ entityId, url }) => {
         const local = await this.saveCover(url);
@@ -811,6 +838,14 @@ export class MetadataService {
       if (local) {
         const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { metadata: true } });
         await this.prisma.torrent.update({ where: { id: torrentId }, data: { metadata: { ...((t?.metadata as object) ?? {}), backdrop: local } } });
+      }
+    }
+    // Pochette : seulement si le torrent n'en a pas déjà une (celle du formulaire d'envoi, ou choisie par le membre, reste prioritaire).
+    if (coverUrl) {
+      const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { coverImage: true } });
+      if (t && !t.coverImage) {
+        const local = await this.saveCover(coverUrl);
+        if (local) await this.prisma.torrent.update({ where: { id: torrentId }, data: { coverImage: local } });
       }
     }
   }
