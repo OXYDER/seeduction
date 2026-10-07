@@ -51,13 +51,16 @@ export class Qbit {
       throw new Error(`qBittorrent injoignable (${this.base}) : ${netCause(e)}`);
     }
     const body = (await res.text()).trim();
-    if (!/^ok/i.test(body)) {
+    // Succès : « Ok. » (anciennes versions) ou 204 sans corps (qBittorrent 5.x). Échec : « Fails. » ou 401 / 403.
+    const accepted = res.status === 204 || (res.status === 200 && /^ok/i.test(body));
+    if (!accepted) {
       if (res.status === 403) throw new Error("qBittorrent a refusé la connexion (403) : l'adresse IP du serveur est peut-être BANNIE après trop d'essais ratés (qBittorrent bannit une adresse après 5 mots de passe faux : attends ~1 heure ou redémarre l'application chez l'hébergeur), ou la protection « Host header / CSRF » bloque");
       if (res.status >= 300 && res.status < 400) throw new Error(`qBittorrent redirige vers une autre adresse (${res.status}) : vérifie l'adresse (https:// ? chemin à la fin ?)`);
       if (res.status === 404) throw new Error(`cette adresse n'est pas l'interface web de qBittorrent (404) : ${this.base}`);
       throw new Error(`qBittorrent a refusé la connexion : identifiant ou mot de passe de l'interface web incorrect (réponse ${res.status}${body ? ` « ${body.slice(0, 60)} »` : ''})`);
     }
-    this.cookie = (res.headers.get('set-cookie') ?? '').match(/SID=[^;]+/)?.[0] ?? '';
+    // Le cookie de session s'appelle « SID » (anciennes versions) ou « QBT_SID_<port> » (qBittorrent 5.x) : on garde le couple nom=valeur tel quel.
+    this.cookie = (res.headers.get('set-cookie') ?? '').match(/\b\w*SID\w*=[^;\s]+/)?.[0] ?? '';
   }
 
   private async req(path: string, init: RequestInit = {}, retry = true): Promise<Response> {
