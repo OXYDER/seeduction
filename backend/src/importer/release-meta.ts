@@ -88,8 +88,9 @@ function fromNfo(nfo: string) {
   endAudio();
   // Mention explicite dans un NFO texte (« Langue : VFQ », « Audio : Français (Canada) »).
   for (const raw of nfo.split(/\r?\n/)) {
-    const line = raw.replace(/^[\s─-╿▀-▟|*+>·•\-]+/, ''); // NFO « scène » encadré : « │ Audio : French (Canadien) E-AC-3 ... »
-    if (!/^(release|nom|name|titre|langues?|language|audio|son)\b.*[:.]/i.test(line)) continue;
+    // NFO « scène » encadré (souvent en CP437, cadres mal décodés : « ³ Audio : French (Canadien) E-AC-3 ... ») : le mot-clé est cherché n'importe où dans la ligne.
+    const line = raw.match(/(?:^|[^a-z])(?:release|nom|name|titre|langues?|language|audio|son)s?\b[\s.]*:.*$/i)?.[0];
+    if (!line) continue;
     if (/\bvf2\b/i.test(line)) { fr.add('VFF'); fr.add('VFQ'); }
     if (/\bvfq\b|\bvq\b|qu[eé]b|canad|\((?:ca|qc)\)|fr-?ca/i.test(line)) fr.add('VFQ');
     if (/\bvff\b/i.test(line)) fr.add('VFF');

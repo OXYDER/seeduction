@@ -147,6 +147,8 @@ describe('autres notations rencontrees dans les noms de releases', () => {
   it('NFO scene encadre : « │ Audio : French (Canadien) » = VFQ, les sous-titres ne comptent pas', () => {
     const nfo = ['┌────────┐', '│ Audio    : French (Canadien) E-AC-3 5.1 ↔ Untouched ↔ 640 kb/s ↔ │', '│ Subtitle : French (Canadien) Forced ↔ SRT ↔ 38 Lines ↔ │', '└────────┘'].join('\n');
     expect(lang('Onslaught.2026.MULTi.CA.1080p.WEB.H265-SUPPLY', nfo)).toBe('MULTI.VFQ');
+    // même NFO lu en latin1 (cadres CP437 devenus « ³ », « º », « ° »)
+    expect(lang('Onslaught.2026.MULTi.CA.1080p.WEB.H265-SUPPLY', ['º Audio    : French (Canadien) E-AC-3 5.1 ¤ Untouched ¤ 640 kb/s º', '³ Subtitle : French (Canadien) Forced ¤ SRT ³'].join('\n'))).toBe('MULTI.VFQ');
     expect(lang('Film.2026.1080p.WEB-GRP', '│ Subtitle : French (Canadien) SDH ↔ SRT │')).toBeUndefined();
   });
 });
