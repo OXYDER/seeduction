@@ -18,6 +18,12 @@ export class ImporterController {
     return this.importer.list();
   }
 
+  /** Statistiques internes du robot « Seeduction » (le compte qui publie les torrents importés). */
+  @Get('bot')
+  bot() {
+    return this.importer.botStats();
+  }
+
   @Get('status')
   status() {
     return this.importer.status();

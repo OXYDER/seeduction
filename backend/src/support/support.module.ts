@@ -12,5 +12,6 @@ import { SupportAiService } from './support-ai.service';
   imports: [MessengerModule, NotificationsModule, PresenceModule, WikiModule],
   controllers: [SupportController],
   providers: [SupportService, SupportBotService, SupportAiService],
+  exports: [SupportBotService], // le robot « Seeduction » publie aussi les torrents de l'import automatique
 })
 export class SupportModule {}

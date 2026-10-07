@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
+import { formatBytes, formatNumber } from '../lib/format';
 
 interface Source {
   id: string; name: string; enabled: boolean; config: any; hasQbitPassword: boolean; hasFtpPassword: boolean;
@@ -15,7 +16,7 @@ const EMPTY_CONFIG = {
   mediainfo: true,
   defaultCategory: '', autoCategory: true, categoryRules: [] as { match: string; category: string }[],
   include: [] as string[], exclude: [] as string[], description: '',
-  seedOnSeeduction: true, seedCategory: 'seeduction', skipChecking: true,
+  autoApprove: true, seedOnSeeduction: true, seedCategory: 'seeduction', skipChecking: true,
   intervalMinutes: 10, maxPerRun: 5, delaySeconds: 30,
 };
 const STATUS_LABEL: Record<ImportItem['status'], string> = { UPLOADED: 'Envoyé', DUPE: 'Déjà sur le site', REJECTED: 'Refusé', SKIPPED: 'Mis de côté' };
@@ -27,6 +28,7 @@ export function ImportAdmin() {
   const [sources, setSources] = useState<Source[] | null>(null);
   const [running, setRunning] = useState<{ sourceId: string; dryRun: boolean } | null>(null);
   const [events, setEvents] = useState<ImportEvent[]>([]);
+  const [robot, setRobot] = useState<any>(null);
   const [leafCats, setLeafCats] = useState<string[]>([]);
   const [editing, setEditing] = useState<Source | 'new' | null>(null);
   const [openItems, setOpenItems] = useState<string | null>(null);
@@ -37,17 +39,18 @@ export function ImportAdmin() {
 
   const loadSources = useCallback(() => api.get('/importer/sources').then((r) => setSources(r.data)).catch((e) => setError(e.response?.data?.message ?? 'Chargement impossible')), []);
   const loadEvents = useCallback(() => api.get('/importer/events', { params: { limit: 80 } }).then((r) => setEvents(r.data)).catch(() => undefined), []);
+  const loadRobot = useCallback(() => api.get('/importer/bot').then((r) => setRobot(r.data)).catch(() => undefined), []);
   const loadStatus = useCallback(() => api.get('/importer/status').then((r) => setRunning(r.data.running)).catch(() => undefined), []);
 
   useEffect(() => {
-    loadSources(); loadEvents(); loadStatus();
+    loadSources(); loadEvents(); loadStatus(); loadRobot();
     api.get('/categories').then((r) => setLeafCats((r.data as any[]).flatMap((c) => (c.children?.length ? c.children : [c]).map((x: any) => x.name)))).catch(() => undefined);
   }, [loadSources, loadEvents, loadStatus]);
   // Suivi en direct : plus rapide quand un import tourne.
   useEffect(() => {
-    const t = setInterval(() => { loadEvents(); loadStatus(); if (running) loadSources(); }, running ? 2500 : 15000);
+    const t = setInterval(() => { loadEvents(); loadStatus(); loadRobot(); if (running) loadSources(); }, running ? 2500 : 15000);
     return () => clearInterval(t);
-  }, [running, loadEvents, loadStatus, loadSources]);
+  }, [running, loadEvents, loadStatus, loadSources, loadRobot]);
 
   const fail = (e: any) => { setMessage(''); setError(e.response?.data?.message ?? 'Erreur'); };
   const ok = (m: string) => { setError(''); setMessage(m); };
@@ -80,13 +83,57 @@ export function ImportAdmin() {
       <div className="panel">
         <h3>📥 Import automatique depuis qBittorrent</h3>
         <p className="muted" style={{ margin: '4px 0 0' }}>
-          Les releases <strong>terminées</strong> de ton qBittorrent (dans la catégorie choisie) sont envoyées sur Seeduction : NFO lu ou MediaInfo calculé par FTP, <strong>approuvées automatiquement</strong> (compte du staff),
+          Les releases <strong>terminées</strong> de ton qBittorrent (dans la catégorie choisie) sont envoyées sur Seeduction : NFO lu ou MediaInfo calculé par FTP, <strong>approuvées automatiquement</strong>,
           puis le torrent de Seeduction est ajouté dans qBittorrent sur les mêmes fichiers pour seeder. Une passe toutes les 10 minutes ; chaque torrent n'est traité qu'une fois.
-          Les envois se font au nom de <strong>ton compte</strong>. Ne publie que des contenus que tu as le droit de partager.
+          Les torrents sont publiés (et seedés) par le <strong>robot « {robot?.username ?? 'Seeduction'} »</strong>, jamais par ton compte. Ne publie que des contenus que tu as le droit de partager.
         </p>
         {error && <div style={{ color: 'var(--danger)', marginTop: 8 }}>{error}</div>}
         {message && <div style={{ color: 'var(--success)', marginTop: 8 }}>{message}</div>}
       </div>
+
+      {robot && (
+        <div className="panel">
+          <div className="row" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <h3 style={{ margin: 0 }}>🤖 Compte du robot « {robot.username} »</h3>
+            <span className="muted" style={{ fontSize: 12 }}>Compte interne : aucune statistique publique, il n'apparaît dans aucun classement · passkey {robot.passkeyHint ?? '—'}</span>
+          </div>
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, marginTop: 10 }}>
+            {[
+              ['Envoyé', formatBytes(robot.uploaded)],
+              ['Reçu', formatBytes(robot.downloaded)],
+              ['Ratio', robot.ratio === null ? '∞' : robot.ratio.toFixed(2)],
+              ['Torrents publiés', formatNumber(robot.torrents.live)],
+              ['Taille publiée', formatBytes(robot.torrents.totalSize)],
+              ['En seed maintenant', formatNumber(robot.peers.seeding)],
+              ['Téléchargés par les membres', formatNumber(robot.torrents.completedByOthers)],
+              ['Seeders sur ses torrents', formatNumber(robot.torrents.seedersOnThem)],
+              ['Leechers sur ses torrents', formatNumber(robot.torrents.leechersOnThem)],
+              ['Points bonus', formatNumber(Math.round(robot.bonusPoints))],
+              ['Dernier announce', robot.peers.lastAnnounceAt ? timeAgo(robot.peers.lastAnnounceAt) : 'jamais'],
+              ['En attente / refusés', `${robot.torrents.byStatus.PENDING ?? 0} / ${robot.torrents.byStatus.REJECTED ?? 0}`],
+            ].map(([label, value]) => (
+              <div key={label} className="panel ornate" style={{ padding: '8px 10px' }}>
+                <div className="muted" style={{ fontSize: 11 }}>{label}</div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+          {robot.recent.length > 0 && (
+            <table style={{ marginTop: 10 }}>
+              <tbody>
+                {robot.recent.map((t: any) => (
+                  <tr key={t.id}>
+                    <td style={{ wordBreak: 'break-all' }}><a href={`/torrents/${t.id}`}>{t.name}</a></td>
+                    <td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatBytes(t.size)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>🌱 {t.seeders} · ⬇ {t.completedCount}</td>
+                    <td className="muted" style={{ whiteSpace: 'nowrap' }}>{timeAgo(t.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {sources === null && <p className="muted">Chargement…</p>}
       {sources?.length === 0 && !editing && <div className="panel"><p className="muted">Aucune source pour l'instant.</p></div>}
@@ -302,6 +349,7 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
 
       <div className="grid" style={{ gap: 8 }}>
         <strong style={{ fontSize: 13 }}>Seed et rythme</strong>
+        <label className="row" style={{ gap: 8 }}><input type="checkbox" checked={cfg.autoApprove} onChange={(e) => set(['autoApprove'], e.target.checked)} /> Approuver directement les torrents importés (sinon ils attendent la validation du staff)</label>
         <label className="row" style={{ gap: 8 }}><input type="checkbox" checked={cfg.seedOnSeeduction} onChange={(e) => set(['seedOnSeeduction'], e.target.checked)} /> Une fois approuvé, ajouter le torrent de Seeduction dans qBittorrent (mêmes fichiers, sans revérification) pour seeder</label>
         <div className="row" style={{ gap: 8 }}>
           {field('Catégorie qBittorrent du seed', <input value={cfg.seedCategory} onChange={(e) => set(['seedCategory'], e.target.value)} />)}

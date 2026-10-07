@@ -8,9 +8,9 @@ import { Qbit, QbitTorrent } from './qbit.client';
 import { hasNfo, nfoFor } from './release-files';
 import { detectReleaseMeta } from './release-meta';
 import { MetadataService } from '../metadata/metadata.service';
+import { SupportBotService } from '../support/support-bot.service';
 import { cleanTitle, guessType, leafKey, refineWithGenres, resolveCandidate } from './category-guess';
 
-const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const str = (v: any, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const num = (v: any, lo: number, hi: number, d: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : d; };
@@ -27,7 +27,7 @@ const regexList = (v: any, what: string): string[] => {
 
 /**
  * Import automatique depuis un qBittorrent (Admin > Import) : les releases terminées d'une catégorie sont envoyées sur Seeduction
- * (NFO lu ou MediaInfo calculé par FTP), approuvées si le compte est du staff, puis le torrent de Seeduction est ajouté dans qBittorrent
+ * (NFO lu ou MediaInfo calculé par FTP), publiées au nom du robot « Seeduction » (pas d'un compte de membre), approuvées, puis le torrent de Seeduction est ajouté dans qBittorrent
  * sur les mêmes fichiers pour seeder. Une passe toutes les `intervalMinutes`, chaque torrent n'est traité qu'une fois.
  */
 @Injectable()
@@ -36,7 +36,7 @@ export class ImporterService {
   private running: { sourceId: string; dryRun: boolean; startedAt: number } | null = null;
   private warnedNoNfo = new Set<string>();
 
-  constructor(private prisma: PrismaService, private torrents: TorrentsService, private admin: AdminService, private metadata: MetadataService) {}
+  constructor(private prisma: PrismaService, private torrents: TorrentsService, private admin: AdminService, private metadata: MetadataService, private bot: SupportBotService) {}
 
   // ------------------------------------------------------------------ configuration
 
@@ -54,6 +54,7 @@ export class ImporterService {
       exclude: regexList(raw?.exclude, 'filtre « exclure »'),
       description: str(raw?.description, 2000) || undefined,
       mediainfo: raw?.mediainfo !== false,
+      autoApprove: raw?.autoApprove !== false,
       seedOnSeeduction: raw?.seedOnSeeduction !== false,
       seedCategory: str(raw?.seedCategory, 100) || 'seeduction',
       skipChecking: raw?.skipChecking !== false,
@@ -146,6 +147,38 @@ export class ImporterService {
   private async event(sourceId: string | null, level: 'INFO' | 'WARN' | 'ERROR', message: string) {
     this.logger[level === 'ERROR' ? 'error' : 'log'](`[${sourceId?.slice(0, 8) ?? '-'}] ${message}`);
     await this.prisma.importEvent.create({ data: { sourceId, level, message: message.slice(0, 1000) } }).catch(() => undefined);
+  }
+
+  /** Statistiques internes du robot (jamais publiques) : ce qu'il a publié, ce qu'il seede, ce qu'il a envoyé et reçu. */
+  async botStats() {
+    const robot = await this.bot.ensureBot();
+    const user = await this.prisma.user.findUnique({ where: { id: robot.id }, select: { id: true, username: true, passkey: true, uploaded: true, downloaded: true, bonusPoints: true, createdAt: true } });
+    const [byStatus, agg, peers, recent] = await Promise.all([
+      this.prisma.torrent.groupBy({ by: ['status'], where: { uploaderId: robot.id }, _count: { _all: true } }),
+      this.prisma.torrent.aggregate({ where: { uploaderId: robot.id, status: { in: ['APPROVED', 'PENDING'] } }, _count: { _all: true }, _sum: { size: true, completedCount: true, seeders: true, leechers: true } }),
+      this.prisma.peer.findMany({ where: { userId: robot.id }, select: { isSeeder: true, lastAnnounceAt: true } }),
+      this.prisma.torrent.findMany({ where: { uploaderId: robot.id }, orderBy: { createdAt: 'desc' }, take: 12, select: { id: true, name: true, size: true, status: true, seeders: true, leechers: true, completedCount: true, createdAt: true } }),
+    ]);
+    const up = Number(user?.uploaded ?? 0n), down = Number(user?.downloaded ?? 0n);
+    return {
+      id: robot.id,
+      username: robot.username,
+      passkeyHint: user?.passkey ? `…${user.passkey.slice(-6)}` : null, // le passkey complet n'est jamais affiché
+      uploaded: String(user?.uploaded ?? 0n),
+      downloaded: String(user?.downloaded ?? 0n),
+      ratio: down > 0 ? up / down : null,
+      bonusPoints: user?.bonusPoints ?? 0,
+      torrents: {
+        byStatus: Object.fromEntries(byStatus.map((g) => [g.status, g._count._all])),
+        live: agg._count._all,
+        totalSize: String(agg._sum.size ?? 0n),
+        completedByOthers: agg._sum.completedCount ?? 0,
+        seedersOnThem: agg._sum.seeders ?? 0,
+        leechersOnThem: agg._sum.leechers ?? 0,
+      },
+      peers: { seeding: peers.filter((p) => p.isSeeder).length, downloading: peers.filter((p) => !p.isSeeder).length, lastAnnounceAt: peers.reduce<Date | null>((m, p) => (!m || p.lastAnnounceAt > m ? p.lastAnnounceAt : m), null) },
+      recent,
+    };
   }
 
   // ------------------------------------------------------------------ exécution
@@ -242,12 +275,13 @@ export class ImporterService {
     let lastError: string | null = null;
     try {
       if (!dryRun) await this.prisma.importSource.update({ where: { id }, data: { lastRunAt: new Date() } });
-      const uploader = await this.prisma.user.findUnique({ where: { id: src.uploaderId }, select: { role: true, status: true, username: true } });
-      if (!uploader || uploader.status !== 'ACTIVE') throw new Error("le compte au nom duquel les torrents sont envoyés n'existe plus ou est désactivé");
-      const staff = STAFF.includes(uploader.role);
+      // Les torrents sont publiés (et seedés, avec son passkey) par le compte du robot « Seeduction » : jamais par un compte de membre.
+      const robot = await this.bot.ensureBot();
+      const uploaderId = robot.id;
+      if (src.uploaderId !== robot.id) await this.prisma.importSource.update({ where: { id }, data: { uploaderId: robot.id } }).catch(() => undefined);
       const q = new Qbit(cfg.qbit.url, cfg.qbit.username, secrets.qbitPassword);
       await q.login();
-      await this.seedPass(src.id, src.uploaderId, cfg, q, dryRun, ev);
+      await this.seedPass(src.id, uploaderId, cfg, q, dryRun, ev);
 
       const list = (await this.listCompleted(q, cfg)).sort((a, b) => (a.completion_on || a.added_on) - (b.completion_on || b.added_on));
       const known = new Set((await this.prisma.importItem.findMany({ where: { sourceId: id }, select: { key: true } })).map((i) => i.key));
@@ -276,8 +310,8 @@ export class ImporterService {
 
         try {
           const meta = detectReleaseMeta(t.name, nfo); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
-          const created = await this.torrents.upload({ userId: src.uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: catId, tags: [], anonymous: false, nfo, ...meta });
-          const status = staff ? (await this.admin.approveTorrent(created.id)).status : created.status; // le staff valide de toute façon ses propres envois
+          const created = await this.torrents.upload({ userId: uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: catId, tags: [], anonymous: false, nfo, ...meta });
+          const status = cfg.autoApprove !== false ? (await this.admin.approveTorrent(created.id)).status : created.status; // import configuré par un administrateur : approuvé directement
           await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'UPLOADED', torrentId: created.id, savePath: t.save_path } });
           await ev('INFO', `✓ ${t.name} → ${catName} [${chosen.how}]${meta.language ? ` · ${meta.language}` : ''} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
           q.addTags(t.hash, cfg.qbit.doneTag || 'seeduction-envoye').catch(() => undefined);

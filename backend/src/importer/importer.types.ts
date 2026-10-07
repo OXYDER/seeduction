@@ -14,6 +14,8 @@ export interface ImportConfig {
   include?: string[];
   exclude?: string[];
   description?: string;
+  /** Approuver directement les torrents importés (par défaut). Sinon ils attendent la validation du staff. */
+  autoApprove?: boolean;
   seedOnSeeduction?: boolean;
   seedCategory?: string;
   skipChecking?: boolean;
