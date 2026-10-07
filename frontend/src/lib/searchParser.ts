@@ -1,8 +1,10 @@
 // Vocabulaire partagé entre le formulaire d'upload (menus déroulants) et le
 // parseur de recherche en langage naturel, pour que les valeurs se
 // correspondent toujours exactement des deux côtés.
+import { languageTagFrom } from './languageTag';
 export const RESOLUTIONS = ['4K/2160p', '1080p', '720p', '480p'];
-export const LANGUAGES = ['VFQ', 'VFF', 'VF', 'VOSTFR', 'VO', 'MULTI'];
+/** Filtres de langue : chaque étiquette précise (MULTI.VFQ, MULTI.VF2...) est retrouvée par ses composantes (VFQ, VFF, MULTI...). */
+export const LANGUAGES = ['VFQ', 'VFF', 'VOF', 'TRUEFRENCH', 'VFI', 'VFB', 'VF2', 'MULTI', 'VOSTFR', 'MUET'];
 export const ORIGINS = ['Québec', 'France', 'Canada anglais', 'International'];
 export const SOURCES = ['Remux', 'BluRay', 'WEB-DL', 'WEBRip', 'HDTV', 'DVDRip', 'CAM'];
 export const CODECS = ['x264', 'x265/HEVC', 'AV1', 'XviD'];
@@ -19,10 +21,14 @@ alias(['1080p', 'fhd', 'fullhd'], 'resolution', '1080p');
 alias(['720p', 'hd'], 'resolution', '720p');
 alias(['480p', 'sd'], 'resolution', '480p');
 alias(['vostfr', 'vost'], 'language', 'VOSTFR');
-alias(['vf', 'french'], 'language', 'VF');
-alias(['vfq', 'quebec', 'québec'], 'language', 'VFQ');
-alias(['vff', 'truefrench'], 'language', 'VFF');
-alias(['vo'], 'language', 'VO');
+alias(['vfq', 'vq', 'quebec', 'québec'], 'language', 'VFQ');
+alias(['vff'], 'language', 'VFF');
+alias(['vof'], 'language', 'VOF');
+alias(['truefrench'], 'language', 'TRUEFRENCH');
+alias(['vfi'], 'language', 'VFI');
+alias(['vfb'], 'language', 'VFB');
+alias(['vf2'], 'language', 'VF2');
+alias(['muet'], 'language', 'MUET');
 alias(['multi'], 'language', 'MULTI');
 alias(['remux'], 'source', 'Remux');
 alias(['bluray', 'blu-ray', 'bdrip'], 'source', 'BluRay');
@@ -89,6 +95,7 @@ export function parseNaturalQuery(query: string): ParsedQuery {
  */
 export function detectFromReleaseName(text: string): ParsedQuery {
   const result: ParsedQuery = { name: '' };
+  const languageTag = languageTagFrom(text); // étiquette complète (MULTI.VFQ...) selon la règle de langue
   const rawTokens = text.replace(/\.torrent$/i, '').split(/[.\_\[\]()\s]+/).filter(Boolean);
 
   for (const raw of rawTokens) {
@@ -102,6 +109,7 @@ export function detectFromReleaseName(text: string): ParsedQuery {
   }
   // « WEB » seul (ex : 1080p.WEB.EAC3) est courant dans un nom de release ; on ne l'accepte pas dans une recherche (« web design »).
   if (!result.source && rawTokens.some((t) => t.toLowerCase() === 'web')) result.source = 'WEB-DL';
+  if (languageTag) result.language = languageTag; else delete result.language;
   return result;
 }
 

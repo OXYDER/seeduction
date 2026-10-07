@@ -8,6 +8,7 @@ import { PrismaService } from '../common/prisma.service';
 import { parseTorrentFile, rewriteTorrentForUser, sanitizeTorrentForUpload } from '../common/utils/torrent-file';
 import { MetadataService } from '../metadata/metadata.service';
 import { parseCoverage } from '../common/utils/coverage';
+import { languageAtoms, normalizeLanguage, storedValuesFor } from '../common/utils/language';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -129,7 +130,7 @@ export class TorrentsService implements OnModuleInit {
         coverImage: params.coverImage || null,
         tags: params.tags,
         year: params.year,
-        language: params.language,
+        language: normalizeLanguage(params.language),
         resolution: params.resolution,
         codec: params.codec,
         hdr: params.hdr ?? false,
@@ -313,7 +314,11 @@ export class TorrentsService implements OnModuleInit {
       if (params.maxSeeders != null) where.seeders.lte = params.maxSeeders;
     }
     if (params.year != null) where.year = params.year;
-    if (params.language) where.language = { equals: params.language, mode: 'insensitive' };
+    if (params.language) {
+      // « VFQ » retrouve aussi MULTI.VFQ et MULTI.VF2 ; « MULTI » toutes les étiquettes MULTI.* (voir common/utils/language.ts).
+      const values = storedValuesFor(params.language);
+      where.language = values ? { in: values } : { equals: params.language, mode: 'insensitive' };
+    }
     if (params.resolution) where.resolution = { equals: params.resolution, mode: 'insensitive' };
     if (params.codec) where.codec = { equals: params.codec, mode: 'insensitive' };
     if (params.hdr) where.hdr = true;
@@ -341,6 +346,13 @@ export class TorrentsService implements OnModuleInit {
     for (const field of FIELDS) {
       const where = await this.buildWhere({ ...params, [field]: undefined });
       const groups: any[] = await (this.prisma.torrent.groupBy as any)({ by: [field], where: { ...where, [field]: { not: null } }, _count: { _all: true } });
+      if (field === 'language') {
+        // Un torrent MULTI.VF2 compte pour MULTI, VF2, VFF et VFQ : on additionne par « atome » d'étiquette.
+        const byAtom = new Map<string, number>();
+        for (const g of groups) if (g.language) for (const a of languageAtoms(g.language)) byAtom.set(a, (byAtom.get(a) ?? 0) + (g._count._all as number));
+        out[field] = [...byAtom].map(([value, count]) => ({ value, count })).sort((x, y) => y.count - x.count);
+        continue;
+      }
       out[field] = groups.map((g) => ({ value: g[field] as string, count: g._count._all as number })).filter((g) => g.value).sort((x, y) => y.count - x.count);
     }
     const genreWhere = await this.buildWhere({ ...params, genre: undefined });

@@ -15,6 +15,7 @@ const MEMBER_CLASSES = ['NOUVEAU', 'MEMBRE', 'POWER_USER', 'ELITE', 'VETERAN'];
 const TORRENT_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'DEAD'];
 
 import { AccountDeletionService, DELETED_USER_ID } from './account-deletion.service';
+import { normalizeLanguage } from '../common/utils/language';
 import { AuthService } from '../auth/auth.service';
 
 export interface Actor { userId: string; username: string; role: string }
@@ -116,7 +117,7 @@ export class AdminService {
     if (typeof body.origin === 'string') data.origin = normalizeOrigin(body.origin) ?? null;
     if (typeof body.resolution === 'string') data.resolution = body.resolution.trim() || null;
     if (typeof body.source === 'string') data.source = body.source.trim() || null;
-    if (typeof body.language === 'string') data.language = body.language.trim() || null;
+    if (typeof body.language === 'string') data.language = normalizeLanguage(body.language) ?? null;
     if (body.attrs && typeof body.attrs === 'object' && !Array.isArray(body.attrs)) {
       const t = await this.prisma.torrent.findUnique({ where: { id }, select: { categoryId: true } });
       const catId = data.categoryId ?? t?.categoryId;

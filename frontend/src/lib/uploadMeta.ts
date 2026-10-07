@@ -1,6 +1,7 @@
 // Valeurs et détection automatique des métadonnées « Film / Série » de l'upload
 // (saison, épisode, langue, genres, type 2D/3D), à partir du nom de la release, de la liste des fichiers et du NFO.
 import { detectFromReleaseName } from './searchParser';
+import { languageTagFrom } from './languageTag';
 
 export const GENRES = [
   'Action', 'Action & Aventure', 'Animation', 'Aventure', 'Biographie', 'Comédie', 'Comédie dramatique', 'Comédie musicale', 'Concert',
@@ -75,8 +76,6 @@ export interface NfoInfo {
   season?: string; episode?: string; containerFormat?: string;
 }
 
-const LANG_CODE: Record<string, string> = { french: 'fr', francais: 'fr', fr: 'fr', fre: 'fr', fra: 'fr', english: 'en', anglais: 'en', en: 'en', eng: 'en' };
-
 /** Lit un NFO (texte libre ou sortie MediaInfo) et en tire les valeurs qu'il est possible de deviner ; le reste est laissé vide. */
 export function parseNfo(text: string): NfoInfo {
   const out: NfoInfo = { genres: [] };
@@ -113,27 +112,8 @@ export function parseNfo(text: string): NfoInfo {
   const container = text.match(/^\s*Format\s*:\s*(Matroska|MPEG-4|AVI)/im)?.[1];
   if (container) out.containerFormat = /matroska/i.test(container) ? 'MKV' : /mpeg-4/i.test(container) ? 'MP4' : 'AVI';
 
-  // Langues : blocs Audio / Text de MediaInfo, sinon mentions explicites (VFQ, TRUEFRENCH, MULTI...).
-  const audioLangs = new Set<string>();
-  const subLangs = new Set<string>();
-  let section = '';
-  for (const line of text.split(/\r?\n/)) {
-    const head = line.match(/^\s*(General|Video|Audio|Text|Menu|Other)(?:\s*#\d+)?\s*$/i);
-    if (head) { section = head[1].toLowerCase(); continue; }
-    const lang = line.match(/^\s*Language\s*:\s*([^\s/(]+)/i)?.[1];
-    if (lang) {
-      const code = LANG_CODE[strip(lang)] ?? strip(lang).slice(0, 2);
-      if (section === 'audio') audioLangs.add(code);
-      if (section === 'text') subLangs.add(code);
-    }
-  }
-  const labelled = text.split(/\r?\n/).filter((l) => /^\s*(release|nom|name|titre|langue|language|audio)\b.*[:.]/i.test(l)).join(' ');
-  const explicit = detectFromReleaseName(labelled).language;
-  if (explicit) out.language = explicit;
-  else if (audioLangs.size > 1 && audioLangs.has('fr')) out.language = 'MULTI';
-  else if (audioLangs.size === 1 && audioLangs.has('fr')) out.language = /(qu[eé]bec|vfq|canad)/i.test(text) ? 'VFQ' : 'VF';
-  else if (audioLangs.size >= 1 && subLangs.has('fr')) out.language = 'VOSTFR';
-  else if (audioLangs.size === 1) out.language = 'VO';
+  // Langue : pistes audio / sous-titres du MediaInfo et mentions explicites (VFQ...), selon la règle de langue de Seeduction.
+  out.language = languageTagFrom('', text);
 
   const relLine = text.split(/\r?\n/).find((l) => /^\s*(release|nom|name|titre)\b.*[:.]/i.test(l)) ?? '';
   const det = detectFromReleaseName(relLine);

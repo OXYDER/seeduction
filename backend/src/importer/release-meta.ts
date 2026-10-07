@@ -1,11 +1,13 @@
+import { FR_VARIANTS } from '../common/utils/language';
+
 /**
  * Métadonnées d'une release (langue, résolution, source, codec...) devinées à partir de son NOM et de son NFO / MediaInfo, comme le fait le
- * formulaire d'envoi du site côté navigateur. L'import automatique n'a pas de formulaire : sans ça, aucun filtre (langue, résolution...) ne serait rempli.
+ * formulaire d'envoi du site côté navigateur. L'import automatique n'a pas de formulaire : sans ça, aucun filtre ne serait rempli.
  *
- * Langue : la priorité est de repérer le **VFQ** (doublage français du Québec) :
- *   - dans le nom : VFQ, VQ, QUEBEC, CANADIEN, et VF2 (= deux versions françaises : France + Québec) ;
- *   - dans le MediaInfo : une piste audio « French (CA) » / fr-CA, ou un titre de piste qui parle de VFQ / Québec / Canada.
- * Une release qui contient une piste VFQ (même dans un MULTi) est classée « VFQ » : c'est ce qu'on cherche à retrouver dans le filtre Langue.
+ * Langue : étiquette de la règle de Seeduction (voir common/utils/language.ts) —
+ *   VOF / TRUEFRENCH / VFF / VFI / VFB / VFQ (une seule piste française), MULTI.<variante> (plusieurs langues, une piste française),
+ *   MULTI.VF2 (VFF + VFQ), VOSTFR (aucune piste française, sous-titres français), MUET / MUET.VOSTFR.
+ * Le nom de la release fait foi ; le MediaInfo la précise (piste « French (CA) » = VFQ) ou la corrige (deux pistes françaises = MULTI.VF2).
  */
 export interface ReleaseMeta {
   year?: number;
@@ -21,47 +23,89 @@ export interface ReleaseMeta {
 }
 
 const tokensOf = (name: string): string[] => name.replace(/\.torrent$/i, '').split(/[.\_\[\]()\s]+/).filter(Boolean);
-
-function languageFromName(tokens: string[]): { language?: string; vfq: boolean } {
-  const all = tokens.flatMap((t) => [t.toLowerCase(), ...t.toLowerCase().split('-')]);
-  const has = (...w: string[]) => w.some((x) => all.includes(x));
-  const vfq = has('vfq', 'vq', 'vfqc', 'quebec', 'québec', 'canadien', 'vf2');
-  if (vfq) return { language: 'VFQ', vfq: true };
-  if (has('multi', 'multi2', 'multi3')) return { language: 'MULTI', vfq: false };
-  if (has('vostfr', 'vost', 'subfrench')) return { language: 'VOSTFR', vfq: false };
-  if (has('vff', 'truefrench')) return { language: 'VFF', vfq: false };
-  if (has('vf', 'vfi', 'french', 'francais', 'français')) return { language: 'VF', vfq: false };
-  if (has('vo')) return { language: 'VO', vfq: false };
-  return { vfq: false };
-}
-
-const LANG_CODE: Record<string, string> = { french: 'fr', francais: 'fr', 'français': 'fr', fr: 'fr', fre: 'fr', fra: 'fr', english: 'en', anglais: 'en', en: 'en', eng: 'en' };
+const LANG_CODE: Record<string, string> = { french: 'fr', francais: 'fr', fr: 'fr', fre: 'fr', fra: 'fr', english: 'en', anglais: 'en', en: 'en', eng: 'en' };
 const strip = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-/** Ce que dit un NFO (texte libre ou rapport MediaInfo) sur la langue : pistes audio, sous-titres, mention explicite de VFQ / Québec. */
-function languageFromNfo(nfo: string): { language?: string; vfq: boolean } {
-  const audio = new Set<string>();
-  const subs = new Set<string>();
-  let vfq = false;
+type Variant = typeof FR_VARIANTS[number];
+
+/** Ce que dit le NOM : variantes françaises annoncées, MULTI, MUET, VOSTFR. */
+function fromName(tokens: string[]) {
+  const all = tokens.flatMap((t) => [t.toLowerCase(), ...t.toLowerCase().split('-')]);
+  const has = (...w: string[]) => w.some((x) => all.includes(x));
+  const fr = new Set<Variant>();
+  if (has('vof')) fr.add('VOF');
+  if (has('truefrench')) fr.add('TRUEFRENCH');
+  if (has('vff')) fr.add('VFF');
+  if (has('vfi')) fr.add('VFI');
+  if (has('vfb')) fr.add('VFB');
+  if (has('vfq', 'vq', 'vfqc', 'quebec', 'québec', 'canadien')) fr.add('VFQ');
+  if (has('vf2')) { fr.add('VFF'); fr.add('VFQ'); }
+  return {
+    fr,
+    multi: has('multi', 'multi2', 'multi3', 'multilang', 'multilangue'),
+    muet: has('muet'),
+    vostfr: has('vostfr', 'vost', 'subfrench'),
+  };
+}
+
+/** Ce que dit le MediaInfo : variantes des pistes audio françaises, autres langues audio, sous-titres français. */
+function fromNfo(nfo: string) {
+  const fr = new Set<Variant>();
+  let nonFr = 0;
+  let subsFr = false;
   let section = '';
+  let trackLang = '';
+  let trackTitle = '';
+  const endAudio = () => {
+    if (section === 'audio' && trackLang) {
+      if (trackLang === 'fr') fr.add(variantOf(trackLang, trackTitle));
+      else nonFr++;
+    }
+    trackLang = ''; trackTitle = '';
+  };
+  const variantOf = (_code: string, label: string): Variant => {
+    if (/\((?:ca|can)\)|canad|qu[eé]b|fr-?ca|\bvfq\b|\bvq\b/i.test(label)) return 'VFQ';
+    if (/\((?:be|bel)\)|belg|fr-?be|\bvfb\b/i.test(label)) return 'VFB';
+    if (/\bvfi\b|international/i.test(label)) return 'VFI';
+    if (/\bvof\b/i.test(label)) return 'VOF';
+    if (/truefrench/i.test(label)) return 'TRUEFRENCH';
+    return 'VFF';
+  };
   for (const line of nfo.split(/\r?\n/)) {
     const head = line.match(/^\s*(General|Video|Audio|Text|Menu|Other)(?:\s*#\d+)?\s*$/i);
-    if (head) { section = head[1].toLowerCase(); continue; }
+    if (head) { endAudio(); section = head[1].toLowerCase(); continue; }
     const lang = line.match(/^\s*Language\s*:\s*(.+)$/i)?.[1]?.trim();
     if (lang) {
       const code = LANG_CODE[strip(lang.split(/[\s/(]/)[0])] ?? strip(lang).slice(0, 2);
-      if (section === 'audio') { audio.add(code); if (code === 'fr' && /\((?:ca|can)\)|canad|qu[eé]b|fr-?ca/i.test(lang)) vfq = true; }
-      if (section === 'text') subs.add(code);
+      if (section === 'audio') { trackLang = code; trackTitle = lang + ' ' + trackTitle; }
+      if (section === 'text' && code === 'fr') subsFr = true;
     }
-    if (section === 'audio' && /^\s*Title\s*:/i.test(line) && /\bvfq\b|\bvq\b|qu[eé]b|canad/i.test(line)) vfq = true;
-    if (/^\s*(release|nom|name|titre|langue|language|audio)\b.*[:.]/i.test(line) && /\bvfq\b|\bvf2\b|qu[eé]b/i.test(line)) vfq = true;
+    if (section === 'audio' && /^\s*Title\s*:/i.test(line)) trackTitle += ' ' + line;
   }
-  if (vfq) return { language: 'VFQ', vfq: true };
-  if (audio.size > 1 && audio.has('fr')) return { language: 'MULTI', vfq: false };
-  if (audio.size === 1 && audio.has('fr')) return { language: 'VF', vfq: false };
-  if (audio.size >= 1 && subs.has('fr')) return { language: 'VOSTFR', vfq: false };
-  if (audio.size === 1) return { language: 'VO', vfq: false };
-  return { vfq: false };
+  endAudio();
+  // Mention explicite dans un NFO texte (« Langue : VFQ »).
+  for (const line of nfo.split(/\r?\n/)) if (/^\s*(release|nom|name|titre|langue|language|audio)\b.*[:.]/i.test(line) && /\bvfq\b|qu[eé]b/i.test(line)) fr.add('VFQ');
+  return { fr, nonFr, subsFr };
+}
+
+function languageOf(name: string, nfo: string): string | undefined {
+  const n = fromName(tokensOf(name));
+  const m = fromNfo(nfo);
+
+  // Aucune piste française annoncée par le nom : muet / VOSTFR.
+  const frAll = new Set<Variant>([...n.fr, ...m.fr]);
+  const both = frAll.has('VFF') && frAll.has('VFQ');
+  if (n.fr.size === 0 && m.fr.size === 0) {
+    if (n.muet) return n.vostfr ? 'MUET.VOSTFR' : 'MUET';
+    if (n.vostfr || m.subsFr) return 'VOSTFR';
+    return undefined; // « FRENCH », « MULTi » seuls : rien de précis dans le nom ni le MediaInfo
+  }
+  // Deux versions françaises (VFF + VFQ) : MULTI.VF2 est obligatoire.
+  if (both) return 'MULTI.VF2';
+  // Une variante : le nom l'emporte, le MediaInfo la précise quand le nom ne dit que « MULTI » / « FRENCH ».
+  const variant: Variant = (n.fr.size ? [...n.fr][0] : [...m.fr][0]) as Variant;
+  const multi = n.multi || m.nonFr > 0; // d'autres pistes audio que le français : l'étiquette doit commencer par MULTI
+  return multi ? `MULTI.${variant}` : variant;
 }
 
 function episodeOf(text: string): { season?: string; episode?: string } {
@@ -118,11 +162,7 @@ export function detectReleaseMeta(name: string, nfo = ''): ReleaseMeta {
   if (container) out.containerFormat = /matroska/i.test(container) ? 'MKV' : /mpeg-4/i.test(container) ? 'MP4' : 'AVI';
   else if (has('mkv')) out.containerFormat = 'MKV';
 
-  // Langue : le VFQ trouvé dans le nom OU dans le MediaInfo l'emporte ; sinon la mention du nom, sinon ce que montrent les pistes du MediaInfo.
-  const fromName = languageFromName(tokens);
-  const fromNfo = languageFromNfo(nfo);
-  out.language = fromName.vfq || fromNfo.vfq ? 'VFQ' : (fromName.language ?? fromNfo.language);
-
+  out.language = languageOf(name, nfo);
   Object.assign(out, episodeOf(name));
   return out;
 }

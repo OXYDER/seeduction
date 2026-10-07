@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import DescriptionGenerator from '../components/DescriptionGenerator';
 import WysiwygEditor from '../components/WysiwygEditor';
-import { ORIGINS, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName, cleanTitleForSearch } from '../lib/searchParser';
+import { ORIGINS, RESOLUTIONS, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName, cleanTitleForSearch } from '../lib/searchParser';
 import { parseTorrentInfo } from '../lib/bencode';
 import { summarizeTorrent } from '../lib/torrentSummary';
 import { resolveContentKind } from '../lib/categoryKind';
@@ -12,6 +12,7 @@ import DuplicateWarning from '../components/DuplicateWarning';
 import FacetFields from '../components/FacetFields';
 import GamePlatformPicker, { type GamePlatformInfo } from '../components/GamePlatformPicker';
 import type { FacetDef, FacetValues } from '../lib/facets';
+import { LANGUAGE_GROUPS, LANGUAGE_LABELS, languageTagFrom } from '../lib/languageTag';
 import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeFromRelease, detectVideoType, matchGenres, looksLikeCode, titleFromNfo } from '../lib/uploadMeta';
 
 export default function Upload() {
@@ -30,6 +31,8 @@ export default function Upload() {
   const [showMeta, setShowMeta] = useState(false);
   const [year, setYear] = useState('');
   const [language, setLanguage] = useState('');
+  const langTouched = useRef(false); // l'étiquette choisie à la main n'est plus jamais remplacée par la détection automatique
+  const pickLanguage = (v: string) => { langTouched.current = true; setLanguage(v); };
   const [origin, setOrigin] = useState('');
   const [resolution, setResolution] = useState('');
   const [codec, setCodec] = useState('');
@@ -115,7 +118,7 @@ export default function Upload() {
     audio,
     source,
     format: containerFormat || summary.mainFormat,
-    sous_titres: summary.subtitlesText || (language === 'VOSTFR' ? 'Français' : ''),
+    sous_titres: summary.subtitlesText || (language.includes('VOSTFR') ? 'Français' : ''),
     // Tiré directement du contenu du .torrent (jamais la taille du fichier .torrent lui-même).
     taille: fileList.length > 0 ? summary.totalSizeText : '',
     nb_fichiers: fileList.length > 0 ? String(summary.fileCount) : '',
@@ -162,7 +165,8 @@ export default function Upload() {
     const nfo = parseNfo(nfoText);
     if (!season && (ep.season ?? nfo.season)) setSeason((ep.season ?? nfo.season) as string);
     if (!episode && (ep.episode ?? nfo.episode)) setEpisode((ep.episode ?? nfo.episode) as string);
-    if (!language && nfo.language) setLanguage(nfo.language);
+    const langTag = languageTagFrom(name, nfoText); // nom + MediaInfo : VFQ, MULTI.VFQ, MULTI.VF2, VOSTFR...
+    if (langTag && !langTouched.current) setLanguage(langTag);
     if (!resolution && nfo.resolution) setResolution(nfo.resolution);
     if (!codec && nfo.codec) setCodec(nfo.codec);
     if (!audio && nfo.audio) setAudio(nfo.audio);
@@ -448,9 +452,9 @@ export default function Upload() {
                     </>
                   )}
                   <FoundOrInput id="language" label="Langue" required filled={!!language} summary={language} editing={editing} setEditing={setEditing} missing={missing.includes('Langue')}>
-                    <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+                    <select value={language} onChange={(e) => pickLanguage(e.target.value)} title="Langue des pistes audio, selon la règle de Seeduction">
                       <option value="">Sélectionner…</option>
-                      {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+                      {LANGUAGE_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.values.map((l) => <option key={l} value={l}>{LANGUAGE_LABELS[l] ?? l}</option>)}</optgroup>)}
                     </select>
                   </FoundOrInput>
                   <FoundOrInput id="type" label="Type" filled={!!videoType && (videoTouched.current || videoType !== '2D')} summary={videoType} editing={editing} setEditing={setEditing}>
@@ -491,9 +495,9 @@ export default function Upload() {
           {showMeta && (
             <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
               <input type="number" placeholder="Année" value={year} onChange={(e) => setYear(e.target.value)} />
-              <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+              <select value={language} onChange={(e) => pickLanguage(e.target.value)} title="Langue des pistes audio, selon la règle de Seeduction">
                 <option value="">Langue</option>
-                {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+                {LANGUAGE_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.values.map((l) => <option key={l} value={l}>{LANGUAGE_LABELS[l] ?? l}</option>)}</optgroup>)}
               </select>
               <select value={origin} onChange={(e) => setOrigin(e.target.value)} title="Pays ou région de production du contenu">
                 <option value="">Origine</option>
