@@ -2,8 +2,7 @@ import { randomBytes, createHash } from 'crypto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 
-/** `torrents:upload` : envoyer des torrents au nom du propriétaire de la clé (outil d'import automatique) — ils passent par la modération comme les autres. */
-export const API_SCOPES = ['torrents:read', 'torrents:upload', 'stats:read', 'user:read'] as const;
+export const API_SCOPES = ['torrents:read', 'stats:read', 'user:read'] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
 @Injectable()

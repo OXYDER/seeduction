@@ -8,7 +8,7 @@ RUN npx prisma generate
 RUN npm run build
 
 FROM node:20-alpine
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl mediainfo
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist

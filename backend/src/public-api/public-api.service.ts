@@ -1,7 +1,6 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
-import { TorrentsService } from '../torrents/torrents.service';
 
 function escapeXml(text: string) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -29,7 +28,7 @@ const TORRENT_LIST_SELECT = {
 
 @Injectable()
 export class PublicApiService {
-  constructor(private prisma: PrismaService, private adult: AdultService, private torrents: TorrentsService) {}
+  constructor(private prisma: PrismaService, private adult: AdultService) {}
 
   async listTorrents(params: { search?: string; categoryId?: string; limit?: number }) {
     const limit = Math.min(Math.max(params.limit ?? 25, 1), 100);
@@ -45,37 +44,6 @@ export class PublicApiService {
       take: limit,
       select: TORRENT_LIST_SELECT,
     });
-  }
-
-  /** Catégories où l'on peut envoyer un torrent (les sous-catégories), avec leur identifiant, pour configurer l'outil d'import. */
-  async uploadCategories() {
-    const all = await this.prisma.category.findMany({ select: { id: true, name: true, parentId: true }, orderBy: { name: 'asc' } });
-    const byId = new Map(all.map((c) => [c.id, c]));
-    const parents = new Set(all.map((c) => c.parentId).filter(Boolean));
-    return all
-      .filter((c) => !parents.has(c.id))
-      .map((c) => ({ id: c.id, name: c.name, path: c.parentId ? `${byId.get(c.parentId)?.name} > ${c.name}` : c.name }));
-  }
-
-  /** Une clé d'envoi ne sert plus si son propriétaire est banni ou désactivé. */
-  async assertCanUpload(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { status: true, role: true } });
-    if (!user || user.status !== 'ACTIVE') throw new ForbiddenException("Le compte propriétaire de cette clé ne peut pas envoyer de torrents");
-    // Un membre du staff valide de toute façon ses propres envois : ceux faits par sa clé sont approuvés directement (les autres membres passent par la modération).
-    return { staff: ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role) };
-  }
-
-  /**
-   * Le .torrent personnalisé (avec le passkey du propriétaire de la clé) d'un torrent QUE CETTE CLÉ A ENVOYÉ, pour le seeder à partir de qBittorrent.
-   * Réservé à ses propres envois (une clé d'envoi ne sert pas à télécharger les torrents des autres) et seulement une fois le torrent
-   * validé par le staff : avant, le tracker ne l'accepterait pas.
-   */
-  async ownTorrentFile(userId: string, id: string): Promise<{ pending: true } | { file: Buffer }> {
-    const t = await this.prisma.torrent.findFirst({ where: { id, uploaderId: userId }, select: { id: true, status: true } });
-    if (!t) throw new NotFoundException('Torrent introuvable (ou envoyé par un autre compte)');
-    if (t.status === 'PENDING') return { pending: true };
-    if (t.status !== 'APPROVED') throw new ForbiddenException(`Ce torrent n'est plus disponible (statut ${t.status})`);
-    return { file: await this.torrents.getDownloadFile(id, userId) };
   }
 
   async torrentDetail(id: string) {

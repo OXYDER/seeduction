@@ -41,6 +41,7 @@ const ERASE: [table: string, column: string][] = [
   ['InviteUse', 'userId'],
   ['PasswordReset', 'userId'],
   ['EmailChallenge', 'userId'],
+  ['ImportSource', 'uploaderId'], // les imports automatiques configurés au nom de ce compte (ses éléments partent en cascade)
   ['PrivateMessage', 'recipientId'], // les messages reçus n'avaient de sens que pour lui
 ];
 
