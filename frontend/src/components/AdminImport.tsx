@@ -13,7 +13,7 @@ const EMPTY_CONFIG = {
   qbit: { url: '', username: '', category: 'a-publier', tag: '' },
   ftp: { host: '', port: 21, username: '', secure: true, headMB: 16 },
   mediainfo: true,
-  defaultCategory: '', categoryRules: [] as { match: string; category: string }[],
+  defaultCategory: '', autoCategory: true, categoryRules: [] as { match: string; category: string }[],
   // Quand le nom ne précise pas la langue (« FRENCH » seul) : les releases du groupe québécois MTLQC sont en VFQ.
   languageRules: [{ match: 'MTLQC', language: 'VFQ' }] as { match: string; language: string }[],
   include: [] as string[], exclude: [] as string[], description: '',
@@ -136,7 +136,7 @@ export function ImportAdmin() {
                           <td style={{ whiteSpace: 'nowrap' }}>
                             {r.language ? <span className="badge" style={{ background: /VFQ|VF2/.test(r.language) ? 'rgba(80,200,120,0.25)' : 'rgba(255,255,255,0.1)', fontWeight: 700 }} title="Langue détectée">{r.language}</span> : <span className="muted" style={{ fontSize: 12 }} title="Aucune langue repérable dans le nom ni le MediaInfo">langue ?</span>}
                             {r.resolution && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>{r.resolution}</span>}
-                            <div className="muted" style={{ fontSize: 11 }}>→ {r.category}</div>
+                            <div className="muted" style={{ fontSize: 11 }}>→ {r.category ?? 'catégorie ?'}{r.categoryHow ? ` (${r.categoryHow})` : ''}</div>
                           </td>
                           <td className="muted" style={{ fontSize: 12 }}>{r.alreadyDone ? `déjà traité (${STATUS_LABEL[r.alreadyDone as ImportItem['status']] ?? r.alreadyDone})` : r.note}</td>
                         </tr>
@@ -265,12 +265,20 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
 
       <div className="grid" style={{ gap: 8 }}>
         <strong style={{ fontSize: 13 }}>Sur Seeduction</strong>
-        {field('Catégorie par défaut', (
-          <select value={cfg.defaultCategory} onChange={(e) => set(['defaultCategory'], e.target.value)} required>
-            <option value="">— choisir —</option>
+        <label className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+          <input type="checkbox" checked={cfg.autoCategory} onChange={(e) => set(['autoCategory'], e.target.checked)} style={{ marginTop: 3 }} />
+          <span>
+            <strong>Détecter la catégorie automatiquement</strong> — d'après le nom de la release : série (S01E02, saison, intégrale), film (année + qualité), sport (UFC, NHL…), musique (FLAC, MP3, discographie).
+            Si la clé TMDB est configurée sur le serveur, la fiche TMDB précise : animation, émission (téléréalité, talk-show), documentaire.
+            <span className="muted" style={{ display: 'block', fontSize: 11 }}>Tes règles ci-dessous passent d'abord. Une release dont le type n'est pas clair n'est jamais rangée au hasard.</span>
+          </span>
+        </label>
+        {field('Catégorie par défaut (facultative)', (
+          <select value={cfg.defaultCategory} onChange={(e) => set(['defaultCategory'], e.target.value)}>
+            <option value="">— aucune : mettre de côté ce qui n'est pas reconnu —</option>
             {cats.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-        ))}
+        ), "Sert seulement quand ni une règle ni la détection automatique ne trouvent. Laisse vide si ton catalogue est varié : mieux vaut mettre de côté que ranger au mauvais endroit.")}
         <div className="grid" style={{ gap: 4 }}>
           <span style={{ fontSize: 12, opacity: 0.8 }}>Règles de catégorie (si le nom de la release correspond à l'expression, cette catégorie est utilisée ; la première qui correspond gagne)</span>
           {cfg.categoryRules.map((r: any, i: number) => (

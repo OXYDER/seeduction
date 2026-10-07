@@ -6,7 +6,10 @@ export interface ImportConfig {
   /** Accès FTP aux fichiers de la seedbox : pour lire le .nfo ou calculer le MediaInfo (le serveur ne voit pas ces fichiers autrement). */
   ftp?: { host: string; port?: number; username: string; secure?: boolean; rejectUnauthorized?: boolean; headMB?: number; searchDepth?: number };
   mediainfo?: boolean;
-  defaultCategory: string;
+  /** Facultative : sert seulement quand ni une règle ni la détection automatique ne trouvent la catégorie. */
+  defaultCategory?: string;
+  /** Détecter la catégorie d'après le nom (film, série, sport, musique...) puis la fiche TMDB (animation, émission, documentaire). */
+  autoCategory?: boolean;
   categoryRules?: { match: string; category: string }[];
   /** « Quand le nom d'une release correspond à cette expression, sa piste française est de cette variante (ex. MTLQC -> VFQ) » : sert quand le nom ne précise rien (« FRENCH » seul). */
   languageRules?: { match: string; language: string }[];

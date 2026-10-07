@@ -778,6 +778,25 @@ export class MetadataService {
     }
   }
 
+  /**
+   * Genres TMDB (identifiants) de la fiche qui correspond le mieux à un titre : sert à classer une release (film / série / animation /
+   * émission / documentaire). Renvoie null sans clé TMDB, sans résultat sûr (le titre doit correspondre) ou en cas d'erreur.
+   */
+  async tmdbGenres(type: 'movie' | 'tv', title: string, year?: number): Promise<number[] | null> {
+    if (!this.tmdbKey || !title.trim()) return null;
+    const flat = (t: string) => deaccent(t).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    try {
+      const yearParam = year ? `&${type === 'movie' ? 'year' : 'first_air_date_year'}=${year}` : '';
+      const res = await this.fetchJson(`https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(title)}&language=fr-FR${yearParam}&api_key=${this.tmdbKey}`, 'TMDB');
+      const wanted = flat(title);
+      const hit = (res.results ?? []).find((r: any) => [r.title, r.name, r.original_title, r.original_name].filter(Boolean).some((t: string) => flat(t) === wanted));
+      if (!hit) return null;
+      return Array.isArray(hit.genre_ids) ? hit.genre_ids : null;
+    } catch {
+      return null;
+    }
+  }
+
   private async fetchJson(url: string, sourceName: string, headers?: Record<string, string>): Promise<any> {
     let res: Response;
     try {

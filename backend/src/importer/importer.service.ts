@@ -8,6 +8,8 @@ import { Qbit, QbitTorrent } from './qbit.client';
 import { hasNfo, nfoFor } from './release-files';
 import { detectReleaseMeta } from './release-meta';
 import { FR_VARIANTS } from '../common/utils/language';
+import { MetadataService } from '../metadata/metadata.service';
+import { cleanTitle, guessType, leafKey, refineWithGenres, resolveCandidate } from './category-guess';
 
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -35,7 +37,7 @@ export class ImporterService {
   private running: { sourceId: string; dryRun: boolean; startedAt: number } | null = null;
   private warnedNoNfo = new Set<string>();
 
-  constructor(private prisma: PrismaService, private torrents: TorrentsService, private admin: AdminService) {}
+  constructor(private prisma: PrismaService, private torrents: TorrentsService, private admin: AdminService, private metadata: MetadataService) {}
 
   // ------------------------------------------------------------------ configuration
 
@@ -46,7 +48,8 @@ export class ImporterService {
     if (!/^https?:\/\/[^\s]+$/i.test(url)) throw new BadRequestException("Adresse de l'interface web de qBittorrent invalide (ex. https://qbittorrent.exemple.com)");
     const cfg: ImportConfig = {
       qbit: { url: url.replace(/\/$/, ''), username: str(q.username, 100) || undefined, category: str(q.category, 100) || undefined, tag: str(q.tag, 100) || undefined, doneTag: str(q.doneTag, 100) || 'seeduction-envoye' },
-      defaultCategory: str(raw?.defaultCategory, 100),
+      defaultCategory: str(raw?.defaultCategory, 100) || undefined,
+      autoCategory: raw?.autoCategory !== false,
       categoryRules: [],
       include: regexList(raw?.include, 'filtre « inclure »'),
       exclude: regexList(raw?.exclude, 'filtre « exclure »'),
@@ -59,7 +62,6 @@ export class ImporterService {
       maxPerRun: num(raw?.maxPerRun, 1, 50, 5),
       delaySeconds: num(raw?.delaySeconds, 0, 120, 30),
     };
-    if (!cfg.defaultCategory) throw new BadRequestException('Choisis la catégorie par défaut sur Seeduction');
     for (const r of Array.isArray(raw?.categoryRules) ? raw.categoryRules.slice(0, 30) : []) {
       const match = str(r?.match, 200), category = str(r?.category, 100);
       if (!match || !category) continue;
@@ -197,14 +199,50 @@ export class ImporterService {
     return undefined;
   }
 
-  private pickCategory(cfg: ImportConfig, t: QbitTorrent): string {
-    for (const r of cfg.categoryRules ?? []) if (new RegExp(r.match, 'i').test(`${t.name} ${t.category}`)) return r.category;
-    return cfg.defaultCategory;
+  private leafCache: { at: number; ids: Map<string, string>; names: Map<string, string> } | null = null;
+
+  /** Sous-catégories existantes (seules elles reçoivent des torrents), par nom sans accents ni casse. */
+  private async leaves() {
+    if (this.leafCache && Date.now() - this.leafCache.at < 60_000) return this.leafCache;
+    const all = await this.prisma.category.findMany({ select: { id: true, name: true, parentId: true } });
+    const parents = new Set(all.map((c) => c.parentId).filter(Boolean));
+    const ids = new Map<string, string>();
+    const names = new Map<string, string>();
+    for (const c of all) if (!parents.has(c.id)) { ids.set(leafKey(c.name), c.id); names.set(leafKey(c.name), c.name); }
+    this.leafCache = { at: Date.now(), ids, names };
+    return this.leafCache;
   }
 
-  private async categoryId(name: string): Promise<string | null> {
-    const cat = await this.prisma.category.findFirst({ where: { name: { equals: name, mode: 'insensitive' } }, select: { id: true, _count: { select: { children: true } } } });
-    return cat && cat._count.children === 0 ? cat.id : null; // seules les sous-catégories reçoivent des torrents
+  /**
+   * Catégorie d'une release, dans cet ordre : 1) tes règles (nom ou catégorie qBittorrent) ; 2) détection automatique d'après le nom
+   * (série, film, sport, musique...) affinée par la fiche TMDB (animation, émission, documentaire) si la clé TMDB est configurée ;
+   * 3) la catégorie par défaut, si tu en as choisi une. Sinon null : la release est mise de côté plutôt que rangée au hasard.
+   */
+  private async chooseCategory(cfg: ImportConfig, t: QbitTorrent): Promise<{ name: string; id: string; how: string } | null> {
+    const leaves = await this.leaves();
+    for (const r of cfg.categoryRules ?? []) {
+      if (!new RegExp(r.match, 'i').test(`${t.name} ${t.category}`)) continue;
+      const id = leaves.ids.get(leafKey(r.category));
+      if (id) return { name: leaves.names.get(leafKey(r.category))!, id, how: 'règle' };
+    }
+    if (cfg.autoCategory !== false) {
+      let type = guessType(t.name);
+      let how = 'détection';
+      if (type === 'FILM' || type === 'SERIE') {
+        const { title, year } = cleanTitle(t.name);
+        const genres = await this.metadata.tmdbGenres(type === 'SERIE' ? 'tv' : 'movie', title, year);
+        if (genres) { const refined = refineWithGenres(type, genres); if (refined !== type) how = 'TMDB'; type = refined; }
+      }
+      if (type) {
+        const name = resolveCandidate(type, leaves.names);
+        if (name) return { name, id: leaves.ids.get(leafKey(name))!, how };
+      }
+    }
+    if (cfg.defaultCategory) {
+      const id = leaves.ids.get(leafKey(cfg.defaultCategory));
+      if (id) return { name: leaves.names.get(leafKey(cfg.defaultCategory))!, id, how: 'défaut' };
+    }
+    return null;
   }
 
   private async execute(id: string, dryRun: boolean) {
@@ -233,9 +271,9 @@ export class ImporterService {
         const skip = async (why: string) => { if (!dryRun) await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'SKIPPED', why } }); await ev('WARN', `${t.name} — mis de côté : ${why}`); };
         if ((cfg.include ?? []).length && !(cfg.include ?? []).some((p) => new RegExp(p, 'i').test(t.name))) { await skip('ne correspond à aucun filtre « inclure »'); continue; }
         if ((cfg.exclude ?? []).some((p) => new RegExp(p, 'i').test(t.name))) { await skip('exclu par un filtre « exclure »'); continue; }
-        const catName = this.pickCategory(cfg, t);
-        const catId = await this.categoryId(catName);
-        if (!catId) { await skip(`catégorie « ${catName} » introuvable sur Seeduction (ou catégorie principale)`); continue; }
+        const chosen = await this.chooseCategory(cfg, t);
+        if (!chosen) { await skip("type de contenu non détecté : ajoute une règle de catégorie ou choisis une catégorie par défaut, puis « Retenter »"); continue; }
+        const catName = chosen.name, catId = chosen.id;
         if (sent >= (cfg.maxPerRun ?? 5)) { await ev('INFO', `Limite de ${cfg.maxPerRun} envoi(s) par passe atteinte : la suite à la prochaine passe.`); break; }
 
         let buf: Buffer; let nfo = '';
@@ -255,7 +293,7 @@ export class ImporterService {
           const created = await this.torrents.upload({ userId: src.uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: catId, tags: [], anonymous: false, nfo, ...meta });
           const status = staff ? (await this.admin.approveTorrent(created.id)).status : created.status; // le staff valide de toute façon ses propres envois
           await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'UPLOADED', torrentId: created.id, savePath: t.save_path } });
-          await ev('INFO', `✓ ${t.name} → ${catName}${meta.language ? ` · ${meta.language}` : ''} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
+          await ev('INFO', `✓ ${t.name} → ${catName} [${chosen.how}]${meta.language ? ` · ${meta.language}` : ''} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
           q.addTags(t.hash, cfg.qbit.doneTag || 'seeduction-envoye').catch(() => undefined);
           sent++;
         } catch (e: any) {
@@ -321,7 +359,8 @@ export class ImporterService {
       let nfo = '', note = '';
       try { nfo = await nfoFor(cfg, secrets, id, t); } catch (e: any) { note = e.message; }
       const meta = detectReleaseMeta(t.name, nfo, { hintVariant: this.languageHint(cfg, t) });
-      out.push({ name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null, nfo: hasNfo(nfo) ? 'FOUND' : 'MISSING', note, language: meta.language ?? null, resolution: meta.resolution ?? null, category: this.pickCategory(cfg, t) });
+      const chosen = await this.chooseCategory(cfg, t);
+      out.push({ name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null, nfo: hasNfo(nfo) ? 'FOUND' : 'MISSING', note, language: meta.language ?? null, resolution: meta.resolution ?? null, category: chosen?.name ?? null, categoryHow: chosen?.how ?? null });
     }
     return { total: list.length, shown: out };
   }
