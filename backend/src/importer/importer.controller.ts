@@ -79,6 +79,29 @@ export class ImporterController {
     return this.importer.retryItem(id);
   }
 
+  /** « À vérifier » : sous-catégories et types de fiches disponibles. */
+  @Get('review-options')
+  reviewOptions() {
+    return this.importer.reviewOptions();
+  }
+
+  /** « À vérifier » : recherche manuelle d'une fiche (TMDB, Deezer, livres, RAWG). */
+  @Get('search')
+  search(@Query('kind') kind: string, @Query('q') q: string, @Query('year') year?: string) {
+    return this.importer.searchFiche(kind, String(q ?? '').trim(), year);
+  }
+
+  /** « À vérifier » : valide la release avec la catégorie et la fiche choisies (ou sans fiche) ; l'envoi se fait en arrière-plan. */
+  @Post('items/:id/approve')
+  approve(@Param('id') id: string, @Body() body: any) {
+    return this.importer.approveItem(id, body);
+  }
+
+  @Post('items/:id/dismiss')
+  dismiss(@Param('id') id: string) {
+    return this.importer.dismissItem(id);
+  }
+
   @Get('events')
   events(@Query('sourceId') sourceId?: string, @Query('limit') limit?: string) {
     return this.importer.events(sourceId, limit ? Number(limit) : 100);

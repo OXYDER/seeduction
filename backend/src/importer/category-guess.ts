@@ -53,9 +53,10 @@ export function guessType(name: string): ContentType | undefined {
   if (/\b(FLAC|MP3|\d{3}kbps|discograph(?:y|ie)|V0)\b/i.test(name) && !/\b(1080p|2160p|720p|x26[45]|WEB-?DL|BluRay)\b/i.test(name)) return 'MUSIQUE';
   if (/\b(epub|cbz|cbr|mobi|ebook)\b/i.test(name)) return 'LIVRE';
   if (/\bconcert\b/i.test(name)) return 'CONCERT';
-  if (/\bS\d{1,2}(?:[ ._-]?E\d{1,3})?\b/i.test(name) || /\b(saison|season|int[eé]grale|complete[ ._-]series)[ ._-]?\d*\b/i.test(name)) return 'SERIE';
+  const doc = /[. _-](DOC|DOCU|DOCUMENTAIRE|DOCUMENTARY)[. _-]/i.test(name); // « Titre.2026.DOC.FRENCH... » : l'étiquette DOC des releases
+  if (/\bS\d{1,2}(?:[ ._-]?E\d{1,3})?\b/i.test(name) || /\b(saison|season|int[eé]grale|complete[ ._-]series)[ ._-]?\d*\b/i.test(name)) return doc ? 'DOC_SERIE' : 'SERIE';
   // Un film : une année et une indication de qualité / de source dans le nom.
-  if (/\b(19|20)\d{2}\b/.test(name) && /\b(\d{3,4}[pi]|uhd|4k|web[ -]?dl|webrip|bluray|blu-ray|bdrip|dvdrip|hdrip|hdlight|remux|hdtv)\b/i.test(name)) return 'FILM';
+  if (/\b(19|20)\d{2}\b/.test(name) && /\b(\d{3,4}[pi]|uhd|4k|web[ -]?dl|webrip|bluray|blu-ray|bdrip|dvdrip|hdrip|hdlight|remux|hdtv)\b/i.test(name)) return doc ? 'DOCUMENTAIRE' : 'FILM';
   return undefined;
 }
 

@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { CoversService } from '../covers/covers.service';
 import { PrismaService } from '../common/prisma.service';
 import { TranslateService } from './translate.service';
+import { cleanTitle } from '../importer/category-guess';
 
 export interface SearchResult {
   id: string;
@@ -47,6 +48,13 @@ const SEARCHABLE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'] as 
 
 /** Retire les accents : « Amélie » devient « Amelie » (pour retrouver un titre saisi sans accents). */
 export const deaccent = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+/** Clé de comparaison de deux titres : sans accents, casse, ponctuation, ligatures (œ, æ), « & » lu « and », ni article au début. */
+export const titleKey = (t: string): string => {
+  const tokens = deaccent(t).toLowerCase().replace(/œ/g, 'oe').replace(/æ/g, 'ae').replace(/&/g, ' and ').split(/[^a-z0-9]+/).filter(Boolean);
+  if (tokens.length > 1 && ['the', 'le', 'la', 'les', 'l', 'un', 'une', 'a', 'an'].includes(tokens[0])) tokens.shift();
+  return tokens.join('');
+};
 
 const slugify = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -133,42 +141,70 @@ export class MetadataService {
     }
   }
 
-  private async searchTmdb(type: 'movie' | 'tv', query: string, year?: string): Promise<SearchResult[]> {
+  /** Une requête TMDB dans trois langues en parallèle (fr-CA, fr-FR, en-US), fusionnée par fiche : un titre québécois, français, anglais ou original sort dans tous les cas. */
+  private async tmdbPool(type: 'movie' | 'tv', query: string, year?: string): Promise<{ id: string; r: any; titles: string[] }[]> {
     const yearParam = year && /^\d{4}$/.test(year) ? `&${type === 'movie' ? 'year' : 'first_air_date_year'}=${year}` : '';
-    // Trois langues en parallèle (français canadien, français, anglais) : un film cherché sous son titre
-    // québécois, français, anglais ou original sort dans tous les cas. Les résultats sont fusionnés par fiche.
-    const languages = ['fr-CA', 'fr-FR', 'en-US'];
     const responses = await Promise.allSettled(
-      languages.map((language) =>
+      ['fr-CA', 'fr-FR', 'en-US'].map((language) =>
         this.fetchJson(`${TMDB_API}/search/${type}?query=${encodeURIComponent(query)}&language=${language}${yearParam}&api_key=${this.tmdbKey}`, 'TMDB'),
       ),
     );
     if (responses.every((r) => r.status === 'rejected')) throw (responses[0] as PromiseRejectedResult).reason;
-
     const titleOf = (r: any): string => ((type === 'movie' ? r.title : r.name) ?? '').trim();
     const originalOf = (r: any): string => ((type === 'movie' ? r.original_title : r.original_name) ?? '').trim();
-    const merged = new Map<string, any>();
-    const titles = new Map<string, string[]>();
-
+    const merged = new Map<string, { id: string; r: any; titles: string[] }>();
     for (const res of responses) {
       if (res.status !== 'fulfilled') continue;
       for (const r of res.value.results ?? []) {
         const id = String(r.id);
-        if (!merged.has(id)) merged.set(id, r); // l'ordre de pertinence est celui de la première langue qui trouve la fiche
-        const list = titles.get(id) ?? [];
-        for (const t of [titleOf(r), originalOf(r)]) if (t && !list.includes(t)) list.push(t);
-        titles.set(id, list);
+        const cur = merged.get(id) ?? { id, r, titles: [] }; // l'ordre de pertinence est celui de la première langue qui trouve la fiche
+        for (const t of [titleOf(r), originalOf(r)]) if (t && !cur.titles.includes(t)) cur.titles.push(t);
+        merged.set(id, cur);
       }
     }
+    return [...merged.values()];
+  }
 
-    return [...merged.entries()].slice(0, 14).map(([id, r]) => {
-      const main = titleOf(r) || originalOf(r) || 'Sans titre';
-      const others = (titles.get(id) ?? []).filter((t) => t !== main).slice(0, 3);
-      const yearText = (type === 'movie' ? r.release_date : r.first_air_date)?.slice(0, 4) || '';
+  /**
+   * Recherche de fiche TMDB tolérante. Un nom de release collé tel quel (« Coeur.de.Motard.2026.DOC.FRENCH... ») est réduit à son titre et son année ;
+   * si la recherche exacte ne donne rien, on réessaie sans l'année (sorties de fin d'année), avec la ligature (« Coeur » -> « Cœur »), sans le sous-titre,
+   * puis en raccourcissant le titre. Les résultats sont classés : titre identique d'abord, puis année la plus proche, puis pertinence TMDB.
+   */
+  private async searchTmdb(type: 'movie' | 'tv', query: string, year?: string): Promise<SearchResult[]> {
+    let q = query.trim();
+    let y = year && /^\d{4}$/.test(year) ? year : undefined;
+    if (/[._]/.test(q) && !/\s/.test(q)) { const parsed = cleanTitle(q); if (parsed.title) { q = parsed.title; if (!y && parsed.year) y = String(parsed.year); } }
+
+    const variants: { q: string; y?: string }[] = [{ q, y }];
+    if (y) variants.push({ q });
+    if (/oe/i.test(q)) variants.push({ q: q.replace(/oe/gi, 'œ'), y });
+    const noSub = q.split(/\s*[:\u2013\u2014]\s*|\s+-\s+/)[0].trim();
+    if (noSub && noSub !== q) variants.push({ q: noSub });
+    const words = q.split(/\s+/);
+    if (words.length > 2) variants.push({ q: words.slice(0, -1).join(' ') });
+
+    const pool = new Map<string, { id: string; r: any; titles: string[] }>();
+    for (const v of variants) {
+      for (const hit of await this.tmdbPool(type, v.q, v.y)) if (!pool.has(hit.id)) pool.set(hit.id, hit);
+      if (pool.size >= 5) break; // assez de candidats : inutile d'élargir davantage
+    }
+
+    const wanted = titleKey(q);
+    const dateOf = (r: any): string => String((type === 'movie' ? r.release_date : r.first_air_date) ?? '');
+    const score = (h: { r: any; titles: string[] }, order: number) => {
+      const exact = h.titles.some((t) => titleKey(t) === wanted) ? 1000 : 0;
+      const gap = y && dateOf(h.r) ? Math.abs(Number(dateOf(h.r).slice(0, 4)) - Number(y)) : 9;
+      return exact + (gap === 0 ? 100 : gap === 1 ? 50 : 0) - order; // le rang d'origine départage
+    };
+    const ranked = [...pool.values()].map((h, i) => ({ h, sc: score(h, i) })).sort((a, b) => b.sc - a.sc).map((x) => x.h);
+
+    return ranked.slice(0, 14).map(({ id, r, titles }) => {
+      const main = ((type === 'movie' ? r.title : r.name) ?? '').trim() || titles[0] || 'Sans titre';
+      const others = titles.filter((t) => t !== main).slice(0, 3);
       return {
         id,
         title: main,
-        subtitle: [yearText, others.length ? `aussi : ${others.join(' / ')}` : ''].filter(Boolean).join(' · '),
+        subtitle: [dateOf(r).slice(0, 4), others.length ? `aussi : ${others.join(' / ')}` : ''].filter(Boolean).join(' · '),
         thumbnail: r.poster_path ? `${TMDB_IMG}/w342${r.poster_path}` : null,
       };
     });
@@ -780,23 +816,27 @@ export class MetadataService {
   }
 
   /**
-   * Fiche TMDB qui correspond EXACTEMENT à un titre (et à l'année si elle est connue) : son identifiant (pour la rattacher au torrent)
+   * Fiche TMDB qui correspond EXACTEMENT à un titre (et à l'année, à un an près) : son identifiant (pour la rattacher au torrent)
    * et ses genres (pour classer la release : film / série / animation / émission / documentaire). Renvoie null sans clé TMDB, sans
-   * correspondance sûre (le titre doit être le même, accents et casse mis à part) ou en cas d'erreur : on ne rattache jamais une fiche au hasard.
+   * correspondance sûre ou en cas d'erreur : on ne rattache jamais une fiche au hasard (les cas douteux sont proposés à la vérification manuelle).
+   * La comparaison ignore les accents, la casse, la ponctuation, les ligatures (« Cœur » = « Coeur »), « & » = « and » et l'article du début (« The », « Le »...).
    */
   async tmdbMatch(type: 'movie' | 'tv', title: string, year?: number): Promise<{ id: string; genreIds: number[]; title: string; year?: string } | null> {
     if (!this.tmdbKey || !title.trim()) return null;
-    const flat = (t: string) => deaccent(t).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const wanted = titleKey(title);
+    if (!wanted) return null;
+    const dateOf = (r: any): string => String((type === 'movie' ? r.release_date : r.first_air_date) ?? '');
+    const yearOk = (r: any) => !year || !dateOf(r) || Math.abs(Number(dateOf(r).slice(0, 4)) - year) <= 1;
+    const sameTitle = (r: any) => [r.title, r.name, r.original_title, r.original_name].filter(Boolean).some((t: string) => titleKey(t) === wanted);
+    const yearParam = year ? `&${type === 'movie' ? 'year' : 'first_air_date_year'}=${year}` : '';
+    const tries = [yearParam, ...(year ? [''] : [])]; // sans l'année en second recours : une année décalée d'un an (sortie de fin d'année) reste acceptée
     try {
-      const yearParam = year ? `&${type === 'movie' ? 'year' : 'first_air_date_year'}=${year}` : '';
-      const wanted = flat(title);
-      // Trois langues : un film québécois, français ou anglais est retrouvé sous n'importe lequel de ses titres.
-      for (const language of ['fr-CA', 'fr-FR', 'en-US']) {
-        const res = await this.fetchJson(`${TMDB_API}/search/${type}?query=${encodeURIComponent(title)}&language=${language}${yearParam}&api_key=${this.tmdbKey}`, 'TMDB');
-        const hit = (res.results ?? []).find((r: any) => [r.title, r.name, r.original_title, r.original_name].filter(Boolean).some((t: string) => flat(t) === wanted));
-        if (hit) {
-          const date: string = (type === 'movie' ? hit.release_date : hit.first_air_date) ?? '';
-          return { id: String(hit.id), genreIds: Array.isArray(hit.genre_ids) ? hit.genre_ids : [], title: String(hit.title ?? hit.name ?? title), year: date.slice(0, 4) || undefined };
+      for (const extra of tries) {
+        // Trois langues : un film québécois, français ou anglais est retrouvé sous n'importe lequel de ses titres.
+        for (const [language, query] of [...(['fr-CA', 'fr-FR', 'en-US'] as const).map((l) => [l, title] as const), ...(/oe/i.test(title) ? [['fr-CA', title.replace(/oe/gi, 'œ')] as const] : [])]) {
+          const res = await this.fetchJson(`${TMDB_API}/search/${type}?query=${encodeURIComponent(query)}&language=${language}${extra}&api_key=${this.tmdbKey}`, 'TMDB');
+          const hit = (res.results ?? []).find((r: any) => sameTitle(r) && yearOk(r));
+          if (hit) return { id: String(hit.id), genreIds: Array.isArray(hit.genre_ids) ? hit.genre_ids : [], title: String(hit.title ?? hit.name ?? title), year: dateOf(hit).slice(0, 4) || undefined };
         }
       }
       return null;

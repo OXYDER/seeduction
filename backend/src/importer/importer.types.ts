@@ -14,6 +14,8 @@ export interface ImportConfig {
   readFeedCategory?: boolean;
   /** Relier chaque release à sa fiche (TMDB pour les films et séries : affiche, synopsis, distribution...) quand le titre correspond exactement. */
   attachMetadata?: boolean;
+  /** Une release dont la fiche (TMDB) ou la catégorie n'est pas sûre est mise dans « À vérifier » : tu la complètes à la main, puis tu valides l'import. */
+  reviewUnmatched?: boolean;
   categoryRules?: { match: string; category: string }[];
   include?: string[];
   exclude?: string[];

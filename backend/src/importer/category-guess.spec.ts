@@ -19,6 +19,12 @@ describe('type de contenu deduit du nom', () => {
     expect(guessType('Survival.Of.The.Dead.2009.MULTi.TRUEFRENCH.1080p.BluRay.x264-RiFiFi')).toBe('FILM');
   });
 
+  it("l'etiquette DOC du nom : documentaire (film) ou serie documentaire", () => {
+    expect(guessType('Coeur.de.Motard.2026.DOC.FRENCH.AD.1080p.WEB.AAC.2.0.H264-MTLQC.mkv')).toBe('DOCUMENTAIRE');
+    expect(guessType('Planete.Bleue.S01.DOC.FRENCH.1080p.WEB-GRP')).toBe('DOC_SERIE');
+    expect(guessType('Docteur.Who.2026.1080p.WEB-GRP')).toBe('FILM'); // « Docteur » n'est pas l'étiquette DOC
+  });
+
   it('sport, musique, livres, concert', () => {
     expect(guessType('UFC.332.Prelims.Main.Silva.Vs.Wang.03.10.2026.VFF.1080p.HDTV.AAC.2.0.H264-NOTAG')).toBe('SPORT');
     expect(guessType('Orloge.Simard.Discographie.2014.a.2020.WebRip.MP3-320Kbps-NoTag')).toBe('MUSIQUE');

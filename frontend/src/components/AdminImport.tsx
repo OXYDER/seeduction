@@ -7,19 +7,19 @@ interface Source {
   id: string; name: string; enabled: boolean; config: any; hasQbitPassword: boolean; hasFtpPassword: boolean;
   lastRunAt: string | null; lastError: string | null; counts: Record<string, number>;
 }
-interface ImportItem { id: string; name: string; status: 'UPLOADED' | 'DUPE' | 'REJECTED' | 'SKIPPED'; why: string | null; seeded: string | null; updatedAt: string }
+interface ImportItem { id: string; name: string; status: 'UPLOADED' | 'DUPE' | 'REJECTED' | 'SKIPPED' | 'REVIEW' | 'READY'; why: string | null; seeded: string | null; updatedAt: string; detail?: any }
 interface ImportEvent { id: string; level: 'INFO' | 'WARN' | 'ERROR'; message: string; createdAt: string }
 
 const EMPTY_CONFIG = {
   qbit: { url: '', username: '', category: 'a-publier', tag: '' },
   ftp: { host: '', port: 21, username: '', secure: true, headMB: 16 },
   mediainfo: true,
-  defaultCategory: '', autoCategory: true, readFeedCategory: true, attachMetadata: true, categoryRules: [] as { match: string; category: string }[],
+  defaultCategory: '', autoCategory: true, readFeedCategory: true, attachMetadata: true, reviewUnmatched: true, categoryRules: [] as { match: string; category: string }[],
   include: [] as string[], exclude: [] as string[], description: '',
   autoApprove: true, seedOnSeeduction: true, seedCategory: 'seeduction', skipChecking: true,
   intervalMinutes: 10, maxPerRun: 5, delaySeconds: 30,
 };
-const STATUS_LABEL: Record<ImportItem['status'], string> = { UPLOADED: 'Envoyé', DUPE: 'Déjà sur le site', REJECTED: 'Refusé', SKIPPED: 'Mis de côté' };
+const STATUS_LABEL: Record<ImportItem['status'], string> = { UPLOADED: 'Envoyé', DUPE: 'Déjà sur le site', REJECTED: 'Refusé', SKIPPED: 'Mis de côté', REVIEW: 'À vérifier', READY: 'Envoi en cours' };
 const LEVEL_COLOR = { INFO: 'inherit', WARN: 'var(--gold-bright, #f5c542)', ERROR: 'var(--danger)' } as const;
 const Go = (n: number) => `${(n / 1e9).toFixed(2)} Go`;
 
@@ -32,6 +32,7 @@ export function ImportAdmin() {
   const [leafCats, setLeafCats] = useState<string[]>([]);
   const [editing, setEditing] = useState<Source | 'new' | null>(null);
   const [openItems, setOpenItems] = useState<string | null>(null);
+  const [openReview, setOpenReview] = useState<string | null>(null);
   const [items, setItems] = useState<ImportItem[]>([]);
   const [inspect, setInspect] = useState<{ id: string; busy: boolean; result?: any; error?: string } | null>(null);
   const [message, setMessage] = useState('');
@@ -168,6 +169,7 @@ export function ImportAdmin() {
               <button type="button" className="secondary" onClick={() => test(s)}>🔎 Tester</button>
               <button type="button" className="secondary" disabled={!!running} onClick={() => runNow(s, true)}>Essai</button>
               <button type="button" className="secondary" disabled={!!running} onClick={() => runNow(s, false)}>Lancer maintenant</button>
+              {((s.counts.REVIEW ?? 0) + (s.counts.READY ?? 0)) > 0 && <button type="button" onClick={() => setOpenReview(openReview === s.id ? null : s.id)}>🔍 À vérifier ({(s.counts.REVIEW ?? 0) + (s.counts.READY ?? 0)})</button>}
               <button type="button" className="secondary" onClick={() => showItems(s)}>Historique</button>
               <button type="button" className="secondary" onClick={() => setEditing(s)}>✏️ Modifier</button>
               <button type="button" className="secondary" onClick={() => remove(s)}>🗑️</button>
@@ -193,7 +195,7 @@ export function ImportAdmin() {
                             {r.resolution && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>{r.resolution}</span>}
                             <div className="muted" style={{ fontSize: 11 }}>→ {r.category ?? 'catégorie ?'}{r.categoryHow ? ` (${r.categoryHow})` : ''}</div>
                             {r.feedLabel && <div className="muted" style={{ fontSize: 11 }}>flux : {r.feedLabel}</div>}
-                            {r.fiche ? <div style={{ fontSize: 11, color: 'var(--success)' }}>fiche TMDB : {r.fiche}</div> : <div className="muted" style={{ fontSize: 11 }}>fiche : aucune correspondance sûre</div>}
+                            {r.fiche ? <div style={{ fontSize: 11, color: 'var(--success)' }}>fiche TMDB : {r.fiche}</div> : <div style={{ fontSize: 11, color: 'var(--gold-bright, #f5c542)' }}>fiche : aucune correspondance sûre → ira dans « À vérifier »</div>}
                           </td>
                           <td className="muted" style={{ fontSize: 12 }}>{r.alreadyDone ? `déjà traité (${STATUS_LABEL[r.alreadyDone as ImportItem['status']] ?? r.alreadyDone})` : r.note}</td>
                         </tr>
@@ -206,6 +208,8 @@ export function ImportAdmin() {
               <button type="button" className="secondary" style={{ marginTop: 6 }} onClick={() => setInspect(null)}>Fermer</button>
             </div>
           )}
+
+          {openReview === s.id && <ReviewPanel source={s} onChanged={() => { loadSources(); loadEvents(); }} ok={ok} fail={fail} />}
 
           {openItems === s.id && (
             <div style={{ marginTop: 10 }}>
@@ -346,6 +350,13 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
             <span className="muted" style={{ display: 'block', fontSize: 11 }}>Demande la clé TMDB (TMDB_API_KEY dans backend/.env sur le serveur). Sans clé, les torrents sont publiés sans fiche et rangés d'après le nom et le flux RSS.</span>
           </span>
         </label>
+        <label className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+          <input type="checkbox" checked={cfg.reviewUnmatched !== false} onChange={(e) => set(['reviewUnmatched'], e.target.checked)} style={{ marginTop: 3 }} />
+          <span>
+            <strong>Mettre dans « À vérifier » ce qui n'est pas sûr</strong> — une release dont la fiche TMDB (film, série) ou la catégorie n'est pas trouvée avec certitude attend que tu choisisses la fiche à la main (recherche, ou adresse TMDB collée), puis tu valides l'import.
+            <span className="muted" style={{ display: 'block', fontSize: 11 }}>Décoché : un film ou une série sans fiche est publié sans fiche, et une release sans catégorie est mise de côté.</span>
+          </span>
+        </label>
         {field('Catégorie par défaut (facultative)', (
           <select value={cfg.defaultCategory} onChange={(e) => set(['defaultCategory'], e.target.value)}>
             <option value="">— aucune : mettre de côté ce qui n'est pas reconnu —</option>
@@ -393,5 +404,127 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
         <button type="button" className="secondary" onClick={onCancel}>Annuler</button>
       </div>
     </form>
+  );
+}
+
+/** « À vérifier » : les releases dont la fiche ou la catégorie n'est pas sûre. On cherche la fiche à la main, on choisit la catégorie, puis on valide l'import. */
+function ReviewPanel({ source, onChanged, ok, fail }: { source: Source; onChanged: () => void; ok: (m: string) => void; fail: (e: any) => void }) {
+  const [items, setItems] = useState<ImportItem[] | null>(null);
+  const [options, setOptions] = useState<{ categories: { id: string; name: string }[]; kinds: string[] }>({ categories: [], kinds: [] });
+  const load = useCallback(() => api.get(`/importer/sources/${source.id}/items`).then((r) => setItems((r.data as ImportItem[]).filter((i) => i.status === 'REVIEW' || i.status === 'READY'))).catch(fail), [source.id]);
+  useEffect(() => { load(); api.get('/importer/review-options').then((r) => setOptions(r.data)).catch(() => undefined); }, [load]);
+  const waiting = (items ?? []).some((i) => i.status === 'READY');
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setInterval(() => { load(); onChanged(); }, 3000); // l'envoi des releases validées se fait en arrière-plan
+    return () => clearInterval(t);
+  }, [waiting, load, onChanged]);
+
+  const review = (items ?? []).filter((i) => i.status === 'REVIEW');
+  const ready = (items ?? []).filter((i) => i.status === 'READY');
+  return (
+    <div className="panel ornate" style={{ marginTop: 10 }}>
+      <strong>🔍 À vérifier</strong>
+      <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>Releases dont la fiche ou la catégorie n'est pas sûre : rien n'est envoyé tant que tu n'as pas validé.</span>
+      {items === null && <div className="muted">Chargement…</div>}
+      {items && review.length === 0 && ready.length === 0 && <div className="muted" style={{ marginTop: 6 }}>Rien à vérifier.</div>}
+      {ready.length > 0 && (
+        <div style={{ marginTop: 6, fontSize: 12 }} className="muted">⏳ Envoi en cours : {ready.map((r) => r.name).join(' · ')}</div>
+      )}
+      <div className="grid" style={{ gap: 10, marginTop: 8 }}>
+        {review.map((it) => <ReviewCard key={it.id} item={it} options={options} onDone={() => { load(); onChanged(); }} ok={ok} fail={fail} />)}
+      </div>
+    </div>
+  );
+}
+
+const KIND_LABEL: Record<string, string> = { FILM: 'Film (TMDB)', SERIE: 'Série (TMDB)', MUSIQUE: 'Musique (Deezer)', LIVRE: 'Livre', JEU: 'Jeu (RAWG)' };
+
+function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; options: { categories: { id: string; name: string }[]; kinds: string[] }; onDone: () => void; ok: (m: string) => void; fail: (e: any) => void }) {
+  const d = item.detail ?? {};
+  const [kind, setKind] = useState<string>(d.kind ?? 'FILM');
+  const [q, setQ] = useState<string>(d.title ?? '');
+  const [year, setYear] = useState<string>(d.year ? String(d.year) : '');
+  const [results, setResults] = useState<{ id: string; title: string; subtitle: string; thumbnail: string | null }[]>(d.suggestions ?? []);
+  const [searched, setSearched] = useState(false);
+  const [pick, setPick] = useState<{ kind: string; id: string; title: string } | null>(null);
+  const [link, setLink] = useState('');
+  const [categoryId, setCategoryId] = useState<string>(d.category?.id ?? '');
+  const [busy, setBusy] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
+  async function search() {
+    if (!q.trim()) return;
+    setBusy(true); setSearchError('');
+    try { const r = await api.get('/importer/search', { params: { kind, q: q.trim(), year: year || undefined } }); setResults(r.data); setSearched(true); }
+    catch (e: any) { setSearchError(e.response?.data?.message ?? 'Recherche impossible'); }
+    finally { setBusy(false); }
+  }
+  // Adresse TMDB collée (« https://www.themoviedb.org/movie/1757277-coeur-de-motard ») : on prend le type et le numéro.
+  function useLink(v: string) {
+    setLink(v);
+    const m = v.match(/themoviedb\.org\/(movie|tv)\/(\d+)/i);
+    if (m) setPick({ kind: m[1].toLowerCase() === 'tv' ? 'SERIE' : 'FILM', id: m[2], title: `TMDB n° ${m[2]}` });
+  }
+  async function send(withFiche: boolean) {
+    setBusy(true);
+    try {
+      await api.post(`/importer/items/${item.id}/approve`, withFiche && pick ? { categoryId, metaKind: pick.kind, metaId: pick.id, metaTitle: pick.title } : { categoryId, noMeta: true });
+      ok(`« ${item.name} » validée : envoi en cours`);
+      onDone();
+    } catch (e) { fail(e); } finally { setBusy(false); }
+  }
+  async function dismiss() {
+    if (!window.confirm('Écarter cette release ? Elle ne sera plus proposée (« Retenter » dans l’historique la remet en file).')) return;
+    try { await api.post(`/importer/items/${item.id}/dismiss`); onDone(); } catch (e) { fail(e); }
+  }
+
+  return (
+    <div className="panel" style={{ padding: 10 }}>
+      <div style={{ wordBreak: 'break-all', fontWeight: 600 }}>{item.name}</div>
+      <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+        {d.size ? `${Go(d.size)} · ` : ''}{d.language ? <span className="badge" style={{ background: 'rgba(255,255,255,0.1)' }}>{d.language}</span> : 'langue ?'}{d.resolution ? ` · ${d.resolution}` : ''}
+        {d.feedLabel ? ` · flux : ${d.feedLabel}` : ''}{d.category ? ` · catégorie détectée : ${d.category.name} (${d.category.how})` : ''}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--gold-bright, #f5c542)', marginTop: 2 }}>{item.why}</div>
+
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+        <select value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: 'auto' }}>
+          {(options.kinds.length ? options.kinds : ['FILM', 'SERIE']).map((k) => <option key={k} value={k}>{KIND_LABEL[k] ?? k}</option>)}
+        </select>
+        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} placeholder="Titre à chercher" style={{ flex: '1 1 200px' }} />
+        <input value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="Année" style={{ width: 80 }} />
+        <button type="button" className="secondary" disabled={busy || !q.trim()} onClick={search}>🔎 Chercher</button>
+      </div>
+      <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
+        <input value={link} onChange={(e) => useLink(e.target.value)} placeholder="…ou colle l'adresse de la fiche TMDB (https://www.themoviedb.org/movie/…)" style={{ flex: 1 }} />
+      </div>
+      {searchError && <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>{searchError}</div>}
+      {results.length === 0 && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{searched ? 'Aucun résultat : essaie un autre titre (titre original, sans sous-titre) ou sans l\'année.' : 'Aucune fiche proposée : cherche avec un autre titre.'}</div>}
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 6, marginTop: 6 }}>
+        {results.map((r) => {
+          const on = pick?.id === r.id && pick.kind === kind;
+          return (
+            <button key={r.id} type="button" className="secondary" onClick={() => setPick({ kind, id: r.id, title: r.title })}
+              style={{ display: 'flex', gap: 8, textAlign: 'left', alignItems: 'center', padding: 6, outline: on ? '2px solid var(--success)' : undefined }}>
+              {r.thumbnail ? <img src={r.thumbnail} alt="" loading="lazy" style={{ width: 40, height: 58, objectFit: 'cover', borderRadius: 3 }} /> : <div style={{ width: 40, height: 58 }} />}
+              <span style={{ fontSize: 12 }}><strong>{r.title}</strong><span className="muted" style={{ display: 'block' }}>{r.subtitle}</span></span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
+        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} style={{ width: 'auto' }}>
+          <option value="">— catégorie de Seeduction —</option>
+          {options.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {pick && <span style={{ fontSize: 12, color: 'var(--success)' }}>fiche choisie : {pick.title}</span>}
+        <span style={{ flex: 1 }} />
+        <button type="button" disabled={busy || !pick || !categoryId} onClick={() => send(true)}>✓ Importer avec cette fiche</button>
+        <button type="button" className="secondary" disabled={busy || !categoryId} onClick={() => send(false)}>Importer sans fiche</button>
+        <button type="button" className="secondary" disabled={busy} onClick={dismiss}>Écarter</button>
+      </div>
+    </div>
   );
 }

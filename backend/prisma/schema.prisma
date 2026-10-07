@@ -1012,8 +1012,9 @@ model ImportItem {
   sourceId  String
   key       String // identifiant du torrent chez qBittorrent (hash)
   name      String
-  status    String // UPLOADED | DUPE | REJECTED | SKIPPED
+  status    String // UPLOADED | DUPE | REJECTED | SKIPPED | REVIEW (à vérifier à la main) | READY (validé à la main, en attente d'envoi)
   why       String?
+  detail    Json? // pour REVIEW / READY : ce qui a été détecté, les fiches suggérées et le choix fait à la main
   torrentId String?
   savePath  String?
   seeded    String? // null | OK | UNAVAILABLE : le torrent de Seeduction a-t-il été ajouté dans qBittorrent pour seeder

@@ -9,7 +9,13 @@ import { FtpConnectError, hasNfo, nfoFor, probeFor } from './release-files';
 import { detectReleaseMeta } from './release-meta';
 import { MetadataService } from '../metadata/metadata.service';
 import { SupportBotService } from '../support/support-bot.service';
-import { cleanTitle, feedLabelOf, guessType, isFilmLike, isSeriesLike, leafKey, refineWithGenres, resolveCandidate, typeFromFeedLabel } from './category-guess';
+import { cleanTitle, ContentType, feedLabelOf, guessType, isFilmLike, isSeriesLike, leafKey, refineWithGenres, resolveCandidate, typeFromFeedLabel } from './category-guess';
+
+/** Ce que la détection a compris d'une release (rempli par chooseCategory) : sert à la mise en vérification manuelle. */
+interface ReleaseInfo { type?: ContentType; title?: string; year?: number }
+/** Choix final avant l'envoi : catégorie de Seeduction + fiche à rattacher (facultative). */
+interface Chosen { id: string; name: string; how: string; meta?: { kind: string; id: string; title: string; year?: string } }
+const META_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU'];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const str = (v: any, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -51,6 +57,7 @@ export class ImporterService {
       autoCategory: raw?.autoCategory !== false,
       readFeedCategory: raw?.readFeedCategory !== false,
       attachMetadata: raw?.attachMetadata !== false,
+      reviewUnmatched: raw?.reviewUnmatched !== false,
       categoryRules: [],
       include: regexList(raw?.include, 'filtre « inclure »'),
       exclude: regexList(raw?.exclude, 'filtre « exclure »'),
@@ -133,7 +140,7 @@ export class ImporterService {
   async retryItem(id: string) {
     const item = await this.prisma.importItem.findUnique({ where: { id } });
     if (!item) throw new NotFoundException('Élément introuvable');
-    if (!['SKIPPED', 'REJECTED'].includes(item.status)) throw new BadRequestException('Seuls les éléments mis de côté ou refusés peuvent être retentés');
+    if (!['SKIPPED', 'REJECTED', 'REVIEW'].includes(item.status)) throw new BadRequestException('Seuls les éléments mis de côté, refusés ou à vérifier peuvent être retentés');
     await this.prisma.importItem.delete({ where: { id } }); // il sera repris à la prochaine passe
     return { retried: true };
   }
@@ -193,9 +200,12 @@ export class ImporterService {
       const sources = await this.prisma.importSource.findMany({ where: { enabled: true } });
       for (const s of sources) {
         const cfg = s.config as unknown as ImportConfig;
-        if (s.lastRunAt && Date.now() - s.lastRunAt.getTime() < (cfg.intervalMinutes ?? 10) * 60_000) continue;
+        const ready = await this.prisma.importItem.count({ where: { sourceId: s.id, status: 'READY' } });
+        if (s.lastRunAt && Date.now() - s.lastRunAt.getTime() < (cfg.intervalMinutes ?? 10) * 60_000) { if (ready) await this.execute(s.id, false, true); continue; }
         await this.execute(s.id, false);
       }
+      // Sources désactivées : seuls les éléments validés à la main sont envoyés.
+      for (const s of await this.prisma.importSource.findMany({ where: { enabled: false, items: { some: { status: 'READY' } } } })) await this.execute(s.id, false, true);
       // Journal : on ne garde que 14 jours.
       if (new Date().getMinutes() === 0) await this.prisma.importEvent.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 14 * 86400_000) } } });
     } catch (err: any) {
@@ -257,13 +267,15 @@ export class ImporterService {
    * (série, film, sport, musique...) affinée par la fiche TMDB (animation, émission, documentaire) si la clé TMDB est configurée ;
    * 3) la catégorie par défaut, si tu en as choisi une. Sinon null : la release est mise de côté plutôt que rangée au hasard.
    */
-  private async chooseCategory(cfg: ImportConfig, t: QbitTorrent, feedLabel = ''): Promise<{ name: string; id: string; how: string; meta?: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } } | null> {
+  private async chooseCategory(cfg: ImportConfig, t: QbitTorrent, feedLabel = '', info: ReleaseInfo = {}): Promise<{ name: string; id: string; how: string; meta?: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } } | null> {
     const leaves = await this.leaves();
     // Type de contenu : la catégorie du flux RSS (si claire) prime sur le nom ; sinon le nom.
     const byName = guessType(t.name);
     const byFeed = cfg.readFeedCategory !== false && feedLabel ? typeFromFeedLabel(feedLabel, byName) : undefined;
     let type = byFeed ?? byName;
     let how = byFeed ? 'flux RSS' : 'détection';
+    const parsed = cleanTitle(t.name);
+    info.title = parsed.title; info.year = parsed.year; info.type = type;
 
     // Fiche TMDB (film ou série) : sert à classer (animation, émission, documentaire) ET à rattacher la fiche au torrent.
     let meta: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } | undefined;
@@ -276,7 +288,7 @@ export class ImporterService {
         meta = { kind: series ? 'SERIE' : 'FILM', id: match.id, title: match.title, year: match.year };
         if (cfg.autoCategory !== false && (type === 'FILM' || type === 'SERIE')) {
           const refined = refineWithGenres(type, match.genreIds);
-          if (refined !== type) { how = how === 'flux RSS' ? 'flux RSS + TMDB' : 'TMDB'; type = refined; }
+          if (refined !== type) { how = how === 'flux RSS' ? 'flux RSS + TMDB' : 'TMDB'; type = refined; info.type = type; }
         }
       }
     }
@@ -297,7 +309,7 @@ export class ImporterService {
     return null;
   }
 
-  private async execute(id: string, dryRun: boolean) {
+  private async execute(id: string, dryRun: boolean, onlyReady = false) {
     if (this.running) return;
     this.running = { sourceId: id, dryRun, startedAt: Date.now() };
     const src = await this.prisma.importSource.findUnique({ where: { id } });
@@ -307,7 +319,7 @@ export class ImporterService {
     const ev = (level: 'INFO' | 'WARN' | 'ERROR', msg: string) => this.event(id, level, (dryRun ? '(essai) ' : '') + msg);
     let lastError: string | null = null;
     try {
-      if (!dryRun) await this.prisma.importSource.update({ where: { id }, data: { lastRunAt: new Date() } });
+      if (!dryRun && !onlyReady) await this.prisma.importSource.update({ where: { id }, data: { lastRunAt: new Date() } });
       // Les torrents sont publiés (et seedés, avec son passkey) par le compte du robot « Seeduction » : jamais par un compte de membre.
       const robot = await this.bot.ensureBot();
       const uploaderId = robot.id;
@@ -317,6 +329,8 @@ export class ImporterService {
       await this.seedPass(src.id, uploaderId, cfg, q, dryRun, ev);
 
       const list = (await this.listCompleted(q, cfg)).sort((a, b) => (a.completion_on || a.added_on) - (b.completion_on || b.added_on));
+      await this.readyPass(id, uploaderId, cfg, secrets, q, list, dryRun, ev);
+      if (onlyReady) return;
       const known = new Set((await this.prisma.importItem.findMany({ where: { sourceId: id }, select: { key: true } })).map((i) => i.key));
       const labels = await this.feedLabels(q, cfg, list);
       let sent = 0;
@@ -325,9 +339,16 @@ export class ImporterService {
         const skip = async (why: string) => { if (!dryRun) await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'SKIPPED', why } }); await ev('WARN', `${t.name} — mis de côté : ${why}`); };
         if ((cfg.include ?? []).length && !(cfg.include ?? []).some((p) => new RegExp(p, 'i').test(t.name))) { await skip('ne correspond à aucun filtre « inclure »'); continue; }
         if ((cfg.exclude ?? []).some((p) => new RegExp(p, 'i').test(t.name))) { await skip('exclu par un filtre « exclure »'); continue; }
-        const chosen = await this.chooseCategory(cfg, t, labels.get(t.hash) ?? '');
-        if (!chosen) { await skip("type de contenu non détecté : ajoute une règle de catégorie ou choisis une catégorie par défaut, puis « Retenter »"); continue; }
-        const catName = chosen.name, catId = chosen.id;
+        const info: ReleaseInfo = {};
+        const found = await this.chooseCategory(cfg, t, labels.get(t.hash) ?? '', info);
+        const wantsFiche = cfg.attachMetadata !== false && cfg.reviewUnmatched !== false && !!info.type && (isFilmLike(info.type) || isSeriesLike(info.type)) && this.metadata.supportedKinds.includes('FILM');
+        if (!found && cfg.reviewUnmatched === false) { await skip("type de contenu non détecté : ajoute une règle de catégorie ou choisis une catégorie par défaut, puis « Retenter »"); continue; }
+        if (!found || (wantsFiche && !found.meta)) {
+          // Pas de catégorie ou pas de fiche sûre : la release attend dans « À vérifier » que tu la complètes à la main (elle ne compte pas dans la limite par passe).
+          await this.queueReview(id, t, found, info, labels.get(t.hash) ?? '', found ? `aucune fiche TMDB sûre pour « ${info.title} »` : 'catégorie non détectée', dryRun, ev);
+          continue;
+        }
+        const chosen: Chosen = { id: found.id, name: found.name, how: found.how, meta: cfg.attachMetadata !== false ? found.meta : undefined };
         if (sent >= (cfg.maxPerRun ?? 5)) { await ev('INFO', `Limite de ${cfg.maxPerRun} envoi(s) par passe atteinte : la suite à la prochaine passe.`); break; }
 
         let buf: Buffer; let nfo = '';
@@ -340,26 +361,8 @@ export class ImporterService {
           if (!this.warnedNoNfo.has(t.hash)) { this.warnedNoNfo.add(t.hash); await ev('WARN', `${t.name} — NFO / MediaInfo introuvable (obligatoire) : ajoute un .nfo dans le dossier de la release ; il sera pris à la prochaine passe`); }
           continue;
         }
-        if (dryRun) { await ev('INFO', `enverrait : ${t.name} → ${catName}`); sent++; continue; }
-
-        try {
-          const meta = detectReleaseMeta(t.name, nfo); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
-          const created = await this.torrents.upload({ userId: uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: catId, tags: [], anonymous: false, nfo, ...meta, ...(cfg.attachMetadata !== false && chosen.meta ? { metaKind: chosen.meta.kind, metaId: chosen.meta.id } : {}) });
-          const status = cfg.autoApprove !== false ? (await this.admin.approveTorrent(created.id)).status : created.status; // import configuré par un administrateur : approuvé directement
-          await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'UPLOADED', torrentId: created.id, savePath: t.save_path } });
-          await ev('INFO', `✓ ${t.name} → ${catName} [${chosen.how}]${meta.language ? ` · ${meta.language}` : ''} ${chosen.meta && cfg.attachMetadata !== false ? ` · fiche TMDB : ${chosen.meta.title}` : ''} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
-          q.addTags(t.hash, cfg.qbit.doneTag || 'seeduction-envoye').catch(() => undefined);
-          sent++;
-        } catch (e: any) {
-          if (e instanceof BadRequestException) {
-            const msg = String(e.message);
-            const dupe = /dupe|existe déjà/i.test(msg);
-            await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: dupe ? 'DUPE' : 'REJECTED', why: msg } });
-            await ev('WARN', dupe ? `= ${t.name} — déjà sur Seeduction` : `${t.name} — refusé : ${msg}`);
-          } else {
-            await ev('ERROR', `${t.name} — erreur d'envoi : ${e?.message ?? e}`); // temporaire : réessayé plus tard
-          }
-        }
+        if (dryRun) { await ev('INFO', `enverrait : ${t.name} → ${chosen.name}`); sent++; continue; }
+        if (await this.publish(id, uploaderId, cfg, q, t, buf, nfo, chosen, ev)) sent++;
         if (cfg.delaySeconds) await sleep(cfg.delaySeconds * 1000);
       }
       await ev('INFO', `Passe terminée : ${sent} ${dryRun ? 'à envoyer' : 'envoyé(s)'} sur ${list.length} release(s) terminée(s).`);
@@ -370,6 +373,119 @@ export class ImporterService {
       if (!dryRun) await this.prisma.importSource.update({ where: { id }, data: { lastError } }).catch(() => undefined);
       this.running = null;
     }
+  }
+
+  /** Envoie une release (déjà exportée, NFO prêt) : upload, approbation, mémoire, étiquette qBittorrent. Vrai si elle est partie. */
+  private async publish(sourceId: string, uploaderId: string, cfg: ImportConfig, q: Qbit, t: QbitTorrent, buf: Buffer, nfo: string, chosen: Chosen, ev: (l: 'INFO' | 'WARN' | 'ERROR', m: string) => Promise<void>, onTemporaryError?: (msg: string) => Promise<void>): Promise<boolean> {
+    const where = { sourceId_key: { sourceId, key: t.hash } };
+    try {
+      const meta = detectReleaseMeta(t.name, nfo); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
+      const created = await this.torrents.upload({ userId: uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: chosen.id, tags: [], anonymous: false, nfo, ...meta, ...(chosen.meta ? { metaKind: chosen.meta.kind, metaId: chosen.meta.id } : {}) });
+      const status = cfg.autoApprove !== false ? (await this.admin.approveTorrent(created.id)).status : created.status; // import configuré par un administrateur : approuvé directement
+      await this.prisma.importItem.upsert({ where, create: { sourceId, key: t.hash, name: t.name, status: 'UPLOADED', torrentId: created.id, savePath: t.save_path }, update: { status: 'UPLOADED', torrentId: created.id, savePath: t.save_path, why: null } });
+      await ev('INFO', `✓ ${t.name} → ${chosen.name} [${chosen.how}]${meta.language ? ` · ${meta.language}` : ''}${chosen.meta ? ` · fiche : ${chosen.meta.title}` : ''} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
+      q.addTags(t.hash, cfg.qbit.doneTag || 'seeduction-envoye').catch(() => undefined);
+      return true;
+    } catch (e: any) {
+      if (e instanceof BadRequestException) {
+        const msg = String(e.message);
+        const dupe = /dupe|existe déjà/i.test(msg);
+        await this.prisma.importItem.upsert({ where, create: { sourceId, key: t.hash, name: t.name, status: dupe ? 'DUPE' : 'REJECTED', why: msg }, update: { status: dupe ? 'DUPE' : 'REJECTED', why: msg } });
+        await ev('WARN', dupe ? `= ${t.name} — déjà sur Seeduction` : `${t.name} — refusé : ${msg}`);
+      } else {
+        await ev('ERROR', `${t.name} — erreur d'envoi : ${e?.message ?? e}`); // temporaire : réessayé plus tard
+        await onTemporaryError?.(String(e?.message ?? e));
+      }
+      return false;
+    }
+  }
+
+  /** Met une release dans « À vérifier » avec ce qui a été détecté et les fiches que TMDB propose pour ce titre. */
+  private async queueReview(sourceId: string, t: QbitTorrent, found: { id: string; name: string; how: string } | null, info: ReleaseInfo, feedLabel: string, reason: string, dryRun: boolean, ev: (l: 'INFO' | 'WARN' | 'ERROR', m: string) => Promise<void>) {
+    if (dryRun) { await ev('WARN', `${t.name} — irait dans « À vérifier » : ${reason}`); return; }
+    const kind = info.type && isSeriesLike(info.type) ? 'SERIE' : 'FILM';
+    let suggestions: { id: string; title: string; subtitle: string; thumbnail: string | null }[] = [];
+    const title = info.title || cleanTitle(t.name).title;
+    if (title && this.metadata.supportedKinds.includes(kind) && (!info.type || isFilmLike(info.type) || isSeriesLike(info.type))) {
+      suggestions = await this.metadata.search(kind, title, info.year ? String(info.year) : undefined).catch(() => []);
+      if (suggestions.length === 0 && info.year) suggestions = await this.metadata.search(kind, title).catch(() => []);
+    }
+    const meta = detectReleaseMeta(t.name, '');
+    const detail = {
+      reason, type: info.type ?? null, kind, title, year: info.year ?? null, feedLabel: feedLabel || null,
+      category: found ? { id: found.id, name: found.name, how: found.how } : null,
+      language: meta.language ?? null, resolution: meta.resolution ?? null, size: t.size, suggestions: suggestions.slice(0, 6),
+    };
+    await this.prisma.importItem.create({ data: { sourceId, key: t.hash, name: t.name, status: 'REVIEW', why: reason, savePath: t.save_path, detail: detail as any } });
+    await ev('WARN', `${t.name} — à vérifier : ${reason}`);
+  }
+
+  /** Releases validées à la main (« À vérifier » > Importer) : elles partent avec la catégorie et la fiche choisies, sans attendre la limite par passe. */
+  private async readyPass(sourceId: string, uploaderId: string, cfg: ImportConfig, secrets: ImportSecrets, q: Qbit, list: QbitTorrent[], dryRun: boolean, ev: (l: 'INFO' | 'WARN' | 'ERROR', m: string) => Promise<void>) {
+    const ready = await this.prisma.importItem.findMany({ where: { sourceId, status: 'READY' } });
+    for (const it of ready) {
+      const back = (why: string) => this.prisma.importItem.update({ where: { id: it.id }, data: { status: 'REVIEW', why } }).then(() => undefined);
+      const detail: any = it.detail ?? {};
+      const o = detail.override ?? {};
+      if (dryRun) { await ev('INFO', `enverrait (validé à la main) : ${it.name} → ${o.categoryName ?? '?'}`); continue; }
+      const t = list.find((x) => x.hash === it.key);
+      if (!t) { await ev('WARN', `${it.name} — introuvable dans qBittorrent (supprimé ou hors catégorie)`); await back('introuvable dans qBittorrent : vérifie la catégorie, puis valide à nouveau'); continue; }
+      if (!o.categoryId) { await back('catégorie manquante'); continue; }
+      let buf: Buffer; let nfo = '';
+      try {
+        buf = await q.exportTorrent(t.hash);
+        if (!buf.length || buf[0] !== 0x64) throw new Error("le fichier exporté n'est pas un .torrent");
+        nfo = await nfoFor(cfg, secrets, sourceId, t);
+      } catch (e: any) { await ev('ERROR', `${t.name} — ${e.message}`); await back(String(e.message)); continue; }
+      if (!hasNfo(nfo)) { await ev('WARN', `${t.name} — NFO / MediaInfo introuvable (obligatoire)`); await back('NFO / MediaInfo introuvable : ajoute un .nfo dans le dossier de la release, puis valide à nouveau'); continue; }
+      const chosen: Chosen = { id: o.categoryId, name: o.categoryName ?? '', how: 'validé à la main', meta: o.metaKind && o.metaId ? { kind: o.metaKind, id: o.metaId, title: o.metaTitle ?? o.metaId } : undefined };
+      await this.publish(sourceId, uploaderId, cfg, q, t, buf, nfo, chosen, ev, back);
+    }
+  }
+
+  // ------------------------------------------------------------------ « À vérifier » : choix manuel de la fiche et de la catégorie
+
+  /** Ce dont l'écran « À vérifier » a besoin : sous-catégories de Seeduction et types de fiches recherchables. */
+  async reviewOptions() {
+    const leaves = await this.leaves();
+    const categories = [...leaves.ids.entries()].map(([k, id]) => ({ id, name: leaves.names.get(k)! })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    return { categories, kinds: this.metadata.supportedKinds.filter((k) => META_KINDS.includes(k)) };
+  }
+
+  /** Recherche manuelle d'une fiche (TMDB pour films et séries, Deezer, livres, RAWG), la même que sur la page d'envoi. */
+  searchFiche(kind: string, q: string, year?: string) {
+    if (!META_KINDS.includes(kind)) throw new BadRequestException('Type de fiche inconnu');
+    return this.metadata.search(kind, q, year);
+  }
+
+  /** Valide à la main une release « À vérifier » : catégorie + fiche (ou « sans fiche »), puis envoi en arrière-plan. */
+  async approveItem(id: string, body: any) {
+    const it = await this.prisma.importItem.findUnique({ where: { id } });
+    if (!it) throw new NotFoundException('Élément introuvable');
+    if (it.status !== 'REVIEW') throw new BadRequestException("Cet élément n'est pas en attente de vérification");
+    const detail: any = it.detail ?? {};
+    const categoryId = str(body?.categoryId, 60) || detail.category?.id;
+    const leaves = await this.leaves();
+    const cat = categoryId ? await this.prisma.category.findUnique({ where: { id: categoryId }, select: { id: true, name: true } }) : null;
+    if (!cat) throw new BadRequestException('Choisis la catégorie de Seeduction');
+    if (![...leaves.ids.values()].includes(cat.id)) throw new BadRequestException('Choisis une sous-catégorie (pas une catégorie parente)');
+    const metaKind = str(body?.metaKind, 20), metaId = str(body?.metaId, 120);
+    if (metaId && !META_KINDS.includes(metaKind)) throw new BadRequestException('Type de fiche inconnu');
+    if (!metaId && body?.noMeta !== true) throw new BadRequestException('Choisis une fiche, ou « Importer sans fiche »');
+    const override = { categoryId: cat.id, categoryName: cat.name, metaKind: metaId ? metaKind : null, metaId: metaId || null, metaTitle: str(body?.metaTitle, 200) || null };
+    await this.prisma.importItem.update({ where: { id }, data: { status: 'READY', why: 'validé à la main : envoi en cours', detail: { ...detail, override } as any } });
+    const now = !this.running;
+    if (now) void this.execute(it.sourceId, false, true); // n'envoie que les éléments validés à la main, même si la source est désactivée
+    return { queued: true, now };
+  }
+
+  /** Écarte une release « À vérifier » (elle ne sera plus proposée ; « Retenter » la remet en file). */
+  async dismissItem(id: string) {
+    const it = await this.prisma.importItem.findUnique({ where: { id } });
+    if (!it) throw new NotFoundException('Élément introuvable');
+    if (!['REVIEW', 'READY'].includes(it.status)) throw new BadRequestException("Cet élément n'est pas en attente de vérification");
+    await this.prisma.importItem.update({ where: { id }, data: { status: 'SKIPPED', why: 'écarté à la main' } });
+    return { dismissed: true };
   }
 
   /** Torrents envoyés puis approuvés : on ajoute la version de Seeduction (avec ton passkey) dans qBittorrent, sur les MÊMES fichiers. */
