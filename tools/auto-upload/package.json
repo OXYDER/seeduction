@@ -1,0 +1,9 @@
+{
+  "name": "seeduction-auto-upload",
+  "private": true,
+  "type": "module",
+  "description": "De qBittorrent a Seeduction (voir README.md)",
+  "dependencies": {
+    "basic-ftp": "^5.0.5"
+  }
+}

@@ -153,6 +153,12 @@ const readText = async (f) => { const b = await fs.readFile(f); const u = b.toSt
 
 /** NFO d'une release terminée : un .nfo dans ses fichiers, sinon `nfoDir`, sinon le MediaInfo du plus gros fichier vidéo (si `mediainfo` est installé). */
 async function nfoFor(src, t) {
+  if (src.ftp) { // fichiers sur une seedbox : lus par FTP (voir plus haut)
+    const r = await nfoViaFtp(src, t);
+    if (r.replace(/\s+/g, ' ').length >= 20) return r;
+    if (src.nfoDir) { try { return await readText(path.join(path.resolve(baseDir, src.nfoDir), `${t.name}.nfo`)); } catch { /* aucun */ } }
+    return '';
+  }
   const local = mapPath(src, t.content_path);
   let st; try { st = await fs.stat(local); } catch { throw new Error(`dossier introuvable pour ce script : ${local} (voir « pathMap » dans la configuration)`); }
   const files = st.isDirectory() ? await listFiles(local) : [local];
@@ -162,10 +168,8 @@ async function nfoFor(src, t) {
     const sizes = await Promise.all(files.filter((f) => VIDEO.test(f)).map(async (f) => [f, (await fs.stat(f)).size]));
     const big = sizes.sort((a, b) => b[1] - a[1])[0]?.[0];
     if (big) {
-      try {
-        const { stdout } = await run(src.mediainfo === true ? 'mediainfo' : src.mediainfo, [big], { timeout: 120_000, maxBuffer: 5_000_000 });
-        return stdout.replace(/^(Complete name\s*:\s*).*$/m, (_, a) => a + path.basename(big)); // ne pas publier le chemin de ton NAS
-      } catch (e) { throw new Error(`mediainfo a échoué (${e.code === 'ENOENT' ? 'programme introuvable' : e.message})`); }
+      const stdout = await runMediainfo(src.mediainfo, big);
+      return stdout.replace(/^(Complete name\s*:\s*).*$/m, (_, a) => a + path.basename(big)); // ne pas publier le chemin de ton NAS
     }
   }
   return '';
@@ -201,6 +205,108 @@ async function seedPass() {
       log(`🌱 ${v.name} — ajouté dans qBittorrent pour seeder sur Seeduction`);
     } catch (e) { log(`✗ ${v.name} — ${e.message}`); }
   }
+}
+
+// ------------------------------------------------------------------ fichiers de la seedbox par FTP (sans accès SSH)
+
+/** MediaInfo : `true` (programme « mediainfo »), un chemin, ou une liste [programme, argument...] — le fichier est ajouté à la fin. */
+async function runMediainfo(spec, file) {
+  const cmd = spec === true ? ['mediainfo'] : Array.isArray(spec) ? spec : [spec];
+  try { return (await run(cmd[0], [...cmd.slice(1), file], { timeout: 120_000, maxBuffer: 5_000_000 })).stdout; }
+  catch (e) { throw new Error(`mediainfo a échoué (${e.code === 'ENOENT' ? 'programme introuvable : installe MediaInfo en ligne de commande' : e.message})`); }
+}
+
+const gib = (n) => (n >= 1024 ** 3 ? (n / 1024 ** 3).toFixed(2) + ' GiB' : (n / 1024 ** 2).toFixed(1) + ' MiB');
+
+/**
+ * Le rapport MediaInfo d'un fichier dont on n'a lu que le début : on remet le vrai nom et la vraie taille, et on retire les valeurs
+ * calculées à partir de la taille lue (débit global, taille des pistes), qui seraient fausses.
+ */
+function cleanPartialMediainfo(out, realName, realSize) {
+  if (!/^(Video|Audio)\b/m.test(out)) throw new Error("MediaInfo n'a rien reconnu dans le début du fichier (format non pris en charge pour une lecture partielle)");
+  return out
+    .replace(/^(Complete name\s*:\s*).*$/m, (_, a) => a + realName)
+    .replace(/^(File size\s*:\s*).*$/m, (_, a) => a + gib(realSize))
+    .split(/\r?\n/).filter((l) => !/^(Overall bit rate|Stream size)\b/.test(l)).join('\n');
+}
+
+async function ftpConnect(src) {
+  let basic; try { basic = await import('basic-ftp'); } catch { throw new Error("le module « basic-ftp » manque : lance « npm install » dans le dossier de l'outil (les fichiers .bat le font tout seuls)"); }
+  const f = src.ftp, c = new basic.Client(60_000);
+  await c.access({ host: f.host, port: f.port ?? 21, user: f.username, password: f.password, secure: f.secure ?? true, secureOptions: { rejectUnauthorized: f.rejectUnauthorized !== false } });
+  return c;
+}
+
+/** Retrouve sur le serveur FTP le dossier (ou fichier) d'une release, même si son chemin FTP n'a rien à voir avec celui de qBittorrent. */
+const ftpMemory = new Map(); // dossier de qBittorrent -> dossier FTP équivalent, appris au fil des releases
+async function ftpLocate(c, src, t) {
+  const name = path.posix.basename(String(t.content_path).replace(/\\/g, '/'));
+  const parentQ = path.posix.dirname(String(t.content_path).replace(/\\/g, '/'));
+  const has = async (dir) => { try { return (await c.list(dir)).find((e) => e.name === name) ?? null; } catch { return null; } };
+  const tries = [ftpMemory.get(parentQ), parentQ, ...(src.ftp.roots ?? [])].filter((x) => x !== undefined);
+  for (const dir of tries) { const e = await has(dir); if (e) { ftpMemory.set(parentQ, dir); return { dir: dir === '/' ? '' : dir, entry: e }; } }
+  // Recherche en largeur, quelques niveaux sous la racine du compte FTP.
+  const queue = [['/', 0]];
+  while (queue.length) {
+    const [dir, depth] = queue.shift();
+    let list = []; try { list = await c.list(dir); } catch { continue; }
+    const hit = list.find((e) => e.name === name);
+    if (hit) { ftpMemory.set(parentQ, dir); return { dir: dir === '/' ? '' : dir, entry: hit }; }
+    if (depth < (src.ftp.searchDepth ?? 3)) for (const e of list) if (e.isDirectory) queue.push([path.posix.join(dir, e.name), depth + 1]);
+  }
+  return null;
+}
+
+async function ftpListFiles(c, dir, depth = 2) {
+  const out = [];
+  let list = []; try { list = await c.list(dir); } catch { return out; }
+  for (const e of list) {
+    const full = path.posix.join(dir, e.name);
+    if (e.isDirectory && depth > 0) out.push(...await ftpListFiles(c, full, depth - 1));
+    else if (e.isFile) out.push({ path: full, name: e.name, size: e.size });
+  }
+  return out;
+}
+
+/** Télécharge au plus `max` octets du début d'un fichier distant, puis coupe le transfert. */
+async function ftpReadHead(src, remote, max) {
+  const { Writable } = await import('node:stream');
+  const chunks = []; let got = 0;
+  const c = await ftpConnect(src);
+  try {
+    const sink = new Writable({ write(chunk, _enc, cb) { if (got < max) { chunks.push(chunk.subarray(0, max - got)); got += chunk.length; } if (got >= max) { cb(); setImmediate(() => c.close()); } else cb(); } });
+    try { await c.downloadTo(sink, remote); } catch (e) { if (got < max) throw e; } // la coupure volontaire fait échouer le transfert : sans importance
+  } finally { try { c.close(); } catch { /* déjà fermé */ } }
+  return Buffer.concat(chunks).subarray(0, max);
+}
+
+async function ftpReadAll(c, remote, max = 300_000) {
+  const { Writable } = await import('node:stream');
+  const chunks = []; let got = 0;
+  await c.downloadTo(new Writable({ write(chunk, _e, cb) { if (got < max) chunks.push(chunk); got += chunk.length; cb(); } }), remote);
+  return Buffer.concat(chunks).subarray(0, max);
+}
+
+/** NFO d'une release qui est sur la seedbox : son .nfo, sinon le MediaInfo du début de la vidéo. Aucune vidéo n'est téléchargée en entier. */
+async function nfoViaFtp(src, t) {
+  const c = await ftpConnect(src);
+  let nfo = null, video = null, found;
+  try {
+    found = await ftpLocate(c, src, t);
+    if (!found) throw new Error(`release introuvable sur le serveur FTP : ${t.name} (identifiant/mot de passe FTP justes ? dossier accessible à ce compte ?)`);
+    const base = path.posix.join(found.dir, found.entry.name);
+    const files = found.entry.isDirectory ? await ftpListFiles(c, base) : [{ path: base, name: found.entry.name, size: found.entry.size }];
+    const nfoFile = files.find((f) => /\.nfo$/i.test(f.name)) ?? (found.entry.isFile ? null : null);
+    if (nfoFile) nfo = (await ftpReadAll(c, nfoFile.path)).toString('utf8');
+    if (!nfo || nfo.replace(/\s+/g, ' ').length < 20) { nfo = null; video = files.filter((f) => VIDEO.test(f.name)).sort((a, b) => b.size - a.size)[0] ?? null; }
+  } finally { try { c.close(); } catch { /* déjà fermé */ } }
+  if (nfo) return nfo;
+  if (!video || !src.mediainfo) return '';
+  const head = await ftpReadHead(src, video.path, (src.ftp.headMB ?? 16) * 1024 * 1024);
+  const tmp = path.join((await import('node:os')).tmpdir(), `seeduction-${t.hash.slice(0, 8)}-${path.posix.basename(video.path).replace(/[^\w.-]+/g, '_')}`);
+  await fs.writeFile(tmp, head);
+  try { return cleanPartialMediainfo(await runMediainfo(src.mediainfo, tmp), video.name, video.size); }
+  finally { await fs.rm(tmp, { force: true }); }
 }
 
 // ------------------------------------------------------------------ lecture des sources

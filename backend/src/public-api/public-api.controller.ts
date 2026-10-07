@@ -6,6 +6,7 @@ import { PublicApiService } from './public-api.service';
 import { ApiKeyGuard } from '../api-keys/api-key.guard';
 import { RequireScope } from '../api-keys/scope.decorator';
 import { TorrentsService } from '../torrents/torrents.service';
+import { AdminService } from '../admin/admin.service';
 import { uploadParamsOf } from '../torrents/upload-params';
 
 /**
@@ -18,7 +19,7 @@ import { uploadParamsOf } from '../torrents/upload-params';
 @Throttle({ default: { limit: 60, ttl: 60_000 } })
 @Controller('public')
 export class PublicApiController {
-  constructor(private publicApi: PublicApiService, private torrentsService: TorrentsService) {}
+  constructor(private publicApi: PublicApiService, private torrentsService: TorrentsService, private admin: AdminService) {}
 
   @RequireScope('torrents:read')
   @Get('torrents')
@@ -41,7 +42,7 @@ export class PublicApiController {
 
   /**
    * Envoi d'un torrent par clé API (outil d'import automatique, voir tools/auto-upload). Mêmes règles que le formulaire du site :
-   * .torrent + NFO obligatoires, doublons refusés, le torrent attend la validation du staff.
+   * .torrent + NFO obligatoires, doublons refusés. Le torrent attend la validation du staff, sauf si la clé appartient à un membre du staff (approuvé directement).
    * Champs multipart : torrentFile, name, categoryId, nfo, description, year, language, resolution, codec, source, genres...
    */
   @RequireScope('torrents:upload')
@@ -49,9 +50,10 @@ export class PublicApiController {
   @Post('torrents')
   @UseInterceptors(FileInterceptor('torrentFile'))
   async upload(@UploadedFile() file: Express.Multer.File, @Body() body: Record<string, string>, @Req() req: Request & { apiKey: { userId: string } }) {
-    await this.publicApi.assertCanUpload(req.apiKey.userId);
+    const { staff } = await this.publicApi.assertCanUpload(req.apiKey.userId);
     const t = await this.torrentsService.upload(uploadParamsOf(file, body, req.apiKey.userId));
-    return { id: t.id, name: t.name, infoHash: t.infoHash, status: t.status };
+    const final = staff ? await this.admin.approveTorrent(t.id) : t; // clé d'un membre du staff : approuvé directement, donc rien à valider à la main
+    return { id: t.id, name: t.name, infoHash: t.infoHash, status: final.status };
   }
 
   /** Le .torrent à seeder (avec ton passkey) d'un torrent que cette clé a envoyé : 409 tant qu'il attend la validation du staff. */

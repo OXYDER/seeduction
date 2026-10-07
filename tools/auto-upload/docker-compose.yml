@@ -1,0 +1,17 @@
+# Lance l'import qBittorrent -> Seeduction en permanence sur ton NAS (ou tout serveur Docker toujours allumé) :
+#   1. cp cles.exemple.env cles.env   et remplis-le (clé Seeduction, qBittorrent, FTP)
+#   2. cp config.appbox.example.json config.json   et adapte-le
+#   3. docker compose up -d
+# Il redémarre tout seul avec le NAS. Les messages de suivi : docker compose logs -f
+services:
+  qbit-to-seeduction:
+    image: node:20-alpine
+    container_name: qbit-to-seeduction
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    env_file:
+      - cles.env
+    # MediaInfo (pour les releases sans .nfo) et le module FTP sont installés au démarrage.
+    command: sh -c "apk add --no-cache mediainfo >/dev/null && npm install --omit=dev --no-audit --no-fund >/dev/null && node auto-upload.mjs --config config.json --watch"

@@ -14,6 +14,6 @@ import { SocialModule } from '../social/social.module';
   imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule],
   controllers: [AdminController],
   providers: [AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService],
-  exports: [AccountDeletionService],
+  exports: [AccountDeletionService, AdminService],
 })
 export class AdminModule {}

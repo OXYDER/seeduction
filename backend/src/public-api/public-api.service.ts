@@ -59,8 +59,10 @@ export class PublicApiService {
 
   /** Une clé d'envoi ne sert plus si son propriétaire est banni ou désactivé. */
   async assertCanUpload(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { status: true, role: true } });
     if (!user || user.status !== 'ACTIVE') throw new ForbiddenException("Le compte propriétaire de cette clé ne peut pas envoyer de torrents");
+    // Un membre du staff valide de toute façon ses propres envois : ceux faits par sa clé sont approuvés directement (les autres membres passent par la modération).
+    return { staff: ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role) };
   }
 
   /**
