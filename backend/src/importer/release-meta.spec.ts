@@ -101,35 +101,6 @@ describe('étiquettes de langue : normalisation et filtres', () => {
   });
 });
 
-describe('indice de langue (groupe quebecois : MTLQC -> VFQ)', () => {
-  const withHint = (name: string, nfo = '') => detectReleaseMeta(name, nfo, { hintVariant: 'VFQ' }).language;
-
-  it('FRENCH seul + indice : VFQ ; sans indice : rien', () => {
-    expect(withHint('Alertes.S06E17.FRENCH.AD.1080p.WEB.AAC.2.0.H264-MTLQC')).toBe('VFQ');
-    expect(withHint('Occupation.Double.Bali.S11.FRENCH.1080p.WEB.AC3.5.1.H264-MTLQC')).toBe('VFQ');
-    expect(detectReleaseMeta('Alertes.S06E17.FRENCH.AD.1080p.WEB.AAC.2.0.H264-MTLQC').language).toBeUndefined();
-  });
-
-  it('le nom qui precise une autre variante garde le dessus', () => {
-    expect(withHint('Film.2025.VFF.1080p.WEB.H264-MTLQC')).toBe('VFF');
-    expect(withHint('Film.2025.MULTI.VFB.1080p.WEB.H264-MTLQC')).toBe('MULTI.VFB');
-    expect(withHint('Film.2025.VOSTFR.1080p.WEB.H264-MTLQC')).toBe('VOSTFR');
-  });
-
-  it('piste French sans precision dans le MediaInfo : l indice la precise', () => {
-    expect(withHint('Emission.S01E01.1080p.WEB.H264-MTLQC', MEDIAINFO(['French']))).toBe('VFQ');
-    expect(withHint('Film.2025.MULTi.1080p.WEB.H264-MTLQC', MEDIAINFO(['French', 'English']))).toBe('MULTI.VFQ');
-  });
-
-  it('piste French (FR) ou VFF explicite : l indice ne la remplace pas quand le titre la precise', () => {
-    expect(withHint('Film.2025.1080p.WEB.H264-MTLQC', MEDIAINFO(['French (BE)']))).toBe('VFB');
-  });
-
-  it('sans aucune mention de francais, l indice ne fait rien', () => {
-    expect(withHint('Film.2025.1080p.WEB.H264-MTLQC')).toBeUndefined();
-  });
-});
-
 describe('autres notations rencontrees dans les noms de releases', () => {
   it('deux versions francaises ecrites VFQ+VFF ou VFQ/VFF : MULTI.VF2', () => {
     expect(lang('Film.2025.VFQ+VFF.1080p.WEB.H264-GRP')).toBe('MULTI.VF2');

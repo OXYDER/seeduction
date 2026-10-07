@@ -14,13 +14,10 @@ const EMPTY_CONFIG = {
   ftp: { host: '', port: 21, username: '', secure: true, headMB: 16 },
   mediainfo: true,
   defaultCategory: '', autoCategory: true, categoryRules: [] as { match: string; category: string }[],
-  // Quand le nom ne précise pas la langue (« FRENCH » seul) : les releases du groupe québécois MTLQC sont en VFQ.
-  languageRules: [{ match: 'MTLQC', language: 'VFQ' }] as { match: string; language: string }[],
   include: [] as string[], exclude: [] as string[], description: '',
   seedOnSeeduction: true, seedCategory: 'seeduction', skipChecking: true,
   intervalMinutes: 10, maxPerRun: 5, delaySeconds: 30,
 };
-const FR_VARIANTS = ['VFQ', 'VFF', 'VOF', 'TRUEFRENCH', 'VFI', 'VFB'];
 const STATUS_LABEL: Record<ImportItem['status'], string> = { UPLOADED: 'Envoyé', DUPE: 'Déjà sur le site', REJECTED: 'Refusé', SKIPPED: 'Mis de côté' };
 const LEVEL_COLOR = { INFO: 'inherit', WARN: 'var(--gold-bright, #f5c542)', ERROR: 'var(--danger)' } as const;
 const Go = (n: number) => `${(n / 1e9).toFixed(2)} Go`;
@@ -293,21 +290,8 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
           ))}
           <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => set(['categoryRules'], [...cfg.categoryRules, { match: '', category: '' }])}>+ Ajouter une règle</button>
         </div>
-        <div className="grid" style={{ gap: 4 }}>
-          <span style={{ fontSize: 12, opacity: 0.8 }}>
-            Règles de langue — quand le nom de la release ne précise pas la variante française (par exemple « FRENCH » seul), si le nom ou la catégorie qBittorrent correspond à l'expression, sa piste française est de cette variante.
-            Un nom qui dit déjà VFF, VFQ, MULTI.VFB… garde toujours le dessus.
-          </span>
-          {cfg.languageRules.map((r: any, i: number) => (
-            <div key={i} className="row" style={{ gap: 6 }}>
-              <input placeholder="Expression, ex. MTLQC" value={r.match} onChange={(e) => set(['languageRules'], cfg.languageRules.map((x: any, j: number) => (j === i ? { ...x, match: e.target.value } : x)))} style={{ flex: 1 }} />
-              <select value={r.language} onChange={(e) => set(['languageRules'], cfg.languageRules.map((x: any, j: number) => (j === i ? { ...x, language: e.target.value } : x)))}>
-                {FR_VARIANTS.map((v) => <option key={v} value={v}>{v}</option>)}
-              </select>
-              <button type="button" className="secondary" onClick={() => set(['languageRules'], cfg.languageRules.filter((_: any, j: number) => j !== i))}>✕</button>
-            </div>
-          ))}
-          <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => set(['languageRules'], [...cfg.languageRules, { match: '', language: 'VFQ' }])}>+ Ajouter une règle de langue</button>
+        <div className="muted" style={{ fontSize: 12 }}>
+          Langue : lue uniquement dans les <strong>étiquettes</strong> — celles du nom de la release (VFQ, MULTI.VFF, MULTI.VF2, VOSTFR…) et les pistes audio / sous-titres du MediaInfo (une piste « French (CA) » est du VFQ). Rien n'est déduit du nom d'un groupe.
         </div>
         <div className="row" style={{ gap: 8 }}>
           {field('Inclure seulement (une expression par ligne)', <textarea rows={2} value={include} onChange={(e) => setInclude(e.target.value)} />)}
