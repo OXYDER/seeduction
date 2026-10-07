@@ -89,7 +89,7 @@ async function locate(c: Client, cfg: ImportConfig, memKey: string, t: QbitTorre
     try { list = await c.list(dir); } catch { continue; }
     const hit = list.find((e) => e.name === name);
     if (hit) { memory.set(memKey + '|' + parentQ, dir); return { dir: dir === '/' ? '' : dir, entry: hit }; }
-    if (depth < (cfg.ftp?.searchDepth ?? 6)) {
+    if (depth < Math.max(6, cfg.ftp?.searchDepth ?? 6)) { // les sources enregistrées avec l'ancienne profondeur (3) cherchent aussi en profondeur
       // les dossiers qui portent le même nom qu'un dossier du chemin qBittorrent (« completed », « torrents »...) sont explorés d'abord
       const same = new Set(parentQ.split('/').filter(Boolean).map((x) => x.toLowerCase()));
       const dirs = list.filter((e) => e.isDirectory).sort((a, b) => Number(same.has(b.name.toLowerCase())) - Number(same.has(a.name.toLowerCase())));
