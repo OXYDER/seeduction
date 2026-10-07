@@ -42,6 +42,7 @@ interface RichMetadata {
 }
 
 const TMDB_IMG = 'https://image.tmdb.org/t/p';
+const TMDB_API = (process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3').replace(/\/$/, ''); // modifiable pour les essais en local
 const SEARCHABLE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'] as const;
 
 /** Retire les accents : « Amélie » devient « Amelie » (pour retrouver un titre saisi sans accents). */
@@ -139,7 +140,7 @@ export class MetadataService {
     const languages = ['fr-CA', 'fr-FR', 'en-US'];
     const responses = await Promise.allSettled(
       languages.map((language) =>
-        this.fetchJson(`https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(query)}&language=${language}${yearParam}&api_key=${this.tmdbKey}`, 'TMDB'),
+        this.fetchJson(`${TMDB_API}/search/${type}?query=${encodeURIComponent(query)}&language=${language}${yearParam}&api_key=${this.tmdbKey}`, 'TMDB'),
       ),
     );
     if (responses.every((r) => r.status === 'rejected')) throw (responses[0] as PromiseRejectedResult).reason;
@@ -322,7 +323,7 @@ export class MetadataService {
 
   private async richTmdb(type: 'movie' | 'tv', id: string): Promise<RichMetadata> {
     const url =
-      `https://api.themoviedb.org/3/${type}/${encodeURIComponent(id)}?language=fr-FR` +
+      `${TMDB_API}/${type}/${encodeURIComponent(id)}?language=fr-FR` +
       `&append_to_response=credits,videos,external_ids,alternative_titles,translations&include_video_language=fr,en,null&api_key=${this.tmdbKey}`;
     const r = await this.fetchJson(url, 'TMDB');
     if (r.success === false) throw new NotFoundException('Fiche introuvable sur TMDB');
@@ -350,7 +351,7 @@ export class MetadataService {
     let collection: { id: number; name: string; parts: { tmdbId: number; title: string; releaseDate: string | null; year: string | null }[] } | null = null;
     if (isMovie && r.belongs_to_collection?.id) {
       try {
-        const c = await this.fetchJson(`https://api.themoviedb.org/3/collection/${r.belongs_to_collection.id}?language=fr-FR&api_key=${this.tmdbKey}`, 'TMDB');
+        const c = await this.fetchJson(`${TMDB_API}/collection/${r.belongs_to_collection.id}?language=fr-FR&api_key=${this.tmdbKey}`, 'TMDB');
         collection = {
           id: c.id,
           name: c.name,
@@ -684,7 +685,7 @@ export class MetadataService {
   async seasonEpisodes(tmdbId: string, season: number) {
     if (!this.tmdbKey) throw new ServiceUnavailableException("La recherche Film/Série n'est pas configurée (clé TMDB manquante).");
     if (!/^\d+$/.test(tmdbId) || !Number.isInteger(season) || season < 0) throw new BadRequestException('Paramètres invalides');
-    const r = await this.fetchJson(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${season}?language=fr-FR&api_key=${this.tmdbKey}`, 'TMDB');
+    const r = await this.fetchJson(`${TMDB_API}/tv/${tmdbId}/season/${season}?language=fr-FR&api_key=${this.tmdbKey}`, 'TMDB');
     return (r.episodes ?? []).map((e: any) => ({
       number: e.episode_number,
       name: e.name || `Épisode ${e.episode_number}`,
@@ -779,19 +780,26 @@ export class MetadataService {
   }
 
   /**
-   * Genres TMDB (identifiants) de la fiche qui correspond le mieux à un titre : sert à classer une release (film / série / animation /
-   * émission / documentaire). Renvoie null sans clé TMDB, sans résultat sûr (le titre doit correspondre) ou en cas d'erreur.
+   * Fiche TMDB qui correspond EXACTEMENT à un titre (et à l'année si elle est connue) : son identifiant (pour la rattacher au torrent)
+   * et ses genres (pour classer la release : film / série / animation / émission / documentaire). Renvoie null sans clé TMDB, sans
+   * correspondance sûre (le titre doit être le même, accents et casse mis à part) ou en cas d'erreur : on ne rattache jamais une fiche au hasard.
    */
-  async tmdbGenres(type: 'movie' | 'tv', title: string, year?: number): Promise<number[] | null> {
+  async tmdbMatch(type: 'movie' | 'tv', title: string, year?: number): Promise<{ id: string; genreIds: number[]; title: string; year?: string } | null> {
     if (!this.tmdbKey || !title.trim()) return null;
     const flat = (t: string) => deaccent(t).toLowerCase().replace(/[^a-z0-9]+/g, '');
     try {
       const yearParam = year ? `&${type === 'movie' ? 'year' : 'first_air_date_year'}=${year}` : '';
-      const res = await this.fetchJson(`https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(title)}&language=fr-FR${yearParam}&api_key=${this.tmdbKey}`, 'TMDB');
       const wanted = flat(title);
-      const hit = (res.results ?? []).find((r: any) => [r.title, r.name, r.original_title, r.original_name].filter(Boolean).some((t: string) => flat(t) === wanted));
-      if (!hit) return null;
-      return Array.isArray(hit.genre_ids) ? hit.genre_ids : null;
+      // Trois langues : un film québécois, français ou anglais est retrouvé sous n'importe lequel de ses titres.
+      for (const language of ['fr-CA', 'fr-FR', 'en-US']) {
+        const res = await this.fetchJson(`${TMDB_API}/search/${type}?query=${encodeURIComponent(title)}&language=${language}${yearParam}&api_key=${this.tmdbKey}`, 'TMDB');
+        const hit = (res.results ?? []).find((r: any) => [r.title, r.name, r.original_title, r.original_name].filter(Boolean).some((t: string) => flat(t) === wanted));
+        if (hit) {
+          const date: string = (type === 'movie' ? hit.release_date : hit.first_air_date) ?? '';
+          return { id: String(hit.id), genreIds: Array.isArray(hit.genre_ids) ? hit.genre_ids : [], title: String(hit.title ?? hit.name ?? title), year: date.slice(0, 4) || undefined };
+        }
+      }
+      return null;
     } catch {
       return null;
     }

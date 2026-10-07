@@ -72,3 +72,42 @@ describe('correspondance avec les sous-categories reelles du site', () => {
     expect(resolveCandidate('SPORT', basic)).toBeNull(); // pas de catégorie Sport : on ne range pas ailleurs
   });
 });
+
+import { feedLabelOf, typeFromFeedLabel } from './category-guess';
+
+describe('categorie lue dans le flux RSS (libelles de la liste Saloon)', () => {
+  it('series, emissions, animation, sport, films', () => {
+    expect(typeFromFeedLabel('Séries-Télé --> TV Pack HD')).toBe('SERIE');
+    expect(typeFromFeedLabel('Séries-Télé --> Séries-Télé HD')).toBe('SERIE');
+    expect(typeFromFeedLabel('Séries-Télé --> Québécois HD')).toBe('SERIE');
+    expect(typeFromFeedLabel('Séries-Télé --> Pack HD Québec')).toBe('SERIE');
+    expect(typeFromFeedLabel('Séries-Télé --> Émissions TV HD')).toBe('EMISSION');
+    expect(typeFromFeedLabel('Séries Animées --> Séries Animées')).toBe('ANIMATION_SERIE');
+    expect(typeFromFeedLabel('Sports --> Sports [Français]')).toBe('SPORT');
+    expect(typeFromFeedLabel('Films --> x265')).toBe('FILM');
+    expect(typeFromFeedLabel('Films --> DVD-Rip')).toBe('FILM');
+    expect(typeFromFeedLabel('Films --> WEB-DL / WEB-Rip')).toBe('FILM');
+    expect(typeFromFeedLabel('Films --> Remux')).toBe('FILM');
+    expect(typeFromFeedLabel('Films --> V.O.S.T. HD')).toBe('FILM');
+    expect(typeFromFeedLabel('Films --> mHD 1080p')).toBe('FILM');
+  });
+
+  it('animation et documentaire : film ou serie selon le libelle / le nom', () => {
+    expect(typeFromFeedLabel('Films --> Animation')).toBe('ANIMATION');
+    expect(typeFromFeedLabel('Documentaires')).toBe('DOCUMENTAIRE');
+    expect(typeFromFeedLabel('Documentaires', 'SERIE')).toBe('DOC_SERIE');
+    expect(typeFromFeedLabel('Animés', 'SERIE')).toBe('ANIMATION_SERIE');
+  });
+
+  it('libelle inconnu ou vide : rien (on retombe sur la detection par le nom)', () => {
+    expect(typeFromFeedLabel('')).toBeUndefined();
+    expect(typeFromFeedLabel('Divers')).toBeUndefined();
+  });
+
+  it('libelle extrait du titre ou de la description de l article', () => {
+    expect(feedLabelOf({ title: '[Séries-Télé --> Émissions TV HD] Chasseurs.d.Heritiers.S02E07.FRENCH.AD.1080p.WEB.AC3.5.1.H265-MTLQC' })).toBe('Séries-Télé --> Émissions TV HD');
+    expect(feedLabelOf({ title: '[Films] [x265] Fall.2.Deadpoint.2026.MULTi.1080p' })).toBe('Films x265');
+    expect(feedLabelOf({ title: 'Sans.Crochets.S01E01', description: '<b>Catégorie :</b> Séries Animées &amp; plus' })).toContain('Séries Animées');
+    expect(feedLabelOf({ title: 'Sans.Rien.2025.1080p' })).toBe('');
+  });
+});

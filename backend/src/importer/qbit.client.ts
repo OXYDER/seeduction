@@ -10,6 +10,25 @@ export interface QbitTorrent {
   added_on: number;
 }
 
+
+/** Cause technique lisible d'un échec réseau (« ENOTFOUND » = nom inconnu, « ECONNREFUSED » = port fermé, certificat, délai dépassé...). */
+function netCause(e: any): string {
+  const code = e?.cause?.code ?? e?.code ?? '';
+  const known: Record<string, string> = {
+    ENOTFOUND: "nom d'hôte introuvable (adresse mal écrite ?)",
+    ECONNREFUSED: 'connexion refusée (port fermé ou interface web désactivée ?)',
+    ETIMEDOUT: 'délai dépassé (serveur injoignable depuis le site)',
+    UND_ERR_CONNECT_TIMEOUT: 'délai dépassé (serveur injoignable depuis le site)',
+    ECONNRESET: 'connexion coupée par le serveur',
+    CERT_HAS_EXPIRED: 'certificat expiré',
+    DEPTH_ZERO_SELF_SIGNED_CERT: 'certificat auto-signé non reconnu',
+    UNABLE_TO_VERIFY_LEAF_SIGNATURE: 'certificat non reconnu',
+    ERR_TLS_CERT_ALTNAME_INVALID: "certificat qui ne correspond pas à l'adresse",
+  };
+  const name = e?.name === 'TimeoutError' ? 'délai dépassé (20 s sans réponse)' : known[code];
+  return name ?? (code || String(e?.message ?? e));
+}
+
 export class Qbit {
   private base: string;
   private cookie = '';
@@ -28,10 +47,16 @@ export class Qbit {
         body: new URLSearchParams({ username: this.user, password: this.pass ?? '' }),
         signal: AbortSignal.timeout(20_000),
       });
-    } catch {
-      throw new Error(`qBittorrent injoignable (${this.base}) : adresse, port et interface web activée ?`);
+    } catch (e) {
+      throw new Error(`qBittorrent injoignable (${this.base}) : ${netCause(e)}`);
     }
-    if (!/^ok/i.test((await res.text()).trim())) throw new Error("qBittorrent a refusé la connexion : identifiant ou mot de passe de l'interface web incorrect");
+    const body = (await res.text()).trim();
+    if (!/^ok/i.test(body)) {
+      if (res.status === 403) throw new Error("qBittorrent a refusé la connexion (403) : l'adresse IP du serveur est peut-être BANNIE après trop d'essais ratés (qBittorrent bannit une adresse après 5 mots de passe faux : attends ~1 heure ou redémarre l'application chez l'hébergeur), ou la protection « Host header / CSRF » bloque");
+      if (res.status >= 300 && res.status < 400) throw new Error(`qBittorrent redirige vers une autre adresse (${res.status}) : vérifie l'adresse (https:// ? chemin à la fin ?)`);
+      if (res.status === 404) throw new Error(`cette adresse n'est pas l'interface web de qBittorrent (404) : ${this.base}`);
+      throw new Error(`qBittorrent a refusé la connexion : identifiant ou mot de passe de l'interface web incorrect (réponse ${res.status}${body ? ` « ${body.slice(0, 60)} »` : ''})`);
+    }
     this.cookie = (res.headers.get('set-cookie') ?? '').match(/SID=[^;]+/)?.[0] ?? '';
   }
 
@@ -43,8 +68,8 @@ export class Qbit {
         headers: { referer: this.base, origin: this.base, ...(this.cookie ? { cookie: this.cookie } : {}), ...((init.headers as Record<string, string>) ?? {}) },
         signal: AbortSignal.timeout(60_000),
       });
-    } catch {
-      throw new Error(`qBittorrent injoignable (${this.base}) : adresse, port et interface web activée ?`);
+    } catch (e) {
+      throw new Error(`qBittorrent injoignable (${this.base}) : ${netCause(e)}`);
     }
     if ((res.status === 403 || res.status === 401) && retry) { await this.login(); return this.req(path, init, false); }
     return res;
@@ -57,6 +82,23 @@ export class Qbit {
     const res = await this.req('/torrents/info?' + q);
     if (!res.ok) throw new Error(`qBittorrent a répondu ${res.status} à la liste des torrents`);
     return res.json() as Promise<QbitTorrent[]>;
+  }
+
+  /**
+   * Articles des flux RSS de qBittorrent (titre, description, liens) : qBittorrent ne garde pas la catégorie du flux comme champ à part,
+   * mais elle figure souvent dans le titre (« [Séries-Télé --> Émissions TV HD] Nom… ») ou la description.
+   */
+  async rssArticles(): Promise<{ title: string; description: string; torrentURL: string }[]> {
+    const res = await this.req('/rss/items?withData=true');
+    if (!res.ok) return [];
+    const out: { title: string; description: string; torrentURL: string }[] = [];
+    const walk = (node: any) => {
+      if (!node || typeof node !== 'object') return;
+      if (Array.isArray(node.articles)) for (const a of node.articles) if (a?.title) out.push({ title: String(a.title), description: String(a.description ?? ''), torrentURL: String(a.torrentURL ?? '') });
+      for (const v of Object.values(node)) if (v && typeof v === 'object' && !Array.isArray(v)) walk(v);
+    };
+    walk(await res.json());
+    return out;
   }
 
   async exportTorrent(hash: string): Promise<Buffer> {

@@ -75,3 +75,35 @@ export function refineWithGenres(type: ContentType, genreIds: number[]): Content
   }
   return type;
 }
+
+/**
+ * Type de contenu d'après le libellé de catégorie d'un flux RSS (« Séries-Télé --> Émissions TV HD », « Séries Animées », « Films --> x265 »...).
+ * `base` : le type déduit du nom, qui départage « animé / documentaire seul » entre film et série.
+ */
+export function typeFromFeedLabel(label: string, base?: ContentType): ContentType | undefined {
+  const l = norm(label);
+  if (!l) return undefined;
+  const isSeries = /\b(serie|series|tele|saison|episode|tv pack)\b/.test(l) || base === 'SERIE';
+  if (/\bsports?\b/.test(l)) return 'SPORT';
+  if (/\b(anime|animes|animee|animees|animation|dessin|dessins)\b/.test(l)) return isSeries ? 'ANIMATION_SERIE' : 'ANIMATION';
+  if (/\b(documentaire|documentaires|docu|docus)\b/.test(l)) return isSeries ? 'DOC_SERIE' : 'DOCUMENTAIRE';
+  if (/\b(emission|emissions|talk|reality|realite|variete|varietes)\b/.test(l)) return 'EMISSION';
+  if (/\b(concert|concerts|spectacle|spectacles|humour)\b/.test(l)) return 'CONCERT';
+  if (/\b(musique|audio|album|albums|flac|mp3)\b/.test(l)) return 'MUSIQUE';
+  if (/\b(livre|livres|ebook|ebooks|bd|comics|manga)\b/.test(l)) return 'LIVRE';
+  if (/\b(serie|series|tele|tv pack|saison)\b/.test(l)) return 'SERIE';
+  if (/\b(film|films|dvd|bluray|remux|mhd|x264|x265|web dl|web rip|vost|vo)\b/.test(l)) return 'FILM';
+  return undefined;
+}
+
+/** Libellé de catégorie d'un article RSS : le ou les « [ ... ] » au début du titre, sinon le début de la description. */
+export function feedLabelOf(article: { title: string; description?: string }): string {
+  const brackets = [...String(article.title).matchAll(/^\s*((?:\[[^\]]+\]\s*)+)/g)][0]?.[1];
+  if (brackets) return brackets.replace(/[\[\]]/g, ' ').replace(/\s+/g, ' ').trim();
+  const d = String(article.description ?? '').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+  return d.slice(0, 160);
+}
+
+
+export const isSeriesLike = (t: ContentType) => t === 'SERIE' || t === 'ANIMATION_SERIE' || t === 'DOC_SERIE' || t === 'EMISSION';
+export const isFilmLike = (t: ContentType) => t === 'FILM' || t === 'ANIMATION' || t === 'DOCUMENTAIRE' || t === 'CONCERT';

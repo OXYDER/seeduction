@@ -14,7 +14,7 @@ const EMPTY_CONFIG = {
   qbit: { url: '', username: '', category: 'a-publier', tag: '' },
   ftp: { host: '', port: 21, username: '', secure: true, headMB: 16 },
   mediainfo: true,
-  defaultCategory: '', autoCategory: true, categoryRules: [] as { match: string; category: string }[],
+  defaultCategory: '', autoCategory: true, readFeedCategory: true, attachMetadata: true, categoryRules: [] as { match: string; category: string }[],
   include: [] as string[], exclude: [] as string[], description: '',
   autoApprove: true, seedOnSeeduction: true, seedCategory: 'seeduction', skipChecking: true,
   intervalMinutes: 10, maxPerRun: 5, delaySeconds: 30,
@@ -181,6 +181,8 @@ export function ImportAdmin() {
                             {r.language ? <span className="badge" style={{ background: /VFQ|VF2/.test(r.language) ? 'rgba(80,200,120,0.25)' : 'rgba(255,255,255,0.1)', fontWeight: 700 }} title="Langue détectée">{r.language}</span> : <span className="muted" style={{ fontSize: 12 }} title="Aucune langue repérable dans le nom ni le MediaInfo">langue ?</span>}
                             {r.resolution && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>{r.resolution}</span>}
                             <div className="muted" style={{ fontSize: 11 }}>→ {r.category ?? 'catégorie ?'}{r.categoryHow ? ` (${r.categoryHow})` : ''}</div>
+                            {r.feedLabel && <div className="muted" style={{ fontSize: 11 }}>flux : {r.feedLabel}</div>}
+                            {r.fiche ? <div style={{ fontSize: 11, color: 'var(--success)' }}>fiche TMDB : {r.fiche}</div> : <div className="muted" style={{ fontSize: 11 }}>fiche : aucune correspondance sûre</div>}
                           </td>
                           <td className="muted" style={{ fontSize: 12 }}>{r.alreadyDone ? `déjà traité (${STATUS_LABEL[r.alreadyDone as ImportItem['status']] ?? r.alreadyDone})` : r.note}</td>
                         </tr>
@@ -315,6 +317,22 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
             <strong>Détecter la catégorie automatiquement</strong> — d'après le nom de la release : série (S01E02, saison, intégrale), film (année + qualité), sport (UFC, NHL…), musique (FLAC, MP3, discographie).
             Si la clé TMDB est configurée sur le serveur, la fiche TMDB précise : animation, émission (téléréalité, talk-show), documentaire.
             <span className="muted" style={{ display: 'block', fontSize: 11 }}>Tes règles ci-dessous passent d'abord. Une release dont le type n'est pas clair n'est jamais rangée au hasard.</span>
+          </span>
+        </label>
+        <label className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+          <input type="checkbox" checked={cfg.readFeedCategory} onChange={(e) => set(['readFeedCategory'], e.target.checked)} style={{ marginTop: 3 }} />
+          <span>
+            <strong>Lire la catégorie du flux RSS</strong> — quand la release vient d'un flux RSS de qBittorrent, la catégorie du flux (par exemple « [Séries-Télé --&gt; Émissions TV HD] » au début du titre de l'article) sert à la ranger :
+            émission, série, série animée, film, sport…
+            <span className="muted" style={{ display: 'block', fontSize: 11 }}>Passe après tes règles et avant la détection par le nom. Le bouton « Tester » montre la catégorie du flux trouvée pour chaque release.</span>
+          </span>
+        </label>
+        <label className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+          <input type="checkbox" checked={cfg.attachMetadata} onChange={(e) => set(['attachMetadata'], e.target.checked)} style={{ marginTop: 3 }} />
+          <span>
+            <strong>Relier chaque release à sa fiche</strong> — films et séries : fiche TMDB (affiche, synopsis, distribution, genres…), cherchée avec le titre et l'année de la release.
+            La fiche n'est rattachée que si le titre correspond <em>exactement</em> : jamais une fiche au hasard. Elle sert aussi à classer (animation, émission, documentaire).
+            <span className="muted" style={{ display: 'block', fontSize: 11 }}>Demande la clé TMDB (TMDB_API_KEY dans backend/.env sur le serveur). Sans clé, les torrents sont publiés sans fiche et rangés d'après le nom et le flux RSS.</span>
           </span>
         </label>
         {field('Catégorie par défaut (facultative)', (

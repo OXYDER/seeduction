@@ -9,7 +9,7 @@ import { hasNfo, nfoFor } from './release-files';
 import { detectReleaseMeta } from './release-meta';
 import { MetadataService } from '../metadata/metadata.service';
 import { SupportBotService } from '../support/support-bot.service';
-import { cleanTitle, guessType, leafKey, refineWithGenres, resolveCandidate } from './category-guess';
+import { cleanTitle, feedLabelOf, guessType, isFilmLike, isSeriesLike, leafKey, refineWithGenres, resolveCandidate, typeFromFeedLabel } from './category-guess';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const str = (v: any, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -49,6 +49,8 @@ export class ImporterService {
       qbit: { url: url.replace(/\/$/, ''), username: str(q.username, 100) || undefined, category: str(q.category, 100) || undefined, tag: str(q.tag, 100) || undefined, doneTag: str(q.doneTag, 100) || 'seeduction-envoye' },
       defaultCategory: str(raw?.defaultCategory, 100) || undefined,
       autoCategory: raw?.autoCategory !== false,
+      readFeedCategory: raw?.readFeedCategory !== false,
+      attachMetadata: raw?.attachMetadata !== false,
       categoryRules: [],
       include: regexList(raw?.include, 'filtre « inclure »'),
       exclude: regexList(raw?.exclude, 'filtre « exclure »'),
@@ -218,6 +220,24 @@ export class ImporterService {
     return [...seen.values()];
   }
 
+  /** Libellé de catégorie du flux RSS pour chaque release (l'article dont le titre contient le nom de la release). */
+  private async feedLabels(q: Qbit, cfg: ImportConfig, list: QbitTorrent[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    if (cfg.readFeedCategory === false || list.length === 0) return out;
+    let articles: { title: string; description: string; torrentURL: string }[] = [];
+    try { articles = await q.rssArticles(); } catch { return out; }
+    if (articles.length === 0) return out;
+    const flat = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const indexed = articles.map((a) => ({ key: flat(a.title.replace(/^\s*(\[[^\]]+\]\s*)+/, '')), label: feedLabelOf(a) })).filter((a) => a.key);
+    for (const t of list) {
+      const k = flat(t.name);
+      if (k.length < 8) continue;
+      const hit = indexed.find((a) => a.key === k) ?? indexed.find((a) => a.key.includes(k) || k.includes(a.key));
+      if (hit?.label) out.set(t.hash, hit.label);
+    }
+    return out;
+  }
+
   private leafCache: { at: number; ids: Map<string, string>; names: Map<string, string> } | null = null;
 
   /** Sous-catégories existantes (seules elles reçoivent des torrents), par nom sans accents ni casse. */
@@ -237,29 +257,42 @@ export class ImporterService {
    * (série, film, sport, musique...) affinée par la fiche TMDB (animation, émission, documentaire) si la clé TMDB est configurée ;
    * 3) la catégorie par défaut, si tu en as choisi une. Sinon null : la release est mise de côté plutôt que rangée au hasard.
    */
-  private async chooseCategory(cfg: ImportConfig, t: QbitTorrent): Promise<{ name: string; id: string; how: string } | null> {
+  private async chooseCategory(cfg: ImportConfig, t: QbitTorrent, feedLabel = ''): Promise<{ name: string; id: string; how: string; meta?: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } } | null> {
     const leaves = await this.leaves();
-    for (const r of cfg.categoryRules ?? []) {
-      if (!new RegExp(r.match, 'i').test(`${t.name} ${t.category}`)) continue;
-      const id = leaves.ids.get(leafKey(r.category));
-      if (id) return { name: leaves.names.get(leafKey(r.category))!, id, how: 'règle' };
+    // Type de contenu : la catégorie du flux RSS (si claire) prime sur le nom ; sinon le nom.
+    const byName = guessType(t.name);
+    const byFeed = cfg.readFeedCategory !== false && feedLabel ? typeFromFeedLabel(feedLabel, byName) : undefined;
+    let type = byFeed ?? byName;
+    let how = byFeed ? 'flux RSS' : 'détection';
+
+    // Fiche TMDB (film ou série) : sert à classer (animation, émission, documentaire) ET à rattacher la fiche au torrent.
+    let meta: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } | undefined;
+    const wantsTmdb = cfg.attachMetadata !== false || cfg.autoCategory !== false;
+    if (type && wantsTmdb && (isFilmLike(type) || isSeriesLike(type))) {
+      const { title, year } = cleanTitle(t.name);
+      const series = isSeriesLike(type);
+      const match = await this.metadata.tmdbMatch(series ? 'tv' : 'movie', title, year);
+      if (match) {
+        meta = { kind: series ? 'SERIE' : 'FILM', id: match.id, title: match.title, year: match.year };
+        if (cfg.autoCategory !== false && (type === 'FILM' || type === 'SERIE')) {
+          const refined = refineWithGenres(type, match.genreIds);
+          if (refined !== type) { how = how === 'flux RSS' ? 'flux RSS + TMDB' : 'TMDB'; type = refined; }
+        }
+      }
     }
-    if (cfg.autoCategory !== false) {
-      let type = guessType(t.name);
-      let how = 'détection';
-      if (type === 'FILM' || type === 'SERIE') {
-        const { title, year } = cleanTitle(t.name);
-        const genres = await this.metadata.tmdbGenres(type === 'SERIE' ? 'tv' : 'movie', title, year);
-        if (genres) { const refined = refineWithGenres(type, genres); if (refined !== type) how = 'TMDB'; type = refined; }
-      }
-      if (type) {
-        const name = resolveCandidate(type, leaves.names);
-        if (name) return { name, id: leaves.ids.get(leafKey(name))!, how };
-      }
+
+    for (const r of cfg.categoryRules ?? []) {
+      if (!new RegExp(r.match, 'i').test(`${t.name} ${t.category} ${feedLabel}`)) continue;
+      const id = leaves.ids.get(leafKey(r.category));
+      if (id) return { name: leaves.names.get(leafKey(r.category))!, id, how: 'règle', meta };
+    }
+    if (cfg.autoCategory !== false && type) {
+      const name = resolveCandidate(type, leaves.names);
+      if (name) return { name, id: leaves.ids.get(leafKey(name))!, how, meta };
     }
     if (cfg.defaultCategory) {
       const id = leaves.ids.get(leafKey(cfg.defaultCategory));
-      if (id) return { name: leaves.names.get(leafKey(cfg.defaultCategory))!, id, how: 'défaut' };
+      if (id) return { name: leaves.names.get(leafKey(cfg.defaultCategory))!, id, how: 'défaut', meta };
     }
     return null;
   }
@@ -285,13 +318,14 @@ export class ImporterService {
 
       const list = (await this.listCompleted(q, cfg)).sort((a, b) => (a.completion_on || a.added_on) - (b.completion_on || b.added_on));
       const known = new Set((await this.prisma.importItem.findMany({ where: { sourceId: id }, select: { key: true } })).map((i) => i.key));
+      const labels = await this.feedLabels(q, cfg, list);
       let sent = 0;
       for (const t of list) {
         if (known.has(t.hash)) continue;
         const skip = async (why: string) => { if (!dryRun) await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'SKIPPED', why } }); await ev('WARN', `${t.name} — mis de côté : ${why}`); };
         if ((cfg.include ?? []).length && !(cfg.include ?? []).some((p) => new RegExp(p, 'i').test(t.name))) { await skip('ne correspond à aucun filtre « inclure »'); continue; }
         if ((cfg.exclude ?? []).some((p) => new RegExp(p, 'i').test(t.name))) { await skip('exclu par un filtre « exclure »'); continue; }
-        const chosen = await this.chooseCategory(cfg, t);
+        const chosen = await this.chooseCategory(cfg, t, labels.get(t.hash) ?? '');
         if (!chosen) { await skip("type de contenu non détecté : ajoute une règle de catégorie ou choisis une catégorie par défaut, puis « Retenter »"); continue; }
         const catName = chosen.name, catId = chosen.id;
         if (sent >= (cfg.maxPerRun ?? 5)) { await ev('INFO', `Limite de ${cfg.maxPerRun} envoi(s) par passe atteinte : la suite à la prochaine passe.`); break; }
@@ -310,10 +344,10 @@ export class ImporterService {
 
         try {
           const meta = detectReleaseMeta(t.name, nfo); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
-          const created = await this.torrents.upload({ userId: uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: catId, tags: [], anonymous: false, nfo, ...meta });
+          const created = await this.torrents.upload({ userId: uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: catId, tags: [], anonymous: false, nfo, ...meta, ...(cfg.attachMetadata !== false && chosen.meta ? { metaKind: chosen.meta.kind, metaId: chosen.meta.id } : {}) });
           const status = cfg.autoApprove !== false ? (await this.admin.approveTorrent(created.id)).status : created.status; // import configuré par un administrateur : approuvé directement
           await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'UPLOADED', torrentId: created.id, savePath: t.save_path } });
-          await ev('INFO', `✓ ${t.name} → ${catName} [${chosen.how}]${meta.language ? ` · ${meta.language}` : ''} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
+          await ev('INFO', `✓ ${t.name} → ${catName} [${chosen.how}]${meta.language ? ` · ${meta.language}` : ''} ${chosen.meta && cfg.attachMetadata !== false ? ` · fiche TMDB : ${chosen.meta.title}` : ''} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
           q.addTags(t.hash, cfg.qbit.doneTag || 'seeduction-envoye').catch(() => undefined);
           sent++;
         } catch (e: any) {
@@ -375,12 +409,13 @@ export class ImporterService {
     }
     const known = new Map((await this.prisma.importItem.findMany({ where: { sourceId: id } })).map((i) => [i.key, i.status]));
     const out: any[] = [];
+    const labels = await this.feedLabels(q, cfg, list.slice(0, 8));
     for (const t of list.slice(0, 8)) {
       let nfo = '', note = '';
       try { nfo = await nfoFor(cfg, secrets, id, t); } catch (e: any) { note = e.message; }
       const meta = detectReleaseMeta(t.name, nfo);
-      const chosen = await this.chooseCategory(cfg, t);
-      out.push({ name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null, nfo: hasNfo(nfo) ? 'FOUND' : 'MISSING', note, language: meta.language ?? null, resolution: meta.resolution ?? null, category: chosen?.name ?? null, categoryHow: chosen?.how ?? null });
+      const chosen = await this.chooseCategory(cfg, t, labels.get(t.hash) ?? '');
+      out.push({ name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null, nfo: hasNfo(nfo) ? 'FOUND' : 'MISSING', note, language: meta.language ?? null, resolution: meta.resolution ?? null, category: chosen?.name ?? null, categoryHow: chosen?.how ?? null, feedLabel: labels.get(t.hash) ?? null, fiche: chosen?.meta ? `${chosen.meta.title}${chosen.meta.year ? ` (${chosen.meta.year})` : ''}` : null });
     }
     return { total: list.length, shown: out };
   }

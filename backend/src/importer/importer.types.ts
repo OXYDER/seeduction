@@ -10,6 +10,10 @@ export interface ImportConfig {
   defaultCategory?: string;
   /** Détecter la catégorie d'après le nom (film, série, sport, musique...) puis la fiche TMDB (animation, émission, documentaire). */
   autoCategory?: boolean;
+  /** Lire la catégorie de l'article RSS qui a amené la release (titre « [Catégorie] Nom » ou description) : sert à ranger au bon endroit. */
+  readFeedCategory?: boolean;
+  /** Relier chaque release à sa fiche (TMDB pour les films et séries : affiche, synopsis, distribution...) quand le titre correspond exactement. */
+  attachMetadata?: boolean;
   categoryRules?: { match: string; category: string }[];
   include?: string[];
   exclude?: string[];
