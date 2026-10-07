@@ -6,3 +6,4 @@ storage/
 backups/
 desktop-player/vendor/
 backend/changelog.txt
+package-lock.json
