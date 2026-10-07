@@ -8,6 +8,8 @@ export interface ImportConfig {
   mediainfo?: boolean;
   defaultCategory: string;
   categoryRules?: { match: string; category: string }[];
+  /** « Quand le nom d'une release correspond à cette expression, sa piste française est de cette variante (ex. MTLQC -> VFQ) » : sert quand le nom ne précise rien (« FRENCH » seul). */
+  languageRules?: { match: string; language: string }[];
   include?: string[];
   exclude?: string[];
   description?: string;

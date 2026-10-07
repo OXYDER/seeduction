@@ -14,10 +14,13 @@ const EMPTY_CONFIG = {
   ftp: { host: '', port: 21, username: '', secure: true, headMB: 16 },
   mediainfo: true,
   defaultCategory: '', categoryRules: [] as { match: string; category: string }[],
+  // Quand le nom ne précise pas la langue (« FRENCH » seul) : les releases du groupe québécois MTLQC sont en VFQ.
+  languageRules: [{ match: 'MTLQC', language: 'VFQ' }] as { match: string; language: string }[],
   include: [] as string[], exclude: [] as string[], description: '',
   seedOnSeeduction: true, seedCategory: 'seeduction', skipChecking: true,
   intervalMinutes: 10, maxPerRun: 5, delaySeconds: 30,
 };
+const FR_VARIANTS = ['VFQ', 'VFF', 'VOF', 'TRUEFRENCH', 'VFI', 'VFB'];
 const STATUS_LABEL: Record<ImportItem['status'], string> = { UPLOADED: 'Envoyé', DUPE: 'Déjà sur le site', REJECTED: 'Refusé', SKIPPED: 'Mis de côté' };
 const LEVEL_COLOR = { INFO: 'inherit', WARN: 'var(--gold-bright, #f5c542)', ERROR: 'var(--danger)' } as const;
 const Go = (n: number) => `${(n / 1e9).toFixed(2)} Go`;
@@ -237,7 +240,7 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
           {field('Mot de passe', <input type="password" autoComplete="new-password" placeholder={source?.hasQbitPassword ? '•••••• (inchangé)' : ''} value={qbitPassword} onChange={(e) => setQbitPassword(e.target.value)} />)}
         </div>
         <div className="row" style={{ gap: 8 }}>
-          {field('Catégorie à publier', <input value={cfg.qbit.category} onChange={(e) => set(['qbit', 'category'], e.target.value)} />, 'Vide = TOUT ce qui se termine (à éviter si tu télécharges autre chose)')}
+          {field('Catégorie(s) à publier', <input value={cfg.qbit.category} onChange={(e) => set(['qbit', 'category'], e.target.value)} />, 'Plusieurs : sépare-les par des virgules. Vide = TOUT ce qui se termine (à éviter si tu télécharges autre chose)')}
           {field('ou étiquette', <input value={cfg.qbit.tag} onChange={(e) => set(['qbit', 'tag'], e.target.value)} />)}
         </div>
       </div>
@@ -281,6 +284,22 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
             </div>
           ))}
           <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => set(['categoryRules'], [...cfg.categoryRules, { match: '', category: '' }])}>+ Ajouter une règle</button>
+        </div>
+        <div className="grid" style={{ gap: 4 }}>
+          <span style={{ fontSize: 12, opacity: 0.8 }}>
+            Règles de langue — quand le nom de la release ne précise pas la variante française (par exemple « FRENCH » seul), si le nom ou la catégorie qBittorrent correspond à l'expression, sa piste française est de cette variante.
+            Un nom qui dit déjà VFF, VFQ, MULTI.VFB… garde toujours le dessus.
+          </span>
+          {cfg.languageRules.map((r: any, i: number) => (
+            <div key={i} className="row" style={{ gap: 6 }}>
+              <input placeholder="Expression, ex. MTLQC" value={r.match} onChange={(e) => set(['languageRules'], cfg.languageRules.map((x: any, j: number) => (j === i ? { ...x, match: e.target.value } : x)))} style={{ flex: 1 }} />
+              <select value={r.language} onChange={(e) => set(['languageRules'], cfg.languageRules.map((x: any, j: number) => (j === i ? { ...x, language: e.target.value } : x)))}>
+                {FR_VARIANTS.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+              <button type="button" className="secondary" onClick={() => set(['languageRules'], cfg.languageRules.filter((_: any, j: number) => j !== i))}>✕</button>
+            </div>
+          ))}
+          <button type="button" className="secondary" style={{ alignSelf: 'flex-start' }} onClick={() => set(['languageRules'], [...cfg.languageRules, { match: '', language: 'VFQ' }])}>+ Ajouter une règle de langue</button>
         </div>
         <div className="row" style={{ gap: 8 }}>
           {field('Inclure seulement (une expression par ligne)', <textarea rows={2} value={include} onChange={(e) => setInclude(e.target.value)} />)}

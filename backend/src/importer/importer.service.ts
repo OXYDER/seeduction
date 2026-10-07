@@ -7,6 +7,7 @@ import { ImportConfig, ImportSecrets, openSecrets, sealSecrets } from './importe
 import { Qbit, QbitTorrent } from './qbit.client';
 import { hasNfo, nfoFor } from './release-files';
 import { detectReleaseMeta } from './release-meta';
+import { FR_VARIANTS } from '../common/utils/language';
 
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -64,6 +65,13 @@ export class ImporterService {
       if (!match || !category) continue;
       try { new RegExp(match, 'i'); } catch { throw new BadRequestException(`Expression régulière invalide (règle de catégorie) : ${match}`); }
       cfg.categoryRules!.push({ match, category });
+    }
+    for (const r of Array.isArray(raw?.languageRules) ? raw.languageRules.slice(0, 30) : []) {
+      const match = str(r?.match, 200), language = str(r?.language, 20).toUpperCase();
+      if (!match) continue;
+      if (!(FR_VARIANTS as readonly string[]).includes(language)) throw new BadRequestException(`Règle de langue : « ${language || '?'} » n'est pas une variante française valide (${FR_VARIANTS.join(', ')})`);
+      try { new RegExp(match, 'i'); } catch { throw new BadRequestException(`Expression régulière invalide (règle de langue) : ${match}`); }
+      (cfg.languageRules ??= []).push({ match, language });
     }
     const f = raw?.ftp;
     if (f && str(f.host, 200)) {
@@ -174,6 +182,21 @@ export class ImporterService {
     return { started: true };
   }
 
+  /** Releases terminées : une ou plusieurs catégories qBittorrent (séparées par des virgules), ou une étiquette, ou tout. */
+  private async listCompleted(q: Qbit, cfg: ImportConfig): Promise<QbitTorrent[]> {
+    const cats = String(cfg.qbit.category ?? '').split(',').map((c) => c.trim()).filter(Boolean);
+    if (cats.length <= 1) return q.completed({ category: cats[0], tag: cfg.qbit.tag });
+    const seen = new Map<string, QbitTorrent>();
+    for (const c of cats) for (const t of await q.completed({ category: c, tag: cfg.qbit.tag })) seen.set(t.hash, t);
+    return [...seen.values()];
+  }
+
+  /** Variante française imposée par une règle de langue (ex. groupe québécois), d'après le nom et la catégorie qBittorrent de la release. */
+  private languageHint(cfg: ImportConfig, t: QbitTorrent): string | undefined {
+    for (const r of cfg.languageRules ?? []) if (new RegExp(r.match, 'i').test(`${t.name} ${t.category}`)) return r.language;
+    return undefined;
+  }
+
   private pickCategory(cfg: ImportConfig, t: QbitTorrent): string {
     for (const r of cfg.categoryRules ?? []) if (new RegExp(r.match, 'i').test(`${t.name} ${t.category}`)) return r.category;
     return cfg.defaultCategory;
@@ -202,7 +225,7 @@ export class ImporterService {
       await q.login();
       await this.seedPass(src.id, src.uploaderId, cfg, q, dryRun, ev);
 
-      const list = (await q.completed({ category: cfg.qbit.category, tag: cfg.qbit.tag })).sort((a, b) => (a.completion_on || a.added_on) - (b.completion_on || b.added_on));
+      const list = (await this.listCompleted(q, cfg)).sort((a, b) => (a.completion_on || a.added_on) - (b.completion_on || b.added_on));
       const known = new Set((await this.prisma.importItem.findMany({ where: { sourceId: id }, select: { key: true } })).map((i) => i.key));
       let sent = 0;
       for (const t of list) {
@@ -228,7 +251,7 @@ export class ImporterService {
         if (dryRun) { await ev('INFO', `enverrait : ${t.name} → ${catName}`); sent++; continue; }
 
         try {
-          const meta = detectReleaseMeta(t.name, nfo); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
+          const meta = detectReleaseMeta(t.name, nfo, { hintVariant: this.languageHint(cfg, t) }); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
           const created = await this.torrents.upload({ userId: src.uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: catId, tags: [], anonymous: false, nfo, ...meta });
           const status = staff ? (await this.admin.approveTorrent(created.id)).status : created.status; // le staff valide de toute façon ses propres envois
           await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'UPLOADED', torrentId: created.id, savePath: t.save_path } });
@@ -288,7 +311,7 @@ export class ImporterService {
     let list: QbitTorrent[];
     try {
       await q.login();
-      list = await q.completed({ category: cfg.qbit.category, tag: cfg.qbit.tag });
+      list = await this.listCompleted(q, cfg);
     } catch (e: any) {
       throw new BadRequestException(String(e?.message ?? e)); // message clair dans l'interface (mot de passe, adresse...)
     }
@@ -297,7 +320,7 @@ export class ImporterService {
     for (const t of list.slice(0, 8)) {
       let nfo = '', note = '';
       try { nfo = await nfoFor(cfg, secrets, id, t); } catch (e: any) { note = e.message; }
-      const meta = detectReleaseMeta(t.name, nfo);
+      const meta = detectReleaseMeta(t.name, nfo, { hintVariant: this.languageHint(cfg, t) });
       out.push({ name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null, nfo: hasNfo(nfo) ? 'FOUND' : 'MISSING', note, language: meta.language ?? null, resolution: meta.resolution ?? null, category: this.pickCategory(cfg, t) });
     }
     return { total: list.length, shown: out };

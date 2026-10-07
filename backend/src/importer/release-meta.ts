@@ -56,9 +56,10 @@ function fromNfo(nfo: string) {
   let section = '';
   let trackLang = '';
   let trackTitle = '';
+  let plainOnly = true; // toutes les pistes françaises sont « French » tout court (aucune précision CA / BE / VFQ...)
   const endAudio = () => {
     if (section === 'audio' && trackLang) {
-      if (trackLang === 'fr') fr.add(variantOf(trackLang, trackTitle));
+      if (trackLang === 'fr') { const v = variantOf(trackLang, trackTitle); fr.add(v); if (v !== 'VFF') plainOnly = false; if (v === 'VFF' && /vff/i.test(trackTitle)) plainOnly = false; }
       else nonFr++;
     }
     trackLang = ''; trackTitle = '';
@@ -84,13 +85,20 @@ function fromNfo(nfo: string) {
   }
   endAudio();
   // Mention explicite dans un NFO texte (« Langue : VFQ »).
-  for (const line of nfo.split(/\r?\n/)) if (/^\s*(release|nom|name|titre|langue|language|audio)\b.*[:.]/i.test(line) && /\bvfq\b|qu[eé]b/i.test(line)) fr.add('VFQ');
-  return { fr, nonFr, subsFr };
+  for (const line of nfo.split(/\r?\n/)) if (/^\s*(release|nom|name|titre|langue|language|audio)\b.*[:.]/i.test(line) && /\bvfq\b|qu[eé]b/i.test(line)) { fr.add('VFQ'); plainOnly = false; }
+  return { fr, nonFr, subsFr, plainOnly };
 }
 
-function languageOf(name: string, nfo: string): string | undefined {
+function languageOf(name: string, nfo: string, hint?: Variant): string | undefined {
   const n = fromName(tokensOf(name));
   const m = fromNfo(nfo);
+  // Indice de l'administrateur (ex. groupe québécois MTLQC -> VFQ) : sert seulement quand le nom ne précise aucune variante française
+  // et que le MediaInfo n'en donne pas non plus de précise (une piste « French » sans autre détail).
+  if (hint && n.fr.size === 0 && !n.muet && !n.vostfr) {
+    const saysFrench = n.multi || /\b(french|vf|vff)\b/i.test(name) || m.nonFr > 0; // le nom ou les pistes indiquent bien du français
+    if (m.fr.size === 0 && saysFrench) n.fr.add(hint);
+    else if (m.fr.size > 0 && m.plainOnly) { m.fr.clear(); n.fr.add(hint); }
+  }
 
   // Aucune piste française annoncée par le nom : muet / VOSTFR.
   const frAll = new Set<Variant>([...n.fr, ...m.fr]);
@@ -117,7 +125,7 @@ function episodeOf(text: string): { season?: string; episode?: string } {
   return {};
 }
 
-export function detectReleaseMeta(name: string, nfo = ''): ReleaseMeta {
+export function detectReleaseMeta(name: string, nfo = '', opts: { hintVariant?: string } = {}): ReleaseMeta {
   const out: ReleaseMeta = {};
   const tokens = tokensOf(name);
   const lower = tokens.flatMap((t) => [t.toLowerCase(), ...t.toLowerCase().split('-')]);
@@ -162,7 +170,8 @@ export function detectReleaseMeta(name: string, nfo = ''): ReleaseMeta {
   if (container) out.containerFormat = /matroska/i.test(container) ? 'MKV' : /mpeg-4/i.test(container) ? 'MP4' : 'AVI';
   else if (has('mkv')) out.containerFormat = 'MKV';
 
-  out.language = languageOf(name, nfo);
+  const hint = (FR_VARIANTS as readonly string[]).includes(String(opts.hintVariant)) ? (opts.hintVariant as Variant) : undefined;
+  out.language = languageOf(name, nfo, hint);
   Object.assign(out, episodeOf(name));
   return out;
 }
