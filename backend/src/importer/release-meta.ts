@@ -22,7 +22,7 @@ export interface ReleaseMeta {
   episode?: string;
 }
 
-const tokensOf = (name: string): string[] => name.replace(/\.torrent$/i, '').split(/[.\_\[\]()\s]+/).filter(Boolean);
+const tokensOf = (name: string): string[] => name.replace(/\.torrent$/i, '').split(/[.\_\[\]()\s+/,]+/).filter(Boolean); // « VFQ+VFF », « VFQ/VFF » : deux étiquettes
 const LANG_CODE: Record<string, string> = { french: 'fr', francais: 'fr', fr: 'fr', fre: 'fr', fra: 'fr', english: 'en', anglais: 'en', en: 'en', eng: 'en' };
 const strip = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
@@ -42,7 +42,7 @@ function fromName(tokens: string[]) {
   if (has('vf2')) { fr.add('VFF'); fr.add('VFQ'); }
   return {
     fr,
-    multi: has('multi', 'multi2', 'multi3', 'multilang', 'multilangue'),
+    multi: has('multi', 'multi2', 'multi3', 'multilang', 'multilangue', 'dual'), // DUAL : deux langues audio
     muet: has('muet'),
     vostfr: has('vostfr', 'vost', 'subfrench'),
   };

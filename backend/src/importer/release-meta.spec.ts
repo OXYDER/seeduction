@@ -129,3 +129,39 @@ describe('indice de langue (groupe quebecois : MTLQC -> VFQ)', () => {
     expect(withHint('Film.2025.1080p.WEB.H264-MTLQC')).toBeUndefined();
   });
 });
+
+describe('autres notations rencontrees dans les noms de releases', () => {
+  it('deux versions francaises ecrites VFQ+VFF ou VFQ/VFF : MULTI.VF2', () => {
+    expect(lang('Film.2025.VFQ+VFF.1080p.WEB.H264-GRP')).toBe('MULTI.VF2');
+    expect(lang('Film.2025.VFQ/VFF.1080p.WEB.H264-GRP')).toBe('MULTI.VF2');
+    expect(lang('Film.2025.MULTI.VFQ.VFF.1080p.WEB.H264-GRP')).toBe('MULTI.VF2');
+    expect(lang('Film.2025.MULTI.VFQ.VF2.1080p.WEB.H264-GRP')).toBe('MULTI.VF2');
+  });
+
+  it('DUAL = deux langues audio : MULTI + la variante', () => {
+    expect(lang('Film.2025.DUAL.VFQ.1080p.WEB.H264-GRP')).toBe('MULTI.VFQ');
+  });
+
+  it('VQ = VFQ', () => {
+    expect(lang('Film.2025.VQ.1080p.WEB.H264-GRP')).toBe('VFQ');
+  });
+
+  it('notations imprecises ou hors regle : aucune langue (jamais une etiquette inventee)', () => {
+    expect(lang('Film.2025.VF.1080p.WEB.H264-GRP')).toBeUndefined();
+    expect(lang('Film.2025.MULTI.VF.1080p.WEB.H264-GRP')).toBeUndefined();
+    expect(lang('Film.2025.MULTI.2F.1080p.WEB.H264-GRP')).toBeUndefined();
+    expect(lang('Film.2025.VFS.1080p.WEB.H264-GRP')).toBeUndefined();
+    expect(lang('Film.2025.VO.1080p.WEB.H264-GRP')).toBeUndefined();
+    expect(lang('Film.2025.VOA.1080p.WEB.H264-GRP')).toBeUndefined();
+  });
+
+  it('VOSTA (sous-titres anglais) n est pas un VOSTFR', () => {
+    expect(lang('Film.2025.VOSTA.1080p.WEB.H264-GRP')).toBeUndefined();
+    expect(lang('Film.2025.VOSTFR.1080p.WEB.H264-GRP')).toBe('VOSTFR');
+  });
+
+  it('un nom vague avec MediaInfo : les pistes tranchent', () => {
+    expect(lang('Film.2025.MULTI.2F.1080p.WEB.H264-GRP', MEDIAINFO(['French (FR)', 'French (CA)', 'English']))).toBe('MULTI.VF2');
+    expect(lang('Film.2025.MULTI.VF.1080p.WEB.H264-GRP', MEDIAINFO(['French (CA)', 'English']))).toBe('MULTI.VFQ');
+  });
+});

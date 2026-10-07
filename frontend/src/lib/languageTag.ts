@@ -33,7 +33,7 @@ export const LANGUAGE_GROUPS: { label: string; values: string[] }[] = [
   { label: 'Sans piste française', values: ['VOSTFR', 'MUET', 'MUET.VOSTFR'] },
 ];
 
-const tokensOf = (name: string) => name.replace(/\.torrent$/i, '').split(/[.\_\[\]()\s]+/).filter(Boolean);
+const tokensOf = (name: string) => name.replace(/\.torrent$/i, '').split(/[.\_\[\]()\s+/,]+/).filter(Boolean); // « VFQ+VFF », « VFQ/VFF » : deux étiquettes
 const strip = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const LANG_CODE: Record<string, string> = { french: 'fr', francais: 'fr', fr: 'fr', fre: 'fr', fra: 'fr', english: 'en', anglais: 'en', en: 'en', eng: 'en' };
 
@@ -48,7 +48,7 @@ function fromName(name: string) {
   if (has('vfb')) fr.add('VFB');
   if (has('vfq', 'vq', 'vfqc', 'quebec', 'québec', 'canadien')) fr.add('VFQ');
   if (has('vf2')) { fr.add('VFF'); fr.add('VFQ'); }
-  return { fr, multi: has('multi', 'multi2', 'multi3', 'multilang', 'multilangue'), muet: has('muet'), vostfr: has('vostfr', 'vost', 'subfrench') };
+  return { fr, multi: has('multi', 'multi2', 'multi3', 'multilang', 'multilangue', 'dual'), muet: has('muet'), vostfr: has('vostfr', 'vost', 'subfrench') };
 }
 
 const variantOf = (label: string): Variant => {
