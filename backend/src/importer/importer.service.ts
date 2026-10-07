@@ -6,6 +6,7 @@ import { AdminService } from '../admin/admin.service';
 import { ImportConfig, ImportSecrets, openSecrets, sealSecrets } from './importer.types';
 import { Qbit, QbitTorrent } from './qbit.client';
 import { hasNfo, nfoFor } from './release-files';
+import { detectReleaseMeta } from './release-meta';
 
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -227,10 +228,11 @@ export class ImporterService {
         if (dryRun) { await ev('INFO', `enverrait : ${t.name} → ${catName}`); sent++; continue; }
 
         try {
-          const created = await this.torrents.upload({ userId: src.uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: catId, tags: [], anonymous: false, nfo });
+          const meta = detectReleaseMeta(t.name, nfo); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
+          const created = await this.torrents.upload({ userId: src.uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: catId, tags: [], anonymous: false, nfo, ...meta });
           const status = staff ? (await this.admin.approveTorrent(created.id)).status : created.status; // le staff valide de toute façon ses propres envois
           await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'UPLOADED', torrentId: created.id, savePath: t.save_path } });
-          await ev('INFO', `✓ ${t.name} → ${catName} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
+          await ev('INFO', `✓ ${t.name} → ${catName}${meta.language ? ` · ${meta.language}` : ''} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
           q.addTags(t.hash, cfg.qbit.doneTag || 'seeduction-envoye').catch(() => undefined);
           sent++;
         } catch (e: any) {
@@ -295,7 +297,8 @@ export class ImporterService {
     for (const t of list.slice(0, 8)) {
       let nfo = '', note = '';
       try { nfo = await nfoFor(cfg, secrets, id, t); } catch (e: any) { note = e.message; }
-      out.push({ name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null, nfo: hasNfo(nfo) ? 'FOUND' : 'MISSING', note });
+      const meta = detectReleaseMeta(t.name, nfo);
+      out.push({ name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null, nfo: hasNfo(nfo) ? 'FOUND' : 'MISSING', note, language: meta.language ?? null, resolution: meta.resolution ?? null, category: this.pickCategory(cfg, t) });
     }
     return { total: list.length, shown: out };
   }

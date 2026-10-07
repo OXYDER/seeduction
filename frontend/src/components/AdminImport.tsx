@@ -130,6 +130,11 @@ export function ImportAdmin() {
                         <tr key={r.name}>
                           <td style={{ wordBreak: 'break-all' }}>{r.name}<div className="muted" style={{ fontSize: 11 }}>{Go(r.size)} · {r.savePath}</div></td>
                           <td style={{ whiteSpace: 'nowrap' }}>{r.nfo === 'FOUND' ? <span style={{ color: 'var(--success)' }}>NFO ✓</span> : <span style={{ color: 'var(--danger)' }} title={r.note}>NFO absent</span>}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            {r.language ? <span className="badge" style={{ background: r.language === 'VFQ' ? 'rgba(80,200,120,0.25)' : 'rgba(255,255,255,0.1)', fontWeight: 700 }} title="Langue détectée">{r.language}</span> : <span className="muted" style={{ fontSize: 12 }} title="Aucune langue repérable dans le nom ni le MediaInfo">langue ?</span>}
+                            {r.resolution && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>{r.resolution}</span>}
+                            <div className="muted" style={{ fontSize: 11 }}>→ {r.category}</div>
+                          </td>
                           <td className="muted" style={{ fontSize: 12 }}>{r.alreadyDone ? `déjà traité (${STATUS_LABEL[r.alreadyDone as ImportItem['status']] ?? r.alreadyDone})` : r.note}</td>
                         </tr>
                       ))}
