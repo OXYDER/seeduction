@@ -186,7 +186,7 @@ export class TrackerService {
     if (deltaUp < 0n) deltaUp = 0n; // client redémarré / reset -> ignore le delta négatif
     if (deltaDown < 0n) deltaDown = 0n;
 
-    const multiplier = torrent.doubleUpload ? 2 : 1;
+    const multiplier = torrent.doubleUpload || (await this.settings.doubleUploadActive()) ? 2 : 1; // double upload du torrent, ou global (récompense du pot commun)
     const creditedUp = deltaUp * BigInt(multiplier);
 
     if (params.event === 'stopped') {

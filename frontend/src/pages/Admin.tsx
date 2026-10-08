@@ -11,16 +11,17 @@ import { ConfigAdmin } from '../components/AdminConfig';
 import { SupportAdmin } from '../components/AdminSupport';
 import { LockdownAdmin } from '../components/AdminLockdown';
 import { ImportAdmin } from '../components/AdminImport';
+import PotAdmin from '../components/AdminPot';
 
 const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki', 'Support'] as const;
-type Tab = typeof BASE_TABS[number] | 'Paramètres' | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal' | 'Sécurité' | 'Import';
+type Tab = typeof BASE_TABS[number] | 'Paramètres' | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal' | 'Sécurité' | 'Import' | 'Pot commun';
 
 export default function Admin() {
   const role = useAuthStore((s) => s.user?.role);
   const [params] = useSearchParams();
-  const [tab, setTab] = useState<Tab>(() => ((BASE_TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'Vue d\'ensemble'));
+  const [tab, setTab] = useState<Tab>(() => (([...BASE_TABS, 'Import', 'Pot commun'] as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'Vue d\'ensemble'));
   // Le monitoring expose des détails d'infrastructure : réservé ADMIN/OWNER (les modérateurs voient le reste).
-  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Paramètres', 'Invitations', 'Canaux', 'Journal', 'Monitoring', 'Import', 'Sécurité'] : [...BASE_TABS];
+  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Paramètres', 'Invitations', 'Canaux', 'Journal', 'Monitoring', 'Import', 'Pot commun', 'Sécurité'] : [...BASE_TABS];
 
   return (
     <div className="grid">
@@ -46,6 +47,7 @@ export default function Admin() {
       {tab === 'Journal' && <AuditAdmin />}
       {tab === 'Monitoring' && <MonitoringAdmin />}
       {tab === 'Import' && <ImportAdmin />}
+      {tab === 'Pot commun' && <PotAdmin />}
       {tab === 'Sécurité' && <LockdownAdmin />}
     </div>
   );
@@ -57,7 +59,7 @@ const AUDIT_LABELS: Record<string, string> = {
   FORUM_TOPIC_DELETE: '🗑️ Sujet supprimé', FORUM_TOPIC_LOCK: '🔒 Sujet verrouillé', FORUM_TOPIC_UNLOCK: '🔓 Sujet déverrouillé',
   FORUM_TOPIC_STICKY: '📌 Sujet épinglé', FORUM_TOPIC_UNSTICKY: 'Sujet désépinglé', FORUM_TOPIC_MOVE: '➜ Sujet déplacé',
   FREELEECH_EVENT_CREATE: '🗓️ Événement freeleech programmé', FREELEECH_EVENT_EDIT: '🗓️ Événement freeleech modifié', FREELEECH_EVENT_DELETE: '🗓️ Événement freeleech supprimé',
-  FORUM_STRUCTURE_CREATE: '🗂️ Forum créé', FORUM_STRUCTURE_DELETE: '🗂️ Forum supprimé', FREELEECH_GLOBAL: '🎉 Freeleech global',
+  FORUM_STRUCTURE_CREATE: '🗂️ Forum créé', FORUM_STRUCTURE_DELETE: '🗂️ Forum supprimé', FREELEECH_GLOBAL: '🎉 Freeleech global', POT_CONFIG: '🍯 Pot commun : réglages', POT_TRIGGER: '🍯 Pot commun : récompense lancée', POT_TOPUP: '🍯 Pot commun : mise de la maison',
   LOGIN: '🔑 Connexion', LOGIN_FAILED: '❌ Connexion échouée', PASSWORD_CHANGE: '🔐 Mot de passe changé', PASSWORD_RESET: '🔐 Mot de passe réinitialisé',
   TWO_FACTOR_ENABLED: '🛡️ 2FA activée', TWO_FACTOR_DISABLED: '🛡️ 2FA désactivée', RESET_LINK_ISSUED: '🔗 Lien de réinitialisation émis',
 };

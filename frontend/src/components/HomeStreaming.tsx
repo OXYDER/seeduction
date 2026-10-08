@@ -8,6 +8,7 @@ import { usePageBackdrop } from '../lib/backdrop';
 import { CATEGORY_STYLE, type LayoutContext } from './Layout';
 import { PosterCard, Rail } from './TorrentRail';
 import MetaChips from './MetaChips';
+import PotWidget from './PotWidget';
 import NewsPanel from './NewsPanel';
 import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
@@ -169,6 +170,7 @@ export default function HomeStreaming() {
     <div className="home-plex">
       <ModerationRail />
       <FreeleechCalendar compact />
+      <PotWidget />
       <HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} />
       <NewsPanel limit={3} />
         <div className="home-bottom">
@@ -216,7 +218,7 @@ export default function HomeStreaming() {
               <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
               <div className="hero-plex">
               <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username} · À la une</div>
-              <h1>{featured.name}</h1>
+              <h1 title={featured.name}>{featured.name}</h1>
               <MetaChips t={featured} className="hero-chips" />
               <div className="hero-meta">
                 {[featured.category?.name, formatBytes(featured.size)].filter(Boolean).join('  ·  ')}

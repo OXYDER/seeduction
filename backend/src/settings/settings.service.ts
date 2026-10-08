@@ -57,6 +57,14 @@ export class SettingsService {
     this.cache.delete('freeleechUntil');
   }
 
+  /** Double upload global en cours (récompense du pot commun) : l'upload de tout le monde compte en double. */
+  async doubleUploadActive(): Promise<boolean> {
+    const w = await this.get<{ startsAt: string; endsAt: string }>('potDoubleUpload');
+    if (!w) return false;
+    const now = Date.now();
+    return new Date(w.startsAt).getTime() <= now && new Date(w.endsAt).getTime() > now;
+  }
+
   /** Fin du freeleech global (manuel ou événement en cours), ou null s'il n'y en a pas d'actif. */
   async freeleechUntil(): Promise<Date | null> {
     return (await this.freeleechState()).until;

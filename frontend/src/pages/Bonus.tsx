@@ -42,6 +42,7 @@ export default function Bonus() {
     <div className="grid" style={{ gap: 16 }}>
       <h1>🎁 Points bonus</h1>
       <FreeleechCalendar />
+      <div className="panel"><Link to="/pot">🍯 <strong>Le pot commun</strong></Link> <span className="muted">— verse des points avec les autres membres : quand le pot est plein, freeleech global pour tout le monde.</span></div>
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
         <div className="panel"><div className="muted">Solde</div><div style={{ fontSize: 26, fontWeight: 700, color: 'var(--gold-bright)' }}>{Math.floor(data.points)}</div></div>

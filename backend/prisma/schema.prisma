@@ -1460,3 +1460,34 @@ model TorrentRevival {
   @@index([createdAt])
   @@index([userId, createdAt])
 }
+
+// Pot commun (« Le Pot du Plaisir ») : les membres y versent des points bonus ; quand il est plein, un freeleech global (et d'autres récompenses) démarre.
+// Un « cycle » est un remplissage : OPEN (on peut donner) -> FULL (plein, en attente du lancement) -> DONE (récompense lancée) ; le cycle suivant s'ouvre aussitôt.
+model PotCycle {
+  id             String        @id @default(uuid())
+  number         Int
+  goal           Int
+  collected      Int           @default(0)
+  status         String        @default("OPEN")
+  startedAt      DateTime      @default(now())
+  fullAt         DateTime?
+  rewardStartsAt DateTime?
+  rewardEndsAt   DateTime?
+  rewardHours    Int?
+  donations      PotDonation[]
+
+  @@index([status])
+}
+
+model PotDonation {
+  id        String   @id @default(uuid())
+  cycle     PotCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  cycleId   String
+  userId    String
+  amount    Int
+  topUp     Boolean  @default(false) // mise de la maison (ajoutée par un administrateur, aucun point débité)
+  createdAt DateTime @default(now())
+
+  @@index([cycleId])
+  @@index([userId, createdAt])
+}

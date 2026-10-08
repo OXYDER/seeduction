@@ -22,6 +22,7 @@ import { CommentsModule } from './comments/comments.module';
 import { SettingsModule } from './settings/settings.service';
 import { AuditModule } from './audit/audit.service';
 import { EconomyModule } from './economy/economy.module';
+import { PotModule } from './pot/pot.module';
 import { SocialModule } from './social/social.module';
 import { MailModule } from './mail/mail.service';
 import { SearchModule } from './search/search.module';
@@ -73,6 +74,7 @@ import { SupportModule } from './support/support.module';
     SettingsModule,
     AuditModule,
     EconomyModule,
+    PotModule,
     SocialModule,
     MailModule,
     SearchModule,

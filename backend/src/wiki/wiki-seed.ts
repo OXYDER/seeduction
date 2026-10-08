@@ -142,7 +142,25 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Freeleech global[/b] : un événement pour tout le site, pendant une durée donnée (annoncé dans les Nouvelles et visible dans un bandeau en haut du site).\n` +
           `• [b]Freeleech personnel[/b] : offert à toi seul jusqu'à une date donnée — le cadeau de bienvenue en est un exemple (voir [url=/wiki/cadeau-de-bienvenue]Le cadeau de bienvenue[/url]), le staff peut aussi t'en offrir un en récompense.\n` +
           `• [b]Jeton freeleech[/b] : acheté dans la boutique à points bonus, à dépenser sur UN torrent précis de ton choix — son téléchargement ne comptera pas dans ton ratio pendant 7 jours.\n\n` +
-          `[b]Double upload (2x)[/b] : un torrent marqué ainsi fait compter ton upload en double — se cumule avec le freeleech (tu peux avoir un torrent gratuit en download ET qui rapporte deux fois plus en upload).`,
+          `[b]Double upload (2x)[/b] : un torrent marqué ainsi fait compter ton upload en double — se cumule avec le freeleech (tu peux avoir un torrent gratuit en download ET qui rapporte deux fois plus en upload).\n\n` +
+          `[b]Le pot commun[/b] : quand les membres remplissent ensemble le pot avec leurs points bonus, un freeleech global (parfois avec un double upload) démarre pour tout le monde — voir [url=/wiki/pot-commun]Le pot commun[/url].`,
+      },
+      {
+        title: 'Le pot commun',
+        slug: 'pot-commun',
+        keywords: 'pot du plaisir, cagnotte, don, points bonus, freeleech global, mécène',
+        isFaq: true,
+        content:
+          `Le [b]pot commun[/b] (par défaut « Le Pot du Plaisir ») est une cagnotte à laquelle tous les membres peuvent verser des [url=/wiki/points-bonus-et-boutique]points bonus[/url]. Quand il est plein, [b]tout le monde[/b] profite d'une récompense : un [b]freeleech global[/b] pendant plusieurs heures (les téléchargements ne comptent pas dans le ratio), et selon les réglages un [b]double upload global[/b].\n\n` +
+          `[b]Comment participer[/b]\n` +
+          `• Va sur la page [url=/pot]Pot commun[/url] (ou clique sur la jauge de l'accueil), choisis un montant et clique sur « Donner ». Les points donnés sont débités tout de suite et ne sont pas remboursables.\n` +
+          `• Il y a un don minimum, parfois un maximum par don et une limite par jour : ils sont affichés sur la page.\n` +
+          `• Les meilleurs donateurs du pot et les mécènes de tous les temps sont affichés sur la page — et peuvent recevoir un bonus quand le pot se remplit.\n\n` +
+          `[b]Quand le pot est plein[/b]\n` +
+          `• Une annonce prévient tout le monde. Le freeleech démarre tout de suite, ou après un court délai pour laisser le temps de prévenir ; s'il y a déjà un freeleech en cours, celui du pot commence juste après (jamais de superposition).\n` +
+          `• Selon les réglages, une partie des points donnés est rendue aux donateurs, et les trois meilleurs reçoivent un bonus.\n` +
+          `• Un nouveau pot s'ouvre aussitôt, parfois avec un objectif un peu plus grand.\n\n` +
+          `Le montant à atteindre et les récompenses sont décidés par l'administration et visibles sur la page du pot.`,
       },
       {
         title: 'Points bonus et la boutique',
