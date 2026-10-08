@@ -296,7 +296,7 @@ function TorrentViewBody(props: TorrentViewProps) {
               <span className="tv-compact-icon" title={t.category?.name}>{styleOf(t)?.icon || '📦'}</span>
               <span className="tv-compact-main">
                 <span className="tv-compact-name">{titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" /></span>
-                <span className="tv-compact-badges"><Badges t={t} /></span>
+                <span className="tv-compact-badges"><Badges t={t} quality={false} /><MetaChips t={t} limit={6} className="tv-meta-chips tv-compact-chips" /></span>
               </span>
               {/* Sur ordinateur ce conteneur « disparaît » (display: contents) : les colonnes restent alignées. Sur téléphone, il forme la 2e ligne. */}
               <span className="tv-compact-meta">
@@ -326,7 +326,6 @@ function TorrentViewBody(props: TorrentViewProps) {
               <CategoryTag category={t.category} />
               {t.freeleech && <span className="badge freeleech">FL</span>}
               {t.doubleUpload && <span className="badge double">2x</span>}
-              {t.resolution && <span className="badge new">{t.resolution}</span>}
             </div>
             {favorites.enabled && !props.leading && (
               <div className="poster-fav"><FavoriteStar active={favorites.ids.has(t.id)} onToggle={() => favorites.toggle(t.id)} /></div>
@@ -334,6 +333,7 @@ function TorrentViewBody(props: TorrentViewProps) {
             {props.leading && <div className="poster-fav">{props.leading(t)}</div>}
             <div className="poster-body">
               <div className="poster-title">{t.name}</div>
+              <MetaChips t={t} limit={5} className="poster-chips" />
               <div className="muted" style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center' }}>
                 <Seeds t={t} />
                 <span style={{ marginLeft: 'auto' }}>{formatBytes(t.size)}</span>

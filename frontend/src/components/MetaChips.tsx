@@ -1,23 +1,42 @@
 import { episodeCode, shortDateFr } from '../lib/frText';
 
+/** Ordre d'affichage : la date d'ajout d'abord, la langue juste après, puis le reste, et le codec audio en dernier. */
+const ORDER = ['dt', 'lang', 'ep', 'yr', 'org', 'res', 'src', 'cod', 'fmt', 'aud'] as const;
+/** Quand la place manque (cartes, rangées), on retire d'abord les moins utiles pour se retrouver : l'ordre ci-dessus est conservé pour ce qui reste. */
+const DROP_FIRST = ['org', 'fmt', 'yr', 'cod', 'aud', 'src', 'res', 'ep', 'dt', 'lang'] as const;
+
 /**
- * Infos d'une release en pastilles de couleur sous son titre, toujours dans le même ordre :
- * la date d'ajout d'abord, la langue juste après, puis le reste (épisode, année, résolution, source, codec vidéo, format) et le codec audio en dernier.
+ * Infos d'une release en pastilles de couleur : date d'ajout, langue, épisode, année, résolution, source, codec vidéo, format, codec audio.
+ * `limit` : nombre maximum de pastilles (cartes, rangées étroites) ; les autres sont résumées par « +N » (leur détail est dans l'infobulle).
  */
-export default function MetaChips({ t, className = '' }: { t: any; className?: string }) {
-  const items: [string, string | number | null | undefined, string][] = [
-    ['dt', shortDateFr(t.createdAt), "Date d'ajout"],
-    ['lang', t.language, 'Langue'],
-    ['ep', episodeCode(t.season, t.episode) ?? (t.episode && !/^\d+$/.test(t.episode) ? t.episode : null), 'Saison / épisode'],
-    ['yr', t.year, 'Année'],
-    ['org', t.origin, 'Origine'],
-    ['res', t.resolution, 'Résolution'],
-    ['src', [t.source, t.hdr ? 'HDR' : ''].filter(Boolean).join(' '), 'Source'],
-    ['cod', t.codec, 'Codec vidéo'],
-    ['fmt', t.containerFormat, 'Format du fichier'],
-    ['aud', t.audio, 'Codec audio'],
-  ];
-  const shown = items.filter(([, v]) => v);
-  if (shown.length === 0) return null;
-  return <div className={`vr-chips ${className}`}>{shown.map(([cls, v, label]) => <span key={cls} className={`vr-chip ${cls}`} title={label}>{v}</span>)}</div>;
+export default function MetaChips({ t, className = '', limit, inline }: { t: any; className?: string; limit?: number; /** Sans conteneur : les pastilles s'insèrent dans une ligne existante (lignes groupées). */ inline?: boolean }) {
+  const all: Record<(typeof ORDER)[number], [string | number | null | undefined, string]> = {
+    dt: [shortDateFr(t.createdAt), "Date d'ajout"],
+    lang: [t.language, 'Langue'],
+    ep: [episodeCode(t.season, t.episode) ?? (t.episode && !/^\d+$/.test(t.episode) ? t.episode : null), 'Saison / épisode'],
+    yr: [t.year, 'Année'],
+    org: [t.origin, 'Origine'],
+    res: [t.resolution, 'Résolution'],
+    src: [[t.source, t.hdr ? 'HDR' : ''].filter(Boolean).join(' '), 'Source'],
+    cod: [t.codec, 'Codec vidéo'],
+    fmt: [t.containerFormat, 'Format du fichier'],
+    aud: [t.audio, 'Codec audio'],
+  };
+  const present = ORDER.filter((k) => all[k][0]);
+  if (present.length === 0) return null;
+  let shown = [...present];
+  const hidden: (typeof ORDER)[number][] = [];
+  if (limit && shown.length > limit) {
+    for (const k of DROP_FIRST) {
+      if (shown.length <= limit) break;
+      if (shown.includes(k)) { shown = shown.filter((x) => x !== k); hidden.push(k); }
+    }
+  }
+  const content = (
+    <>
+      {shown.map((k) => <span key={k} className={`vr-chip ${k}`} title={all[k][1]}>{all[k][0]}</span>)}
+      {hidden.length > 0 && <span className="vr-chip more" title={ORDER.filter((k) => hidden.includes(k)).map((k) => `${all[k][1]} : ${all[k][0]}`).join('\n')}>+{hidden.length}</span>}
+    </>
+  );
+  return inline ? content : <div className={`vr-chips ${className}`}>{content}</div>;
 }

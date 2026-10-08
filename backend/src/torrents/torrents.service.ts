@@ -9,6 +9,7 @@ import { parseTorrentFile, rewriteTorrentForUser, sanitizeTorrentForUpload } fro
 import { MetadataService } from '../metadata/metadata.service';
 import { parseCoverage } from '../common/utils/coverage';
 import { languageAtoms, normalizeLanguage, storedValuesFor } from '../common/utils/language';
+import { extractInstallNotes } from '../common/utils/install-notes';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -460,7 +461,7 @@ export class TorrentsService implements OnModuleInit {
     const t = await this.prisma.torrent.findUnique({ where: { id }, select: { metaSource: true, metaExternalId: true, metadata: true } });
     if (!t || t.metaSource !== 'tmdb' || !t.metaExternalId) return { kind: null };
     const info = (t.metadata ?? {}) as any;
-    const card = { id: true, name: true, size: true, year: true, resolution: true, language: true, seeders: true, leechers: true, coverImage: true };
+    const card = { id: true, name: true, size: true, year: true, resolution: true, language: true, seeders: true, leechers: true, coverImage: true, source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, createdAt: true };
 
     if (info.kind === 'movie') {
       const parts: any[] = info.collection?.parts ?? [];
@@ -499,6 +500,7 @@ export class TorrentsService implements OnModuleInit {
 
   private readonly cardSelect = {
     id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true,
+    source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true,
     seeders: true, leechers: true, freeleech: true, doubleUpload: true, createdAt: true, category: { select: { name: true, slug: true, parent: { select: { slug: true, name: true } } } },
   } as const;
 
@@ -586,6 +588,12 @@ export class TorrentsService implements OnModuleInit {
     await this.findOne(id, viewer);
     const nfo = await this.prisma.torrentNfo.findUnique({ where: { torrentId: id } });
     return { content: nfo?.content ?? null };
+  }
+
+  /** Instructions d'installation / d'utilisation trouvées dans le NFO (rubriques « INSTALL NOTES », « HOW TO »...), pour les logiciels et les jeux. */
+  async installNotes(id: string, viewer?: { userId: string; role: string }) {
+    const { content } = await this.getNfo(id, viewer);
+    return { sections: content ? extractInstallNotes(content) : [] };
   }
 
   async findOne(id: string, viewer?: { userId: string; role: string }) {

@@ -5,6 +5,7 @@ import { CATEGORY_STYLE } from './Layout';
 import { TorrentHover } from './TorrentLink';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
+import MetaChips from './MetaChips';
 
 /** Une carte d'affiche (pochette + titre + infos) avec l'infobulle riche au survol ; `reason` = pourquoi on te la propose. */
 export function PosterCard({ t }: { t: any }) {
@@ -19,10 +20,10 @@ export function PosterCard({ t }: { t: any }) {
           <CategoryTag category={t.category} />
           {t.freeleech && <span className="badge freeleech">FL</span>}
           {t.doubleUpload && <span className="badge double">2x</span>}
-          {t.resolution && <span className="badge new">{t.resolution}</span>}
         </div>
         <div className="poster-body">
           <div className="poster-title">{t.name}</div>
+          <MetaChips t={t} limit={5} className="poster-chips" />
           <div className="muted" style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center' }}>
             <HealthDot seeders={t.seeders} />
             <span style={{ color: 'var(--success)' }}>{t.seeders}</span>&nbsp;/&nbsp;<span style={{ color: 'var(--danger)' }}>{t.leechers}</span>

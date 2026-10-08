@@ -8,6 +8,7 @@ import { CATEGORY_STYLE } from './Layout';
 import CategoryTag from './CategoryTag';
 import UserLink from './UserLink';
 import CopyButton from './CopyButton';
+import MetaChips from './MetaChips';
 
 const RES_RANK = (r?: string | null) => (!r ? 0 : /^(4k|2160)/i.test(r) ? 5 : /1080/.test(r) ? 4 : /720/.test(r) ? 3 : /576|480/.test(r) ? 2 : 1);
 
@@ -44,7 +45,6 @@ export function groupKey(t: any): string {
   return `t:${releaseTitle(t.name).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}|${t.category?.slug ?? ''}`;
 }
 
-const chip = (text: ReactNode, cls: string) => (text ? <span className={`vr-chip ${cls}`}>{text}</span> : null);
 const catIcon = (t: any) => (CATEGORY_STYLE[t.category?.slug ?? ''] ?? CATEGORY_STYLE[t.category?.parent?.slug ?? ''])?.icon ?? '📦';
 const comments = (t: any) => t._count?.comments ?? 0;
 
@@ -109,12 +109,7 @@ export function VersionRow({ t, current, standalone, nameLink, star, actions, de
         )}
         <div className="vr-chips">
           {standalone && t.category && <CategoryTag category={t.category} />}
-          {t.season && chip(`${/^\d+$/.test(String(t.season)) ? `S${String(t.season).padStart(2, '0')}` : t.season}${t.episode && /^\d+$/.test(String(t.episode)) ? `E${String(t.episode).padStart(2, '0')}` : ''}`, 'ep')}
-          {chip(t.language, 'lang')}
-          {chip(t.resolution, 'res')}
-          {chip([t.source, t.hdr ? 'HDR' : ''].filter(Boolean).join(' '), 'src')}
-          {chip(t.audio, 'aud')}
-          {chip(t.codec, 'cod')}
+          <MetaChips t={t} inline />{/* date, langue, épisode, année, résolution, source, codec vidéo, format, codec audio (en dernier) */}
           {!standalone && group && <Link to={`/team/${teamSlug(group)}`} className="vr-group" title={`Team ${group}`}>{group}</Link>}
           {t.freeleech && <span className="badge freeleech">FL</span>}
           {t.status === 'DEAD' && <span className="vr-dead" title="Plus aucun seeder">☠️</span>}

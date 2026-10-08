@@ -7,6 +7,7 @@ import { timeAgo } from '../lib/time';
 import { usePageBackdrop } from '../lib/backdrop';
 import { CATEGORY_STYLE, type LayoutContext } from './Layout';
 import { PosterCard, Rail } from './TorrentRail';
+import MetaChips from './MetaChips';
 import NewsPanel from './NewsPanel';
 import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
@@ -216,8 +217,9 @@ export default function HomeStreaming() {
               <div className="hero-plex">
               <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username} · À la une</div>
               <h1>{featured.name}</h1>
+              <MetaChips t={featured} className="hero-chips" />
               <div className="hero-meta">
-                {[featured.year, featured.category?.name, featured.resolution, featured.language, formatBytes(featured.size)].filter(Boolean).join('  ·  ')}
+                {[featured.category?.name, formatBytes(featured.size)].filter(Boolean).join('  ·  ')}
                 <span className="hero-health"><HealthDot seeders={featured.seeders} />{featured.seeders} seeders</span>
               </div>
               {featured.synopsis && <p className="hero-synopsis">{featured.synopsis}</p>}

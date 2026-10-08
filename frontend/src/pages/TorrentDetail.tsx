@@ -15,6 +15,7 @@ import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
 import TorrentVersions from '../components/TorrentVersions';
 import NfoPanel from '../components/NfoPanel';
+import InstallNotes from '../components/InstallNotes';
 import StickyDownloadBar from '../components/StickyDownloadBar';
 import WatchOnlineButton from '../components/WatchOnlineButton';
 import { CATEGORY_STYLE } from '../components/Layout';
@@ -287,6 +288,7 @@ export default function TorrentDetail() {
             <TorrentHero torrent={torrent} />
             <TorrentVersions torrentId={torrent.id} />
             {descriptionPanel}
+            {['LOGICIEL', 'JEU'].includes(contentKind ?? '') && <InstallNotes torrentId={torrent.id} onOpenNfo={() => setTab('nfo')} />}
           </div>
         )}
         {tab === 'files' && filesPanel}
@@ -353,6 +355,7 @@ export default function TorrentDetail() {
       </div>
       {tokenError}
       <TorrentVersions torrentId={torrent.id} />
+      {['LOGICIEL', 'JEU'].includes(contentKind ?? '') && <InstallNotes torrentId={torrent.id} />}
       <NfoPanel torrentId={torrent.id} />
       <TorrentComments torrentId={torrent.id} />
       {filesPanel}

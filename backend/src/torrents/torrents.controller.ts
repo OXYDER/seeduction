@@ -175,6 +175,12 @@ export class TorrentsController {
   }
 
   @UseGuards(OptionalJwtAuthGuard)
+  @Get(':id/install-notes')
+  installNotes(@Param('id') id: string, @Request() req: any) {
+    return this.torrentsService.installNotes(id, req.user);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':id/nfo')
   nfo(@Param('id') id: string, @Request() req: any) {
     return this.torrentsService.getNfo(id, req.user);

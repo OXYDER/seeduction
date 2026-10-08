@@ -3235,3 +3235,16 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .rt-tag.fmt b { color: #c4b5fd; background: rgba(139,92,246,0.18); }
 @media (max-width: 640px) { .rt-tags { gap: 6px; } .rt-tag { font-size: 12px; } .rt-tag i { padding: 4px 7px; } .rt-tag b { padding: 4px 8px; } }
 .rt-tag.gen b { color: #f9a8d4; background: rgba(236,72,153,0.16); }
+
+/* Pastilles d'information : cartes (affiches, rangées), rangée compacte et vedette « À la une » — même ordre partout, taille adaptée pour ne pas surcharger. */
+.vr-chip.more { color: #94a3b8; background: rgba(255,255,255,0.06); cursor: help; }
+.poster-chips { margin-top: 5px; gap: 3px 4px; }
+.poster-chips .vr-chip { font-size: 10px; padding: 1px 5px; font-weight: 700; }
+.tv-posters .poster-chips { display: none; }
+.tv-compact-chips { margin: 0; }
+.tv-compact-chips .vr-chip { font-size: 10.5px; padding: 0 6px; }
+.tv-compact-badges { flex-shrink: 1; min-width: 0; flex-wrap: wrap; white-space: normal; align-items: center; }
+@media (max-width: 900px) { .tv-compact-badges { display: flex; } }
+.hero-chips { margin: 2px 0 10px; gap: 6px 7px; }
+.hero-chips .vr-chip { font-size: 13px; padding: 3px 10px; border-radius: 6px; }
+@media (max-width: 640px) { .hero-chips .vr-chip { font-size: 12px; padding: 2px 8px; } }
