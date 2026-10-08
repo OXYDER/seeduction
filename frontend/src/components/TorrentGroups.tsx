@@ -166,18 +166,26 @@ function SeriesBody({ rows, mode, star, actions }: { rows: any[]; mode: 'packs' 
   const seasons = new Map<number, any[]>();
   subset.forEach((r) => { const k = digits(r.season); seasons.set(k, [...(seasons.get(k) ?? []), r]); });
   const nums = [...seasons.keys()].sort((a, b) => a - b);
-  // Tout est déplié à l'ouverture d'une série : toutes ses saisons, tous ses épisodes ; chaque niveau se replie d'un clic.
+  // Les saisons sont dépliées d'office (un clic sur la série montre directement ses épisodes) ; chaque épisode se déplie pour montrer ses releases.
   const [openSeasons, setOpenSeasons] = useState<Set<string>>(() => new Set(nums.map((n) => `${mode}:${n}`)));
-  const [openEps, setOpenEps] = useState<Set<string>>(() => {
-    const keys = new Set<string>();
-    for (const n of nums) {
-      const perEp = new Map<number, number>();
-      seasons.get(n)!.forEach((r) => { const k = digits(r.episode); perEp.set(k, (perEp.get(k) ?? 0) + 1); });
-      for (const [e, count] of perEp) if (count > 1) keys.add(`${mode}:${n}:${e}`);
-    }
-    return keys;
-  });
+  const [openEps, setOpenEps] = useState<Set<string>>(new Set());
   const flip = (set: Set<string>, setter: (s: Set<string>) => void, key: string) => { const n = new Set(set); if (n.has(key)) n.delete(key); else n.add(key); setter(n); };
+
+  /** Les épisodes d'une saison : une ligne par épisode avec « N releases », qui se déplie en ses releases. */
+  const episodeNodes = (sKey: string, sRows: any[], depth: number) => {
+    const eps = new Map<number, any[]>();
+    sRows.forEach((r) => { const k = digits(r.episode); eps.set(k, [...(eps.get(k) ?? []), r]); });
+    return [...eps.keys()].sort((a, b) => a - b).map((e) => {
+      const eRows = eps.get(e)!;
+      const eKey = `${sKey}:${e}`;
+      return (
+        <Node key={eKey} depth={depth} label={e === 0 ? 'Épisode' : `E${String(e).padStart(2, '0')}`} rows={eRows} open={openEps.has(eKey)} onToggle={() => flip(openEps, setOpenEps, eKey)}
+          tags={<span className="vg-tags muted">{plural(eRows.length, 'release')}</span>}>
+          {sortVersions(eRows).map((t) => <VersionRow key={t.id} t={t} depth={depth + 1} star={star?.(t)} actions={actions} />)}
+        </Node>
+      );
+    });
+  };
 
   return (
     <div className="vg-rows">
@@ -193,24 +201,12 @@ function SeriesBody({ rows, mode, star, actions }: { rows: any[]; mode: 'packs' 
             </Node>
           );
         }
-        const eps = new Map<number, any[]>();
-        sRows.forEach((r) => { const k = digits(r.episode); eps.set(k, [...(eps.get(k) ?? []), r]); });
-        const epNums = [...eps.keys()].sort((a, b) => a - b);
+        // Une seule saison : pas de ligne de saison, les épisodes s'affichent directement sous la série.
+        if (nums.length === 1) return <div key={sKey}>{episodeNodes(sKey, sRows, 1)}</div>;
         return (
           <Node key={sKey} depth={1} label={label} rows={sRows} open={openSeasons.has(sKey)} onToggle={() => flip(openSeasons, setOpenSeasons, sKey)}
-            tags={<span className="vg-tags muted">{plural(epNums.length, 'épisode')} · {plural(sRows.length, 'release')}</span>}>
-            {epNums.map((e) => {
-              const eRows = eps.get(e)!;
-              const eKey = `${sKey}:${e}`;
-              // Un épisode avec une seule release : la release s'affiche directement (son code S17E03 est dans ses pastilles), sans niveau de plus à déplier.
-              if (eRows.length === 1) return <VersionRow key={eRows[0].id} t={eRows[0]} depth={2} star={star?.(eRows[0])} actions={actions} />;
-              return (
-                <Node key={eKey} depth={2} label={`E${String(e).padStart(2, '0')}`} rows={eRows} open={openEps.has(eKey)} onToggle={() => flip(openEps, setOpenEps, eKey)}
-                  tags={<span className="vg-tags">{resCounts(eRows).map(([res, c]) => <span key={res} className="vg-res">{res} <span className="muted">({c})</span></span>)}<span className="muted">{plural(eRows.length, 'version')}</span></span>}>
-                  {sortVersions(eRows).map((t) => <VersionRow key={t.id} t={t} depth={3} star={star?.(t)} actions={actions} />)}
-                </Node>
-              );
-            })}
+            tags={<span className="vg-tags muted">{plural(distinctEpisodes(sRows), 'épisode')}</span>}>
+            {episodeNodes(sKey, sRows, 2)}
           </Node>
         );
       })}
@@ -252,13 +248,13 @@ function Group({ rows, actions, star }: { rows: any[]; actions?: (t: any) => Rea
             {runtime ? <span className="vg-runtime" title={isSeries ? 'Durée d\'un épisode' : 'Durée'}>⏱ {isSeries ? `~${formatMinutes(runtime)} / épisode` : formatMinutes(runtime)}</span> : null}
             {isSeries ? (
               <>
-                {packs.length > 0 && <button type="button" className={`vg-mode${open && mode === 'packs' ? ' on' : ''}`} onClick={() => pick('packs')} title={`${plural(distinctSeasons(packs), 'saison')} complète${distinctSeasons(packs) > 1 ? 's' : ''}, ${plural(packs.length, 'release')}`}>Saisons complètes : {plural(distinctSeasons(packs), 'saison')} · {plural(packs.length, 'release')} ⌄</button>}
-                {eps.length > 0 && <button type="button" className={`vg-mode${open && mode === 'episodes' ? ' on' : ''}`} onClick={() => pick('episodes')} title={`${plural(distinctEpisodes(eps), 'épisode')}, ${plural(eps.length, 'release')}`}>À l'épisode : {plural(distinctEpisodes(eps), 'épisode')} · {plural(eps.length, 'release')} ⌄</button>}
+                {packs.length > 0 && <button type="button" className={`vg-mode${open && mode === 'packs' ? ' on' : ''}`} onClick={() => pick('packs')} title={plural(packs.length, 'release')}>{plural(distinctSeasons(packs), 'saison')} complète{distinctSeasons(packs) > 1 ? 's' : ''} ⌄</button>}
+                {eps.length > 0 && <button type="button" className={`vg-mode${open && mode === 'episodes' ? ' on' : ''}`} onClick={() => pick('episodes')} title={plural(eps.length, 'release')}>{plural(distinctEpisodes(eps), 'épisode')} ⌄</button>}
               </>
             ) : (
               <>
                 {resCounts(rows).map(([res, n]) => <span key={res} className="vg-res">{res} <span className="muted">({n})</span></span>)}
-                {rows.length > 1 && <span className="muted">{plural(rows.length, 'version')}</span>}
+                {rows.length > 1 && <span className="muted">{plural(rows.length, 'release')}</span>}
               </>
             )}
           </div>
