@@ -3262,3 +3262,25 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 @media (max-width: 720px) {
   .home-plex .hero-frame .hero-plex h1 { display: -webkit-box; white-space: normal; -webkit-line-clamp: 3; font-size: clamp(20px, 5.2vw, 28px); }
 }
+
+/* Anneaux de statistiques : relief, légende lisible, infobulle moderne. */
+.donut-wrap { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(160px, 1fr); gap: 14px; align-items: center; }
+@media (max-width: 560px) { .donut-wrap { grid-template-columns: minmax(0, 1fr); } }
+.donut-chart { position: relative; min-width: 0; filter: drop-shadow(0 10px 14px rgba(0,0,0,0.45)); }
+.donut-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; display: grid; gap: 1px; pointer-events: none; max-width: 38%; line-height: 1.15; }
+.donut-center strong { font-size: clamp(18px, 2.4vw, 26px); color: #fff; }
+.donut-center-label { font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.donut-center-sub { font-size: 12px; color: #94a3b8; }
+.donut-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 260px; overflow-y: auto; }
+.donut-legend li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto 54px; gap: 8px; align-items: center; padding: 4px 8px; border-radius: 8px; font-size: 13px; cursor: default; transition: background .15s, opacity .15s; }
+.donut-legend li.on { background: rgba(255,255,255,0.09); }
+.donut-legend li.dim { opacity: 0.55; }
+.donut-legend i { width: 12px; height: 12px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35); }
+.donut-legend-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.donut-legend-count { font-variant-numeric: tabular-nums; font-weight: 700; }
+.donut-legend-pct { text-align: right; color: #94a3b8; font-variant-numeric: tabular-nums; font-size: 12px; }
+.chart-tip { background: rgba(15, 18, 32, 0.95); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; padding: 9px 13px; box-shadow: 0 14px 34px rgba(0,0,0,0.6); backdrop-filter: blur(6px); color: #f1f5f9; }
+.chart-tip-name { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; }
+.chart-tip-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.chart-tip-value { margin-top: 3px; font-size: 20px; font-weight: 800; }
+.chart-tip-value span { font-size: 13px; font-weight: 600; color: #94a3b8; }

@@ -1,10 +1,16 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { COLORS } from './Donut';
+
+export { Donut, COLORS } from './Donut';
 import UserLink from '../UserLink';
 
-export const COLORS = ['#e0b84a', '#4caf50', '#7aa0ff', '#c084fc', '#f472b6', '#2dd4bf', '#ef6c4a', '#9fb8a0'];
-export const tooltipStyle = { background: '#0c1912', border: '1px solid #1f3d2a', color: '#e9f2ea' };
+/** Infobulle moderne et lisible (fond sombre translucide, bord doux, ombre) pour les graphiques en barres et en courbes. */
+export const tooltipStyle = {
+  background: 'rgba(15, 18, 32, 0.95)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, color: '#f1f5f9',
+  boxShadow: '0 14px 34px rgba(0,0,0,0.6)', padding: '8px 12px', fontSize: 13,
+};
 export const shortDate = (d: string) => d.slice(5).replace('-', '/');
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -78,19 +84,6 @@ export function Bars({ data, x = 'name', y = 'count', color = '#e0b84a', label =
         <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
         <Bar dataKey={y} name={label} fill={color}>{colors && data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Bar>
       </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-export function Donut({ data, height = 220 }: { data: { name: string; count: number }[]; height?: number }) {
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <PieChart>
-        <Pie data={data} dataKey="count" nameKey="name" innerRadius={42} outerRadius={80} paddingAngle={2} label={(e: any) => e.name}>
-          {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-        </Pie>
-        <Tooltip contentStyle={tooltipStyle} />
-      </PieChart>
     </ResponsiveContainer>
   );
 }
