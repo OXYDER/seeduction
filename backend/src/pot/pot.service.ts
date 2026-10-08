@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { DEFAULT_POT, MAX_REWARD_HOURS, PotConfig, PotTier, nextAtHour, normalizePotConfig } from './pot.config';
+import { DEFAULT_POT, MAX_REWARD_HOURS, PotConfig, nextAtHour, normalizePotConfig } from './pot.config';
 
 const DAY = 86400_000;
 const fmtDate = (d: Date) => d.toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/Toronto' });
@@ -83,6 +83,8 @@ export class PotService {
       },
       rules: { minDonation: cfg.minDonation, maxDonation: cfg.maxDonation, dailyLimit: cfg.dailyLimit, dailyLeft, carryOver: cfg.carryOver, goalGrowthPct: cfg.goalGrowthPct, goalPerMember: cfg.goalPerMember, minAccountDays: cfg.minAccountDays },
       tiers: cfg.tiers.map((t) => ({ ...t, amount: Math.ceil((cycle.goal * t.atPct) / 100), reached: cycle.reached.includes(t.atPct) })),
+      donorTiers: cfg.donorTiers.map((t) => ({ ...t, reached: cycle.reachedDonors.includes(t.donors) })),
+      donorCount: cfg.donorTiers.length ? (await this.prisma.potDonation.groupBy({ by: ['userId'], where: { cycleId: cycle.id, topUp: false } })).length : 0,
       mine: userId ? { cycle: mine?._sum.amount ?? 0, lifetime: lifetime?._sum.amount ?? 0 } : null,
       top: top.map((t) => ({ username: name.get(t.userId) ?? '(membre supprimé)', amount: t._sum.amount ?? 0 })),
       topAllTime: topAll.map((t) => ({ username: name.get(t.userId) ?? '(membre supprimé)', amount: t._sum.amount ?? 0 })),
@@ -126,6 +128,7 @@ export class PotService {
       await tx.potDonation.create({ data: { cycleId: cycle.id, userId, amount } });
       return tx.potCycle.findUniqueOrThrow({ where: { id: cycle.id } });
     });
+    await this.reachDonorTiers(cfg, cycle.id);
     await this.afterAdd(cfg, cycle.id, before, updated.collected, updated.goal);
     return { ok: true, given: amount, collected: updated.collected, goal: updated.goal, full: updated.collected >= updated.goal };
   }
@@ -165,7 +168,18 @@ export class PotService {
     for (const tier of cfg.tiers) {
       if (!(before * 100 < tier.atPct * goal && after * 100 >= tier.atPct * goal)) continue;
       const claimed = await this.prisma.$executeRaw`UPDATE "PotCycle" SET reached = array_append(reached, ${tier.atPct}::int) WHERE id = ${cycleId} AND NOT (${tier.atPct}::int = ANY(reached))`;
-      if (claimed) await this.grantTier(cfg, tier, cycleId).catch((e) => this.logger.warn(`Palier ${tier.atPct} % : ${e?.message ?? e}`));
+      if (claimed) await this.grantTier(cfg, tier, cycleId, `palier ${tier.atPct} %`).catch((e) => this.logger.warn(`Palier ${tier.atPct} % : ${e?.message ?? e}`));
+    }
+  }
+
+  /** Paliers de participation (option) : débloqués quand assez de membres DIFFÉRENTS ont donné dans le cycle, une seule fois chacun. */
+  private async reachDonorTiers(cfg: PotConfig, cycleId: string) {
+    if (cfg.donorTiers.length === 0) return;
+    const donors = (await this.prisma.potDonation.groupBy({ by: ['userId'], where: { cycleId, topUp: false } })).length;
+    for (const tier of cfg.donorTiers) {
+      if (donors < tier.donors) continue;
+      const claimed = await this.prisma.$executeRaw`UPDATE "PotCycle" SET "reachedDonors" = array_append("reachedDonors", ${tier.donors}::int) WHERE id = ${cycleId} AND NOT (${tier.donors}::int = ANY("reachedDonors"))`;
+      if (claimed) await this.grantTier(cfg, tier, cycleId, `palier des ${tier.donors} donateurs`).catch((e) => this.logger.warn(`Palier ${tier.donors} donateurs : ${e?.message ?? e}`));
     }
   }
 
@@ -179,13 +193,13 @@ export class PotService {
   }
 
   /** Récompense d'un palier : freeleech et / ou double upload (après un freeleech déjà en cours), jetons pour les donateurs, pluie de points. */
-  private async grantTier(cfg: PotConfig, tier: PotTier, cycleId: string) {
+  private async grantTier(cfg: PotConfig, tier: { freeleechHours: number; doubleUploadHours: number; tokens: number; rainPoints: number }, cycleId: string, label: string) {
     const fl = await this.settings.freeleechState();
     const startsAt = new Date(Math.max(Date.now(), fl.until?.getTime() ?? 0));
     const perks: string[] = [];
     if (tier.freeleechHours > 0) {
       const endsAt = new Date(startsAt.getTime() + tier.freeleechHours * 3600_000);
-      await this.prisma.freeleechEvent.create({ data: { title: `${cfg.icon} ${cfg.name} — palier ${tier.atPct} %`, message: `Le palier ${tier.atPct} % du ${cfg.name} est atteint : merci aux donateurs ! Les téléchargements ne comptent pas dans ton ratio.`, startsAt, endsAt } });
+      await this.prisma.freeleechEvent.create({ data: { title: `${cfg.icon} ${cfg.name} — ${label}`, message: `Le ${label} du ${cfg.name} est atteint : merci aux donateurs ! Les téléchargements ne comptent pas dans ton ratio.`, startsAt, endsAt } });
       this.settings.invalidateFreeleech();
       perks.push(`freeleech global ${tier.freeleechHours} h`);
     }
@@ -197,8 +211,8 @@ export class PotService {
     }
     if (tier.rainPoints > 0) { const n = await this.rain({ ...cfg, rainPoints: tier.rainPoints }); if (n > 0) perks.push(`${tier.rainPoints} points offerts à chaque membre actif`); }
     if (perks.length === 0) return;
-    this.logger.log(`Palier ${tier.atPct} % du pot atteint : ${perks.join(', ')}`);
-    if (cfg.announce) await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `${cfg.icon} ${cfg.name} : palier ${tier.atPct} % atteint !`, body: perks.join(' · '), link: '/pot' }).catch(() => undefined);
+    this.logger.log(`${label} du pot atteint : ${perks.join(', ')}`);
+    if (cfg.announce) await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `${cfg.icon} ${cfg.name} : ${label} atteint !`, body: perks.join(' · '), link: '/pot' }).catch(() => undefined);
   }
 
   // ------------------------------------------------------------------ remplissage et récompense

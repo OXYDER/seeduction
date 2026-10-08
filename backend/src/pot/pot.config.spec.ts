@@ -55,4 +55,11 @@ describe('réglages du pot commun', () => {
     expect(normalizePotConfig({ tiers: 'x' }).tiers).toEqual([]);
     expect(normalizePotConfig({ tiers: Array.from({ length: 20 }, (_, i) => ({ atPct: i + 1, tokens: 1 })) }).tiers).toHaveLength(6);
   });
+
+  it('paliers de participation : option vide par défaut, triés, 2 donateurs minimum, sans doublon ni palier vide', () => {
+    expect(normalizePotConfig({}).donorTiers).toEqual([]);
+    const c = normalizePotConfig({ donorTiers: [{ donors: 25, tokens: 1 }, { donors: 10, freeleechHours: 6 }, { donors: 1, tokens: 3 }, { donors: 10, tokens: 9 }, { donors: 15 }] });
+    expect(c.donorTiers.map((t) => t.donors)).toEqual([10, 25]);
+    expect(c.donorTiers[0].freeleechHours).toBe(6);
+  });
 });

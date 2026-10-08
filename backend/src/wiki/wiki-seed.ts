@@ -158,6 +158,8 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• Les meilleurs donateurs du pot et les mécènes de tous les temps sont affichés sur la page — et peuvent recevoir un bonus quand le pot se remplit.\n\n` +
           `[b]Les paliers[/b]\n` +
           `• Selon les réglages, la jauge a des repères (🎁) : à 33 %, 66 %... des récompenses intermédiaires se débloquent en cours de route (freeleech, double upload, jetons, pluie de points). Chaque palier ne se déclenche qu'une fois par pot ; la liste est sur la page du pot.\n\n` +
+          `[b]Paliers de participation[/b] (si activés)\n` +
+          `• Certaines récompenses dépendent du [b]nombre de membres différents[/b] qui ont donné (par exemple 20 donateurs), pas du montant : même un petit don compte. Elles apparaissent dans l'encart « Participation » de la page du pot.\n\n` +
           `[b]Quand le pot est plein[/b]\n` +
           `• Une annonce prévient tout le monde. Le freeleech démarre tout de suite, ou après un court délai pour laisser le temps de prévenir ; s'il y a déjà un freeleech en cours, celui du pot commence juste après (jamais de superposition).\n` +
           `• Selon les réglages, la récompense peut aussi comprendre un [b]double upload global[/b] (avec sa propre durée), une [b]pluie de points[/b] pour tous les membres actifs, des [b]jetons freeleech[/b] pour les donateurs, et une durée prolongée si le pot se remplit [b]très vite[/b].\n` +

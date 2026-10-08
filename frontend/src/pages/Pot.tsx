@@ -137,6 +137,24 @@ export default function Pot() {
         </div>
       )}
 
+      {pot.donorTiers?.length > 0 && (
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>🤝 Participation : plus on est nombreux, plus c'est généreux</h3>
+          <p className="muted" style={{ margin: '0 0 8px', fontSize: 12 }}>
+            Ces récompenses ne dépendent pas du montant : chaque membre qui donne, même un petit peu, compte. <strong>{pot.donorCount}</strong> membre{pot.donorCount > 1 ? 's ont' : ' a'} donné dans ce pot.
+          </p>
+          <div className="grid" style={{ gap: 6 }}>
+            {pot.donorTiers.map((t: any) => (
+              <div key={t.donors} className={`pot-tier-row${t.reached ? ' on' : ''}`}>
+                <span className="pot-tier-badge">{t.reached ? '✅' : '🔒'} {t.donors} donateurs</span>
+                <span className="muted" style={{ fontSize: 12 }}>{t.reached ? 'atteint' : `encore ${Math.max(0, t.donors - pot.donorCount)}`}</span>
+                <span>{tierPerks(t)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="panel">
         <h3 style={{ marginTop: 0 }}>🎁 Quand le pot est plein</h3>
         <ul style={{ margin: 0, paddingLeft: 20 }}>{rewards.map((r) => <li key={r}>{r}</li>)}</ul>

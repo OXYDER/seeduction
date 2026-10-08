@@ -1475,6 +1475,7 @@ model PotCycle {
   rewardEndsAt   DateTime?
   rewardHours    Int?
   reached        Int[]         @default([]) // paliers (en % de l'objectif) déjà atteints dans ce cycle
+  reachedDonors  Int[]         @default([]) // paliers de participation (nombre de donateurs) déjà atteints dans ce cycle
   donations      PotDonation[]
 
   @@index([status])

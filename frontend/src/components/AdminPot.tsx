@@ -20,6 +20,7 @@ export default function PotAdmin() {
   useEffect(() => { void load(); }, [load]);
 
   const set = (key: string, value: any) => setCfg((c: any) => ({ ...c, [key]: value }));
+  const setDonorTier = (i: number, patch: any) => setCfg((c: any) => ({ ...c, donorTiers: c.donorTiers.map((t: any, j: number) => (j === i ? { ...t, ...patch } : t)) }));
   const setTier = (i: number, patch: any) => setCfg((c: any) => ({ ...c, tiers: c.tiers.map((t: any, j: number) => (j === i ? { ...t, ...patch } : t)) }));
   const ok = (m: string) => { setError(''); setMessage(m); };
   const fail = (e: any) => { setMessage(''); setError(e.response?.data?.message ?? 'Erreur'); };
@@ -162,6 +163,28 @@ export default function PotAdmin() {
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           {(cfg.tiers ?? []).length < 6 && <button type="button" className="secondary" onClick={() => set('tiers', [...(cfg.tiers ?? []), { atPct: 50, freeleechHours: 6, doubleUploadHours: 0, tokens: 0, rainPoints: 0 }])}>➕ Ajouter un palier</button>}
           {(cfg.tiers ?? []).length === 0 && <button type="button" className="secondary" onClick={() => set('tiers', [{ atPct: 33, freeleechHours: 0, doubleUploadHours: 6, tokens: 0, rainPoints: 0 }, { atPct: 66, freeleechHours: 12, doubleUploadHours: 0, tokens: 1, rainPoints: 0 }])}>✨ Exemple : 33 % et 66 %</button>}
+        </div>
+      </div>
+
+      <div className="panel grid" style={{ gap: 12 }}>
+        <strong>Paliers de participation <span className="muted" style={{ fontWeight: 400 }}>— option, désactivée par défaut</span></strong>
+        <p className="muted" style={{ margin: 0, fontSize: 12 }}>
+          Récompense la participation plutôt que le montant : un palier se déclenche quand un nombre de membres <em>différents</em> ont donné dans le pot en cours (par exemple 20 donateurs), même avec de petits dons. Une seule fois par pot. Laisse la liste vide pour ne pas l'utiliser.
+        </p>
+        {(cfg.donorTiers ?? []).map((t: any, i: number) => (
+          <div key={i} className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', padding: 10, borderRadius: 10, background: 'rgba(255,255,255,0.04)' }}>
+            <Field label="Dès que"><div className="row" style={{ gap: 4, alignItems: 'center' }}><input type="number" min={2} value={t.donors} onChange={(e) => setDonorTier(i, { donors: Number(e.target.value) })} style={{ width: 80 }} /><span className="muted">membres ont donné</span></div></Field>
+            <Field label="Freeleech global"><DurationInput hours={t.freeleechHours} max={MAX_HOURS} onChange={(h) => setDonorTier(i, { freeleechHours: h })} /></Field>
+            <Field label="Double upload"><DurationInput hours={t.doubleUploadHours} max={MAX_HOURS} onChange={(h) => setDonorTier(i, { doubleUploadHours: h })} /></Field>
+            <Field label="Jetons / donateur"><input type="number" min={0} max={50} value={t.tokens} onChange={(e) => setDonorTier(i, { tokens: Number(e.target.value) })} style={{ width: 80 }} /></Field>
+            <Field label="Pluie de points"><input type="number" min={0} value={t.rainPoints} onChange={(e) => setDonorTier(i, { rainPoints: Number(e.target.value) })} style={{ width: 100 }} /></Field>
+            <button type="button" className="secondary" onClick={() => set('donorTiers', cfg.donorTiers.filter((_: any, j: number) => j !== i))} title="Supprimer ce palier">🗑️</button>
+            <span className="muted" style={{ fontSize: 12, flexBasis: '100%' }}>{tierPerks(t) || 'Aucune récompense : ce palier sera ignoré.'}</span>
+          </div>
+        ))}
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          {(cfg.donorTiers ?? []).length < 6 && <button type="button" className="secondary" onClick={() => set('donorTiers', [...(cfg.donorTiers ?? []), { donors: 20, freeleechHours: 0, doubleUploadHours: 0, tokens: 1, rainPoints: 0 }])}>➕ Ajouter un palier de participation</button>}
+          {(cfg.donorTiers ?? []).length === 0 && <button type="button" className="secondary" onClick={() => set('donorTiers', [{ donors: 10, freeleechHours: 0, doubleUploadHours: 0, tokens: 1, rainPoints: 0 }, { donors: 25, freeleechHours: 6, doubleUploadHours: 0, tokens: 0, rainPoints: 0 }])}>✨ Exemple : 10 et 25 donateurs</button>}
         </div>
       </div>
 

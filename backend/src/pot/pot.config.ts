@@ -13,6 +13,15 @@ export interface PotTier {
   rainPoints: number;
 }
 
+/** Palier de participation : récompense débloquée quand ce nombre de membres DIFFÉRENTS ont donné dans le cycle, quel que soit le montant. */
+export interface PotDonorTier {
+  donors: number;
+  freeleechHours: number;
+  doubleUploadHours: number;
+  tokens: number;
+  rainPoints: number;
+}
+
 export interface PotConfig {
   enabled: boolean;
   name: string;
@@ -59,6 +68,8 @@ export interface PotConfig {
 
   /** Paliers intermédiaires (jusqu'à 6), en plus de la récompense finale à 100 %. */
   tiers: PotTier[];
+  /** Option (vide par défaut) : paliers selon le nombre de donateurs différents, pour récompenser la participation plutôt que le montant (jusqu'à 6). */
+  donorTiers: PotDonorTier[];
 
   // ---- départ de la récompense
   /** Lancer tout seul au remplissage ; sinon un administrateur valide le lancement. */
@@ -102,6 +113,7 @@ export const DEFAULT_POT: PotConfig = {
   donorRefundPct: 0,
   topDonorBonus: 0,
   tiers: [],
+  donorTiers: [],
   autoStart: true,
   startDelayHours: 0,
   startAtHour: -1,
@@ -135,6 +147,21 @@ function normalizeTiers(v: unknown, d: PotTier[]): PotTier[] {
   return out.sort((a, b) => a.atPct - b.atPct);
 }
 
+function normalizeDonorTiers(v: unknown, d: PotDonorTier[]): PotDonorTier[] {
+  if (!Array.isArray(v)) return d;
+  const seen = new Set<number>();
+  const out: PotDonorTier[] = [];
+  for (const t of v.slice(0, 6)) {
+    const donors = Math.floor(Number(t?.donors));
+    if (!(donors >= 2 && donors <= 10_000) || seen.has(donors)) continue;
+    const tier: PotDonorTier = { donors, freeleechHours: int(t?.freeleechHours, 0, 720, 0), doubleUploadHours: int(t?.doubleUploadHours, 0, 720, 0), tokens: int(t?.tokens, 0, 50, 0), rainPoints: int(t?.rainPoints, 0, 100_000, 0) };
+    if (tier.freeleechHours + tier.doubleUploadHours + tier.tokens + tier.rainPoints === 0) continue;
+    seen.add(donors);
+    out.push(tier);
+  }
+  return out.sort((a, b) => a.donors - b.donors);
+}
+
 /** Durée maximale d'une récompense : 30 jours. */
 export const MAX_REWARD_HOURS = 720;
 
@@ -164,6 +191,7 @@ export function normalizePotConfig(raw: any, base: PotConfig = DEFAULT_POT): Pot
     donorRefundPct: int(raw?.donorRefundPct, 0, 100, base.donorRefundPct),
     topDonorBonus: int(raw?.topDonorBonus, 0, 1_000_000, base.topDonorBonus),
     tiers: normalizeTiers(raw?.tiers, base.tiers),
+    donorTiers: normalizeDonorTiers(raw?.donorTiers, base.donorTiers),
     autoStart: bool(raw?.autoStart, base.autoStart),
     startDelayHours: int(raw?.startDelayHours, 0, 72, base.startDelayHours),
     startAtHour: int(raw?.startAtHour, -1, 23, base.startAtHour),
