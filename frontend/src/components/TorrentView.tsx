@@ -172,7 +172,7 @@ function TorrentViewBody(props: TorrentViewProps) {
     const cols = COLUMNS.filter((c) => !(c.key === 'up' && props.hideUploader));
     return (
       <div style={{ overflowX: 'auto' }}>
-        <table>
+        <table className="tv-table">
           <thead>
             <tr>
               {cols.map((c) => (

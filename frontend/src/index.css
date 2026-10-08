@@ -3284,3 +3284,21 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .chart-tip-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
 .chart-tip-value { margin-top: 3px; font-size: 20px; font-weight: 800; }
 .chart-tip-value span { font-size: 13px; font-weight: 600; color: #94a3b8; }
+
+/* Accueil : classements et communauté au même style que les statistiques (barres proportionnelles, rangs, tuiles). */
+.st-board-footer { margin-top: 10px; font-size: 13px; }
+.community-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.community-tile { position: relative; display: grid; gap: 1px; padding: 10px 12px; border-radius: 10px; overflow: hidden; background: linear-gradient(135deg, rgba(var(--acc-rgb, 224,184,74), .2), rgba(var(--acc-rgb, 224,184,74), .04)); border: 1px solid rgba(var(--acc-rgb, 224,184,74), .16); }
+.community-tile strong { font-size: 22px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.community-tile .muted { font-size: 12px; }
+.community-tile-icon { position: absolute; right: 8px; top: 6px; font-size: 22px; opacity: .35; }
+
+/* Listes de torrents : lignes en alternance de ton (discret) pour se retrouver d'un coup d'œil. */
+.tv-table tbody tr:nth-child(even) > td { background: color-mix(in srgb, currentColor 3.5%, transparent); }
+.tv-table tbody tr:hover > td { background: color-mix(in srgb, currentColor 7%, transparent); }
+.tv-compact-row:not(.tv-compact-head):nth-child(odd) { background: color-mix(in srgb, currentColor 3.5%, transparent); }
+.tv-compact-row:not(.tv-compact-head):hover { background: color-mix(in srgb, currentColor 7%, transparent); }
+.tv-details > .tv-detail-card:nth-child(even) { background-image: linear-gradient(color-mix(in srgb, currentColor 3.5%, transparent), color-mix(in srgb, currentColor 3.5%, transparent)); }
+.vg-rows .vr-row:nth-child(even) { background: color-mix(in srgb, currentColor 3.5%, transparent); }
+.vg-rows .vr-row:nth-child(even):hover, .vg-rows .vr-row:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
+.vg-rows .vr-row.current, .vg-rows .vr-row.current:nth-child(even) { background: rgba(124,92,255,0.16); }

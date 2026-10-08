@@ -37,7 +37,7 @@ export function Trend({ cur, prev, pct }: { cur: number; prev: number; pct: numb
 export interface BoardRow { key: string; who: ReactNode; value: number; text: string; sub?: ReactNode }
 
 /** Un classement : rang, nom, valeur, et une barre proportionnelle derrière chaque ligne. */
-export function Board({ title, hint, icon, rows, empty = 'Personne pour le moment.', medals = true }: { title: string; hint?: string; icon?: string; rows: BoardRow[]; empty?: string; /** Faux pour les classements « à éviter » (ratios bas, hit & run...) : pas de médailles. */ medals?: boolean }) {
+export function Board({ title, hint, icon, rows, empty = 'Personne pour le moment.', medals = true, rankIcon, footer }: { title: string; hint?: string; icon?: string; rows: BoardRow[]; empty?: string; /** Faux pour les classements « à éviter » (ratios bas, hit & run...) : pas de médailles. */ medals?: boolean; /** Remplace le rang / la médaille par une icône (ex. 💬 pour des sujets de forum). */ rankIcon?: (row: BoardRow, index: number) => ReactNode; /** Lien ou texte sous la liste (« Voir le Top 100 → »). */ footer?: ReactNode }) {
   const max = Math.max(...rows.map((r) => Math.abs(r.value)), 0.0001);
   return (
     <div className="panel st-board">
@@ -48,12 +48,13 @@ export function Board({ title, hint, icon, rows, empty = 'Personne pour le momen
         {rows.map((r, i) => (
           <li key={r.key}>
             <i className="st-bar" style={{ width: `${Math.max(3, (Math.abs(r.value) / max) * 100)}%` }} />
-            <span className="st-rank">{medals ? MEDALS[i] ?? i + 1 : i + 1}</span>
+            <span className="st-rank">{rankIcon ? rankIcon(r, i) : medals ? MEDALS[i] ?? i + 1 : i + 1}</span>
             <span className="st-who">{r.who}{r.sub && <small className="muted"> {r.sub}</small>}</span>
             <span className="st-val">{r.text}</span>
           </li>
         ))}
       </ol>
+      {footer && <div className="st-board-footer">{footer}</div>}
     </div>
   );
 }

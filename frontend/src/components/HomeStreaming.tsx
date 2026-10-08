@@ -9,6 +9,7 @@ import { CATEGORY_STYLE, type LayoutContext } from './Layout';
 import { PosterCard, Rail } from './TorrentRail';
 import MetaChips from './MetaChips';
 import PotWidget from './PotWidget';
+import { Board } from './stats/StatsBits';
 import NewsPanel from './NewsPanel';
 import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
@@ -174,38 +175,28 @@ export default function HomeStreaming() {
       <HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} />
       <NewsPanel limit={3} />
         <div className="home-bottom">
-          <div className="panel ornate">
-            <div className="panel-title"><span className="title-icon">💬</span>Derniers sujets du forum</div>
-            {topics.map((t) => (
-              <div key={t.id} className="row" style={{ justifyContent: 'space-between', padding: '7px 0', gap: 12 }}>
-                <Link to={`/forum/topics/${t.id}`} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.unread ? '🟣 ' : ''}{t.title}</Link>
-                <span className="muted" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{t.replies} rép. · {timeAgo(t.lastPostAt)}</span>
-              </div>
-            ))}
-            {topics.length === 0 && <p className="muted">Aucun sujet pour l'instant.</p>}
-            <Link to="/forum" className="muted">Aller au forum →</Link>
-          </div>
-          <div className="panel ornate">
-            <div className="panel-title"><span className="title-icon">👑</span>Top uploaders</div>
-            {topUploaders.map((u, i) => (
-              <div key={u.id} className="row" style={{ justifyContent: 'space-between', padding: '6px 0' }}>
-                <span><span className="muted">{i + 1}.</span> <UserLink user={u} /></span>
-                <span className="muted">{formatBytes(u.uploaded)}</span>
-              </div>
-            ))}
-            {topUploaders.length === 0 && <p className="muted">Pas encore de classement.</p>}
-            <Link to="/leaderboard" className="muted">Voir le Top 100 →</Link>
-          </div>
+          <Board
+            icon="💬" title="Derniers sujets du forum"
+            rows={topics.map((t) => ({ key: t.id, who: <Link to={`/forum/topics/${t.id}`} title={t.title}>{t.title}</Link>, value: t.replies + 1, text: `${t.replies} rép. · ${timeAgo(t.lastPostAt)}` }))}
+            rankIcon={(r, i) => (topics[i]?.unread ? '🟣' : '💬')}
+            empty="Aucun sujet pour l'instant."
+            footer={<Link to="/forum" className="muted">Aller au forum →</Link>}
+          />
+          <Board
+            icon="👑" title="Top uploaders"
+            rows={topUploaders.map((u) => ({ key: u.id, who: <UserLink user={u} />, value: Number(u.uploaded), text: formatBytes(u.uploaded) }))}
+            empty="Pas encore de classement."
+            footer={<Link to="/leaderboard" className="muted">Voir le Top 100 →</Link>}
+          />
           {stats && (
-            <div className="panel ornate">
-              <div className="panel-title"><span className="title-icon">📊</span>La communauté</div>
-              <div className="mini-stats">
-                <div><strong>{formatNumber(stats.totalUsers)}</strong><span className="muted">membres</span></div>
-                <div><strong>{formatNumber(stats.totalTorrents)}</strong><span className="muted">torrents</span></div>
-                <div><strong>{formatNumber(stats.totalSeeders)}</strong><span className="muted">seeders</span></div>
-                <div><strong>{formatBytes(stats.totalTraffic)}</strong><span className="muted">échangés</span></div>
+            <div className="panel st-board">
+              <h3>📊 La communauté</h3>
+              <div className="community-tiles">
+                {[['👥', 'membres', formatNumber(stats.totalUsers)], ['🎞️', 'torrents', formatNumber(stats.totalTorrents)], ['🌱', 'seeders', formatNumber(stats.totalSeeders)], ['🔁', 'échangés', formatBytes(stats.totalTraffic)]].map(([icon, label, value]) => (
+                  <div key={label} className="community-tile"><span className="community-tile-icon" aria-hidden="true">{icon}</span><strong>{value}</strong><span className="muted">{label}</span></div>
+                ))}
               </div>
-              <Link to="/stats" className="muted">Toutes les statistiques →</Link>
+              <div className="st-board-footer"><Link to="/stats" className="muted">Toutes les statistiques →</Link></div>
             </div>
           )}
         </div>
