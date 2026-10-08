@@ -157,13 +157,22 @@ function Node({ depth, label, tags, rows, open, onToggle, children }: { depth: n
 }
 
 function SeriesBody({ rows, mode, star, actions }: { rows: any[]; mode: 'packs' | 'episodes'; star?: (t: any) => ReactNode; actions?: (t: any) => ReactNode }) {
-  const [openSeasons, setOpenSeasons] = useState<Set<string>>(new Set());
-  const [openEps, setOpenEps] = useState<Set<string>>(new Set());
-  const flip = (set: Set<string>, setter: (s: Set<string>) => void, key: string) => { const n = new Set(set); if (n.has(key)) n.delete(key); else n.add(key); setter(n); };
   const subset = rows.filter((r) => (mode === 'packs') === isPack(r));
   const seasons = new Map<number, any[]>();
   subset.forEach((r) => { const k = digits(r.season); seasons.set(k, [...(seasons.get(k) ?? []), r]); });
   const nums = [...seasons.keys()].sort((a, b) => a - b);
+  // Tout est déplié à l'ouverture d'une série : toutes ses saisons, tous ses épisodes ; chaque niveau se replie d'un clic.
+  const [openSeasons, setOpenSeasons] = useState<Set<string>>(() => new Set(nums.map((n) => `${mode}:${n}`)));
+  const [openEps, setOpenEps] = useState<Set<string>>(() => {
+    const keys = new Set<string>();
+    for (const n of nums) {
+      const perEp = new Map<number, number>();
+      seasons.get(n)!.forEach((r) => { const k = digits(r.episode); perEp.set(k, (perEp.get(k) ?? 0) + 1); });
+      for (const [e, count] of perEp) if (count > 1) keys.add(`${mode}:${n}:${e}`);
+    }
+    return keys;
+  });
+  const flip = (set: Set<string>, setter: (s: Set<string>) => void, key: string) => { const n = new Set(set); if (n.has(key)) n.delete(key); else n.add(key); setter(n); };
 
   return (
     <div className="vg-rows">
@@ -188,6 +197,8 @@ function SeriesBody({ rows, mode, star, actions }: { rows: any[]; mode: 'packs' 
             {epNums.map((e) => {
               const eRows = eps.get(e)!;
               const eKey = `${sKey}:${e}`;
+              // Un épisode avec une seule release : la release s'affiche directement (son code S17E03 est dans ses pastilles), sans niveau de plus à déplier.
+              if (eRows.length === 1) return <VersionRow key={eRows[0].id} t={eRows[0]} depth={2} star={star?.(eRows[0])} actions={actions} />;
               return (
                 <Node key={eKey} depth={2} label={`E${String(e).padStart(2, '0')}`} rows={eRows} open={openEps.has(eKey)} onToggle={() => flip(openEps, setOpenEps, eKey)}
                   tags={<span className="vg-tags">{resCounts(eRows).map(([res, c]) => <span key={res} className="vg-res">{res} <span className="muted">({c})</span></span>)}</span>}>
