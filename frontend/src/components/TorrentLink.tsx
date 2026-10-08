@@ -5,6 +5,7 @@ import { formatBytes, formatRuntime } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { useTipStyle, type TipStyle } from '../lib/tipStyle';
 import { HealthDot } from './TorrentBits';
+import MetaChips from './MetaChips';
 
 const loadPreview = (id: string) => () => api.get(`/torrents/${id}/preview`).then((r) => r.data);
 
@@ -28,7 +29,6 @@ function Chips({ t }: { t: any }) {
   const runtime = formatRuntime(t.runtime);
   return (
     <div className="tp-chips">
-      {t.year && <span className="tp-chip">{t.year}</span>}
       {t.rating != null && <span className="tp-chip rating">★ {t.rating.toFixed(1)}<small> /10</small></span>}
       {runtime && <span className="tp-chip">◷ {runtime}</span>}
     </div>
@@ -62,6 +62,7 @@ function PosterTip({ t }: { t: any }) {
       </div>
       <div className="tp-body">
         <Chips t={t} />
+        <MetaChips t={t} className="tp-meta-chips" />
         <Genres t={t} />
         <Synopsis t={t} lines={4} />
         <Credits t={t} />
@@ -85,6 +86,7 @@ function CinemaTip({ t }: { t: any }) {
         </div>
       </div>
       <div className="tp-body">
+        <MetaChips t={t} className="tp-meta-chips" />
         <Genres t={t} />
         <Synopsis t={t} lines={4} />
         <Credits t={t} />
@@ -104,8 +106,9 @@ function ClassicTip({ t }: { t: any }) {
         <div className="tip-title">{t.name}</div>
         <div className="tip-meta">
           {t.rating != null && <span className="tip-rating">★ {t.rating.toFixed(1)}</span>}
-          {[t.category?.name, t.year, runtime, t.resolution, t.language, formatBytes(t.size)].filter(Boolean).join(' · ')}
+          {[t.category?.name, runtime, formatBytes(t.size)].filter(Boolean).join(' · ')}
         </div>
+        <MetaChips t={t} className="tp-meta-chips" />
         {(t.director || t.cast?.length > 0) && (
           <div className="tip-meta tip-credits">
             {t.director && <div><span className="muted">Réalisation :</span> {t.director}</div>}
@@ -133,8 +136,9 @@ function MinimalTip({ t }: { t: any }) {
       <div className="tp-title">{t.name}</div>
       <div className="tp-mini-meta">
         {t.rating != null && <span className="tip-rating">★ {t.rating.toFixed(1)}</span>}
-        {[t.category?.name, t.year, runtime, t.genres?.slice(0, 2).join(' / ')].filter(Boolean).join(' · ')}
+        {[t.category?.name, runtime, t.genres?.slice(0, 2).join(' / ')].filter(Boolean).join(' · ')}
       </div>
+      <MetaChips t={t} className="tp-meta-chips" />
       <Stats t={t} />
       <Synopsis t={t} lines={3} />
     </div>

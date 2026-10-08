@@ -3336,3 +3336,8 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .donut-chart .recharts-wrapper { position: relative; z-index: 5; }
 .recharts-tooltip-wrapper { z-index: 60 !important; }
 .recharts-tooltip-wrapper > div { background: #12162a; }
+
+/* Infobulles des torrents : les pastilles d'information (date de sortie, langue, épisode, résolution, source, codecs, format). */
+.tp-meta-chips { margin: 2px 0 8px; gap: 4px 5px; }
+.tp-meta-chips .vr-chip { font-size: 11px; padding: 1px 7px; }
+.tip-classic .tp-meta-chips, .tip-minimal .tp-meta-chips { margin: 6px 0; }

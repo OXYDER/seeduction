@@ -556,6 +556,7 @@ export class TorrentsService implements OnModuleInit {
       where: { id },
       select: {
         id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true, seeders: true, leechers: true,
+        source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true,
         createdAt: true, status: true, categoryId: true, genres: true,
         category: { select: { name: true, slug: true, parent: { select: { slug: true, name: true } } } }, metadata: true,
         entities: {
