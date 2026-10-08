@@ -229,7 +229,8 @@ function Group({ rows, actions, star }: { rows: any[]; actions?: (t: any) => Rea
   // Team la plus présente parmi les releases (avec lien vers sa page).
   const counts = new Map<string, { name: string; n: number }>();
   rows.forEach((r) => { const g = releaseGroup(r.name); if (g) { const k = teamSlug(g); counts.set(k, { name: g, n: (counts.get(k)?.n ?? 0) + 1 }); } });
-  const topTeam = [...counts.entries()].sort((a, b) => b[1].n - a[1].n)[0];
+  // La team n'est affichée à côté du titre que si TOUTES les releases du contenu viennent de la même : sinon chaque release montre la sienne dans sa ligne.
+  const topTeam = counts.size === 1 && [...counts.values()][0].n === rows.length ? [...counts.entries()][0] : undefined;
 
   const pick = (m: 'packs' | 'episodes') => { setMode(m); setOpen(true); };
 
