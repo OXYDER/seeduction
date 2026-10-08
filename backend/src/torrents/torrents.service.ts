@@ -10,6 +10,8 @@ import { MetadataService } from '../metadata/metadata.service';
 import { parseCoverage } from '../common/utils/coverage';
 import { languageAtoms, normalizeLanguage, storedValuesFor } from '../common/utils/language';
 import { extractInstallNotes } from '../common/utils/install-notes';
+import { audioOf } from '../importer/audio-codec';
+import { Cron } from '@nestjs/schedule';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -442,7 +444,7 @@ export class TorrentsService implements OnModuleInit {
         ],
       },
       select: {
-        id: true, name: true, size: true, resolution: true, source: true, codec: true, audio: true, language: true, hdr: true, containerFormat: true,
+        id: true, name: true, size: true, resolution: true, source: true, codec: true, audio: true, language: true, hdr: true, containerFormat: true, releaseDate: true,
         seeders: true, leechers: true, freeleech: true, createdAt: true, anonymousUpload: true, completedCount: true, season: true, episode: true, status: true, releaseGroup: true, _count: { select: { comments: true } }, uploader: { select: { id: true, username: true } },
       },
       take: 60,
@@ -461,7 +463,7 @@ export class TorrentsService implements OnModuleInit {
     const t = await this.prisma.torrent.findUnique({ where: { id }, select: { metaSource: true, metaExternalId: true, metadata: true } });
     if (!t || t.metaSource !== 'tmdb' || !t.metaExternalId) return { kind: null };
     const info = (t.metadata ?? {}) as any;
-    const card = { id: true, name: true, size: true, year: true, resolution: true, language: true, seeders: true, leechers: true, coverImage: true, source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, createdAt: true };
+    const card = { id: true, name: true, size: true, year: true, resolution: true, language: true, seeders: true, leechers: true, coverImage: true, source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true, createdAt: true };
 
     if (info.kind === 'movie') {
       const parts: any[] = info.collection?.parts ?? [];
@@ -500,7 +502,7 @@ export class TorrentsService implements OnModuleInit {
 
   private readonly cardSelect = {
     id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true,
-    source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true,
+    source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true,
     seeders: true, leechers: true, freeleech: true, doubleUpload: true, createdAt: true, category: { select: { name: true, slug: true, parent: { select: { slug: true, name: true } } } },
   } as const;
 
@@ -588,6 +590,29 @@ export class TorrentsService implements OnModuleInit {
     await this.findOne(id, viewer);
     const nfo = await this.prisma.torrentNfo.findUnique({ where: { torrentId: id } });
     return { content: nfo?.content ?? null };
+  }
+
+  private audioCursor: Date | null = null;
+  private audioDone = false;
+
+  /**
+   * Rattrapage : les torrents sans codec audio enregistré (envoyés avant la détection élargie : AC3, E-AC3 / DD+, Opus…) le reçoivent d'après leur nom,
+   * sinon d'après les pistes audio de leur NFO / MediaInfo. 200 torrents toutes les 10 minutes ; la date de modification n'est pas touchée.
+   */
+  @Cron('*/10 * * * *')
+  async backfillAudio() {
+    if (this.audioDone) return;
+    const rows = await this.prisma.torrent.findMany({
+      where: { audio: null, ...(this.audioCursor ? { createdAt: { gt: this.audioCursor } } : {}) },
+      orderBy: { createdAt: 'asc' }, take: 200,
+      select: { id: true, name: true, createdAt: true, nfoFile: { select: { content: true } } },
+    });
+    for (const r of rows) {
+      const a = audioOf(r.name, r.nfoFile?.content ?? '');
+      if (a) await this.prisma.$executeRaw`UPDATE "Torrent" SET audio = ${a} WHERE id = ${r.id} AND audio IS NULL`;
+    }
+    if (rows.length < 200) this.audioDone = true;
+    else this.audioCursor = rows[rows.length - 1].createdAt;
   }
 
   /** Instructions d'installation / d'utilisation trouvées dans le NFO (rubriques « INSTALL NOTES », « HOW TO »...), pour les logiciels et les jeux. */

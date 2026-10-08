@@ -8,7 +8,7 @@ export const LANGUAGES = ['VFQ', 'VFF', 'VOF', 'TRUEFRENCH', 'VFI', 'VFB', 'VF2'
 export const ORIGINS = ['Québec', 'France', 'Canada anglais', 'International'];
 export const SOURCES = ['Remux', 'BluRay', 'WEB-DL', 'WEBRip', 'HDTV', 'DVDRip', 'CAM'];
 export const CODECS = ['x264', 'x265/HEVC', 'AV1', 'XviD'];
-export const AUDIO_FORMATS = ['MP3', 'FLAC', 'AAC', 'DTS', 'TrueHD', 'Atmos'];
+export const AUDIO_FORMATS = ['MP3', 'FLAC', 'AAC', 'AC3', 'E-AC3', 'Opus', 'DTS', 'TrueHD', 'Atmos'];
 export const CONTAINERS = ['MKV', 'MP4', 'AVI'];
 
 type AliasField = 'resolution' | 'language' | 'source' | 'codec' | 'audio' | 'containerFormat' | 'hdr';
@@ -45,6 +45,9 @@ alias(['flac'], 'audio', 'FLAC');
 alias(['mp3'], 'audio', 'MP3');
 alias(['aac'], 'audio', 'AAC');
 alias(['dts'], 'audio', 'DTS');
+alias(['ac3', 'dd'], 'audio', 'AC3');
+alias(['eac3', 'ddp', 'e-ac3'], 'audio', 'E-AC3');
+alias(['opus'], 'audio', 'Opus');
 alias(['truehd'], 'audio', 'TrueHD');
 alias(['atmos'], 'audio', 'Atmos');
 alias(['mkv'], 'containerFormat', 'MKV');

@@ -8,8 +8,8 @@ import UserLink from '../UserLink';
 
 /** Infobulle moderne et lisible (fond sombre translucide, bord doux, ombre) pour les graphiques en barres et en courbes. */
 export const tooltipStyle = {
-  background: 'rgba(15, 18, 32, 0.95)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, color: '#f1f5f9',
-  boxShadow: '0 14px 34px rgba(0,0,0,0.6)', padding: '8px 12px', fontSize: 13,
+  background: '#12162a', border: '1px solid rgba(255,255,255,0.22)', borderRadius: 12, color: '#f1f5f9', // opaque : jamais de texte qui transparaît
+  boxShadow: '0 14px 34px rgba(0,0,0,0.7)', padding: '8px 12px', fontSize: 13,
 };
 export const shortDate = (d: string) => d.slice(5).replace('-', '/');
 

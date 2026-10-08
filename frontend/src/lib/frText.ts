@@ -124,3 +124,29 @@ export function seasonEpisodeOf(t: any): { season: string | null; episode: strin
   }
   return { season, episode };
 }
+
+/** Codec audio lu dans le nom d'une release (affichage quand il n'est pas enregistré sur le torrent). */
+export function audioFromName(name?: string | null): string | null {
+  const n = ` ${String(name ?? '').replace(/[._\-[\]()]+/g, ' ')} `;
+  if (/\bATMOS\b/i.test(n)) return 'Atmos';
+  if (/\bTRUE ?HD\b/i.test(n)) return 'TrueHD';
+  if (/\bDTS\b/i.test(n)) return 'DTS';
+  if (/\b(E ?AC ?3|DDP\d?|DD\+|DD PLUS)\b/i.test(n)) return 'E-AC3';
+  if (/\b(AC ?3|DD ?\d(?: \d)?)\b/i.test(n)) return 'AC3';
+  if (/\bFLAC\b/i.test(n)) return 'FLAC';
+  if (/\bOPUS\b/i.test(n)) return 'Opus';
+  if (/\bAAC\b/i.test(n)) return 'AAC';
+  if (/\bMP3\b/i.test(n)) return 'MP3';
+  return null;
+}
+
+/**
+ * Date de SORTIE d'un contenu (film, épisode, saison, jeu...) en français court : « 17 sept. 2025 ». Une date moins précise reste telle quelle
+ * (« sept. 2025 » pour « 2025-09 », « 2025 » pour « 2025 »). Jamais la date de mise en ligne.
+ */
+export function releaseDateFr(v?: string | null): string | null {
+  if (!v) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return new Date(`${v}T12:00:00`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (/^\d{4}-\d{2}$/.test(v)) return new Date(`${v}-15T12:00:00`).toLocaleDateString('fr-CA', { month: 'short', year: 'numeric' });
+  return v;
+}

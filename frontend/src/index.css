@@ -3279,7 +3279,7 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .donut-legend-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .donut-legend-count { font-variant-numeric: tabular-nums; font-weight: 700; }
 .donut-legend-pct { text-align: right; color: #94a3b8; font-variant-numeric: tabular-nums; font-size: 12px; }
-.chart-tip { background: rgba(15, 18, 32, 0.95); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; padding: 9px 13px; box-shadow: 0 14px 34px rgba(0,0,0,0.6); backdrop-filter: blur(6px); color: #f1f5f9; }
+.chart-tip { background: #12162a; border: 1px solid rgba(255,255,255,0.22); border-radius: 12px; padding: 9px 13px; box-shadow: 0 14px 34px rgba(0,0,0,0.7); color: #f1f5f9; }
 .chart-tip-name { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; }
 .chart-tip-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
 .chart-tip-value { margin-top: 3px; font-size: 20px; font-weight: 800; }
@@ -3330,3 +3330,9 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 /* Apparition douce de l'anneau (CSS) : pas d'animation de redessin au survol. */
 @keyframes donut-in { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
 .donut-chart .recharts-wrapper { animation: donut-in .45s ease-out both; }
+
+/* Infobulles des graphiques : toujours au premier plan, au-dessus de tout autre texte (le total du centre reste dessous). */
+.donut-center { z-index: 1; }
+.donut-chart .recharts-wrapper { position: relative; z-index: 5; }
+.recharts-tooltip-wrapper { z-index: 60 !important; }
+.recharts-tooltip-wrapper > div { background: #12162a; }

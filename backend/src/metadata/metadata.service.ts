@@ -5,6 +5,7 @@ import { CoversService } from '../covers/covers.service';
 import { PrismaService } from '../common/prisma.service';
 import { TranslateService } from './translate.service';
 import { cleanTitle } from '../importer/category-guess';
+import { releaseDateOf } from './release-date';
 
 export interface SearchResult {
   id: string;
@@ -751,6 +752,7 @@ export class MetadataService {
         ...(rich.searchTitles !== undefined ? { searchTitles: rich.searchTitles } : {}),
       },
     });
+    await this.storeReleaseDate(torrentId, id, rich.info).catch((e) => this.logger.warn(`Date de sortie : ${e?.message ?? e}`));
 
     const pendingImages: { entityId: string; url: string }[] = [];
     for (const e of rich.entities) {
@@ -821,8 +823,61 @@ export class MetadataService {
     const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { id: true } });
     if (!t) throw new NotFoundException('Torrent introuvable');
     await this.prisma.torrentEntity.deleteMany({ where: { torrentId } });
-    await this.prisma.torrent.update({ where: { id: torrentId }, data: { metaSource: null, metaExternalId: null, metadata: Prisma.DbNull, searchTitles: null, overviewTranslatedAt: null } });
+    await this.prisma.torrent.update({ where: { id: torrentId }, data: { metaSource: null, metaExternalId: null, metadata: Prisma.DbNull, searchTitles: null, overviewTranslatedAt: null, releaseDate: null } });
     return { cleared: true };
+  }
+
+  private episodeDates = new Map<string, Map<number, string | null>>();
+
+  /** Date de diffusion d'un épisode de série (TMDB), mémorisée par saison. Null si inconnue ou si TMDB n'est pas joignable. */
+  private async episodeAirDate(tmdbId: string, season: string | null | undefined, episode: string | null | undefined): Promise<string | null> {
+    if (!this.tmdbKey || !season || !episode || !/^\d+$/.test(season) || !/^\d+$/.test(episode)) return null;
+    const key = `${tmdbId}:${season}`;
+    let eps = this.episodeDates.get(key);
+    if (!eps) {
+      try { eps = new Map((await this.seasonEpisodes(tmdbId, Number(season))).map((e: any) => [Number(e.number), e.airDate as string | null])); }
+      catch { return null; }
+      this.episodeDates.set(key, eps);
+    }
+    return eps.get(Number(episode)) ?? null;
+  }
+
+  /** Calcule et enregistre la date de sortie d'un torrent (voir release-date.ts) d'après sa fiche, sa saison et son épisode. */
+  private async storeReleaseDate(torrentId: string, tmdbId: string, info: any) {
+    const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { season: true, episode: true } });
+    const airDate = info?.kind === 'tv' ? await this.episodeAirDate(tmdbId, t?.season, t?.episode) : null;
+    const date = releaseDateOf(info, t?.season, airDate);
+    await this.prisma.$executeRaw`UPDATE "Torrent" SET "releaseDate" = ${date} WHERE id = ${torrentId}`; // sans toucher à la date de modification
+  }
+
+  private releaseCursor: Date | null = null;
+  private releaseDone = false;
+
+  /**
+   * Rattrapage : les torrents qui ont une fiche mais pas de date de sortie (envoyés avant cette fonction) la reçoivent petit à petit
+   * (200 par passe toutes les 10 minutes ; les épisodes de série interrogent TMDB, 8 appels au plus par passe).
+   */
+  @Cron('*/10 * * * *')
+  async backfillReleaseDates() {
+    if (this.releaseDone) return;
+    const rows = await this.prisma.torrent.findMany({
+      where: { metaSource: { not: null }, releaseDate: null, ...(this.releaseCursor ? { createdAt: { gt: this.releaseCursor } } : {}) },
+      orderBy: { createdAt: 'asc' }, take: 200,
+      select: { id: true, createdAt: true, metaExternalId: true, metadata: true, season: true, episode: true },
+    });
+    let calls = 0;
+    for (const r of rows) {
+      const info: any = r.metadata;
+      if (!info) continue;
+      const needsNetwork = info.kind === 'tv' && /^\d+$/.test(r.season ?? '') && /^\d+$/.test(r.episode ?? '');
+      if (needsNetwork && calls >= 8 && !this.episodeDates.has(`${r.metaExternalId}:${r.season}`)) continue; // la suite à la prochaine passe
+      if (needsNetwork && !this.episodeDates.has(`${r.metaExternalId}:${r.season}`)) calls++;
+      const airDate = needsNetwork ? await this.episodeAirDate(r.metaExternalId!, r.season, r.episode) : null;
+      const date = releaseDateOf(info, r.season, airDate);
+      if (date) await this.prisma.$executeRaw`UPDATE "Torrent" SET "releaseDate" = ${date} WHERE id = ${r.id} AND "releaseDate" IS NULL`;
+    }
+    if (rows.length < 200) this.releaseDone = true;
+    else this.releaseCursor = rows[rows.length - 1].createdAt;
   }
 
   /**

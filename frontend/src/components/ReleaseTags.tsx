@@ -1,8 +1,8 @@
-import { minutesFr, shortDateFr } from '../lib/frText';
+import { minutesFr, releaseDateFr } from '../lib/frText';
 
 /**
  * Caractéristiques techniques d'un torrent, en étiquettes lisibles (« Langue : VFQ »), sous le nom et le hash de sa page :
- * la date d'ajout d'abord, la langue juste après, puis saison / épisode, année, durée, résolution, source, codec vidéo, format, et le codec audio en dernier.
+ * la date de sortie d'abord, la langue juste après, puis saison / épisode, année, durée, résolution, source, codec vidéo, format, et le codec audio en dernier.
  */
 export default function ReleaseTags({ torrent: t }: { torrent: any }) {
   const season = t.season as string | null | undefined;
@@ -11,11 +11,11 @@ export default function ReleaseTags({ torrent: t }: { torrent: any }) {
   const episodeNumber = episode && /^\d+$/.test(episode) ? `Épisode ${Number(episode)}` : season && episode ? episode : null; // « Saison complète »
 
   const tags: [string, string, string | number | null | undefined][] = [
-    ['dt', 'Ajouté le', shortDateFr(t.createdAt)],
+    ['dt', 'Sortie', releaseDateFr(t.releaseDate)],
     ['lang', 'Langue', t.language],
     ['ep', 'Saison', seasonNumber],
     ['ep', 'Épisode', episodeNumber],
-    ['yr', 'Année', t.year],
+    ['yr', 'Année', t.releaseDate && String(t.releaseDate).slice(0, 4) === String(t.year) ? null : t.year],
     ['yr', 'Durée', minutesFr(t.durationMinutes)],
     ...((t.genres ?? []) as string[]).map((g): [string, string, string] => ['gen', 'Genre', g]),
     ['res', 'Résolution', t.resolution],

@@ -44,7 +44,6 @@ export function Donut({ data, height = 230 }: { data: { name: string; count: num
   const slices = useMemo(() => data.filter((d) => Number(d.count) > 0).map((d, i) => ({ ...d, count: Number(d.count), __color: COLORS[i % COLORS.length] })), [data]);
   const total = slices.reduce((n, d) => n + d.count, 0);
   if (slices.length === 0) return <p className="muted">Aucune donnée.</p>;
-  const cur = active !== null ? slices[active] : null;
 
   return (
     <div className="donut-wrap">
@@ -76,18 +75,8 @@ export function Donut({ data, height = 230 }: { data: { name: string; count: num
           </PieChart>
         </ResponsiveContainer>
         <div className="donut-center" aria-hidden="true">
-          {cur ? (
-            <>
-              <span className="donut-center-label" style={{ color: cur.__color }}>{cur.name}</span>
-              <strong>{fmtNum(cur.count)}</strong>
-              <span className="donut-center-sub">{pct(cur.count, total)} %</span>
-            </>
-          ) : (
-            <>
-              <strong>{fmtNum(total)}</strong>
-              <span className="donut-center-sub">au total</span>
-            </>
-          )}
+          <strong>{fmtNum(total)}</strong>
+          <span className="donut-center-sub">au total</span>
         </div>
       </div>
       <ul className="donut-legend">

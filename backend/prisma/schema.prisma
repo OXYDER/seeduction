@@ -299,6 +299,7 @@ model Torrent {
   reseedRequestedAt DateTime?
   // Titres du film / de la série dans plusieurs langues et régions (une ligne par titre), pour retrouver un torrent quel que soit le titre cherché.
   searchTitles   String?       @db.Text
+  releaseDate    String?       @db.VarChar(10) // date de SORTIE du contenu (film, épisode, saison, jeu...) : « AAAA-MM-JJ », « AAAA-MM » ou « AAAA » ; jamais la date de mise en ligne
   // Team de la release (clé normalisée du nom après le dernier tiret) : '' = aucune, vide = pas encore examiné (voir TeamsService).
   releaseGroup   String?       @db.VarChar(40)
   // Origine de production (Québec, France, Canada anglais, International) : un filtre, pas une catégorie.

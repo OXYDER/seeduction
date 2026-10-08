@@ -98,7 +98,10 @@ export function parseNfo(text: string): NfoInfo {
   if (/atmos/i.test(text)) out.audio = 'Atmos';
   else if (/truehd/i.test(text)) out.audio = 'TrueHD';
   else if (/\bDTS/i.test(text)) out.audio = 'DTS';
+  else if (/\bE-?AC-?3\b|\bDDP\d?\b|DD\+/i.test(text)) out.audio = 'E-AC3';
+  else if (/\bAC-?3\b/i.test(text)) out.audio = 'AC3';
   else if (/\bFLAC\b/i.test(text)) out.audio = 'FLAC';
+  else if (/\bOpus\b/i.test(text)) out.audio = 'Opus';
   else if (/\bAAC\b/i.test(text)) out.audio = 'AAC';
   else if (/\bMP3\b|MPEG Audio/i.test(text)) out.audio = 'MP3';
 

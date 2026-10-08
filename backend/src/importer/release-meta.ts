@@ -1,4 +1,5 @@
 import { FR_VARIANTS } from '../common/utils/language';
+import { audioOf } from './audio-codec';
 
 /**
  * Métadonnées d'une release (langue, résolution, source, codec...) devinées à partir de son NOM et de son NFO / MediaInfo, comme le fait le
@@ -164,12 +165,7 @@ export function detectReleaseMeta(name: string, nfo = ''): ReleaseMeta {
   else if (has('xvid')) out.codec = 'XviD';
   if (/\b(hdr10?|hdr|dv|dolby[ ._]?vision)\b/i.test(name)) out.hdr = true;
 
-  if (has('atmos')) out.audio = 'Atmos';
-  else if (has('truehd')) out.audio = 'TrueHD';
-  else if (has('dts', 'dts-hd', 'dts-hdma', 'dtshd')) out.audio = 'DTS';
-  else if (has('flac')) out.audio = 'FLAC';
-  else if (has('aac')) out.audio = 'AAC';
-  else if (has('mp3')) out.audio = 'MP3';
+  out.audio = audioOf(name, nfo);
 
   const container = nfo.match(/^\s*Format\s*:\s*(Matroska|MPEG-4|AVI)/im)?.[1];
   if (container) out.containerFormat = /matroska/i.test(container) ? 'MKV' : /mpeg-4/i.test(container) ? 'MP4' : 'AVI';
