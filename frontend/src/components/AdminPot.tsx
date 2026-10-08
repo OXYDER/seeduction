@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
-import { durationFr } from '../lib/duration';
+import { durationFr, tierPerks } from '../lib/duration';
 import { PotGauge } from '../pages/Pot';
 
 const NAMES = ['Le Pot du Plaisir', 'La Cagnotte', 'Le Gros Lot', 'La Marmite', 'Le Chaudron', 'Le Coffre aux Seeds', 'La Tirelire', 'Le Pot de la Communauté', "Le Pot d'Or"];
@@ -20,6 +20,7 @@ export default function PotAdmin() {
   useEffect(() => { void load(); }, [load]);
 
   const set = (key: string, value: any) => setCfg((c: any) => ({ ...c, [key]: value }));
+  const setTier = (i: number, patch: any) => setCfg((c: any) => ({ ...c, tiers: c.tiers.map((t: any, j: number) => (j === i ? { ...t, ...patch } : t)) }));
   const ok = (m: string) => { setError(''); setMessage(m); };
   const fail = (e: any) => { setMessage(''); setError(e.response?.data?.message ?? 'Erreur'); };
 
@@ -83,7 +84,7 @@ export default function PotAdmin() {
             <strong>Pot n° {cycle.number} — {cycle.status === 'OPEN' ? 'ouvert' : 'PLEIN, en attente de lancement'}</strong>
             <span className="muted">Il manque {formatNumber(cycle.remaining)} points</span>
           </div>
-          <PotGauge percent={cycle.percent} collected={cycle.collected} goal={cycle.goal} full={cycle.status !== 'OPEN'} />
+          <PotGauge percent={cycle.percent} collected={cycle.collected} goal={cycle.goal} full={cycle.status !== 'OPEN'} tiers={state.tiers} />
           <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
             {cycle.status === 'FULL' && <button type="button" disabled={busy} onClick={trigger}>🎉 Lancer la récompense</button>}
             {cycle.status === 'OPEN' && (
@@ -139,6 +140,28 @@ export default function PotAdmin() {
         <div className="row" style={{ gap: 18, flexWrap: 'wrap' }}>
           {num('rewardTokens', 'Jetons freeleech par donateur', 'Offerts à chaque donateur du pot (0 à 50).', 'jetons')}
           {num('rainPoints', 'Pluie de points', 'Points offerts à chaque membre actif (vu ces 7 jours) quand le pot est plein.', 'points')}
+        </div>
+      </div>
+
+      <div className="panel grid" style={{ gap: 12 }}>
+        <strong>Paliers <span className="muted" style={{ fontWeight: 400 }}>— des récompenses en cours de route (jusqu'à 6)</span></strong>
+        <p className="muted" style={{ margin: 0, fontSize: 12 }}>
+          Chaque palier se déclenche une seule fois par pot, quand il atteint ce pourcentage de l'objectif (par exemple double upload à 33 %, freeleech à 66 %). La récompense finale ci-dessus se déclenche à 100 %.
+        </p>
+        {(cfg.tiers ?? []).map((t: any, i: number) => (
+          <div key={i} className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', padding: 10, borderRadius: 10, background: 'rgba(255,255,255,0.04)' }}>
+            <Field label="À"><div className="row" style={{ gap: 4, alignItems: 'center' }}><input type="number" min={1} max={99} value={t.atPct} onChange={(e) => setTier(i, { atPct: Number(e.target.value) })} style={{ width: 70 }} /><span className="muted">%</span></div></Field>
+            <Field label="Freeleech global"><DurationInput hours={t.freeleechHours} max={MAX_HOURS} onChange={(h) => setTier(i, { freeleechHours: h })} /></Field>
+            <Field label="Double upload"><DurationInput hours={t.doubleUploadHours} max={MAX_HOURS} onChange={(h) => setTier(i, { doubleUploadHours: h })} /></Field>
+            <Field label="Jetons / donateur"><input type="number" min={0} max={50} value={t.tokens} onChange={(e) => setTier(i, { tokens: Number(e.target.value) })} style={{ width: 80 }} /></Field>
+            <Field label="Pluie de points"><input type="number" min={0} value={t.rainPoints} onChange={(e) => setTier(i, { rainPoints: Number(e.target.value) })} style={{ width: 100 }} /></Field>
+            <button type="button" className="secondary" onClick={() => set('tiers', cfg.tiers.filter((_: any, j: number) => j !== i))} title="Supprimer ce palier">🗑️</button>
+            <span className="muted" style={{ fontSize: 12, flexBasis: '100%' }}>{tierPerks(t) || 'Aucune récompense : ce palier sera ignoré.'}</span>
+          </div>
+        ))}
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          {(cfg.tiers ?? []).length < 6 && <button type="button" className="secondary" onClick={() => set('tiers', [...(cfg.tiers ?? []), { atPct: 50, freeleechHours: 6, doubleUploadHours: 0, tokens: 0, rainPoints: 0 }])}>➕ Ajouter un palier</button>}
+          {(cfg.tiers ?? []).length === 0 && <button type="button" className="secondary" onClick={() => set('tiers', [{ atPct: 33, freeleechHours: 0, doubleUploadHours: 6, tokens: 0, rainPoints: 0 }, { atPct: 66, freeleechHours: 12, doubleUploadHours: 0, tokens: 1, rainPoints: 0 }])}>✨ Exemple : 33 % et 66 %</button>}
         </div>
       </div>
 

@@ -3302,3 +3302,16 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .vg-rows .vr-row:nth-child(even) { background: color-mix(in srgb, currentColor 3.5%, transparent); }
 .vg-rows .vr-row:nth-child(even):hover, .vg-rows .vr-row:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
 .vg-rows .vr-row.current, .vg-rows .vr-row.current:nth-child(even) { background: rgba(124,92,255,0.16); }
+
+/* Pot commun : repères des paliers sur la jauge et liste des paliers. */
+.pot-gauge-wrap { position: relative; }
+.pot-gauge-wrap:has(.pot-tier-flags) { padding-bottom: 26px; }
+.pot-tier-tick { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: rgba(255,255,255,0.45); z-index: 2; }
+.pot-tier-tick.on { background: rgba(255,255,255,0.9); }
+.pot-tier-flags { position: absolute; left: 0; right: 0; bottom: 0; height: 24px; }
+.pot-tier-flag { position: absolute; top: 3px; transform: translateX(-50%); font-size: 15px; cursor: help; filter: grayscale(0.4); }
+.pot-tier-flag.on { filter: none; }
+.pot-tier-row { display: grid; grid-template-columns: 90px 110px minmax(0, 1fr); gap: 10px; align-items: center; padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,0.04); font-size: 13px; }
+.pot-tier-row.on { background: rgba(74,222,128,0.1); }
+.pot-tier-badge { font-weight: 800; white-space: nowrap; }
+@media (max-width: 560px) { .pot-tier-row { grid-template-columns: 80px minmax(0, 1fr); } .pot-tier-row > :nth-child(2) { display: none; } }

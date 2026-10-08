@@ -2,6 +2,17 @@
  * Réglages du pot commun (« Le Pot du Plaisir »), modifiables par les administrateurs (Admin > Pot commun) et rangés dans les réglages du site.
  * Chaque valeur est bornée : une saisie absurde est ramenée dans des limites raisonnables au lieu d'être refusée.
  */
+/** Palier : récompense intermédiaire débloquée quand le pot atteint ce pourcentage de son objectif (la récompense finale, elle, se déclenche à 100 %). */
+export interface PotTier {
+  atPct: number;
+  freeleechHours: number;
+  doubleUploadHours: number;
+  /** Jetons freeleech pour chaque donateur du cycle jusque-là. */
+  tokens: number;
+  /** Points offerts à chaque membre actif. */
+  rainPoints: number;
+}
+
 export interface PotConfig {
   enabled: boolean;
   name: string;
@@ -46,6 +57,9 @@ export interface PotConfig {
   /** Points offerts au meilleur donateur du cycle (le 2e reçoit 60 %, le 3e 30 %). */
   topDonorBonus: number;
 
+  /** Paliers intermédiaires (jusqu'à 6), en plus de la récompense finale à 100 %. */
+  tiers: PotTier[];
+
   // ---- départ de la récompense
   /** Lancer tout seul au remplissage ; sinon un administrateur valide le lancement. */
   autoStart: boolean;
@@ -87,6 +101,7 @@ export const DEFAULT_POT: PotConfig = {
   rainPoints: 0,
   donorRefundPct: 0,
   topDonorBonus: 0,
+  tiers: [],
   autoStart: true,
   startDelayHours: 0,
   startAtHour: -1,
@@ -102,6 +117,23 @@ const int = (v: unknown, lo: number, hi: number, d: number) => {
 };
 const bool = (v: unknown, d: boolean) => (typeof v === 'boolean' ? v : d);
 const text = (v: unknown, max: number, d: string) => (typeof v === 'string' ? v.trim().slice(0, max) : d);
+
+function normalizeTiers(v: unknown, d: PotTier[]): PotTier[] {
+  if (!Array.isArray(v)) return d;
+  const seen = new Set<number>();
+  const out: PotTier[] = [];
+  for (const t of v.slice(0, 6)) {
+    const n = Math.floor(Number(t?.atPct));
+    if (!(n >= 1 && n <= 99)) continue; // un pourcentage hors de 1 à 99 est ignoré (pas ramené à 99)
+    const atPct = n;
+    if (seen.has(atPct)) continue;
+    const tier: PotTier = { atPct, freeleechHours: int(t?.freeleechHours, 0, 720, 0), doubleUploadHours: int(t?.doubleUploadHours, 0, 720, 0), tokens: int(t?.tokens, 0, 50, 0), rainPoints: int(t?.rainPoints, 0, 100_000, 0) };
+    if (tier.freeleechHours + tier.doubleUploadHours + tier.tokens + tier.rainPoints === 0) continue; // un palier sans récompense n'a pas d'intérêt
+    seen.add(atPct);
+    out.push(tier);
+  }
+  return out.sort((a, b) => a.atPct - b.atPct);
+}
 
 /** Durée maximale d'une récompense : 30 jours. */
 export const MAX_REWARD_HOURS = 720;
@@ -131,6 +163,7 @@ export function normalizePotConfig(raw: any, base: PotConfig = DEFAULT_POT): Pot
     rainPoints: int(raw?.rainPoints, 0, 100_000, base.rainPoints),
     donorRefundPct: int(raw?.donorRefundPct, 0, 100, base.donorRefundPct),
     topDonorBonus: int(raw?.topDonorBonus, 0, 1_000_000, base.topDonorBonus),
+    tiers: normalizeTiers(raw?.tiers, base.tiers),
     autoStart: bool(raw?.autoStart, base.autoStart),
     startDelayHours: int(raw?.startDelayHours, 0, 72, base.startDelayHours),
     startAtHour: int(raw?.startAtHour, -1, 23, base.startAtHour),

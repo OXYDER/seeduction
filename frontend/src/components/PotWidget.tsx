@@ -23,7 +23,7 @@ export default function PotWidget() {
         <strong>{pot.icon} {pot.name}</strong>
         <Link to="/pot" className="rail-all">{cycle.status === 'OPEN' ? 'Donner →' : 'Voir →'}</Link>
       </div>
-      <PotGauge percent={cycle.percent} collected={cycle.collected} goal={cycle.goal} full={cycle.status !== 'OPEN'} />
+      <PotGauge percent={cycle.percent} collected={cycle.collected} goal={cycle.goal} full={cycle.status !== 'OPEN'} tiers={pot.tiers} />
       <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
         {pot.active
           ? <>🎉 Freeleech global en cours — encore <strong>{endsIn}</strong></>

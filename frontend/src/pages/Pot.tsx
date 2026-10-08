@@ -3,18 +3,26 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
-import { durationFr } from '../lib/duration';
+import { durationFr, tierPerks } from '../lib/duration';
 import { useCountdown } from '../components/FreeleechCalendar';
 
 const fmt = (iso: string) => new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
 const MEDAL = ['🥇', '🥈', '🥉'];
 
 /** Jauge du pot : se remplit avec les dons ; change de couleur en approchant du but. */
-export function PotGauge({ percent, collected, goal, full }: { percent: number; collected: number; goal: number; full?: boolean }) {
+export function PotGauge({ percent, collected, goal, full, tiers }: { percent: number; collected: number; goal: number; full?: boolean; tiers?: { atPct: number; reached: boolean; amount: number; freeleechHours: number; doubleUploadHours: number; tokens: number; rainPoints: number }[] }) {
   return (
-    <div className="pot-gauge" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="Remplissage du pot">
-      <div className={`pot-gauge-fill${percent >= 90 || full ? ' hot' : ''}`} style={{ width: `${Math.max(percent, collected > 0 ? 2 : 0)}%` }} />
-      <div className="pot-gauge-text"><strong>{formatNumber(collected)}</strong> / {formatNumber(goal)} points · {percent} %</div>
+    <div className="pot-gauge-wrap">
+      <div className="pot-gauge" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="Remplissage du pot">
+        <div className={`pot-gauge-fill${percent >= 90 || full ? ' hot' : ''}`} style={{ width: `${Math.max(percent, collected > 0 ? 2 : 0)}%` }} />
+        <div className="pot-gauge-text"><strong>{formatNumber(collected)}</strong> / {formatNumber(goal)} points · {percent} %</div>
+        {tiers?.map((t) => <span key={t.atPct} className={`pot-tier-tick${t.reached ? ' on' : ''}`} style={{ left: `${t.atPct}%` }} />)}
+      </div>
+      {tiers && tiers.length > 0 && (
+        <div className="pot-tier-flags" aria-hidden="true">
+          {tiers.map((t) => <span key={t.atPct} className={`pot-tier-flag${t.reached ? ' on' : ''}`} style={{ left: `${t.atPct}%` }} title={`${t.atPct} % (${formatNumber(t.amount)} pts) : ${tierPerks(t)}`}>{t.reached ? '✅' : '🎁'}</span>)}
+        </div>
+      )}
     </div>
   );
 }
@@ -86,7 +94,7 @@ export default function Pot() {
           <strong>Pot n° {cycle.number}</strong>
           <span className="muted">{open ? `Il manque ${formatNumber(cycle.remaining)} points` : '✅ Plein — la récompense va démarrer'}</span>
         </div>
-        <PotGauge percent={cycle.percent} collected={cycle.collected} goal={cycle.goal} full={!open} />
+        <PotGauge percent={cycle.percent} collected={cycle.collected} goal={cycle.goal} full={!open} tiers={pot.tiers} />
 
         {open ? (
           <div style={{ marginTop: 14 }}>
@@ -112,6 +120,22 @@ export default function Pot() {
         {message && <div style={{ color: 'var(--success)', marginTop: 8 }}>{message}</div>}
         {error && <div style={{ color: 'var(--danger)', marginTop: 8 }}>{error}</div>}
       </div>
+
+      {pot.tiers?.length > 0 && (
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>🎯 Paliers : des récompenses en cours de route</h3>
+          <div className="grid" style={{ gap: 6 }}>
+            {pot.tiers.map((t: any) => (
+              <div key={t.atPct} className={`pot-tier-row${t.reached ? ' on' : ''}`}>
+                <span className="pot-tier-badge">{t.reached ? '✅' : '🔒'} {t.atPct} %</span>
+                <span className="muted" style={{ fontSize: 12 }}>{formatNumber(t.amount)} points</span>
+                <span>{tierPerks(t)}</span>
+              </div>
+            ))}
+            <div className="pot-tier-row"><span className="pot-tier-badge">🏁 100 %</span><span className="muted" style={{ fontSize: 12 }}>{formatNumber(cycle.goal)} points</span><span>la récompense finale ci-dessous</span></div>
+          </div>
+        </div>
+      )}
 
       <div className="panel">
         <h3 style={{ marginTop: 0 }}>🎁 Quand le pot est plein</h3>

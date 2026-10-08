@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { DEFAULT_POT, MAX_REWARD_HOURS, PotConfig, nextAtHour, normalizePotConfig } from './pot.config';
+import { DEFAULT_POT, MAX_REWARD_HOURS, PotConfig, PotTier, nextAtHour, normalizePotConfig } from './pot.config';
 
 const DAY = 86400_000;
 const fmtDate = (d: Date) => d.toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/Toronto' });
@@ -82,6 +82,7 @@ export class PotService {
         startDelayHours: cfg.startDelayHours, startAtHour: cfg.startAtHour, cooldownHours: cfg.cooldownHours, autoStart: cfg.autoStart, donorRefundPct: cfg.donorRefundPct, topDonorBonus: cfg.topDonorBonus,
       },
       rules: { minDonation: cfg.minDonation, maxDonation: cfg.maxDonation, dailyLimit: cfg.dailyLimit, dailyLeft, carryOver: cfg.carryOver, goalGrowthPct: cfg.goalGrowthPct, goalPerMember: cfg.goalPerMember, minAccountDays: cfg.minAccountDays },
+      tiers: cfg.tiers.map((t) => ({ ...t, amount: Math.ceil((cycle.goal * t.atPct) / 100), reached: cycle.reached.includes(t.atPct) })),
       mine: userId ? { cycle: mine?._sum.amount ?? 0, lifetime: lifetime?._sum.amount ?? 0 } : null,
       top: top.map((t) => ({ username: name.get(t.userId) ?? '(membre supprimé)', amount: t._sum.amount ?? 0 })),
       topAllTime: topAll.map((t) => ({ username: name.get(t.userId) ?? '(membre supprimé)', amount: t._sum.amount ?? 0 })),
@@ -147,15 +148,57 @@ export class PotService {
     return { ok: true, collected: updated.collected, goal: updated.goal };
   }
 
-  /** Après un ajout : paliers (50 % et 90 %) puis déclenchement si le pot est plein. */
+  /** Après un ajout : paliers de récompense, paliers de notification (50 % et 90 %), puis déclenchement si le pot est plein. */
   private async afterAdd(cfg: PotConfig, cycleId: string, before: number, after: number, goal: number) {
+    await this.reachTiers(cfg, cycleId, before, after, goal);
     if (after >= goal) { await this.checkFull(cycleId); return; }
     if (!cfg.milestones) return;
     for (const pct of [50, 90]) {
       if (before * 100 < pct * goal && after * 100 >= pct * goal) {
-        await this.notifications.notifyAll({ type: 'SYSTEM', title: `${cfg.icon} ${cfg.name} : ${pct} % !`, body: `Encore ${goal - after} points avant le freeleech pour tout le monde. Donne ta part !`, link: '/pot' }).catch(() => undefined);
+        await this.notifications.notifyAll({ type: 'SYSTEM', title: `${cfg.icon} ${cfg.name} : ${pct} % !`, body: `Encore ${goal - after} points avant la récompense finale pour tout le monde. Donne ta part !`, link: '/pot' }).catch(() => undefined);
       }
     }
+  }
+
+  /** Débloque les paliers franchis par un ajout (chacun une seule fois par cycle, même avec des dons simultanés). */
+  private async reachTiers(cfg: PotConfig, cycleId: string, before: number, after: number, goal: number) {
+    for (const tier of cfg.tiers) {
+      if (!(before * 100 < tier.atPct * goal && after * 100 >= tier.atPct * goal)) continue;
+      const claimed = await this.prisma.$executeRaw`UPDATE "PotCycle" SET reached = array_append(reached, ${tier.atPct}::int) WHERE id = ${cycleId} AND NOT (${tier.atPct}::int = ANY(reached))`;
+      if (claimed) await this.grantTier(cfg, tier, cycleId).catch((e) => this.logger.warn(`Palier ${tier.atPct} % : ${e?.message ?? e}`));
+    }
+  }
+
+  /** Ajoute une fenêtre de double upload global (elles peuvent se suivre : un palier, puis la récompense finale). */
+  private async addDoubleUpload(startsAt: Date, hours: number) {
+    const raw = await this.settings.get<any>('potDoubleUpload');
+    const now = Date.now();
+    const kept = (Array.isArray(raw) ? raw : raw ? [raw] : []).filter((w: any) => new Date(w.endsAt).getTime() > now);
+    kept.push({ startsAt: startsAt.toISOString(), endsAt: new Date(startsAt.getTime() + hours * 3600_000).toISOString() });
+    await this.settings.set('potDoubleUpload', kept);
+  }
+
+  /** Récompense d'un palier : freeleech et / ou double upload (après un freeleech déjà en cours), jetons pour les donateurs, pluie de points. */
+  private async grantTier(cfg: PotConfig, tier: PotTier, cycleId: string) {
+    const fl = await this.settings.freeleechState();
+    const startsAt = new Date(Math.max(Date.now(), fl.until?.getTime() ?? 0));
+    const perks: string[] = [];
+    if (tier.freeleechHours > 0) {
+      const endsAt = new Date(startsAt.getTime() + tier.freeleechHours * 3600_000);
+      await this.prisma.freeleechEvent.create({ data: { title: `${cfg.icon} ${cfg.name} — palier ${tier.atPct} %`, message: `Le palier ${tier.atPct} % du ${cfg.name} est atteint : merci aux donateurs ! Les téléchargements ne comptent pas dans ton ratio.`, startsAt, endsAt } });
+      this.settings.invalidateFreeleech();
+      perks.push(`freeleech global ${tier.freeleechHours} h`);
+    }
+    if (tier.doubleUploadHours > 0) { await this.addDoubleUpload(startsAt, tier.doubleUploadHours); perks.push(`double upload ${tier.doubleUploadHours} h`); }
+    if (tier.tokens > 0) {
+      const donors = await this.prisma.potDonation.groupBy({ by: ['userId'], where: { cycleId, topUp: false } });
+      if (donors.length) await this.prisma.user.updateMany({ where: { id: { in: donors.map((d) => d.userId) } }, data: { freeleechTokens: { increment: tier.tokens } } });
+      perks.push(`${tier.tokens} jeton${tier.tokens > 1 ? 's' : ''} freeleech pour les donateurs`);
+    }
+    if (tier.rainPoints > 0) { const n = await this.rain({ ...cfg, rainPoints: tier.rainPoints }); if (n > 0) perks.push(`${tier.rainPoints} points offerts à chaque membre actif`); }
+    if (perks.length === 0) return;
+    this.logger.log(`Palier ${tier.atPct} % du pot atteint : ${perks.join(', ')}`);
+    if (cfg.announce) await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `${cfg.icon} ${cfg.name} : palier ${tier.atPct} % atteint !`, body: perks.join(' · '), link: '/pot' }).catch(() => undefined);
   }
 
   // ------------------------------------------------------------------ remplissage et récompense
@@ -201,7 +244,7 @@ export class PotService {
       await this.prisma.freeleechEvent.create({ data: { title, message, startsAt, endsAt: new Date(earliest + freeleechHours * 3600_000) } });
       this.settings.invalidateFreeleech();
     }
-    if (doubleHours > 0) await this.settings.set('potDoubleUpload', { startsAt: startsAt.toISOString(), endsAt: new Date(earliest + doubleHours * 3600_000).toISOString() });
+    if (doubleHours > 0) await this.addDoubleUpload(startsAt, doubleHours);
     await this.prisma.potCycle.update({ where: { id: cycleId }, data: { rewardStartsAt: startsAt, rewardEndsAt: endsAt, rewardHours: longest } });
 
     await this.rewardDonors(cfg, cycleId);
@@ -211,7 +254,8 @@ export class PotService {
     let nextGoal = Math.max(100, Math.round(cycle.goal * (1 + cfg.goalGrowthPct / 100)));
     if (cfg.goalPerMember > 0) nextGoal = Math.max(cfg.goal, cfg.goalPerMember * (await this.activeMembers(30)));
     const carry = cfg.carryOver ? Math.min(Math.max(0, cycle.collected - cycle.goal), nextGoal - 1) : 0;
-    await this.prisma.potCycle.create({ data: { number: cycle.number + 1, goal: nextGoal, collected: carry } });
+    const next = await this.prisma.potCycle.create({ data: { number: cycle.number + 1, goal: nextGoal, collected: carry } });
+    if (carry > 0) await this.reachTiers(cfg, next.id, 0, carry, nextGoal);
 
     if (cfg.announce) await this.announce(cfg, startsAt, endsAt, { freeleechHours, doubleHours, fast, rained });
     return { started: true, startsAt, endsAt, freeleechHours, doubleHours, fastFill: fast };

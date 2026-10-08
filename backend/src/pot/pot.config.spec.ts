@@ -47,4 +47,12 @@ describe('réglages du pot commun', () => {
     // heure d'hiver (EST, UTC-5)
     expect(nextAtHour(new Date('2026-12-10T10:00:00Z'), 18).toISOString()).toBe('2026-12-10T23:00:00.000Z');
   });
+
+  it('paliers : triés, sans doublon, bornés, et sans palier vide', () => {
+    const c = normalizePotConfig({ tiers: [{ atPct: 66, freeleechHours: 6 }, { atPct: 33, doubleUploadHours: 4 }, { atPct: 66, tokens: 1 }, { atPct: 150, tokens: 1 }, { atPct: 10 }, { atPct: 40, rainPoints: 999999 }] });
+    expect(c.tiers.map((t) => t.atPct)).toEqual([33, 40, 66]);
+    expect(c.tiers[1].rainPoints).toBe(100000);
+    expect(normalizePotConfig({ tiers: 'x' }).tiers).toEqual([]);
+    expect(normalizePotConfig({ tiers: Array.from({ length: 20 }, (_, i) => ({ atPct: i + 1, tokens: 1 })) }).tiers).toHaveLength(6);
+  });
 });
