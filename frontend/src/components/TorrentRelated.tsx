@@ -121,6 +121,15 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
   if (seasonNumbers.length === 0) return null;
 
   const covering = (season: number) => torrents.filter((t) => t.coverage.some((c) => c.season === season));
+  /** Épisodes manquants d'une saison dont les torrents du site ne couvrent qu'une partie (0 si une saison complète existe ou si le nombre d'épisodes est inconnu). */
+  const missingEpisodes = (season: number, total?: number | null) => {
+    if (!total) return 0;
+    const list = covering(season);
+    if (list.length === 0 || list.some((t) => t.coverage.some((c) => c.season === season && c.episodes === null))) return 0;
+    const have = new Set<number>();
+    list.forEach((t) => t.coverage.forEach((c) => { if (c.season === season) (c.episodes ?? []).forEach((e) => have.add(e)); }));
+    return Math.max(0, total - have.size);
+  };
   const coversEpisode = (season: number, ep: number) =>
     torrents.filter((t) => t.coverage.some((c) => c.season === season && (c.episodes === null || c.episodes.includes(ep))));
 
@@ -140,7 +149,7 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                   {isOpen ? '▾' : '▸'} {s.name}
                 </button>
                 <span className="muted">
-                  {[s.episodeCount ? `${s.episodeCount} épisodes` : null, s.airDate ? String(s.airDate).slice(0, 4) : null].filter(Boolean).join(' · ')}
+                  {[s.episodeCount ? `${s.episodeCount} épisode${s.episodeCount > 1 ? 's' : ''}` : null, s.airDate ? String(s.airDate).slice(0, 4) : null].filter(Boolean).join(' · ')}
                 </span>
                 {list.length > 0
                   ? list.map((t) => {
@@ -148,6 +157,9 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                       return <TorrentChip key={t.id} t={t} current={t.id === torrentId} label={c.episodes === null ? 'saison complète' : `épisodes ${ranges(c.episodes)}`} />;
                     })
                   : <span className="muted">Non disponible — <Link to={requestLink(`${seriesTitle} ${s.name}`)}>faire une demande</Link></span>}
+                {missingEpisodes(n, s.episodeCount) > 0 && (
+                  <span className="muted">Saison incomplète : {missingEpisodes(n, s.episodeCount)} épisode{missingEpisodes(n, s.episodeCount) > 1 ? 's' : ''} manquant{missingEpisodes(n, s.episodeCount) > 1 ? 's' : ''} — <Link to={requestLink(`${seriesTitle} ${s.name} (saison complète)`)}>faire une demande</Link></span>
+                )}
               </div>
 
               {isOpen && (
@@ -166,7 +178,7 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                               <td style={{ textAlign: 'right' }}>
                                 {have.length > 0
                                   ? have.map((t) => <TorrentChip key={t.id} t={t} current={t.id === torrentId} />)
-                                  : <span className="muted">—</span>}
+                                  : <span className="muted">Non disponible — <Link to={requestLink(`${seriesTitle} S${pad(n)}E${pad(e.number)}`)}>faire une demande</Link></span>}
                               </td>
                             </tr>
                           );
