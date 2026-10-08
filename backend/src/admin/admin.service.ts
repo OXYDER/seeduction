@@ -124,6 +124,12 @@ export class AdminService {
       const c = catId ? await this.prisma.category.findUnique({ where: { id: catId }, select: { name: true, parent: { select: { name: true } } } }) : null;
       data.attrs = normalizeAttrs(body.attrs, facetKeysFor(c?.parent?.name ?? c?.name ?? '', c?.name ?? ''));
     }
+    if (typeof body.overview === 'string') {
+      // Synopsis affiché (modifiable à la main) : il remplace celui de la fiche et n'est plus retraduit automatiquement.
+      const cur = await this.prisma.torrent.findUnique({ where: { id }, select: { metadata: true } });
+      data.metadata = { ...((cur?.metadata as object) ?? {}), overview: body.overview.trim().slice(0, 4000) || null };
+      data.overviewTranslatedAt = new Date();
+    }
     if (typeof body.freeleech === 'boolean') data.freeleech = body.freeleech;
     if (typeof body.doubleUpload === 'boolean') data.doubleUpload = body.doubleUpload;
     if (body.coverImage === null || typeof body.coverImage === 'string') data.coverImage = body.coverImage || null;

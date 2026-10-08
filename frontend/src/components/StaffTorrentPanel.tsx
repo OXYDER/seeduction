@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import WysiwygEditor from './WysiwygEditor';
 import FacetFields from './FacetFields';
+import FichePanel from './FichePanel';
 import type { FacetDef, FacetValues } from '../lib/facets';
 
 const STATUSES = [
@@ -24,6 +25,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
   const [doubleUpload, setDoubleUpload] = useState(!!torrent.doubleUpload);
   const [description, setDescription] = useState(torrent.description ?? '');
   const [coverImage, setCoverImage] = useState(torrent.coverImage ?? '');
+  const [overview, setOverview] = useState<string>(torrent.metadata?.overview ?? '');
   // Filtres de la catégorie (format, genre, console...) : ceux de la catégorie choisie, avec les valeurs actuelles du torrent.
   const [facetDefs, setFacetDefs] = useState<FacetDef[]>([]);
   const [attrs, setAttrs] = useState<FacetValues>((torrent.attrs as FacetValues) ?? {});
@@ -71,11 +73,12 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
     setBusy(true);
     setError('');
     setMessage('');
+    const overviewChanged = overview !== (torrent.metadata?.overview ?? '');
     const patch = { name, categoryId, status, freeleech, doubleUpload, description, coverImage: coverImage || null, attrs };
     try {
-      await api.patch(`/admin/torrents/${torrent.id}`, patch);
+      await api.patch(`/admin/torrents/${torrent.id}`, { ...patch, ...(overviewChanged ? { overview } : {}) });
       const category = categories.find((c) => c.id === categoryId);
-      onSaved({ ...patch, category: category ? { id: category.id, name: category.name.split(' › ').pop() } : torrent.category });
+      onSaved({ ...patch, ...(overviewChanged ? { metadata: { ...(torrent.metadata ?? {}), overview: overview.trim() || null } } : {}), category: category ? { id: category.id, name: category.name.split(' › ').pop() } : torrent.category });
       setMessage('✓ Modifications enregistrées');
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Erreur lors de la modification');
@@ -147,6 +150,11 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
               <FacetFields defs={facetDefs} values={attrs} onChange={(key, next) => setAttrs((cur) => ({ ...cur, [key]: next }))} />
             </div>
           )}
+          <FichePanel torrent={torrent} onChanged={onSaved} />
+          <div>
+            <div className="muted" style={{ marginBottom: 4 }}>Synopsis affiché (sous le titre et dans les listes)</div>
+            <textarea value={overview} onChange={(e) => setOverview(e.target.value)} rows={4} style={{ width: '100%' }} placeholder="Modifier ici remplace le synopsis de la fiche (il n'est plus retraduit automatiquement)." />
+          </div>
           <div>
             <div className="muted" style={{ marginBottom: 4 }}>Description</div>
             <WysiwygEditor value={description} onChange={setDescription} minHeight={260} />

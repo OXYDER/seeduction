@@ -4,6 +4,7 @@ import { AdminInvitesService, InviteInput } from './admin-invites.service';
 import { SiteConfigService } from './site-config.service';
 import { AuditService } from '../audit/audit.service';
 import { MemberActivityService } from '../member-activity/member-activity.service';
+import { MetadataService } from '../metadata/metadata.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -12,7 +13,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
 @Controller('admin')
 export class AdminController {
-  constructor(private adminService: AdminService, private invites: AdminInvitesService, private siteConfig: SiteConfigService, private audit: AuditService, private memberActivity: MemberActivityService) {}
+  constructor(private adminService: AdminService, private invites: AdminInvitesService, private siteConfig: SiteConfigService, private audit: AuditService, private memberActivity: MemberActivityService, private metadata: MetadataService) {}
 
   @Get('stats')
   stats() {
@@ -60,6 +61,22 @@ export class AdminController {
   async updateTorrent(@Param('id') id: string, @Body() body: any, @Request() req: any) {
     const result = await this.adminService.updateTorrent(id, body);
     await this.audit.log(req.user.userId, 'TORRENT_EDIT', { torrentId: id, name: result.name, fields: Object.keys(body ?? {}) }, this.ip(req));
+    return result;
+  }
+
+  /** Change la fiche (TMDB, Deezer, livres, jeux) d'un torrent déjà sur le site : l'ancienne est remplacée, l'affiche aussi si demandé. */
+  @Post('torrents/:id/metadata')
+  async replaceMetadata(@Param('id') id: string, @Body() body: { kind?: string; id?: string; replaceCover?: boolean }, @Request() req: any) {
+    const result = await this.metadata.replaceFiche(id, String(body?.kind ?? ''), String(body?.id ?? ''), body?.replaceCover !== false);
+    await this.audit.log(req.user.userId, 'TORRENT_EDIT', { torrentId: id, fields: ['metadata'], kind: body?.kind, ficheId: body?.id }, this.ip(req));
+    return result;
+  }
+
+  /** Retire la fiche d'un torrent (mauvaise fiche). */
+  @Delete('torrents/:id/metadata')
+  async clearMetadata(@Param('id') id: string, @Request() req: any) {
+    const result = await this.metadata.clearFiche(id);
+    await this.audit.log(req.user.userId, 'TORRENT_EDIT', { torrentId: id, fields: ['metadata'], cleared: true }, this.ip(req));
     return result;
   }
 

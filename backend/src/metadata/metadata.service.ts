@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { Prisma } from '@prisma/client';
 import { CoversService } from '../covers/covers.service';
 import { PrismaService } from '../common/prisma.service';
 import { TranslateService } from './translate.service';
@@ -738,7 +739,7 @@ export class MetadataService {
    * entre tous les torrents, donc navigables. Les photos sont ensuite
    * téléchargées sur Seeduction en arrière-plan.
    */
-  async attach(torrentId: string, kind: string, id: string) {
+  async attach(torrentId: string, kind: string, id: string, opts: { replaceCover?: boolean } = {}) {
     this.assertSearchable(kind);
     const rich = await this.rich(kind, id);
 
@@ -766,7 +767,7 @@ export class MetadataService {
       if (e.imageUrl && !entity.imageUrl) pendingImages.push({ entityId: entity.id, url: e.imageUrl });
     }
 
-    void this.downloadImages(torrentId, pendingImages, rich.backdropUrl, rich.coverUrl).catch((err) =>
+    void this.downloadImages(torrentId, pendingImages, rich.backdropUrl, rich.coverUrl, !!opts.replaceCover).catch((err) =>
       this.logger.warn(`Téléchargement des images de la fiche échoué : ${err?.message ?? err}`),
     );
   }
@@ -800,6 +801,31 @@ export class MetadataService {
   }
 
   /**
+   * Remplace la fiche d'un torrent déjà sur le site (modération) : les anciens liens (acteurs, studios, genres...) sont retirés, la nouvelle fiche est
+   * rattachée comme à l'envoi. `replaceCover` : l'affiche de la nouvelle fiche devient aussi la pochette du torrent.
+   */
+  async replaceFiche(torrentId: string, kind: string, id: string, replaceCover: boolean) {
+    const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { id: true } });
+    if (!t) throw new NotFoundException('Torrent introuvable');
+    if (!id || !/^[\w:.-]{1,120}$/.test(id)) throw new BadRequestException('Identifiant de fiche invalide');
+    this.assertSearchable(kind);
+    const rich = await this.rich(kind, id); // la fiche doit exister avant de toucher à l'ancienne
+    if (!rich) throw new NotFoundException('Fiche introuvable');
+    await this.prisma.torrentEntity.deleteMany({ where: { torrentId } });
+    await this.attach(torrentId, kind, id, { replaceCover });
+    return { replaced: true };
+  }
+
+  /** Retire la fiche d'un torrent (mauvaise fiche) : métadonnées et liens supprimés, la pochette est gardée. */
+  async clearFiche(torrentId: string) {
+    const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { id: true } });
+    if (!t) throw new NotFoundException('Torrent introuvable');
+    await this.prisma.torrentEntity.deleteMany({ where: { torrentId } });
+    await this.prisma.torrent.update({ where: { id: torrentId }, data: { metaSource: null, metaExternalId: null, metadata: Prisma.DbNull, searchTitles: null, overviewTranslatedAt: null } });
+    return { cleared: true };
+  }
+
+  /**
    * Torrents importés automatiquement dont la fiche TMDB est rattachée mais qui n'ont pas de pochette (l'import ne passe pas par le formulaire d'envoi,
    * qui enregistre l'affiche) : on la télécharge petit à petit (quelques-unes toutes les 10 minutes). Un torrent dont la fiche n'a pas d'affiche n'est pas réessayé.
    */
@@ -826,7 +852,7 @@ export class MetadataService {
     }
   }
 
-  private async downloadImages(torrentId: string, images: { entityId: string; url: string }[], backdropUrl: string | null, coverUrl: string | null = null) {
+  private async downloadImages(torrentId: string, images: { entityId: string; url: string }[], backdropUrl: string | null, coverUrl: string | null = null, forceCover = false) {
     await Promise.all(
       images.map(async ({ entityId, url }) => {
         const local = await this.saveCover(url);
@@ -843,7 +869,7 @@ export class MetadataService {
     // Pochette : seulement si le torrent n'en a pas déjà une (celle du formulaire d'envoi, ou choisie par le membre, reste prioritaire).
     if (coverUrl) {
       const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { coverImage: true } });
-      if (t && !t.coverImage) {
+      if (t && (forceCover || !t.coverImage)) {
         const local = await this.saveCover(coverUrl);
         if (local) await this.prisma.torrent.update({ where: { id: torrentId }, data: { coverImage: local } });
       }
