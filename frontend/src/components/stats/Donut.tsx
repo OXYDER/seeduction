@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Sector, Tooltip } from 'recharts';
 
 export const COLORS = ['#e0b84a', '#4caf50', '#7aa0ff', '#c084fc', '#f472b6', '#2dd4bf', '#ef6c4a', '#9fb8a0'];
@@ -27,12 +27,10 @@ function DonutTip({ active, payload, total }: any) {
   );
 }
 
-/** Part « sortie » au survol : un peu plus grande, décalée vers l'extérieur, avec un liseré clair. */
+/** Part survolée : elle grossit sur place (sans se déplacer : on ne voit jamais la couronne du dessous) et prend un liseré clair. */
 function ActiveSlice(props: any) {
-  const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-  const rad = Math.PI / 180;
-  const dx = Math.cos(-midAngle * rad) * 7, dy = Math.sin(-midAngle * rad) * 7;
-  return <Sector cx={cx + dx} cy={cy + dy} innerRadius={innerRadius} outerRadius={outerRadius + 7} startAngle={startAngle} endAngle={endAngle} fill={fill} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />;
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+  return <Sector cx={cx} cy={cy} innerRadius={innerRadius - 2} outerRadius={outerRadius + 6} startAngle={startAngle} endAngle={endAngle} fill={fill} stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} />;
 }
 
 /**
@@ -42,7 +40,8 @@ function ActiveSlice(props: any) {
 export function Donut({ data, height = 230 }: { data: { name: string; count: number }[]; height?: number }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const [active, setActive] = useState<number | null>(null);
-  const slices = data.filter((d) => Number(d.count) > 0).map((d, i) => ({ ...d, count: Number(d.count), __color: COLORS[i % COLORS.length] }));
+  // Mémorisé : un nouveau tableau à chaque survol ferait redessiner (et animer) tout l'anneau.
+  const slices = useMemo(() => data.filter((d) => Number(d.count) > 0).map((d, i) => ({ ...d, count: Number(d.count), __color: COLORS[i % COLORS.length] })), [data]);
   const total = slices.reduce((n, d) => n + d.count, 0);
   if (slices.length === 0) return <p className="muted">Aucune donnée.</p>;
   const cur = active !== null ? slices[active] : null;
@@ -69,7 +68,7 @@ export function Donut({ data, height = 230 }: { data: { name: string; count: num
               data={slices} dataKey="count" nameKey="name" cx="50%" cy="50%" innerRadius="52%" outerRadius="88%" paddingAngle={1.5} stroke="rgba(0,0,0,0.25)" strokeWidth={0.5}
               activeIndex={active ?? undefined} activeShape={ActiveSlice}
               onMouseEnter={(_: any, i: number) => setActive(i)} onMouseLeave={() => setActive(null)}
-              animationDuration={700}
+              isAnimationActive={false}
             >
               {slices.map((_, i) => <Cell key={i} fill={`url(#${uid}g${i})`} style={{ cursor: 'pointer', outline: 'none' }} />)}
             </Pie>

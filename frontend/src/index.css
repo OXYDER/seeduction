@@ -3327,3 +3327,6 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .poster-card:hover .poster-tags .pt-all { display: flex; }
 .poster-tags .vr-chip.more { display: none; }
 .tv-posters .poster-tags { display: none; } /* mode « Affiches » : image + titre seulement */
+/* Apparition douce de l'anneau (CSS) : pas d'animation de redessin au survol. */
+@keyframes donut-in { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+.donut-chart .recharts-wrapper { animation: donut-in .45s ease-out both; }
