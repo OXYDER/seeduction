@@ -2459,7 +2459,7 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .vr-chip.res { color: #38bdf8; background: rgba(56,189,248,0.14); }
 .vr-chip.src { color: #6ee7b7; background: rgba(16,185,129,0.14); }
 .vr-chip.aud { color: #fbbf24; background: rgba(245,158,11,0.16); }
-.vr-chip.ep { color: #f9a8d4; background: rgba(236,72,153,0.16); }
+.vr-chip.ep, .vr-chip.ep2 { color: #f9a8d4; background: rgba(236,72,153,0.16); }
 .vr-chip.yr { color: #cbd5e1; background: rgba(148,163,184,0.16); }
 .vr-chip.org { color: #fda4af; background: rgba(244,63,94,0.15); }
 .vr-chip.cod { color: #c4b5fd; background: rgba(139,92,246,0.18); }

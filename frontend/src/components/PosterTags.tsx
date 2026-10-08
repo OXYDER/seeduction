@@ -8,7 +8,7 @@ export default function PosterTags({ t }: { t: any }) {
   return (
     <div className="poster-tags">
       <MetaChips t={t} limit={4} className="pt-min" />
-      <MetaChips t={t} className="pt-all" />
+      <MetaChips t={t} className="pt-all" explicitEpisode />
     </div>
   );
 }

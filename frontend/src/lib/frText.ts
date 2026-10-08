@@ -110,3 +110,17 @@ const FACET_VALUE_FR: Record<string, string> = { Lossless: 'Sans perte', Lossy: 
 
 /** Valeur d'un filtre de catégorie affichée en français (la valeur stockée, elle, ne change pas : elle sert aux liens et aux filtres). */
 export const facetValueFr = (v: string): string => FACET_VALUE_FR[v] ?? v;
+
+/**
+ * Saison et épisode d'un torrent : les champs enregistrés, sinon lus dans le nom de la release (« …S17E03… » ; « …S02… » seul = saison complète).
+ * Les valeurs libres (« Intégrale », « Saison complète ») sont gardées telles quelles.
+ */
+export function seasonEpisodeOf(t: any): { season: string | null; episode: string | null } {
+  let season: string | null = t?.season ?? null;
+  let episode: string | null = t?.episode ?? null;
+  if (!season) {
+    const m = String(t?.name ?? '').match(/(?:^|[ ._-])S(\d{1,2})(?:[ ._-]?E(\d{1,3}))?(?=$|[ ._-])/i);
+    if (m) { season = String(Number(m[1])); episode = m[2] ? String(Number(m[2])) : 'Saison complète'; }
+  }
+  return { season, episode };
+}

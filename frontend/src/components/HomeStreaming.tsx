@@ -210,7 +210,7 @@ export default function HomeStreaming() {
               <div className="hero-plex">
               <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username} · À la une</div>
               <h1 title={featured.name}>{featured.name}</h1>
-              <MetaChips t={featured} className="hero-chips" />
+              <MetaChips t={featured} className="hero-chips" explicitEpisode />
               <div className="hero-meta">
                 {[featured.category?.name, formatBytes(featured.size)].filter(Boolean).join('  ·  ')}
                 <span className="hero-health"><HealthDot seeders={featured.seeders} />{featured.seeders} seeders</span>
