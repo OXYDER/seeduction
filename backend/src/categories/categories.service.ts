@@ -171,11 +171,12 @@ export class CategoriesService implements OnModuleInit {
       where: { parentId: null, ...(hidden.length ? { id: { notIn: hidden } } : {}) },
       orderBy: { name: 'asc' },
       include: {
-        _count: { select: { torrents: true } },
+        // Seuls les torrents approuvés comptent : ce sont les seuls que la liste affiche (ni les morts, ni les rejetés, ni ceux en attente).
+        _count: { select: { torrents: { where: { status: 'APPROVED' } } } },
         children: {
           where: hidden.length ? { id: { notIn: hidden } } : undefined,
           orderBy: { name: 'asc' },
-          include: { _count: { select: { torrents: true } } },
+          include: { _count: { select: { torrents: { where: { status: 'APPROVED' } } } } },
         },
       },
     });
