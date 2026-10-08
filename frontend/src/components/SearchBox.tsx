@@ -1,3 +1,4 @@
+import MetaChips from './MetaChips';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -122,7 +123,8 @@ export default function SearchBox({
             {d.coverImage ? <img src={d.coverImage} alt="" className="sb-thumb" /> : <span className="sb-thumb sb-icon">🎬</span>}
             <span className="sb-text">
               <span className="sb-title">{d.name}</span>
-              <span className="sb-sub">{[d.matchedTitle ? `aussi : ${d.matchedTitle}` : '', d.category?.name, d.year, d.resolution, `${d.seeders} S`].filter(Boolean).join(' · ')}</span>
+              <span className="sb-sub">{[d.matchedTitle ? `aussi : ${d.matchedTitle}` : '', d.category?.name, `${d.seeders} seeder${d.seeders > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}</span>
+              <MetaChips t={d} limit={7} className="sb-chips" />
             </span>
           </>
         );
