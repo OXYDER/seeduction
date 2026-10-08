@@ -5,7 +5,7 @@ import { CATEGORY_STYLE } from './Layout';
 import { TorrentHover } from './TorrentLink';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
-import MetaChips from './MetaChips';
+import PosterTags from './PosterTags';
 
 /** Une carte d'affiche (pochette + titre + infos) avec l'infobulle riche au survol ; `reason` = pourquoi on te la propose. */
 export function PosterCard({ t }: { t: any }) {
@@ -13,9 +13,12 @@ export function PosterCard({ t }: { t: any }) {
   return (
     <TorrentHover id={t.id} inline={false}>
       <Link to={`/torrents/${t.id}`} className="poster-card rail-card">
-        {t.coverImage
-          ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
-          : <div className="poster-fallback">{catStyle?.icon ?? '📦'}</div>}
+        <div className="poster-art">
+          {t.coverImage
+            ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
+            : <div className="poster-fallback">{catStyle?.icon ?? '📦'}</div>}
+          <PosterTags t={t} />
+        </div>
         <div className="poster-badges">
           <CategoryTag category={t.category} />
           {t.freeleech && <span className="badge freeleech">FL</span>}
@@ -23,7 +26,6 @@ export function PosterCard({ t }: { t: any }) {
         </div>
         <div className="poster-body">
           <div className="poster-title">{t.name}</div>
-          <MetaChips t={t} limit={5} className="poster-chips" />
           <div className="muted" style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center' }}>
             <HealthDot seeders={t.seeders} />
             <span style={{ color: 'var(--success)' }}>{t.seeders}</span>&nbsp;/&nbsp;<span style={{ color: 'var(--danger)' }}>{t.leechers}</span>

@@ -1,4 +1,5 @@
 import MetaChips from './MetaChips';
+import PosterTags from './PosterTags';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
@@ -321,7 +322,7 @@ function TorrentViewBody(props: TorrentViewProps) {
       {items.map((t) => (
         <TorrentHover key={t.id} id={t.id} inline={false}>
           <Link to={`/torrents/${t.id}`} className="poster-card">
-            <Cover t={t} />
+            <div className="poster-art"><Cover t={t} /><PosterTags t={t} /></div>
             <div className="poster-badges">
               <CategoryTag category={t.category} />
               {t.freeleech && <span className="badge freeleech">FL</span>}
@@ -333,7 +334,6 @@ function TorrentViewBody(props: TorrentViewProps) {
             {props.leading && <div className="poster-fav">{props.leading(t)}</div>}
             <div className="poster-body">
               <div className="poster-title">{t.name}</div>
-              <MetaChips t={t} limit={5} className="poster-chips" />
               <div className="muted" style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center' }}>
                 <Seeds t={t} />
                 <span style={{ marginLeft: 'auto' }}>{formatBytes(t.size)}</span>
