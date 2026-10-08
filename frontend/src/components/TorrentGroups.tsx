@@ -46,6 +46,11 @@ export function groupKey(t: any): string {
   return `t:${releaseTitle(t.name).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}|${t.category?.slug ?? ''}`;
 }
 
+/** « 1 épisode », « 2 épisodes ». */
+const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
+/** Nombre d'épisodes DISTINCTS (saison + épisode) d'une liste de releases : deux releases du même épisode ne comptent qu'une fois. */
+const distinctEpisodes = (rows: any[]) => new Set(rows.map((r) => `${digits(r.season)}:${digits(r.episode)}`)).size;
+const distinctSeasons = (rows: any[]) => new Set(rows.map((r) => digits(r.season))).size;
 const catIcon = (t: any) => (CATEGORY_STYLE[t.category?.slug ?? ''] ?? CATEGORY_STYLE[t.category?.parent?.slug ?? ''])?.icon ?? '📦';
 const comments = (t: any) => t._count?.comments ?? 0;
 
@@ -183,7 +188,7 @@ function SeriesBody({ rows, mode, star, actions }: { rows: any[]; mode: 'packs' 
         if (mode === 'packs') {
           return (
             <Node key={sKey} depth={1} label={label} rows={sRows} open={openSeasons.has(sKey)} onToggle={() => flip(openSeasons, setOpenSeasons, sKey)}
-              tags={<span className="vg-tags">{resCounts(sRows).map(([res, c]) => <span key={res} className="vg-res">{res} <span className="muted">({c})</span></span>)}</span>}>
+              tags={<span className="vg-tags">{resCounts(sRows).map(([res, c]) => <span key={res} className="vg-res">{res} <span className="muted">({c})</span></span>)}<span className="muted">{plural(sRows.length, 'release')}</span></span>}>
               {sortVersions(sRows).map((t) => <VersionRow key={t.id} t={t} depth={2} star={star?.(t)} actions={actions} />)}
             </Node>
           );
@@ -193,7 +198,7 @@ function SeriesBody({ rows, mode, star, actions }: { rows: any[]; mode: 'packs' 
         const epNums = [...eps.keys()].sort((a, b) => a - b);
         return (
           <Node key={sKey} depth={1} label={label} rows={sRows} open={openSeasons.has(sKey)} onToggle={() => flip(openSeasons, setOpenSeasons, sKey)}
-            tags={<span className="vg-tags muted">{epNums.length} épisode{epNums.length > 1 ? 's' : ''}</span>}>
+            tags={<span className="vg-tags muted">{plural(epNums.length, 'épisode')} · {plural(sRows.length, 'release')}</span>}>
             {epNums.map((e) => {
               const eRows = eps.get(e)!;
               const eKey = `${sKey}:${e}`;
@@ -201,7 +206,7 @@ function SeriesBody({ rows, mode, star, actions }: { rows: any[]; mode: 'packs' 
               if (eRows.length === 1) return <VersionRow key={eRows[0].id} t={eRows[0]} depth={2} star={star?.(eRows[0])} actions={actions} />;
               return (
                 <Node key={eKey} depth={2} label={`E${String(e).padStart(2, '0')}`} rows={eRows} open={openEps.has(eKey)} onToggle={() => flip(openEps, setOpenEps, eKey)}
-                  tags={<span className="vg-tags">{resCounts(eRows).map(([res, c]) => <span key={res} className="vg-res">{res} <span className="muted">({c})</span></span>)}</span>}>
+                  tags={<span className="vg-tags">{resCounts(eRows).map(([res, c]) => <span key={res} className="vg-res">{res} <span className="muted">({c})</span></span>)}<span className="muted">{plural(eRows.length, 'version')}</span></span>}>
                   {sortVersions(eRows).map((t) => <VersionRow key={t.id} t={t} depth={3} star={star?.(t)} actions={actions} />)}
                 </Node>
               );
@@ -247,13 +252,13 @@ function Group({ rows, actions, star }: { rows: any[]; actions?: (t: any) => Rea
             {runtime ? <span className="vg-runtime" title={isSeries ? 'Durée d\'un épisode' : 'Durée'}>⏱ {isSeries ? `~${formatMinutes(runtime)} / épisode` : formatMinutes(runtime)}</span> : null}
             {isSeries ? (
               <>
-                {packs.length > 0 && <button type="button" className={`vg-mode${open && mode === 'packs' ? ' on' : ''}`} onClick={() => pick('packs')}>Saisons complètes ({packs.length}) ⌄</button>}
-                {eps.length > 0 && <button type="button" className={`vg-mode${open && mode === 'episodes' ? ' on' : ''}`} onClick={() => pick('episodes')}>À l'épisode ({eps.length}) ⌄</button>}
+                {packs.length > 0 && <button type="button" className={`vg-mode${open && mode === 'packs' ? ' on' : ''}`} onClick={() => pick('packs')} title={`${plural(distinctSeasons(packs), 'saison')} complète${distinctSeasons(packs) > 1 ? 's' : ''}, ${plural(packs.length, 'release')}`}>Saisons complètes : {plural(distinctSeasons(packs), 'saison')} · {plural(packs.length, 'release')} ⌄</button>}
+                {eps.length > 0 && <button type="button" className={`vg-mode${open && mode === 'episodes' ? ' on' : ''}`} onClick={() => pick('episodes')} title={`${plural(distinctEpisodes(eps), 'épisode')}, ${plural(eps.length, 'release')}`}>À l'épisode : {plural(distinctEpisodes(eps), 'épisode')} · {plural(eps.length, 'release')} ⌄</button>}
               </>
             ) : (
               <>
                 {resCounts(rows).map(([res, n]) => <span key={res} className="vg-res">{res} <span className="muted">({n})</span></span>)}
-                {rows.length > 1 && <span className="muted">{rows.length} versions</span>}
+                {rows.length > 1 && <span className="muted">{plural(rows.length, 'version')}</span>}
               </>
             )}
           </div>
