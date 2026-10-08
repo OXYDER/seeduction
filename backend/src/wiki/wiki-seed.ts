@@ -158,7 +158,8 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• Les meilleurs donateurs du pot et les mécènes de tous les temps sont affichés sur la page — et peuvent recevoir un bonus quand le pot se remplit.\n\n` +
           `[b]Quand le pot est plein[/b]\n` +
           `• Une annonce prévient tout le monde. Le freeleech démarre tout de suite, ou après un court délai pour laisser le temps de prévenir ; s'il y a déjà un freeleech en cours, celui du pot commence juste après (jamais de superposition).\n` +
-          `• Selon les réglages, une partie des points donnés est rendue aux donateurs, et les trois meilleurs reçoivent un bonus.\n` +
+          `• Selon les réglages, la récompense peut aussi comprendre un [b]double upload global[/b] (avec sa propre durée), une [b]pluie de points[/b] pour tous les membres actifs, des [b]jetons freeleech[/b] pour les donateurs, et une durée prolongée si le pot se remplit [b]très vite[/b].\n` +
+          `• Une partie des points donnés peut être rendue aux donateurs, et les trois meilleurs peuvent recevoir un bonus.\n` +
           `• Un nouveau pot s'ouvre aussitôt, parfois avec un objectif un peu plus grand.\n\n` +
           `Le montant à atteindre et les récompenses sont décidés par l'administration et visibles sur la page du pot.`,
       },
