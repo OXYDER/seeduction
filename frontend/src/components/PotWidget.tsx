@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { PotGauge } from '../pages/Pot';
 import { useCountdown } from './FreeleechCalendar';
+import { durationFr } from '../lib/duration';
 
 /** Accueil : la jauge du pot commun en un coup d'œil, avec un lien pour donner. Se cache tant que le pot n'est pas ouvert. */
 export default function PotWidget() {
@@ -27,7 +28,7 @@ export default function PotWidget() {
         {pot.active
           ? <>🎉 Freeleech global en cours — encore <strong>{endsIn}</strong></>
           : cycle.status === 'OPEN'
-            ? <>Quand il est plein : freeleech global {pot.reward.hours} h pour tout le monde{pot.reward.doubleUpload ? ' + double upload' : ''}.</>
+            ? <>Quand il est plein : {pot.reward.freeleech ? `freeleech global ${durationFr(pot.reward.hours)} pour tout le monde` : 'des récompenses pour tout le monde'}{pot.reward.doubleUpload ? ' + double upload' : ''}.</>
             : <>Le pot est plein : la récompense démarre bientôt !</>}
       </div>
     </section>

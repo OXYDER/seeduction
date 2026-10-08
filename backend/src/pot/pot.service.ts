@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { DEFAULT_POT, PotConfig, normalizePotConfig } from './pot.config';
+import { DEFAULT_POT, MAX_REWARD_HOURS, PotConfig, nextAtHour, normalizePotConfig } from './pot.config';
 
 const DAY = 86400_000;
 const fmtDate = (d: Date) => d.toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/Toronto' });
@@ -76,8 +76,12 @@ export class PotService {
       enabled: true as const,
       name: cfg.name, icon: cfg.icon,
       cycle: { number: cycle.number, goal: cycle.goal, collected: cycle.collected, percent: Math.min(100, Math.floor((cycle.collected / cycle.goal) * 100)), status: cycle.status, remaining: Math.max(0, cycle.goal - cycle.collected) },
-      reward: { hours: cfg.rewardHours, doubleUpload: cfg.doubleUpload, startDelayHours: cfg.startDelayHours, autoStart: cfg.autoStart, donorRefundPct: cfg.donorRefundPct, topDonorBonus: cfg.topDonorBonus },
-      rules: { minDonation: cfg.minDonation, maxDonation: cfg.maxDonation, dailyLimit: cfg.dailyLimit, dailyLeft, carryOver: cfg.carryOver, goalGrowthPct: cfg.goalGrowthPct },
+      reward: {
+        hours: cfg.rewardHours, freeleech: cfg.freeleechEnabled, doubleUpload: cfg.doubleUpload, doubleUploadHours: cfg.doubleUploadHours > 0 ? cfg.doubleUploadHours : cfg.rewardHours,
+        fastFillHours: cfg.fastFillHours, fastFillBonusHours: cfg.fastFillBonusHours, tokens: cfg.rewardTokens, rainPoints: cfg.rainPoints,
+        startDelayHours: cfg.startDelayHours, startAtHour: cfg.startAtHour, cooldownHours: cfg.cooldownHours, autoStart: cfg.autoStart, donorRefundPct: cfg.donorRefundPct, topDonorBonus: cfg.topDonorBonus,
+      },
+      rules: { minDonation: cfg.minDonation, maxDonation: cfg.maxDonation, dailyLimit: cfg.dailyLimit, dailyLeft, carryOver: cfg.carryOver, goalGrowthPct: cfg.goalGrowthPct, goalPerMember: cfg.goalPerMember, minAccountDays: cfg.minAccountDays },
       mine: userId ? { cycle: mine?._sum.amount ?? 0, lifetime: lifetime?._sum.amount ?? 0 } : null,
       top: top.map((t) => ({ username: name.get(t.userId) ?? '(membre supprimé)', amount: t._sum.amount ?? 0 })),
       topAllTime: topAll.map((t) => ({ username: name.get(t.userId) ?? '(membre supprimé)', amount: t._sum.amount ?? 0 })),
@@ -97,6 +101,11 @@ export class PotService {
     let amount = Math.floor(Number(amountRaw));
     if (!Number.isFinite(amount) || amount < cfg.minDonation) throw new BadRequestException(`Don minimum : ${cfg.minDonation} points`);
     if (cfg.maxDonation > 0 && amount > cfg.maxDonation) throw new BadRequestException(`Don maximum : ${cfg.maxDonation} points à la fois`);
+    if (cfg.minAccountDays > 0) {
+      const who = await this.prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
+      const age = who ? Math.floor((Date.now() - who.createdAt.getTime()) / DAY) : 0;
+      if (age < cfg.minAccountDays) throw new BadRequestException(`Ton compte doit avoir au moins ${cfg.minAccountDays} jour${cfg.minAccountDays > 1 ? 's' : ''} pour donner (encore ${cfg.minAccountDays - age})`);
+    }
     const cycle = await this.currentCycle(cfg);
     if (cycle.status !== 'OPEN') throw new BadRequestException(`${cfg.name} est plein : la récompense démarre bientôt, merci !`);
     if (cfg.dailyLimit > 0) {
@@ -169,51 +178,90 @@ export class PotService {
     const cfg = await this.config();
     const cycle = await this.prisma.potCycle.findUniqueOrThrow({ where: { id: cycleId } });
 
-    // La récompense démarre après le délai prévu ET après un éventuel freeleech déjà en cours : jamais superposée, donc jamais perdue.
+    // Remplissage rapide : si le pot s'est rempli assez vite, les récompenses durent plus longtemps.
+    const fillHours = cycle.fullAt ? (cycle.fullAt.getTime() - cycle.startedAt.getTime()) / 3600_000 : Infinity;
+    const fast = cfg.fastFillHours > 0 && cfg.fastFillBonusHours > 0 && fillHours <= cfg.fastFillHours;
+    const bonusHours = fast ? cfg.fastFillBonusHours : 0;
+    const freeleechHours = cfg.freeleechEnabled ? Math.min(MAX_REWARD_HOURS, cfg.rewardHours + bonusHours) : 0;
+    const doubleHours = cfg.doubleUpload ? Math.min(MAX_REWARD_HOURS, (cfg.doubleUploadHours > 0 ? cfg.doubleUploadHours : cfg.rewardHours) + bonusHours) : 0;
+
+    // Le départ : après le délai prévu, après un freeleech déjà en cours (jamais superposé, donc jamais perdu), après le délai entre deux récompenses,
+    // puis, si une heure fixe est choisie, à la prochaine occurrence de cette heure.
     const fl = await this.settings.freeleechState();
-    const earliest = Math.max(Date.now() + cfg.startDelayHours * 3600_000, fl.until?.getTime() ?? 0);
+    const lastDone = await this.prisma.potCycle.findFirst({ where: { status: 'DONE', rewardEndsAt: { not: null }, id: { not: cycleId } }, orderBy: { rewardEndsAt: 'desc' }, select: { rewardEndsAt: true } });
+    let earliest = Math.max(Date.now() + cfg.startDelayHours * 3600_000, fl.until?.getTime() ?? 0, lastDone?.rewardEndsAt ? lastDone.rewardEndsAt.getTime() + cfg.cooldownHours * 3600_000 : 0);
+    if (cfg.startAtHour >= 0) earliest = nextAtHour(new Date(earliest), cfg.startAtHour).getTime();
     const startsAt = new Date(earliest);
-    const endsAt = new Date(earliest + cfg.rewardHours * 3600_000);
+    const longest = Math.max(freeleechHours, doubleHours);
+    const endsAt = new Date(earliest + longest * 3600_000);
+
     const title = `${cfg.icon} ${cfg.name}`;
-    const message = cfg.message || `Merci à tous les donateurs : ${cfg.name} est plein ! Les téléchargements ne comptent pas dans ton ratio${cfg.doubleUpload ? ' et ton upload compte en double' : ''}.`;
-    await this.prisma.freeleechEvent.create({ data: { title, message, startsAt, endsAt } });
-    this.settings.invalidateFreeleech();
-    if (cfg.doubleUpload) await this.settings.set('potDoubleUpload', { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() });
-    await this.prisma.potCycle.update({ where: { id: cycleId }, data: { rewardStartsAt: startsAt, rewardEndsAt: endsAt, rewardHours: cfg.rewardHours } });
+    if (freeleechHours > 0) {
+      const message = cfg.message || `Merci à tous les donateurs : ${cfg.name} est plein ! Les téléchargements ne comptent pas dans ton ratio${doubleHours > 0 ? ' et ton upload compte en double' : ''}.`;
+      await this.prisma.freeleechEvent.create({ data: { title, message, startsAt, endsAt: new Date(earliest + freeleechHours * 3600_000) } });
+      this.settings.invalidateFreeleech();
+    }
+    if (doubleHours > 0) await this.settings.set('potDoubleUpload', { startsAt: startsAt.toISOString(), endsAt: new Date(earliest + doubleHours * 3600_000).toISOString() });
+    await this.prisma.potCycle.update({ where: { id: cycleId }, data: { rewardStartsAt: startsAt, rewardEndsAt: endsAt, rewardHours: longest } });
 
     await this.rewardDonors(cfg, cycleId);
+    const rained = await this.rain(cfg);
 
-    // Le pot suivant s'ouvre aussitôt (objectif augmenté si prévu ; l'excédent est reporté si prévu).
-    const nextGoal = Math.max(100, Math.round(cycle.goal * (1 + cfg.goalGrowthPct / 100)));
+    // Le pot suivant s'ouvre aussitôt : objectif proportionnel aux membres actifs, ou augmenté de X % ; l'excédent est reporté si prévu.
+    let nextGoal = Math.max(100, Math.round(cycle.goal * (1 + cfg.goalGrowthPct / 100)));
+    if (cfg.goalPerMember > 0) nextGoal = Math.max(cfg.goal, cfg.goalPerMember * (await this.activeMembers(30)));
     const carry = cfg.carryOver ? Math.min(Math.max(0, cycle.collected - cycle.goal), nextGoal - 1) : 0;
     await this.prisma.potCycle.create({ data: { number: cycle.number + 1, goal: nextGoal, collected: carry } });
 
-    if (cfg.announce) await this.announce(cfg, startsAt, endsAt);
-    return { started: true, startsAt, endsAt };
+    if (cfg.announce) await this.announce(cfg, startsAt, endsAt, { freeleechHours, doubleHours, fast, rained });
+    return { started: true, startsAt, endsAt, freeleechHours, doubleHours, fastFill: fast };
   }
 
-  /** Points rendus aux donateurs (pourcentage de leurs dons) et bonus des trois meilleurs, avec une notification de remerciement. */
+  /** Membres vus ces N derniers jours (comptes principaux actifs). */
+  private activeMembers(days: number) {
+    return this.prisma.user.count({ where: { parentId: null, status: 'ACTIVE', lastSeenAt: { gt: new Date(Date.now() - days * DAY) } } });
+  }
+
+  /** Pluie de points : chaque membre actif (vu ces 7 derniers jours) reçoit des points bonus. Renvoie le nombre de membres servis. */
+  private async rain(cfg: PotConfig): Promise<number> {
+    if (cfg.rainPoints <= 0) return 0;
+    const { count } = await this.prisma.user.updateMany({ where: { parentId: null, status: 'ACTIVE', lastSeenAt: { gt: new Date(Date.now() - 7 * DAY) } }, data: { bonusPoints: { increment: cfg.rainPoints } } });
+    return count;
+  }
+
+  /** Récompenses des donateurs : points rendus (pourcentage des dons), bonus du podium, jetons freeleech ; une notification de remerciement. */
   private async rewardDonors(cfg: PotConfig, cycleId: string) {
-    if (cfg.donorRefundPct <= 0 && cfg.topDonorBonus <= 0) return;
+    if (cfg.donorRefundPct <= 0 && cfg.topDonorBonus <= 0 && cfg.rewardTokens <= 0) return;
     const byUser = await this.prisma.potDonation.groupBy({ by: ['userId'], where: { cycleId, topUp: false }, _sum: { amount: true }, orderBy: { _sum: { amount: 'desc' } } });
     const podium = [1, 0.6, 0.3];
     for (const [rank, row] of byUser.entries()) {
       const refund = Math.floor(((row._sum.amount ?? 0) * cfg.donorRefundPct) / 100);
       const bonus = rank < 3 ? Math.floor(cfg.topDonorBonus * podium[rank]) : 0;
       const total = refund + bonus;
-      if (total <= 0) continue;
-      await this.prisma.user.update({ where: { id: row.userId }, data: { bonusPoints: { increment: total } } }).catch(() => undefined);
-      const parts = [refund > 0 ? `${refund} points rendus (${cfg.donorRefundPct} % de tes dons)` : '', bonus > 0 ? `${bonus} points de bonus (n° ${rank + 1} des donateurs)` : ''].filter(Boolean);
+      if (total <= 0 && cfg.rewardTokens <= 0) continue;
+      await this.prisma.user.update({ where: { id: row.userId }, data: { ...(total > 0 ? { bonusPoints: { increment: total } } : {}), ...(cfg.rewardTokens > 0 ? { freeleechTokens: { increment: cfg.rewardTokens } } : {}) } }).catch(() => undefined);
+      const parts = [
+        refund > 0 ? `${refund} points rendus (${cfg.donorRefundPct} % de tes dons)` : '',
+        bonus > 0 ? `${bonus} points de bonus (n° ${rank + 1} des donateurs)` : '',
+        cfg.rewardTokens > 0 ? `${cfg.rewardTokens} jeton${cfg.rewardTokens > 1 ? 's' : ''} freeleech` : '',
+      ].filter(Boolean);
       await this.notifications.notify({ userId: row.userId, type: 'SYSTEM', title: `${cfg.icon} Merci pour ta générosité !`, body: parts.join(' + '), link: '/pot' }).catch(() => undefined);
     }
   }
 
-  private async announce(cfg: PotConfig, startsAt: Date, endsAt: Date) {
+  private async announce(cfg: PotConfig, startsAt: Date, endsAt: Date, r: { freeleechHours: number; doubleHours: number; fast: boolean; rained: number }) {
     const author = await this.prisma.user.findFirst({ where: { role: { in: ['OWNER', 'ADMIN'] as any }, parentId: null }, orderBy: { createdAt: 'asc' }, select: { id: true } });
     const now = startsAt.getTime() <= Date.now() + 60_000;
-    const body = `[b]Du ${fmtDate(startsAt)}\nau ${fmtDate(endsAt)}[/b]\n\nLes téléchargements ne comptent pas dans ton ratio${cfg.doubleUpload ? ' et ton upload compte en double' : ''}. Merci à tous les donateurs !`;
+    const perks = [
+      r.freeleechHours > 0 ? `[b]Freeleech global ${r.freeleechHours} h[/b] : les téléchargements ne comptent pas dans ton ratio` : '',
+      r.doubleHours > 0 ? `[b]Double upload global ${r.doubleHours} h[/b] : ce que tu envoies compte en double` : '',
+      cfg.rainPoints > 0 && r.rained > 0 ? `[b]Pluie de points[/b] : ${cfg.rainPoints} points bonus offerts à chaque membre actif` : '',
+      cfg.rewardTokens > 0 ? `[b]${cfg.rewardTokens} jeton${cfg.rewardTokens > 1 ? 's' : ''} freeleech[/b] pour chaque donateur` : '',
+    ].filter(Boolean).map((x) => `• ${x}`).join('\n');
+    const body = `[b]Du ${fmtDate(startsAt)}\nau ${fmtDate(endsAt)}[/b]\n\n${perks}${r.fast ? '\n\n⚡ Pot rempli en un temps record : les récompenses durent plus longtemps !' : ''}\n\nMerci à tous les donateurs !`;
     if (author) await this.prisma.announcement.create({ data: { title: `${cfg.icon} ${cfg.name} est plein !`, content: body, kind: 'EVENT', pinned: false, authorId: author.id } }).catch((e) => this.logger.warn(`Annonce du pot : ${e?.message ?? e}`));
-    await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `${cfg.icon} ${cfg.name} est plein !`, body: now ? `Freeleech global jusqu'au ${fmtDate(endsAt)}` : `Freeleech global du ${fmtDate(startsAt)} au ${fmtDate(endsAt)}`, link: '/pot' }).catch(() => undefined);
+    const what = r.freeleechHours > 0 ? 'Freeleech global' : r.doubleHours > 0 ? 'Double upload global' : 'Récompenses';
+    await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `${cfg.icon} ${cfg.name} est plein !`, body: now ? `${what} jusqu'au ${fmtDate(endsAt)}` : `${what} du ${fmtDate(startsAt)} au ${fmtDate(endsAt)}`, link: '/pot' }).catch(() => undefined);
   }
 
   /** Lancement à la main d'un pot plein (quand « démarrage automatique » est décoché). */

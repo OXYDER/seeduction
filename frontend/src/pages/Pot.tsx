@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
+import { durationFr } from '../lib/duration';
 import { useCountdown } from '../components/FreeleechCalendar';
 
 const fmt = (iso: string) => new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
@@ -56,12 +57,15 @@ export default function Pot() {
   }
 
   const rewards = [
-    `Freeleech global pendant ${reward.hours} h : les téléchargements de tout le monde ne comptent pas dans le ratio`,
-    reward.doubleUpload ? 'Double upload global en même temps : tout ce que tu envoies compte en double' : null,
+    reward.freeleech ? `Freeleech global pendant ${durationFr(reward.hours)} : les téléchargements de tout le monde ne comptent pas dans le ratio` : null,
+    reward.doubleUpload ? `Double upload global pendant ${durationFr(reward.doubleUploadHours)} : tout ce que tu envoies compte en double` : null,
+    reward.fastFillHours > 0 && reward.fastFillBonusHours > 0 ? `⚡ Pot rempli en moins de ${durationFr(reward.fastFillHours)} : ${durationFr(reward.fastFillBonusHours)} de plus sur les récompenses` : null,
+    reward.rainPoints > 0 ? `Pluie de points : ${formatNumber(reward.rainPoints)} points offerts à chaque membre actif` : null,
+    reward.tokens > 0 ? `${reward.tokens} jeton${reward.tokens > 1 ? 's' : ''} freeleech pour chaque donateur` : null,
     reward.donorRefundPct > 0 ? `${reward.donorRefundPct} % des points donnés te sont rendus` : null,
     reward.topDonorBonus > 0 ? `Bonus de ${formatNumber(reward.topDonorBonus)} points au n° 1 des donateurs (60 % au n° 2, 30 % au n° 3)` : null,
-    reward.startDelayHours > 0 ? `Départ ${reward.startDelayHours} h après le remplissage, le temps de prévenir tout le monde` : null,
-    rules.goalGrowthPct > 0 ? `Le prochain pot sera ${rules.goalGrowthPct} % plus gros` : null,
+    reward.startAtHour >= 0 ? `Départ à ${reward.startAtHour} h (heure de Montréal)` : reward.startDelayHours > 0 ? `Départ ${durationFr(reward.startDelayHours)} après le remplissage, le temps de prévenir tout le monde` : null,
+    rules.goalPerMember > 0 ? `Le prochain pot grandit avec la communauté (${formatNumber(rules.goalPerMember)} points par membre actif)` : rules.goalGrowthPct > 0 ? `Le prochain pot sera ${rules.goalGrowthPct} % plus gros` : null,
   ].filter(Boolean) as string[];
 
   return (

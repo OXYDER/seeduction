@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
+import { durationFr } from '../lib/duration';
 import { PotGauge } from '../pages/Pot';
 
-const NAMES = ['Le Pot du Plaisir', 'La Cagnotte', 'Le Gros Lot', 'La Marmite', 'Le Chaudron', 'Le Coffre aux Seeds', 'La Tirelire', 'Le Pot de la Communauté', 'Le Pot d\'Or'];
+const NAMES = ['Le Pot du Plaisir', 'La Cagnotte', 'Le Gros Lot', 'La Marmite', 'Le Chaudron', 'Le Coffre aux Seeds', 'La Tirelire', 'Le Pot de la Communauté', "Le Pot d'Or"];
+const MAX_HOURS = 720;
 
-/** Admin > Pot commun : réglages du pot (objectif, récompenses, remerciements), état du pot en cours, lancement et mise de la maison. */
+/** Admin > Pot commun : réglages du pot (objectif, récompenses et leurs durées, départ, remerciements), état du pot en cours, lancement et mise de la maison. */
 export default function PotAdmin() {
   const [cfg, setCfg] = useState<any>(null);
   const [state, setState] = useState<any>(null);
@@ -45,6 +47,9 @@ export default function PotAdmin() {
       </div>
     </Field>
   );
+  const dur = (key: string, label: string, hint?: string, max = MAX_HOURS) => (
+    <Field label={label} hint={hint}><DurationInput hours={cfg[key]} max={max} onChange={(h) => set(key, h)} /></Field>
+  );
   const check = (key: string, label: string, hint?: string) => (
     <label className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
       <input type="checkbox" checked={!!cfg[key]} onChange={(e) => set(key, e.target.checked)} style={{ marginTop: 3, width: 'auto' }} />
@@ -53,12 +58,20 @@ export default function PotAdmin() {
   );
 
   const cycle = state?.enabled ? state.cycle : null;
+  const summary = [
+    cfg.freeleechEnabled ? `freeleech global ${durationFr(cfg.rewardHours)}` : null,
+    cfg.doubleUpload ? `double upload ${durationFr(cfg.doubleUploadHours > 0 ? cfg.doubleUploadHours : cfg.rewardHours)}` : null,
+    cfg.fastFillHours > 0 && cfg.fastFillBonusHours > 0 ? `+${durationFr(cfg.fastFillBonusHours)} si rempli en moins de ${durationFr(cfg.fastFillHours)}` : null,
+    cfg.rainPoints > 0 ? `pluie de ${formatNumber(cfg.rainPoints)} points` : null,
+    cfg.rewardTokens > 0 ? `${cfg.rewardTokens} jeton(s) par donateur` : null,
+  ].filter(Boolean).join(' · ');
+
   return (
     <div className="grid" style={{ gap: 16 }}>
       <div className="panel">
         <h3 style={{ marginTop: 0 }}>🍯 Pot commun</h3>
         <p className="muted" style={{ margin: 0 }}>
-          Les membres versent des points bonus dans un pot commun. Quand l'objectif est atteint, tout le monde profite d'un freeleech global (et d'autres récompenses au choix). Les réglages s'appliquent tout de suite.
+          Les membres versent des points bonus dans un pot commun. Quand l'objectif est atteint, tout le monde profite des récompenses que tu choisis ici, chacune avec sa propre durée. Les réglages s'appliquent tout de suite.
         </p>
         {error && <div style={{ color: 'var(--danger)', marginTop: 8 }}>{error}</div>}
         {message && <div style={{ color: 'var(--success)', marginTop: 8 }}>{message}</div>}
@@ -99,23 +112,49 @@ export default function PotAdmin() {
       <div className="panel grid" style={{ gap: 14 }}>
         <strong>Objectif et dons</strong>
         <div className="row" style={{ gap: 18, flexWrap: 'wrap' }}>
-          {num('goal', 'Montant nécessaire', 'Points bonus pour remplir le pot. Changer ce montant s\'applique aussi au pot en cours.', 'points')}
+          {num('goal', 'Montant nécessaire', "Points bonus pour remplir le pot. Changer ce montant s'applique aussi au pot en cours.", 'points')}
           {num('minDonation', 'Don minimum', undefined, 'points')}
           {num('maxDonation', 'Don maximum à la fois', '0 = aucune limite', 'points')}
-          {num('dailyLimit', 'Limite par membre sur 24 h', '0 = aucune limite (évite qu\'un seul membre remplisse tout)', 'points')}
+          {num('dailyLimit', 'Limite par membre sur 24 h', "0 = aucune limite (évite qu'un seul membre remplisse tout)", 'points')}
+          {num('minAccountDays', 'Ancienneté minimale du compte', '0 = aucune (évite les comptes créés pour donner et profiter)', 'jours')}
         </div>
-        {check('carryOver', 'Reporter l\'excédent', 'Si le dernier don dépasse l\'objectif, le surplus reste dans le pot suivant. Décoché : le dernier don est limité à ce qui manque.')}
-        {num('goalGrowthPct', 'Le prochain pot est plus gros de', 'Rend chaque remplissage un peu plus difficile que le précédent (0 = même objectif).', '%')}
+        <div className="row" style={{ gap: 18, flexWrap: 'wrap' }}>
+          {num('goalPerMember', 'Objectif selon les membres actifs', 'Si > 0, les pots suivants valent ce montant × le nombre de membres vus ces 30 jours (jamais moins que le montant nécessaire). Remplace l\'augmentation en %.', 'points / membre')}
+          {num('goalGrowthPct', 'Le prochain pot est plus gros de', 'Rend chaque remplissage un peu plus difficile que le précédent (0 = même objectif).', '%')}
+        </div>
+        {check('carryOver', "Reporter l'excédent", "Si le dernier don dépasse l'objectif, le surplus reste dans le pot suivant. Décoché : le dernier don est limité à ce qui manque.")}
       </div>
 
       <div className="panel grid" style={{ gap: 14 }}>
-        <strong>Récompense quand le pot est plein</strong>
+        <strong>Récompenses quand le pot est plein <span className="muted" style={{ fontWeight: 400 }}>— chacune a sa durée</span></strong>
+        {summary && <div className="muted" style={{ fontSize: 12 }}>Résumé : {summary}</div>}
+        {check('freeleechEnabled', 'Freeleech global', 'Les téléchargements de tout le monde ne comptent pas dans le ratio.')}
+        {cfg.freeleechEnabled && dur('rewardHours', 'Durée du freeleech global', "Jusqu'à 30 jours. Si un freeleech est déjà en cours, celui du pot démarre juste après.")}
+        {check('doubleUpload', 'Double upload global', "L'upload de tout le monde compte en double.")}
+        {cfg.doubleUpload && dur('doubleUploadHours', 'Durée du double upload', '0 = la même durée que le freeleech.')}
         <div className="row" style={{ gap: 18, flexWrap: 'wrap' }}>
-          {num('rewardHours', 'Durée du freeleech global', 'Maximum 168 h (7 jours). Si un freeleech est déjà en cours, celui du pot démarre juste après.', 'heures')}
-          {num('startDelayHours', 'Délai avant le départ', 'Le temps de prévenir tout le monde (0 = tout de suite, maximum 72 h).', 'heures')}
+          {dur('fastFillHours', 'Remplissage rapide : si le pot est plein en moins de', '0 = désactivé. Récompense les communautés qui se mobilisent vite.')}
+          {cfg.fastFillHours > 0 && dur('fastFillBonusHours', 'alors les récompenses durent en plus', 'Ajouté à la durée du freeleech et du double upload.')}
         </div>
-        {check('doubleUpload', 'Double upload global en même temps', 'Pendant la récompense, l\'upload de tout le monde compte en double (en plus du freeleech).')}
+        <div className="row" style={{ gap: 18, flexWrap: 'wrap' }}>
+          {num('rewardTokens', 'Jetons freeleech par donateur', 'Offerts à chaque donateur du pot (0 à 50).', 'jetons')}
+          {num('rainPoints', 'Pluie de points', 'Points offerts à chaque membre actif (vu ces 7 jours) quand le pot est plein.', 'points')}
+        </div>
+      </div>
+
+      <div className="panel grid" style={{ gap: 14 }}>
+        <strong>Départ de la récompense</strong>
         {check('autoStart', 'Démarrer automatiquement', 'Décoché : le pot plein attend que tu cliques « Lancer la récompense » (utile pour choisir le bon moment).')}
+        <div className="row" style={{ gap: 18, flexWrap: 'wrap' }}>
+          {dur('startDelayHours', 'Délai avant le départ', 'Le temps de prévenir tout le monde (0 = tout de suite, maximum 72 h).', 72)}
+          <Field label="Heure de départ fixe" hint="Heure de Montréal. La récompense attend la prochaine occurrence de cette heure (ex. 18 h pour une soirée).">
+            <select value={cfg.startAtHour} onChange={(e) => set('startAtHour', Number(e.target.value))} style={{ width: 200 }}>
+              <option value={-1}>Dès que possible</option>
+              {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')} h</option>)}
+            </select>
+          </Field>
+          {dur('cooldownHours', 'Délai entre deux récompenses', 'Temps minimum entre la fin d\'une récompense du pot et le début de la suivante (0 = aucun).')}
+        </div>
       </div>
 
       <div className="panel grid" style={{ gap: 14 }}>
@@ -136,6 +175,24 @@ export default function PotAdmin() {
       </div>
 
       <div><button type="button" disabled={busy} onClick={save}>{busy ? 'Enregistrement…' : 'Enregistrer les réglages'}</button></div>
+    </div>
+  );
+}
+
+/** Durée saisie en heures ou en jours (stockée en heures). */
+function DurationInput({ hours, max, onChange }: { hours: number; max: number; onChange: (hours: number) => void }) {
+  const [unit, setUnit] = useState<'h' | 'j'>(hours >= 24 && hours % 24 === 0 ? 'j' : 'h');
+  const factor = unit === 'j' ? 24 : 1;
+  const shown = hours === 0 ? 0 : unit === 'j' ? Math.round(hours / 24) : hours;
+  const apply = (n: number, f: number) => onChange(Math.max(0, Math.min(max, Math.round(n * f))));
+  return (
+    <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+      <input type="number" min={0} value={shown} onChange={(e) => apply(e.target.value === '' ? 0 : Number(e.target.value), factor)} style={{ width: 100 }} />
+      <select value={unit} onChange={(e) => { const u = e.target.value as 'h' | 'j'; setUnit(u); apply(shown, u === 'j' ? 24 : 1); }} style={{ width: 90 }}>
+        <option value="h">heures</option>
+        <option value="j">jours</option>
+      </select>
+      {hours > 0 && <span className="muted" style={{ fontSize: 12 }}>= {durationFr(hours)}</span>}
     </div>
   );
 }
