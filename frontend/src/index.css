@@ -3341,3 +3341,6 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .tp-meta-chips { margin: 2px 0 8px; gap: 4px 5px; }
 .tp-meta-chips .vr-chip { font-size: 11px; padding: 1px 7px; }
 .tip-classic .tp-meta-chips, .tip-minimal .tp-meta-chips { margin: 6px 0; }
+
+/* Langue inconnue : pastille discrète en pointillés, visible sans attirer l'œil. */
+.vr-chip.lang.nolang { color: #94a3b8; background: transparent; border: 1px dashed rgba(148,163,184,0.5); font-weight: 600; }

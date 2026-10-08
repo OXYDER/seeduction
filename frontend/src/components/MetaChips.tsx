@@ -16,7 +16,8 @@ export default function MetaChips({ t, className = '', limit, inline, explicitEp
   const ep2Label = explicitEpisode && seasonNum && se.episode ? (/^\d+$/.test(se.episode) ? `Épisode ${Number(se.episode)}` : se.episode) : null;
   const all: Record<(typeof ORDER)[number], [string | number | null | undefined, string]> = {
     dt: [releaseDateFr(t.releaseDate), 'Date de sortie'],
-    lang: [t.language, 'Langue'],
+    // Langue inconnue d'une vidéo : « Langue ? » plutôt qu'une absence qui passe inaperçue (le staff la renseigne depuis « Modifier ce torrent »).
+    lang: [t.language || (t.resolution ? 'Langue ?' : null), t.language ? 'Langue' : 'Langue non précisée'],
     ep: [epLabel ?? (se.episode && !/^\d+$/.test(se.episode) ? se.episode : null), explicitEpisode ? 'Saison' : 'Saison / épisode'],
     ep2: [ep2Label, 'Épisode'],
     yr: [t.releaseDate && String(t.releaseDate).slice(0, 4) === String(t.year) ? null : t.year, 'Année'], // l'année est déjà dans la date de sortie
@@ -39,7 +40,7 @@ export default function MetaChips({ t, className = '', limit, inline, explicitEp
   }
   const content = (
     <>
-      {shown.map((k) => <span key={k} className={`vr-chip ${k}`} title={all[k][1]}>{all[k][0]}</span>)}
+      {shown.map((k) => <span key={k} className={`vr-chip ${k}${k === 'lang' && !t.language ? ' nolang' : ''}`} title={all[k][1]}>{all[k][0]}</span>)}
       {hidden.length > 0 && <span className="vr-chip more" title={ORDER.filter((k) => hidden.includes(k)).map((k) => `${all[k][1]} : ${all[k][0]}`).join('\n')}>+{hidden.length}</span>}
     </>
   );

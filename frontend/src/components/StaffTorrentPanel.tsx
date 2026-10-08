@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import WysiwygEditor from './WysiwygEditor';
 import FacetFields from './FacetFields';
 import FichePanel from './FichePanel';
+import { LANGUAGE_GROUPS, LANGUAGE_LABELS } from '../lib/languageTag';
 import type { FacetDef, FacetValues } from '../lib/facets';
 
 const STATUSES = [
@@ -26,6 +27,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
   const [description, setDescription] = useState(torrent.description ?? '');
   const [coverImage, setCoverImage] = useState(torrent.coverImage ?? '');
   const [overview, setOverview] = useState<string>(torrent.metadata?.overview ?? '');
+  const [language, setLanguage] = useState<string>(torrent.language ?? '');
   // Filtres de la catégorie (format, genre, console...) : ceux de la catégorie choisie, avec les valeurs actuelles du torrent.
   const [facetDefs, setFacetDefs] = useState<FacetDef[]>([]);
   const [attrs, setAttrs] = useState<FacetValues>((torrent.attrs as FacetValues) ?? {});
@@ -74,9 +76,9 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
     setError('');
     setMessage('');
     const overviewChanged = overview !== (torrent.metadata?.overview ?? '');
-    const patch = { name, categoryId, status, freeleech, doubleUpload, description, coverImage: coverImage || null, attrs };
+    const patch = { name, categoryId, status, freeleech, doubleUpload, description, coverImage: coverImage || null, attrs, language: language || null };
     try {
-      await api.patch(`/admin/torrents/${torrent.id}`, { ...patch, ...(overviewChanged ? { overview } : {}) });
+      await api.patch(`/admin/torrents/${torrent.id}`, { ...patch, language, ...(overviewChanged ? { overview } : {}) });
       const category = categories.find((c) => c.id === categoryId);
       onSaved({ ...patch, ...(overviewChanged ? { metadata: { ...(torrent.metadata ?? {}), overview: overview.trim() || null } } : {}), category: category ? { id: category.id, name: category.name.split(' › ').pop() } : torrent.category });
       setMessage('✓ Modifications enregistrées');
@@ -127,6 +129,16 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
               <div className="muted" style={{ marginBottom: 4 }}>Statut</div>
               <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: '100%' }}>
                 {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <div className="muted" style={{ marginBottom: 4 }}>Langue</div>
+              <select value={language} onChange={(e) => setLanguage(e.target.value)} style={{ width: '100%' }}>
+                <option value="">— non précisée —</option>
+                {language && !LANGUAGE_GROUPS.some((g) => g.values.includes(language)) && <option value={language}>{language}</option>}
+                {LANGUAGE_GROUPS.map((g) => (
+                  <optgroup key={g.label} label={g.label}>{g.values.map((v) => <option key={v} value={v}>{LANGUAGE_LABELS[v] ?? v}</option>)}</optgroup>
+                ))}
               </select>
             </div>
             <label className="row muted" style={{ gap: 6 }}>
