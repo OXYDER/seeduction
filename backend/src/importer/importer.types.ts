@@ -2,7 +2,13 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypt
 
 /** Réglages d'une source d'import (sans secret). */
 export interface ImportConfig {
-  qbit: { url: string; username?: string; category?: string; tag?: string; doneTag?: string };
+  qbit: {
+    url: string; username?: string; category?: string; tag?: string; doneTag?: string;
+    /** Étiquette posée dans CE qBittorrent sur une release qui fait interférence avec une release déjà sur Seeduction (jamais déplacée ni supprimée). */
+    conflictTag?: string;
+    /** Facultatif : catégorie qBittorrent où ranger aussi ces releases (attention : avec la gestion automatique des torrents de qBittorrent, changer de catégorie déplace les fichiers). */
+    conflictCategory?: string;
+  };
   /** Accès FTP aux fichiers de la seedbox : pour lire le .nfo ou calculer le MediaInfo (le serveur ne voit pas ces fichiers autrement). */
   ftp?: { host: string; port?: number; username: string; secure?: boolean; rejectUnauthorized?: boolean; headMB?: number; searchDepth?: number };
   mediainfo?: boolean;

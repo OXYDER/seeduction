@@ -7,11 +7,11 @@ interface Source {
   id: string; name: string; enabled: boolean; config: any; hasQbitPassword: boolean; hasFtpPassword: boolean;
   lastRunAt: string | null; lastError: string | null; counts: Record<string, number>;
 }
-interface ImportItem { id: string; name: string; status: 'UPLOADED' | 'DUPE' | 'REJECTED' | 'SKIPPED' | 'REVIEW' | 'READY'; why: string | null; seeded: string | null; updatedAt: string; detail?: any }
+interface ImportItem { id: string; name: string; status: 'UPLOADED' | 'DUPE' | 'REJECTED' | 'SKIPPED' | 'REVIEW' | 'READY' | 'CONFLICT'; why: string | null; seeded: string | null; updatedAt: string; detail?: any }
 interface ImportEvent { id: string; level: 'INFO' | 'WARN' | 'ERROR'; message: string; createdAt: string }
 
 const EMPTY_CONFIG = {
-  qbit: { url: '', username: '', category: 'a-publier', tag: '' },
+  qbit: { url: '', username: '', category: 'a-publier', tag: '', conflictTag: 'interference-seeduction', conflictCategory: '' },
   ftp: { host: '', port: 21, username: '', secure: true, headMB: 16 },
   mediainfo: true,
   defaultCategory: '', autoCategory: true, readFeedCategory: true, attachMetadata: true, reviewUnmatched: true, categoryRules: [] as { match: string; category: string }[],
@@ -19,7 +19,7 @@ const EMPTY_CONFIG = {
   autoApprove: true, seedOnSeeduction: true, seedCategory: 'seeduction', skipChecking: true,
   intervalMinutes: 10, maxPerRun: 5, delaySeconds: 30,
 };
-const STATUS_LABEL: Record<ImportItem['status'], string> = { UPLOADED: 'Envoyé', DUPE: 'Déjà sur le site', REJECTED: 'Refusé', SKIPPED: 'Mis de côté', REVIEW: 'À vérifier', READY: 'Envoi en cours' };
+const STATUS_LABEL: Record<ImportItem['status'], string> = { UPLOADED: 'Envoyé', DUPE: 'Déjà sur le site', REJECTED: 'Refusé', SKIPPED: 'Mis de côté', REVIEW: 'À vérifier', READY: 'Envoi en cours', CONFLICT: 'Interférence' };
 const LEVEL_COLOR = { INFO: 'inherit', WARN: 'var(--gold-bright, #f5c542)', ERROR: 'var(--danger)' } as const;
 const Go = (n: number) => `${(n / 1e9).toFixed(2)} Go`;
 
@@ -101,6 +101,8 @@ export function ImportAdmin() {
         {error && <div style={{ color: 'var(--danger)', marginTop: 8 }}>{error}</div>}
         {message && <div style={{ color: 'var(--success)', marginTop: 8 }}>{message}</div>}
       </div>
+
+      <ConflictPanel refreshKey={sources} onChanged={loadSources} ok={ok} fail={fail} />
 
       {robot && (
         <div className="panel">
@@ -304,6 +306,10 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
         <div className="row" style={{ gap: 8 }}>
           {field('Catégorie(s) à publier', <input value={cfg.qbit.category} onChange={(e) => set(['qbit', 'category'], e.target.value)} />, 'Plusieurs : sépare-les par des virgules. Vide = TOUT ce qui se termine (à éviter si tu télécharges autre chose)')}
           {field('ou étiquette', <input value={cfg.qbit.tag} onChange={(e) => set(['qbit', 'tag'], e.target.value)} />)}
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          {field("Étiquette d'interférence", <input value={cfg.qbit.conflictTag} onChange={(e) => set(['qbit', 'conflictTag'], e.target.value)} />, "Posée dans CE qBittorrent sur une release qui existe déjà sur Seeduction : rien n'est envoyé, tu la retrouves facilement sur place.")}
+          {field("Catégorie d'interférence (facultative)", <input value={cfg.qbit.conflictCategory} onChange={(e) => set(['qbit', 'conflictCategory'], e.target.value)} />, 'Vide = la catégorie ne change pas (conseillé). Attention : avec la gestion automatique des torrents de qBittorrent, changer de catégorie DÉPLACE les fichiers.')}
         </div>
       </div>
 
@@ -526,6 +532,54 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
         <button type="button" className="secondary" disabled={busy || !categoryId} onClick={() => send(false)}>Importer sans fiche</button>
         <button type="button" className="secondary" disabled={busy} onClick={dismiss}>Écarter</button>
       </div>
+    </div>
+  );
+}
+
+/** Interférences : une release d'une source existe déjà sur Seeduction (autre source, membre...). Rien n'a été envoyé ; ce cadre rouge reste tant qu'elles ne sont pas réglées. */
+function ConflictPanel({ refreshKey, onChanged, ok, fail }: { refreshKey: unknown; onChanged: () => void; ok: (m: string) => void; fail: (e: any) => void }) {
+  const [rows, setRows] = useState<(ImportItem & { source: { id: string; name: string } })[]>([]);
+  const load = useCallback(() => api.get('/importer/conflicts').then((r) => setRows(r.data)).catch(() => undefined), []);
+  useEffect(() => { load(); }, [load, refreshKey]);
+  useEffect(() => { const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
+  if (rows.length === 0) return null;
+
+  async function act(it: ImportItem, what: 'retry' | 'dismiss') {
+    try {
+      await api.post(`/importer/items/${it.id}/${what}`);
+      ok(what === 'retry' ? 'Remise en file : elle sera reprise à la prochaine passe' : 'Interférence ignorée');
+      load(); onChanged();
+    } catch (e) { fail(e); }
+  }
+
+  return (
+    <div className="panel" style={{ border: '1px solid var(--danger)', background: 'rgba(224,90,90,0.08)' }}>
+      <h3 style={{ margin: 0, color: 'var(--danger)' }}>⚠ Interférences ({rows.length})</h3>
+      <p className="muted" style={{ margin: '4px 0 8px', fontSize: 12 }}>
+        Ces releases existent déjà sur Seeduction : <strong>elles n'ont pas été envoyées</strong>. Dans le qBittorrent concerné, elles portent l'étiquette d'interférence pour les retrouver.
+        Règle le problème (supprime ou garde l'une des deux versions), puis « Retenter » ; « Ignorer » les laisse de côté.
+      </p>
+      <table>
+        <tbody>
+          {rows.map((it) => (
+            <tr key={it.id}>
+              <td style={{ wordBreak: 'break-all' }}>
+                {it.name}
+                <div className="muted" style={{ fontSize: 11 }}>Source : {it.source.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--danger)' }}>
+                  {it.why}
+                  {it.detail?.existingId && <> — <a href={`/torrents/${it.detail.existingId}`} target="_blank" rel="noopener noreferrer">voir le torrent sur Seeduction ↗</a></>}
+                </div>
+              </td>
+              <td className="muted" style={{ whiteSpace: 'nowrap' }}>{timeAgo(it.updatedAt)}</td>
+              <td style={{ whiteSpace: 'nowrap' }}>
+                <button type="button" className="secondary" onClick={() => act(it, 'retry')}>Retenter</button>{' '}
+                <button type="button" className="secondary" onClick={() => act(it, 'dismiss')}>Ignorer</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

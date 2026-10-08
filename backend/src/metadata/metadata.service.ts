@@ -861,7 +861,9 @@ export class MetadataService {
     const wanted = titleKey(title);
     if (!wanted) return null;
     const dateOf = (r: any): string => String((type === 'movie' ? r.release_date : r.first_air_date) ?? '');
-    const yearOk = (r: any) => !year || !dateOf(r) || Math.abs(Number(dateOf(r).slice(0, 4)) - year) <= 1;
+    // Film : l'année doit coïncider (à un an près). Série : l'année du nom est souvent celle de l'ÉPISODE (« Family.Guy.2026.S00E64 »), pas celle de la série :
+    // sans résultat avec l'année, on accepte alors le même titre exact, quelle que soit l'année de la série.
+    const yearOk = (r: any, relaxed: boolean) => relaxed || !year || !dateOf(r) || Math.abs(Number(dateOf(r).slice(0, 4)) - year) <= 1;
     const sameTitle = (r: any) => [r.title, r.name, r.original_title, r.original_name].filter(Boolean).some((t: string) => titleKey(t) === wanted);
     const yearParam = year ? `&${type === 'movie' ? 'year' : 'first_air_date_year'}=${year}` : '';
     const tries = [yearParam, ...(year ? [''] : [])]; // sans l'année en second recours : une année décalée d'un an (sortie de fin d'année) reste acceptée
@@ -870,7 +872,7 @@ export class MetadataService {
         // Trois langues : un film québécois, français ou anglais est retrouvé sous n'importe lequel de ses titres.
         for (const [language, query] of [...(['fr-CA', 'fr-FR', 'en-US'] as const).map((l) => [l, title] as const), ...(/oe/i.test(title) ? [['fr-CA', title.replace(/oe/gi, 'œ')] as const] : [])]) {
           const res = await this.fetchJson(`${TMDB_API}/search/${type}?query=${encodeURIComponent(query)}&language=${language}${extra}&api_key=${this.tmdbKey}`, 'TMDB');
-          const hit = (res.results ?? []).find((r: any) => sameTitle(r) && yearOk(r));
+          const hit = (res.results ?? []).find((r: any) => sameTitle(r) && yearOk(r, type === 'tv' && !!year && extra === ''));
           if (hit) return { id: String(hit.id), genreIds: Array.isArray(hit.genre_ids) ? hit.genre_ids : [], title: String(hit.title ?? hit.name ?? title), year: dateOf(hit).slice(0, 4) || undefined };
         }
       }

@@ -73,7 +73,11 @@ async function locate(c: Client, cfg: ImportConfig, memKey: string, t: QbitTorre
   const cp = String(t.content_path).replace(/\\/g, '/');
   const name = path.posix.basename(cp);
   const parentQ = path.posix.dirname(cp);
-  const has = async (dir: string) => { try { return (await c.list(dir)).find((e) => e.name === name) ?? null; } catch { return null; } };
+  // Le nom du dossier sur le FTP peut différer de celui du torrent par les espaces / points, les accents (NFC / NFD) ou la casse : comparaison « aplatie ».
+  const flat = (x: string) => x.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const wanted = flat(name);
+  const same = (entryName: string) => entryName === name || (wanted.length >= 8 && flat(entryName) === wanted);
+  const has = async (dir: string) => { try { return (await c.list(dir)).find((e) => same(e.name)) ?? null; } catch { return null; } };
   const known = memory.get(memKey + '|' + parentQ);
   for (const dir of [known, parentQ].filter((x): x is string => !!x)) {
     const e = await has(dir);
@@ -87,7 +91,7 @@ async function locate(c: Client, cfg: ImportConfig, memKey: string, t: QbitTorre
     const [dir, depth] = queue.shift()!;
     let list: Awaited<ReturnType<Client['list']>> = [];
     try { list = await c.list(dir); } catch { continue; }
-    const hit = list.find((e) => e.name === name);
+    const hit = list.find((e) => same(e.name));
     if (hit) { memory.set(memKey + '|' + parentQ, dir); return { dir: dir === '/' ? '' : dir, entry: hit }; }
     if (depth < Math.max(6, cfg.ftp?.searchDepth ?? 6)) { // les sources enregistrées avec l'ancienne profondeur (3) cherchent aussi en profondeur
       // les dossiers qui portent le même nom qu'un dossier du chemin qBittorrent (« completed », « torrents »...) sont explorés d'abord

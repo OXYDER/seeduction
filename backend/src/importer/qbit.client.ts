@@ -110,6 +110,14 @@ export class Qbit {
     return Buffer.from(await res.arrayBuffer());
   }
 
+  /** Change la catégorie d'un torrent (la crée si elle n'existe pas). Avec la gestion automatique de qBittorrent, les fichiers suivent la catégorie. */
+  async setCategory(hash: string, category: string) {
+    const post = (p: string, params: Record<string, string>) => this.req(p, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params) });
+    let r = await post('/torrents/setCategory', { hashes: hash, category });
+    if (r.status === 409) { await post('/torrents/createCategory', { category, savePath: '' }); r = await post('/torrents/setCategory', { hashes: hash, category }); }
+    if (!r.ok) throw new Error(`qBittorrent ${r.status}`);
+  }
+
   async addTags(hash: string, tags: string) {
     await this.req('/torrents/addTags', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ hashes: hash, tags }) });
   }

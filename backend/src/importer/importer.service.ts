@@ -7,8 +7,9 @@ import { ImportConfig, ImportSecrets, openSecrets, sealSecrets } from './importe
 import { Qbit, QbitTorrent } from './qbit.client';
 import { FtpConnectError, hasNfo, nfoFor, probeFor } from './release-files';
 import { detectReleaseMeta } from './release-meta';
-import { MetadataService } from '../metadata/metadata.service';
+import { MetadataService, titleKey } from '../metadata/metadata.service';
 import { SupportBotService } from '../support/support-bot.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { cleanTitle, ContentType, feedLabelOf, guessType, isFilmLike, isSeriesLike, leafKey, refineWithGenres, resolveCandidate, typeFromFeedLabel } from './category-guess';
 
 /** Ce que la détection a compris d'une release (rempli par chooseCategory) : sert à la mise en vérification manuelle. */
@@ -42,7 +43,7 @@ export class ImporterService {
   private running: { sourceId: string; dryRun: boolean; startedAt: number } | null = null;
   private warnedNoNfo = new Set<string>();
 
-  constructor(private prisma: PrismaService, private torrents: TorrentsService, private admin: AdminService, private metadata: MetadataService, private bot: SupportBotService) {}
+  constructor(private prisma: PrismaService, private torrents: TorrentsService, private admin: AdminService, private metadata: MetadataService, private bot: SupportBotService, private notifications: NotificationsService) {}
 
   // ------------------------------------------------------------------ configuration
 
@@ -52,7 +53,7 @@ export class ImporterService {
     const url = str(q.url, 300);
     if (!/^https?:\/\/[^\s]+$/i.test(url)) throw new BadRequestException("Adresse de l'interface web de qBittorrent invalide (ex. https://qbittorrent.exemple.com)");
     const cfg: ImportConfig = {
-      qbit: { url: url.replace(/\/$/, ''), username: str(q.username, 100) || undefined, category: str(q.category, 100) || undefined, tag: str(q.tag, 100) || undefined, doneTag: str(q.doneTag, 100) || 'seeduction-envoye' },
+      qbit: { url: url.replace(/\/$/, ''), username: str(q.username, 100) || undefined, category: str(q.category, 100) || undefined, tag: str(q.tag, 100) || undefined, doneTag: str(q.doneTag, 100) || 'seeduction-envoye', conflictTag: str(q.conflictTag, 100) || 'interference-seeduction', conflictCategory: str(q.conflictCategory, 100) || undefined },
       defaultCategory: str(raw?.defaultCategory, 100) || undefined,
       autoCategory: raw?.autoCategory !== false,
       readFeedCategory: raw?.readFeedCategory !== false,
@@ -140,7 +141,7 @@ export class ImporterService {
   async retryItem(id: string) {
     const item = await this.prisma.importItem.findUnique({ where: { id } });
     if (!item) throw new NotFoundException('Élément introuvable');
-    if (!['SKIPPED', 'REJECTED', 'REVIEW'].includes(item.status)) throw new BadRequestException('Seuls les éléments mis de côté, refusés ou à vérifier peuvent être retentés');
+    if (!['SKIPPED', 'REJECTED', 'REVIEW', 'CONFLICT'].includes(item.status)) throw new BadRequestException('Seuls les éléments mis de côté, refusés, à vérifier ou en interférence peuvent être retentés');
     await this.prisma.importItem.delete({ where: { id } }); // il sera repris à la prochaine passe
     return { retried: true };
   }
@@ -267,6 +268,30 @@ export class ImporterService {
    * (série, film, sport, musique...) affinée par la fiche TMDB (animation, émission, documentaire) si la clé TMDB est configurée ;
    * 3) la catégorie par défaut, si tu en as choisi une. Sinon null : la release est mise de côté plutôt que rangée au hasard.
    */
+  /** La même série (ou le même film) est déjà sur le site avec une fiche TMDB : sa fiche et sa catégorie, pour ne pas la chercher à chaque épisode. */
+  private async knownFiche(series: boolean, title: string, year?: number): Promise<{ id: string; title: string; year?: string; categoryId: string | null } | null> {
+    const key = titleKey(title);
+    const words = title.split(/\s+/).filter(Boolean);
+    if (!key || words.length === 0) return null;
+    const rows = await this.prisma.torrent.findMany({
+      where: {
+        metaSource: 'tmdb', metaExternalId: { not: null }, status: { not: 'REJECTED' },
+        OR: [words.join('.'), words.join(' ')].map((p) => ({ name: { startsWith: p, mode: 'insensitive' as const } })),
+      },
+      select: { name: true, metaExternalId: true, metadata: true, categoryId: true },
+      orderBy: { createdAt: 'desc' }, take: 40,
+    });
+    for (const r of rows) {
+      const parsed = cleanTitle(r.name);
+      if (titleKey(parsed.title) !== key) continue;
+      const m: any = r.metadata ?? {};
+      if ((m.kind === 'tv') !== series) continue;
+      if (!series && year && parsed.year && parsed.year !== year) continue; // deux films du même titre : l'année les départage
+      return { id: r.metaExternalId!, title: String(m.originalTitle ?? parsed.title), year: typeof m.releaseDate === 'string' ? m.releaseDate.slice(0, 4) : undefined, categoryId: r.categoryId };
+    }
+    return null;
+  }
+
   private async chooseCategory(cfg: ImportConfig, t: QbitTorrent, feedLabel = '', info: ReleaseInfo = {}): Promise<{ name: string; id: string; how: string; meta?: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } } | null> {
     const leaves = await this.leaves();
     // Type de contenu : la catégorie du flux RSS (si claire) prime sur le nom ; sinon le nom.
@@ -279,16 +304,26 @@ export class ImporterService {
 
     // Fiche TMDB (film ou série) : sert à classer (animation, émission, documentaire) ET à rattacher la fiche au torrent.
     let meta: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } | undefined;
+    let siblingCategoryId: string | undefined;
     const wantsTmdb = cfg.attachMetadata !== false || cfg.autoCategory !== false;
     if (type && wantsTmdb && (isFilmLike(type) || isSeriesLike(type))) {
       const { title, year } = cleanTitle(t.name);
       const series = isSeriesLike(type);
-      const match = await this.metadata.tmdbMatch(series ? 'tv' : 'movie', title, year);
-      if (match) {
-        meta = { kind: series ? 'SERIE' : 'FILM', id: match.id, title: match.title, year: match.year };
-        if (cfg.autoCategory !== false && (type === 'FILM' || type === 'SERIE')) {
-          const refined = refineWithGenres(type, match.genreIds);
-          if (refined !== type) { how = how === 'flux RSS' ? 'flux RSS + TMDB' : 'TMDB'; type = refined; info.type = type; }
+      // 1) La même série (ou le même film) est déjà sur le site avec sa fiche : on la reprend telle quelle, avec sa catégorie (chaque épisode suivant se range pareil).
+      const known = await this.knownFiche(series, title, year);
+      if (known) {
+        meta = { kind: series ? 'SERIE' : 'FILM', id: known.id, title: known.title, year: known.year };
+        siblingCategoryId = known.categoryId ?? undefined;
+        how = how === 'flux RSS' ? 'flux RSS + déjà sur le site' : 'déjà sur le site';
+      } else {
+        // 2) Sinon, recherche sur TMDB (titre exact, tolérant sur les accents, ligatures, article, année).
+        const match = await this.metadata.tmdbMatch(series ? 'tv' : 'movie', title, year);
+        if (match) {
+          meta = { kind: series ? 'SERIE' : 'FILM', id: match.id, title: match.title, year: match.year };
+          if (cfg.autoCategory !== false && (type === 'FILM' || type === 'SERIE')) {
+            const refined = refineWithGenres(type, match.genreIds);
+            if (refined !== type) { how = how === 'flux RSS' ? 'flux RSS + TMDB' : 'TMDB'; type = refined; info.type = type; }
+          }
         }
       }
     }
@@ -297,6 +332,10 @@ export class ImporterService {
       if (!new RegExp(r.match, 'i').test(`${t.name} ${t.category} ${feedLabel}`)) continue;
       const id = leaves.ids.get(leafKey(r.category));
       if (id) return { name: leaves.names.get(leafKey(r.category))!, id, how: 'règle', meta };
+    }
+    if (cfg.autoCategory !== false && siblingCategoryId) {
+      const hit = [...leaves.ids.entries()].find(([, cid]) => cid === siblingCategoryId);
+      if (hit) return { name: leaves.names.get(hit[0])!, id: siblingCategoryId, how, meta };
     }
     if (cfg.autoCategory !== false && type) {
       const name = resolveCandidate(type, leaves.names);
@@ -339,6 +378,10 @@ export class ImporterService {
         const skip = async (why: string) => { if (!dryRun) await this.prisma.importItem.create({ data: { sourceId: id, key: t.hash, name: t.name, status: 'SKIPPED', why } }); await ev('WARN', `${t.name} — mis de côté : ${why}`); };
         if ((cfg.include ?? []).length && !(cfg.include ?? []).some((p) => new RegExp(p, 'i').test(t.name))) { await skip('ne correspond à aucun filtre « inclure »'); continue; }
         if ((cfg.exclude ?? []).some((p) => new RegExp(p, 'i').test(t.name))) { await skip('exclu par un filtre « exclure »'); continue; }
+        // Interférence : la même release est déjà sur Seeduction (autre source, autre membre...) : rien n'est envoyé, l'administrateur est averti tout de suite.
+        const clash = await this.findClash(t);
+        if (clash) { await this.recordConflict(id, cfg, q, t, `« ${clash.name} » est déjà sur Seeduction${clash.uploader ? ` (envoyé par ${clash.uploader})` : ''}`, clash, dryRun, ev); continue; }
+
         const info: ReleaseInfo = {};
         const found = await this.chooseCategory(cfg, t, labels.get(t.hash) ?? '', info);
         const wantsFiche = cfg.attachMetadata !== false && cfg.reviewUnmatched !== false && !!info.type && (isFilmLike(info.type) || isSeriesLike(info.type)) && this.metadata.supportedKinds.includes('FILM');
@@ -391,14 +434,63 @@ export class ImporterService {
       if (e instanceof BadRequestException) {
         const msg = String(e.message);
         const dupe = /dupe|existe déjà/i.test(msg);
-        await this.prisma.importItem.upsert({ where, create: { sourceId, key: t.hash, name: t.name, status: dupe ? 'DUPE' : 'REJECTED', why: msg }, update: { status: dupe ? 'DUPE' : 'REJECTED', why: msg } });
-        await ev('WARN', dupe ? `= ${t.name} — déjà sur Seeduction` : `${t.name} — refusé : ${msg}`);
+        if (dupe) {
+          // Même contenu (même empreinte) déjà sur le site : c'est une interférence, signalée tout de suite à l'administrateur.
+          const clash = await this.findClash(t);
+          await this.recordConflict(sourceId, cfg, q, t, clash ? `« ${clash.name} » a exactement le même contenu${clash.uploader ? ` (envoyé par ${clash.uploader})` : ''}` : 'ce contenu existe déjà sur Seeduction', clash, false, ev);
+          return false;
+        }
+        await this.prisma.importItem.upsert({ where, create: { sourceId, key: t.hash, name: t.name, status: 'REJECTED', why: msg }, update: { status: 'REJECTED', why: msg } });
+        await ev('WARN', `${t.name} — refusé : ${msg}`);
       } else {
         await ev('ERROR', `${t.name} — erreur d'envoi : ${e?.message ?? e}`); // temporaire : réessayé plus tard
         await onTemporaryError?.(String(e?.message ?? e));
       }
       return false;
     }
+  }
+
+  // ------------------------------------------------------------------ interférences (même release déjà sur Seeduction)
+
+  /** Torrent déjà sur Seeduction qui porte exactement le même nom que cette release (autre source, autre membre...). */
+  private async findClash(t: QbitTorrent): Promise<{ id: string; name: string; uploader: string | null } | null> {
+    const base = t.name.replace(/\.(mkv|mp4|avi)$/i, '');
+    const names = new Set<string>();
+    for (const b of [t.name, base, base.replace(/\./g, ' '), base.replace(/ /g, '.')]) for (const ext of ['', '.mkv', '.mp4', '.avi']) names.add(b + ext);
+    const hit = await this.prisma.torrent.findFirst({
+      where: { status: { not: 'REJECTED' }, OR: [...names].map((n) => ({ name: { equals: n, mode: 'insensitive' as const } })) },
+      select: { id: true, name: true, anonymousUpload: true, uploader: { select: { username: true } } },
+    });
+    return hit ? { id: hit.id, name: hit.name, uploader: hit.anonymousUpload ? null : hit.uploader?.username ?? null } : null;
+  }
+
+  /**
+   * Une release fait interférence : elle n'est PAS envoyée, l'élément passe en « Interférence » (rouge, en haut de la page d'import), un message
+   * d'erreur est écrit dans le journal, les administrateurs reçoivent une notification, et la release est étiquetée dans ce qBittorrent
+   * (étiquette « interference-seeduction » par défaut ; sa catégorie n'est changée que si tu l'as demandé : ça peut déplacer les fichiers).
+   */
+  private async recordConflict(sourceId: string, cfg: ImportConfig, q: Qbit, t: QbitTorrent, why: string, clash: { id: string; name: string; uploader: string | null } | null, dryRun: boolean, ev: (l: 'INFO' | 'WARN' | 'ERROR', m: string) => Promise<void>) {
+    const reason = `Interférence : ${why}`;
+    if (dryRun) { await ev('ERROR', `⚠ ${t.name} — ${reason} : ne serait pas envoyé`); return; }
+    const detail = { existingId: clash?.id ?? null, existingName: clash?.name ?? null, existingUploader: clash?.uploader ?? null, qbitCategory: t.category, size: t.size };
+    await this.prisma.importItem.upsert({
+      where: { sourceId_key: { sourceId, key: t.hash } },
+      create: { sourceId, key: t.hash, name: t.name, status: 'CONFLICT', why: reason, savePath: t.save_path, detail: detail as any },
+      update: { status: 'CONFLICT', why: reason, detail: detail as any },
+    });
+    await ev('ERROR', `⚠ INTERFÉRENCE — ${t.name} : ${why}. Rien n'a été envoyé ; à régler dans Admin > Import.`);
+    try {
+      await q.addTags(t.hash, cfg.qbit.conflictTag || 'interference-seeduction');
+      if (cfg.qbit.conflictCategory) await q.setCategory(t.hash, cfg.qbit.conflictCategory);
+    } catch (e: any) { await ev('WARN', `${t.name} — étiquette d'interférence non posée dans qBittorrent : ${e?.message ?? e}`); }
+    const source = await this.prisma.importSource.findUnique({ where: { id: sourceId }, select: { name: true } });
+    const admins = await this.prisma.user.findMany({ where: { role: { in: ['ADMIN', 'OWNER'] as any }, parentId: null, status: 'ACTIVE' }, select: { id: true } });
+    await Promise.all(admins.map((a) => this.notifications.notify({ userId: a.id, type: 'SYSTEM', title: "⚠ Interférence à l'import", body: `${source?.name ?? 'Une source'} : ${t.name} — ${why}`, link: '/admin' }).catch(() => undefined)));
+  }
+
+  /** Toutes les interférences en cours, toutes sources confondues (affichées en rouge en haut de la page d'import). */
+  conflicts() {
+    return this.prisma.importItem.findMany({ where: { status: 'CONFLICT' }, include: { source: { select: { id: true, name: true } } }, orderBy: { updatedAt: 'desc' }, take: 200 });
   }
 
   /** Met une release dans « À vérifier » avec ce qui a été détecté et les fiches que TMDB propose pour ce titre. */
@@ -484,8 +576,8 @@ export class ImporterService {
   async dismissItem(id: string) {
     const it = await this.prisma.importItem.findUnique({ where: { id } });
     if (!it) throw new NotFoundException('Élément introuvable');
-    if (!['REVIEW', 'READY'].includes(it.status)) throw new BadRequestException("Cet élément n'est pas en attente de vérification");
-    await this.prisma.importItem.update({ where: { id }, data: { status: 'SKIPPED', why: 'écarté à la main' } });
+    if (!['REVIEW', 'READY', 'CONFLICT'].includes(it.status)) throw new BadRequestException("Cet élément n'est pas en attente de vérification");
+    await this.prisma.importItem.update({ where: { id }, data: { status: 'SKIPPED', why: it.status === 'CONFLICT' ? 'interférence ignorée à la main' : 'écarté à la main' } });
     return { dismissed: true };
   }
 

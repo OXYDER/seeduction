@@ -79,6 +79,12 @@ export class ImporterController {
     return this.importer.retryItem(id);
   }
 
+  /** Interférences en cours (même release déjà sur Seeduction), toutes sources confondues. */
+  @Get('conflicts')
+  conflicts() {
+    return this.importer.conflicts();
+  }
+
   /** « À vérifier » : sous-catégories et types de fiches disponibles. */
   @Get('review-options')
   reviewOptions() {
