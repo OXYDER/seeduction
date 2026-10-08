@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
-import { TorrentsService } from './torrents.service';
+import { TorrentsService, type TorrentFilters } from './torrents.service';
 import { RecommendationsService } from './recommendations.service';
 import { accountOf, assertPerm } from '../common/utils/account';
 import { normalizeOrigin } from '../common/utils/facets';
@@ -71,7 +71,7 @@ export class TorrentsController {
   list(@Query() query: Record<string, string>, @Request() req: any) {
     // Les uploads anonymes d'un membre ne se retrouvent que par lui-même ou par le staff.
     const seesAnonymous = !!req.user && (req.user.userId === query.uploaderId || ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(req.user.role));
-    return this.torrentsService.list({
+    const params: TorrentFilters & { page: number; pageSize: number } = {
       hideAnonymous: !!query.uploaderId && !seesAnonymous,
       viewerId: req.user?.userId,
       state: query.state === 'dead' ? 'dead' : query.state === 'noseeders' ? 'noseeders' : undefined,
@@ -100,7 +100,9 @@ export class TorrentsController {
       genre: query.genre,
       entityId: query.entityId,
       role: query.role,
-    });
+    };
+    // Vue « Groupé » : la page contient des contenus (séries, films) avec TOUTES leurs releases, pas seulement celles de la page.
+    return query.grouped === '1' ? this.torrentsService.listGrouped(params) : this.torrentsService.list(params);
   }
 
   @UseGuards(JwtAuthGuard)

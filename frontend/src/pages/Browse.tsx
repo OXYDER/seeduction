@@ -67,6 +67,7 @@ export default function Browse() {
 
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalTorrents, setTotalTorrents] = useState(0);
   const [categories, setCategories] = useState<any[]>([]);
   const theme = useTheme();
   const authUser = useAuthStore((s) => s.user);
@@ -93,6 +94,7 @@ export default function Browse() {
     api.get('/torrents', {
       params: {
         search: parsed.name, categoryId, uploaderId, page, pageSize, sort, order,
+        grouped: view === 'grouped' ? 1 : undefined, // vue « Groupé » : des contenus (séries, films) avec TOUTES leurs releases
         year: year || undefined, resolution: resolution || undefined, language: language || undefined,
         source: source || undefined, codec: codec || undefined, audio: audio || undefined,
         containerFormat: containerFormat || undefined, origin: origin || undefined, genre: genre || undefined, hdr: hdr || undefined,
@@ -107,8 +109,9 @@ export default function Browse() {
     }).then((r) => {
       setItems(r.data.items);
       setTotal(r.data.total);
+      setTotalTorrents(r.data.totalTorrents ?? r.data.total);
     });
-  }, [parsed.name, categoryId, uploaderId, page, pageSize, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period, attrKey]);
+  }, [view, parsed.name, categoryId, uploaderId, page, pageSize, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period, attrKey]);
 
   // Valeurs de filtres réellement disponibles pour la liste affichée (avec nombre de torrents).
   const [facets, setFacets] = useState<Record<string, any>>({});
@@ -493,10 +496,10 @@ export default function Browse() {
       )}
 
       <div className="panel">
-        <div className="muted" style={{ marginBottom: 8 }}>{total} résultat(s)</div>
+        <div className="muted" style={{ marginBottom: 8 }}>{view === 'grouped' ? `${total} contenu(s) · ${totalTorrents} torrent(s)` : `${total} résultat(s)`}</div>
         <TorrentView items={items} view={view} sort={sort} order={order} onSort={clickColumn} />
         <div className="row" style={{ justifyContent: 'space-between', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
-          <span className="muted">Page {page} / {Math.max(1, Math.ceil(total / pageSize))} ({total} résultat{total > 1 ? 's' : ''})</span>
+          <span className="muted">Page {page} / {Math.max(1, Math.ceil(total / pageSize))} ({view === 'grouped' ? `${total} contenu${total > 1 ? 's' : ''}` : `${total} résultat${total > 1 ? 's' : ''}`})</span>
           <div className="row" style={{ gap: 10 }}>
             <label className="muted row" style={{ gap: 6, fontSize: 12.5 }}>
               Par page

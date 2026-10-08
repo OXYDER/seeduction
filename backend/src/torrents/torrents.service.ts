@@ -11,6 +11,7 @@ import { parseCoverage } from '../common/utils/coverage';
 import { languageAtoms, normalizeLanguage, storedValuesFor } from '../common/utils/language';
 import { extractInstallNotes } from '../common/utils/install-notes';
 import { audioOf } from '../importer/audio-codec';
+import { groupKeyOf } from './group-key';
 import { Cron } from '@nestjs/schedule';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -426,6 +427,59 @@ export class TorrentsService implements OnModuleInit {
     const rows = items.map(toListRow);
 
     return { items: rows, total, page: params.page, pageSize: params.pageSize };
+  }
+
+  /**
+   * Vue « Groupé » : la page contient N CONTENUS (séries, films...) et chacun avec TOUTES ses releases (tous ses épisodes, toutes ses versions) qui
+   * correspondent aux filtres, au lieu de regrouper seulement ce qui tient dans la page. La pagination et le tri portent sur les contenus.
+   */
+  async listGrouped(params: TorrentFilters & { page: number; pageSize: number }) {
+    const where = await this.buildWhere(params);
+    const rows = await this.prisma.torrent.findMany({
+      where, take: 20_000,
+      select: {
+        id: true, name: true, metaSource: true, metaExternalId: true, createdAt: true, updatedAt: true, size: true, seeders: true, leechers: true, completedCount: true,
+        category: { select: { slug: true, name: true } }, uploader: { select: { username: true } },
+      },
+    });
+
+    interface G { key: string; ids: string[]; title: string; created: number; updated: number; size: number; seeders: number; leechers: number; completed: number; category: string; uploader: string }
+    const groups = new Map<string, G>();
+    for (const r of rows) {
+      const key = groupKeyOf(r);
+      const g = groups.get(key) ?? { key, ids: [], title: r.name.toLowerCase(), created: 0, updated: 0, size: 0, seeders: 0, leechers: 0, completed: 0, category: r.category?.name ?? '', uploader: r.uploader?.username ?? '' };
+      g.ids.push(r.id);
+      g.created = Math.max(g.created, r.createdAt.getTime());
+      g.updated = Math.max(g.updated, r.updatedAt.getTime());
+      g.size = Math.max(g.size, Number(r.size));
+      g.seeders = Math.max(g.seeders, r.seeders);
+      g.leechers = Math.max(g.leechers, r.leechers);
+      g.completed += r.completedCount;
+      groups.set(key, g);
+    }
+
+    // Tri des contenus (même champs que la liste) : la valeur d'un contenu est celle de sa release la plus récente / la plus grosse / la mieux seedée...
+    const SORTS: Record<string, { value: (g: G) => number | string; dir: 'asc' | 'desc' }> = {
+      date: { value: (g) => g.created, dir: 'desc' }, taille: { value: (g) => g.size, dir: 'desc' }, seeders: { value: (g) => g.seeders, dir: 'desc' },
+      leechers: { value: (g) => g.leechers, dir: 'desc' }, popularite: { value: (g) => g.completed, dir: 'desc' }, activite: { value: (g) => g.updated, dir: 'desc' },
+      nom: { value: (g) => g.title, dir: 'asc' }, categorie: { value: (g) => g.category.toLowerCase(), dir: 'asc' }, uploader: { value: (g) => g.uploader.toLowerCase(), dir: 'asc' },
+    };
+    const def = SORTS[params.sort ?? 'date'] ?? SORTS.date;
+    const dir = (params.order ?? def.dir) === 'asc' ? 1 : -1;
+    const ordered = [...groups.values()].sort((a, b) => {
+      const x = def.value(a), y = def.value(b);
+      const c = typeof x === 'string' ? x.localeCompare(String(y), 'fr') : Number(x) - Number(y);
+      return c !== 0 ? c * dir : b.created - a.created;
+    });
+
+    const pageGroups = ordered.slice((params.page - 1) * params.pageSize, params.page * params.pageSize);
+    const ids = pageGroups.flatMap((g) => g.ids);
+    const full = ids.length ? await this.prisma.torrent.findMany({ where: { id: { in: ids } }, include: LIST_INCLUDE }) : [];
+    const byId = new Map(full.map((t) => [t.id, t]));
+    const keyOf = new Map<string, string>();
+    for (const g of pageGroups) for (const id of g.ids) keyOf.set(id, g.key);
+    const items = ids.map((id) => byId.get(id)).filter((t): t is NonNullable<typeof t> => !!t).map((t) => ({ ...toListRow(t), groupKey: keyOf.get(t.id) }));
+    return { items, total: groups.size, totalTorrents: rows.length, page: params.page, pageSize: params.pageSize, grouped: true };
   }
 
   /**

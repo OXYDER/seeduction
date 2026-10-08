@@ -41,6 +41,7 @@ const teamSlug = (g: string) => g.toLowerCase().normalize('NFD').replace(/[̀-ͯ
 
 /** Clé de regroupement : la même fiche (TMDB, Deezer...) si elle est connue, sinon le titre nettoyé de la release. */
 export function groupKey(t: any): string {
+  if (t.groupKey) return t.groupKey; // fourni par le serveur (vue « Groupé » complète)
   if (t.metaSource && t.metaExternalId) return `m:${t.metaSource}:${t.metaExternalId}`;
   return `t:${releaseTitle(t.name).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}|${t.category?.slug ?? ''}`;
 }
