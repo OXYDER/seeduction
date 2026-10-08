@@ -25,7 +25,7 @@ const GENRES_EBOOK = [
 
 export const FACETS: Record<string, FacetDef> = Object.fromEntries([
   // Films & séries (en plus des champs déjà existants : résolution, source, langue, codec, audio, genres...)
-  def('hdrFormat', 'Dynamic range', true, ['SDR', 'HDR10', 'HDR10+', 'Dolby Vision', 'DV+HDR10', 'DV+HDR10+']),
+  def('hdrFormat', 'Plage dynamique', true, ['SDR', 'HDR10', 'HDR10+', 'Dolby Vision', 'DV+HDR10', 'DV+HDR10+']),
   def('channels', 'Canaux', true, ['7.1', '5.1', '2.0', '1.0']),
   def('audioQuality', 'Qualité audio', true, ['Lossless', 'Lossy']),
   def('serieType', 'Série', false, ['Intégrale', 'Saison', 'Épisode']),

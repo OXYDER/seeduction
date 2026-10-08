@@ -3216,3 +3216,22 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
   .msgr-page, .msgr-page.with-info { height: calc(100dvh - 216px); min-height: 360px; }
   .pm-list, .pm-main { height: calc(100dvh - 350px); min-height: 340px; }
 }
+
+/* Étiquettes d'un torrent (page de détail) : « Langue · VFQ », une pastille à deux tons, couleur selon le type d'information. */
+.vr-chip.dt { color: #e2e8f0; background: rgba(255,255,255,0.1); }
+.rt-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 14px; }
+.rt-tag { display: inline-flex; align-items: stretch; border-radius: 8px; overflow: hidden; font-size: 13px; line-height: 1.2; border: 1px solid rgba(255,255,255,0.09); background: rgba(255,255,255,0.04); }
+.rt-tag i { font-style: normal; padding: 5px 9px; color: #94a3b8; background: rgba(255,255,255,0.05); font-size: 11.5px; letter-spacing: 0.02em; display: flex; align-items: center; }
+.rt-tag b { padding: 5px 11px; font-weight: 700; display: flex; align-items: center; }
+.rt-tag.dt b { color: #e2e8f0; }
+.rt-tag.lang b { color: #5eead4; background: rgba(20,184,166,0.16); }
+.rt-tag.res b { color: #38bdf8; background: rgba(56,189,248,0.14); }
+.rt-tag.src b { color: #6ee7b7; background: rgba(16,185,129,0.14); }
+.rt-tag.aud b { color: #fbbf24; background: rgba(245,158,11,0.16); }
+.rt-tag.ep b { color: #f9a8d4; background: rgba(236,72,153,0.16); }
+.rt-tag.yr b { color: #cbd5e1; background: rgba(148,163,184,0.16); }
+.rt-tag.org b { color: #fda4af; background: rgba(244,63,94,0.15); }
+.rt-tag.cod b { color: #c4b5fd; background: rgba(139,92,246,0.18); }
+.rt-tag.fmt b { color: #c4b5fd; background: rgba(139,92,246,0.18); }
+@media (max-width: 640px) { .rt-tags { gap: 6px; } .rt-tag { font-size: 12px; } .rt-tag i { padding: 4px 7px; } .rt-tag b { padding: 4px 8px; } }
+.rt-tag.gen b { color: #f9a8d4; background: rgba(236,72,153,0.16); }

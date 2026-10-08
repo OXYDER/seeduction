@@ -1,3 +1,4 @@
+import ReleaseTags from '../components/ReleaseTags';
 import FacetChips from '../components/FacetChips';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -111,16 +112,6 @@ export default function TorrentDetail() {
   }
   if (!torrent) return <p className="muted">Chargement...</p>;
 
-  const meta = [
-    torrent.season ? (/^\d+$/.test(torrent.season) ? `S${torrent.season.padStart(2, '0')}${/^\d+$/.test(torrent.episode ?? '') ? `E${torrent.episode.padStart(2, '0')}` : ''}` : torrent.season) : null,
-    torrent.season && torrent.episode && !/^\d+$/.test(torrent.episode) && /^\d+$/.test(torrent.season) ? torrent.episode : null,
-    torrent.videoType && torrent.videoType !== '2D' ? torrent.videoType : null,
-    ...(torrent.genres ?? []),
-    torrent.year, torrent.resolution, torrent.hdr ? 'HDR' : null, torrent.codec,
-    torrent.audio, torrent.source, torrent.containerFormat, torrent.language,
-    torrent.fps ? `${torrent.fps} fps` : null,
-    torrent.durationMinutes ? `${torrent.durationMinutes} min` : null,
-  ].filter(Boolean);
 
   const synopsis: string | null = torrent.metadata?.overview ?? null;
   // Catégorie principale déduite de l'inclusion du parent (voir torrents.service.ts) : nécessaire au repli d'une
@@ -234,7 +225,7 @@ export default function TorrentDetail() {
             <div className="hero-kicker">{torrent.category?.name}{torrent.status === 'PENDING' ? ' · en attente de validation' : ''}{torrent.status === 'DEAD' ? ' · ☠️ mort' : ''}</div>
             <h1>{torrent.name} <CopyButton text={torrent.name} title="Copier le nom de la release" /></h1>
             {torrent.infoHash && <div className="detail-hash" title="Empreinte (info-hash) du torrent"><span className="muted">Hash :</span> <code>{torrent.infoHash}</code> <CopyButton text={torrent.infoHash} title="Copier le hash" /></div>}
-            <div className="hero-meta">{meta.join('  ·  ')}</div>
+            <ReleaseTags torrent={torrent} />
             <div className="row" style={{ flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {torrent.freeleech && <span className="badge freeleech">FREELEECH</span>}
               {torrent.doubleUpload && <span className="badge double">DOUBLE UPLOAD</span>}
@@ -334,8 +325,8 @@ export default function TorrentDetail() {
           <div className="row" style={{ flexWrap: 'wrap' }}>
             {torrent.freeleech && <span className="badge freeleech">FREELEECH</span>}
             {torrent.doubleUpload && <span className="badge double">DOUBLE UPLOAD</span>}
-            {meta.map((m, i) => <span key={i} className="badge new">{m}</span>)}
           </div>
+          <ReleaseTags torrent={torrent} />
         </div>
       </div>
       {staffPanel}

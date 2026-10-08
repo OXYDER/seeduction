@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ROLE_LABEL, formatMinutes } from '../lib/entityLabels';
+import { countryFr, dateFr, languageFr, statusFr } from '../lib/frText';
 
 interface LinkedEntity {
   role: string;
@@ -41,21 +42,22 @@ export default function TorrentHero({ torrent }: { torrent: any }) {
   const byRole = (role: string) => links.filter((l) => l.role === role);
   const cast = byRole('ACTOR');
 
+  // Tout est affiché en français, même quand la fiche (TMDB...) l'a donné en anglais : statut, pays, langues, date.
   const facts: string[] = [
-    info.releaseDate ?? info.publishedDate ?? info.released,
+    dateFr(info.releaseDate ?? info.publishedDate ?? info.released),
     info.runtime ? formatMinutes(info.runtime) : null,
     info.rating ? `★ ${Number(info.rating).toFixed(1).replace('.', ',')} / ${torrent.metaSource === 'tmdb' ? 10 : 5}` : null,
     info.metacritic ? `Metacritic ${info.metacritic}` : null,
     info.seasons ? `${info.seasons} saison${info.seasons > 1 ? 's' : ''}` : null,
-    info.episodes ? `${info.episodes} épisodes` : null,
-    info.nbTracks ? `${info.nbTracks} pistes` : null,
+    info.episodes ? `${info.episodes} épisode${info.episodes > 1 ? 's' : ''}` : null,
+    info.nbTracks ? `${info.nbTracks} piste${info.nbTracks > 1 ? 's' : ''}` : null,
     info.pageCount ? `${info.pageCount} pages` : null,
     info.playtime ? `~${info.playtime} h de jeu` : null,
-    info.status,
+    statusFr(info.status),
     info.esrb,
-    ...(info.countries ?? []),
-    ...(info.languages ?? []),
-  ].filter(Boolean);
+    ...((info.countries ?? []) as string[]).map(countryFr),
+    ...((info.languages ?? []) as string[]).map(languageFr),
+  ].filter(Boolean) as string[];
 
   const backdrop = info.backdrop as string | undefined;
   const background = backdrop

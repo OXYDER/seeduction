@@ -67,13 +67,14 @@ const COLUMNS: { label: string; sort: string; key: 'cat' | 'name' | 'date' | 'si
 /** Icône / couleur de la catégorie du torrent (la sienne si elle en a une, sinon celle de sa catégorie principale). */
 const styleOf = (t: any) => CATEGORY_STYLE[t.category?.slug ?? ''] ?? CATEGORY_STYLE[t.category?.parent?.slug ?? ''];
 
-function Badges({ t }: { t: any }) {
+/** `quality` = false : la résolution et le HDR sont déjà dans les pastilles sous le titre (MetaChips), on ne les répète pas. */
+function Badges({ t, quality = true }: { t: any; quality?: boolean }) {
   return (
     <>
       {t.freeleech && <span className="badge freeleech">FL</span>}{' '}
       {t.doubleUpload && <span className="badge double">2x</span>}{' '}
-      {t.resolution && <span className="badge new">{t.resolution}</span>}{' '}
-      {t.hdr && <span className="badge double">HDR</span>}
+      {quality && t.resolution && <span className="badge new">{t.resolution}</span>}{' '}
+      {quality && t.hdr && <span className="badge double">HDR</span>}
       {t.status === 'DEAD' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>☠️ Mort</span>}
     </>
   );
@@ -209,7 +210,7 @@ function TorrentViewBody(props: TorrentViewProps) {
                       <span>
                         {isStaff && <Link to={`/torrents/${t.id}?edit=1`} title="Modifier / supprimer (staff)" style={{ marginRight: 6 }}>✏️</Link>}
                         {titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" />{' '}
-                        <Badges t={t} />
+                        <Badges t={t} quality={false} />
                         <MetaChips t={t} className="tv-meta-chips" />
                         {t.reason && <div className="tv-reason">✨ {t.reason}</div>}
                       </span>
@@ -242,7 +243,7 @@ function TorrentViewBody(props: TorrentViewProps) {
             <Link to={`/torrents/${t.id}`} className="tv-detail-poster" tabIndex={-1} aria-hidden="true"><Cover t={t} /></Link>
             <div className="tv-detail-main">
               <div className="tv-detail-title">{star(t)}{titleLink(t)}<CopyButton text={t.name} title="Copier le nom de la release" /></div>
-              <div className="tv-detail-badges"><CategoryTag category={t.category} /> <Badges t={t} /></div>
+              <div className="tv-detail-badges"><CategoryTag category={t.category} /> <Badges t={t} quality={false} /></div>
               <MetaChips t={t} className="tv-meta-chips" />
               {t.synopsis && <p className="tv-detail-synopsis">{t.synopsis}</p>}
               {t.reason && <div className="tv-reason">✨ {t.reason}</div>}
