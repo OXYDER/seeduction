@@ -3348,3 +3348,15 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 /* Moteur de recherche : pastilles d'information sous chaque torrent proposé (petites, une seule ligne). */
 .sb-chips { margin-top: 3px; gap: 3px 4px; flex-wrap: wrap; max-height: 17px; overflow: hidden; }
 .sb-chips .vr-chip { font-size: 10px; padding: 0 6px; }
+
+/* Pagination des résultats : numéros de pages cliquables, en haut et en bas de la liste. */
+.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
+.pager-pages { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pager-pages > button { padding: 4px 10px; font-size: 13px; }
+.pager-num { min-width: 32px; padding: 4px 8px; text-align: center; border-radius: 8px; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.05); border: 1px solid transparent; color: var(--text); text-decoration: none; }
+.pager-num:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+.pager-num.on { background: linear-gradient(135deg, var(--acc1, #8b5cf6), var(--acc2, #c026d3)); color: #fff; pointer-events: none; }
+.pager-gap { padding: 0 4px; color: var(--text-dim); }
+.pager-size { gap: 6px; font-size: 12.5px; }
+.pager-size select { width: auto; padding: 4px 8px; font-size: 12.5px; }
+@media (max-width: 640px) { .pager { justify-content: center; } .pager-info { width: 100%; text-align: center; } }

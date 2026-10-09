@@ -1,3 +1,4 @@
+import Pager from '../components/Pager';
 import { facetsFromParams } from '../lib/facets';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SearchBox from '../components/SearchBox';
@@ -178,6 +179,15 @@ export default function Browse() {
     next.set('page', '1'); // la page courante n'a plus forcément de sens avec une autre taille de page
     setParams(next);
   }
+
+  /** Pagination (numéros de pages, précédent / suivant, nombre par page), affichée en haut et en bas de la liste. */
+  const pager = (bottom: boolean) => (
+    <Pager
+      page={page} total={total} pageSize={pageSize} pageSizes={PAGE_SIZES} unit={view === 'grouped' ? 'contenu' : 'résultat'}
+      onPage={goToPage} onSize={changePageSize} scrollTop={bottom}
+      hrefFor={(p) => { const n = new URLSearchParams(params); n.set('page', String(p)); return `?${n.toString()}`; }}
+    />
+  );
 
   function resetFilters() {
     const next = new URLSearchParams();
@@ -497,20 +507,9 @@ export default function Browse() {
 
       <div className="panel">
         <div className="muted" style={{ marginBottom: 8 }}>{view === 'grouped' ? `${total} contenu(s) · ${totalTorrents} torrent(s)` : `${total} résultat(s)`}</div>
+        <div style={{ marginBottom: 10 }}>{pager(false)}</div>
         <TorrentView items={items} view={view} sort={sort} order={order} onSort={clickColumn} />
-        <div className="row" style={{ justifyContent: 'space-between', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
-          <span className="muted">Page {page} / {Math.max(1, Math.ceil(total / pageSize))} ({view === 'grouped' ? `${total} contenu${total > 1 ? 's' : ''}` : `${total} résultat${total > 1 ? 's' : ''}`})</span>
-          <div className="row" style={{ gap: 10 }}>
-            <label className="muted row" style={{ gap: 6, fontSize: 12.5 }}>
-              Par page
-              <select value={pageSize} onChange={(e) => changePageSize(Number(e.target.value))} style={{ width: 'auto', padding: '4px 8px', fontSize: 12.5 }}>
-                {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </label>
-            <button className="secondary" disabled={page <= 1} onClick={() => goToPage(page - 1)}>← Préc.</button>
-            <button className="secondary" disabled={page * pageSize >= total} onClick={() => goToPage(page + 1)}>Suiv. →</button>
-          </div>
-        </div>
+        <div style={{ marginTop: 12 }}>{pager(true)}</div>
       </div>
 
       {items.length === 0 && !uploaderId && <Recommended title="🔎 Rien trouvé ? Tu pourrais aimer" subtitle="Selon ton historique" />}
