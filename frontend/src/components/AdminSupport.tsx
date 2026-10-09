@@ -1,3 +1,4 @@
+import Pager from './Pager';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -87,6 +88,7 @@ export function SupportQueue() {
           </select>
         </div>
         {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
+        {data && data.pages > 1 && <div style={{ marginBottom: 10 }}><Pager page={data.page} total={data.total} pageSize={Math.max(1, Math.ceil(data.total / data.pages))} unit="billet" onPage={setPage} /></div>}
         {data && (
           <div style={{ overflowX: 'auto' }}>
             <table className="tk-table">
@@ -111,13 +113,7 @@ export function SupportQueue() {
             </table>
           </div>
         )}
-        {data && data.pages > 1 && (
-          <div className="row" style={{ justifyContent: 'center', gap: 10, marginTop: 10 }}>
-            <button type="button" className="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>←</button>
-            <span className="muted">Page {data.page} / {data.pages} · {data.total} billets</span>
-            <button type="button" className="secondary" disabled={page >= data.pages} onClick={() => setPage(page + 1)}>→</button>
-          </div>
-        )}
+        {data && data.pages > 1 && <div style={{ marginTop: 10 }}><Pager page={data.page} total={data.total} pageSize={Math.max(1, Math.ceil(data.total / data.pages))} unit="billet" onPage={setPage} scrollTop /></div>}
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import Pager from '../components/Pager';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api/client';
@@ -64,14 +65,9 @@ export default function EntityPage() {
           <span className="muted">{total} torrent{total > 1 ? 's' : ''}</span>
           <ViewSwitcher value={view} onChange={setView} />
         </div>
+        <div style={{ marginBottom: 10 }}><Pager page={page} total={total} pageSize={PAGE_SIZE} unit="torrent" onPage={setPage} /></div>
         <TorrentView items={items} view={view} empty="Aucun torrent approuvé pour l'instant." />
-        <div className="row" style={{ justifyContent: 'space-between', marginTop: 16 }}>
-          <span className="muted">Page {page}</span>
-          <div className="row">
-            <button className="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Préc.</button>
-            <button className="secondary" disabled={page * PAGE_SIZE >= total} onClick={() => setPage(page + 1)}>Suiv. →</button>
-          </div>
-        </div>
+        <div style={{ marginTop: 16 }}><Pager page={page} total={total} pageSize={PAGE_SIZE} unit="torrent" onPage={setPage} scrollTop /></div>
       </div>
     </div>
   );

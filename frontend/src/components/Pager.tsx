@@ -16,11 +16,12 @@ interface PagerProps {
   /** Nombre total de résultats (ou de contenus en vue groupée). */
   total: number;
   pageSize: number;
-  pageSizes: number[];
+  /** Choix du nombre par page : omis quand la liste a une taille de page fixe. */
+  pageSizes?: number[];
   /** Mot affiché après le total : « résultat », « contenu »… (mis au pluriel automatiquement). */
   unit?: string;
   onPage: (page: number) => void;
-  onSize: (size: number) => void;
+  onSize?: (size: number) => void;
   /** Adresse de chaque page : les numéros sont de vrais liens (ouvrir dans un nouvel onglet, copier l'adresse…). */
   hrefFor?: (page: number) => string;
   /** Remonte en haut de la liste après un changement de page (pager du bas). */
@@ -49,12 +50,14 @@ export default function Pager({ page, total, pageSize, pageSizes, unit = 'résul
         {pageWindow(page, pages).map((p, i) => (p === '…' ? <span key={`gap${i}`} className="pager-gap" aria-hidden="true">…</span> : num(p)))}
         <button type="button" className="secondary" disabled={page >= pages} onClick={() => go(page + 1)}>Suiv. →</button>
       </div>
-      <label className="muted row pager-size">
-        Par page
-        <select value={pageSize} onChange={(e) => onSize(Number(e.target.value))}>
-          {pageSizes.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </label>
+      {pageSizes && onSize && (
+        <label className="muted row pager-size">
+          Par page
+          <select value={pageSize} onChange={(e) => onSize(Number(e.target.value))}>
+            {pageSizes.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      )}
     </nav>
   );
 }

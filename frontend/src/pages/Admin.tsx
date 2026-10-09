@@ -1,3 +1,4 @@
+import Pager from '../components/Pager';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -110,6 +111,7 @@ function AuditAdmin() {
           <option value="~TWO_FACTOR">2FA</option>
         </select>
       </div>
+      <div style={{ margin: '8px 0' }}><Pager page={page} total={data.total} pageSize={data.pageSize} unit="entrée" onPage={setPage} /></div>
       <div style={{ overflowX: 'auto' }}>
         <table>
           <thead><tr><th>Date</th><th>Qui</th><th>Action</th><th>Détails</th><th>IP</th></tr></thead>
@@ -127,13 +129,7 @@ function AuditAdmin() {
           </tbody>
         </table>
       </div>
-      <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
-        <span className="muted">Page {page} / {pages}</span>
-        <div className="row">
-          <button className="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Préc.</button>
-          <button className="secondary" disabled={page >= pages} onClick={() => setPage(page + 1)}>Suiv. →</button>
-        </div>
-      </div>
+      <div style={{ marginTop: 12 }}><Pager page={page} total={data.total} pageSize={data.pageSize} unit="entrée" onPage={setPage} scrollTop /></div>
     </div>
   );
 }

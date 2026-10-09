@@ -1,3 +1,4 @@
+import Pager from '../components/Pager';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
@@ -139,6 +140,8 @@ export default function Dead() {
           <p className="muted">{mine ? "Tu n'as téléchargé aucun des torrents sans seeder." : query || category ? 'Essaie un autre filtre.' : 'Tous les torrents ont des seeders. Merci à tous !'}</p>
         </div>
       ) : (
+        <>
+        {data.pages > 1 && <Pager page={data.page} total={data.total} pageSize={data.pageSize ?? Math.ceil(data.total / data.pages)} unit="torrent" onPage={(p) => set({ page: String(p) })} />}
         <div className="dd-list">
           {data.items.map((t: Item) => (
             <div key={t.id} className={`panel dd-item${t.snatchedByMe ? ' mine' : ''}`}>
@@ -169,15 +172,10 @@ export default function Dead() {
             </div>
           ))}
         </div>
+        </>
       )}
 
-      {data.pages > 1 && (
-        <div className="row" style={{ justifyContent: 'center', gap: 10 }}>
-          <button type="button" className="secondary" disabled={page <= 1} onClick={() => set({ page: String(page - 1) })}>←</button>
-          <span className="muted">Page {data.page} / {data.pages} · {formatNumber(data.total)} torrents</span>
-          <button type="button" className="secondary" disabled={page >= data.pages} onClick={() => set({ page: String(page + 1) })}>→</button>
-        </div>
-      )}
+      {data.pages > 1 && <Pager page={data.page} total={data.total} pageSize={data.pageSize ?? Math.ceil(data.total / data.pages)} unit="torrent" onPage={(p) => set({ page: String(p) })} scrollTop />}
     </div>
   );
 }

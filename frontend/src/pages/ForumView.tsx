@@ -143,9 +143,10 @@ export default function ForumView() {
 
       {!forum.isCategory && (
         <div className="forum-table panel ornate">
+          <div style={{ padding: '8px 12px' }}><Pagination page={data.page} total={data.total} pageSize={data.pageSize} unit="sujet" onPage={(p) => setParams({ page: String(p) })} /></div>
           <TopicTable topics={data.topics} />
           <div style={{ padding: '8px 12px' }}>
-            <Pagination page={data.page} total={data.total} pageSize={data.pageSize} onPage={(p) => setParams({ page: String(p) })} />
+            <Pagination page={data.page} total={data.total} pageSize={data.pageSize} unit="sujet" onPage={(p) => setParams({ page: String(p) })} scrollTop />
           </div>
         </div>
       )}

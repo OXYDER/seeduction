@@ -1,3 +1,4 @@
+import Pager from './Pager';
 import { Link } from 'react-router-dom';
 import UserLink from './UserLink';
 import { timeAgo } from '../lib/time';
@@ -20,25 +21,10 @@ export function Breadcrumb({ crumbs, last }: { crumbs: Crumb[]; last?: string })
   );
 }
 
-/** Pagination « 1 2 3 … 9 » avec précédent / suivant. */
-export function Pagination({ page, total, pageSize, onPage }: { page: number; total: number; pageSize: number; onPage: (p: number) => void }) {
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (pages <= 1) return null;
-  const shown = new Set([1, pages, page - 1, page, page + 1]);
-  const list = [...shown].filter((p) => p >= 1 && p <= pages).sort((a, b) => a - b);
-  return (
-    <div className="forum-pager">
-      <button type="button" className="secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>‹</button>
-      {list.map((p, i) => (
-        <span key={p}>
-          {i > 0 && p - list[i - 1] > 1 && <span className="muted"> … </span>}
-          <button type="button" className={p === page ? '' : 'secondary'} onClick={() => onPage(p)}>{p}</button>
-        </span>
-      ))}
-      <button type="button" className="secondary" disabled={page >= pages} onClick={() => onPage(page + 1)}>›</button>
-      <span className="muted" style={{ marginLeft: 8 }}>{total} élément(s)</span>
-    </div>
-  );
+/** Pagination « ← Préc. 1 … 4 5 6 … 9 Suiv. → » (même composant que Parcourir) ; rien à afficher s'il n'y a qu'une page. */
+export function Pagination({ page, total, pageSize, onPage, unit = 'élément', scrollTop }: { page: number; total: number; pageSize: number; onPage: (p: number) => void; unit?: string; scrollTop?: boolean }) {
+  if (Math.ceil(total / pageSize) <= 1) return null;
+  return <Pager page={page} total={total} pageSize={pageSize} unit={unit} onPage={onPage} scrollTop={scrollTop} />;
 }
 
 /** Cellule « dernier message » : titre du sujet, auteur, date. */

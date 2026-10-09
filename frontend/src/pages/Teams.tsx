@@ -65,6 +65,7 @@ export default function Teams() {
       </div>
       <p className="muted" style={{ margin: 0 }}>Tu ne peux faire partie que d'une seule team ; jusqu'à {data.maxPending} candidatures en attente ({data.pending} actuellement).</p>
       {error && <div className="panel" style={{ borderColor: 'var(--danger)' }}>{error}</div>}
+      <Pagination page={data.page} total={data.total} pageSize={data.pageSize} unit="team" onPage={setPage} />
 
       {creating && (
         <form className="panel" onSubmit={create} style={{ display: 'grid', gap: 10 }}>
@@ -107,7 +108,7 @@ export default function Teams() {
           </Link>
         ))}
       </div>
-      <Pagination page={data.page} total={data.total} pageSize={data.pageSize} onPage={setPage} />
+      <Pagination page={data.page} total={data.total} pageSize={data.pageSize} unit="team" onPage={setPage} scrollTop />
     </div>
   );
 }
