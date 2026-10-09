@@ -16,6 +16,7 @@ const TORRENT_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'DEAD'];
 
 import { AccountDeletionService, DELETED_USER_ID } from './account-deletion.service';
 import { normalizeLanguage } from '../common/utils/language';
+import { stripReleaseExtension } from '../common/utils/release-name';
 import { AuthService } from '../auth/auth.service';
 
 export interface Actor { userId: string; username: string; role: string }
@@ -102,7 +103,7 @@ export class AdminService {
   /** Seuls ces champs sont modifiables (le corps de la requête n'est jamais passé tel quel à la base). */
   async updateTorrent(id: string, body: Record<string, any>) {
     const data: Record<string, any> = {};
-    if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim().slice(0, 300);
+    if (typeof body.name === 'string' && body.name.trim()) data.name = stripReleaseExtension(body.name.trim().slice(0, 300));
     if (typeof body.description === 'string') data.description = body.description;
     if (typeof body.categoryId === 'string' && body.categoryId) {
       const cat = await this.prisma.category.findUnique({ where: { id: body.categoryId }, select: { id: true, _count: { select: { children: true } } } });

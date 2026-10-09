@@ -12,6 +12,7 @@ import { languageAtoms, normalizeLanguage, storedValuesFor } from '../common/uti
 import { extractInstallNotes } from '../common/utils/install-notes';
 import { audioOf } from '../importer/audio-codec';
 import { groupKeyOf } from './group-key';
+import { RELEASE_EXTENSION_SQL, stripReleaseExtension } from '../common/utils/release-name';
 import { Cron } from '@nestjs/schedule';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -116,8 +117,9 @@ export class TorrentsService implements OnModuleInit {
     const storedPath = path.join(STORAGE_DIR, `${parsed.infoHash}.torrent`);
     await fs.writeFile(storedPath, cleanBuffer);
 
-    const releaseName = params.name || parsed.name;
-    const attrs = await this.resolveAttrs(params.categoryId, releaseName, parsed.files, params.nfo, params.genres ?? [], params.attrs);
+    const rawName = params.name || parsed.name;
+    const releaseName = stripReleaseExtension(rawName); // jamais d'extension de fichier (.mkv...) dans le titre
+    const attrs = await this.resolveAttrs(params.categoryId, rawName, parsed.files, params.nfo, params.genres ?? [], params.attrs);
     const releaseGroup = await this.teams.noteRelease(releaseName); // team détectée dans le nom (créée automatiquement si elle est nouvelle)
     const torrent = await this.prisma.torrent.create({
       data: {
@@ -209,6 +211,12 @@ export class TorrentsService implements OnModuleInit {
   // ------------------------------------------------------------------ filtres propres à la catégorie (attrs)
 
   onModuleInit() {
+    // Rattrapage : les torrents dont le titre se termine par une extension de fichier (.mkv...) la perdent (une seule fois, sans effet ensuite).
+    setTimeout(() => {
+      void this.prisma.$executeRaw`UPDATE "Torrent" SET name = regexp_replace(name, ${RELEASE_EXTENSION_SQL}, '', 'i') WHERE name ~* ${RELEASE_EXTENSION_SQL} AND length(regexp_replace(name, ${RELEASE_EXTENSION_SQL}, '', 'i')) >= 2`
+        .then((n) => { if (n > 0) this.log.log(`${n} titre(s) de torrent sans extension de fichier`); })
+        .catch((err) => this.log.warn(`Extensions des titres : ${err?.message}`));
+    }, 5_000);
     // Les torrents déjà en base sont analysés en arrière-plan (nom, fichiers, NFO) pour que les filtres existent aussi pour eux.
     setTimeout(() => { void this.backfillAttrs().catch((err) => this.log.warn(`Analyse des filtres interrompue : ${err?.message}`)); }, 30_000);
   }
