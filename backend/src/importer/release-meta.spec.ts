@@ -151,4 +151,15 @@ describe('autres notations rencontrees dans les noms de releases', () => {
     expect(lang('Onslaught.2026.MULTi.CA.1080p.WEB.H265-SUPPLY', ['º Audio    : French (Canadien) E-AC-3 5.1 ¤ Untouched ¤ 640 kb/s º', '³ Subtitle : French (Canadien) Forced ¤ SRT ³'].join('\n'))).toBe('MULTI.VFQ');
     expect(lang('Film.2026.1080p.WEB-GRP', '│ Subtitle : French (Canadien) SDH ↔ SRT │')).toBeUndefined();
   });
+
+  it('NFO texte : pistes audio sur une ligne (scène encadré, ou « A: … | S: … »)', () => {
+    const scene = ['┌────┐', '│ Audio : French (France) E-AC-3 5.1 ↔ Untouched ↔ 640 kb/s ↔ │', '│ Subtitle : French (France) Forced ↔ SRT ↔ 99 Lines ↔ │', '└────┘'].join('\n');
+    expect(lang('4.Blocks.Zero.S01E03.MULTi.1080p.WEB.H265-SUPPLY', scene)).toBe('MULTI.VFF');
+    expect(lang('Bering.Sea.Gold.S03E01.FRENCH.1080p.WEB.x264-HEADER', 'Release : Bering.Sea.Gold.S03E01.FRENCH.1080p.WEB.x264-HEADER\nAudio    : French E-AC-3 2.0 128 kb/s')).toBe('VFF');
+    expect(lang('Koh-Lanta.S34E07.FRENCH.1080p.WEB.H264-SUPPLY', '│ Audio : French (France) AAC LC 2.0 ↔ Untouched ↔ 128 kb/s │\n│ Subtitle : French Forced │')).toBe('VFF');
+    expect(lang('Watson.S02E06.MULTi.1080p.WEB.H264-HiggsBoson', 'A: French E-AC-3 5.1 / English E-AC-3 5.1 | S: French')).toBe('MULTI.VFF');
+    expect(lang('Haunted.Hotel.S02E01.FRENCH.720p.WEB.X264-HiggsBoson', 'T: Haunted.Hotel.S02E01.FRENCH.720p.WEB.X264-HiggsBoson | A: French E-AC-3 5.1 | S: French')).toBe('VFF');
+    expect(lang('Film.2026.MULTi.1080p.WEB-GRP', 'Audio : French (Canada) AC3 5.1 / English AC3 5.1')).toBe('MULTI.VFQ');
+    expect(lang('Film.2026.VOSTFR.1080p.WEB-GRP', 'Audio : English AC3 5.1 | S: French')).toBe('VOSTFR');
+  });
 });

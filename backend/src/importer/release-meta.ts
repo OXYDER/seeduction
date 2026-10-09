@@ -60,8 +60,10 @@ function fromNfo(nfo: string) {
   let section = '';
   let trackLang = '';
   let trackTitle = '';
+  let structured = 0; // pistes lues dans un vrai MediaInfo (sections « Audio »)
   const endAudio = () => {
     if (section === 'audio' && trackLang) {
+      structured++;
       if (trackLang === 'fr') fr.add(variantOf(trackLang, trackTitle));
       else nonFr++;
     }
@@ -100,7 +102,38 @@ function fromNfo(nfo: string) {
     if (/\bvof\b/i.test(line)) fr.add('VOF');
     if (/truefrench/i.test(line)) fr.add('TRUEFRENCH');
   }
+  // NFO « texte » sans sections MediaInfo : pistes audio décrites en une ligne.
+  if (structured === 0) {
+    const t = textAudioTracks(nfo);
+    t.fr.forEach((v) => fr.add(v));
+    nonFr += t.nonFr;
+  }
   return { fr, nonFr, subsFr };
+}
+
+const TRACK_LANG = /\b(french|fran[cç]ais|english|anglais|spanish|espagnol|german|allemand|italian|italien|japanese|japonais|korean|cor[ée]en|portuguese|portugais|russian|russe|chinese|chinois|arabic|arabe|dutch|n[ée]erlandais|polish|polonais|turkish|turc|hindi|thai|swedish|danish|norwegian|finnish)\b(?:\s*\(([^)]*)\))?/gi;
+
+/**
+ * Pistes audio d'un NFO texte, sur une ligne : « Audio : French (France) E-AC-3 5.1 ↔ … » (NFO « scène », cadres et flèches ignorés)
+ * ou « A: French E-AC-3 5.1 / English E-AC-3 5.1 | S: French » (la partie sous-titres, « S: », est ignorée).
+ * Français : (Canada / Canadien / Québec / QC) = VFQ, (Belgique / BE) = VFB, sinon VFF — comme pour un MediaInfo.
+ */
+function textAudioTracks(nfo: string): { fr: Set<Variant>; nonFr: number } {
+  const fr = new Set<Variant>();
+  let nonFr = 0;
+  for (const raw of nfo.split(/\r?\n/)) {
+    const m = raw.match(/(?:^|[|\s])(?:audio|audios|a)\s*\d*\s*:\s*(.+)$/i);
+    if (!m) continue;
+    const rest = m[1].split(/\|\s*(?:s|st|sub|subs|subtitles?)\s*:/i)[0];
+    for (const hit of rest.matchAll(TRACK_LANG)) {
+      const lang = hit[1].toLowerCase();
+      if (lang === 'french' || lang.startsWith('fran')) {
+        const region = hit[2] ?? '';
+        fr.add(/canad|qu[eé]b|\bqc\b|\bca\b|\bcan\b/i.test(region) ? 'VFQ' : /belg|\bbe\b|\bbel\b/i.test(region) ? 'VFB' : 'VFF');
+      } else nonFr++;
+    }
+  }
+  return { fr, nonFr };
 }
 
 function languageOf(name: string, nfo: string): string | undefined {
