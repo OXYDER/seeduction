@@ -445,7 +445,7 @@ function ReviewPanel({ source, onChanged, ok, fail }: { source: Source; onChange
   );
 }
 
-const KIND_LABEL: Record<string, string> = { FILM: 'Film (TMDB)', SERIE: 'Série (TMDB)', MUSIQUE: 'Musique (Deezer)', LIVRE: 'Livre', JEU: 'Jeu (RAWG)' };
+const KIND_LABEL: Record<string, string> = { FILM: 'Film (TMDB)', SERIE: 'Série (TMDB)', MUSIQUE: 'Musique (Deezer)', LIVRE: 'Livre', JEU: 'Jeu (RAWG)', XXX: 'XXX (ThePornDB)' };
 
 function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; options: { categories: { id: string; name: string }[]; kinds: string[] }; onDone: () => void; ok: (m: string) => void; fail: (e: any) => void }) {
   const d = item.detail ?? {};

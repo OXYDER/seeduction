@@ -17,7 +17,7 @@ import { cleanTitle, ContentType, feedLabelOf, guessType, isFilmLike, isSeriesLi
 export interface ReleaseInfo { type?: ContentType; title?: string; year?: number }
 /** Choix final avant l'envoi : catégorie de Seeduction + fiche à rattacher (facultative). */
 interface Chosen { id: string; name: string; how: string; meta?: { kind: string; id: string; title: string; year?: string } }
-const META_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU'];
+const META_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const str = (v: any, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');

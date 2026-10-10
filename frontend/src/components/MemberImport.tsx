@@ -27,7 +27,7 @@ interface Options { categories: { id: string; name: string }[]; kinds: string[] 
 interface Hit { id: string; title: string; subtitle: string; thumbnail: string | null }
 
 const MAX_BATCH = 30;
-const KIND_LABEL: Record<string, string> = { FILM: 'Film (TMDB)', SERIE: 'Série (TMDB)', MUSIQUE: 'Musique (Deezer)', LIVRE: 'Livre', JEU: 'Jeu (RAWG)' };
+const KIND_LABEL: Record<string, string> = { FILM: 'Film (TMDB)', SERIE: 'Série (TMDB)', MUSIQUE: 'Musique (Deezer)', LIVRE: 'Livre', JEU: 'Jeu (RAWG)', XXX: 'XXX (ThePornDB)' };
 const PROBLEM: Record<string, string> = { category: 'Choisis la catégorie', fiche: 'Choisis la fiche (ou « sans fiche »)', nfo: 'Colle le NFO ou le MediaInfo' };
 const errText = (e: any, d = 'Action impossible') => e?.response?.data?.message ?? d;
 
@@ -314,6 +314,7 @@ function ItemCard({ item, options, checked, onCheck, onUpdated, reload, setMsg }
   const [year, setYear] = useState<string>(d.year ? String(d.year) : '');
   const [results, setResults] = useState<Hit[]>(d.suggestions ?? []);
   const [searched, setSearched] = useState(false);
+  const [showFiche, setShowFiche] = useState(false);
   const [link, setLink] = useState('');
   const [nfo, setNfo] = useState('');
   const [busy, setBusy] = useState(false);
@@ -375,7 +376,12 @@ function ItemCard({ item, options, checked, onCheck, onUpdated, reload, setMsg }
       {problems.length > 0 && <div style={{ fontSize: 12, color: 'var(--gold-bright, #f5c542)', marginTop: 4 }}>⚠ {problems.map((p) => PROBLEM[p]).join(' · ')}{d.nfoError ? ` (${d.nfoError})` : ''}</div>}
 
       <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
-        <select value={categoryId} disabled={busy} onChange={(e) => save({ categoryId: e.target.value })} style={{ width: 'auto', outline: problems.includes('category') ? '1px solid var(--gold-bright, #f5c542)' : undefined }}>
+        <select value={categoryId} disabled={busy} onChange={(e) => {
+          // Catégorie adulte : la fiche se cherche sur ThePornDB (si le site la propose).
+          const c = options.categories.find((x) => x.id === e.target.value);
+          if (c && /xxx|adult|porn|[ée]rot/i.test(c.name) && options.kinds.includes('XXX')) { setKind('XXX'); setShowFiche(true); }
+          save({ categoryId: e.target.value });
+        }} style={{ width: 'auto', outline: problems.includes('category') ? '1px solid var(--gold-bright, #f5c542)' : undefined }}>
           <option value="">— catégorie de Seeduction —</option>
           {options.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -385,7 +391,10 @@ function ItemCard({ item, options, checked, onCheck, onUpdated, reload, setMsg }
         </select>
       </div>
 
-      {(d.wantsFiche || problems.includes('fiche')) && (
+      {!(d.wantsFiche || problems.includes('fiche') || showFiche || o.metaId) && (
+        <button type="button" className="secondary" style={{ marginTop: 8, padding: '2px 8px', fontSize: 12 }} onClick={() => setShowFiche(true)}>🔎 Ajouter une fiche (facultatif)</button>
+      )}
+      {(d.wantsFiche || problems.includes('fiche') || showFiche || o.metaId) && (
         <div style={{ marginTop: 8, outline: problems.includes('fiche') ? '1px solid var(--gold-bright, #f5c542)' : undefined, outlineOffset: 4, borderRadius: 4 }}>
           <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <select value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: 'auto' }}>

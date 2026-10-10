@@ -5,6 +5,7 @@
  *  - plusieurs pistes de langues différentes, avec UNE piste française : MULTI + sa précision (MULTI.VOF, MULTI.VFF, MULTI.VFQ...) ;
  *  - VFF et VFQ présents ensemble : MULTI.VF2 ;
  *  - aucune piste française : VOSTFR, seulement avec des sous-titres français complets (sinon la release est refusée) ;
+ *  - version originale, sans piste française ni sous-titres français (film anglais, japonais...) : VO ;
  *  - piste audio muette : MUET (MUET.VOSTFR avec sous-titres).
  *
  * Le champ stocke l'étiquette complète (« MULTI.VFQ »). Un filtre « VFQ » retrouve pourtant VFQ, MULTI.VFQ et MULTI.VF2 :
@@ -17,13 +18,14 @@ export const LANGUAGE_TAGS: string[] = [
   ...FR_VARIANTS,
   ...FR_VARIANTS.map((v) => `MULTI.${v}`),
   'MULTI.VF2',
+  'VO',
   'VOSTFR',
   'MUET',
   'MUET.VOSTFR',
 ];
 
 /** Anciennes valeurs (avant la règle) : conservées telles quelles sur les torrents existants, plus proposées. */
-export const LEGACY_LANGUAGES = ['VF', 'VO', 'MULTI'];
+export const LEGACY_LANGUAGES = ['VF', 'MULTI'];
 
 /** Normalise une saisie libre : « multi vfq », « Multi-VFQ » -> « MULTI.VFQ » ; « VF2 » -> « MULTI.VF2 ». */
 export function normalizeLanguage(value?: string | null): string | undefined {

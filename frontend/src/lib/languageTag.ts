@@ -3,7 +3,7 @@
 //
 //  - une seule piste audio en français : VOF (version officielle), TRUEFRENCH ou VFF (France), VFI (internationale), VFB (belge), VFQ (québécoise)
 //  - plusieurs langues avec UNE piste française : MULTI + sa précision (MULTI.VFQ...) ; VFF et VFQ ensemble : MULTI.VF2
-//  - aucune piste française : VOSTFR (sous-titres français complets obligatoires) ; piste muette : MUET (MUET.VOSTFR)
+//  - aucune piste française : VOSTFR (sous-titres français complets obligatoires) ; VO (version originale, sans sous-titres français) ; piste muette : MUET (MUET.VOSTFR)
 
 export const FR_VARIANTS = ['VOF', 'TRUEFRENCH', 'VFF', 'VFI', 'VFB', 'VFQ'] as const;
 type Variant = typeof FR_VARIANTS[number];
@@ -22,6 +22,7 @@ export const LANGUAGE_LABELS: Record<string, string> = {
   'MULTI.VFB': 'MULTI.VFB — plusieurs langues, piste VFB',
   'MULTI.VFQ': 'MULTI.VFQ — plusieurs langues, piste VFQ',
   'MULTI.VF2': 'MULTI.VF2 — plusieurs langues, VFF + VFQ',
+  VO: 'VO — version originale, sans piste française ni sous-titres français',
   VOSTFR: 'VOSTFR — sans piste française, sous-titres français complets',
   MUET: 'MUET — piste audio muette',
   'MUET.VOSTFR': 'MUET.VOSTFR — muet, sous-titres français',
@@ -30,7 +31,7 @@ export const LANGUAGE_LABELS: Record<string, string> = {
 export const LANGUAGE_GROUPS: { label: string; values: string[] }[] = [
   { label: 'Une seule piste française', values: [...FR_VARIANTS] },
   { label: 'Plusieurs langues (une piste française)', values: [...FR_VARIANTS.map((v) => `MULTI.${v}`), 'MULTI.VF2'] },
-  { label: 'Sans piste française', values: ['VOSTFR', 'MUET', 'MUET.VOSTFR'] },
+  { label: 'Sans piste française', values: ['VO', 'VOSTFR', 'MUET', 'MUET.VOSTFR'] },
 ];
 
 const tokensOf = (name: string) => name.replace(/\.torrent$/i, '').split(/[.\_\[\]()\s+/,]+/).filter(Boolean); // « VFQ+VFF », « VFQ/VFF » : deux étiquettes
@@ -48,7 +49,7 @@ function fromName(name: string) {
   if (has('vfb')) fr.add('VFB');
   if (has('vfq', 'vq', 'vfqc', 'quebec', 'québec', 'canadien')) fr.add('VFQ');
   if (has('vf2')) { fr.add('VFF'); fr.add('VFQ'); }
-  return { fr, multi: has('multi', 'multi2', 'multi3', 'multilang', 'multilangue', 'dual'), muet: has('muet'), vostfr: has('vostfr', 'vost', 'subfrench') };
+  return { fr, multi: has('multi', 'multi2', 'multi3', 'multilang', 'multilangue', 'dual'), muet: has('muet'), vostfr: has('vostfr', 'vost', 'subfrench'), vo: has('vo'), french: has('french', 'francais') };
 }
 
 const variantOf = (label: string): Variant => {
@@ -92,6 +93,8 @@ export function languageTagFrom(name: string, nfo = ''): string | undefined {
   if (n.fr.size === 0 && m.fr.size === 0) {
     if (n.muet) return n.vostfr ? 'MUET.VOSTFR' : 'MUET';
     if (n.vostfr || m.subsFr) return 'VOSTFR';
+    if (n.vo) return 'VO';
+    if (m.nonFr > 0 && !n.french && !n.multi) return 'VO'; // pistes audio du MediaInfo, aucune en français ni sous-titres français : version originale
     return undefined;
   }
   if (all.has('VFF') && all.has('VFQ')) return 'MULTI.VF2';

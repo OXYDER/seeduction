@@ -49,6 +49,8 @@ function fromName(tokens: string[]) {
     multi: has('multi', 'multi2', 'multi3', 'multilang', 'multilangue', 'dual'), // DUAL : deux langues audio
     muet: has('muet'),
     vostfr: has('vostfr', 'vost', 'subfrench'),
+    vo: has('vo'), // version originale : ni piste française ni sous-titres français
+    french: has('french', 'francais', 'français'), // le nom annonce du français : jamais une VO
   };
 }
 
@@ -145,6 +147,9 @@ function languageOf(name: string, nfo: string): string | undefined {
   if (n.fr.size === 0 && m.fr.size === 0) {
     if (n.muet) return n.vostfr ? 'MUET.VOSTFR' : 'MUET';
     if (n.vostfr || m.subsFr) return 'VOSTFR';
+    if (n.vo) return 'VO';
+    // Pistes audio lues dans le MediaInfo, aucune en français, aucun sous-titre français, et un nom qui n'annonce ni français ni MULTI : version originale.
+    if (m.nonFr > 0 && !n.french && !n.multi) return 'VO';
     return undefined; // « FRENCH », « MULTi » seuls : rien de précis dans le nom ni le MediaInfo
   }
   // Deux versions françaises (VFF + VFQ) : MULTI.VF2 est obligatoire.

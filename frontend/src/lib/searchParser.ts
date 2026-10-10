@@ -4,7 +4,7 @@
 import { languageTagFrom } from './languageTag';
 export const RESOLUTIONS = ['4K/2160p', '1080p', '720p', '480p'];
 /** Filtres de langue : chaque étiquette précise (MULTI.VFQ, MULTI.VF2...) est retrouvée par ses composantes (VFQ, VFF, MULTI...). */
-export const LANGUAGES = ['VFQ', 'VFF', 'VOF', 'TRUEFRENCH', 'VFI', 'VFB', 'VF2', 'MULTI', 'VOSTFR', 'MUET'];
+export const LANGUAGES = ['VFQ', 'VFF', 'VOF', 'TRUEFRENCH', 'VFI', 'VFB', 'VF2', 'MULTI', 'VO', 'VOSTFR', 'MUET'];
 export const ORIGINS = ['Québec', 'France', 'Canada anglais', 'International'];
 export const SOURCES = ['Remux', 'BluRay', 'WEB-DL', 'WEBRip', 'HDTV', 'DVDRip', 'CAM'];
 export const CODECS = ['x264', 'x265/HEVC', 'AV1', 'XviD'];
@@ -21,6 +21,7 @@ alias(['1080p', 'fhd', 'fullhd'], 'resolution', '1080p');
 alias(['720p', 'hd'], 'resolution', '720p');
 alias(['480p', 'sd'], 'resolution', '480p');
 alias(['vostfr', 'vost'], 'language', 'VOSTFR');
+alias(['vo'], 'language', 'VO');
 alias(['vfq', 'vq', 'quebec', 'québec'], 'language', 'VFQ');
 alias(['vff'], 'language', 'VFF');
 alias(['vof'], 'language', 'VOF');

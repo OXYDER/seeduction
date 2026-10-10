@@ -19,7 +19,7 @@ const MAX_QUEUE_PER_REQUEST = 30;
 const MAX_UPLOADS_PER_DAY = 100;
 const MIN_SCAN_GAP_MS = 60_000;
 const MAX_PARALLEL_JOBS = 3;
-const META_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU'];
+const META_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'];
 const LIVE = ['PROPOSED', 'DUPE', 'QUEUED', 'UPLOADED', 'REJECTED', 'IGNORED'];
 
 const str = (v: any, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');

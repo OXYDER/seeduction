@@ -122,8 +122,20 @@ describe('autres notations rencontrees dans les noms de releases', () => {
     expect(lang('Film.2025.MULTI.VF.1080p.WEB.H264-GRP')).toBeUndefined();
     expect(lang('Film.2025.MULTI.2F.1080p.WEB.H264-GRP')).toBeUndefined();
     expect(lang('Film.2025.VFS.1080p.WEB.H264-GRP')).toBeUndefined();
-    expect(lang('Film.2025.VO.1080p.WEB.H264-GRP')).toBeUndefined();
     expect(lang('Film.2025.VOA.1080p.WEB.H264-GRP')).toBeUndefined();
+  });
+
+  it('VO : version originale, sans piste ni sous-titres français', () => {
+    expect(lang('Film.2025.VO.1080p.WEB.H264-GRP')).toBe('VO');
+    expect(lang('Film.2025.VOSTFR.1080p.WEB.H264-GRP')).toBe('VOSTFR'); // VOSTFR l'emporte
+  });
+
+  it('VO déduite du MediaInfo : pistes audio, aucune en français, aucun sous-titre français, nom neutre', () => {
+    expect(lang('Film.2025.1080p.WEB.H264-GRP', MEDIAINFO(['English']))).toBe('VO');
+    expect(lang('Film.2025.1080p.WEB.H264-GRP', MEDIAINFO(['Japanese', 'English']))).toBe('VO');
+    expect(lang('Film.2025.FRENCH.1080p.WEB.H264-GRP', MEDIAINFO(['English']))).toBeUndefined(); // le nom annonce du français : contradiction, rien d'inventé
+    expect(lang('Film.2025.MULTi.1080p.WEB.H264-GRP', MEDIAINFO(['English']))).toBeUndefined();
+    expect(lang('Film.2025.1080p.WEB.H264-GRP', MEDIAINFO(['French (FR)', 'English']))).toBe('MULTI.VFF'); // une piste française : jamais VO
   });
 
   it('VOSTA (sous-titres anglais) n est pas un VOSTFR', () => {
