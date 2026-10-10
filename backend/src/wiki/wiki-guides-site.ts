@@ -354,6 +354,35 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Référence complète : [url=/wiki/messenger]Messenger : discussions, groupes et canaux[/url].`,
     },
     {
+      title: 'Telegram : rejoindre le groupe et relier ton compte',
+      slug: 'guide-telegram',
+      keywords: 'telegram, groupe, robot, bot, lier, compte, code, /lier, annonces, freeleech, chat, discussion',
+      content:
+        `Seeduction a un groupe Telegram : tu peux y discuter avec les autres membres et y recevoir les annonces du site. Ce guide explique comment le rejoindre et, si tu veux, relier ton compte pour que ton chat Telegram et le Messenger du site ne fassent qu'un.\n\n` +
+        `[b]Rejoindre le groupe[/b]\n` +
+        `Ouvre [b]Telegram[/b] dans le menu de ton compte (ou la petite carte « Rejoins le groupe Telegram » sur l'accueil) et clique sur [b]Rejoindre sur Telegram[/b]. Le groupe est privé : le lien est réservé aux membres de Seeduction, ne le partage pas. L'équipe peut valider chaque entrée.\n\n` +
+        `[b]Ce que tu reçois dans le groupe[/b]\n` +
+        `• Les [b]nouvelles[/b] du site, le début de chaque [b]freeleech global[/b] et, si l'équipe l'a activé, les [b]nouveaux torrents[/b] (jamais le contenu adulte).\n` +
+        `• Le chat : ce que tu écris dans le groupe peut apparaître dans le canal « Telegram » du Messenger, et inversement.\n\n` +
+        `[b]Relier ton compte (facultatif)[/b]\n` +
+        `Sans lien, tu lis et tu écris sur Telegram normalement, mais tes messages ne sont pas transmis au site. Avec le lien, ils arrivent dans le Messenger sous ton pseudo Seeduction, avec tes vrais droits (si tu es banni ou en mode lent, ça s'applique aussi).\n` +
+        `1. Page [b]Telegram[/b] > [b]Générer mon code[/b] (valable 15 minutes, utilisable une seule fois).\n` +
+        `2. Clique sur [b]Ouvrir Telegram et lier[/b] : le robot s'ouvre, appuie sur « Démarrer ». Ou envoie-lui toi-même en message privé : [b]/lier TONCODE[/b].\n` +
+        `3. Le robot confirme « Compte lié ». La page se met à jour toute seule.\n` +
+        `Tu peux aussi envoyer la commande dans le groupe : le robot supprime ton message pour ne pas montrer le code. Le plus discret reste le message privé.\n\n` +
+        `[b]Ce qui est copié, ce qui ne l'est pas[/b]\n` +
+        `• Copiés : texte, images (et GIF du site), réponses, modifications et suppressions.\n` +
+        `• Pas copiés : fichiers, messages vocaux, vidéos et autocollants (le site indique seulement qu'il y en avait un).\n` +
+        `• Un torrent adulte partagé dans le chat n'est jamais détaillé sur Telegram.\n\n` +
+        `[b]Ta vie privée[/b]\n` +
+        `Quand tu écris dans le canal « Telegram » du Messenger, ton message part dans le groupe Telegram, qui est un service extérieur à Seeduction. N'y écris rien que tu ne dirais pas dans un groupe. Ton pseudo Telegram n'est visible que de l'équipe (page d'administration), pas des autres membres du site. Tu peux retirer le lien à tout moment depuis la page Telegram.\n\n` +
+        `[b]Ça ne marche pas ?[/b]\n` +
+        `• « Code invalide ou expiré » : génère un nouveau code et envoie-le sans le modifier (il n'y a ni 0, ni O, ni 1, ni I, pour éviter les confusions).\n` +
+        `• « Déjà lié à un autre compte » : ce compte Telegram est relié à un autre compte Seeduction. Demande à l'équipe de retirer l'ancien lien.\n` +
+        `• Tes messages n'arrivent pas : vérifie que tu as bien relié ton compte, et lis la réponse du robot dans le groupe (mode lent, compte limité...).\n` +
+        `• Le robot ne répond pas en privé : écris-lui d'abord /start depuis son profil.`,
+    },
+    {
       title: 'Forum, nouvelles et commentaires',
       slug: 'guide-forum-nouvelles',
       keywords: 'forum, nouvelles, annonces, commentaires, réactions, sujet, répondre, éditeur, mise en forme, correction automatique',

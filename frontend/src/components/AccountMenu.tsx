@@ -47,6 +47,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
     ['/bonus', '🎁', 'Boutique bonus'],
     ['/friends', '👫', 'Amis'],
     ['/integrations', '🔌', 'API & flux RSS'],
+    ['/telegram', '✈️', 'Telegram'],
     ['/wiki', '📖', 'Wiki'],
   ];
 

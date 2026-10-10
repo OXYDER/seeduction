@@ -38,10 +38,10 @@ export const GUIDES_TOOLS: WikiSeedCategory = {
         `[b]Profiter du site[/b]\n` +
         `• [url=/wiki/guide-points-bonus]Points bonus[/url] · [url=/wiki/guide-pot-commun]Pot commun[/url] · [url=/wiki/guide-hit-and-run-reparer]Réparer un hit & run[/url] · [url=/wiki/guide-reanimation]Faire revivre un torrent[/url] · [url=/wiki/guide-demandes]Demandes[/url]\n` +
         `• [url=/wiki/guide-lecteur]Le lecteur Seeduction[/url] · [url=/wiki/guide-personnaliser]Personnaliser le site[/url] · [url=/wiki/guide-favoris-collections]Favoris et collections[/url] · [url=/wiki/guide-stats]Statistiques[/url]\n` +
-        `• [url=/wiki/guide-messenger]Messenger[/url] · [url=/wiki/guide-forum-nouvelles]Forum, nouvelles, commentaires[/url] · [url=/wiki/guide-teams]Teams[/url] · [url=/wiki/guide-support]Obtenir de l'aide[/url]\n` +
+        `• [url=/wiki/guide-messenger]Messenger[/url] · [url=/wiki/guide-forum-nouvelles]Forum, nouvelles, commentaires[/url] · [url=/wiki/guide-teams]Teams[/url] · [url=/wiki/guide-telegram]Telegram[/url] · [url=/wiki/guide-support]Obtenir de l'aide[/url]\n` +
         `• [url=/wiki/guide-compte-securite]Sécuriser ton compte[/url] · [url=/wiki/guide-compte-famille]Compte famille[/url]\n\n` +
         `[b]Pour le staff[/b]\n` +
-        `• [url=/wiki/guide-staff-moderation]Modérer : traiter la file[/url] · [url=/wiki/guide-staff-import]Import automatique (Admin > Import)[/url] · [url=/wiki/guide-staff-outils]Autres outils du staff[/url]\n\n` +
+        `• [url=/wiki/guide-staff-moderation]Modérer : traiter la file[/url] · [url=/wiki/guide-staff-import]Import automatique (Admin > Import)[/url] · [url=/wiki/guide-staff-telegram]Telegram (Admin > Telegram)[/url] · [url=/wiki/guide-staff-outils]Autres outils du staff[/url]\n\n` +
         `Une question qui n'est pas ici ? Cherche dans le [url=/wiki]wiki[/url] (barre de recherche) ou ouvre le [url=/wiki/support-chat-et-billets]Support[/url].`,
     },
     {

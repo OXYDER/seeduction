@@ -2986,6 +2986,8 @@ label.tk-field { display: grid; gap: 6px; }
 .st-periods button { padding: 6px 14px; }
 .st-periods button.on { background: var(--acc1, #8b5cf6); color: #fff; }
 a.st-link, a.dd-link { display: inline-block; background: var(--bg-panel-raised); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; text-decoration: none; }
+a.tg-btn { display: inline-block; background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--on-accent); border: 1px solid transparent; padding: 8px 16px; border-radius: 4px; font-size: 14px; font-weight: 600; text-decoration: none; }
+a.tg-btn:hover { filter: brightness(1.08); text-decoration: none; }
 a.st-link:hover, a.dd-link:hover { border-color: var(--border-gold); color: var(--gold-bright); }
 .st-section > h2 { margin: 0 0 10px; font-size: 18px; }
 .st-section { display: grid; gap: 12px; }

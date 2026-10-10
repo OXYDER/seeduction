@@ -270,5 +270,36 @@ export const GUIDES_STAFF: WikiSeedCategory = {
         `[b]Quand tu changes le site[/b]\n` +
         `Chaque nouvelle fonction ou règle modifiée doit être reflétée dans le wiki et dans les guides concernés : c'est ce qui les garde fiables.`,
     },
+    {
+      title: 'Telegram : robot, groupe et pont avec le chat (Admin > Telegram)',
+      slug: 'guide-staff-telegram',
+      keywords: 'telegram, robot, bot, botfather, groupe, pont, canal, annonces, freeleech, jeton, lier, administration',
+      content:
+        `Ce guide s'adresse aux administrateurs. L'onglet [b]Admin > Telegram[/b] relie un groupe Telegram au chat du site et publie des annonces automatiques. Les membres voient la page [url=/wiki/guide-telegram]Telegram[/url] de leur compte.\n\n` +
+        `[b]Comment ça marche[/b]\n` +
+        `Un robot Telegram (créé avec @BotFather) est ajouté à ton groupe. Le site interroge lui-même Telegram toutes les quelques secondes : il n'y a rien à ouvrir sur le NAS, seulement l'accès sortant vers api.telegram.org. Le jeton du robot est chiffré en base et n'est jamais réaffiché.\n\n` +
+        `[b]Mise en place (5 étapes)[/b]\n` +
+        `1. Sur Telegram, écris à [b]@BotFather[/b] : /newbot, un nom, un identifiant qui finit par « bot ». Copie le [b]jeton[/b].\n` +
+        `2. Toujours avec @BotFather : /setprivacy > ton robot > [b]Disable[/b]. Sans ça, le robot ne voit pas les messages ordinaires du groupe.\n` +
+        `3. Crée le groupe (privé), ajoute le robot et nomme-le [b]administrateur[/b] (il doit pouvoir écrire et supprimer des messages). Le lien d'invitation peut demander ton approbation pour chaque entrée.\n` +
+        `4. Admin > Telegram : colle le jeton, coche « Telegram activé », colle le lien d'invitation, enregistre. Écris un message dans le groupe : il apparaît dans la liste « Groupe Telegram » où tu le choisis. « Tester la connexion » envoie un message d'essai.\n` +
+        `5. Pour le chat : coche « Relier le groupe à un canal » et choisis un canal ouvert à tous, ou clique « Créer le canal Telegram ».\n\n` +
+        `[b]Le pont avec le chat[/b]\n` +
+        `• Seuls les membres qui ont [b]lié leur compte[/b] sont recopiés sur le site : leurs messages arrivent sous leur vrai pseudo et suivent leurs vrais droits (bannissement, mode lent du canal). Les autres lisent et écrivent sur Telegram sans être transmis ; le robot le leur rappelle une fois.\n` +
+        `• Dans l'autre sens, tout message écrit dans le canal relié part sur Telegram sous la forme « Pseudo : texte ». Garde donc un canal dédié.\n` +
+        `• Réponses, modifications et suppressions suivent des deux côtés. Les fichiers et vocaux ne sont pas copiés. Un torrent adulte n'est jamais détaillé. Les images ne partent que si SITE_URL est en https.\n` +
+        `• Le canal Support et les canaux réservés au staff ne peuvent pas être reliés.\n` +
+        `• Un message de plus de 10 minutes (après une panne) n'est pas recopié. Les envois vers Telegram respectent sa limite d'environ 20 messages par minute et sont mis en file.\n\n` +
+        `[b]Annonces automatiques[/b]\n` +
+        `Nouvelles du site, début d'un freeleech global (programmé ou récompense du pot commun) et, en option, nouveaux torrents approuvés hors catégories adultes. Activer une annonce ne rejoue pas l'historique. Tu peux envoyer les annonces vers un autre groupe ou canal (l'identifiant numérique, robot administrateur).\n\n` +
+        `[b]Comptes liés[/b]\n` +
+        `Le tableau en bas liste les liens (pseudo du site, pseudo Telegram). « Retirer » coupe le lien d'un membre, par exemple si son compte Telegram a changé de main. Un membre banni ou désactivé n'est plus recopié.\n\n` +
+        `[b]Dépannage[/b]\n` +
+        `• « Non connecté » + « Jeton refusé » : jeton copié incomplet ou régénéré dans @BotFather.\n` +
+        `• Le groupe n'apparaît pas dans la liste : le robot n'a vu aucun message (vérifie /setprivacy ou son rôle d'administrateur), écris un message dans le groupe.\n` +
+        `• « Message d'essai refusé » : le robot n'est pas dans le groupe, ou n'a pas le droit d'écrire.\n` +
+        `• Rien ne part du site vers Telegram : vérifie « Relier le groupe » et le canal choisi ; le dernier message d'erreur d'envoi s'affiche à côté de l'état.\n` +
+        `• Après un changement de JWT_SECRET, le jeton est à ressaisir (il est chiffré avec).`,
+    },
   ],
 };

@@ -11,6 +11,7 @@ import MetaChips from './MetaChips';
 import PotWidget from './PotWidget';
 import { Board } from './stats/StatsBits';
 import NewsPanel from './NewsPanel';
+import TelegramCard from './TelegramCard';
 import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
 import HomeShortcuts from './HomeShortcuts';
@@ -174,6 +175,7 @@ export default function HomeStreaming() {
       <PotWidget />
       <HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} />
       <NewsPanel />
+      <TelegramCard />
         <div className="home-bottom">
           <Board
             icon="💬" title="Derniers sujets du forum"

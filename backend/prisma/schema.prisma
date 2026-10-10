@@ -142,6 +142,7 @@ model User {
 
   @@index([status])
   @@index([parentId])
+  telegramLink     TelegramLink?
 }
 
 // Journal « qui a fait quoi » des profils d'un compte famille, lu par le profil principal.
@@ -1342,6 +1343,7 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+  telegram       TelegramMessage?
 }
 
 // Une réaction (émoji) par membre et par message ; en choisir une nouvelle remplace la précédente.
@@ -1566,4 +1568,29 @@ model PotDonation {
 
   @@index([cycleId])
   @@index([userId, createdAt])
+}
+
+// Telegram : compte Seeduction relié à un compte Telegram (code à usage unique envoyé au robot). Sans ce lien, les messages
+// du groupe Telegram ne sont pas recopiés dans Seeduction.
+model TelegramLink {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String   @unique
+  tgUserId   String   @unique
+  tgUsername String?  @db.VarChar(64)
+  createdAt  DateTime @default(now())
+}
+
+// Correspondance entre un message Seeduction et le message Telegram qui lui répond / le reproduit (réponses, modifications, suppressions).
+model TelegramMessage {
+  id            String   @id @default(uuid())
+  message       Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId     String   @unique
+  tgChatId      String
+  tgMessageId   Int
+  // true : écrit sur Telegram par le membre lui-même (le robot ne peut pas le modifier, seulement le supprimer)
+  fromTelegram  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@unique([tgChatId, tgMessageId])
 }

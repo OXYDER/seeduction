@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/auth';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import NewsPanel from '../components/NewsPanel';
+import TelegramCard from '../components/TelegramCard';
 import ModerationRail from '../components/ModerationRail';
 import HomeStreaming from '../components/HomeStreaming';
 import { useTheme } from '../lib/theme';
@@ -163,6 +164,7 @@ function ClassicDashboard() {
 
         <div className="col-center grid" style={{ gap: 16, alignContent: 'start' }}>
           <NewsPanel />
+          <TelegramCard />
           <div className="panel">
           <div className="panel-title"><span className="title-icon">🏆</span>Torrents en vedette</div>
           <table>

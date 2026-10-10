@@ -46,6 +46,7 @@ import Friends from './pages/Friends';
 import PlayerDownload from './pages/PlayerDownload';
 import Wiki from './pages/Wiki';
 import Integrations from './pages/Integrations';
+import Telegram from './pages/Telegram';
 import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
 import HallOfFame from './pages/HallOfFame';
@@ -102,6 +103,7 @@ export default function App() {
           <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/wiki" element={<Wiki />} />
           <Route path="/integrations" element={<Integrations />} />
+          <Route path="/telegram" element={<Telegram />} />
           <Route path="/wiki/:slug" element={<Wiki />} />
           <Route path="/rules" element={<Navigate to="/wiki" replace />} />
           <Route path="/favorites" element={<Favorites />} />
