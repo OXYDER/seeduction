@@ -620,6 +620,14 @@ function ForumAdmin() {
 
   function refresh() { api.get('/forum/categories').then((r) => setItems(r.data)); }
   useEffect(() => { refresh(); }, []);
+  const [seedMsg, setSeedMsg] = useState('');
+  const role = useAuthStore((s) => s.user?.role);
+  async function addSuggested() {
+    if (!window.confirm('Ajouter la structure suggérée : 4 catégories (Communauté, Médias, Aide et technique, Seeduction) et 11 forums ? Ce qui existe déjà n\'est pas recréé ni modifié.')) return;
+    setError(''); setSeedMsg('');
+    try { const { data } = await api.post('/forum/suggested'); setSeedMsg(data.created.length ? `✓ ${data.created.length} ajouté(s) : ${data.created.join(', ')}` : 'Tout existait déjà : rien à ajouter.'); refresh(); }
+    catch (err) { fail(err); }
+  }
 
   const fail = (err: any) => setError(err.response?.data?.message ?? 'Erreur');
 
@@ -754,6 +762,13 @@ function ForumAdmin() {
         </div>
       </div>
       {error && <div className="muted" style={{ color: 'var(--danger)', marginBottom: 8 }}>{error}</div>}
+      {(role === 'ADMIN' || role === 'OWNER') && (
+        <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          <button type="button" className="secondary" onClick={addSuggested}>✨ Ajouter les forums suggérés</button>
+          <span className="muted" style={{ fontSize: 13 }}>4 catégories et 11 forums pour démarrer (Communauté, Médias, Aide et technique, Seeduction). Rien n'est modifié ni supprimé.</span>
+          {seedMsg && <span style={{ color: 'var(--success)', fontSize: 13 }}>{seedMsg}</span>}
+        </div>
+      )}
       <div className="grid" style={{ gap: 12 }}>{items.map((c) => row(c, 0))}</div>
     </div>
   );

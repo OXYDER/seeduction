@@ -143,6 +143,9 @@ model User {
   @@index([status])
   @@index([parentId])
   telegramLink     TelegramLink?
+  suggestions      Suggestion[]
+  suggestionVotes  SuggestionVote[]
+  suggestionComments SuggestionComment[]
 }
 
 // Journal « qui a fait quoi » des profils d'un compte famille, lu par le profil principal.
@@ -1593,4 +1596,59 @@ model TelegramMessage {
   createdAt     DateTime @default(now())
 
   @@unique([tgChatId, tgMessageId])
+}
+
+// Suggestions des membres (idées, améliorations, retours) : chaque membre propose, les autres votent ; plus une suggestion a de votes,
+// plus elle monte dans la liste et plus elle a de chances d'être réalisée. Le staff la fait avancer (à l'étude, planifiée, en cours, réalisée...).
+model Suggestion {
+  id           String   @id @default(uuid())
+  title        String   @db.VarChar(120)
+  body         String   @db.Text
+  // SITE | TORRENTS | CHAT | PLAYER | COMMUNITY | ECONOMY | OTHER
+  category     String   @default("OTHER") @db.VarChar(16)
+  // OPEN | REVIEW | PLANNED | PROGRESS | DONE | DECLINED | DUPLICATE
+  status       String   @default("OPEN") @db.VarChar(12)
+  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId     String
+  voteCount    Int      @default(0)
+  commentCount Int      @default(0)
+  // Réponse du staff affichée sous le titre (pourquoi refusée, ce qui est prévu...).
+  statusNote   String?  @db.VarChar(600)
+  statusAt     DateTime?
+  statusById   String?
+  // Doublon : la suggestion qui la remplace (ses votes lui ont été transférés).
+  duplicateOfId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  votes        SuggestionVote[]
+  comments     SuggestionComment[]
+
+  @@index([status, voteCount])
+  @@index([authorId, createdAt])
+}
+
+model SuggestionVote {
+  id           String     @id @default(uuid())
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  suggestionId String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  createdAt    DateTime   @default(now())
+
+  @@unique([suggestionId, userId])
+  @@index([userId])
+}
+
+model SuggestionComment {
+  id           String     @id @default(uuid())
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  suggestionId String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  content      String     @db.VarChar(2000)
+  // Écrit par un membre de l'équipe (affiché avec un badge)
+  staff        Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+
+  @@index([suggestionId, createdAt])
 }

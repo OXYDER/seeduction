@@ -49,6 +49,7 @@ import { RoadmapModule } from './roadmap/roadmap.module';
 import { TeamsModule } from './teams/teams.module';
 import { SupportModule } from './support/support.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { SuggestionsModule } from './suggestions/suggestions.module';
 
 @Module({
   imports: [
@@ -102,6 +103,7 @@ import { TelegramModule } from './telegram/telegram.module';
     TeamsModule,
     SupportModule,
     TelegramModule,
+    SuggestionsModule,
   ],
 })
 export class AppModule {}

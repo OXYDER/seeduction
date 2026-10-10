@@ -61,30 +61,86 @@ export class AdminService {
     return { pendingTorrents, openReports, total: pendingTorrents + openReports };
   }
 
-  /** Torrents à valider, du plus ancien au plus récent, avec de quoi décider sans ouvrir chaque fiche. */
+  /**
+   * Torrents à valider, du plus ancien au plus récent, avec de quoi décider sans ouvrir chaque fiche : étiquettes de la release, envoyeur
+   * (ancienneté, ratio, historique d'envois), fiche, NFO, description, fichiers, doublons possibles, origine de l'envoi et contrôles automatiques.
+   */
   async pendingQueue() {
     const rows = await this.prisma.torrent.findMany({
       where: { status: 'PENDING' },
       orderBy: { createdAt: 'asc' },
       take: 200,
       select: {
-        id: true, name: true, size: true, coverImage: true, createdAt: true, year: true, resolution: true, description: true, fileList: true, seeders: true, leechers: true,
-        anonymousUpload: true, category: { select: { name: true } }, uploader: { select: { id: true, username: true, uploaded: true, downloaded: true, createdAt: true } },
+        id: true, infoHash: true, name: true, size: true, coverImage: true, createdAt: true, year: true, resolution: true, description: true, nfo: true, fileList: true,
+        seeders: true, leechers: true, anonymousUpload: true, freeleech: true, doubleUpload: true,
+        language: true, source: true, codec: true, hdr: true, audio: true, containerFormat: true, season: true, episode: true, releaseDate: true, origin: true,
+        releaseGroup: true, genres: true, videoType: true, durationMinutes: true, metaSource: true, metaExternalId: true, metadata: true,
+        category: { select: { name: true, adult: true, parent: { select: { name: true, adult: true } } } },
+        uploader: { select: { id: true, username: true, role: true, uploaded: true, downloaded: true, createdAt: true, parentId: true, profileType: true } },
       },
     });
-    const reportCounts = await this.prisma.report.groupBy({
-      by: ['targetId'],
-      where: { status: 'OPEN', targetType: 'torrent', targetId: { in: rows.map((r) => r.id) } },
-      _count: { _all: true },
-    });
+    const ids = rows.map((r) => r.id);
+    const uploaderIds = [...new Set(rows.map((r) => r.uploader.id))];
+    const [reportCounts, history, sameFiche, sameName, memberItems] = await Promise.all([
+      this.prisma.report.groupBy({ by: ['targetId'], where: { status: 'OPEN', targetType: 'torrent', targetId: { in: ids } }, _count: { _all: true } }),
+      this.prisma.torrent.groupBy({ by: ['uploaderId', 'status'], where: { uploaderId: { in: uploaderIds } }, _count: { _all: true } }),
+      this.prisma.torrent.findMany({
+        where: { status: { in: ['APPROVED', 'PENDING'] }, metaExternalId: { in: rows.map((r) => r.metaExternalId).filter((x): x is string => !!x) } },
+        select: { id: true, name: true, status: true, metaSource: true, metaExternalId: true, language: true, resolution: true, source: true, season: true, episode: true, size: true, seeders: true },
+      }),
+      this.prisma.torrent.findMany({
+        where: { status: { in: ['APPROVED', 'PENDING'] }, name: { in: rows.map((r) => r.name) } },
+        select: { id: true, name: true, status: true, metaSource: true, metaExternalId: true, language: true, resolution: true, source: true, season: true, episode: true, size: true, seeders: true },
+      }),
+      this.prisma.memberImportItem.findMany({ where: { torrentId: { in: ids } }, select: { torrentId: true, detail: true, learned: true } }),
+    ]);
     const reported = new Map(reportCounts.map((r) => [r.targetId, r._count._all]));
-    return rows.map(({ size, description, fileList, ...t }) => ({
-      ...t,
-      size: Number(size),
-      fileCount: Array.isArray(fileList) ? fileList.length : 0,
-      excerpt: (description ?? '').replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 240),
-      openReports: reported.get(t.id) ?? 0,
-    }));
+    const histOf = (uid: string) => {
+      const h = { approved: 0, rejected: 0, pending: 0, other: 0 };
+      for (const g of history) if (g.uploaderId === uid) { if (g.status === 'APPROVED') h.approved += g._count._all; else if (g.status === 'REJECTED') h.rejected += g._count._all; else if (g.status === 'PENDING') h.pending += g._count._all; else h.other += g._count._all; }
+      return h;
+    };
+    const imported = new Map(memberItems.map((m) => [m.torrentId as string, m]));
+    const plain = (t: string) => t.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+    const cut = (t: string, n: number) => (t.length > n ? t.slice(0, n).trimEnd() + '…' : t);
+    const pick = (o: any) => ({ id: o.id, name: o.name, status: o.status, language: o.language, resolution: o.resolution, source: o.source, season: o.season, episode: o.episode, size: Number(o.size), seeders: o.seeders });
+
+    return rows.map((r) => {
+      const meta = (r.metadata ?? {}) as Record<string, any>;
+      const files: { path: string; size: number }[] = Array.isArray(r.fileList) ? (r.fileList as any[]) : [];
+      const text = plain(r.description ?? '');
+      const nfo = (r.nfo ?? '').trim();
+      const up = Number(r.uploader.uploaded), down = Number(r.uploader.downloaded);
+      const dupes = [
+        ...sameFiche.filter((o) => o.id !== r.id && o.metaExternalId === r.metaExternalId && o.metaSource === r.metaSource && r.metaExternalId && (!r.season || !o.season || o.season === r.season) && (!r.episode || !o.episode || o.episode === r.episode)).map((o) => ({ ...pick(o), why: 'même fiche' })),
+        ...sameName.filter((o) => o.id !== r.id && o.name === r.name).map((o) => ({ ...pick(o), why: 'même nom' })),
+      ];
+      const seen = new Set<string>();
+      const duplicates = dupes.filter((d) => (seen.has(d.id) ? false : (seen.add(d.id), true))).slice(0, 6);
+      const mi = imported.get(r.id);
+      const miDetail = (mi?.detail ?? {}) as Record<string, any>;
+      return {
+        id: r.id, infoHash: r.infoHash, name: r.name, size: Number(r.size), coverImage: r.coverImage, createdAt: r.createdAt, year: r.year, resolution: r.resolution,
+        language: r.language, source: r.source, codec: r.codec, hdr: r.hdr, audio: r.audio, containerFormat: r.containerFormat, season: r.season, episode: r.episode,
+        releaseDate: r.releaseDate, origin: r.origin, releaseGroup: r.releaseGroup, videoType: r.videoType, durationMinutes: r.durationMinutes, genres: r.genres,
+        seeders: r.seeders, leechers: r.leechers, anonymousUpload: r.anonymousUpload, freeleech: r.freeleech, doubleUpload: r.doubleUpload,
+        category: r.category ? { name: r.category.name, path: [r.category.parent?.name, r.category.name].filter(Boolean).join(' › '), adult: !!(r.category.adult || r.category.parent?.adult) } : null,
+        uploader: {
+          id: r.uploader.id, username: r.uploader.username, role: r.uploader.role, uploaded: r.uploader.uploaded, downloaded: r.uploader.downloaded, createdAt: r.uploader.createdAt,
+          ratio: down > 0 ? up / down : null, history: histOf(r.uploader.id),
+        },
+        fiche: r.metaSource ? { source: r.metaSource, id: r.metaExternalId, title: meta.title ?? meta.name ?? meta.originalTitle ?? null, originalTitle: meta.originalTitle ?? null, year: meta.year ?? null } : null,
+        nfo: { present: nfo.length >= 20, length: nfo.length, excerpt: nfo ? cut(nfo.replace(/\r/g, ''), 1200) : '' },
+        description: { length: text.length, excerpt: cut(text, 600) },
+        excerpt: cut(text, 240),
+        fileCount: files.length,
+        files: files.slice(0, 15).map((f) => ({ path: String(f.path), size: Number(f.size) })),
+        filesTruncated: files.length > 15,
+        duplicates,
+        sentVia: mi ? { via: 'envoi multiple', verdict: miDetail.verdict ?? null, learned: !!mi.learned } : null,
+        openReports: reported.get(r.id) ?? 0,
+      };
+    });
   }
 
   pendingTorrents() {

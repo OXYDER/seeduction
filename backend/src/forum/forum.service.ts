@@ -11,6 +11,7 @@ const POSTS_PER_PAGE = 15;
 const UNREAD_WINDOW_MS = 30 * 86400_000; // au-delà, un sujet n'est plus signalé « non lu »
 
 const isStaff = (viewer?: Viewer) => !!viewer && STAFF.includes(viewer.role);
+import { SUGGESTED_FORUMS } from './forum-suggested';
 
 @Injectable()
 export class ForumService implements OnModuleInit {
@@ -78,6 +79,23 @@ export class ForumService implements OnModuleInit {
         description: extra.description?.trim() || null, icon: extra.icon?.trim() || null, staffOnly: !!extra.staffOnly, locked: !!extra.locked,
       },
     });
+  }
+
+  /** Ajoute la structure de forum suggérée (voir forum-suggested.ts) : ce qui existe déjà n'est pas recréé, rien n'est modifié. */
+  async createSuggested() {
+    const created: string[] = [];
+    let skipped = 0;
+    for (const cat of SUGGESTED_FORUMS) {
+      let parent = await this.prisma.forumCategory.findFirst({ where: { parentId: null, isCategory: true, name: cat.name } });
+      if (!parent) { parent = await this.createCategory(cat.name, undefined, true, { description: cat.description, icon: cat.icon }); created.push(cat.name); } else skipped++;
+      for (const f of cat.forums) {
+        const exists = await this.prisma.forumCategory.findFirst({ where: { parentId: parent.id, name: f.name } });
+        if (exists) { skipped++; continue; }
+        await this.createCategory(f.name, parent.id, false, { description: f.description, icon: f.icon, locked: f.locked });
+        created.push(`${cat.name} › ${f.name}`);
+      }
+    }
+    return { created, skipped };
   }
 
   async updateCategory(id: string, data: { name?: string; parentId?: string | null; isCategory?: boolean; description?: string | null; icon?: string | null; staffOnly?: boolean; locked?: boolean; position?: number }) {

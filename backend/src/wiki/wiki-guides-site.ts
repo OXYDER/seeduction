@@ -383,6 +383,31 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Le robot ne répond pas en privé : écris-lui d'abord /start depuis son profil.`,
     },
     {
+      title: 'Suggestions : proposer une idée et voter',
+      slug: 'guide-suggestions',
+      keywords: 'suggestion, idée, amélioration, voter, vote, proposer, demande de fonctionnalité, retour, feedback, à l\'étude, planifiée',
+      content:
+        `La page [b]Suggestions[/b] (menu du haut) sert à améliorer Seeduction ensemble : un membre propose une idée, les autres votent. Plus une suggestion a de votes, plus elle monte dans la liste et plus elle a de chances d'être réalisée.\n\n` +
+        `[b]Proposer une suggestion[/b]\n` +
+        `1. Clique sur [b]+ Proposer une suggestion[/b].\n` +
+        `2. Donne un titre court et clair, choisis la catégorie (site, torrents, messagerie, lecteur, communauté, bonus...) et explique ton idée : ce qui manque ou te gêne, comment l'améliorer, pourquoi ce serait utile aux autres.\n` +
+        `3. Pendant que tu écris, le site te montre les [b]suggestions qui ressemblent à la tienne[/b] : si l'idée existe déjà, vote pour elle plutôt que d'en créer une nouvelle (les votes comptent plus quand ils sont regroupés).\n` +
+        `Tu peux proposer 3 suggestions par jour et en avoir 15 en cours. Un [b]bug[/b] ? Utilise plutôt le forum « Bugs et problèmes » ou le [url=/wiki/guide-support]Support[/url].\n\n` +
+        `[b]Voter[/b]\n` +
+        `Clique sur le bouton ▲ à gauche d'une suggestion. Un compte = un vote, que tu peux retirer en recliquant. Ta propre suggestion compte pour un premier vote. Les votes sont fermés quand une suggestion est réalisée, refusée ou en doublon.\n\n` +
+        `[b]Ce que deviennent les suggestions[/b]\n` +
+        `• 💡 [b]Proposée[/b] : elle attend des votes. Une barre montre où elle en est.\n` +
+        `• 🔎 [b]À l'étude[/b] : elle passe ici [b]toute seule[/b] quand elle atteint le nombre de votes réglé par les administrateurs (10 par défaut), et l'équipe est prévenue.\n` +
+        `• 🗓️ [b]Planifiée[/b], 🛠️ [b]En cours[/b], ✅ [b]Réalisée[/b] : l'équipe la fait avancer, avec un message pour expliquer ce qui est prévu.\n` +
+        `• ⛔ [b]Refusée[/b] : l'équipe explique pourquoi.\n` +
+        `• 🔁 [b]Doublon[/b] : elle est regroupée avec une autre suggestion, et [b]tes votes sont transférés[/b] sur celle-ci.\n` +
+        `Tu reçois une [b]notification[/b] à chaque changement de statut d'une suggestion pour laquelle tu as voté (ou que tu as proposée), et quand quelqu'un commente la tienne.\n\n` +
+        `[b]Commenter, modifier, supprimer[/b]\n` +
+        `Sous chaque suggestion, tu peux ajouter un avis ou un cas d'usage. Tu peux modifier ta suggestion tant qu'elle est « proposée », et la supprimer tant qu'elle n'a ni vote des autres ni commentaire.\n\n` +
+        `[b]Retrouver tes suggestions[/b]\n` +
+        `Les filtres de la page permettent de ne voir que [b]mes suggestions[/b] ou celles [b]où j'ai voté[/b], de chercher par mot, de filtrer par catégorie et de trier par votes, nouveautés ou commentaires. L'onglet « Réalisées » montre ce qui a déjà été fait grâce à vous.`,
+    },
+    {
       title: 'Forum, nouvelles et commentaires',
       slug: 'guide-forum-nouvelles',
       keywords: 'forum, nouvelles, annonces, commentaires, réactions, sujet, répondre, éditeur, mise en forme, correction automatique',

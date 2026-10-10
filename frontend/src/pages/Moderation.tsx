@@ -6,15 +6,9 @@ import { useQueue } from '../store/queue';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import RejectReason from '../components/RejectReason';
+import PendingTorrentCard, { type PendingTorrent } from '../components/PendingTorrentCard';
 import { SupportQueue, SupportStats } from '../components/AdminSupport';
 import { useSupport } from '../store/support';
-
-interface PendingTorrent {
-  id: string; name: string; size: number; coverImage: string | null; createdAt: string; year: number | null; resolution: string | null;
-  excerpt: string; fileCount: number; anonymousUpload: boolean; openReports: number; seeders: number; leechers: number;
-  category: { name: string } | null;
-  uploader: { id: string; username: string; uploaded: string; downloaded: string; createdAt: string };
-}
 
 interface ReportRow {
   id: string; targetType: string; targetId: string; reason: string; createdAt: string; label: string; link: string | null;
@@ -162,30 +156,11 @@ export default function Moderation() {
               </div>
               <div className="mod-list">
                 {pending.map((t) => (
-                  <article key={t.id} className={`mod-card${isOld(t.createdAt) ? ' old' : ''}`}>
-                    <label className="mod-check"><input type="checkbox" checked={selected.has(t.id)} onChange={(e) => setSelected((s) => { const n = new Set(s); if (e.target.checked) n.add(t.id); else n.delete(t.id); return n; })} aria-label={`Sélectionner ${t.name}`} /></label>
-                    <Link to={`/torrents/${t.id}`} className="mod-cover" title="Ouvrir la fiche">
-                      {t.coverImage ? <img src={t.coverImage} alt="" loading="lazy" /> : <span>🎬</span>}
-                    </Link>
-                    <div className="mod-body">
-                      <Link to={`/torrents/${t.id}`} className="mod-title">{t.name}</Link>
-                      <div className="mod-meta">
-                        {[t.category?.name, t.year, t.resolution, formatBytes(t.size), t.fileCount ? `${t.fileCount} fichier${t.fileCount > 1 ? 's' : ''}` : null].filter(Boolean).join(' · ')}
-                      </div>
-                      <div className="mod-meta">
-                        Envoyé par <Link to={`/users/${t.uploader.id}`}>{t.uploader.username}</Link>{t.anonymousUpload ? ' (anonyme)' : ''} · <span className={isOld(t.createdAt) ? 'mod-late' : ''}>{timeAgo(t.createdAt)}</span>
-                        <span className="badge" style={{ marginLeft: 8, background: t.seeders > 0 ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.08)', color: t.seeders > 0 ? 'var(--success)' : 'inherit' }} title="Nombre de seeders connectés au tracker pour ce torrent : un envoi depuis un client ajoute son seed dès l'envoi, tu peux vérifier qu'il seede avant d'approuver">{t.seeders > 0 ? `🌱 ${t.seeders} seeder${t.seeders > 1 ? 's' : ''}` : 'aucun seeder'}</span>
-                        {t.openReports > 0 && <span className="badge double" style={{ marginLeft: 8 }}>⚠ {t.openReports} signalement{t.openReports > 1 ? 's' : ''}</span>}
-                      </div>
-                      {t.excerpt && <p className="mod-excerpt">{t.excerpt}</p>}
-                      {rejecting === t.id && <RejectReason busy={busy === t.id} onCancel={() => setRejecting(null)} onConfirm={(reason) => reject(t, reason)} />}
-                    </div>
-                    <div className="mod-actions">
-                      <button type="button" disabled={busy === t.id} onClick={() => approve(t)}>✓ Approuver</button>
-                      <button type="button" className="danger" disabled={busy === t.id} onClick={() => setRejecting(rejecting === t.id ? null : t.id)}>✕ Rejeter</button>
-                      <Link to={`/torrents/${t.id}?edit=1`} className="mod-link">✏️ Modifier</Link>
-                    </div>
-                  </article>
+                  <PendingTorrentCard
+                    key={t.id} t={t} busy={busy === t.id} rejecting={rejecting === t.id}
+                    selected={selected.has(t.id)} onSelect={(on) => setSelected((sel) => { const n = new Set(sel); if (on) n.add(t.id); else n.delete(t.id); return n; })}
+                    onApprove={() => approve(t)} onToggleReject={() => setRejecting(rejecting === t.id ? null : t.id)} onReject={(reason) => reject(t, reason)}
+                  />
                 ))}
               </div>
             </>

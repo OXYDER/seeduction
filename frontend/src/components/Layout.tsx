@@ -95,6 +95,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/teams', icon: '🏴', cls: 'c-forum', label: 'Teams', match: starts('/teams') },
   { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat') },
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
+  { to: '/suggestions', icon: '💡', cls: 'c-forum', label: 'Suggestions', match: starts('/suggestions') },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
   { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead') },
   { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p) },

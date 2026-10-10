@@ -111,6 +111,16 @@ export class ForumController {
     return this.forumService.listCategories();
   }
 
+  /** Ajoute la structure de forum suggérée (4 catégories, 11 forums) : ce qui existe déjà n'est pas recréé. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Post('suggested')
+  async createSuggested(@Request() req: any) {
+    const result = await this.forumService.createSuggested();
+    await this.audit.log(req.user.userId, 'FORUM_STRUCTURE_CREATE', { suggested: result.created.length }, null);
+    return result;
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post('categories')
