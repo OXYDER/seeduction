@@ -9,7 +9,6 @@ import NotificationsBell from './NotificationsBell';
 import InstallPrompt from './InstallPrompt';
 import ThemeSwitcher from './ThemeSwitcher';
 import SearchBox from './SearchBox';
-import FreeleechBanner from './FreeleechBanner';
 import Avatar from './Avatar';
 import ChatDock from './ChatDock';
 import StatusSwitcher from './StatusSwitcher';
@@ -434,8 +433,6 @@ function LayoutInner() {
             </div>
           </header>
 
-          <FreeleechBanner />
-
           <main className="container">
             <Breadcrumbs />
             <div key={location.pathname} className="page-enter">
@@ -514,8 +511,6 @@ function LayoutInner() {
           </button>
         </div>
       </div>
-
-      <FreeleechBanner />
 
       <div className="mainnav">
         <div className="nav-links">
