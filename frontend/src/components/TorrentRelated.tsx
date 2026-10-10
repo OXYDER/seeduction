@@ -3,6 +3,7 @@ import { TorrentHover } from './TorrentLink';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
+import MetaChips from './MetaChips';
 
 interface Card {
   id: string;
@@ -12,6 +13,8 @@ interface Card {
   language: string | null;
   seeders: number;
   leechers: number;
+  // Informations des étiquettes (MetaChips) : date de sortie, saison / épisode, source, codec, audio...
+  [key: string]: any;
 }
 
 interface Coverage {
@@ -36,19 +39,16 @@ function ranges(nums: number[]): string {
   return out.join(', ');
 }
 
-function TorrentChip({ t, current, label }: { t: Card; current: boolean; label?: string }) {
+/** Une release : les étiquettes du site (date, langue, qualité...) puis la taille écrite et les seeders. */
+function ReleaseLine({ t, current, label }: { t: Card; current: boolean; label?: string }) {
   return (
     <TorrentHover id={t.id}>
-    <Link
-      to={`/torrents/${t.id}`}
-      className="entity-chip"
-      title={t.name}
-      style={current ? { borderColor: 'var(--gold)' } : undefined}
-    >
-      {[t.resolution, t.language, formatBytes(t.size)].filter(Boolean).join(' · ')}
-      <span className="muted">· {t.seeders} S</span>
-      {label && <span className="muted">· {label}</span>}
-    </Link>
+      <Link to={`/torrents/${t.id}`} className={`rel-line${current ? ' current' : ''}`} title={t.name}>
+        <span className="vr-chips"><MetaChips t={t} inline /></span>
+        <span className="rel-size">{formatBytes(t.size)}</span>
+        <span className="muted">· {t.seeders} S</span>
+        {label && <span className="muted">· {label}</span>}
+      </Link>
     </TorrentHover>
   );
 }
@@ -103,7 +103,7 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                   {p.title}{isCurrent ? ' (celui-ci)' : ''}
                 </strong>
                 {p.torrents.length > 0
-                  ? p.torrents.map((t: Card) => <TorrentChip key={t.id} t={t} current={t.id === torrentId} />)
+                  ? p.torrents.map((t: Card) => <ReleaseLine key={t.id} t={t} current={t.id === torrentId} />)
                   : <span className="muted">Non disponible sur Seeduction — <Link to={requestLink(`${p.title}${p.year ? ` (${p.year})` : ''}`)}>faire une demande</Link></span>}
               </div>
             );
@@ -130,8 +130,18 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
     list.forEach((t) => t.coverage.forEach((c) => { if (c.season === season) (c.episodes ?? []).forEach((e) => have.add(e)); }));
     return Math.max(0, total - have.size);
   };
+  /** Épisodes précis qui couvrent cet épisode (hors saisons complètes, listées à part). */
   const coversEpisode = (season: number, ep: number) =>
-    torrents.filter((t) => t.coverage.some((c) => c.season === season && (c.episodes === null || c.episodes.includes(ep))));
+    torrents.filter((t) => t.coverage.some((c) => c.season === season && c.episodes !== null && c.episodes.includes(ep)));
+  const packs = (season: number) => torrents.filter((t) => t.coverage.some((c) => c.season === season && c.episodes === null));
+  /** Résumé d'une saison : saison complète disponible, ou nombre d'épisodes disponibles. */
+  const availability = (season: number) => {
+    const list = covering(season);
+    const complete = list.some((t) => t.coverage.some((c) => c.season === season && c.episodes === null));
+    const have = new Set<number>();
+    list.forEach((t) => t.coverage.forEach((c) => { if (c.season === season) (c.episodes ?? []).forEach((e) => have.add(e)); }));
+    return { any: list.length > 0, complete, count: have.size };
+  };
 
   return (
     <div className="panel">
@@ -151,21 +161,31 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                 <span className="muted">
                   {[s.episodeCount ? `${s.episodeCount} épisode${s.episodeCount > 1 ? 's' : ''}` : null, s.airDate ? String(s.airDate).slice(0, 4) : null].filter(Boolean).join(' · ')}
                 </span>
-                {list.length > 0
-                  ? list.map((t) => {
-                      const c = t.coverage.find((x) => x.season === n)!;
-                      return <TorrentChip key={t.id} t={t} current={t.id === torrentId} label={c.episodes === null ? 'saison complète' : `épisodes ${ranges(c.episodes)}`} />;
-                    })
-                  : <span className="muted">Non disponible — <Link to={requestLink(`${seriesTitle} ${s.name}`)}>faire une demande</Link></span>}
-                {missingEpisodes(n, s.episodeCount) > 0 && (
-                  <span className="muted">Saison incomplète : {missingEpisodes(n, s.episodeCount)} épisode{missingEpisodes(n, s.episodeCount) > 1 ? 's' : ''} manquant{missingEpisodes(n, s.episodeCount) > 1 ? 's' : ''} — <Link to={requestLink(`${seriesTitle} ${s.name} (saison complète)`)}>faire une demande</Link></span>
-                )}
+                {(() => {
+                  const av = availability(n);
+                  const missing = missingEpisodes(n, s.episodeCount);
+                  if (!av.any) return <span className="muted">Non disponible — <Link to={requestLink(`${seriesTitle} ${s.name}`)}>faire une demande</Link></span>;
+                  if (av.complete) return <span className="rel-ok">✓ Saison complète disponible</span>;
+                  return (
+                    <span>
+                      <span className="rel-ok">{av.count} épisode{av.count > 1 ? 's' : ''} disponible{av.count > 1 ? 's' : ''}</span>
+                      {s.episodeCount ? <span className="muted"> sur {s.episodeCount}</span> : null}
+                      {missing > 0 && <span className="muted"> · {missing} manquant{missing > 1 ? 's' : ''} — <Link to={requestLink(`${seriesTitle} ${s.name} (saison complète)`)}>faire une demande</Link></span>}
+                    </span>
+                  );
+                })()}
               </div>
 
               {isOpen && (
                 <div style={{ margin: '8px 0 4px 16px' }}>
                   {!eps && <p className="muted">Chargement...</p>}
                   {eps === 'error' && <p className="muted">Liste des épisodes indisponible.</p>}
+                  {packs(n).length > 0 && (
+                    <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+                      <strong style={{ minWidth: 130 }}>Saison complète</strong>
+                      {packs(n).map((t) => <ReleaseLine key={t.id} t={t} current={t.id === torrentId} />)}
+                    </div>
+                  )}
                   {Array.isArray(eps) && (
                     <table>
                       <tbody>
@@ -175,10 +195,17 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                             <tr key={e.number}>
                               <td className="muted" style={{ width: 60 }}>E{pad(e.number)}</td>
                               <td>{e.name}{e.airDate && <span className="muted"> · {e.airDate}</span>}</td>
-                              <td style={{ textAlign: 'right' }}>
-                                {have.length > 0
-                                  ? have.map((t) => <TorrentChip key={t.id} t={t} current={t.id === torrentId} />)
-                                  : <span className="muted">Non disponible — <Link to={requestLink(`${seriesTitle} S${pad(n)}E${pad(e.number)}`)}>faire une demande</Link></span>}
+                              <td>
+                                <div className="rel-list">
+                                  {have.length > 0
+                                    ? have.map((t) => {
+                                        const c = t.coverage.find((x) => x.season === n);
+                                        return <ReleaseLine key={t.id} t={t} current={t.id === torrentId} label={c?.episodes && c.episodes.length > 1 ? `épisodes ${ranges(c.episodes)}` : undefined} />;
+                                      })
+                                    : packs(n).length > 0
+                                      ? <span className="muted">Dans la saison complète</span>
+                                      : <span className="muted">Non disponible — <Link to={requestLink(`${seriesTitle} S${pad(n)}E${pad(e.number)}`)}>faire une demande</Link></span>}
+                                </div>
                               </td>
                             </tr>
                           );

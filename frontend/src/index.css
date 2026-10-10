@@ -3360,3 +3360,11 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .pager-size { gap: 6px; font-size: 12.5px; }
 .pager-size select { width: auto; padding: 4px 8px; font-size: 12.5px; }
 @media (max-width: 640px) { .pager { justify-content: center; } .pager-info { width: 100%; text-align: center; } }
+
+/* Saisons, épisodes et sagas : une release = ses étiquettes, puis sa taille écrite */
+.rel-line { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 7px; background: rgba(255,255,255,0.04); color: inherit; font-size: 13px; text-decoration: none; }
+.rel-line:hover { border-color: var(--border-gold, var(--gold)); }
+.rel-line.current { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+.rel-size { font-weight: 600; white-space: nowrap; }
+.rel-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rel-ok { color: var(--success); font-weight: 600; }
