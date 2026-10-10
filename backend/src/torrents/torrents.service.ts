@@ -30,6 +30,8 @@ export interface TorrentFilters {
     year?: number; language?: string; resolution?: string; codec?: string;
     hdr?: boolean; audio?: string; source?: string; containerFormat?: string; origin?: string; genre?: string;
     entityId?: string; role?: string; hideAnonymous?: boolean; viewerId?: string;
+    /** Torznab (Prowlarr, Sonarr, Radarr...) : plusieurs catégories d'un coup, mots de recherche indépendants de la ponctuation, saison / épisode, fiche TMDB, gratuits seulement. */
+    categoryIds?: string[]; searchTokens?: string[]; season?: number; episode?: number; tmdbId?: string; freeleechOnly?: boolean;
     /** all = torrents actifs (défaut) ; noseeders = approuvés sans seeder ; dead = retirés des listes après une longue inactivité. */
     state?: 'noseeders' | 'dead';
     /** Ajoutés dans les dernières 24h / 7 jours / 30 jours (Accueil : Derniers torrents / Les plus populaires). */
@@ -312,6 +314,15 @@ export class TorrentsService implements OnModuleInit {
         ...(plain !== params.search ? [{ entities: { some: { entity: { name: { contains: plain, mode: 'insensitive' } } } } }] : []),
       ];
     }
+    if (params.categoryIds) where.categoryId = { in: params.categoryIds };
+    if (params.searchTokens?.length) {
+      // Chaque mot doit se retrouver (dans le nom, avec ses points / tirets, ou dans les titres de la fiche) : « Mon Show » retrouve Mon.Show.S01E01.
+      for (const token of params.searchTokens) where.AND = [...(where.AND ?? []), { OR: [{ name: { contains: token, mode: 'insensitive' } }, { searchTitles: { contains: token, mode: 'insensitive' } }] }];
+    }
+    if (params.season != null) where.AND = [...(where.AND ?? []), { season: { in: [String(params.season), String(params.season).padStart(2, '0')] } }];
+    if (params.episode != null) where.AND = [...(where.AND ?? []), { OR: [{ episode: { in: [String(params.episode), String(params.episode).padStart(2, '0')] } }, { episode: null }] }]; // sans épisode : une saison complète
+    if (params.tmdbId) { where.metaSource = 'tmdb'; where.metaExternalId = params.tmdbId; }
+    if (params.freeleechOnly) where.freeleech = true;
     if (params.uploaderId) where.uploaderId = params.uploaderId;
     if (params.hideAnonymous) where.anonymousUpload = false;
     if (params.entityId) where.entities = { some: { entityId: params.entityId, ...(params.role ? { role: params.role } : {}) } };

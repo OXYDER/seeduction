@@ -31,6 +31,7 @@ import { ReportsModule } from './reports/reports.module';
 import { BadgesModule } from './badges/badges.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { PublicApiModule } from './public-api/public-api.module';
+import { TorznabModule } from './torznab/torznab.module';
 import { ChatModule } from './chat/chat.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { CoversModule } from './covers/covers.module';
@@ -83,6 +84,7 @@ import { SupportModule } from './support/support.module';
     BadgesModule,
     ApiKeysModule,
     PublicApiModule,
+    TorznabModule,
     ChatModule,
     MonitoringModule,
     CoversModule,

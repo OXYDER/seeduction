@@ -2,7 +2,7 @@ import { randomBytes, createHash } from 'crypto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 
-export const API_SCOPES = ['torrents:read', 'stats:read', 'user:read'] as const;
+export const API_SCOPES = ['torrents:read', 'torrents:download', 'stats:read', 'user:read'] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
 @Injectable()

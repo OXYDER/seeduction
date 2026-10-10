@@ -16,7 +16,7 @@ export class ApiKeyGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
     const bearer = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : undefined;
-    const rawKey = req.headers['x-api-key'] ?? bearer ?? req.query?.key;
+    const rawKey = req.headers['x-api-key'] ?? bearer ?? req.query?.key ?? req.query?.apikey; // « apikey » : le nom utilisé par Prowlarr, Sonarr, Radarr...
     if (!rawKey || typeof rawKey !== 'string') throw new UnauthorizedException('Clé API manquante');
 
     const apiKey = await this.apiKeysService.validate(rawKey);
