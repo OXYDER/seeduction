@@ -230,6 +230,7 @@ function ClassicDashboard() {
       {stats && (
         <div className="footer-stats ornate-frame">
           <div className="item"><div className="icon">👥</div><div className="n">{formatNumber(stats.totalUsers)}</div><div className="l">Utilisateurs</div></div>
+          <div className="item"><div className="icon">🟢</div><div className="n">{formatNumber(stats.online ?? 0)}</div><div className="l">En ligne</div></div>
           <div className="item"><div className="icon">📦</div><div className="n">{formatNumber(stats.totalTorrents)}</div><div className="l">Torrents</div></div>
           <div className="item"><div className="icon">🌱</div><div className="n">{formatNumber(stats.totalSeeders)}</div><div className="l">Seeders</div></div>
           <div className="item"><div className="icon">📥</div><div className="n">{formatNumber(stats.totalLeechers)}</div><div className="l">Leechers</div></div>

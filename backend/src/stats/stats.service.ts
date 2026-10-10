@@ -31,6 +31,8 @@ export class StatsService {
       totalCompleted,
       totalSize: totalSizeAgg._sum.size ?? 0n,
       totalTraffic,
+      // membres connectés en ce moment (ceux qui apparaissent hors ligne ne sont pas comptés)
+      online: this.presence.listOnline().length,
     };
   }
 

@@ -11,7 +11,6 @@ import MetaChips from './MetaChips';
 import PotWidget from './PotWidget';
 import { Board } from './stats/StatsBits';
 import NewsPanel from './NewsPanel';
-import TelegramCard from './TelegramCard';
 import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
 import HomeShortcuts from './HomeShortcuts';
@@ -113,6 +112,7 @@ export default function HomeStreaming() {
   const [byCategory, setByCategory] = useState<{ id: string; name: string; slug: string; items: any[] }[]>([]);
   const [topUploaders, setTopUploaders] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [tg, setTg] = useState<{ enabled?: boolean; inviteUrl?: string | null } | null>(null);
   const [topics, setTopics] = useState<any[]>([]);
   const [active, setActive] = useState<any[]>([]);
   const [followed, setFollowed] = useState<any[]>([]);
@@ -120,6 +120,12 @@ export default function HomeStreaming() {
   const [atRisk, setAtRisk] = useState<any[]>([]);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
+
+  // Le nombre de membres en ligne se rafraîchit tout seul.
+  useEffect(() => {
+    const t = setInterval(() => { api.get('/stats/global').then((r) => setStats(r.data)).catch(() => {}); }, 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     api.get('/torrents', { params: { pageSize: 18, sort: 'seeders' } }).then((r) => setPopular(r.data.items)).catch(() => {});
@@ -132,6 +138,7 @@ export default function HomeStreaming() {
     api.get('/torrents/mine/recommended').then((r) => setRecommended(r.data)).catch(() => {});
     api.get('/users/leaderboard', { params: { limit: 5 } }).then((r) => setTopUploaders(r.data)).catch(() => {});
     api.get('/stats/global').then((r) => setStats(r.data)).catch(() => {});
+    api.get('/telegram/info').then((r) => setTg(r.data)).catch(() => {});
     api.get('/forum/latest').then((r) => setTopics(r.data.slice(0, 8))).catch(() => {});
   }, []);
 
@@ -175,7 +182,6 @@ export default function HomeStreaming() {
       <PotWidget />
       <HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} />
       <NewsPanel />
-      <TelegramCard />
         <div className="home-bottom">
           <Board
             icon="💬" title="Derniers sujets du forum"
@@ -194,9 +200,12 @@ export default function HomeStreaming() {
             <div className="panel st-board">
               <h3>📊 La communauté</h3>
               <div className="community-tiles">
-                {[['👥', 'membres', formatNumber(stats.totalUsers)], ['🎞️', 'torrents', formatNumber(stats.totalTorrents)], ['🌱', 'seeders', formatNumber(stats.totalSeeders)], ['🔁', 'échangés', formatBytes(stats.totalTraffic)]].map(([icon, label, value]) => (
+                {[['👥', 'membres', formatNumber(stats.totalUsers)], ['🟢', 'en ligne', formatNumber(stats.online ?? 0)], ['🎞️', 'torrents', formatNumber(stats.totalTorrents)], ['🌱', 'seeders', formatNumber(stats.totalSeeders)], ['🔁', 'échangés', formatBytes(stats.totalTraffic)]].map(([icon, label, value]) => (
                   <div key={label} className="community-tile"><span className="community-tile-icon" aria-hidden="true">{icon}</span><strong>{value}</strong><span className="muted">{label}</span></div>
                 ))}
+                {tg?.enabled && tg.inviteUrl && (
+                  <a className="community-tile" href={tg.inviteUrl} target="_blank" rel="noopener noreferrer" title="Rejoindre le groupe Telegram"><span className="community-tile-icon" aria-hidden="true">✈️</span><strong>Telegram</strong><span className="muted">rejoindre le groupe</span></a>
+                )}
               </div>
               <div className="st-board-footer"><Link to="/stats" className="muted">Toutes les statistiques →</Link></div>
             </div>

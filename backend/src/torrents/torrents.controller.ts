@@ -12,6 +12,8 @@ import { FACETS } from '../common/utils/facet-schema';
 import { GAME_PLATFORMS, detectGamePlatforms, platformIdsFromRawg } from '../common/utils/game-platforms';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 
 /** Filtres de catégorie de l'adresse : `f.formatMusique=FLAC (24 bit)|MP3` (OU entre valeurs, ET entre filtres). */
 const attrFiltersOf = (query: Record<string, string>) => {
@@ -186,6 +188,14 @@ export class TorrentsController {
   @Get(':id/nfo')
   nfo(@Param('id') id: string, @Request() req: any) {
     return this.torrentsService.getNfo(id, req.user);
+  }
+
+  /** Peers détaillés d'un torrent : réservé à l'équipe. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
+  @Get(':id/peers')
+  peers(@Param('id') id: string) {
+    return this.torrentsService.peers(id);
   }
 
   @UseGuards(OptionalJwtAuthGuard)

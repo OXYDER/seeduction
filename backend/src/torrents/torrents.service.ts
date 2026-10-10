@@ -16,6 +16,7 @@ import { RELEASE_EXTENSION_SQL, stripReleaseExtension } from '../common/utils/re
 import { Cron } from '@nestjs/schedule';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { parsePeerClient } from '../common/utils/peer-client';
 
 const STORAGE_DIR = process.env.TORRENT_STORAGE_DIR ?? './storage/torrents';
 const ANNOUNCE_BASE_URL = process.env.ANNOUNCE_BASE_URL ?? 'https://tracker.example.com/tracker';
@@ -693,6 +694,37 @@ export class TorrentsService implements OnModuleInit {
   async installNotes(id: string, viewer?: { userId: string; role: string }) {
     const { content } = await this.getNfo(id, viewer);
     return { sections: content ? extractInstallNotes(content) : [] };
+  }
+
+  /**
+   * Liste détaillée des peers d'un torrent (équipe seulement) : membre, adresse, client BitTorrent reconnu d'après le peer_id,
+   * volumes cumulés sur CE torrent, progression et dernier contact. `sameIpUsers` signale une même adresse utilisée par plusieurs membres.
+   */
+  async peers(id: string) {
+    const torrent = await this.prisma.torrent.findUnique({ where: { id }, select: { id: true, size: true } });
+    if (!torrent) throw new NotFoundException('Torrent introuvable');
+    const rows = await this.prisma.peer.findMany({
+      where: { torrentId: id },
+      orderBy: [{ isSeeder: 'desc' }, { lastAnnounceAt: 'desc' }],
+      take: 500,
+      include: { user: { select: { id: true, username: true, role: true, uploaded: true, downloaded: true } } },
+    });
+    const usersByIp = new Map<string, Set<string>>();
+    for (const p of rows) usersByIp.set(p.ip, (usersByIp.get(p.ip) ?? new Set()).add(p.userId));
+    const size = Number(torrent.size);
+    return rows.map((p) => {
+      const c = parsePeerClient(p.peerId);
+      const up = Number(p.user.uploaded), down = Number(p.user.downloaded);
+      return {
+        id: p.id,
+        user: { id: p.user.id, username: p.user.username, role: p.user.role, ratio: down > 0 ? up / down : null },
+        ip: p.ip, port: p.port, peerId: p.peerId, client: c.client, clientVersion: c.version, clientKnown: c.known,
+        isSeeder: p.isSeeder, uploaded: Number(p.uploaded), downloaded: Number(p.downloaded), left: Number(p.left),
+        progress: p.isSeeder || size <= 0 ? 100 : Math.max(0, Math.min(100, Math.round(((size - Number(p.left)) / size) * 1000) / 10)),
+        lastEvent: p.lastEvent, lastAnnounceAt: p.lastAnnounceAt,
+        sameIpUsers: usersByIp.get(p.ip)!.size,
+      };
+    });
   }
 
   async findOne(id: string, viewer?: { userId: string; role: string }) {

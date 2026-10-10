@@ -211,6 +211,8 @@ export const GUIDES_STAFF: WikiSeedCategory = {
         `• Le NFO / MediaInfo est présent et cohérent avec ce qui est annoncé.\n` +
         `• Pas de doublon : une autre version est acceptable seulement si elle est clairement différente (langue, qualité).\n` +
         `• Rien d'interdit au [url=/wiki/reglement-general]règlement[/url].\n\n` +
+        `[b]Voir les peers d'un torrent[/b]\n` +
+        `Sur la fiche d'un torrent, l'onglet [b]Peers[/b] (visible de l'équipe seulement) liste chaque peer connu du tracker : le membre, son type (seeder ou leecher), son [b]client BitTorrent[/b] (reconnu d'après le peer_id : qBittorrent, Transmission, µTorrent...), son adresse IP et son port, sa progression, les volumes envoyés et reçus sur ce torrent, son ratio général et son dernier contact. Un [b]⚠[/b] rouge à côté d'une adresse signale qu'elle est utilisée par plusieurs membres sur ce torrent (comptes multiples ?). Le bouton « Actualiser » recharge la liste. Ces informations sont confidentielles : n'en fais pas état hors de l'équipe.\n\n` +
         `[b]Décider[/b]\n` +
         `• [b]✓ Approuver[/b] : le torrent devient visible, l'envoyeur est notifié. Tu peux approuver plusieurs torrents d'un coup (sélection).\n` +
         `• [b]✕ Rejeter[/b] : écris un motif clair, il est envoyé au membre. Un bon motif dit quoi corriger.\n` +

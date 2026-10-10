@@ -3293,6 +3293,9 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .community-tile { position: relative; display: grid; gap: 1px; padding: 10px 12px; border-radius: 10px; overflow: hidden; background: linear-gradient(135deg, rgba(var(--acc-rgb, 224,184,74), .2), rgba(var(--acc-rgb, 224,184,74), .04)); border: 1px solid rgba(var(--acc-rgb, 224,184,74), .16); }
 .community-tile strong { font-size: 22px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .community-tile .muted { font-size: 12px; }
+a.community-tile { color: inherit; text-decoration: none; }
+a.community-tile:hover { border-color: var(--acc-link, #b9a4ff); }
+.community-tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .community-tile-icon { position: absolute; right: 8px; top: 6px; font-size: 22px; opacity: .35; }
 
 /* Listes de torrents : lignes en alternance de ton (discret) pour se retrouver d'un coup d'œil. */
