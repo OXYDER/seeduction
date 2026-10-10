@@ -6,10 +6,12 @@ import { SupportModule } from '../support/support.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ImporterController } from './importer.controller';
 import { ImporterService } from './importer.service';
+import { MemberImportController } from './member-import.controller';
+import { MemberImportService } from './member-import.service';
 
 @Module({
   imports: [TorrentsModule, AdminModule, MetadataModule, SupportModule, NotificationsModule],
-  controllers: [ImporterController],
-  providers: [ImporterService],
+  controllers: [ImporterController, MemberImportController],
+  providers: [ImporterService, MemberImportService],
 })
 export class ImporterModule {}

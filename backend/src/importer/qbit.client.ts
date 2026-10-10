@@ -33,7 +33,8 @@ export class Qbit {
   private base: string;
   private cookie = '';
 
-  constructor(url: string, private user?: string, private pass?: string) {
+  /** `strict` (clients de membres) : aucune redirection suivie, pour qu'une adresse publique ne renvoie pas le serveur vers un réseau interne. */
+  constructor(url: string, private user?: string, private pass?: string, private strict = false) {
     this.base = String(url ?? '').replace(/\/$/, '');
   }
 
@@ -46,6 +47,7 @@ export class Qbit {
         headers: { 'content-type': 'application/x-www-form-urlencoded', referer: this.base, origin: this.base },
         body: new URLSearchParams({ username: this.user, password: this.pass ?? '' }),
         signal: AbortSignal.timeout(20_000),
+        redirect: this.strict ? 'manual' : 'follow',
       });
     } catch (e) {
       throw new Error(`qBittorrent injoignable (${this.base}) : ${netCause(e)}`);
@@ -70,6 +72,7 @@ export class Qbit {
         ...init,
         headers: { referer: this.base, origin: this.base, ...(this.cookie ? { cookie: this.cookie } : {}), ...((init.headers as Record<string, string>) ?? {}) },
         signal: AbortSignal.timeout(60_000),
+        redirect: this.strict ? 'manual' : 'follow',
       });
     } catch (e) {
       throw new Error(`qBittorrent injoignable (${this.base}) : ${netCause(e)}`);
@@ -116,6 +119,12 @@ export class Qbit {
     let r = await post('/torrents/setCategory', { hashes: hash, category });
     if (r.status === 409) { await post('/torrents/createCategory', { category, savePath: '' }); r = await post('/torrents/setCategory', { hashes: hash, category }); }
     if (!r.ok) throw new Error(`qBittorrent ${r.status}`);
+  }
+
+  /** Crée la catégorie si elle n'existe pas encore (sans toucher à une catégorie existante). */
+  async ensureCategory(category: string) {
+    const r = await this.req('/torrents/createCategory', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ category, savePath: '' }) });
+    if (!r.ok && r.status !== 409) throw new Error(`création de la catégorie « ${category} » impossible (qBittorrent ${r.status})`);
   }
 
   async addTags(hash: string, tags: string) {

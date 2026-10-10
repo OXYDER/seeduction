@@ -1026,6 +1026,41 @@ model ImportItem {
   @@index([sourceId, status])
 }
 
+// Connexion d'un MEMBRE à son propre client (qBittorrent + FTP facultatif) pour envoyer plusieurs torrents d'un coup (page « Envoyer »).
+// Les mots de passe sont chiffrés (comme ceux de l'import staff) et ne sont jamais renvoyés au navigateur.
+model MemberSeedbox {
+  id         String             @id @default(uuid())
+  userId     String             @unique
+  config     Json
+  secrets    String             @default("")
+  lastScanAt DateTime?
+  lastError  String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  items      MemberImportItem[]
+}
+
+// Un torrent trouvé dans le client d'un membre : proposé (vert / orange), en file d'envoi, envoyé, déjà sur le site, refusé ou écarté.
+model MemberImportItem {
+  id        String        @id @default(uuid())
+  box       MemberSeedbox @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  boxId     String
+  key       String // identifiant du torrent chez qBittorrent (hash)
+  name      String
+  status    String // PROPOSED | DUPE | QUEUED | UPLOADED | REJECTED | IGNORED
+  why       String?
+  detail    Json? // ce qui a été détecté, les fiches suggérées, les corrections du membre
+  nfo       String?       @db.Text
+  torrentId String?
+  savePath  String?
+  seeded    String? // null | OK | UNAVAILABLE : la version Seeduction a-t-elle été ajoutée dans le client du membre
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([boxId, key])
+  @@index([boxId, status])
+}
+
 // Journal de l'import (derniers événements, purgé automatiquement).
 model ImportEvent {
   id        String   @id @default(uuid())

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import DescriptionGenerator from '../components/DescriptionGenerator';
+import MemberImport from '../components/MemberImport';
 import WysiwygEditor from '../components/WysiwygEditor';
 import { ORIGINS, RESOLUTIONS, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS, detectFromReleaseName, cleanTitleForSearch } from '../lib/searchParser';
 import { parseTorrentInfo } from '../lib/bencode';
@@ -15,7 +16,22 @@ import type { FacetDef, FacetValues } from '../lib/facets';
 import { LANGUAGE_GROUPS, LANGUAGE_LABELS, languageTagFrom } from '../lib/languageTag';
 import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeFromRelease, detectVideoType, matchGenres, looksLikeCode, titleFromNfo } from '../lib/uploadMeta';
 
+/** Envoyer : un seul torrent (formulaire complet) ou plusieurs d'un coup depuis son propre client (qBittorrent + FTP), avec confirmation ligne par ligne. */
 export default function Upload() {
+  const [mode, setMode] = useState<'one' | 'many'>(() => { try { return localStorage.getItem('upload-mode') === 'many' ? 'many' : 'one'; } catch { return 'one'; } });
+  const pick = (m: 'one' | 'many') => { setMode(m); try { localStorage.setItem('upload-mode', m); } catch { /* préférence facultative */ } };
+  return (
+    <div className="grid" style={{ gap: 14 }}>
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+        <button type="button" className={mode === 'one' ? 'on' : 'secondary'} onClick={() => pick('one')}>📄 Un seul torrent</button>
+        <button type="button" className={mode === 'many' ? 'on' : 'secondary'} onClick={() => pick('many')}>📦 Plusieurs torrents (depuis mon client)</button>
+      </div>
+      {mode === 'one' ? <UploadOne /> : <><h1 style={{ margin: 0 }}>Envoyer plusieurs torrents</h1><MemberImport /></>}
+    </div>
+  );
+}
+
+function UploadOne() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');

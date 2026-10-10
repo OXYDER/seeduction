@@ -228,6 +228,25 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `[b]Modération[/b] : ton torrent passe en attente jusqu'à validation par le staff (sauf configuration particulière) — tu peux le modifier tant qu'il n'est pas encore approuvé.`,
       },
       {
+        title: 'Envoyer plusieurs torrents depuis mon client',
+        slug: 'envoyer-plusieurs-torrents',
+        keywords: 'multi, plusieurs torrents, qbittorrent, seedbox, ftp, import, lot, vert, orange, catégorie Seeduction, remise en seed',
+        isFaq: true,
+        content:
+          `Sur la page [b]Envoyer[/b], le bouton [b]📦 Plusieurs torrents (depuis mon client)[/b] te permet d'envoyer toutes tes releases d'un coup, sans chercher les fichiers .torrent ni choisir un dossier à la main.\n\n` +
+          `[b]1. Connecte ton client[/b] : l'adresse de l'interface web de ton [b]qBittorrent[/b] (version 4.5 ou plus récente), ton identifiant et ton mot de passe. Ajoute aussi ton [b]accès FTP[/b] (recommandé) : le site y lit le fichier .nfo de chaque release, ou calcule le MediaInfo sur le début de la vidéo, sans télécharger autre chose. Si possible, crée un compte FTP limité à la lecture. Sans FTP, tu devras coller toi-même le NFO de chaque release.\n\n` +
+          `[b]2. Analyse[/b] : le site liste tes releases terminées et propose pour chacune la catégorie, la fiche (TMDB, etc.), la langue et le NFO. Il ne modifie [b]rien[/b] dans ton client à cette étape.\n` +
+          `• [b]✓ Reconnus (vert)[/b] : tout est sûr, la ligne est cochée d'office. Décoche ce que tu ne veux pas envoyer.\n` +
+          `• [b]⚠ À corriger (orange)[/b] : il manque la catégorie, une fiche sûre ou le NFO. Choisis la bonne fiche dans les suggestions (ou colle l'adresse TMDB, ou « Sans fiche »), la catégorie, la langue, ou colle le NFO : dès que tout est complet, la ligne passe en vert.\n` +
+          `• [b]Déjà sur Seeduction[/b] : la même release existe déjà, elle n'est pas envoyée.\n\n` +
+          `[b]3. Envoi[/b] : « Envoyer N torrents sur Seeduction » publie les lignes cochées (30 au maximum à la fois, 100 par jour). Ils passent par la modération habituelle.\n\n` +
+          `[b]4. Remise en seed automatique[/b] : dès qu'un torrent est approuvé, le site ajoute la version Seeduction dans [b]ton client[/b], dans une catégorie [b]« Seeduction »[/b] (créée à ce moment-là dans ton client, pas sur le tracker), avec exactement le même dossier et sans re-vérification des fichiers. Tu n'as donc aucun dossier à choisir. Tes torrents d'origine ne sont jamais touchés. L'onglet « Envoyés » montre où en est chaque torrent.\n\n` +
+          `[b]Sécurité et confidentialité[/b]\n` +
+          `• Tes mots de passe sont [b]chiffrés[/b] sur le serveur, ne sont jamais réaffichés (ni vus du staff), et le bouton « Supprimer mes accès » efface tout (les torrents déjà publiés restent).\n` +
+          `• Ton client doit être joignable depuis Internet (seedbox, adresse publique). Les adresses internes (réseau local, 192.168.x.x, localhost...) sont refusées : le site ne peut pas atteindre un client qui n'est accessible que chez toi.\n` +
+          `• Les torrents d'origine peuvent venir d'autres trackers : le site retire leurs adresses et leur clé personnelle avant de publier. Vérifie toutefois les règles de ces trackers avant de repartager leurs contenus.`,
+      },
+      {
         title: 'Parcourir, filtrer et trier',
         slug: 'parcourir-et-filtrer',
         keywords: 'browse, recherche, filtres, période, page size, acteur, producteur, réalisateur, genre, barre de recherche',

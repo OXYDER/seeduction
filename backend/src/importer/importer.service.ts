@@ -13,7 +13,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { cleanTitle, ContentType, feedLabelOf, guessType, isFilmLike, isSeriesLike, leafKey, refineWithGenres, resolveCandidate, typeFromFeedLabel } from './category-guess';
 
 /** Ce que la détection a compris d'une release (rempli par chooseCategory) : sert à la mise en vérification manuelle. */
-interface ReleaseInfo { type?: ContentType; title?: string; year?: number }
+export interface ReleaseInfo { type?: ContentType; title?: string; year?: number }
 /** Choix final avant l'envoi : catégorie de Seeduction + fiche à rattacher (facultative). */
 interface Chosen { id: string; name: string; how: string; meta?: { kind: string; id: string; title: string; year?: string } }
 const META_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU'];
@@ -223,7 +223,7 @@ export class ImporterService {
   }
 
   /** Releases terminées : une ou plusieurs catégories qBittorrent (séparées par des virgules), ou une étiquette, ou tout. */
-  private async listCompleted(q: Qbit, cfg: ImportConfig): Promise<QbitTorrent[]> {
+  async listCompleted(q: Qbit, cfg: ImportConfig): Promise<QbitTorrent[]> {
     const cats = String(cfg.qbit.category ?? '').split(',').map((c) => c.trim()).filter(Boolean);
     if (cats.length <= 1) return q.completed({ category: cats[0], tag: cfg.qbit.tag });
     const seen = new Map<string, QbitTorrent>();
@@ -292,7 +292,7 @@ export class ImporterService {
     return null;
   }
 
-  private async chooseCategory(cfg: ImportConfig, t: QbitTorrent, feedLabel = '', info: ReleaseInfo = {}): Promise<{ name: string; id: string; how: string; meta?: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } } | null> {
+  async chooseCategory(cfg: ImportConfig, t: QbitTorrent, feedLabel = '', info: ReleaseInfo = {}): Promise<{ name: string; id: string; how: string; meta?: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } } | null> {
     const leaves = await this.leaves();
     // Type de contenu : la catégorie du flux RSS (si claire) prime sur le nom ; sinon le nom.
     const byName = guessType(t.name);
@@ -453,7 +453,7 @@ export class ImporterService {
   // ------------------------------------------------------------------ interférences (même release déjà sur Seeduction)
 
   /** Torrent déjà sur Seeduction qui porte exactement le même nom que cette release (autre source, autre membre...). */
-  private async findClash(t: QbitTorrent): Promise<{ id: string; name: string; uploader: string | null } | null> {
+  async findClash(t: QbitTorrent): Promise<{ id: string; name: string; uploader: string | null } | null> {
     const base = t.name.replace(/\.(mkv|mp4|avi)$/i, '');
     const names = new Set<string>();
     for (const b of [t.name, base, base.replace(/\./g, ' '), base.replace(/ /g, '.')]) for (const ext of ['', '.mkv', '.mp4', '.avi']) names.add(b + ext);
