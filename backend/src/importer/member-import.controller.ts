@@ -76,6 +76,12 @@ export class MemberImportController {
     return this.service.updateItem(this.who(req), id, body);
   }
 
+  /** Efface la ligne et analyse de nouveau ce torrent tout de suite. */
+  @Post('items/:id/reanalyze')
+  reanalyze(@Param('id') id: string, @Request() req: any) {
+    return this.service.reanalyzeItem(this.who(req), id);
+  }
+
   @Post('items/:id/retry')
   retry(@Param('id') id: string, @Request() req: any) {
     return this.service.retryItem(this.who(req), id);

@@ -336,6 +336,22 @@ export class MemberImportService {
     return { retried: true };
   }
 
+  /**
+   * « Ré-analyser » une release : sa ligne (et les corrections du membre) est effacée puis le torrent est analysé de nouveau tout de suite, sans attendre la
+   * minute entre deux analyses. Utile après une panne FTP, un NFO ajouté sur le serveur ou une amélioration du site.
+   */
+  async reanalyzeItem(userId: string, id: string) {
+    const box = await this.requireBox(userId);
+    this.requireFtp(box);
+    const it = await this.prisma.memberImportItem.findFirst({ where: { id, boxId: box.id } });
+    if (!it) throw new NotFoundException('Torrent introuvable');
+    if (!['PROPOSED', 'DUPE', 'IGNORED', 'REJECTED'].includes(it.status)) throw new BadRequestException('Ce torrent ne peut pas être ré-analysé');
+    if (this.jobs.get(box.id)?.status === 'running') throw new BadRequestException('Une opération est déjà en cours sur ton client : patiente un instant');
+    await this.prisma.memberImportItem.delete({ where: { id } }); // effacée AVANT l'analyse : le torrent redevient « nouveau »
+    this.launch(box, 'scan', (job) => this.runScan(box, job));
+    return { started: true };
+  }
+
   async ignoreItem(userId: string, id: string, ignore = true) {
     const box = await this.requireBox(userId);
     const it = await this.prisma.memberImportItem.findFirst({ where: { id, boxId: box.id } });

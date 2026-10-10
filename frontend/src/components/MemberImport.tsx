@@ -203,7 +203,7 @@ Elles partent par lots, dans la limite de 100 par jour, puis passent par la mod�
                   <div key={i.id} className="row" style={{ gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
                     <span style={{ wordBreak: 'break-all' }}>{i.name}</span>
                     {i.detail?.existingId && <Link to={`/torrents/${i.detail.existingId}`} target="_blank">voir sur Seeduction ↗</Link>}
-                    <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => act(`items/${i.id}/retry`)}>Ré-analyser</button>
+                    <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => act(`items/${i.id}/reanalyze`)}>Ré-analyser</button>
                   </div>
                 ))}
                 {dupes.length === 0 && <span className="muted">Aucun.</span>}
@@ -218,7 +218,7 @@ Elles partent par lots, dans la limite de 100 par jour, puis passent par la mod�
                     <span style={{ wordBreak: 'break-all' }}>{i.name}</span>
                     <span className="muted" style={{ fontSize: 12 }}>{i.status === 'REJECTED' ? `refusé : ${i.why ?? ''}` : 'écarté par toi'}</span>
                     {i.status === 'IGNORED' && <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => act(`items/${i.id}/ignore`, undefined, { undo: true })}>Remettre dans la liste</button>}
-                    <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => act(`items/${i.id}/retry`)}>Ré-analyser</button>
+                    <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => act(`items/${i.id}/reanalyze`)}>Ré-analyser</button>
                   </div>
                 ))}
                 {off.length === 0 && <span className="muted">Aucun.</span>}
@@ -453,6 +453,7 @@ function ItemCard({ item, options, checked, onCheck, onUpdated, reload, setMsg }
       <div className="row" style={{ gap: 6, marginTop: 8 }}>
         {!problems.includes('nfo') && !nfo && <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => setNfo(' ')}>Remplacer le NFO</button>}
         <span style={{ flex: 1 }} />
+        <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} title="Efface cette ligne (et tes corrections) puis analyse le torrent de nouveau tout de suite : utile si le NFO est maintenant lisible ou si le serveur FTP était en panne" onClick={() => { if (window.confirm('Ré-analyser cette release ? Tes corrections sur cette ligne seront effacées.')) act('reanalyze'); }}>🔄 Ré-analyser</button>
         <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => act('ignore')}>Écarter cette release</button>
       </div>
     </div>
