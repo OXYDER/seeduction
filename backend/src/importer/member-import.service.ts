@@ -242,7 +242,7 @@ export class MemberImportService {
       try { nfo = await nfoFor(cfg, secrets, 'm:' + boxId, t); }
       catch (e: any) { nfoError = String(e?.message ?? e).slice(0, 200); if (e instanceof FtpConnectError) down = nfoError; }
     } else if (ftpDown) nfoError = ftpDown;
-    const meta = detectReleaseMeta(t.name, nfo);
+    const meta = detectReleaseMeta(t.name, nfo, { assumeLanguage: true });
     const detail: any = {
       type: info.type ?? null, kind, title, year: info.year ?? null, wantsFiche,
       category: found ? { id: found.id, name: found.name, how: found.how } : null,
@@ -421,7 +421,7 @@ export class MemberImportService {
       if (!categoryId || !hasNfo(nfo)) { await back(!categoryId ? 'catégorie manquante' : 'NFO / MediaInfo manquant'); job.done++; continue; }
       try {
         const buf = await this.exportFile(q, cfg, secrets, box.id, t);
-        const meta = detectReleaseMeta(t.name, nfo);
+        const meta = detectReleaseMeta(t.name, nfo, { assumeLanguage: true });
         const language = o.language || meta.language;
         const created = await this.torrents.upload({
           userId: box.userId, fileBuffer: buf, name: t.name, categoryId, tags: [], anonymous: false, nfo, ...meta, ...(language ? { language } : {}),

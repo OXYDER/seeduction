@@ -175,3 +175,40 @@ describe('autres notations rencontrees dans les noms de releases', () => {
     expect(lang('Film.2026.VOSTFR.1080p.WEB-GRP', 'Audio : English AC3 5.1 | S: French')).toBe('VOSTFR');
   });
 });
+
+describe('langue : tout faire pour la trouver', () => {
+  const assumed = (name: string, nfo = '') => detectReleaseMeta(name, nfo, { assumeLanguage: true });
+
+  it('dernier recours : « FRENCH » = VFF, « MULTi » = MULTI.VFF, signalé comme supposé', () => {
+    expect(assumed('Signs.of.a.Psychopath.S08E02.DOC.FRENCH.1080p.WEB.H265-AZR')).toMatchObject({ language: 'VFF', languageAssumed: true });
+    expect(assumed('Colony.2026.MULTi.1080p.WEB.H264-SUPPLY')).toMatchObject({ language: 'MULTI.VFF', languageAssumed: true });
+  });
+
+  it('jamais supposée quand le nom ne dit rien, ou quand les pistes audio contredisent le nom', () => {
+    expect(assumed('Film.2025.1080p.WEB.H264-GRP').language).toBeUndefined();
+    expect(assumed('Film.2025.FRENCH.1080p.WEB.H264-GRP', MEDIAINFO(['English'])).language).toBeUndefined();
+  });
+
+  it('une langue réellement lue passe toujours avant la supposition', () => {
+    expect(assumed('Alertes.S06E17.FRENCH.AD.1080p.WEB.AAC.2.0.H264-MTLQC', MEDIAINFO(['French (CA)']))).toMatchObject({ language: 'VFQ' });
+    expect(assumed('Alertes.S06E17.FRENCH.AD.1080p.WEB.AAC.2.0.H264-MTLQC', MEDIAINFO(['French (CA)'])).languageAssumed).toBeUndefined();
+    expect(assumed('Film.2025.FRENCH.1080p.WEB-GRP', 'Audio ........: Français VFQ\n').language).toBe('VFQ');
+  });
+
+  it('sans l\'option, rien n\'est supposé (formulaire d\'envoi)', () => {
+    expect(lang('Signs.of.a.Psychopath.S08E02.DOC.FRENCH.1080p.WEB.H265-AZR')).toBeUndefined();
+  });
+
+  it('piste audio sans ligne « Language » : son titre donne la langue', () => {
+    const untagged = 'General\nFormat : Matroska\n\nVideo\nWidth : 1 920 pixels\n\nAudio #1\nFormat : AAC\nTitle : Français 2.0\n';
+    expect(lang('Film.2025.FRENCH.1080p.WEB-GRP', untagged)).toBe('VFF');
+    const dub = 'Audio #1\nLanguage : Undetermined\nTitle : English 5.1\n\nAudio #2\nLanguage : Undetermined\nTitle : VFQ 2.0\n';
+    expect(lang('Film.2025.MULTi.1080p.WEB-GRP', 'General\nFormat : Matroska\n\n' + dub)).toBe('MULTI.VFQ');
+  });
+
+  it('un .nfo de scène n\'est pas un MediaInfo ; un vrai MediaInfo l\'est', () => {
+    const { hasMediainfoAudio } = require('./release-meta');
+    expect(hasMediainfoAudio('Release : X\nGroupe : AZR\nNote : 8/10')).toBe(false);
+    expect(hasMediainfoAudio(MEDIAINFO(['French']))).toBe(true);
+  });
+});

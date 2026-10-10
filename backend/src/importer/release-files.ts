@@ -7,6 +7,7 @@ import { Writable } from 'stream';
 import { Client } from 'basic-ftp';
 import type { ImportConfig, ImportSecrets } from './importer.types';
 import type { QbitTorrent } from './qbit.client';
+import { detectReleaseMeta, hasMediainfoAudio } from './release-meta';
 
 const run = promisify(execFile);
 const VIDEO = /\.(mkv|mp4|avi|ts|m2ts|mov|wmv|mpg|mpeg|iso)$/i;
@@ -242,7 +243,8 @@ async function scan(cfg: ImportConfig, secrets: ImportSecrets, memKey: string, t
       const u = raw.toString('utf8');
       nfo = u.includes('\uFFFD') ? raw.toString('latin1') : u; // les NFO anciens sont en CP437 / latin1
     }
-    if (!nfo || !longEnough(nfo)) { nfo = null; video = files.filter((f) => VIDEO.test(f.name)).sort((a, b) => b.size - a.size)[0] ?? null; }
+    if (nfo && !longEnough(nfo)) nfo = null;
+    video = files.filter((f) => VIDEO.test(f.name)).sort((a, b) => b.size - a.size)[0] ?? null; // toujours repérée : un .nfo sans pistes audio ne suffit pas pour trouver la langue
   } finally {
     try { c.close(); } catch { /* déjà fermé */ }
   }
@@ -275,9 +277,22 @@ export async function probeFor(cfg: ImportConfig, secrets: ImportSecrets, memKey
 export async function nfoFor(cfg: ImportConfig, secrets: ImportSecrets, memKey: string, t: QbitTorrent): Promise<string> {
   if (!cfg.ftp) return '';
   const { nfo, video } = await scan(cfg, secrets, memKey, t);
-  if (nfo) return nfo;
+  if (nfo) {
+    // Un .nfo de scène ne décrit souvent pas les pistes audio : si ni le nom ni ce .nfo ne donnent la langue, on lit aussi le MediaInfo de la vidéo
+    // (rien n'est téléchargé en entier) et on le range à la suite du .nfo. Si cette lecture échoue, le .nfo reste tel quel.
+    if (!video || !cfg.mediainfo || hasMediainfoAudio(nfo) || detectReleaseMeta(t.name, nfo).language) return nfo;
+    try {
+      const mi = await videoMediainfo(cfg, secrets, t, video);
+      return hasMediainfoAudio(mi) ? `${nfo.trimEnd()}\n\n${mi}` : nfo;
+    } catch { return nfo; }
+  }
   if (!video || !cfg.mediainfo) return '';
-  const headBytes = (cfg.ftp.headMB ?? 16) * 1024 * 1024;
+  return videoMediainfo(cfg, secrets, t, video);
+}
+
+/** MediaInfo d'une vidéo de la seedbox, calculé sur son début (et sa fin pour les MP4 dont les informations sont à la fin). */
+async function videoMediainfo(cfg: ImportConfig, secrets: ImportSecrets, t: QbitTorrent, video: { path: string; name: string; size: number }): Promise<string> {
+  const headBytes = (cfg.ftp!.headMB ?? 16) * 1024 * 1024;
   const head = await readHead(cfg, secrets, video.path, headBytes);
   const tmp = path.join(os.tmpdir(), `seeduction-${t.hash.slice(0, 8)}-${path.posix.basename(video.path).replace(/[^\w.-]+/g, '_')}`);
   const tmpTail = tmp + '.tail';

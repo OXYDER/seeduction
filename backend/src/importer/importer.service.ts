@@ -8,7 +8,7 @@ import { Qbit, QbitTorrent } from './qbit.client';
 import { ClientKind, CLIENT_KINDS, TorrentClient } from './torrent-clients';
 import { FtpConnectError, hasNfo, nfoFor, probeFor } from './release-files';
 import { LANGUAGE_TAGS, normalizeLanguage } from '../common/utils/language';
-import { detectReleaseMeta } from './release-meta';
+import { detectReleaseMeta, hasMediainfoAudio } from './release-meta';
 import { MetadataService, titleKey } from '../metadata/metadata.service';
 import { SupportBotService } from '../support/support-bot.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -533,7 +533,8 @@ export class ImporterService {
   private async publish(sourceId: string, uploaderId: string, cfg: ImportConfig, q: Qbit, t: QbitTorrent, buf: Buffer, nfo: string, chosen: Chosen, ev: (l: 'INFO' | 'WARN' | 'ERROR', m: string) => Promise<void>, onTemporaryError?: (msg: string) => Promise<void>): Promise<boolean> {
     const where = { sourceId_key: { sourceId, key: t.hash } };
     try {
-      const meta = detectReleaseMeta(t.name, nfo); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
+      const meta = detectReleaseMeta(t.name, nfo, { assumeLanguage: true }); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
+      if (meta.languageAssumed) await ev('INFO', `${t.name} — langue supposée ${meta.language} : le nom dit « FRENCH » / « MULTi » sans préciser la variante, et ni le NFO ni le MediaInfo ne la donnent (modifiable sur la fiche)`);
       const created = await this.torrents.upload({ userId: uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: chosen.id, tags: [], anonymous: false, nfo, ...meta, ...(chosen.language ? { language: chosen.language } : {}), ...(chosen.meta ? { metaKind: chosen.meta.kind, metaId: chosen.meta.id } : {}) });
       const status = cfg.autoApprove !== false ? (await this.admin.approveTorrent(created.id)).status : created.status; // import configuré par un administrateur : approuvé directement
       await this.prisma.importItem.upsert({ where, create: { sourceId, key: t.hash, name: t.name, status: 'UPLOADED', torrentId: created.id, savePath: t.save_path }, update: { status: 'UPLOADED', torrentId: created.id, savePath: t.save_path, why: null } });
@@ -613,11 +614,11 @@ export class ImporterService {
       suggestions = await this.metadata.search(kind, title, info.year ? String(info.year) : undefined).catch(() => []);
       if (suggestions.length === 0 && info.year) suggestions = await this.metadata.search(kind, title).catch(() => []);
     }
-    const meta = detectReleaseMeta(t.name, nfo); // la langue vient du nom ET du NFO / MediaInfo (pistes audio) : elle n'est « ? » que si rien ne la donne
+    const meta = detectReleaseMeta(t.name, nfo, { assumeLanguage: true }); // la langue vient du nom ET du NFO / MediaInfo (pistes audio) ; « supposée » seulement en dernier recours
     const detail = {
       nfoState: hasNfo(nfo) ? 'OK' : 'MISSING', reason, type: info.type ?? null, kind, title, year: info.year ?? null, feedLabel: feedLabel || null,
       category: found ? { id: found.id, name: found.name, how: found.how } : null,
-      language: meta.language ?? null, resolution: meta.resolution ?? null, size: t.size, suggestions: suggestions.slice(0, 6),
+      language: meta.language ?? null, languageAssumed: !!meta.languageAssumed, resolution: meta.resolution ?? null, size: t.size, suggestions: suggestions.slice(0, 6),
     };
     await this.prisma.importItem.create({ data: { sourceId, key: t.hash, name: t.name, status: 'REVIEW', why: reason, savePath: t.save_path, detail: detail as any } });
     await ev('WARN', `${t.name} — à vérifier : ${reason}`);
@@ -721,6 +722,90 @@ export class ImporterService {
   private inspections = new Map<string, { status: 'running' | 'done' | 'error'; startedAt: number; result?: any; error?: string }>();
 
   /** Lance le test en arrière-plan : il peut durer (FTP lent) et un serveur web devant le site coupe les réponses trop longues (504). */
+  // ------------------------------------------------------------------ langues manquantes
+
+  private langFix: { status: 'idle' | 'running' | 'done' | 'error'; startedAt: number; total: number; done: number; fixed: number; assumed: number; unknown: number; message: string } =
+    { status: 'idle', startedAt: 0, total: 0, done: 0, fixed: 0, assumed: 0, unknown: 0, message: '' };
+
+  getLanguageFix() { return this.langFix; }
+
+  /**
+   * Cherche la langue des torrents importés automatiquement (staff et membres) qui n'en ont pas : d'abord avec leur nom et leur NFO déjà enregistré,
+   * puis, pour ceux de l'import staff, en relisant le MediaInfo de la vidéo sur la seedbox (le .nfo de scène ne décrit souvent pas les pistes audio).
+   * En dernier recours « FRENCH » devient VFF et « MULTi » MULTI.VFF (signalé dans le journal). Tourne en arrière-plan.
+   */
+  startLanguageFix() {
+    if (this.langFix.status === 'running' && Date.now() - this.langFix.startedAt < 45 * 60_000) return { started: true };
+    this.langFix = { status: 'running', startedAt: Date.now(), total: 0, done: 0, fixed: 0, assumed: 0, unknown: 0, message: 'Recherche en cours…' };
+    void this.fixLanguagesNow()
+      .then(() => { this.langFix.status = 'done'; this.langFix.message = `${this.langFix.fixed} langue(s) trouvée(s) dont ${this.langFix.assumed} supposée(s), ${this.langFix.unknown} toujours inconnue(s).`; })
+      .catch((e: any) => { this.langFix.status = 'error'; this.langFix.message = String(e?.message ?? e).slice(0, 300); });
+    return { started: true };
+  }
+
+  private async fixLanguagesNow() {
+    const st = this.langFix;
+    const [staffItems, memberItems] = await Promise.all([
+      this.prisma.importItem.findMany({ where: { status: 'UPLOADED', torrentId: { not: null } }, select: { sourceId: true, key: true, torrentId: true } }),
+      this.prisma.memberImportItem.findMany({ where: { status: 'UPLOADED', torrentId: { not: null } }, select: { torrentId: true } }),
+    ]);
+    const ids = [...new Set([...staffItems.map((i) => i.torrentId!), ...memberItems.map((i) => i.torrentId!)])];
+    const empty: { id: string; name: string; nfo: string | null }[] = [];
+    for (let i = 0; i < ids.length; i += 500) {
+      empty.push(...(await this.prisma.torrent.findMany({ where: { id: { in: ids.slice(i, i + 500) }, OR: [{ language: null }, { language: '' }] }, select: { id: true, name: true, nfo: true } })));
+    }
+    st.total = empty.length;
+    const stillEmpty = new Map<string, { name: string; nfo: string }>();
+    const apply = async (torrentId: string, name: string, nfo: string, assume: boolean, extraNfo?: string) => {
+      const meta = detectReleaseMeta(name, nfo, { assumeLanguage: assume });
+      if (!meta.language) return false;
+      await this.prisma.torrent.update({ where: { id: torrentId }, data: { language: meta.language, ...(extraNfo ? { nfo: extraNfo } : {}) } });
+      st.fixed++;
+      if (meta.languageAssumed) st.assumed++;
+      return true;
+    };
+    // 1. nom + NFO déjà enregistré (aucun accès à la seedbox), sans rien supposer
+    for (const t of empty) {
+      if (await apply(t.id, t.name, t.nfo ?? '', false)) st.done++;
+      else stillEmpty.set(t.id, { name: t.name, nfo: t.nfo ?? '' });
+    }
+    // 2. MediaInfo relu sur la seedbox, pour les torrents de l'import staff
+    const bySource = new Map<string, { key: string; torrentId: string }[]>();
+    for (const i of staffItems) if (stillEmpty.has(i.torrentId!)) bySource.set(i.sourceId, [...(bySource.get(i.sourceId) ?? []), { key: i.key, torrentId: i.torrentId! }]);
+    const deadline = Date.now() + 30 * 60_000;
+    for (const [sourceId, items] of bySource) {
+      const src = await this.prisma.importSource.findUnique({ where: { id: sourceId } });
+      if (!src) continue;
+      const cfg = src.config as unknown as ImportConfig;
+      if (!cfg.ftp) { await this.event(sourceId, 'WARN', 'Langues manquantes : aucun FTP configuré sur cette source, le MediaInfo ne peut pas être relu'); continue; }
+      const secrets = openSecrets(src.secrets);
+      const q = new Qbit(cfg.qbit.url, cfg.qbit.username, secrets.qbitPassword);
+      let byHash: Map<string, QbitTorrent>;
+      try { await q.login(); byHash = new Map((await q.completed({})).map((t) => [t.hash.toLowerCase(), t])); }
+      catch (e: any) { await this.event(sourceId, 'WARN', `Langues manquantes : qBittorrent injoignable (${String(e?.message ?? e).slice(0, 120)})`); continue; }
+      let missing = 0;
+      for (const it of items) {
+        if (Date.now() > deadline) break;
+        const t = byHash.get(it.key.toLowerCase());
+        const cur = stillEmpty.get(it.torrentId);
+        if (!t || !cur) { missing++; continue; }
+        try {
+          const deep = await nfoFor(cfg, secrets, sourceId, t);
+          const better = hasMediainfoAudio(deep) && !hasMediainfoAudio(cur.nfo) ? deep : undefined;
+          if (await apply(it.torrentId, cur.name, deep, false, better)) { st.done++; stillEmpty.delete(it.torrentId); }
+          else cur.nfo = deep;
+        } catch (e: any) {
+          if (e instanceof FtpConnectError) { await this.event(sourceId, 'WARN', `Langues manquantes : FTP injoignable (${String(e.message).slice(0, 120)})`); break; }
+        }
+      }
+      if (missing) await this.event(sourceId, 'INFO', `Langues manquantes : ${missing} torrent(s) ne sont plus dans qBittorrent (relecture impossible)`);
+    }
+    // 3. dernier recours : « FRENCH » → VFF, « MULTi » → MULTI.VFF (signalé comme supposé)
+    for (const [torrentId, cur] of [...stillEmpty]) if (await apply(torrentId, cur.name, cur.nfo, true)) { st.done++; stillEmpty.delete(torrentId); }
+    st.unknown = stillEmpty.size;
+    await this.event(null, 'INFO', `Langues manquantes : ${st.fixed} trouvée(s) sur ${st.total} torrent(s) sans langue (dont ${st.assumed} supposée(s) : « FRENCH » → VFF, « MULTi » → MULTI.VFF), ${st.unknown} toujours inconnue(s)`);
+  }
+
   async startInspect(id: string) {
     if (!(await this.prisma.importSource.findUnique({ where: { id }, select: { id: true } }))) throw new NotFoundException('Source introuvable');
     const cur = this.inspections.get(id);
@@ -763,25 +848,26 @@ export class ImporterService {
       else {
         try {
           const r = await probeFor(cfg, secrets, id, t); source = r.source; nfo = r.nfo ?? '';
-          if (source === 'VIDEO') {
-            note = 'pas de .nfo : le MediaInfo sera calculé sur le début de la vidéo à l\'import';
-            // Le nom ne dit pas la langue : on calcule le MediaInfo maintenant pour montrer la langue lue dans les pistes audio (ce que fera l'import).
-            if (!detectReleaseMeta(t.name, '').language) {
-              try { nfo = await nfoFor(cfg, secrets, id, t); if (hasNfo(nfo)) note = 'pas de .nfo : MediaInfo calculé sur le début de la vidéo (langue lue dans les pistes audio)'; else nfo = ''; }
-              catch (e: any) { note = `MediaInfo non calculé : ${String(e?.message ?? e).slice(0, 120)}`; }
-            }
+          if (source === 'VIDEO') note = 'pas de .nfo : le MediaInfo sera calculé sur le début de la vidéo à l\'import';
+          // Ni le nom ni le .nfo ne disent la langue : on calcule le MediaInfo maintenant pour montrer la langue lue dans les pistes audio (ce que fera l'import).
+          if (!detectReleaseMeta(t.name, nfo).language) {
+            try {
+              const full = await nfoFor(cfg, secrets, id, t);
+              if (hasNfo(full)) { nfo = full; note = source === 'VIDEO' ? 'pas de .nfo : MediaInfo calculé sur le début de la vidéo (langue lue dans les pistes audio)' : 'le .nfo ne donne pas la langue : MediaInfo de la vidéo lu en plus'; }
+              else if (source === 'VIDEO') nfo = '';
+            } catch (e: any) { note = `MediaInfo non calculé : ${String(e?.message ?? e).slice(0, 120)}`; }
           }
         }
         catch (e: any) { note = String(e?.message ?? e); if (e instanceof FtpConnectError) ftpError = note; }
       }
-      const meta = detectReleaseMeta(t.name, nfo);
+      const meta = detectReleaseMeta(t.name, nfo, { assumeLanguage: true });
       // Langue introuvable malgré un NFO / MediaInfo : on montre les lignes qui parlent de langue pour comprendre pourquoi.
       const nfoHint = !meta.language && nfo ? nfo.split(/\r?\n/).filter((l) => /langu|audio|fran[cç]ais|french|\bvf[fqib2]\b|\bvo(?:st)?f?\b|qu[eé]b|canad/i.test(l)).slice(0, 6).map((l) => l.trim().slice(0, 110)) : [];
       const chosen = await this.chooseCategory(cfg, t, labels.get(t.hash) ?? '');
       out.push({
         name: t.name, size: t.size, qbitCategory: t.category, savePath: t.save_path, alreadyDone: known.get(t.hash) ?? null,
         nfo: source === 'NFO' && hasNfo(nfo) ? 'FOUND' : source === 'VIDEO' ? 'MEDIAINFO' : 'MISSING', note,
-        language: meta.language ?? null, resolution: meta.resolution ?? null, nfoHint,
+        language: meta.language ?? null, languageAssumed: !!meta.languageAssumed, resolution: meta.resolution ?? null, nfoHint,
         category: chosen?.name ?? null, categoryHow: chosen?.how ?? null, feedLabel: labels.get(t.hash) ?? null,
         fiche: chosen?.meta ? `${chosen.meta.title}${chosen.meta.year ? ` (${chosen.meta.year})` : ''}` : null,
       });

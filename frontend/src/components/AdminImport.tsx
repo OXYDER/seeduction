@@ -105,6 +105,7 @@ export function ImportAdmin() {
 
       <ConflictPanel refreshKey={sources} onChanged={loadSources} ok={ok} fail={fail} />
       <MemoryPanel ok={ok} fail={fail} />
+      <LanguageFixPanel ok={ok} fail={fail} />
 
       {robot && (
         <div className="panel">
@@ -495,7 +496,7 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
     <div className="panel" style={{ padding: 10 }}>
       <div style={{ wordBreak: 'break-all', fontWeight: 600 }}>{item.name}</div>
       <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-        {d.size ? `${Go(d.size)} · ` : ''}{d.language ? <span className="badge" style={{ background: 'rgba(255,255,255,0.1)' }} title="Lue dans le nom et dans le NFO / MediaInfo">{d.language}</span> : <span title={d.nfoState === 'MISSING' ? 'Ni le nom ni un NFO lisible ne donnent la langue : choisis-la ci-dessous' : 'Le nom ne dit pas la langue précise : choisis-la ci-dessous'}>langue ?{d.nfoState === 'MISSING' ? ' (NFO introuvable)' : ''}</span>}{d.resolution ? ` · ${d.resolution}` : ''}
+        {d.size ? `${Go(d.size)} · ` : ''}{d.language ? <span className="badge" style={{ background: 'rgba(255,255,255,0.1)' }} title={d.languageAssumed ? 'Supposée : le nom dit « FRENCH » ou « MULTi » sans variante et rien ne la précise. Corrige-la ci-dessous si besoin.' : 'Lue dans le nom et dans le NFO / MediaInfo'}>{d.language}{d.languageAssumed ? ' (supposée)' : ''}</span> : <span title={d.nfoState === 'MISSING' ? 'Ni le nom ni un NFO lisible ne donnent la langue : choisis-la ci-dessous' : 'Le nom ne dit pas la langue précise : choisis-la ci-dessous'}>langue ?{d.nfoState === 'MISSING' ? ' (NFO introuvable)' : ''}</span>}{d.resolution ? ` · ${d.resolution}` : ''}
         {d.feedLabel ? ` · flux : ${d.feedLabel}` : ''}{d.category ? ` · catégorie détectée : ${d.category.name} (${d.category.how})` : ''}
       </div>
       <div style={{ fontSize: 12, color: 'var(--gold-bright, #f5c542)', marginTop: 2 }}>{item.why}</div>
@@ -547,6 +548,35 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
 }
 
 /** Choix mémorisés : ce que le staff a validé dans « À vérifier » ; la prochaine release qui ressemble reprend la même catégorie (et la même fiche). On peut en retirer un qui serait faux. */
+/** Cherche la langue des torrents importés automatiquement qui n'en ont pas (nom + NFO, puis MediaInfo relu sur la seedbox, puis « FRENCH » = VFF en dernier recours). */
+function LanguageFixPanel({ ok, fail }: { ok: (m: string) => void; fail: (e: any) => void }) {
+  const [st, setSt] = useState<{ status: string; total: number; done: number; fixed: number; assumed: number; unknown: number; message: string } | null>(null);
+  const load = useCallback(() => api.get('/importer/fix-languages').then((r) => setSt(r.data)).catch(() => undefined), []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (st?.status !== 'running') return;
+    const t = setInterval(load, 3000);
+    return () => clearInterval(t);
+  }, [st?.status, load]);
+  async function start() {
+    try { await api.post('/importer/fix-languages'); ok('Recherche lancée en arrière-plan : le résultat s\'affiche ici'); load(); } catch (e) { fail(e); }
+  }
+  const running = st?.status === 'running';
+  return (
+    <div className="panel">
+      <div className="row" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <h3 style={{ margin: 0 }}>🔤 Langues manquantes</h3>
+        <button type="button" className="secondary" onClick={start} disabled={running}>{running ? 'Recherche en cours…' : 'Chercher les langues manquantes'}</button>
+      </div>
+      <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+        Reprend les torrents importés automatiquement (import staff et envoi multiple des membres) qui n'ont pas de langue : nom et NFO, puis le MediaInfo de la vidéo relu sur ta seedbox, puis, en dernier recours, « FRENCH » devient VFF et « MULTi » MULTI.VFF.
+        Les langues déjà renseignées ne sont jamais modifiées.
+      </p>
+      {st && st.status !== 'idle' && <p style={{ margin: '8px 0 0', color: st.status === 'error' ? 'var(--danger)' : undefined }}>{running ? `En cours : ${st.fixed} trouvée(s)…` : st.message}</p>}
+    </div>
+  );
+}
+
 function MemoryPanel({ ok, fail }: { ok: (m: string) => void; fail: (e: any) => void }) {
   const [rows, setRows] = useState<any[] | null>(null);
   const [learned, setLearned] = useState<any[]>([]);

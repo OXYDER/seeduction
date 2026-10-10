@@ -64,6 +64,17 @@ export class ImporterController {
     return this.importer.getInspect(id);
   }
 
+  /** Cherche la langue des torrents importés qui n'en ont pas (arrière-plan) ; l'avancement se lit avec GET. */
+  @Post('fix-languages')
+  fixLanguages() {
+    return this.importer.startLanguageFix();
+  }
+
+  @Get('fix-languages')
+  fixLanguagesStatus() {
+    return this.importer.getLanguageFix();
+  }
+
   @Post('sources/:id/run')
   run(@Param('id') id: string, @Body() body: { dryRun?: boolean }) {
     return this.importer.start(id, !!body?.dryRun);

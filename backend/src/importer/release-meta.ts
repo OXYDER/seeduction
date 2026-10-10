@@ -14,6 +14,8 @@ export interface ReleaseMeta {
   year?: number;
   resolution?: string;
   language?: string;
+  /** Vrai quand la langue n'est pas lue mais supposée par convention (voir `assumeLanguage`) : à signaler au staff. */
+  languageAssumed?: boolean;
   source?: string;
   codec?: string;
   hdr?: boolean;
@@ -64,6 +66,11 @@ function fromNfo(nfo: string) {
   let trackTitle = '';
   let structured = 0; // pistes lues dans un vrai MediaInfo (sections « Audio »)
   const endAudio = () => {
+    // Piste sans ligne « Language » (étiquette absente ou « Undetermined ») : son titre (« Français 5.1 », « VFF », « English ») peut la donner.
+    if (section === 'audio' && (!trackLang || trackLang === 'un' || trackLang === 'zx') && trackTitle) {
+      if (/fran[cç]ais|french|\bvf[fqibt]\b|\bvof\b|\bvq\b|truefrench/i.test(trackTitle)) trackLang = 'fr';
+      else if (/english|anglais|\bvo\b/i.test(trackTitle)) trackLang = 'en';
+    }
     if (section === 'audio' && trackLang) {
       structured++;
       if (trackLang === 'fr') fr.add(variantOf(trackLang, trackTitle));
@@ -138,26 +145,35 @@ function textAudioTracks(nfo: string): { fr: Set<Variant>; nonFr: number } {
   return { fr, nonFr };
 }
 
-function languageOf(name: string, nfo: string): string | undefined {
+/**
+ * Étiquette de langue d'une release. `assume` : en dernier recours seulement, quand le nom annonce du français (« FRENCH » ou « MULTi ») sans préciser la variante
+ * et que ni le NFO ni le MediaInfo ne la donnent, on applique la convention de nommage : « FRENCH » = VFF, « MULTi » = MULTI.VFF. Une contradiction
+ * (nom français mais pistes audio toutes d'une autre langue) ne donne jamais rien.
+ */
+function languageOf(name: string, nfo: string, assume = false): { language?: string; assumed?: boolean } {
   const n = fromName(tokensOf(name));
   const m = fromNfo(nfo);
   // Aucune piste française annoncée par le nom : muet / VOSTFR.
   const frAll = new Set<Variant>([...n.fr, ...m.fr]);
   const both = frAll.has('VFF') && frAll.has('VFQ');
   if (n.fr.size === 0 && m.fr.size === 0) {
-    if (n.muet) return n.vostfr ? 'MUET.VOSTFR' : 'MUET';
-    if (n.vostfr || m.subsFr) return 'VOSTFR';
-    if (n.vo) return 'VO';
+    if (n.muet) return { language: n.vostfr ? 'MUET.VOSTFR' : 'MUET' };
+    if (n.vostfr || m.subsFr) return { language: 'VOSTFR' };
+    if (n.vo) return { language: 'VO' };
     // Pistes audio lues dans le MediaInfo, aucune en français, aucun sous-titre français, et un nom qui n'annonce ni français ni MULTI : version originale.
-    if (m.nonFr > 0 && !n.french && !n.multi) return 'VO';
-    return undefined; // « FRENCH », « MULTi » seuls : rien de précis dans le nom ni le MediaInfo
+    if (m.nonFr > 0 && !n.french && !n.multi) return { language: 'VO' };
+    if (assume && m.nonFr === 0) {
+      if (n.multi) return { language: 'MULTI.VFF', assumed: true };
+      if (n.french) return { language: 'VFF', assumed: true };
+    }
+    return {}; // « FRENCH », « MULTi » seuls : rien de précis dans le nom ni le MediaInfo
   }
   // Deux versions françaises (VFF + VFQ) : MULTI.VF2 est obligatoire.
-  if (both) return 'MULTI.VF2';
+  if (both) return { language: 'MULTI.VF2' };
   // Une variante : le nom l'emporte, le MediaInfo la précise quand le nom ne dit que « MULTI » / « FRENCH ».
   const variant: Variant = (n.fr.size ? [...n.fr][0] : [...m.fr][0]) as Variant;
   const multi = n.multi || m.nonFr > 0; // d'autres pistes audio que le français : l'étiquette doit commencer par MULTI
-  return multi ? `MULTI.${variant}` : variant;
+  return { language: multi ? `MULTI.${variant}` : variant };
 }
 
 function episodeOf(text: string): { season?: string; episode?: string } {
@@ -169,7 +185,7 @@ function episodeOf(text: string): { season?: string; episode?: string } {
   return {};
 }
 
-export function detectReleaseMeta(name: string, nfo = ''): ReleaseMeta {
+export function detectReleaseMeta(name: string, nfo = '', opts: { assumeLanguage?: boolean } = {}): ReleaseMeta {
   const out: ReleaseMeta = {};
   const tokens = tokensOf(name);
   const lower = tokens.flatMap((t) => [t.toLowerCase(), ...t.toLowerCase().split('-')]);
@@ -209,7 +225,12 @@ export function detectReleaseMeta(name: string, nfo = ''): ReleaseMeta {
   if (container) out.containerFormat = /matroska/i.test(container) ? 'MKV' : /mpeg-4/i.test(container) ? 'MP4' : 'AVI';
   else if (has('mkv')) out.containerFormat = 'MKV';
 
-  out.language = languageOf(name, nfo);
+  const lang = languageOf(name, nfo, !!opts.assumeLanguage);
+  out.language = lang.language;
+  if (lang.assumed) out.languageAssumed = true;
   Object.assign(out, episodeOf(name));
   return out;
 }
+
+/** Ce texte contient-il un vrai MediaInfo (au moins une section « Audio ») ? Un simple .nfo de scène n'en contient pas : les pistes audio ne sont alors pas connues. */
+export const hasMediainfoAudio = (nfo: string) => /^\s*Audio(?:\s*#\d+)?\s*$/im.test(nfo ?? '');
