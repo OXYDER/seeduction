@@ -93,6 +93,8 @@ export class MemberImportService {
     const box = prev
       ? await this.prisma.memberSeedbox.update({ where: { id: prev.id }, data: { config: config as any, secrets, lastError: null } })
       : await this.prisma.memberSeedbox.create({ data: { userId, config: config as any, secrets } });
+    // Connexion modifiée : les ajouts qui avaient échoué (mot de passe, adresse...) sont retentés sans attendre.
+    if (prev) await this.prisma.memberImportItem.updateMany({ where: { boxId: box.id, status: 'UPLOADED', seeded: null, why: { startsWith: 'seed :' } }, data: { why: null } }).catch(() => undefined);
     return this.view(box);
   }
 
@@ -144,6 +146,8 @@ export class MemberImportService {
         job.status = 'error'; job.error = String(e?.message ?? e); job.finishedAt = Date.now();
         this.logger.warn(`[membre ${box.id.slice(0, 8)}] ${kind} : ${job.error}`);
         if (kind !== 'seed') await this.prisma.memberSeedbox.update({ where: { id: box.id }, data: { lastError: job.error.slice(0, 500) } }).catch(() => undefined);
+        // Remise en seed impossible (client injoignable, mauvais mot de passe...) : l'erreur est écrite sur les torrents en attente d'ajout, pour que le membre la voie.
+        else await this.prisma.memberImportItem.updateMany({ where: { boxId: box.id, status: 'UPLOADED', seeded: null }, data: { why: `seed : ${job.error.slice(0, 200)}` } }).catch(() => undefined);
       })
       .finally(() => clearTimeout(timer));
     return job;
@@ -426,7 +430,7 @@ export class MemberImportService {
         // Le choix fait (catégorie + fiche) est gardé : quand la modération acceptera ce torrent, il gagnera du poids pour les releases qui ressemblent.
         const catName = o.categoryName ?? d.category?.name ?? '';
         const choice = { categoryId, categoryName: catName, metaKind: metaId ? metaKind ?? null : null, metaId: metaId ?? null, metaTitle: o.metaTitle ?? d.meta?.title ?? null, noMeta: !metaId && !!o.noMeta };
-        await this.prisma.memberImportItem.update({ where: { id: it.id }, data: { status: 'UPLOADED', torrentId: created.id, savePath: t.save_path, detail: { ...d, choice } as any, why: created.status === 'APPROVED' ? null : 'en attente de validation par la modération' } });
+        await this.prisma.memberImportItem.update({ where: { id: it.id }, data: { status: 'UPLOADED', torrentId: created.id, savePath: t.save_path, detail: { ...d, choice } as any, why: null } }); // l'état (en attente, approuvé, en seed) se lit sur le torrent : `why` ne garde que les erreurs d'ajout (« seed : … »)
         sent++;
       } catch (e: any) {
         const msg = String(e?.message ?? e);
@@ -517,7 +521,10 @@ export class MemberImportService {
       }
       const boxes = await this.prisma.memberSeedbox.findMany({ where: { items: { some: { status: 'UPLOADED', seeded: null } } }, take: 20 });
       for (const box of boxes) {
-        const pending = await this.prisma.memberImportItem.findMany({ where: { boxId: box.id, status: 'UPLOADED', seeded: null, torrentId: { not: null } }, select: { torrentId: true } });
+        const pending = await this.prisma.memberImportItem.findMany({ where: { boxId: box.id, status: 'UPLOADED', seeded: null, torrentId: { not: null } }, select: { torrentId: true, why: true, updatedAt: true } });
+        // Après un échec d'ajout, on laisse passer 30 minutes avant de réessayer tout seul : un mot de passe refusé répété ferait bannir l'adresse du site par qBittorrent (5 essais ratés).
+        // Le bouton « Remettre en seed maintenant » réessaie tout de suite, et enregistrer la connexion repart de zéro.
+        if (pending.length > 0 && pending.every((p) => /^seed :/.test(p.why ?? '') && Date.now() - p.updatedAt.getTime() < 30 * 60_000)) continue;
         const ready = pending.length; // ajoutés à son client dès l'envoi (réessayés ici quand l'ajout n'a pas pu se faire)
         try { this.launch(box, 'seed', async (job) => { const { q, cfg } = await this.connect(box); job.total = ready; job.done = await this.seedBox(box, q, cfg); job.message = `${job.done} torrent(s) remis en seed dans ton client`; }); }
         catch { /* occupé : prochaine passe */ }

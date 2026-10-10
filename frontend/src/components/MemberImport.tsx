@@ -471,7 +471,7 @@ function SentList({ items }: { items: Item[] }) {
       : { icon: '🌱', text: 'En seed dans ton client (étiquette « Seeduction ») · ✓ approuvé', color: 'var(--success)' };
     if (i.seeded === 'UNAVAILABLE') return { icon: '✗', text: i.why ?? 'Seed non démarré', color: 'var(--danger)' };
     if (i.torrentStatus === 'PENDING') return { icon: '🕓', text: i.why && /seed :/.test(i.why) ? `En attente de validation · ${i.why}` : 'En attente de validation · ajout à ton client en cours', color: 'var(--gold-bright, #f5c542)' };
-    if (i.torrentStatus === 'APPROVED' || i.torrentStatus === 'DEAD') return { icon: '✓', text: i.why ? `Approuvé — ${i.why}` : 'Approuvé — ajout à ton client en cours', color: 'var(--success)' };
+    if (i.torrentStatus === 'APPROVED' || i.torrentStatus === 'DEAD') return { icon: '✓', text: i.why && /^seed :/.test(i.why) ? `Approuvé — ${i.why}` : 'Approuvé — ajout à ton client en cours', color: i.why && /^seed :/.test(i.why) ? 'var(--danger)' : 'var(--success)' };
     return { icon: '✗', text: 'Torrent supprimé', color: 'var(--danger)' };
   };
   return (
