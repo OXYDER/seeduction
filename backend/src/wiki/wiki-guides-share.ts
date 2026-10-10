@@ -39,7 +39,7 @@ export const GUIDES_SHARE: WikiSeedCategory = {
         `[b]Étape 8 : le plus important, remettre le torrent en seed[/b]\n` +
         `Après l'envoi, une bannière te l'explique : [b]télécharge le .torrent de Seeduction[/b] (il contient ta passkey) et ajoute-le à ton client en choisissant [b]le même dossier[/b] que tes fichiers. Le client vérifie les fichiers et se met à seeder. Sans seeder, personne ne peut télécharger ton torrent. Pour automatiser tout ça avec plusieurs torrents : [url=/wiki/guide-envoyer-plusieurs]Envoyer plusieurs torrents depuis ton client[/url].\n\n` +
         `[b]Étape 9 : la modération[/b]\n` +
-        `Ton torrent est en attente de validation par le staff. Tu peux le modifier tant qu'il n'est pas approuvé. Tu es prévenu de l'approbation (ou du rejet, avec le motif).\n\n` +
+        `Ton torrent est en attente de validation par le staff. Seul le staff peut modifier un torrent : si quelque chose est à corriger (fiche, langue, catégorie, description), demande-le dans le Support ou en commentaire sur la fiche. Tu es prévenu de l'approbation (ou du rejet, avec le motif).\n\n` +
         `[b]Et après ?[/b]\n` +
         `Chaque membre qui le télécharge te fait gagner de l'upload ; les 👍 Merci te rapportent des points. Garde-le en seed.\n\n` +
         `Référence : [url=/wiki/envoyer-un-torrent]Envoyer un torrent[/url].`,
@@ -103,7 +103,7 @@ export const GUIDES_SHARE: WikiSeedCategory = {
         `[b]Les images[/b]\n` +
         `L'affiche et le fond sont enregistrés sur Seeduction, jamais lus chez un service externe. Elles sont [b]compressées automatiquement[/b] (redimensionnées et converties en WebP) : même une image très lourde est acceptée.\n\n` +
         `[b]Corriger une fiche après coup[/b]\n` +
-        `Sur la fiche du torrent, « Modifier » (pour toi tant qu'il n'est pas approuvé, et pour le staff ensuite) ouvre le panneau de fiche : tu peux changer de fiche, retirer la fiche, modifier le synopsis, la langue ou la catégorie.\n\n` +
+        `Sur la fiche du torrent, « Modifier » (réservé au staff) ouvre le panneau de fiche : le staff peut changer de fiche, retirer la fiche, modifier le synopsis, la langue ou la catégorie.\n\n` +
         `[b]Adulte[/b]\n` +
         `Le contenu adulte est masqué tant qu'un membre ne l'a pas activé ([url=/wiki/vie-privee]Vie privée[/url]).\n\n` +
         `Voir aussi : [url=/wiki/guide-envoyer-premier-torrent]Envoyer ton premier torrent[/url].`,
