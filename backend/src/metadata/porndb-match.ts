@@ -98,3 +98,18 @@ export function parseStudioId(id: string): { uuid: string; name: string } | null
   try { name = decodeURIComponent(m[2] ?? ''); } catch { name = m[2] ?? ''; }
   return { uuid: m[1], name };
 }
+
+/**
+ * Images d'une fiche ThePornDB, dans l'ordre d'essai : les formats « large » / « medium » d'abord (l'affiche d'origine peut dépasser les 8 Mo acceptés et ne
+ * serait alors jamais enregistrée), puis l'affiche, l'image, et en dernier recours le fond (une scène sans affiche garde ainsi une pochette).
+ */
+export function porndbCovers(g: any): { coverUrl: string | null; coverFallbacks: string[] } {
+  const pick = (o: any, ...keys: string[]) => keys.map((k) => o?.[k]).filter((v) => typeof v === 'string' && v);
+  const list = [...new Set<string>([
+    ...pick(g?.posters, 'large', 'medium'),
+    ...pick(g, 'poster', 'image'),
+    ...pick(g?.posters, 'full', 'small'),
+    ...pick(g?.background, 'large', 'medium', 'full'),
+  ])];
+  return { coverUrl: list[0] ?? null, coverFallbacks: list.slice(1) };
+}

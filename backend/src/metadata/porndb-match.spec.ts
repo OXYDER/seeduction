@@ -83,3 +83,20 @@ describe('ThePornDB : studios proposés avec les résultats (packs)', () => {
     expect(parseStudioId('scene:abc')).toBeNull();
   });
 });
+
+import { porndbCovers } from './porndb-match';
+
+describe('ThePornDB : pochette d\'une fiche', () => {
+  it('essaie les formats raisonnables avant l\'affiche d\'origine (qui peut dépasser 8 Mo), puis le fond', () => {
+    const r = porndbCovers({ poster: 'p.webp', image: 'i.webp', posters: { large: 'pl.webp', full: 'pf.webp' }, background: { large: 'bl.webp', full: 'bf.webp' } });
+    expect(r.coverUrl).toBe('pl.webp');
+    expect(r.coverFallbacks).toEqual(['p.webp', 'i.webp', 'pf.webp', 'bl.webp', 'bf.webp']);
+  });
+  it('une scène sans affiche ni image garde le fond comme pochette', () => {
+    expect(porndbCovers({ poster: null, image: '', background: { large: 'bl.webp' } })).toEqual({ coverUrl: 'bl.webp', coverFallbacks: [] });
+  });
+  it('rien du tout : pas de pochette, jamais d\'erreur', () => {
+    expect(porndbCovers({})).toEqual({ coverUrl: null, coverFallbacks: [] });
+    expect(porndbCovers(null)).toEqual({ coverUrl: null, coverFallbacks: [] });
+  });
+});

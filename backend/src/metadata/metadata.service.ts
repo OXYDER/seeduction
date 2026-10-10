@@ -6,7 +6,7 @@ import { PrismaService } from '../common/prisma.service';
 import { TranslateService } from './translate.service';
 import { cleanTitle } from '../importer/category-guess';
 import { releaseDateOf } from './release-date';
-import { collectStudios, parseAdultName, parseStudioId, pickPorndbMatch, PorndbHit } from './porndb-match';
+import { collectStudios, parseAdultName, parseStudioId, pickPorndbMatch, PorndbHit, porndbCovers } from './porndb-match';
 
 export interface SearchResult {
   id: string;
@@ -38,6 +38,8 @@ interface RichMetadata {
   info: Record<string, any>;
   entities: EntityDraft[];
   coverUrl: string | null;
+  /** Autres images à essayer si la première ne peut pas être enregistrée (trop lourde : 8 Mo au maximum, ou illisible). */
+  coverFallbacks?: string[];
   backdropUrl: string | null;
   /** Titres dans plusieurs langues / régions, un par ligne (recherche). */
   searchTitles?: string;
@@ -105,6 +107,15 @@ export class MetadataService {
     } catch {
       return '';
     }
+  }
+
+  /** Enregistre la première image de la liste qui passe (une affiche trop lourde ou illisible est sautée au profit de la suivante). */
+  private async saveFirstCover(urls: (string | null | undefined)[]): Promise<string> {
+    for (const u of [...new Set(urls.filter((x): x is string => !!x))]) {
+      const local = await this.saveCover(u);
+      if (local) return local;
+    }
+    return '';
   }
 
   private assertSearchable(kind: string) {
@@ -278,7 +289,7 @@ export class MetadataService {
     if (!id) throw new BadRequestException('Identifiant manquant');
     this.assertSearchable(kind);
     const rich = await this.rich(kind, id);
-    return { ...rich.variables, affiche: await this.saveCover(rich.coverUrl) };
+    return { ...rich.variables, affiche: await this.saveFirstCover([rich.coverUrl, ...(rich.coverFallbacks ?? [])]) };
   }
 
   /** Fiche complète, avec le synopsis traduit en français s'il ne l'est pas déjà. */
@@ -764,7 +775,7 @@ export class MetadataService {
         porndbId: g.id ?? rawId,
       },
       entities,
-      coverUrl: g.poster || g.image || g.posters?.large || null,
+      ...porndbCovers(g),
       backdropUrl: g.background?.large || g.background?.full || null,
     };
   }
@@ -819,7 +830,7 @@ export class MetadataService {
       if (e.imageUrl && !entity.imageUrl) pendingImages.push({ entityId: entity.id, url: e.imageUrl });
     }
 
-    void this.downloadImages(torrentId, pendingImages, rich.backdropUrl, rich.coverUrl, !!opts.replaceCover).catch((err) =>
+    void this.downloadImages(torrentId, pendingImages, rich.backdropUrl, rich.coverUrl, !!opts.replaceCover, rich.coverFallbacks).catch((err) =>
       this.logger.warn(`Téléchargement des images de la fiche échoué : ${err?.message ?? err}`),
     );
   }
@@ -935,6 +946,30 @@ export class MetadataService {
    * qui enregistre l'affiche) : on la télécharge petit à petit (quelques-unes toutes les 10 minutes). Un torrent dont la fiche n'a pas d'affiche n'est pas réessayé.
    */
   @Cron('*/10 * * * *')
+  async backfillPorndbCovers() {
+    if (!this.porndbKey) return;
+    const torrents = await this.prisma.torrent.findMany({
+      where: { metaSource: 'theporndb', metaExternalId: { not: null }, coverImage: null },
+      select: { id: true, metaExternalId: true, metadata: true },
+      take: 40,
+    });
+    for (const t of torrents.filter((x) => !(x.metadata as any)?.coverTried).slice(0, 5)) {
+      try {
+        const rich = await this.richPorndb(t.metaExternalId!);
+        const local = await this.saveFirstCover([rich.coverUrl, ...(rich.coverFallbacks ?? [])]);
+        await this.prisma.torrent.update({ where: { id: t.id }, data: local ? { coverImage: local } : { metadata: { ...((t.metadata as object) ?? {}), coverTried: true } as any } });
+      } catch (err: any) {
+        this.logger.warn(`Pochette ThePornDB manquante : ${err?.message ?? err}`);
+      }
+    }
+  }
+
+  /** Toutes les 10 minutes : les torrents à fiche ThePornDB sans pochette (affiche trop lourde au moment de l'envoi, ou absente) en reçoivent une. */
+  @Cron('*/10 * * * *')
+  async backfillPorndbCoversTick() {
+    await this.backfillPorndbCovers().catch((e) => this.logger.warn(`Pochettes ThePornDB : ${e?.message ?? e}`));
+  }
+
   async backfillImportedCovers() {
     if (!this.tmdbKey) return;
     const imported = await this.prisma.importItem.findMany({ where: { torrentId: { not: null } }, select: { torrentId: true } });
@@ -957,7 +992,7 @@ export class MetadataService {
     }
   }
 
-  private async downloadImages(torrentId: string, images: { entityId: string; url: string }[], backdropUrl: string | null, coverUrl: string | null = null, forceCover = false) {
+  private async downloadImages(torrentId: string, images: { entityId: string; url: string }[], backdropUrl: string | null, coverUrl: string | null = null, forceCover = false, coverFallbacks: string[] = []) {
     await Promise.all(
       images.map(async ({ entityId, url }) => {
         const local = await this.saveCover(url);
@@ -975,7 +1010,7 @@ export class MetadataService {
     if (coverUrl) {
       const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { coverImage: true } });
       if (t && (forceCover || !t.coverImage)) {
-        const local = await this.saveCover(coverUrl);
+        const local = await this.saveFirstCover([coverUrl, ...coverFallbacks]);
         if (local) await this.prisma.torrent.update({ where: { id: torrentId }, data: { coverImage: local } });
       }
     }
