@@ -6,7 +6,7 @@ import { PrismaService } from '../common/prisma.service';
 import { TranslateService } from './translate.service';
 import { cleanTitle } from '../importer/category-guess';
 import { releaseDateOf } from './release-date';
-import { parseAdultName, pickPorndbMatch, PorndbHit } from './porndb-match';
+import { collectStudios, parseAdultName, parseStudioId, pickPorndbMatch, PorndbHit } from './porndb-match';
 
 export interface SearchResult {
   id: string;
@@ -654,13 +654,15 @@ export class MetadataService {
     return { Authorization: `Bearer ${this.porndbKey}`, Accept: 'application/json' };
   }
 
-  /** Scènes et films : les ids sont préfixés "scene:" / "movie:" pour savoir où aller chercher la fiche. */
+  /** Studios d'abord (pour un pack : on rattache la release au studio plutôt qu'à l'un de ses films), puis films et scènes. Les ids sont préfixés "studio:" / "scene:" / "movie:". */
   private async searchPorndb(query: string): Promise<SearchResult[]> {
     const q = encodeURIComponent(query);
-    const call = (type: 'scenes' | 'movies') =>
+    const call = (type: 'scenes' | 'movies' | 'sites') =>
       this.fetchJson(`${PORNDB_API}/${type}?q=${q}&per_page=10`, 'ThePornDB', this.porndbHeaders()).then((r) => (r.data ?? []) as any[]);
-    const [scenes, movies] = await Promise.allSettled([call('scenes'), call('movies')]);
+    const [scenes, movies, sites] = await Promise.allSettled([call('scenes'), call('movies'), call('sites')]);
     if (scenes.status === 'rejected' && movies.status === 'rejected') throw scenes.reason;
+    const studios = collectStudios(sites.status === 'fulfilled' ? sites.value : [], [...(movies.status === 'fulfilled' ? movies.value : []), ...(scenes.status === 'fulfilled' ? scenes.value : [])])
+      .map((s): SearchResult => ({ id: s.id, title: s.name, subtitle: s.count > 0 ? `🏢 Studio · ${s.count} résultat${s.count > 1 ? 's' : ''} ci-dessous` : '🏢 Studio', thumbnail: s.logo }));
 
     const toResult = (type: 'scene' | 'movie') => (r: any): SearchResult => ({
       id: `${type}:${r.id}`,
@@ -669,6 +671,7 @@ export class MetadataService {
       thumbnail: r.poster || r.image || r.posters?.small || null,
     });
     return [
+      ...studios,
       ...(movies.status === 'fulfilled' ? movies.value.slice(0, 6).map(toResult('movie')) : []),
       ...(scenes.status === 'fulfilled' ? scenes.value.slice(0, 8).map(toResult('scene')) : []),
     ];
@@ -699,7 +702,27 @@ export class MetadataService {
     }
   }
 
+  /** Fiche d'un STUDIO (pack de plusieurs films ou scènes du même studio) : son nom, son logo et sa description ; le studio est rattaché au torrent comme entité « studio ». */
+  private async richPorndbStudio(id: string): Promise<RichMetadata> {
+    const p = parseStudioId(id);
+    if (!p) throw new BadRequestException('Identifiant de studio invalide');
+    let g: any = null;
+    try { const res = await this.fetchJson(`${PORNDB_API}/sites/${encodeURIComponent(p.uuid)}`, 'ThePornDB', this.porndbHeaders()); g = res.data ?? res; } catch { g = null; } // le nom contenu dans l'identifiant suffit si le détail est indisponible
+    const name: string = String(g?.name ?? p.name ?? '').trim();
+    if (!name) throw new ServiceUnavailableException('Studio introuvable sur ThePornDB.');
+    const logo: string | null = g?.logo || g?.poster || null;
+    return {
+      source: 'theporndb',
+      variables: { titre: name, année: '', description: g?.description ?? '', genre: '', durée: '', acteurs: '', studio: name },
+      info: { kind: 'studio', overview: g?.description || null, website: g?.url || null, porndbId: p.uuid },
+      entities: [{ type: 'COMPANY', role: 'STUDIO', name, source: 'theporndb', externalId: String(p.uuid), imageUrl: logo, position: 0 }],
+      coverUrl: logo,
+      backdropUrl: null,
+    };
+  }
+
   private async richPorndb(id: string): Promise<RichMetadata> {
+    if (id.startsWith('studio:')) return this.richPorndbStudio(id);
     const [type, rawId] = id.includes(':') ? (id.split(':') as [string, string]) : ['scene', id];
     const path = type === 'movie' ? 'movies' : 'scenes';
     const res = await this.fetchJson(`${PORNDB_API}/${path}/${encodeURIComponent(rawId)}`, 'ThePornDB', this.porndbHeaders());

@@ -1054,6 +1054,7 @@ model MemberImportItem {
   torrentId String?
   savePath  String?
   seeded    String? // null | OK | UNAVAILABLE : la version Seeduction a-t-elle été ajoutée dans le client du membre
+  learned   String? // null (pas encore jugé) | YES (accepté par la modération : le choix a gagné du poids) | NO (refusé, supprimé ou sans choix à retenir)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
@@ -1075,6 +1076,27 @@ model ImportMemory {
   noMeta       Boolean  @default(false) // le staff a choisi « sans fiche »
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// Choix des membres retenus au fil des acceptations : chaque release d'un membre ACCEPTÉE par la modération ajoute du poids au choix (catégorie + fiche)
+// fait pour ce genre de release ; plus le poids est élevé, plus les releases qui ressemblent sont rangées toutes seules (voir import-memory.ts).
+model MemberChoice {
+  id              String   @id @default(uuid())
+  key             String // même clé que ImportMemory (T|serie|<titre>, T|film|<titre>|<année>, S|<site>…)
+  choiceHash      String // catégorie|type de fiche|fiche|sans fiche : un même choix s'additionne, des choix différents restent séparés
+  label           String
+  categoryId      String
+  categoryName    String
+  metaKind        String?
+  metaId          String?
+  metaTitle       String?
+  noMeta          Boolean  @default(false)
+  confirmations   Int      @default(0) // releases acceptées par la modération avec ce choix
+  members         String[] // membres distincts qui l'ont fait (20 au plus)
+  lastConfirmedAt DateTime @default(now())
+
+  @@unique([key, choiceHash])
+  @@index([key])
 }
 
 // Journal de l'import (derniers événements, purgé automatiquement).

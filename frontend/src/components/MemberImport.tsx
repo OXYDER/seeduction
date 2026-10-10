@@ -374,6 +374,14 @@ function ItemCard({ item, options, checked, onCheck, onUpdated, reload, setMsg }
       </div>
       <div style={{ marginTop: 2 }}>{chips}</div>
       {problems.length > 0 && <div style={{ fontSize: 12, color: 'var(--gold-bright, #f5c542)', marginTop: 4 }}>⚠ {problems.map((p) => PROBLEM[p]).join(' · ')}{d.nfoError ? ` (${d.nfoError})` : ''}</div>}
+      {problems.length > 0 && d.suggestion && (
+        <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 6, fontSize: 12 }}>
+          <span>💡 Suggestion : <strong>{d.suggestion.categoryName}</strong>{d.suggestion.metaId ? <> · fiche <strong>{d.suggestion.metaTitle ?? d.suggestion.metaId}</strong></> : d.suggestion.noMeta ? ' · sans fiche' : ''}
+            <span className="muted"> — choix accepté pour {d.suggestion.weight} release{d.suggestion.weight > 1 ? 's' : ''} qui lui ressemble{d.suggestion.weight > 1 ? 'nt' : ''}</span></span>
+          <button type="button" disabled={busy} style={{ padding: '2px 10px', fontSize: 12 }}
+            onClick={() => save({ categoryId: d.suggestion.categoryId, ...(d.suggestion.metaId ? { metaKind: d.suggestion.metaKind, metaId: d.suggestion.metaId, metaTitle: d.suggestion.metaTitle } : d.suggestion.noMeta ? { noMeta: true } : {}) })}>Utiliser</button>
+        </div>
+      )}
 
       <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
         <select value={categoryId} disabled={busy} onChange={(e) => {

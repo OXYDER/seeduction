@@ -63,3 +63,38 @@ export function pickPorndbMatch(name: string, hits: PorndbHit[]): PorndbHit | nu
   const same = hits.filter((h) => h.kind === 'movie' && flat(h.title) === wanted && (!p.year || !h.date || Math.abs(Number(h.date.slice(0, 4)) - p.year) <= 1));
   return same.length === 1 ? same[0] : null;
 }
+
+// ------------------------------------------------------------------ studios proposés dans les résultats de recherche
+//
+// Un pack (plusieurs films ou scènes d'un même studio dans une seule release) ne correspond à aucun film en particulier : parmi les résultats on propose donc
+// aussi le STUDIO (le site), pour rattacher la release au studio plutôt qu'à l'un de ses films.
+export interface StudioChoice { id: string; name: string; logo: string | null; count: number; direct: boolean }
+
+/**
+ * Studios à proposer : ceux que renvoie la recherche de sites (« direct »), puis ceux des films et scènes trouvés (les plus fréquents d'abord).
+ * L'identifiant embarque le nom (« studio:<uuid>:<nom> ») : la fiche reste créable même si le détail du studio est momentanément indisponible.
+ */
+export function collectStudios(direct: any[], fromResults: any[], max = 5): StudioChoice[] {
+  const byKey = new Map<string, StudioChoice>();
+  const add = (s: any, isDirect: boolean) => {
+    const name = String(s?.name ?? '').trim();
+    const ref = s?.uuid ?? s?.id;
+    if (!name || ref === undefined || ref === null || ref === '') return;
+    const key = String(ref);
+    const cur = byKey.get(key);
+    if (cur) { cur.count++; cur.direct = cur.direct || isDirect; cur.logo = cur.logo ?? (s.logo || s.favicon || null); return; }
+    byKey.set(key, { id: `studio:${key}:${encodeURIComponent(name)}`, name, logo: s.logo || s.favicon || s.poster || null, count: isDirect ? 0 : 1, direct: isDirect });
+  };
+  for (const s of direct.slice(0, 3)) add(s, true);
+  for (const r of fromResults) add(r?.site ?? r?.studio, false);
+  return [...byKey.values()].sort((a, b) => Number(b.direct) - Number(a.direct) || b.count - a.count).slice(0, max);
+}
+
+/** « studio:<uuid>:<nom encodé> » -> ses parties. */
+export function parseStudioId(id: string): { uuid: string; name: string } | null {
+  const m = String(id).match(/^studio:([^:]+)(?::(.*))?$/);
+  if (!m) return null;
+  let name = '';
+  try { name = decodeURIComponent(m[2] ?? ''); } catch { name = m[2] ?? ''; }
+  return { uuid: m[1], name };
+}

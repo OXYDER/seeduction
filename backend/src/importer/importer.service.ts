@@ -11,14 +11,16 @@ import { detectReleaseMeta } from './release-meta';
 import { MetadataService, titleKey } from '../metadata/metadata.service';
 import { SupportBotService } from '../support/support-bot.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { memoryKeyOf } from './import-memory';
+import { choiceHashOf, memoryKeyOf, pickLearned } from './import-memory';
 import { cleanTitle, ContentType, feedLabelOf, guessType, isFilmLike, isSeriesLike, leafKey, refineWithGenres, resolveCandidate, typeFromFeedLabel } from './category-guess';
 
 /** Ce que la détection a compris d'une release (rempli par chooseCategory) : sert à la mise en vérification manuelle. */
 /** Catégorie choisie pour une release, avec la fiche à rattacher ; `noMeta` : le staff a déjà dit « sans fiche » pour ce genre de release. */
 export interface ChosenCategory { name: string; id: string; how: string; meta?: { kind: 'FILM' | 'SERIE' | 'XXX'; id: string; title: string; year?: string }; noMeta?: boolean }
 
-export interface ReleaseInfo { type?: ContentType; title?: string; year?: number }
+/** Choix appris au poids, pas encore assez sûr pour être appliqué tout seul : proposé en un clic. */
+export interface LearnedSuggestion { categoryId: string; categoryName: string; noMeta: boolean; metaKind: string | null; metaId: string | null; metaTitle: string | null; weight: number }
+export interface ReleaseInfo { type?: ContentType; title?: string; year?: number; suggestion?: LearnedSuggestion }
 /** Choix final avant l'envoi : catégorie de Seeduction + fiche à rattacher (facultative). */
 interface Chosen { id: string; name: string; how: string; meta?: { kind: string; id: string; title: string; year?: string } }
 const META_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'];
@@ -308,18 +310,59 @@ export class ImporterService {
     return isSeriesLike(type) ? 'SERIE' : isFilmLike(type) ? 'FILM' : null;
   }
 
-  /** Choix déjà faits à la main pour une release qui ressemble à celle-ci (même série, même film, même site) : catégorie et, quand elle a été retenue, fiche. */
-  private async recall(name: string, type: ContentType | undefined, leaves: { ids: Map<string, string>; names: Map<string, string> }) {
+  /**
+   * Choix déjà faits pour une release qui ressemble à celle-ci (même série, même film, même site) : d'abord ceux du STAFF (toujours appliqués), puis ceux
+   * APPRIS des membres au poids (voir pickLearned) : « auto » une fois assez de releases acceptées, sinon « suggest » (proposé en un clic).
+   */
+  private async recall(name: string, type: ContentType | undefined, leaves: { ids: Map<string, string>; names: Map<string, string> }): Promise<{ categoryId: string; categoryName: string; noMeta: boolean; meta?: { kind: 'FILM' | 'SERIE' | 'XXX'; id: string; title: string }; level: 'auto' | 'suggest'; weight: number; source: 'staff' | 'learned' } | null> {
     const k = memoryKeyOf(name, type);
     if (!k) return null;
+    const leafOf = (categoryId: string) => [...leaves.ids.entries()].find(([, id]) => id === categoryId); // la catégorie mémorisée doit exister encore (et être une sous-catégorie)
+    const metaOf = (kind: string | null, id: string | null, title: string | null) => (k.withFiche && id && kind ? { kind: kind as 'FILM' | 'SERIE' | 'XXX', id, title: title ?? id } : undefined);
     const row = await this.prisma.importMemory.findUnique({ where: { key: k.key } }).catch(() => null);
-    if (!row) return null;
-    const leaf = [...leaves.ids.entries()].find(([, id]) => id === row.categoryId); // la catégorie mémorisée doit exister encore (et être une sous-catégorie)
-    if (!leaf) return null;
-    return {
-      categoryId: row.categoryId, categoryName: leaves.names.get(leaf[0])!, noMeta: row.noMeta,
-      meta: k.withFiche && row.metaId && row.metaKind ? { kind: row.metaKind as 'FILM' | 'SERIE' | 'XXX', id: row.metaId, title: row.metaTitle ?? row.metaId } : undefined,
-    };
+    const leaf = row ? leafOf(row.categoryId) : undefined;
+    if (row && leaf) return { categoryId: row.categoryId, categoryName: leaves.names.get(leaf[0])!, noMeta: row.noMeta, meta: metaOf(row.metaKind, row.metaId, row.metaTitle), level: 'auto', weight: 0, source: 'staff' };
+    const learned = await this.prisma.memberChoice.findMany({ where: { key: k.key } }).catch(() => []);
+    const pick = pickLearned(learned);
+    const pLeaf = pick ? leafOf(pick.row.categoryId) : undefined;
+    if (!pick || !pLeaf) return null;
+    return { categoryId: pick.row.categoryId, categoryName: leaves.names.get(pLeaf[0])!, noMeta: pick.row.noMeta, meta: metaOf(pick.row.metaKind, pick.row.metaId, pick.row.metaTitle), level: pick.level, weight: pick.weight, source: 'learned' };
+  }
+
+  /**
+   * Un torrent de membre vient d'être ACCEPTÉ par la modération : le choix (catégorie + fiche) fait pour ce genre de release gagne 1 de poids.
+   * Un même membre ne compte qu'une fois dans la liste des membres distincts, mais chaque acceptation ajoute au poids.
+   */
+  async learnChoice(memberId: string, release: { name: string; type?: string | null }, choice: { categoryId: string; categoryName: string; metaKind?: string | null; metaId?: string | null; metaTitle?: string | null; noMeta?: boolean }) {
+    const k = memoryKeyOf(release.name, (release.type ?? undefined) as ContentType | undefined);
+    if (!k) return;
+    const metaId = k.withFiche ? choice.metaId || null : null;
+    const data = { categoryId: choice.categoryId, categoryName: choice.categoryName, metaKind: metaId ? choice.metaKind ?? null : null, metaId, metaTitle: metaId ? choice.metaTitle ?? null : null, noMeta: !metaId && !!choice.noMeta };
+    const choiceHash = choiceHashOf({ categoryId: data.categoryId, metaKind: data.metaKind, metaId: data.metaId, noMeta: data.noMeta });
+    const cur = await this.prisma.memberChoice.findUnique({ where: { key_choiceHash: { key: k.key, choiceHash } } });
+    if (cur) {
+      const members = cur.members.includes(memberId) ? cur.members : [...cur.members, memberId].slice(-20);
+      await this.prisma.memberChoice.update({ where: { id: cur.id }, data: { confirmations: { increment: 1 }, members, lastConfirmedAt: new Date(), categoryName: data.categoryName, metaTitle: data.metaTitle } });
+    } else {
+      await this.prisma.memberChoice.create({ data: { key: k.key, choiceHash, label: k.label, ...data, confirmations: 1, members: [memberId] } });
+    }
+  }
+
+  /** Les choix appris des membres, avec leur poids et ce qu'ils déclenchent (Admin > Import) ; un faux se retire. */
+  async memberChoices() {
+    const rows = await this.prisma.memberChoice.findMany({ orderBy: [{ confirmations: 'desc' }, { lastConfirmedAt: 'desc' }], take: 500 });
+    const byKey = new Map<string, typeof rows>();
+    for (const r of rows) byKey.set(r.key, [...(byKey.get(r.key) ?? []), r]);
+    return rows.map((r) => {
+      const pick = pickLearned(byKey.get(r.key) ?? []);
+      const level = pick?.row.id === r.id ? pick.level : null; // null : contesté par d'autres choix, rien n'est appliqué
+      return { id: r.id, key: r.key, label: r.label, categoryName: r.categoryName, metaId: r.metaId, metaTitle: r.metaTitle, noMeta: r.noMeta, confirmations: r.confirmations, members: r.members.length, level, lastConfirmedAt: r.lastConfirmedAt };
+    });
+  }
+
+  async forgetMemberChoice(id: string) {
+    await this.prisma.memberChoice.delete({ where: { id } }).catch(() => { throw new NotFoundException('Choix introuvable'); });
+    return { forgotten: true };
   }
 
   /** Retient le choix fait à la main pour les prochaines releases qui ressemblent (voir memoryKeyOf). */
@@ -355,8 +398,11 @@ export class ImporterService {
     let siblingCategoryId: string | undefined;
     const wantsTmdb = cfg.attachMetadata !== false || cfg.autoCategory !== false;
     // Mémoire du staff : une release qui ressemble à une release déjà vérifiée à la main (même série, même film, même site) reprend ses choix.
-    const mem = await this.recall(t.name, type, leaves);
-    if (mem?.meta) { meta = mem.meta; how = 'mémorisé'; }
+    const recalled = await this.recall(t.name, type, leaves);
+    const mem = recalled && recalled.level === 'auto' ? recalled : null;
+    if (recalled && recalled.level === 'suggest') info.suggestion = { categoryId: recalled.categoryId, categoryName: recalled.categoryName, noMeta: recalled.noMeta, metaKind: recalled.meta?.kind ?? null, metaId: recalled.meta?.id ?? null, metaTitle: recalled.meta?.title ?? null, weight: recalled.weight };
+    const memHow = mem ? (mem.source === 'staff' ? 'mémorisé' : `appris de ${mem.weight} releases acceptées`) : '';
+    if (mem?.meta) { meta = mem.meta; how = memHow; }
     // Release adulte : fiche ThePornDB rattachée seulement si le résultat est clair (scène : site + date + interprètes ; film : titre exact + année).
     if (!meta && type === 'XXX' && cfg.attachMetadata !== false && this.ficheKindOf(type)) {
       const m = await this.metadata.porndbMatch(t.name);
@@ -389,7 +435,7 @@ export class ImporterService {
       const id = leaves.ids.get(leafKey(r.category));
       if (id) return { name: leaves.names.get(leafKey(r.category))!, id, how: 'règle', meta };
     }
-    if (mem) return { name: mem.categoryName, id: mem.categoryId, how: 'mémorisé', meta: mem.meta, noMeta: mem.noMeta };
+    if (mem) return { name: mem.categoryName, id: mem.categoryId, how: memHow, meta: mem.meta, noMeta: mem.noMeta };
     if (cfg.autoCategory !== false && siblingCategoryId) {
       const hit = [...leaves.ids.entries()].find(([, cid]) => cid === siblingCategoryId);
       if (hit) return { name: leaves.names.get(hit[0])!, id: siblingCategoryId, how, meta };
@@ -619,7 +665,7 @@ export class ImporterService {
     const cat = categoryId ? await this.prisma.category.findUnique({ where: { id: categoryId }, select: { id: true, name: true } }) : null;
     if (!cat) throw new BadRequestException('Choisis la catégorie de Seeduction');
     if (![...leaves.ids.values()].includes(cat.id)) throw new BadRequestException('Choisis une sous-catégorie (pas une catégorie parente)');
-    const metaKind = str(body?.metaKind, 20), metaId = str(body?.metaId, 120);
+    const metaKind = str(body?.metaKind, 20), metaId = str(body?.metaId, 220);
     if (metaId && !META_KINDS.includes(metaKind)) throw new BadRequestException('Type de fiche inconnu');
     if (!metaId && body?.noMeta !== true) throw new BadRequestException('Choisis une fiche, ou « Importer sans fiche »');
     const override = { categoryId: cat.id, categoryName: cat.name, metaKind: metaId ? metaKind : null, metaId: metaId || null, metaTitle: str(body?.metaTitle, 200) || null };

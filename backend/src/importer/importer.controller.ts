@@ -122,6 +122,20 @@ export class ImporterController {
     return r;
   }
 
+  /** Choix appris des membres au fil des acceptations (poids) : ce qui est suggéré ou rangé tout seul. */
+  @Get('member-choices')
+  memberChoices() {
+    return this.importer.memberChoices();
+  }
+
+  @Delete('member-choices/:id')
+  async forgetMemberChoice(@Param('id') id: string, @Request() req: any) {
+    assertMaster(req);
+    const r = await this.importer.forgetMemberChoice(id);
+    await this.audit.log(req.user.userId, 'IMPORT_MEMBER_CHOICE_FORGET', { id });
+    return r;
+  }
+
   @Get('events')
   events(@Query('sourceId') sourceId?: string, @Query('limit') limit?: string) {
     return this.importer.events(sourceId, limit ? Number(limit) : 100);

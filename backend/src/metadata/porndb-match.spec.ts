@@ -50,3 +50,36 @@ describe('ThePornDB : rattachement automatique seulement si le résultat est cla
     expect(pickPorndbMatch('Mon.Film.Adulte.2023.XXX.1080p.WEB-GRP', [movie('1', 'Mon Film Adulte Le Retour', '2023-05-01')])).toBeNull();
   });
 });
+
+import { collectStudios, parseStudioId } from './porndb-match';
+
+describe('ThePornDB : studios proposés avec les résultats (packs)', () => {
+  const site = (id: string, name: string, logo?: string) => ({ uuid: id, name, logo });
+
+  it('propose le studio des films trouvés, le plus fréquent d\'abord', () => {
+    const r = collectStudios([], [{ site: site('a', 'Studio A', 'a.png') }, { site: site('b', 'Studio B') }, { site: site('a', 'Studio A') }, { site: site('a', 'Studio A') }]);
+    expect(r.map((s) => s.name)).toEqual(['Studio A', 'Studio B']);
+    expect(r[0].count).toBe(3);
+    expect(r[0].logo).toBe('a.png');
+  });
+
+  it('les studios trouvés par la recherche de sites passent avant', () => {
+    const r = collectStudios([site('z', 'Studio Z')], [{ site: site('a', 'Studio A') }, { site: site('a', 'Studio A') }]);
+    expect(r.map((s) => s.name)).toEqual(['Studio Z', 'Studio A']);
+    expect(r[0].direct).toBe(true);
+  });
+
+  it('ignore les résultats sans studio ou sans identifiant, et limite la liste', () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ site: site(`s${i}`, `S${i}`) }));
+    expect(collectStudios([], [{}, { site: { name: 'Sans id' } }, { site: { uuid: 'x' } }])).toEqual([]);
+    expect(collectStudios([], many)).toHaveLength(5);
+  });
+
+  it('l\'identifiant d\'un studio embarque son nom (la fiche reste créable sans le détail)', () => {
+    const [s] = collectStudios([], [{ site: site('u-1', 'Studio & Co') }]);
+    expect(s.id.startsWith('studio:u-1:')).toBe(true);
+    expect(parseStudioId(s.id)).toEqual({ uuid: 'u-1', name: 'Studio & Co' });
+    expect(parseStudioId('studio:u-2')).toEqual({ uuid: 'u-2', name: '' });
+    expect(parseStudioId('scene:abc')).toBeNull();
+  });
+});

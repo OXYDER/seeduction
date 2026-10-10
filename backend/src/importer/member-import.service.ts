@@ -184,6 +184,7 @@ export class MemberImportService {
     const box = await this.requireBox(userId);
     this.launch(box, 'seed', async (job) => {
       job.message = 'Connexion à ton client…';
+      await this.learnApproved().catch(() => undefined); // les torrents acceptés depuis la dernière fois ajoutent du poids à leur choix
       const { q, cfg } = await this.connect(box);
       job.done = await this.seedBox(box, q, cfg);
       const waiting = await this.prisma.memberImportItem.count({ where: { boxId: box.id, status: 'UPLOADED', seeded: null } });
@@ -245,6 +246,7 @@ export class MemberImportService {
       language: meta.language ?? null, resolution: meta.resolution ?? null, size: t.size, qbitCategory: t.category,
       nfoState: hasNfo(nfo) ? 'OK' : nfoError ? 'ERROR' : cfg.ftp ? 'MISSING' : 'NO_FTP', nfoError: nfoError || null,
       ...(found?.noMeta ? { override: { noMeta: true } } : {}), // le staff a déjà dit « sans fiche » pour ce genre de release
+      suggestion: info.suggestion ?? null, // choix appris des membres, pas encore assez sûr pour être appliqué tout seul
     };
     Object.assign(detail, this.verdict(detail, hasNfo(nfo)));
     await this.prisma.memberImportItem.create({ data: { ...base, status: 'PROPOSED', why: detail.reason, detail, nfo: hasNfo(nfo) ? nfo.slice(0, 200_000) : null } });
@@ -305,7 +307,7 @@ export class MemberImportService {
       } else { delete o.categoryId; delete o.categoryName; }
     }
     if ('metaId' in (body ?? {}) || 'noMeta' in (body ?? {})) {
-      const metaId = str(body.metaId, 120), metaKind = str(body.metaKind, 20);
+      const metaId = str(body.metaId, 220), metaKind = str(body.metaKind, 20);
       if (metaId && !META_KINDS.includes(metaKind)) throw new BadRequestException('Type de fiche inconnu');
       o.metaId = metaId || null; o.metaKind = metaId ? metaKind : null; o.metaTitle = metaId ? str(body.metaTitle, 200) || null : null;
       o.noMeta = !metaId && body.noMeta === true;
@@ -393,7 +395,10 @@ export class MemberImportService {
           userId: box.userId, fileBuffer: buf, name: t.name, categoryId, tags: [], anonymous: false, nfo, ...meta, ...(language ? { language } : {}),
           ...(metaKind && metaId ? { metaKind, metaId } : {}),
         });
-        await this.prisma.memberImportItem.update({ where: { id: it.id }, data: { status: 'UPLOADED', torrentId: created.id, savePath: t.save_path, why: created.status === 'APPROVED' ? null : 'en attente de validation par la modération' } });
+        // Le choix fait (catégorie + fiche) est gardé : quand la modération acceptera ce torrent, il gagnera du poids pour les releases qui ressemblent.
+        const catName = o.categoryName ?? d.category?.name ?? '';
+        const choice = { categoryId, categoryName: catName, metaKind: metaId ? metaKind ?? null : null, metaId: metaId ?? null, metaTitle: o.metaTitle ?? d.meta?.title ?? null, noMeta: !metaId && !!o.noMeta };
+        await this.prisma.memberImportItem.update({ where: { id: it.id }, data: { status: 'UPLOADED', torrentId: created.id, savePath: t.save_path, detail: { ...d, choice } as any, why: created.status === 'APPROVED' ? null : 'en attente de validation par la modération' } });
         sent++;
       } catch (e: any) {
         const msg = String(e?.message ?? e);
@@ -422,6 +427,33 @@ export class MemberImportService {
   }
 
   // ------------------------------------------------------------------ remise en seed (version Seeduction dans le client du membre)
+
+  /**
+   * Torrents de membres ACCEPTÉS par la modération : le choix fait pour chacun (catégorie + fiche) gagne 1 de poids pour les releases qui ressemblent.
+   * Un torrent refusé ou supprimé ne compte pas. Chaque torrent ne compte qu'une fois.
+   */
+  async learnApproved(): Promise<number> {
+    const items = await this.prisma.memberImportItem.findMany({ where: { status: 'UPLOADED', learned: null, torrentId: { not: null } }, take: 300, include: { box: { select: { userId: true } } } });
+    let learned = 0;
+    for (const it of items) {
+      const mark = (v: 'YES' | 'NO') => this.prisma.memberImportItem.update({ where: { id: it.id }, data: { learned: v } });
+      const d: any = it.detail ?? {};
+      if (!d.choice?.categoryId) { await mark('NO'); continue; }
+      const t = await this.prisma.torrent.findUnique({ where: { id: it.torrentId! }, select: { status: true } });
+      if (!t || t.status === 'REJECTED') { await mark('NO'); continue; }
+      if (t.status === 'PENDING') continue; // pas encore jugé par la modération
+      await this.importer.learnChoice(it.box.userId, { name: it.name, type: d.type }, d.choice);
+      await mark('YES');
+      learned++;
+    }
+    return learned;
+  }
+
+  /** Toutes les 5 minutes : les torrents de membres acceptés depuis le dernier passage ajoutent du poids à leur choix. */
+  @Cron('*/5 * * * *')
+  async learnTick() {
+    try { await this.learnApproved(); } catch (e: any) { this.logger.warn(`Choix appris des membres : ${e?.message ?? e}`); }
+  }
 
   /** Torrents publiés et approuvés : la version Seeduction est ajoutée dans le client du membre, catégorie « Seeduction », mêmes fichiers, sans re-vérification. */
   private async seedBox(box: { id: string; userId: string }, q: TorrentClient, cfg: ImportConfig): Promise<number> {

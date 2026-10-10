@@ -542,19 +542,26 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
 /** Choix mémorisés : ce que le staff a validé dans « À vérifier » ; la prochaine release qui ressemble reprend la même catégorie (et la même fiche). On peut en retirer un qui serait faux. */
 function MemoryPanel({ ok, fail }: { ok: (m: string) => void; fail: (e: any) => void }) {
   const [rows, setRows] = useState<any[] | null>(null);
+  const [learned, setLearned] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const load = useCallback(() => api.get('/importer/memory').then((r) => setRows(r.data)).catch(() => undefined), []);
+  const load = useCallback(() => {
+    api.get('/importer/memory').then((r) => setRows(r.data)).catch(() => undefined);
+    api.get('/importer/member-choices').then((r) => setLearned(r.data)).catch(() => undefined);
+  }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (!open) return; const t = setInterval(load, 15000); return () => clearInterval(t); }, [open, load]);
-  if (!rows || rows.length === 0) return null;
+  if (!rows || (rows.length === 0 && learned.length === 0)) return null;
   const kindLabel = (k: string) => (k.startsWith('S|') ? 'Site adulte' : k.startsWith('T|serie') ? 'Série' : k.startsWith('T|film') ? 'Film' : k.startsWith('T|xxx') ? 'Film adulte' : 'Titre');
   async function forget(id: string) {
     try { await api.delete(`/importer/memory/${id}`); ok('Choix retiré : la prochaine release repassera par la détection'); load(); } catch (e) { fail(e); }
   }
+  async function forgetLearned(id: string) {
+    try { await api.delete(`/importer/member-choices/${id}`); ok('Choix des membres retiré'); load(); } catch (e) { fail(e); }
+  }
   return (
     <div className="panel">
       <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-        <strong>🧠 Choix mémorisés ({rows.length})</strong>
+        <strong>🧠 Choix mémorisés ({rows.length}{learned.length ? ` + ${learned.length} appris des membres` : ''})</strong>
         <span className="muted" style={{ fontSize: 12 }}>Les releases qui ressemblent à une release déjà vérifiée à la main sont rangées toutes seules.</span>
         <span style={{ flex: 1 }} />
         <button type="button" className="secondary" onClick={() => setOpen(!open)}>{open ? 'Masquer' : 'Voir'}</button>
@@ -574,6 +581,27 @@ function MemoryPanel({ ok, fail }: { ok: (m: string) => void; fail: (e: any) => 
             ))}
           </tbody>
         </table>
+      )}
+      {open && learned.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <strong>👥 Appris des membres</strong>
+          <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>Chaque torrent de membre accepté par la modération ajoute 1 de poids à son choix. Dès 1 : suggéré au membre. Dès 3 (2 membres différents) ou 6 : rangé tout seul.</span>
+          <table style={{ marginTop: 6 }}>
+            <tbody>
+              {learned.map((m) => (
+                <tr key={m.id}>
+                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{kindLabel(m.key)}</td>
+                  <td style={{ wordBreak: 'break-all' }}>{m.label}</td>
+                  <td>{m.categoryName}</td>
+                  <td className="muted">{m.metaId ? `fiche : ${m.metaTitle ?? m.metaId}` : m.noMeta ? 'sans fiche' : 'catégorie seule'}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>⚖ {m.confirmations} · {m.members} membre{m.members > 1 ? 's' : ''}</td>
+                  <td style={{ whiteSpace: 'nowrap', color: m.level === 'auto' ? 'var(--success)' : m.level === 'suggest' ? 'var(--gold-bright, #f5c542)' : 'var(--danger)' }}>{m.level === 'auto' ? 'rangé tout seul' : m.level === 'suggest' ? 'suggéré' : 'contesté'}</td>
+                  <td><button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => forgetLearned(m.id)}>Retirer</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
