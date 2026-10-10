@@ -208,7 +208,7 @@ async function readAll(c: Client, remote: string, max = 300_000): Promise<Buffer
 }
 
 /** Télécharge au plus `max` octets du début d'un fichier distant, puis coupe le transfert. */
-async function readHead(cfg: ImportConfig, secrets: ImportSecrets, remote: string, max: number): Promise<Buffer> {
+async function readHead(cfg: ImportConfig, secrets: ImportSecrets, remote: string, max: number, startAt = 0): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let got = 0;
   const c = await ftpConnect(cfg, secrets);
@@ -219,7 +219,7 @@ async function readHead(cfg: ImportConfig, secrets: ImportSecrets, remote: strin
         if (got >= max) { cb(); setImmediate(() => c.close()); } else cb();
       },
     });
-    try { await c.downloadTo(sink, remote); } catch (e) { if (got < max) throw e; } // la coupure volontaire fait échouer le transfert : sans importance
+    try { await c.downloadTo(sink, remote, startAt); } catch (e) { if (got < max) throw e; } // la coupure volontaire fait échouer le transfert : sans importance
   } finally {
     try { c.close(); } catch { /* déjà fermé */ }
   }
@@ -277,11 +277,30 @@ export async function nfoFor(cfg: ImportConfig, secrets: ImportSecrets, memKey: 
   const { nfo, video } = await scan(cfg, secrets, memKey, t);
   if (nfo) return nfo;
   if (!video || !cfg.mediainfo) return '';
-  const head = await readHead(cfg, secrets, video.path, (cfg.ftp.headMB ?? 16) * 1024 * 1024);
+  const headBytes = (cfg.ftp.headMB ?? 16) * 1024 * 1024;
+  const head = await readHead(cfg, secrets, video.path, headBytes);
   const tmp = path.join(os.tmpdir(), `seeduction-${t.hash.slice(0, 8)}-${path.posix.basename(video.path).replace(/[^\w.-]+/g, '_')}`);
+  const tmpTail = tmp + '.tail';
   await fs.writeFile(tmp, head);
   try { return cleanPartialMediainfo(await mediainfoOf(tmp), video.name, video.size); }
-  finally { await fs.rm(tmp, { force: true }); }
+  catch (firstError) {
+    // Les informations d'un MP4 / MOV (« moov ») sont souvent À LA FIN du fichier : le début seul ne suffit pas. On relit alors aussi la fin, et on reconstitue un fichier de la
+    // vraie taille (début et fin réels, milieu vide : les atomes sont sautés d'après leur taille) que MediaInfo sait lire. Rien d'autre n'est téléchargé.
+    if (video.size <= headBytes * 2 || video.size > MAX_SPARSE_BYTES) throw firstError;
+    try {
+      const tail = await readHead(cfg, secrets, video.path, headBytes, video.size - headBytes);
+      const fh = await fs.open(tmpTail, 'w');
+      try {
+        await fh.truncate(video.size); // fichier « creux » : l'espace du milieu n'est pas occupé sur le disque (système de fichiers Linux du serveur)
+        await fh.write(head, 0, head.length, 0);
+        await fh.write(tail, 0, tail.length, video.size - tail.length);
+      } finally { await fh.close(); }
+      return cleanPartialMediainfo(await mediainfoOf(tmpTail), video.name, video.size);
+    } catch { throw firstError; } // le message d'origine est le plus clair
+  }
+  finally { await fs.rm(tmp, { force: true }); await fs.rm(tmpTail, { force: true }); }
 }
+
+const MAX_SPARSE_BYTES = 200 * 1024 ** 3;
 
 export const hasNfo = longEnough;
