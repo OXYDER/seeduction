@@ -33,6 +33,7 @@ const NODES: Node[] = [
   { path: '/support', label: 'Support' },
   { path: '/support/new', label: 'Nouveau billet', parent: '/support' },
   { path: '/support/:id', label: 'Billet', parent: '/support' },
+  { path: '/integrations', label: 'API & flux RSS' },
   { path: '/wiki', label: 'Wiki' },
   { path: '/wiki/:slug', label: 'Article', parent: '/wiki' },
   { path: '/bonus', label: 'Points bonus' },

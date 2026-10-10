@@ -10,6 +10,10 @@
  * automatiquement » : pas une magie du site, un réflexe de la personne (ou de l'IA) qui code le changement.
  */
 
+import { GUIDES_TOOLS } from './wiki-guides-tools';
+import { GUIDES_SITE } from './wiki-guides-site';
+import { GUIDES_SHARE, GUIDES_STAFF } from './wiki-guides-share';
+
 export interface WikiSeedArticle {
   title: string;
   slug: string;
@@ -592,9 +596,19 @@ export const WIKI_SEED: WikiSeedCategory[] = [
       {
         title: 'Clés API et accès développeur',
         slug: 'cles-api',
-        keywords: 'api key, developer, automatisation',
+        keywords: 'api key, developer, automatisation, torznab, prowlarr, sonarr, radarr, rss',
         content:
-          `Depuis Profil > Développeur, tu peux générer des clés API à portée limitée (lecture seule, ou accès précis) pour automatiser certaines actions sans exposer ta passkey ni ton mot de passe.`,
+          `Depuis Profil > Développeur, tu peux générer des clés API à portée limitée pour automatiser des actions sans exposer ta passkey ni ton mot de passe. Les portées : [b]torrents:read[/b] (chercher et lire), [b]torrents:download[/b] (télécharger en ton nom), [b]stats:read[/b] et [b]user:read[/b].
+
+` +
+          `[b]Brancher tes outils[/b]
+` +
+          `La page [url=/integrations]API & flux RSS[/url] (menu du compte) génère toutes les adresses pour [b]Prowlarr, Sonarr, Radarr, Lidarr, Readarr et Jackett[/b] (Torznab) et des [b]flux RSS[/b] pour qBittorrent, ruTorrent et les autres clients. Les guides pas à pas sont dans [url=/wiki/guides]Guides[/url] : commence par [url=/wiki/guide-api-et-cles]Comprendre l'API[/url].
+
+` +
+          `[b]Sécurité[/b]
+` +
+          `Une clé n'est affichée qu'une seule fois, à sa création. Ne la partage pas : elle permet de télécharger en ton nom. Une clé par outil, et révoque celles que tu n'utilises plus.`,
       },
     ],
   },
@@ -635,3 +649,6 @@ export const WIKI_SEED: WikiSeedCategory[] = [
     ],
   },
 ];
+
+// Guides pas à pas (voir les fichiers wiki-guides-*.ts) : ajoutés après les articles de référence.
+WIKI_SEED.push(GUIDES_TOOLS, GUIDES_SITE, GUIDES_SHARE, GUIDES_STAFF);

@@ -33,7 +33,7 @@ export default function Profile() {
   const [newKeyScopes, setNewKeyScopes] = useState<string[]>([]);
   const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [tab, setTab] = useState<'overview' | 'account' | 'security' | 'dev'>('overview');
+  const [tab, setTab] = useState<'overview' | 'account' | 'security' | 'dev'>(() => { const t = new URLSearchParams(window.location.search).get('tab'); return t === 'dev' || t === 'account' || t === 'security' ? t : 'overview'; }); // ?tab=dev : ouvre l'onglet Développeur (clés API)
   const [showTransfer, setShowTransfer] = useState(false);
   const [friendBusy, setFriendBusy] = useState(false);
   const [friendError, setFriendError] = useState('');
@@ -212,7 +212,8 @@ export default function Profile() {
         <div className="panel">
           <h3>Clés API</h3>
           <p className="muted" style={{ fontSize: 12 }}>
-            Pour tes scripts et intégrations (flux RSS, automatisation...). Chaque clé n'a que les portées que tu lui donnes.
+            Pour tes scripts et intégrations (Prowlarr, Sonarr, Radarr, Lidarr, Readarr, Jackett, flux RSS, automatisation...). Chaque clé n'a que les portées que tu lui donnes.
+            <Link to="/integrations"> → Ouvre le générateur d'adresses « API & flux RSS »</Link> : il te donne les valeurs à copier pour chaque outil.<br />
             Endpoints : <code>GET /api/public/torrents</code>, <code>/torrents/:id</code>, <code>/me</code>, <code>/stats</code>,{' '}
             <code>/rss/torrents.xml</code> — clé à passer en en-tête <code>X-Api-Key</code> (ou <code>?key=</code> pour le flux RSS).
           </p>

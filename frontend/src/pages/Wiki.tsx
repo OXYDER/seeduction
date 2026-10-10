@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { bbcodeToHtml } from '../lib/bbcode';
+
+/** Les guides écrivent {SITE} là où va l'adresse du site : remplacée ici par celle de la barre d'adresse. */
+const withSite = (s: string) => s.replace(/\{SITE\}/g, window.location.origin);
 import { plainText, readingMinutes, snippet, splitWiki, type WikiSection } from '../lib/wikiSections';
 import { useCrumbTitle } from '../store/crumbs';
 
@@ -156,6 +159,9 @@ function WikiHome({ tree, faq, query, onQuery, onOpenFaq }: { tree: WikiCategory
         <h1 style={{ marginTop: 0 }}>📖 Wiki Seeduction</h1>
         <p className="muted" style={{ marginTop: 0 }}>Une question ? Tape quelques mots, ou choisis un thème ci-dessous. {total} articles, chacun découpé en petites sections.</p>
         <input className="wiki-hero-search" placeholder="Que cherches-tu ? (ratio, hit & run, invitation, lecteur…)" value={query} onChange={(e) => onQuery(e.target.value)} aria-label="Rechercher dans le wiki" />
+        <p style={{ margin: '10px 0 0' }}>
+          <Link to="/wiki/guides"><strong>🧭 Guides pas à pas</strong></Link> — envoyer des torrents, brancher Prowlarr / Sonarr / Radarr, utiliser chaque fonction du site. Et la page <Link to="/integrations"><strong>🔌 API & flux RSS</strong></Link> qui génère les adresses pour toi.
+        </p>
       </div>
 
       {faq.length > 0 && (
@@ -264,7 +270,7 @@ function WikiArticleView({ slug, flat }: { slug: string; flat: (WikiArticleListI
           {parts.sections.length > 1 && <span>📑 {parts.sections.length} sections</span>}
           {article.isFaq && <span>⭐ Question fréquente</span>}
         </div>
-        {parts.intro && <div className="bbcode-content wiki-lead" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(parts.intro) }} />}
+        {parts.intro && <div className="bbcode-content wiki-lead" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(withSite(parts.intro)) }} />}
 
         {parts.sections.length > 1 && (
           <nav className="wiki-toc" aria-label="Sur cette page">
@@ -287,7 +293,7 @@ function WikiArticleView({ slug, flat }: { slug: string; flat: (WikiArticleListI
               <span className="wiki-chevron" aria-hidden>{isOpen ? '▾' : '▸'}</span>
               <h2>{plainText(s.title)}</h2>
             </button>
-            {isOpen && s.body && <div className="bbcode-content wiki-body" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(s.body) }} />}
+            {isOpen && s.body && <div className="bbcode-content wiki-body" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(withSite(s.body)) }} />}
           </section>
         );
       })}

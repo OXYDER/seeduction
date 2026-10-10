@@ -46,6 +46,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
     ['/requests', '💬', 'Mes demandes'],
     ['/bonus', '🎁', 'Boutique bonus'],
     ['/friends', '👫', 'Amis'],
+    ['/integrations', '🔌', 'API & flux RSS'],
     ['/wiki', '📖', 'Wiki'],
   ];
 
