@@ -2,9 +2,11 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
+import { optimizeImage } from './image-optimize';
 
 const STORAGE_DIR = process.env.COVER_STORAGE_DIR ?? './storage/covers';
-const MAX_BYTES = 8 * 1024 * 1024; // 8 Mo
+const MAX_BYTES = 8 * 1024 * 1024; // 8 Mo : taille maximale d'une image enregistrée telle quelle (sans compression possible)
+const MAX_INCOMING = 25 * 1024 * 1024; // 25 Mo : taille maximale reçue, avant compression (l'image enregistrée est bien plus légère)
 const EXT_BY_MIME: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',
@@ -36,7 +38,7 @@ export class CoversService {
     if (!ext) throw new BadRequestException('Type de fichier non supporté (jpeg/png/webp uniquement)');
 
     const buffer = Buffer.from(await res.arrayBuffer());
-    if (buffer.length > MAX_BYTES) throw new BadRequestException('Image trop volumineuse (8 Mo max)');
+    if (buffer.length > MAX_INCOMING) throw new BadRequestException('Image trop volumineuse (25 Mo max)');
 
     return this.saveBuffer(buffer, ext);
   }
@@ -57,13 +59,13 @@ export class CoversService {
   async saveUpload(file: Express.Multer.File): Promise<string> {
     const ext = EXT_BY_MIME[file.mimetype?.toLowerCase()];
     if (!ext) throw new BadRequestException('Type de fichier non supporté (jpeg/png/webp uniquement)');
-    if (file.size > MAX_BYTES) throw new BadRequestException('Image trop volumineuse (8 Mo max)');
+    if (file.size > MAX_INCOMING) throw new BadRequestException('Image trop volumineuse (25 Mo max)');
     return this.saveBuffer(file.buffer, ext);
   }
 
   /** Image produite par une IA : type vérifié sur le contenu (signature PNG / JPEG / WebP), 8 Mo maximum. */
   async saveGenerated(buffer: Buffer): Promise<string> {
-    if (buffer.length > MAX_BYTES) throw new BadRequestException('Image générée trop volumineuse (8 Mo max)');
+    if (buffer.length > MAX_INCOMING) throw new BadRequestException('Image générée trop volumineuse (25 Mo max)');
     const isPng = buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
     const isJpg = buffer[0] === 0xff && buffer[1] === 0xd8;
     const isWebp = buffer.subarray(0, 4).toString('latin1') === 'RIFF' && buffer.subarray(8, 12).toString('latin1') === 'WEBP';
@@ -72,7 +74,10 @@ export class CoversService {
     return this.saveBuffer(buffer, ext);
   }
 
-  private async saveBuffer(buffer: Buffer, ext: string): Promise<string> {
+  private async saveBuffer(input: Buffer, inputExt: string): Promise<string> {
+    // Compression automatique (redimensionnement + WebP) ; sans elle, l'ancienne limite de 8 Mo s'applique.
+    const { buffer, ext, compressed } = await optimizeImage(input, inputExt);
+    if (!compressed && buffer.length > MAX_BYTES && inputExt !== 'gif') throw new BadRequestException('Image trop volumineuse (8 Mo max)');
     await fs.mkdir(STORAGE_DIR, { recursive: true });
     const filename = `${randomUUID()}.${ext}`;
     await fs.writeFile(path.join(STORAGE_DIR, filename), buffer);
