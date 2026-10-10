@@ -103,6 +103,7 @@ export function ImportAdmin() {
       </div>
 
       <ConflictPanel refreshKey={sources} onChanged={loadSources} ok={ok} fail={fail} />
+      <MemoryPanel ok={ok} fail={fail} />
 
       {robot && (
         <div className="panel">
@@ -458,6 +459,7 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
   const [link, setLink] = useState('');
   const [categoryId, setCategoryId] = useState<string>(d.category?.id ?? '');
   const [busy, setBusy] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [searchError, setSearchError] = useState('');
 
   async function search() {
@@ -476,7 +478,7 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
   async function send(withFiche: boolean) {
     setBusy(true);
     try {
-      await api.post(`/importer/items/${item.id}/approve`, withFiche && pick ? { categoryId, metaKind: pick.kind, metaId: pick.id, metaTitle: pick.title } : { categoryId, noMeta: true });
+      await api.post(`/importer/items/${item.id}/approve`, withFiche && pick ? { categoryId, metaKind: pick.kind, metaId: pick.id, metaTitle: pick.title, remember } : { categoryId, noMeta: true, remember });
       ok(`« ${item.name} » validée : envoi en cours`);
       onDone();
     } catch (e) { fail(e); } finally { setBusy(false); }
@@ -527,11 +529,52 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
           {options.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         {pick && <span style={{ fontSize: 12, color: 'var(--success)' }}>fiche choisie : {pick.title}</span>}
+        <label className="row" style={{ gap: 4, fontSize: 12 }} title="La prochaine release qui ressemble (même série, même film, même site pour une scène adulte) sera rangée toute seule, avec ce choix"><input type="checkbox" style={{ width: 'auto' }} checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Se souvenir pour les releases qui ressemblent</label>
         <span style={{ flex: 1 }} />
         <button type="button" disabled={busy || !pick || !categoryId} onClick={() => send(true)}>✓ Importer avec cette fiche</button>
         <button type="button" className="secondary" disabled={busy || !categoryId} onClick={() => send(false)}>Importer sans fiche</button>
         <button type="button" className="secondary" disabled={busy} onClick={dismiss}>Écarter</button>
       </div>
+    </div>
+  );
+}
+
+/** Choix mémorisés : ce que le staff a validé dans « À vérifier » ; la prochaine release qui ressemble reprend la même catégorie (et la même fiche). On peut en retirer un qui serait faux. */
+function MemoryPanel({ ok, fail }: { ok: (m: string) => void; fail: (e: any) => void }) {
+  const [rows, setRows] = useState<any[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const load = useCallback(() => api.get('/importer/memory').then((r) => setRows(r.data)).catch(() => undefined), []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (!open) return; const t = setInterval(load, 15000); return () => clearInterval(t); }, [open, load]);
+  if (!rows || rows.length === 0) return null;
+  const kindLabel = (k: string) => (k.startsWith('S|') ? 'Site adulte' : k.startsWith('T|serie') ? 'Série' : k.startsWith('T|film') ? 'Film' : k.startsWith('T|xxx') ? 'Film adulte' : 'Titre');
+  async function forget(id: string) {
+    try { await api.delete(`/importer/memory/${id}`); ok('Choix retiré : la prochaine release repassera par la détection'); load(); } catch (e) { fail(e); }
+  }
+  return (
+    <div className="panel">
+      <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+        <strong>🧠 Choix mémorisés ({rows.length})</strong>
+        <span className="muted" style={{ fontSize: 12 }}>Les releases qui ressemblent à une release déjà vérifiée à la main sont rangées toutes seules.</span>
+        <span style={{ flex: 1 }} />
+        <button type="button" className="secondary" onClick={() => setOpen(!open)}>{open ? 'Masquer' : 'Voir'}</button>
+      </div>
+      {open && (
+        <table style={{ marginTop: 8 }}>
+          <tbody>
+            {rows.map((m) => (
+              <tr key={m.id}>
+                <td className="muted" style={{ whiteSpace: 'nowrap' }}>{kindLabel(m.key)}</td>
+                <td style={{ wordBreak: 'break-all' }}>{m.label}</td>
+                <td>{m.categoryName}</td>
+                <td className="muted">{m.metaId ? `fiche : ${m.metaTitle ?? m.metaId}` : m.noMeta ? 'sans fiche' : 'catégorie seule'}</td>
+                <td className="muted" style={{ whiteSpace: 'nowrap' }}>{timeAgo(m.updatedAt)}</td>
+                <td><button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => forget(m.id)}>Retirer</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

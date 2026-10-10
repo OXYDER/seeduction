@@ -108,6 +108,20 @@ export class ImporterController {
     return this.importer.dismissItem(id);
   }
 
+  /** Choix mémorisés (« À vérifier » > se souvenir) : la prochaine release qui ressemble est rangée toute seule. */
+  @Get('memory')
+  memory() {
+    return this.importer.memory();
+  }
+
+  @Delete('memory/:id')
+  async forget(@Param('id') id: string, @Request() req: any) {
+    assertMaster(req);
+    const r = await this.importer.forget(id);
+    await this.audit.log(req.user.userId, 'IMPORT_MEMORY_FORGET', { id });
+    return r;
+  }
+
   @Get('events')
   events(@Query('sourceId') sourceId?: string, @Query('limit') limit?: string) {
     return this.importer.events(sourceId, limit ? Number(limit) : 100);

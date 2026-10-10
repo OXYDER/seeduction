@@ -11,9 +11,13 @@ import { detectReleaseMeta } from './release-meta';
 import { MetadataService, titleKey } from '../metadata/metadata.service';
 import { SupportBotService } from '../support/support-bot.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { memoryKeyOf } from './import-memory';
 import { cleanTitle, ContentType, feedLabelOf, guessType, isFilmLike, isSeriesLike, leafKey, refineWithGenres, resolveCandidate, typeFromFeedLabel } from './category-guess';
 
 /** Ce que la détection a compris d'une release (rempli par chooseCategory) : sert à la mise en vérification manuelle. */
+/** Catégorie choisie pour une release, avec la fiche à rattacher ; `noMeta` : le staff a déjà dit « sans fiche » pour ce genre de release. */
+export interface ChosenCategory { name: string; id: string; how: string; meta?: { kind: 'FILM' | 'SERIE' | 'XXX'; id: string; title: string; year?: string }; noMeta?: boolean }
+
 export interface ReleaseInfo { type?: ContentType; title?: string; year?: number }
 /** Choix final avant l'envoi : catégorie de Seeduction + fiche à rattacher (facultative). */
 interface Chosen { id: string; name: string; how: string; meta?: { kind: string; id: string; title: string; year?: string } }
@@ -296,7 +300,47 @@ export class ImporterService {
     return null;
   }
 
-  async chooseCategory(cfg: ImportConfig, t: QbitTorrent, feedLabel = '', info: ReleaseInfo = {}): Promise<{ name: string; id: string; how: string; meta?: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } } | null> {
+  /** Type de fiche à chercher pour un type de contenu (TMDB film / série, ThePornDB pour l'adulte), null si ce type n'a pas de fiche ou si la source n'est pas configurée. */
+  ficheKindOf(type?: ContentType): 'FILM' | 'SERIE' | 'XXX' | null {
+    if (!type) return null;
+    if (type === 'XXX') return this.metadata.supportedKinds.includes('XXX') ? 'XXX' : null;
+    if (!this.metadata.supportedKinds.includes('FILM')) return null;
+    return isSeriesLike(type) ? 'SERIE' : isFilmLike(type) ? 'FILM' : null;
+  }
+
+  /** Choix déjà faits à la main pour une release qui ressemble à celle-ci (même série, même film, même site) : catégorie et, quand elle a été retenue, fiche. */
+  private async recall(name: string, type: ContentType | undefined, leaves: { ids: Map<string, string>; names: Map<string, string> }) {
+    const k = memoryKeyOf(name, type);
+    if (!k) return null;
+    const row = await this.prisma.importMemory.findUnique({ where: { key: k.key } }).catch(() => null);
+    if (!row) return null;
+    const leaf = [...leaves.ids.entries()].find(([, id]) => id === row.categoryId); // la catégorie mémorisée doit exister encore (et être une sous-catégorie)
+    if (!leaf) return null;
+    return {
+      categoryId: row.categoryId, categoryName: leaves.names.get(leaf[0])!, noMeta: row.noMeta,
+      meta: k.withFiche && row.metaId && row.metaKind ? { kind: row.metaKind as 'FILM' | 'SERIE' | 'XXX', id: row.metaId, title: row.metaTitle ?? row.metaId } : undefined,
+    };
+  }
+
+  /** Retient le choix fait à la main pour les prochaines releases qui ressemblent (voir memoryKeyOf). */
+  private async remember(name: string, detail: any, cat: { id: string; name: string }, fiche: { kind: string; id: string; title: string | null } | null) {
+    const k = memoryKeyOf(name, (detail?.type ?? undefined) as ContentType | undefined);
+    if (!k) return;
+    const data = { label: k.label, categoryId: cat.id, categoryName: cat.name, metaKind: k.withFiche && fiche ? fiche.kind : null, metaId: k.withFiche && fiche ? fiche.id : null, metaTitle: k.withFiche && fiche ? fiche.title : null, noMeta: !fiche };
+    await this.prisma.importMemory.upsert({ where: { key: k.key }, create: { key: k.key, ...data }, update: data });
+  }
+
+  /** Les choix mémorisés (Admin > Import) : le staff peut en retirer un qui serait faux. */
+  memory() {
+    return this.prisma.importMemory.findMany({ orderBy: { updatedAt: 'desc' }, take: 500 });
+  }
+
+  async forget(id: string) {
+    await this.prisma.importMemory.delete({ where: { id } }).catch(() => { throw new NotFoundException('Choix mémorisé introuvable'); });
+    return { forgotten: true };
+  }
+
+  async chooseCategory(cfg: ImportConfig, t: QbitTorrent, feedLabel = '', info: ReleaseInfo = {}): Promise<ChosenCategory | null> {
     const leaves = await this.leaves();
     // Type de contenu : la catégorie du flux RSS (si claire) prime sur le nom ; sinon le nom.
     const byName = guessType(t.name);
@@ -307,10 +351,18 @@ export class ImporterService {
     info.title = parsed.title; info.year = parsed.year; info.type = type;
 
     // Fiche TMDB (film ou série) : sert à classer (animation, émission, documentaire) ET à rattacher la fiche au torrent.
-    let meta: { kind: 'FILM' | 'SERIE'; id: string; title: string; year?: string } | undefined;
+    let meta: { kind: 'FILM' | 'SERIE' | 'XXX'; id: string; title: string; year?: string } | undefined;
     let siblingCategoryId: string | undefined;
     const wantsTmdb = cfg.attachMetadata !== false || cfg.autoCategory !== false;
-    if (type && wantsTmdb && (isFilmLike(type) || isSeriesLike(type))) {
+    // Mémoire du staff : une release qui ressemble à une release déjà vérifiée à la main (même série, même film, même site) reprend ses choix.
+    const mem = await this.recall(t.name, type, leaves);
+    if (mem?.meta) { meta = mem.meta; how = 'mémorisé'; }
+    // Release adulte : fiche ThePornDB rattachée seulement si le résultat est clair (scène : site + date + interprètes ; film : titre exact + année).
+    if (!meta && type === 'XXX' && cfg.attachMetadata !== false && this.ficheKindOf(type)) {
+      const m = await this.metadata.porndbMatch(t.name);
+      if (m) { meta = { kind: 'XXX', id: m.id, title: m.title, year: m.year }; how = how === 'flux RSS' ? 'flux RSS + ThePornDB' : 'ThePornDB'; }
+    }
+    if (!meta && type && wantsTmdb && (isFilmLike(type) || isSeriesLike(type))) {
       const { title, year } = cleanTitle(t.name);
       const series = isSeriesLike(type);
       // 1) La même série (ou le même film) est déjà sur le site avec sa fiche : on la reprend telle quelle, avec sa catégorie (chaque épisode suivant se range pareil).
@@ -337,6 +389,7 @@ export class ImporterService {
       const id = leaves.ids.get(leafKey(r.category));
       if (id) return { name: leaves.names.get(leafKey(r.category))!, id, how: 'règle', meta };
     }
+    if (mem) return { name: mem.categoryName, id: mem.categoryId, how: 'mémorisé', meta: mem.meta, noMeta: mem.noMeta };
     if (cfg.autoCategory !== false && siblingCategoryId) {
       const hit = [...leaves.ids.entries()].find(([, cid]) => cid === siblingCategoryId);
       if (hit) return { name: leaves.names.get(hit[0])!, id: siblingCategoryId, how, meta };
@@ -388,9 +441,9 @@ export class ImporterService {
 
         const info: ReleaseInfo = {};
         const found = await this.chooseCategory(cfg, t, labels.get(t.hash) ?? '', info);
-        const wantsFiche = cfg.attachMetadata !== false && cfg.reviewUnmatched !== false && !!info.type && (isFilmLike(info.type) || isSeriesLike(info.type)) && this.metadata.supportedKinds.includes('FILM');
+        const wantsFiche = cfg.attachMetadata !== false && cfg.reviewUnmatched !== false && !!this.ficheKindOf(info.type);
         if (!found && cfg.reviewUnmatched === false) { await skip("type de contenu non détecté : ajoute une règle de catégorie ou choisis une catégorie par défaut, puis « Retenter »"); continue; }
-        if (!found || (wantsFiche && !found.meta)) {
+        if (!found || (wantsFiche && !found.meta && !found.noMeta)) {
           // Pas de catégorie ou pas de fiche sûre : la release attend dans « À vérifier » que tu la complètes à la main (elle ne compte pas dans la limite par passe).
           await this.queueReview(id, t, found, info, labels.get(t.hash) ?? '', found ? `aucune fiche TMDB sûre pour « ${info.title} »` : 'catégorie non détectée', dryRun, ev);
           continue;
@@ -500,10 +553,10 @@ export class ImporterService {
   /** Met une release dans « À vérifier » avec ce qui a été détecté et les fiches que TMDB propose pour ce titre. */
   private async queueReview(sourceId: string, t: QbitTorrent, found: { id: string; name: string; how: string } | null, info: ReleaseInfo, feedLabel: string, reason: string, dryRun: boolean, ev: (l: 'INFO' | 'WARN' | 'ERROR', m: string) => Promise<void>) {
     if (dryRun) { await ev('WARN', `${t.name} — irait dans « À vérifier » : ${reason}`); return; }
-    const kind = info.type && isSeriesLike(info.type) ? 'SERIE' : 'FILM';
+    const kind = this.ficheKindOf(info.type) ?? 'FILM';
     let suggestions: { id: string; title: string; subtitle: string; thumbnail: string | null }[] = [];
     const title = info.title || cleanTitle(t.name).title;
-    if (title && this.metadata.supportedKinds.includes(kind) && (!info.type || isFilmLike(info.type) || isSeriesLike(info.type))) {
+    if (title && this.metadata.supportedKinds.includes(kind) && (!info.type || this.ficheKindOf(info.type))) {
       suggestions = await this.metadata.search(kind, title, info.year ? String(info.year) : undefined).catch(() => []);
       if (suggestions.length === 0 && info.year) suggestions = await this.metadata.search(kind, title).catch(() => []);
     }
@@ -571,6 +624,8 @@ export class ImporterService {
     if (!metaId && body?.noMeta !== true) throw new BadRequestException('Choisis une fiche, ou « Importer sans fiche »');
     const override = { categoryId: cat.id, categoryName: cat.name, metaKind: metaId ? metaKind : null, metaId: metaId || null, metaTitle: str(body?.metaTitle, 200) || null };
     await this.prisma.importItem.update({ where: { id }, data: { status: 'READY', why: 'validé à la main : envoi en cours', detail: { ...detail, override } as any } });
+    // Se souvenir pour les prochaines releases qui ressemblent (sauf si le staff décoche la case).
+    if (body?.remember !== false) await this.remember(it.name, detail, cat, metaId ? { kind: metaKind, id: metaId, title: str(body?.metaTitle, 200) || null } : null).catch(() => undefined);
     const now = !this.running;
     if (now) void this.execute(it.sourceId, false, true); // n'envoie que les éléments validés à la main, même si la source est désactivée
     return { queued: true, now };

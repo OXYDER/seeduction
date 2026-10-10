@@ -5,7 +5,7 @@
 export type ContentType =
   | 'FILM' | 'ANIMATION' | 'DOCUMENTAIRE' | 'CONCERT'
   | 'SERIE' | 'ANIMATION_SERIE' | 'DOC_SERIE' | 'EMISSION'
-  | 'SPORT' | 'MUSIQUE' | 'LIVRE';
+  | 'SPORT' | 'MUSIQUE' | 'LIVRE' | 'XXX';
 
 /** Noms de sous-catégories à essayer, dans l'ordre, pour chaque type (arbre recommandé de Seeduction, puis arbre par défaut). Le premier qui existe gagne. */
 export const CATEGORY_CANDIDATES: Record<ContentType, string[]> = {
@@ -20,6 +20,7 @@ export const CATEGORY_CANDIDATES: Record<ContentType, string[]> = {
   SPORT: ['Sport', 'Sports'],
   MUSIQUE: ['Musique'],
   LIVRE: ['Livres', 'Livre'],
+  XXX: ['XXX Films', 'XXX'],
 };
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -31,7 +32,7 @@ export function resolveCandidate(type: ContentType, leafNames: Map<string, strin
 }
 export const leafKey = norm;
 
-const TAG = /^(s\d{1,2}(e\d{1,3})?|saison\d*|season\d*|complete|integrale|multi\d?|french|truefrench|vff|vfq|vfi|vfb|vof|vf2?|vq|vostfr|vost|muet|dual|\d{3,4}[pi]|[248]k|uhd|hdr10?|dv|web|webrip|web-dl|webdl|bluray|bdrip|brrip|remux|hdtv|dvdrip|x26[45]|h26[45]|hevc|avc|aac|ac3|eac3|ddp\d*|dts|flac|mp3|ad|repack|proper|extended|unrated|imax|amzn|nf|dsnp|atvp|hmax|pack)$/i;
+const TAG = /^(s\d{1,2}(e\d{1,3})?|saison\d*|season\d*|complete|integrale|multi\d?|french|truefrench|vff|vfq|vfi|vfb|vof|vf2?|vq|vostfr|vost|muet|dual|\d{3,4}[pi]|[248]k|uhd|hdr10?|dv|web|webrip|web-dl|webdl|bluray|bdrip|brrip|remux|hdtv|dvdrip|x26[45]|h26[45]|hevc|avc|aac|ac3|eac3|ddp\d*|dts|flac|mp3|ad|repack|proper|extended|unrated|imax|amzn|nf|dsnp|atvp|hmax|pack|xxx)$/i;
 
 /** Titre lisible tiré d'un nom de release (« Last.Seen.S01.MULTi.1080p… » -> « Last Seen ») + année. */
 export function cleanTitle(name: string): { title: string; year?: number } {
@@ -49,6 +50,8 @@ export function cleanTitle(name: string): { title: string; year?: number } {
 
 /** Type de contenu déduit du nom seul ; undefined si le nom ne permet pas de trancher. */
 export function guessType(name: string): ContentType | undefined {
+  // Étiquette « XXX » d'une release adulte (jamais en premier mot : « xXx.Return.of.Xander.Cage » est un film ordinaire).
+  if (/[. _-]XXX(?=[. _-]|$)/.test(name)) return 'XXX';
   if (/\b(UFC|WWE|AEW|NBA|NHL|NFL|MLB|MLS|Formula[ .]?1|F1|MotoGP|Premier[ .]League|Ligue[ .]1|UEFA|FIFA|Roland[ .]Garros|Wimbledon)\b/i.test(name)) return 'SPORT';
   if (/\b(FLAC|MP3|\d{3}kbps|discograph(?:y|ie)|V0)\b/i.test(name) && !/\b(1080p|2160p|720p|x26[45]|WEB-?DL|BluRay)\b/i.test(name)) return 'MUSIQUE';
   if (/\b(epub|cbz|cbr|mobi|ebook)\b/i.test(name)) return 'LIVRE';
@@ -84,6 +87,7 @@ export function refineWithGenres(type: ContentType, genreIds: number[]): Content
 export function typeFromFeedLabel(label: string, base?: ContentType): ContentType | undefined {
   const l = norm(label);
   if (!l) return undefined;
+  if (/\b(xxx|adulte|adultes|adult|porn|porno|hentai)\b/.test(l)) return 'XXX';
   const isSeries = /\b(serie|series|tele|saison|episode|tv pack)\b/.test(l) || base === 'SERIE';
   if (/\bsports?\b/.test(l)) return 'SPORT';
   if (/\b(anime|animes|animee|animees|animation|dessin|dessins)\b/.test(l)) return isSeries ? 'ANIMATION_SERIE' : 'ANIMATION';

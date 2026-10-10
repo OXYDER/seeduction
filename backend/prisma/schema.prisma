@@ -1061,6 +1061,22 @@ model MemberImportItem {
   @@index([boxId, status])
 }
 
+// Mémoire des choix du staff dans « À vérifier » : la prochaine release qui ressemble (même série, même film, même site pour une scène adulte)
+// est rangée toute seule, avec la même catégorie et la même fiche, sans repasser par la vérification.
+model ImportMemory {
+  id           String   @id @default(uuid())
+  key          String   @unique // T|serie|<titre> · T|film|<titre>|<année> · T|xxx|<titre>|<année> · S|<site> · N|<titre> (catégorie seule)
+  label        String // libellé lisible (titre ou site)
+  categoryId   String
+  categoryName String
+  metaKind     String?
+  metaId       String?
+  metaTitle    String?
+  noMeta       Boolean  @default(false) // le staff a choisi « sans fiche »
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 // Journal de l'import (derniers événements, purgé automatiquement).
 model ImportEvent {
   id        String   @id @default(uuid())

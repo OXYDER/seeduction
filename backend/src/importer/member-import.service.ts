@@ -9,7 +9,7 @@ import { QbitTorrent } from './qbit.client';
 import { CLIENT_KINDS, CLIENT_LABEL, ClientKind, NeedsFileAccess, TorrentClient, makeClient } from './torrent-clients';
 import { FtpConnectError, ftpConnect, hasNfo, nfoFor, readFileViaFtp } from './release-files';
 import { detectReleaseMeta } from './release-meta';
-import { cleanTitle, isFilmLike, isSeriesLike } from './category-guess';
+import { cleanTitle } from './category-guess';
 import { assertPublicHost, assertPublicUrl } from './net-guard';
 
 /** Catégorie créée dans le client du membre pour les torrents de Seeduction (jamais sur le tracker). */
@@ -224,11 +224,11 @@ export class MemberImportService {
     }
     const info: ReleaseInfo = {};
     const found = await this.importer.chooseCategory(cfg, t, '', info);
-    const wantsFiche = !!info.type && (isFilmLike(info.type) || isSeriesLike(info.type)) && this.metadata.supportedKinds.includes('FILM');
-    const kind = info.type && isSeriesLike(info.type) ? 'SERIE' : 'FILM';
+    const wantsFiche = !!this.importer.ficheKindOf(info.type);
+    const kind = this.importer.ficheKindOf(info.type) ?? 'FILM';
     const title = info.title || cleanTitle(t.name).title;
     let suggestions: { id: string; title: string; subtitle: string; thumbnail: string | null }[] = [];
-    if (wantsFiche && !found?.meta && title) {
+    if (wantsFiche && !found?.meta && !found?.noMeta && title) {
       suggestions = await this.metadata.search(kind, title, info.year ? String(info.year) : undefined).catch(() => []);
       if (suggestions.length === 0 && info.year) suggestions = await this.metadata.search(kind, title).catch(() => []);
     }
@@ -244,6 +244,7 @@ export class MemberImportService {
       meta: found?.meta ?? null, suggestions: suggestions.slice(0, 6),
       language: meta.language ?? null, resolution: meta.resolution ?? null, size: t.size, qbitCategory: t.category,
       nfoState: hasNfo(nfo) ? 'OK' : nfoError ? 'ERROR' : cfg.ftp ? 'MISSING' : 'NO_FTP', nfoError: nfoError || null,
+      ...(found?.noMeta ? { override: { noMeta: true } } : {}), // le staff a déjà dit « sans fiche » pour ce genre de release
     };
     Object.assign(detail, this.verdict(detail, hasNfo(nfo)));
     await this.prisma.memberImportItem.create({ data: { ...base, status: 'PROPOSED', why: detail.reason, detail, nfo: hasNfo(nfo) ? nfo.slice(0, 200_000) : null } });

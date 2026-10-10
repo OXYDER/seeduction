@@ -6,6 +6,7 @@ import { PrismaService } from '../common/prisma.service';
 import { TranslateService } from './translate.service';
 import { cleanTitle } from '../importer/category-guess';
 import { releaseDateOf } from './release-date';
+import { parseAdultName, pickPorndbMatch, PorndbHit } from './porndb-match';
 
 export interface SearchResult {
   id: string;
@@ -46,6 +47,7 @@ interface RichMetadata {
 
 const TMDB_IMG = (process.env.TMDB_IMAGE_BASE_URL || 'https://image.tmdb.org/t/p').replace(/\/$/, ''); // modifiable pour les essais en local
 const TMDB_API = (process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3').replace(/\/$/, ''); // modifiable pour les essais en local
+const PORNDB_API = (process.env.THEPORNDB_BASE_URL || 'https://api.theporndb.net').replace(/\/$/, ''); // modifiable pour les essais en local
 const SEARCHABLE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'] as const;
 
 /** Retire les accents : « Amélie » devient « Amelie » (pour retrouver un titre saisi sans accents). */
@@ -656,7 +658,7 @@ export class MetadataService {
   private async searchPorndb(query: string): Promise<SearchResult[]> {
     const q = encodeURIComponent(query);
     const call = (type: 'scenes' | 'movies') =>
-      this.fetchJson(`https://api.theporndb.net/${type}?q=${q}&per_page=10`, 'ThePornDB', this.porndbHeaders()).then((r) => (r.data ?? []) as any[]);
+      this.fetchJson(`${PORNDB_API}/${type}?q=${q}&per_page=10`, 'ThePornDB', this.porndbHeaders()).then((r) => (r.data ?? []) as any[]);
     const [scenes, movies] = await Promise.allSettled([call('scenes'), call('movies')]);
     if (scenes.status === 'rejected' && movies.status === 'rejected') throw scenes.reason;
 
@@ -672,10 +674,35 @@ export class MetadataService {
     ];
   }
 
+  /**
+   * Fiche ThePornDB qui correspond SANS AMBIGUÏTÉ à un nom de release adulte (scène : site + date + interprètes ; film : titre exact + année), pour le
+   * rattachement automatique à l'import. Null sans clé, sans correspondance claire ou en cas d'erreur : le cas douteux est proposé à la vérification manuelle.
+   */
+  async porndbMatch(name: string): Promise<{ id: string; title: string; year?: string } | null> {
+    if (!this.porndbKey) return null;
+    const p = parseAdultName(name);
+    const queries = p.kind === 'scene' ? [`${p.site} ${p.rest}`.trim(), p.rest, p.site].filter((q, i, a) => q.length >= 3 && a.indexOf(q) === i) : [p.title];
+    const type = p.kind === 'scene' ? 'scenes' : 'movies';
+    try {
+      for (const q of queries) {
+        const res = await this.fetchJson(`${PORNDB_API}/${type}?q=${encodeURIComponent(q)}&per_page=25`, 'ThePornDB', this.porndbHeaders());
+        const hits: PorndbHit[] = ((res.data ?? []) as any[]).map((r) => ({
+          id: `${p.kind}:${r.id}`, kind: p.kind, title: String(r.title ?? ''), date: r.date ? String(r.date).slice(0, 10) : undefined, site: r.site?.name ?? r.studio?.name ?? undefined,
+          performers: (r.performers ?? []).map((x: any) => (x.parent ?? x)?.name).filter(Boolean),
+        }));
+        const hit = pickPorndbMatch(name, hits);
+        if (hit) return { id: hit.id, title: hit.title, year: hit.date?.slice(0, 4) };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   private async richPorndb(id: string): Promise<RichMetadata> {
     const [type, rawId] = id.includes(':') ? (id.split(':') as [string, string]) : ['scene', id];
     const path = type === 'movie' ? 'movies' : 'scenes';
-    const res = await this.fetchJson(`https://api.theporndb.net/${path}/${encodeURIComponent(rawId)}`, 'ThePornDB', this.porndbHeaders());
+    const res = await this.fetchJson(`${PORNDB_API}/${path}/${encodeURIComponent(rawId)}`, 'ThePornDB', this.porndbHeaders());
     const g = res.data ?? res;
 
     const performers: any[] = (g.performers ?? []).map((p: any) => p.parent ?? p).filter((p: any) => p?.name).slice(0, 12);
