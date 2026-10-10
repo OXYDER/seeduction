@@ -53,6 +53,71 @@ function ReleaseLine({ t, current, label }: { t: Card; current: boolean; label?:
   );
 }
 
+/** « 3 releases » : le nombre de versions d'un épisode ou d'un film ; un clic les déplie. */
+function CountBadge({ n, open }: { n: number; open: boolean }) {
+  return <span className="rel-count">{open ? '▾' : '▸'} {n} release{n > 1 ? 's' : ''}</span>;
+}
+
+/** Une ligne d'épisode : une seule release s'affiche tout de suite ; plusieurs : le nombre de releases, et un clic sur l'épisode les montre avec leurs étiquettes. */
+function EpisodeRow({ season, ep, have, hasPack, torrentId, seriesTitle }: { season: number; ep: { number: number; name: string; airDate?: string | null }; have: TvTorrent[]; hasPack: boolean; torrentId: string; seriesTitle: string }) {
+  const [open, setOpen] = useState(false);
+  const many = have.length > 1;
+  const label = (t: TvTorrent) => { const c = t.coverage.find((x) => x.season === season); return c?.episodes && c.episodes.length > 1 ? `épisodes ${ranges(c.episodes)}` : undefined; };
+  return (
+    <>
+      <tr className={many ? 'rel-click' : undefined} onClick={many ? () => setOpen((o) => !o) : undefined}>
+        <td className="muted" style={{ width: 60 }}>E{pad(ep.number)}</td>
+        <td>{ep.name}{ep.airDate && <span className="muted"> · {ep.airDate}</span>}</td>
+        <td>
+          {have.length === 0
+            ? (hasPack ? <span className="muted">Dans la saison complète</span> : <span className="muted">Non disponible — <Link to={requestLink(`${seriesTitle} S${pad(season)}E${pad(ep.number)}`)}>faire une demande</Link></span>)
+            : many ? <CountBadge n={have.length} open={open} /> : <ReleaseLine t={have[0]} current={have[0].id === torrentId} label={label(have[0])} />}
+        </td>
+      </tr>
+      {many && open && (
+        <tr>
+          <td />
+          <td colSpan={2}><div className="rel-list" style={{ padding: '2px 0 8px' }}>{have.map((t) => <ReleaseLine key={t.id} t={t} current={t.id === torrentId} label={label(t)} />)}</div></td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+/** Une ligne de saga : la release s'affiche tout de suite si elle est seule ; sinon le nombre de releases, que l'on déplie d'un clic. */
+function MovieRow({ part, current, torrentId }: { part: any; current: boolean; torrentId: string }) {
+  const list: Card[] = part.torrents ?? [];
+  const many = list.length > 1;
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <div className={`row${many ? ' rel-click' : ''}`} style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }} onClick={many ? () => setOpen((o) => !o) : undefined}>
+        <span style={{ minWidth: 60 }} className="muted">{part.year ?? '—'}</span>
+        <strong style={{ minWidth: 220, color: current ? 'var(--gold-bright)' : undefined }}>{part.title}{current ? ' (celui-ci)' : ''}</strong>
+        {list.length === 0
+          ? <span className="muted">Non disponible sur Seeduction — <Link to={requestLink(`${part.title}${part.year ? ` (${part.year})` : ''}`)}>faire une demande</Link></span>
+          : many ? <CountBadge n={list.length} open={open} /> : <ReleaseLine t={list[0]} current={list[0].id === torrentId} />}
+      </div>
+      {many && open && <div className="rel-list" style={{ margin: '6px 0 4px 68px' }}>{list.map((t) => <ReleaseLine key={t.id} t={t} current={t.id === torrentId} />)}</div>}
+    </div>
+  );
+}
+
+/** Les saisons complètes : une seule release s'affiche ; plusieurs : leur nombre, et un clic les montre. */
+function PackRow({ list, torrentId }: { list: TvTorrent[]; torrentId: string }) {
+  const many = list.length > 1;
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div className={`row${many ? ' rel-click' : ''}`} style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }} onClick={many ? () => setOpen((o) => !o) : undefined}>
+        <strong style={{ minWidth: 130 }}>Saison complète</strong>
+        {many ? <CountBadge n={list.length} open={open} /> : <ReleaseLine t={list[0]} current={list[0].id === torrentId} />}
+      </div>
+      {many && open && <div className="rel-list" style={{ margin: '6px 0 0 138px' }}>{list.map((t) => <ReleaseLine key={t.id} t={t} current={t.id === torrentId} />)}</div>}
+    </div>
+  );
+}
+
 function requestLink(title: string) {
   return `/requests?title=${encodeURIComponent(title)}`;
 }
@@ -94,20 +159,7 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
       <div className="panel">
         <div className="panel-title">Saga : {data.collection?.name}</div>
         <div className="grid" style={{ gap: 8 }}>
-          {parts.map((p) => {
-            const isCurrent = String(p.tmdbId) === String(data.currentTmdbId);
-            return (
-              <div key={p.tmdbId} className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-                <span style={{ minWidth: 60 }} className="muted">{p.year ?? '—'}</span>
-                <strong style={{ minWidth: 220, color: isCurrent ? 'var(--gold-bright)' : undefined }}>
-                  {p.title}{isCurrent ? ' (celui-ci)' : ''}
-                </strong>
-                {p.torrents.length > 0
-                  ? p.torrents.map((t: Card) => <ReleaseLine key={t.id} t={t} current={t.id === torrentId} />)
-                  : <span className="muted">Non disponible sur Seeduction — <Link to={requestLink(`${p.title}${p.year ? ` (${p.year})` : ''}`)}>faire une demande</Link></span>}
-              </div>
-            );
-          })}
+          {parts.map((p) => <MovieRow key={p.tmdbId} part={p} current={String(p.tmdbId) === String(data.currentTmdbId)} torrentId={torrentId} />)}
         </div>
       </div>
     );
@@ -131,9 +183,11 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
     return Math.max(0, total - have.size);
   };
   /** Épisodes précis qui couvrent cet épisode (hors saisons complètes, listées à part). */
-  const coversEpisode = (season: number, ep: number) =>
-    torrents.filter((t) => t.coverage.some((c) => c.season === season && c.episodes !== null && c.episodes.includes(ep)));
-  const packs = (season: number) => torrents.filter((t) => t.coverage.some((c) => c.season === season && c.episodes === null));
+  /** Une saison complète : sans détail d'épisodes, ou qui contient TOUS les épisodes de la saison (quand leur liste est connue) : elle n'est pas répétée sous chaque épisode. */
+  const isPack = (c: Coverage, epNums: number[] | null) => c.episodes === null || (!!epNums && epNums.length >= 2 && epNums.every((x) => c.episodes!.includes(x)));
+  const coversEpisode = (season: number, ep: number, epNums: number[] | null) =>
+    torrents.filter((t) => t.coverage.some((c) => c.season === season && !isPack(c, epNums) && c.episodes !== null && c.episodes.includes(ep)));
+  const packs = (season: number, epNums: number[] | null) => torrents.filter((t) => t.coverage.some((c) => c.season === season && isPack(c, epNums)));
   /** Résumé d'une saison : saison complète disponible, ou nombre d'épisodes disponibles. */
   const availability = (season: number) => {
     const list = covering(season);
@@ -152,6 +206,7 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
           const list = covering(n);
           const isOpen = openSeason === n;
           const eps = episodes[n];
+          const epNums: number[] | null = Array.isArray(eps) ? eps.map((e: any) => e.number) : null;
           return (
             <div key={n}>
               <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
@@ -169,7 +224,7 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                   return (
                     <span>
                       <span className="rel-ok">{av.count} épisode{av.count > 1 ? 's' : ''} disponible{av.count > 1 ? 's' : ''}</span>
-                      {s.episodeCount ? <span className="muted"> sur {s.episodeCount}</span> : null}
+                      {s.episodeCount && s.episodeCount >= av.count ? <span className="muted"> sur {s.episodeCount}</span> : null}
                       {missing > 0 && <span className="muted"> · {missing} manquant{missing > 1 ? 's' : ''} — <Link to={requestLink(`${seriesTitle} ${s.name} (saison complète)`)}>faire une demande</Link></span>}
                     </span>
                   );
@@ -180,36 +235,11 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                 <div style={{ margin: '8px 0 4px 16px' }}>
                   {!eps && <p className="muted">Chargement...</p>}
                   {eps === 'error' && <p className="muted">Liste des épisodes indisponible.</p>}
-                  {packs(n).length > 0 && (
-                    <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-                      <strong style={{ minWidth: 130 }}>Saison complète</strong>
-                      {packs(n).map((t) => <ReleaseLine key={t.id} t={t} current={t.id === torrentId} />)}
-                    </div>
-                  )}
+                  {packs(n, epNums).length > 0 && <PackRow list={packs(n, epNums)} torrentId={torrentId} />}
                   {Array.isArray(eps) && (
                     <table>
                       <tbody>
-                        {eps.map((e: any) => {
-                          const have = coversEpisode(n, e.number);
-                          return (
-                            <tr key={e.number}>
-                              <td className="muted" style={{ width: 60 }}>E{pad(e.number)}</td>
-                              <td>{e.name}{e.airDate && <span className="muted"> · {e.airDate}</span>}</td>
-                              <td>
-                                <div className="rel-list">
-                                  {have.length > 0
-                                    ? have.map((t) => {
-                                        const c = t.coverage.find((x) => x.season === n);
-                                        return <ReleaseLine key={t.id} t={t} current={t.id === torrentId} label={c?.episodes && c.episodes.length > 1 ? `épisodes ${ranges(c.episodes)}` : undefined} />;
-                                      })
-                                    : packs(n).length > 0
-                                      ? <span className="muted">Dans la saison complète</span>
-                                      : <span className="muted">Non disponible — <Link to={requestLink(`${seriesTitle} S${pad(n)}E${pad(e.number)}`)}>faire une demande</Link></span>}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {eps.map((e: any) => <EpisodeRow key={e.number} season={n} ep={e} have={coversEpisode(n, e.number, epNums)} hasPack={packs(n, epNums).length > 0} torrentId={torrentId} seriesTitle={seriesTitle} />)}
                       </tbody>
                     </table>
                   )}
