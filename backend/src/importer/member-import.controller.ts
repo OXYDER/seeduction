@@ -88,9 +88,9 @@ export class MemberImportController {
 
   /** Le membre confirme les lignes cochées : elles partent sur Seeduction (modération habituelle) puis reprennent le seed dans son client. */
   @Post('publish')
-  async publish(@Body() body: { ids?: string[] }, @Request() req: any) {
-    const r = await this.service.publish(this.who(req), body?.ids);
-    await this.audit.log(req.user.userId, 'MEMBER_SEEDBOX_PUBLISH', { queued: r.queued });
+  async publish(@Body() body: { ids?: string[]; all?: boolean }, @Request() req: any) {
+    const r = await this.service.publish(this.who(req), body?.ids, body?.all === true);
+    await this.audit.log(req.user.userId, 'MEMBER_SEEDBOX_PUBLISH', { queued: r.queued, all: body?.all === true });
     return r;
   }
 }

@@ -349,13 +349,25 @@ export class MemberImportService {
   // ------------------------------------------------------------------ publication
 
   /** Le membre confirme une sélection de lignes : seules les lignes vertes (ou corrigées) partent, au plus {MAX_QUEUE_PER_REQUEST} à la fois et {MAX_UPLOADS_PER_DAY} par jour. */
-  async publish(userId: string, ids: unknown) {
+  async publish(userId: string, ids: unknown, all = false) {
     const box = await this.requireBox(userId);
-    const list = Array.isArray(ids) ? [...new Set(ids.filter((x): x is string => typeof x === 'string'))] : [];
-    if (list.length === 0) throw new BadRequestException('Coche au moins un torrent');
-    if (list.length > MAX_QUEUE_PER_REQUEST) throw new BadRequestException(`${MAX_QUEUE_PER_REQUEST} torrents maximum à la fois : envoie le reste ensuite`);
     const today = await this.prisma.memberImportItem.count({ where: { boxId: box.id, status: { in: ['UPLOADED', 'QUEUED'] }, updatedAt: { gt: new Date(Date.now() - 86400_000) } } });
-    if (today + list.length > MAX_UPLOADS_PER_DAY) throw new BadRequestException(`Limite de ${MAX_UPLOADS_PER_DAY} torrents par jour via ton client : il t'en reste ${Math.max(0, MAX_UPLOADS_PER_DAY - today)} aujourd'hui`);
+    const remaining = Math.max(0, MAX_UPLOADS_PER_DAY - today);
+    let list: string[];
+    let notSent = 0;
+    if (all) {
+      // « Tous » : toutes les lignes reconnues (vertes) partent, par lots enchaînés automatiquement, dans la limite du jour ; le reste attend demain.
+      const greens = await this.prisma.memberImportItem.findMany({ where: { boxId: box.id, status: 'PROPOSED', detail: { path: ['verdict'], equals: 'GREEN' } }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+      if (greens.length === 0) throw new BadRequestException('Aucune release reconnue (verte) à envoyer');
+      if (remaining === 0) throw new BadRequestException(`Limite de ${MAX_UPLOADS_PER_DAY} torrents par jour via ton client atteinte : réessaie demain`);
+      list = greens.slice(0, remaining).map((g) => g.id);
+      notSent = greens.length - list.length;
+    } else {
+      list = Array.isArray(ids) ? [...new Set(ids.filter((x): x is string => typeof x === 'string'))] : [];
+      if (list.length === 0) throw new BadRequestException('Coche au moins un torrent');
+      if (list.length > MAX_QUEUE_PER_REQUEST) throw new BadRequestException(`${MAX_QUEUE_PER_REQUEST} torrents maximum à la fois : envoie le reste ensuite (ou utilise « Tous les reconnus »)`);
+      if (list.length > remaining) throw new BadRequestException(`Limite de ${MAX_UPLOADS_PER_DAY} torrents par jour via ton client : il t'en reste ${remaining} aujourd'hui`);
+    }
     const rows = await this.prisma.memberImportItem.findMany({ where: { boxId: box.id, id: { in: list } } });
     const queued: string[] = [], skipped: { name: string; why: string }[] = [];
     for (const it of rows) {
@@ -366,11 +378,11 @@ export class MemberImportService {
       queued.push(it.id);
     }
     if (queued.length) { try { this.launch(box, 'publish', (job) => this.runPublish(box, job)); } catch { /* une autre opération tourne : la file sera reprise par la passe suivante */ } }
-    return { queued: queued.length, skipped };
+    return { queued: queued.length, skipped, notSent, remaining: Math.max(0, remaining - queued.length) };
   }
 
   private async runPublish(box: { id: string; userId: string; config: any; secrets: string }, job: Job) {
-    const queued = await this.prisma.memberImportItem.findMany({ where: { boxId: box.id, status: 'QUEUED' }, orderBy: { createdAt: 'asc' }, take: MAX_QUEUE_PER_REQUEST });
+    const queued = await this.prisma.memberImportItem.findMany({ where: { boxId: box.id, status: 'QUEUED' }, orderBy: { createdAt: 'asc' }, take: MAX_UPLOADS_PER_DAY }); // « Tous » met en file jusqu'à la limite du jour : ils partent à la suite, dans la même opération
     job.total = queued.length;
     job.message = 'Connexion à ton client…';
     const { q, cfg, secrets } = await this.connect(box);

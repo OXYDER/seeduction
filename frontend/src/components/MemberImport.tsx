@@ -91,6 +91,18 @@ export default function MemberImport() {
 
   const toggle = (id: string) => setSel((cur) => { const n = new Set(cur); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const publish = () => act('publish', undefined, { ids: picked.map((i) => i.id) }).then(() => setTab('sent'));
+  async function publishAll() {
+    if (!window.confirm(`Envoyer TOUTES les ${green.length} releases reconnues (vertes) ?
+
+Elles partent par lots, dans la limite de 100 par jour, puis passent par la modération. Les cases cochées ne comptent pas : toutes les lignes vertes sont envoyées.`)) return;
+    setMsg(null);
+    try {
+      const r = (await api.post('/member-import/publish', { all: true })).data;
+      setMsg({ ok: true, text: `${r.queued} torrent${r.queued > 1 ? 's' : ''} en cours d'envoi${r.notSent ? ` · ${r.notSent} resteront pour demain (limite de 100 par jour)` : ''}.` });
+      setTab('sent');
+      await load();
+    } catch (e) { setMsg({ ok: false, text: errText(e) }); }
+  }
   const replace = (u: { id: string; why: string | null; detail: any }) => {
     // Une ligne qui vient de passer au vert est cochée (comme les lignes reconnues d'emblée).
     if (u.detail?.verdict === 'GREEN' && items.find((i) => i.id === u.id)?.detail?.verdict !== 'GREEN') setSel((cur) => (cur.size < MAX_BATCH ? new Set(cur).add(u.id) : cur));
@@ -165,7 +177,8 @@ export default function MemberImport() {
                     <button type="button" disabled={picked.length === 0 || picked.length > MAX_BATCH || !!running} onClick={publish}>
                       🚀 Envoyer {picked.length} torrent{picked.length > 1 ? 's' : ''} sur Seeduction
                     </button>
-                    {picked.length > MAX_BATCH && <span style={{ color: 'var(--danger)', fontSize: 12 }}>{MAX_BATCH} maximum à la fois : décoche-en quelques-uns.</span>}
+                    <button type="button" className="secondary" disabled={!!running} onClick={publishAll} title="Envoie toutes les lignes vertes, par lots enchaînés automatiquement">🚀 Tous les reconnus ({green.length})</button>
+                    {picked.length > MAX_BATCH && <span style={{ color: 'var(--danger)', fontSize: 12 }}>{MAX_BATCH} maximum à la fois pour la sélection : décoche-en quelques-uns, ou utilise « Tous les reconnus ».</span>}
                   </div>
                 </div>
               )}
