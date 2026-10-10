@@ -32,7 +32,7 @@ export function resolveCandidate(type: ContentType, leafNames: Map<string, strin
 }
 export const leafKey = norm;
 
-const TAG = /^(s\d{1,2}(e\d{1,3})?|saison\d*|season\d*|complete|integrale|multi\d?|french|truefrench|vff|vfq|vfi|vfb|vof|vf2?|vq|vostfr|vost|muet|dual|\d{3,4}[pi]|[248]k|uhd|hdr10?|dv|web|webrip|web-dl|webdl|bluray|bdrip|brrip|remux|hdtv|dvdrip|x26[45]|h26[45]|hevc|avc|aac|ac3|eac3|ddp\d*|dts|flac|mp3|ad|repack|proper|extended|unrated|imax|amzn|nf|dsnp|atvp|hmax|pack|xxx)$/i;
+const TAG = /^(s\d{1,2}(e\d{1,3})?|saison\d*|season\d*|complete|integrale|multi\d?|french|truefrench|vff|vfq|vfi|vfb|vof|vf2?|vq|vostfr|vost|muet|dual|\d{3,4}[pi]|[248]k|uhd|hdr10?|dv|web|webrip|web-dl|webdl|bluray|bdrip|brrip|remux|hdtv|dvdrip|x26[45]|h26[45]|hevc|avc|aac|ac3|eac3|ddp\d*|dts|flac|mp3|ad|repack|proper|extended|unrated|imax|amzn|nf|dsnp|atvp|hmax|pack|xxx|e\d{2,4})$/i;
 
 /** Titre lisible tiré d'un nom de release (« Last.Seen.S01.MULTi.1080p… » -> « Last Seen ») + année. */
 export function cleanTitle(name: string): { title: string; year?: number } {
@@ -56,8 +56,10 @@ export function guessType(name: string): ContentType | undefined {
   if (/\b(FLAC|MP3|\d{3}kbps|discograph(?:y|ie)|V0)\b/i.test(name) && !/\b(1080p|2160p|720p|x26[45]|WEB-?DL|BluRay)\b/i.test(name)) return 'MUSIQUE';
   if (/\b(epub|cbz|cbr|mobi|ebook)\b/i.test(name)) return 'LIVRE';
   if (/\bconcert\b/i.test(name)) return 'CONCERT';
+  // Animés : « Titre.E19.MULTi.1080p.WEB… » (numéro d'épisode seul, sans saison) avec une indication de qualité ou de langue : une série.
+  const animeEpisode = /[. _-]E\d{2,4}(?=[. _-])/.test(name) && /\b(\d{3,4}p|web|multi|vostfr|bluray|hdtv|x26[45]|h26[45])\b/i.test(name);
   const doc = /[. _-](DOC|DOCU|DOCUMENTAIRE|DOCUMENTARY)[. _-]/i.test(name); // « Titre.2026.DOC.FRENCH... » : l'étiquette DOC des releases
-  if (/\bS\d{1,2}(?:[ ._-]?E\d{1,3})?\b/i.test(name) || /\b(saison|season|int[eé]grale|complete[ ._-]series)[ ._-]?\d*\b/i.test(name)) return doc ? 'DOC_SERIE' : 'SERIE';
+  if (animeEpisode || /\bS\d{1,2}(?:[ ._-]?E\d{1,3})?\b/i.test(name) || /\b(saison|season|int[eé]grale|complete[ ._-]series)[ ._-]?\d*\b/i.test(name)) return doc ? 'DOC_SERIE' : 'SERIE';
   // Un film : une année et une indication de qualité / de source dans le nom.
   if (/\b(19|20)\d{2}\b/.test(name) && /\b(\d{3,4}[pi]|uhd|4k|web[ -]?dl|webrip|bluray|blu-ray|bdrip|dvdrip|hdrip|hdlight|remux|hdtv)\b/i.test(name)) return doc ? 'DOCUMENTAIRE' : 'FILM';
   return undefined;

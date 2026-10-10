@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import { formatBytes, formatNumber } from '../lib/format';
+import { LANGUAGE_GROUPS, LANGUAGE_LABELS } from '../lib/languageTag';
 
 interface Source {
   id: string; name: string; enabled: boolean; config: any; hasQbitPassword: boolean; hasFtpPassword: boolean;
@@ -458,6 +459,8 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
   const [pick, setPick] = useState<{ kind: string; id: string; title: string } | null>(null);
   const [link, setLink] = useState('');
   const [categoryId, setCategoryId] = useState<string>(d.category?.id ?? '');
+  const [language, setLanguage] = useState<string>(d.language ?? '');
+  const [langTouched, setLangTouched] = useState(false); // la langue n'est envoyée que si tu l'as choisie : sinon le site la lit lui-même (nom + MediaInfo / NFO)
   const [busy, setBusy] = useState(false);
   const [remember, setRemember] = useState(true);
   const [searchError, setSearchError] = useState('');
@@ -478,7 +481,7 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
   async function send(withFiche: boolean) {
     setBusy(true);
     try {
-      await api.post(`/importer/items/${item.id}/approve`, withFiche && pick ? { categoryId, metaKind: pick.kind, metaId: pick.id, metaTitle: pick.title, remember } : { categoryId, noMeta: true, remember });
+      await api.post(`/importer/items/${item.id}/approve`, withFiche && pick ? { categoryId, metaKind: pick.kind, metaId: pick.id, metaTitle: pick.title, remember, ...(langTouched && language ? { language } : {}) } : { categoryId, noMeta: true, remember, ...(langTouched && language ? { language } : {}) });
       ok(`« ${item.name} » validée : envoi en cours`);
       onDone();
     } catch (e) { fail(e); } finally { setBusy(false); }
@@ -492,7 +495,7 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
     <div className="panel" style={{ padding: 10 }}>
       <div style={{ wordBreak: 'break-all', fontWeight: 600 }}>{item.name}</div>
       <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-        {d.size ? `${Go(d.size)} · ` : ''}{d.language ? <span className="badge" style={{ background: 'rgba(255,255,255,0.1)' }}>{d.language}</span> : 'langue ?'}{d.resolution ? ` · ${d.resolution}` : ''}
+        {d.size ? `${Go(d.size)} · ` : ''}{d.language ? <span className="badge" style={{ background: 'rgba(255,255,255,0.1)' }} title="Lue dans le nom et dans le NFO / MediaInfo">{d.language}</span> : <span title={d.nfoState === 'MISSING' ? 'Ni le nom ni un NFO lisible ne donnent la langue : choisis-la ci-dessous' : 'Le nom ne dit pas la langue précise : choisis-la ci-dessous'}>langue ?{d.nfoState === 'MISSING' ? ' (NFO introuvable)' : ''}</span>}{d.resolution ? ` · ${d.resolution}` : ''}
         {d.feedLabel ? ` · flux : ${d.feedLabel}` : ''}{d.category ? ` · catégorie détectée : ${d.category.name} (${d.category.how})` : ''}
       </div>
       <div style={{ fontSize: 12, color: 'var(--gold-bright, #f5c542)', marginTop: 2 }}>{item.why}</div>
@@ -524,6 +527,10 @@ function ReviewCard({ item, options, onDone, ok, fail }: { item: ImportItem; opt
       </div>
 
       <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
+        <select value={language} onChange={(e) => { setLanguage(e.target.value); setLangTouched(true); }} style={{ width: 'auto' }} title="Langue : seulement si le nom et le MediaInfo ne la donnent pas">
+          <option value="">{d.language ? `Langue lue : ${d.language}` : 'Langue ? (choisis-la)'}</option>
+          {LANGUAGE_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.values.map((l) => <option key={l} value={l}>{LANGUAGE_LABELS[l] ?? l}</option>)}</optgroup>)}
+        </select>
         <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} style={{ width: 'auto' }}>
           <option value="">— catégorie de Seeduction —</option>
           {options.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

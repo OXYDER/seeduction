@@ -12,6 +12,13 @@ describe('type de contenu deduit du nom', () => {
     expect(guessType('Les.Simpson.Integrale.FRENCH.720p.WEB-GRP')).toBe('SERIE');
   });
 
+  it('animes : numero d episode seul (E19) avec qualite ou langue', () => {
+    expect(guessType('Kami.no.Shizuku.E19.MULTi.1080p.WEB.H264-AMB3R')).toBe('SERIE');
+    expect(guessType('Mon.Anime.E102.VOSTFR.720p.WEB-GRP')).toBe('SERIE');
+    expect(cleanTitle('Kami.no.Shizuku.E19.MULTi.1080p.WEB.H264-AMB3R').title).toBe('Kami no Shizuku');
+    expect(guessType('Colony.2026.MULTi.1080p.WEB.H264-SUPPLY')).toBe('FILM');
+  });
+
   it('films : une annee et une qualite', () => {
     expect(guessType('Colony.2026.MULTi.1080p.WEB.H264-SUPPLY')).toBe('FILM');
     expect(guessType('Bullhead.2011.MULTi.VFi.1080i.BluRay.REMUX.AVC.DTS-HD.MA.5.1-HDForever')).toBe('FILM');

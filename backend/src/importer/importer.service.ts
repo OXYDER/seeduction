@@ -7,6 +7,7 @@ import { ImportConfig, ImportSecrets, openSecrets, sealSecrets } from './importe
 import { Qbit, QbitTorrent } from './qbit.client';
 import { ClientKind, CLIENT_KINDS, TorrentClient } from './torrent-clients';
 import { FtpConnectError, hasNfo, nfoFor, probeFor } from './release-files';
+import { LANGUAGE_TAGS, normalizeLanguage } from '../common/utils/language';
 import { detectReleaseMeta } from './release-meta';
 import { MetadataService, titleKey } from '../metadata/metadata.service';
 import { SupportBotService } from '../support/support-bot.service';
@@ -22,7 +23,7 @@ export interface ChosenCategory { name: string; id: string; how: string; meta?: 
 export interface LearnedSuggestion { categoryId: string; categoryName: string; noMeta: boolean; metaKind: string | null; metaId: string | null; metaTitle: string | null; weight: number }
 export interface ReleaseInfo { type?: ContentType; title?: string; year?: number; suggestion?: LearnedSuggestion }
 /** Choix final avant l'envoi : catégorie de Seeduction + fiche à rattacher (facultative). */
-interface Chosen { id: string; name: string; how: string; meta?: { kind: string; id: string; title: string; year?: string } }
+interface Chosen { id: string; name: string; how: string; meta?: { kind: string; id: string; title: string; year?: string }; /** Langue choisie à la main dans « À vérifier » : passe avant celle lue dans le nom et le MediaInfo. */ language?: string }
 const META_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -474,6 +475,7 @@ export class ImporterService {
       await this.readyPass(id, uploaderId, cfg, secrets, q, list, dryRun, ev);
       if (onlyReady) { await this.seedPass(src.id, uploaderId, cfg, q, dryRun, ev); return; }
       const known = new Set((await this.prisma.importItem.findMany({ where: { sourceId: id }, select: { key: true } })).map((i) => i.key));
+      let reviewReads = 0, reviewFtpDown = false;
       const labels = await this.feedLabels(q, cfg, list);
       let sent = 0;
       for (const t of list) {
@@ -491,7 +493,12 @@ export class ImporterService {
         if (!found && cfg.reviewUnmatched === false) { await skip("type de contenu non détecté : ajoute une règle de catégorie ou choisis une catégorie par défaut, puis « Retenter »"); continue; }
         if (!found || (wantsFiche && !found.meta && !found.noMeta)) {
           // Pas de catégorie ou pas de fiche sûre : la release attend dans « À vérifier » que tu la complètes à la main (elle ne compte pas dans la limite par passe).
-          await this.queueReview(id, t, found, info, labels.get(t.hash) ?? '', found ? `aucune fiche TMDB sûre pour « ${info.title} »` : 'catégorie non détectée', dryRun, ev);
+          let reviewNfo = '';
+          if (!dryRun && cfg.ftp && !reviewFtpDown && reviewReads < 12) { // au plus 12 lectures FTP par passe pour les releases à vérifier
+            reviewReads++;
+            try { reviewNfo = await nfoFor(cfg, secrets, id, t); } catch (e: any) { if (e instanceof FtpConnectError) reviewFtpDown = true; }
+          }
+          await this.queueReview(id, t, found, info, labels.get(t.hash) ?? '', found ? `aucune fiche TMDB sûre pour « ${info.title} »` : 'catégorie non détectée', reviewNfo, dryRun, ev);
           continue;
         }
         const chosen: Chosen = { id: found.id, name: found.name, how: found.how, meta: cfg.attachMetadata !== false ? found.meta : undefined };
@@ -527,7 +534,7 @@ export class ImporterService {
     const where = { sourceId_key: { sourceId, key: t.hash } };
     try {
       const meta = detectReleaseMeta(t.name, nfo); // langue (VFQ en priorité), résolution, source, codec, saison / épisode...
-      const created = await this.torrents.upload({ userId: uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: chosen.id, tags: [], anonymous: false, nfo, ...meta, ...(chosen.meta ? { metaKind: chosen.meta.kind, metaId: chosen.meta.id } : {}) });
+      const created = await this.torrents.upload({ userId: uploaderId, fileBuffer: buf, name: t.name, description: cfg.description, categoryId: chosen.id, tags: [], anonymous: false, nfo, ...meta, ...(chosen.language ? { language: chosen.language } : {}), ...(chosen.meta ? { metaKind: chosen.meta.kind, metaId: chosen.meta.id } : {}) });
       const status = cfg.autoApprove !== false ? (await this.admin.approveTorrent(created.id)).status : created.status; // import configuré par un administrateur : approuvé directement
       await this.prisma.importItem.upsert({ where, create: { sourceId, key: t.hash, name: t.name, status: 'UPLOADED', torrentId: created.id, savePath: t.save_path }, update: { status: 'UPLOADED', torrentId: created.id, savePath: t.save_path, why: null } });
       await ev('INFO', `✓ ${t.name} → ${chosen.name} [${chosen.how}]${meta.language ? ` · ${meta.language}` : ''}${chosen.meta ? ` · fiche : ${chosen.meta.title}` : ''} (${status === 'APPROVED' ? 'approuvé' : 'en attente de validation'})`);
@@ -597,7 +604,7 @@ export class ImporterService {
   }
 
   /** Met une release dans « À vérifier » avec ce qui a été détecté et les fiches que TMDB propose pour ce titre. */
-  private async queueReview(sourceId: string, t: QbitTorrent, found: { id: string; name: string; how: string } | null, info: ReleaseInfo, feedLabel: string, reason: string, dryRun: boolean, ev: (l: 'INFO' | 'WARN' | 'ERROR', m: string) => Promise<void>) {
+  private async queueReview(sourceId: string, t: QbitTorrent, found: { id: string; name: string; how: string } | null, info: ReleaseInfo, feedLabel: string, reason: string, nfo: string, dryRun: boolean, ev: (l: 'INFO' | 'WARN' | 'ERROR', m: string) => Promise<void>) {
     if (dryRun) { await ev('WARN', `${t.name} — irait dans « À vérifier » : ${reason}`); return; }
     const kind = this.ficheKindOf(info.type) ?? 'FILM';
     let suggestions: { id: string; title: string; subtitle: string; thumbnail: string | null }[] = [];
@@ -606,9 +613,9 @@ export class ImporterService {
       suggestions = await this.metadata.search(kind, title, info.year ? String(info.year) : undefined).catch(() => []);
       if (suggestions.length === 0 && info.year) suggestions = await this.metadata.search(kind, title).catch(() => []);
     }
-    const meta = detectReleaseMeta(t.name, '');
+    const meta = detectReleaseMeta(t.name, nfo); // la langue vient du nom ET du NFO / MediaInfo (pistes audio) : elle n'est « ? » que si rien ne la donne
     const detail = {
-      reason, type: info.type ?? null, kind, title, year: info.year ?? null, feedLabel: feedLabel || null,
+      nfoState: hasNfo(nfo) ? 'OK' : 'MISSING', reason, type: info.type ?? null, kind, title, year: info.year ?? null, feedLabel: feedLabel || null,
       category: found ? { id: found.id, name: found.name, how: found.how } : null,
       language: meta.language ?? null, resolution: meta.resolution ?? null, size: t.size, suggestions: suggestions.slice(0, 6),
     };
@@ -634,7 +641,7 @@ export class ImporterService {
         nfo = await nfoFor(cfg, secrets, sourceId, t);
       } catch (e: any) { await ev('ERROR', `${t.name} — ${e.message}`); await back(String(e.message)); continue; }
       if (!hasNfo(nfo)) { await ev('WARN', `${t.name} — NFO / MediaInfo introuvable (obligatoire)`); await back('NFO / MediaInfo introuvable : ajoute un .nfo dans le dossier de la release, puis valide à nouveau'); continue; }
-      const chosen: Chosen = { id: o.categoryId, name: o.categoryName ?? '', how: 'validé à la main', meta: o.metaKind && o.metaId ? { kind: o.metaKind, id: o.metaId, title: o.metaTitle ?? o.metaId } : undefined };
+      const chosen: Chosen = { id: o.categoryId, name: o.categoryName ?? '', how: 'validé à la main', meta: o.metaKind && o.metaId ? { kind: o.metaKind, id: o.metaId, title: o.metaTitle ?? o.metaId } : undefined, language: o.language || undefined };
       await this.publish(sourceId, uploaderId, cfg, q, t, buf, nfo, chosen, ev, back);
     }
   }
@@ -668,7 +675,9 @@ export class ImporterService {
     const metaKind = str(body?.metaKind, 20), metaId = str(body?.metaId, 220);
     if (metaId && !META_KINDS.includes(metaKind)) throw new BadRequestException('Type de fiche inconnu');
     if (!metaId && body?.noMeta !== true) throw new BadRequestException('Choisis une fiche, ou « Importer sans fiche »');
-    const override = { categoryId: cat.id, categoryName: cat.name, metaKind: metaId ? metaKind : null, metaId: metaId || null, metaTitle: str(body?.metaTitle, 200) || null };
+    const lang = normalizeLanguage(str(body?.language, 30));
+    if (lang && !LANGUAGE_TAGS.includes(lang)) throw new BadRequestException('Langue inconnue : choisis une étiquette de la liste');
+    const override = { categoryId: cat.id, categoryName: cat.name, metaKind: metaId ? metaKind : null, metaId: metaId || null, metaTitle: str(body?.metaTitle, 200) || null, language: lang || null };
     await this.prisma.importItem.update({ where: { id }, data: { status: 'READY', why: 'validé à la main : envoi en cours', detail: { ...detail, override } as any } });
     // Se souvenir pour les prochaines releases qui ressemblent (sauf si le staff décoche la case).
     if (body?.remember !== false) await this.remember(it.name, detail, cat, metaId ? { kind: metaKind, id: metaId, title: str(body?.metaTitle, 200) || null } : null).catch(() => undefined);
