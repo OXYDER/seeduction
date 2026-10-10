@@ -68,7 +68,7 @@ export class AdminService {
       orderBy: { createdAt: 'asc' },
       take: 200,
       select: {
-        id: true, name: true, size: true, coverImage: true, createdAt: true, year: true, resolution: true, description: true, fileList: true,
+        id: true, name: true, size: true, coverImage: true, createdAt: true, year: true, resolution: true, description: true, fileList: true, seeders: true, leechers: true,
         anonymousUpload: true, category: { select: { name: true } }, uploader: { select: { id: true, username: true, uploaded: true, downloaded: true, createdAt: true } },
       },
     });

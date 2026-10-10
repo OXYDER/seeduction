@@ -11,7 +11,7 @@ import { useSupport } from '../store/support';
 
 interface PendingTorrent {
   id: string; name: string; size: number; coverImage: string | null; createdAt: string; year: number | null; resolution: string | null;
-  excerpt: string; fileCount: number; anonymousUpload: boolean; openReports: number;
+  excerpt: string; fileCount: number; anonymousUpload: boolean; openReports: number; seeders: number; leechers: number;
   category: { name: string } | null;
   uploader: { id: string; username: string; uploaded: string; downloaded: string; createdAt: string };
 }
@@ -174,6 +174,7 @@ export default function Moderation() {
                       </div>
                       <div className="mod-meta">
                         Envoyé par <Link to={`/users/${t.uploader.id}`}>{t.uploader.username}</Link>{t.anonymousUpload ? ' (anonyme)' : ''} · <span className={isOld(t.createdAt) ? 'mod-late' : ''}>{timeAgo(t.createdAt)}</span>
+                        <span className="badge" style={{ marginLeft: 8, background: t.seeders > 0 ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.08)', color: t.seeders > 0 ? 'var(--success)' : 'inherit' }} title="Nombre de seeders connectés au tracker pour ce torrent : un envoi depuis un client ajoute son seed dès l'envoi, tu peux vérifier qu'il seede avant d'approuver">{t.seeders > 0 ? `🌱 ${t.seeders} seeder${t.seeders > 1 ? 's' : ''}` : 'aucun seeder'}</span>
                         {t.openReports > 0 && <span className="badge double" style={{ marginLeft: 8 }}>⚠ {t.openReports} signalement{t.openReports > 1 ? 's' : ''}</span>}
                       </div>
                       {t.excerpt && <p className="mod-excerpt">{t.excerpt}</p>}

@@ -116,7 +116,7 @@ Elles partent par lots, dans la limite de 100 par jour, puis passent par la mod�
         <p className="muted" style={{ margin: '4px 0' }}>
           Connecte ton <strong>client torrent</strong> (qBittorrent, Transmission ou ruTorrent) et ton <strong>accès FTP</strong> (obligatoires : le FTP sert à lire le NFO de chaque release) : le site repère tes releases terminées, reconnaît la catégorie, la fiche et la langue,
           et te montre en <span style={{ color: 'var(--success)' }}>vert</span> ce qui est sûr et en <span style={{ color: 'var(--gold-bright, #f5c542)' }}>orange</span> ce que tu dois corriger.
-          Tu confirmes, puis chaque torrent approuvé est remis en seed <strong>dans ton client, sur les mêmes fichiers</strong>, dans une catégorie « Seeduction » (une étiquette pour Transmission et ruTorrent) : aucun dossier à choisir.
+          Tu confirmes, puis chaque torrent envoyé est tout de suite remis en seed <strong>dans ton client, sur les mêmes fichiers</strong>, dans une catégorie « Seeduction » (une étiquette pour Transmission et ruTorrent) : aucun dossier à choisir, et la modération voit ton seed avant d'approuver.
         </p>
         <ul className="muted" style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12 }}>
           <li>Rien n'est modifié dans ton client avant ta première publication, et tes torrents d'origine ne sont jamais touchés.</li>
@@ -134,7 +134,7 @@ Elles partent par lots, dans la limite de 100 par jour, puis passent par la mod�
           <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <button type="button" disabled={running} onClick={() => act('scan')}>🔍 {box.lastScanAt ? 'Analyser les nouveaux torrents' : 'Analyser mon client'}</button>
             <button type="button" className="secondary" disabled={running} onClick={() => act('test')}>Tester la connexion</button>
-            {items.some((i) => i.status === 'UPLOADED' && i.seeded === null) && <button type="button" className="secondary" disabled={running} onClick={() => act('seed')}>🌱 Remettre en seed ce qui est approuvé</button>}
+            {items.some((i) => i.status === 'UPLOADED' && i.seeded === null) && <button type="button" className="secondary" disabled={running} onClick={() => act('seed')}>🌱 Remettre en seed maintenant</button>}
             {box.lastScanAt && <span className="muted" style={{ fontSize: 12 }}>Dernière analyse {timeAgo(box.lastScanAt)}</span>}
           </div>
           {job && (
@@ -465,11 +465,14 @@ function SentList({ items }: { items: Item[] }) {
   if (items.length === 0) return <div className="panel muted">Aucun torrent envoyé pour le moment.</div>;
   const state = (i: Item) => {
     if (i.status === 'QUEUED') return { icon: '⏳', text: 'Envoi en cours…', color: 'inherit' };
-    if (i.seeded === 'OK') return { icon: '🌱', text: 'En seed dans ton client (catégorie « Seeduction »)', color: 'var(--success)' };
+    if (i.torrentStatus === 'REJECTED') return { icon: '✗', text: i.seeded === 'OK' ? 'Refusé par la modération — retire-le de ton client (étiquette « Seeduction »)' : 'Refusé par la modération', color: 'var(--danger)' };
+    if (i.seeded === 'OK') return i.torrentStatus === 'PENDING'
+      ? { icon: '🌱', text: 'En seed dans ton client (étiquette « Seeduction ») · 🕓 en attente de validation par la modération', color: 'var(--gold-bright, #f5c542)' }
+      : { icon: '🌱', text: 'En seed dans ton client (étiquette « Seeduction ») · ✓ approuvé', color: 'var(--success)' };
     if (i.seeded === 'UNAVAILABLE') return { icon: '✗', text: i.why ?? 'Seed non démarré', color: 'var(--danger)' };
-    if (i.torrentStatus === 'PENDING') return { icon: '🕓', text: 'En attente de validation par la modération', color: 'var(--gold-bright, #f5c542)' };
-    if (i.torrentStatus === 'APPROVED' || i.torrentStatus === 'DEAD') return { icon: '✓', text: i.why ? `Approuvé — ${i.why}` : 'Approuvé — remise en seed dans ton client en cours', color: 'var(--success)' };
-    return { icon: '✗', text: i.torrentStatus === 'REJECTED' ? 'Refusé par la modération' : 'Torrent supprimé', color: 'var(--danger)' };
+    if (i.torrentStatus === 'PENDING') return { icon: '🕓', text: i.why && /seed :/.test(i.why) ? `En attente de validation · ${i.why}` : 'En attente de validation · ajout à ton client en cours', color: 'var(--gold-bright, #f5c542)' };
+    if (i.torrentStatus === 'APPROVED' || i.torrentStatus === 'DEAD') return { icon: '✓', text: i.why ? `Approuvé — ${i.why}` : 'Approuvé — ajout à ton client en cours', color: 'var(--success)' };
+    return { icon: '✗', text: 'Torrent supprimé', color: 'var(--danger)' };
   };
   return (
     <div className="panel">

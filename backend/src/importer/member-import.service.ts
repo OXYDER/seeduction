@@ -188,7 +188,7 @@ export class MemberImportService {
       const { q, cfg } = await this.connect(box);
       job.done = await this.seedBox(box, q, cfg);
       const waiting = await this.prisma.memberImportItem.count({ where: { boxId: box.id, status: 'UPLOADED', seeded: null } });
-      job.message = `${job.done} torrent(s) remis en seed dans ton client${waiting ? ` · ${waiting} attendent encore la validation de la modération` : ''}`;
+      job.message = `${job.done} torrent(s) remis en seed dans ton client${waiting ? ` · ${waiting} pas encore ajouté(s) (le site réessaie)` : ''}`;
     });
     return { started: true };
   }
@@ -437,7 +437,7 @@ export class MemberImportService {
       }
       job.done++;
     }
-    job.message = `${sent} torrent(s) envoyé(s) sur ${queued.length}. Ils attendent la validation de la modération, puis ton client les reprendra en seed automatiquement.`;
+    job.message = `${sent} torrent(s) envoyé(s) sur ${queued.length}. Ils sont ajoutés à ton client pour seeder dès maintenant : la modération verra ton seed avant d'approuver.`;
     await this.seedBox(box, q, cfg); // si la modération a déjà tout approuvé, le seed démarre tout de suite
   }
 
@@ -491,8 +491,8 @@ export class MemberImportService {
       const t = await this.prisma.torrent.findUnique({ where: { id: it.torrentId! }, select: { status: true } });
       const abandon = (why: string) => this.prisma.memberImportItem.update({ where: { id: it.id }, data: { seeded: 'UNAVAILABLE', why } });
       if (!t) { await abandon('supprimé de Seeduction'); continue; }
-      if (t.status === 'PENDING') continue; // pas encore validé par la modération
-      if (!['APPROVED', 'DEAD'].includes(t.status)) { await abandon(`statut ${t.status} : seed non démarré`); continue; }
+      // Le torrent est remis en seed DÈS L'ENVOI, avant l'approbation : le staff voit ainsi un seeder sur la fiche avant de décider. Un torrent refusé n'est pas ajouté.
+      if (!['PENDING', 'APPROVED', 'DEAD'].includes(t.status)) { await abandon(`statut ${t.status} : seed non démarré`); continue; }
       try {
         if (!categoryReady) { await q.ensureCategory(SEED_CATEGORY); categoryReady = true; }
         const file = await this.torrents.getDownloadFile(it.torrentId!, box.userId);
@@ -518,9 +518,7 @@ export class MemberImportService {
       const boxes = await this.prisma.memberSeedbox.findMany({ where: { items: { some: { status: 'UPLOADED', seeded: null } } }, take: 20 });
       for (const box of boxes) {
         const pending = await this.prisma.memberImportItem.findMany({ where: { boxId: box.id, status: 'UPLOADED', seeded: null, torrentId: { not: null } }, select: { torrentId: true } });
-        const ready = await this.prisma.torrent.count({ where: { id: { in: pending.map((p) => p.torrentId!) }, status: { not: 'PENDING' } } });
-        const gone = pending.length - (await this.prisma.torrent.count({ where: { id: { in: pending.map((p) => p.torrentId!) } } }));
-        if (ready === 0 && gone === 0) continue; // tout attend encore la modération : on ne dérange pas le client du membre
+        const ready = pending.length; // ajoutés à son client dès l'envoi (réessayés ici quand l'ajout n'a pas pu se faire)
         try { this.launch(box, 'seed', async (job) => { const { q, cfg } = await this.connect(box); job.total = ready; job.done = await this.seedBox(box, q, cfg); job.message = `${job.done} torrent(s) remis en seed dans ton client`; }); }
         catch { /* occupé : prochaine passe */ }
       }
