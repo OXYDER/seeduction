@@ -12,7 +12,7 @@ export interface QbitTorrent {
 
 
 /** Cause technique lisible d'un échec réseau (« ENOTFOUND » = nom inconnu, « ECONNREFUSED » = port fermé, certificat, délai dépassé...). */
-function netCause(e: any): string {
+export function netCause(e: any): string {
   const code = e?.cause?.code ?? e?.code ?? '';
   const known: Record<string, string> = {
     ENOTFOUND: "nom d'hôte introuvable (adresse mal écrite ?)",

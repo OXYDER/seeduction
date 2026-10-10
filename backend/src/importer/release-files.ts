@@ -249,6 +249,19 @@ async function scan(cfg: ImportConfig, secrets: ImportSecrets, memKey: string, t
   return { nfo, video };
 }
 
+/** Lit un petit fichier du FTP (le .torrent d'un client qui ne sait pas l'exporter) : il est retrouvé par son nom, où qu'il soit sur le FTP. */
+export async function readFileViaFtp(cfg: ImportConfig, secrets: ImportSecrets, memKey: string, file: { name: string; content_path: string }, max = 5_000_000): Promise<Buffer> {
+  if (!cfg.ftp) throw new Error('aucun FTP configuré');
+  const c = await ftpConnect(cfg, secrets);
+  try {
+    const { hit, listed } = await locate(c, cfg, memKey, { hash: '', name: file.name, size: 0, category: '', save_path: '', content_path: file.content_path, completion_on: 0, added_on: 0 });
+    if (!hit || hit.entry.isDirectory) throw new Error(`fichier ${file.name} introuvable sur le FTP (${listed} dossier(s) parcouru(s)) : le dossier de configuration du client n'est pas accessible avec ce compte FTP`);
+    return await readAll(c, path.posix.join(hit.dir, hit.entry.name), max);
+  } finally {
+    try { c.close(); } catch { /* déjà fermé */ }
+  }
+}
+
 /** Pour le test : où est le NFO ? (.nfo trouvé, vidéo dont le MediaInfo sera calculé à l'import, ou rien). Rapide : rien n'est téléchargé. */
 export async function probeFor(cfg: ImportConfig, secrets: ImportSecrets, memKey: string, t: QbitTorrent): Promise<{ source: 'NFO' | 'VIDEO' | 'NONE'; nfo?: string; videoName?: string }> {
   if (!cfg.ftp) return { source: 'NONE' };

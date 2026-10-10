@@ -5,6 +5,7 @@ import { TorrentsService } from '../torrents/torrents.service';
 import { AdminService } from '../admin/admin.service';
 import { ImportConfig, ImportSecrets, openSecrets, sealSecrets } from './importer.types';
 import { Qbit, QbitTorrent } from './qbit.client';
+import { ClientKind, CLIENT_KINDS, TorrentClient } from './torrent-clients';
 import { FtpConnectError, hasNfo, nfoFor, probeFor } from './release-files';
 import { detectReleaseMeta } from './release-meta';
 import { MetadataService, titleKey } from '../metadata/metadata.service';
@@ -52,7 +53,10 @@ export class ImporterService {
     const q = raw?.qbit ?? {};
     const url = str(q.url, 300);
     if (!/^https?:\/\/[^\s]+$/i.test(url)) throw new BadRequestException("Adresse de l'interface web de qBittorrent invalide (ex. https://qbittorrent.exemple.com)");
+    const kind = String(raw?.client ?? 'qbittorrent');
+    if (!CLIENT_KINDS.includes(kind as ClientKind)) throw new BadRequestException('Client torrent inconnu (qBittorrent, Transmission ou ruTorrent)');
     const cfg: ImportConfig = {
+      client: kind as ClientKind,
       qbit: { url: url.replace(/\/$/, ''), username: str(q.username, 100) || undefined, category: str(q.category, 100) || undefined, tag: str(q.tag, 100) || undefined, doneTag: str(q.doneTag, 100) || 'seeduction-envoye', conflictTag: str(q.conflictTag, 100) || 'interference-seeduction', conflictCategory: str(q.conflictCategory, 100) || undefined },
       defaultCategory: str(raw?.defaultCategory, 100) || undefined,
       autoCategory: raw?.autoCategory !== false,
@@ -223,7 +227,7 @@ export class ImporterService {
   }
 
   /** Releases terminées : une ou plusieurs catégories qBittorrent (séparées par des virgules), ou une étiquette, ou tout. */
-  async listCompleted(q: Qbit, cfg: ImportConfig): Promise<QbitTorrent[]> {
+  async listCompleted(q: Pick<TorrentClient, 'completed'>, cfg: ImportConfig): Promise<QbitTorrent[]> {
     const cats = String(cfg.qbit.category ?? '').split(',').map((c) => c.trim()).filter(Boolean);
     if (cats.length <= 1) return q.completed({ category: cats[0], tag: cfg.qbit.tag });
     const seen = new Map<string, QbitTorrent>();

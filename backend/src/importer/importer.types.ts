@@ -2,6 +2,8 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypt
 
 /** Réglages d'une source d'import (sans secret). */
 export interface ImportConfig {
+  /** Client torrent des membres (envoi de plusieurs torrents) ; l'import du staff est toujours qBittorrent. L'adresse, l'identifiant et les filtres sont dans `qbit` pour tous les clients. */
+  client?: 'qbittorrent' | 'transmission' | 'rutorrent';
   qbit: {
     url: string; username?: string; category?: string; tag?: string; doneTag?: string;
     /** Étiquette posée dans CE qBittorrent sur une release qui fait interférence avec une release déjà sur Seeduction (jamais déplacée ni supprimée). */

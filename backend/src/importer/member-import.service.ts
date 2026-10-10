@@ -5,8 +5,9 @@ import { TorrentsService } from '../torrents/torrents.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { ImporterService, ReleaseInfo } from './importer.service';
 import { ImportConfig, ImportSecrets, openSecrets, sealSecrets } from './importer.types';
-import { Qbit, QbitTorrent } from './qbit.client';
-import { FtpConnectError, ftpConnect, hasNfo, nfoFor } from './release-files';
+import { QbitTorrent } from './qbit.client';
+import { CLIENT_KINDS, CLIENT_LABEL, ClientKind, NeedsFileAccess, TorrentClient, makeClient } from './torrent-clients';
+import { FtpConnectError, ftpConnect, hasNfo, nfoFor, readFileViaFtp } from './release-files';
 import { detectReleaseMeta } from './release-meta';
 import { cleanTitle, isFilmLike, isSeriesLike } from './category-guess';
 import { assertPublicHost, assertPublicUrl } from './net-guard';
@@ -46,6 +47,7 @@ export class MemberImportService {
     const secrets = openSecrets(b.secrets);
     const cfg = b.config as ImportConfig;
     return {
+      client: cfg.client ?? 'qbittorrent',
       qbit: { url: cfg.qbit.url, username: cfg.qbit.username ?? '', category: cfg.qbit.category ?? '', tag: cfg.qbit.tag ?? '' },
       ftp: cfg.ftp ? { host: cfg.ftp.host, port: cfg.ftp.port ?? 21, username: cfg.ftp.username, secure: cfg.ftp.secure !== false, rejectUnauthorized: cfg.ftp.rejectUnauthorized !== false } : null,
       hasQbitPassword: !!secrets.qbitPassword, hasFtpPassword: !!secrets.ftpPassword,
@@ -65,14 +67,17 @@ export class MemberImportService {
 
   async save(userId: string, body: any) {
     const q = body?.qbit ?? {};
+    const client = (str(body?.client, 20) || 'qbittorrent') as ClientKind;
+    if (!CLIENT_KINDS.includes(client)) throw new BadRequestException('Client torrent inconnu (qBittorrent, Transmission ou ruTorrent)');
     let url: string;
-    try { url = await assertPublicUrl(str(q.url, 300)); } catch (e: any) { throw new BadRequestException(`qBittorrent : ${e.message}`); }
+    try { url = await assertPublicUrl(str(q.url, 300)); } catch (e: any) { throw new BadRequestException(`${CLIENT_LABEL[client]} : ${e.message}`); }
     // Le FTP est obligatoire : sans lui, le NFO (obligatoire sur Seeduction) de chaque release serait à coller à la main, ce qui rend l'envoi en lot inutilisable.
     const f = body?.ftp;
     if (!f || !str(f.host, 200)) throw new BadRequestException("L'accès FTP est obligatoire (adresse, identifiant et mot de passe) : le site y lit le NFO de chaque release");
     if (!str(f.username, 100)) throw new BadRequestException("FTP : l'identifiant est obligatoire");
     try { await assertPublicHost(str(f.host, 200)); } catch (e: any) { throw new BadRequestException(`FTP : ${e.message}`); }
     const config = this.importer.normalize({
+      client,
       qbit: { url, username: q.username, category: q.category, tag: q.tag },
       ftp: f,
       mediainfo: true, autoCategory: true, readFeedCategory: false, attachMetadata: true, reviewUnmatched: true, autoApprove: false,
@@ -115,9 +120,10 @@ export class MemberImportService {
   private async connect(box: { config: any; secrets: string }) {
     const cfg = box.config as ImportConfig;
     const secrets = openSecrets(box.secrets);
-    try { await assertPublicUrl(cfg.qbit.url); } catch (e: any) { throw new Error(`qBittorrent : ${e.message}`); }
+    const kind = cfg.client ?? 'qbittorrent';
+    try { await assertPublicUrl(cfg.qbit.url); } catch (e: any) { throw new Error(`${CLIENT_LABEL[kind]} : ${e.message}`); }
     if (cfg.ftp) { try { await assertPublicHost(cfg.ftp.host); } catch (e: any) { throw new Error(`FTP : ${e.message}`); } }
-    const q = new Qbit(cfg.qbit.url, cfg.qbit.username, secrets.qbitPassword, true);
+    const q: TorrentClient = makeClient(kind, cfg.qbit.url, cfg.qbit.username, secrets.qbitPassword, true);
     await q.login();
     return { q, cfg, secrets };
   }
@@ -148,17 +154,17 @@ export class MemberImportService {
     const box = await this.requireBox(userId);
     this.requireFtp(box);
     this.launch(box, 'test', async (job) => {
-      job.message = 'Connexion à qBittorrent…';
+      job.message = 'Connexion à ton client…';
       const { q, cfg, secrets } = await this.connect(box);
       const list = await this.importer.listCompleted(q, cfg);
-      const result: any = { qbit: { ok: true, completed: list.length }, ftp: null };
+      const result: any = { qbit: { ok: true, completed: list.length }, client: cfg.client ?? 'qbittorrent', ftp: null };
       if (cfg.ftp) {
         job.message = 'Connexion au FTP…';
         try { (await ftpConnect(cfg, secrets)).close(); result.ftp = { ok: true }; }
         catch (e: any) { result.ftp = { ok: false, message: String(e?.message ?? e) }; }
       }
       job.result = result;
-      job.message = `qBittorrent : ${list.length} torrent(s) terminé(s)${cfg.ftp ? (result.ftp.ok ? ' · FTP : connexion réussie' : ` · FTP : ${result.ftp.message}`) : ' · FTP non configuré (le NFO sera à coller à la main)'}`;
+      job.message = `${CLIENT_LABEL[cfg.client ?? 'qbittorrent']} : ${list.length} torrent(s) terminé(s)${cfg.ftp ? (result.ftp.ok ? ' · FTP : connexion réussie' : ` · FTP : ${result.ftp.message}`) : ' · FTP non configuré (le NFO sera à coller à la main)'}`;
       await this.prisma.memberSeedbox.update({ where: { id: box.id }, data: { lastError: null } });
     });
     return { started: true };
@@ -364,7 +370,7 @@ export class MemberImportService {
     const queued = await this.prisma.memberImportItem.findMany({ where: { boxId: box.id, status: 'QUEUED' }, orderBy: { createdAt: 'asc' }, take: MAX_QUEUE_PER_REQUEST });
     job.total = queued.length;
     job.message = 'Connexion à ton client…';
-    const { q, cfg } = await this.connect(box);
+    const { q, cfg, secrets } = await this.connect(box);
     const byHash = new Map((await this.importer.listCompleted(q, cfg)).map((t) => [t.hash, t]));
     let sent = 0;
     for (const it of queued) {
@@ -379,8 +385,7 @@ export class MemberImportService {
       const nfo = it.nfo ?? '';
       if (!categoryId || !hasNfo(nfo)) { await back(!categoryId ? 'catégorie manquante' : 'NFO / MediaInfo manquant'); job.done++; continue; }
       try {
-        const buf = await q.exportTorrent(t.hash);
-        if (!buf.length || buf[0] !== 0x64) throw new Error("le fichier exporté n'est pas un .torrent");
+        const buf = await this.exportFile(q, cfg, secrets, box.id, t);
         const meta = detectReleaseMeta(t.name, nfo);
         const language = o.language || meta.language;
         const created = await this.torrents.upload({
@@ -394,7 +399,7 @@ export class MemberImportService {
         if (e instanceof BadRequestException) {
           const dupe = /dupe|existe déjà/i.test(msg);
           await this.prisma.memberImportItem.update({ where: { id: it.id }, data: { status: dupe ? 'DUPE' : 'REJECTED', why: dupe ? 'ce contenu existe déjà sur Seeduction' : msg } });
-        } else await back(`erreur temporaire : ${msg.slice(0, 160)} — tu peux réessayer`);
+        } else await back(`erreur temporaire : ${msg.slice(0, 260)} — tu peux réessayer`);
       }
       job.done++;
     }
@@ -402,10 +407,23 @@ export class MemberImportService {
     await this.seedBox(box, q, cfg); // si la modération a déjà tout approuvé, le seed démarre tout de suite
   }
 
+  /** Le .torrent d'origine : donné par le client, ou lu sur le FTP du membre quand le client (Transmission, ruTorrent) ne sait pas l'exporter. */
+  private async exportFile(q: TorrentClient, cfg: ImportConfig, secrets: ImportSecrets, boxId: string, t: QbitTorrent): Promise<Buffer> {
+    let buf: Buffer;
+    try { buf = await q.exportTorrent(t.hash); }
+    catch (e) {
+      if (!(e instanceof NeedsFileAccess)) throw e;
+      try { buf = await readFileViaFtp(cfg, secrets, 'm:' + boxId, e.hint); }
+      catch (err: any) { throw new Error(String(err?.message ?? err)); } // le message dit quel fichier n'a pas été trouvé sur le FTP et pourquoi
+    }
+    if (!buf.length || buf[0] !== 0x64) throw new Error("le fichier obtenu n'est pas un .torrent");
+    return buf;
+  }
+
   // ------------------------------------------------------------------ remise en seed (version Seeduction dans le client du membre)
 
   /** Torrents publiés et approuvés : la version Seeduction est ajoutée dans le client du membre, catégorie « Seeduction », mêmes fichiers, sans re-vérification. */
-  private async seedBox(box: { id: string; userId: string }, q: Qbit, cfg: ImportConfig): Promise<number> {
+  private async seedBox(box: { id: string; userId: string }, q: TorrentClient, cfg: ImportConfig): Promise<number> {
     const items = await this.prisma.memberImportItem.findMany({ where: { boxId: box.id, status: 'UPLOADED', seeded: null, torrentId: { not: null } } });
     let added = 0, categoryReady = false;
     for (const it of items) {

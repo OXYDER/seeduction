@@ -6,7 +6,14 @@ import { timeAgo } from '../lib/time';
 import { LANGUAGE_GROUPS, LANGUAGE_LABELS } from '../lib/languageTag';
 
 interface Job { kind: 'test' | 'scan' | 'publish' | 'seed'; status: 'running' | 'done' | 'error'; done: number; total: number; message: string; error?: string; result?: any }
+type ClientKind = 'qbittorrent' | 'transmission' | 'rutorrent';
+const CLIENTS: Record<ClientKind, { label: string; beta: boolean; address: string; placeholder: string; tagLabel: string }> = {
+  qbittorrent: { label: 'qBittorrent', beta: false, address: "Adresse de l'interface web de qBittorrent", placeholder: 'https://qbittorrent.exemple.com', tagLabel: 'Étiquette à analyser (facultatif)' },
+  transmission: { label: 'Transmission', beta: true, address: 'Adresse de Transmission (interface web)', placeholder: 'https://transmission.exemple.com:9091', tagLabel: 'Étiquette à analyser (facultatif, une seule suffit)' },
+  rutorrent: { label: 'ruTorrent', beta: true, address: 'Adresse de ruTorrent', placeholder: 'https://rutorrent.exemple.com/rutorrent', tagLabel: 'Étiquette à analyser (facultatif, une seule suffit)' },
+};
 interface Box {
+  client: ClientKind;
   qbit: { url: string; username: string; category: string; tag: string };
   ftp: { host: string; port: number; username: string; secure: boolean; rejectUnauthorized: boolean } | null;
   hasQbitPassword: boolean; hasFtpPassword: boolean; lastScanAt: string | null; lastError: string | null;
@@ -24,7 +31,7 @@ const KIND_LABEL: Record<string, string> = { FILM: 'Film (TMDB)', SERIE: 'Série
 const PROBLEM: Record<string, string> = { category: 'Choisis la catégorie', fiche: 'Choisis la fiche (ou « sans fiche »)', nfo: 'Colle le NFO ou le MediaInfo' };
 const errText = (e: any, d = 'Action impossible') => e?.response?.data?.message ?? d;
 
-/** Page « Envoyer » > « Plusieurs torrents » : le membre connecte son qBittorrent, le site propose ses releases, il corrige et confirme. */
+/** Page « Envoyer » > « Plusieurs torrents » : le membre connecte son client torrent (qBittorrent, Transmission ou ruTorrent), le site propose ses releases, il corrige et confirme. */
 export default function MemberImport() {
   const [status, setStatus] = useState<Status | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -95,9 +102,9 @@ export default function MemberImport() {
       <div className="panel ornate">
         <h3 style={{ marginTop: 0 }}>📦 Envoyer plusieurs torrents depuis ton client</h3>
         <p className="muted" style={{ margin: '4px 0' }}>
-          Connecte ton <strong>qBittorrent</strong> et ton <strong>accès FTP</strong> (obligatoires : le FTP sert à lire le NFO de chaque release) : le site repère tes releases terminées, reconnaît la catégorie, la fiche et la langue,
+          Connecte ton <strong>client torrent</strong> (qBittorrent, Transmission ou ruTorrent) et ton <strong>accès FTP</strong> (obligatoires : le FTP sert à lire le NFO de chaque release) : le site repère tes releases terminées, reconnaît la catégorie, la fiche et la langue,
           et te montre en <span style={{ color: 'var(--success)' }}>vert</span> ce qui est sûr et en <span style={{ color: 'var(--gold-bright, #f5c542)' }}>orange</span> ce que tu dois corriger.
-          Tu confirmes, puis chaque torrent approuvé est remis en seed <strong>dans ton client, sur les mêmes fichiers</strong>, dans une catégorie « Seeduction » : aucun dossier à choisir.
+          Tu confirmes, puis chaque torrent approuvé est remis en seed <strong>dans ton client, sur les mêmes fichiers</strong>, dans une catégorie « Seeduction » (une étiquette pour Transmission et ruTorrent) : aucun dossier à choisir.
         </p>
         <ul className="muted" style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12 }}>
           <li>Rien n'est modifié dans ton client avant ta première publication, et tes torrents d'origine ne sont jamais touchés.</li>
@@ -211,16 +218,16 @@ export default function MemberImport() {
   );
 }
 
-/** Formulaire de connexion au client (qBittorrent + FTP facultatif). Les mots de passe ne sont jamais renvoyés : champ vide = inchangé. */
+/** Formulaire de connexion au client (qBittorrent, Transmission ou ruTorrent, + FTP). Les mots de passe ne sont jamais renvoyés : champ vide = inchangé. */
 function Connection({ box, open, setOpen, running, onSaved, act, setMsg, onRemoved }: {
   box: Box | null; open: boolean; setOpen: (v: boolean) => void; running: boolean; onSaved: () => Promise<void>; act: (p: string, ok?: string) => Promise<void>;
   setMsg: (m: { ok: boolean; text: string } | null) => void; onRemoved: () => Promise<void>;
 }) {
-  const [f, setF] = useState({ url: '', username: '', password: '', category: '', tag: '', host: '', port: 21, ftpUser: '', ftpPassword: '', secure: true, acceptCert: false });
+  const [f, setF] = useState({ client: 'qbittorrent' as ClientKind, url: '', username: '', password: '', category: '', tag: '', host: '', port: 21, ftpUser: '', ftpPassword: '', secure: true, acceptCert: false });
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!open) return;
-    setF({ url: box?.qbit.url ?? '', username: box?.qbit.username ?? '', password: '', category: box?.qbit.category ?? '', tag: box?.qbit.tag ?? '', host: box?.ftp?.host ?? '', port: box?.ftp?.port ?? 21, ftpUser: box?.ftp?.username ?? '', ftpPassword: '', secure: box?.ftp?.secure ?? true, acceptCert: box?.ftp ? !box.ftp.rejectUnauthorized : false });
+    setF({ client: box?.client ?? 'qbittorrent', url: box?.qbit.url ?? '', username: box?.qbit.username ?? '', password: '', category: box?.qbit.category ?? '', tag: box?.qbit.tag ?? '', host: box?.ftp?.host ?? '', port: box?.ftp?.port ?? 21, ftpUser: box?.ftp?.username ?? '', ftpPassword: '', secure: box?.ftp?.secure ?? true, acceptCert: box?.ftp ? !box.ftp.rejectUnauthorized : false });
   }, [open, box]);
   const set = (k: string, v: any) => setF((cur) => ({ ...cur, [k]: v }));
 
@@ -228,6 +235,7 @@ function Connection({ box, open, setOpen, running, onSaved, act, setMsg, onRemov
     e.preventDefault(); setBusy(true); setMsg(null);
     try {
       await api.put('/member-import/connection', {
+        client: f.client,
         qbit: { url: f.url, username: f.username, category: f.category, tag: f.tag },
         ftp: { host: f.host, port: Number(f.port) || 21, username: f.ftpUser, secure: f.secure, rejectUnauthorized: !f.acceptCert },
         secrets: { qbitPassword: f.password || undefined, ftpPassword: f.ftpPassword || undefined },
@@ -244,7 +252,7 @@ function Connection({ box, open, setOpen, running, onSaved, act, setMsg, onRemov
   if (box && !open) {
     return (
       <div className="panel row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span>🔗 <strong>{box.qbit.url}</strong>{box.ftp ? <span className="muted"> · FTP {box.ftp.host}</span> : <span style={{ color: 'var(--danger)' }}> · FTP manquant : clique sur « Modifier »</span>}</span>
+        <span>🔗 {CLIENTS[box.client ?? 'qbittorrent'].label} <strong>{box.qbit.url}</strong>{box.ftp ? <span className="muted"> · FTP {box.ftp.host}</span> : <span style={{ color: 'var(--danger)' }}> · FTP manquant : clique sur « Modifier »</span>}</span>
         <span style={{ flex: 1 }} />
         <button type="button" className="secondary" disabled={running} onClick={() => setOpen(true)}>Modifier</button>
         <button type="button" className="secondary" disabled={running} onClick={remove}>Supprimer mes accès</button>
@@ -255,10 +263,15 @@ function Connection({ box, open, setOpen, running, onSaved, act, setMsg, onRemov
     <form className="panel grid" style={{ gap: 10 }} onSubmit={save}>
       <strong>🔗 Connexion à ton client</strong>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
-        <label className="grid" style={{ gap: 2 }}><span className="muted">Adresse de l'interface web de qBittorrent *</span><input required value={f.url} onChange={(e) => set('url', e.target.value)} placeholder="https://qbittorrent.exemple.com" /></label>
+        <label className="grid" style={{ gap: 2 }}><span className="muted">Client torrent *</span>
+          <select value={f.client} onChange={(e) => set('client', e.target.value)}>
+            {(Object.keys(CLIENTS) as ClientKind[]).map((k) => <option key={k} value={k}>{CLIENTS[k].label}{CLIENTS[k].beta ? ' (bêta)' : ''}</option>)}
+          </select>
+        </label>
+        <label className="grid" style={{ gap: 2 }}><span className="muted">{CLIENTS[f.client].address} *</span><input required value={f.url} onChange={(e) => set('url', e.target.value)} placeholder={CLIENTS[f.client].placeholder} /></label>
         <label className="grid" style={{ gap: 2 }}><span className="muted">Identifiant</span><input value={f.username} onChange={(e) => set('username', e.target.value)} autoComplete="off" /></label>
         <label className="grid" style={{ gap: 2 }}><span className="muted">Mot de passe</span><input type="password" value={f.password} onChange={(e) => set('password', e.target.value)} placeholder={box?.hasQbitPassword ? '•••••• (inchangé)' : ''} autoComplete="new-password" /></label>
-        <label className="grid" style={{ gap: 2 }}><span className="muted">Catégorie(s) à analyser (facultatif)</span><input value={f.category} onChange={(e) => set('category', e.target.value)} placeholder="toutes les releases terminées" /></label>
+        <label className="grid" style={{ gap: 2 }}><span className="muted">{f.client === 'qbittorrent' ? 'Catégorie(s) à analyser (facultatif)' : 'Étiquette(s) à analyser (facultatif)'}</span><input value={f.category} onChange={(e) => set('category', e.target.value)} placeholder="toutes les releases terminées" /></label>
         <label className="grid" style={{ gap: 2 }}><span className="muted">Étiquette à analyser (facultatif)</span><input value={f.tag} onChange={(e) => set('tag', e.target.value)} /></label>
       </div>
       <div className="muted" style={{ fontSize: 12 }}><strong>Accès FTP à tes fichiers (obligatoire)</strong> : le site y lit le .nfo de chaque release, ou calcule le MediaInfo sur le début de la vidéo, sans rien télécharger d'autre.</div>
@@ -272,7 +285,13 @@ function Connection({ box, open, setOpen, running, onSaved, act, setMsg, onRemov
           <label className="row" style={{ gap: 6, alignSelf: 'end' }}><input type="checkbox" style={{ width: 'auto' }} checked={f.acceptCert} onChange={(e) => set('acceptCert', e.target.checked)} /> Accepter un certificat non reconnu</label>
         </div>
       )}
-      <p className="muted" style={{ margin: 0, fontSize: 12 }}>Astuce : crée si possible un compte FTP limité à la lecture. Il faut qBittorrent 4.5 ou plus récent (export des .torrent). Si le NFO d'une release reste introuvable, tu pourras le coller à la main pour cette release.</p>
+      {CLIENTS[f.client].beta && (
+        <div className="panel" style={{ margin: 0, padding: 8, fontSize: 12, borderColor: 'rgba(245,197,66,.5)' }}>
+          ⚠ <strong>{CLIENTS[f.client].label} : version bêta</strong> (pas encore éprouvée sur de vrais clients). {CLIENTS[f.client].label} ne donne pas le fichier .torrent d'un torrent existant : le site le lit sur ton <strong>FTP</strong>, dans {f.client === 'transmission' ? 'le dossier « torrents » de la configuration de Transmission' : 'le dossier de session de rTorrent'} — ce dossier doit donc être accessible avec ton compte FTP.
+          Les fichiers sont aussi re-vérifiés à l'ajout dans ton client (plus long sur une grosse bibliothèque). Si quelque chose ne marche pas, le message d'erreur s'affiche ici : dis-le au staff.
+        </div>
+      )}
+      <p className="muted" style={{ margin: 0, fontSize: 12 }}>Astuce : crée si possible un compte FTP limité à la lecture. {f.client === 'qbittorrent' ? 'Il faut qBittorrent 4.5 ou plus récent (export des .torrent).' : ''} Si le NFO d'une release reste introuvable, tu pourras le coller à la main pour cette release.</p>
       <div className="row" style={{ gap: 8 }}>
         <button type="submit" disabled={busy}>{busy ? 'Enregistrement…' : 'Enregistrer et tester'}</button>
         {box && <button type="button" className="secondary" onClick={() => setOpen(false)}>Annuler</button>}
