@@ -67,11 +67,14 @@ export class MemberImportService {
     const q = body?.qbit ?? {};
     let url: string;
     try { url = await assertPublicUrl(str(q.url, 300)); } catch (e: any) { throw new BadRequestException(`qBittorrent : ${e.message}`); }
+    // Le FTP est obligatoire : sans lui, le NFO (obligatoire sur Seeduction) de chaque release serait à coller à la main, ce qui rend l'envoi en lot inutilisable.
     const f = body?.ftp;
-    if (f && str(f.host, 200)) { try { await assertPublicHost(str(f.host, 200)); } catch (e: any) { throw new BadRequestException(`FTP : ${e.message}`); } }
+    if (!f || !str(f.host, 200)) throw new BadRequestException("L'accès FTP est obligatoire (adresse, identifiant et mot de passe) : le site y lit le NFO de chaque release");
+    if (!str(f.username, 100)) throw new BadRequestException("FTP : l'identifiant est obligatoire");
+    try { await assertPublicHost(str(f.host, 200)); } catch (e: any) { throw new BadRequestException(`FTP : ${e.message}`); }
     const config = this.importer.normalize({
       qbit: { url, username: q.username, category: q.category, tag: q.tag },
-      ftp: f && str(f.host, 200) ? f : undefined,
+      ftp: f,
       mediainfo: true, autoCategory: true, readFeedCategory: false, attachMetadata: true, reviewUnmatched: true, autoApprove: false,
       seedOnSeeduction: true, seedCategory: SEED_CATEGORY, skipChecking: true,
     });
@@ -80,7 +83,7 @@ export class MemberImportService {
     const next: ImportSecrets = { ...old };
     if (typeof body?.secrets?.qbitPassword === 'string' && body.secrets.qbitPassword) next.qbitPassword = body.secrets.qbitPassword;
     if (typeof body?.secrets?.ftpPassword === 'string' && body.secrets.ftpPassword) next.ftpPassword = body.secrets.ftpPassword;
-    if (!config.ftp) delete next.ftpPassword;
+    if (!next.ftpPassword) throw new BadRequestException('FTP : le mot de passe est obligatoire');
     const secrets = sealSecrets(next);
     const box = prev
       ? await this.prisma.memberSeedbox.update({ where: { id: prev.id }, data: { config: config as any, secrets, lastError: null } })
@@ -101,6 +104,11 @@ export class MemberImportService {
     const box = await this.prisma.memberSeedbox.findUnique({ where: { userId } });
     if (!box) throw new NotFoundException("Enregistre d'abord la connexion à ton client");
     return box;
+  }
+
+  /** Les connexions enregistrées avant que le FTP devienne obligatoire doivent être complétées. */
+  private requireFtp(box: { config: any; secrets: string }) {
+    if (!(box.config as ImportConfig).ftp || !openSecrets(box.secrets).ftpPassword) throw new BadRequestException("Ajoute ton accès FTP (adresse, identifiant, mot de passe) : il est obligatoire pour lire le NFO de tes releases");
   }
 
   /** Ouvre la connexion au client : l'adresse est revérifiée à chaque fois (elle ne doit jamais mener au réseau interne du site). */
@@ -138,6 +146,7 @@ export class MemberImportService {
   /** Test de la connexion : qBittorrent (combien de torrents terminés) et FTP. Ne modifie rien. */
   async startTest(userId: string) {
     const box = await this.requireBox(userId);
+    this.requireFtp(box);
     this.launch(box, 'test', async (job) => {
       job.message = 'Connexion à qBittorrent…';
       const { q, cfg, secrets } = await this.connect(box);
@@ -158,6 +167,7 @@ export class MemberImportService {
   /** Analyse les torrents terminés du client qui ne sont pas encore connus : chacun devient une ligne verte (reconnue), orange (à corriger) ou « déjà sur Seeduction ». */
   async startScan(userId: string) {
     const box = await this.requireBox(userId);
+    this.requireFtp(box);
     if (box.lastScanAt && Date.now() - box.lastScanAt.getTime() < MIN_SCAN_GAP_MS) throw new BadRequestException('Analyse déjà faite à l\'instant : patiente une minute avant de relancer');
     this.launch(box, 'scan', (job) => this.runScan(box, job));
     return { started: true };

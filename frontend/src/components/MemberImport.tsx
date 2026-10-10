@@ -95,7 +95,7 @@ export default function MemberImport() {
       <div className="panel ornate">
         <h3 style={{ marginTop: 0 }}>📦 Envoyer plusieurs torrents depuis ton client</h3>
         <p className="muted" style={{ margin: '4px 0' }}>
-          Connecte ton <strong>qBittorrent</strong> (et ton FTP pour lire les NFO) : le site repère tes releases terminées, reconnaît la catégorie, la fiche et la langue,
+          Connecte ton <strong>qBittorrent</strong> et ton <strong>accès FTP</strong> (obligatoires : le FTP sert à lire le NFO de chaque release) : le site repère tes releases terminées, reconnaît la catégorie, la fiche et la langue,
           et te montre en <span style={{ color: 'var(--success)' }}>vert</span> ce qui est sûr et en <span style={{ color: 'var(--gold-bright, #f5c542)' }}>orange</span> ce que tu dois corriger.
           Tu confirmes, puis chaque torrent approuvé est remis en seed <strong>dans ton client, sur les mêmes fichiers</strong>, dans une catégorie « Seeduction » : aucun dossier à choisir.
         </p>
@@ -216,11 +216,11 @@ function Connection({ box, open, setOpen, running, onSaved, act, setMsg, onRemov
   box: Box | null; open: boolean; setOpen: (v: boolean) => void; running: boolean; onSaved: () => Promise<void>; act: (p: string, ok?: string) => Promise<void>;
   setMsg: (m: { ok: boolean; text: string } | null) => void; onRemoved: () => Promise<void>;
 }) {
-  const [f, setF] = useState({ url: '', username: '', password: '', category: '', tag: '', ftp: false, host: '', port: 21, ftpUser: '', ftpPassword: '', secure: true, acceptCert: false });
+  const [f, setF] = useState({ url: '', username: '', password: '', category: '', tag: '', host: '', port: 21, ftpUser: '', ftpPassword: '', secure: true, acceptCert: false });
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!open) return;
-    setF({ url: box?.qbit.url ?? '', username: box?.qbit.username ?? '', password: '', category: box?.qbit.category ?? '', tag: box?.qbit.tag ?? '', ftp: !!box?.ftp, host: box?.ftp?.host ?? '', port: box?.ftp?.port ?? 21, ftpUser: box?.ftp?.username ?? '', ftpPassword: '', secure: box?.ftp?.secure ?? true, acceptCert: box?.ftp ? !box.ftp.rejectUnauthorized : false });
+    setF({ url: box?.qbit.url ?? '', username: box?.qbit.username ?? '', password: '', category: box?.qbit.category ?? '', tag: box?.qbit.tag ?? '', host: box?.ftp?.host ?? '', port: box?.ftp?.port ?? 21, ftpUser: box?.ftp?.username ?? '', ftpPassword: '', secure: box?.ftp?.secure ?? true, acceptCert: box?.ftp ? !box.ftp.rejectUnauthorized : false });
   }, [open, box]);
   const set = (k: string, v: any) => setF((cur) => ({ ...cur, [k]: v }));
 
@@ -229,7 +229,7 @@ function Connection({ box, open, setOpen, running, onSaved, act, setMsg, onRemov
     try {
       await api.put('/member-import/connection', {
         qbit: { url: f.url, username: f.username, category: f.category, tag: f.tag },
-        ftp: f.ftp && f.host ? { host: f.host, port: Number(f.port) || 21, username: f.ftpUser, secure: f.secure, rejectUnauthorized: !f.acceptCert } : undefined,
+        ftp: { host: f.host, port: Number(f.port) || 21, username: f.ftpUser, secure: f.secure, rejectUnauthorized: !f.acceptCert },
         secrets: { qbitPassword: f.password || undefined, ftpPassword: f.ftpPassword || undefined },
       });
       await onSaved();
@@ -244,7 +244,7 @@ function Connection({ box, open, setOpen, running, onSaved, act, setMsg, onRemov
   if (box && !open) {
     return (
       <div className="panel row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span>🔗 <strong>{box.qbit.url}</strong>{box.ftp ? <span className="muted"> · FTP {box.ftp.host}</span> : <span className="muted"> · sans FTP (NFO à coller)</span>}</span>
+        <span>🔗 <strong>{box.qbit.url}</strong>{box.ftp ? <span className="muted"> · FTP {box.ftp.host}</span> : <span style={{ color: 'var(--danger)' }}> · FTP manquant : clique sur « Modifier »</span>}</span>
         <span style={{ flex: 1 }} />
         <button type="button" className="secondary" disabled={running} onClick={() => setOpen(true)}>Modifier</button>
         <button type="button" className="secondary" disabled={running} onClick={remove}>Supprimer mes accès</button>
@@ -261,18 +261,18 @@ function Connection({ box, open, setOpen, running, onSaved, act, setMsg, onRemov
         <label className="grid" style={{ gap: 2 }}><span className="muted">Catégorie(s) à analyser (facultatif)</span><input value={f.category} onChange={(e) => set('category', e.target.value)} placeholder="toutes les releases terminées" /></label>
         <label className="grid" style={{ gap: 2 }}><span className="muted">Étiquette à analyser (facultatif)</span><input value={f.tag} onChange={(e) => set('tag', e.target.value)} /></label>
       </div>
-      <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={f.ftp} onChange={(e) => set('ftp', e.target.checked)} /> J'ai un accès FTP à mes fichiers <span className="muted">(recommandé : le site y lit le .nfo, ou calcule le MediaInfo, sans rien télécharger d'autre)</span></label>
-      {f.ftp && (
+      <div className="muted" style={{ fontSize: 12 }}><strong>Accès FTP à tes fichiers (obligatoire)</strong> : le site y lit le .nfo de chaque release, ou calcule le MediaInfo sur le début de la vidéo, sans rien télécharger d'autre.</div>
+      {(
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
           <label className="grid" style={{ gap: 2 }}><span className="muted">Hôte FTP *</span><input required value={f.host} onChange={(e) => set('host', e.target.value)} placeholder="ftp.exemple.com" /></label>
           <label className="grid" style={{ gap: 2 }}><span className="muted">Port</span><input type="number" min={1} max={65535} value={f.port} onChange={(e) => set('port', e.target.value)} /></label>
-          <label className="grid" style={{ gap: 2 }}><span className="muted">Identifiant FTP</span><input value={f.ftpUser} onChange={(e) => set('ftpUser', e.target.value)} autoComplete="off" /></label>
-          <label className="grid" style={{ gap: 2 }}><span className="muted">Mot de passe FTP</span><input type="password" value={f.ftpPassword} onChange={(e) => set('ftpPassword', e.target.value)} placeholder={box?.hasFtpPassword ? '•••••• (inchangé)' : ''} autoComplete="new-password" /></label>
+          <label className="grid" style={{ gap: 2 }}><span className="muted">Identifiant FTP *</span><input required value={f.ftpUser} onChange={(e) => set('ftpUser', e.target.value)} autoComplete="off" /></label>
+          <label className="grid" style={{ gap: 2 }}><span className="muted">Mot de passe FTP *</span><input type="password" required={!box?.hasFtpPassword} value={f.ftpPassword} onChange={(e) => set('ftpPassword', e.target.value)} placeholder={box?.hasFtpPassword ? '•••••• (inchangé)' : ''} autoComplete="new-password" /></label>
           <label className="row" style={{ gap: 6, alignSelf: 'end' }}><input type="checkbox" style={{ width: 'auto' }} checked={f.secure} onChange={(e) => set('secure', e.target.checked)} /> FTP sur TLS</label>
           <label className="row" style={{ gap: 6, alignSelf: 'end' }}><input type="checkbox" style={{ width: 'auto' }} checked={f.acceptCert} onChange={(e) => set('acceptCert', e.target.checked)} /> Accepter un certificat non reconnu</label>
         </div>
       )}
-      <p className="muted" style={{ margin: 0, fontSize: 12 }}>Astuce : crée si possible un compte FTP limité à la lecture. Il faut qBittorrent 4.5 ou plus récent (export des .torrent).</p>
+      <p className="muted" style={{ margin: 0, fontSize: 12 }}>Astuce : crée si possible un compte FTP limité à la lecture. Il faut qBittorrent 4.5 ou plus récent (export des .torrent). Si le NFO d'une release reste introuvable, tu pourras le coller à la main pour cette release.</p>
       <div className="row" style={{ gap: 8 }}>
         <button type="submit" disabled={busy}>{busy ? 'Enregistrement…' : 'Enregistrer et tester'}</button>
         {box && <button type="button" className="secondary" onClick={() => setOpen(false)}>Annuler</button>}
