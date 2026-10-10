@@ -173,7 +173,7 @@ export default function HomeStreaming() {
       <FreeleechCalendar compact />
       <PotWidget />
       <HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} />
-      <NewsPanel limit={3} />
+      <NewsPanel />
         <div className="home-bottom">
           <Board
             icon="💬" title="Derniers sujets du forum"

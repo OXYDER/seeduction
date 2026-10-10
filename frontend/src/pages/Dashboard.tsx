@@ -162,7 +162,7 @@ function ClassicDashboard() {
         </div>
 
         <div className="col-center grid" style={{ gap: 16, alignContent: 'start' }}>
-          <NewsPanel limit={3} />
+          <NewsPanel />
           <div className="panel">
           <div className="panel-title"><span className="title-icon">🏆</span>Torrents en vedette</div>
           <table>

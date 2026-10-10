@@ -1,17 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import Avatar from './Avatar';
 import { isUnseenNews, kindOf } from '../lib/news';
-import { bbcodeToHtml } from '../lib/bbcode';
 import { timeAgo } from '../lib/time';
 
 const ambient = (url?: string | null) => (url ? ({ '--ambient': `url("${url.replace(/"/g, '%22')}")` } as React.CSSProperties) : undefined);
+const TILE_MIN = 230, TILE_GAP = 12; // doit rester identique à .news-tiles dans index.css
 const plain = (t: string) => t.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
 
-/** Accueil : la dernière nouvelle en grand (image, type, extrait, réactions et commentaires), puis les suivantes en liste. */
-export default function NewsPanel({ limit = 3, heroOnly = false }: { limit?: number; heroOnly?: boolean }) {
+/** Accueil : la dernière nouvelle en pleine largeur (image, type, extrait, réactions et commentaires), puis les précédentes en petites cartes sur une rangée, selon la largeur de l'écran. */
+export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: number; heroOnly?: boolean }) {
   const [items, setItems] = useState<any[] | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(3);
+  const hasRest = !heroOnly && (items?.length ?? 0) > 1;
+
+  // Une seule rangée de petites cartes : seulement autant que la largeur de la page peut en afficher.
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const fit = () => setCols(Math.max(1, Math.floor((el.clientWidth + TILE_GAP) / (TILE_MIN + TILE_GAP))));
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [hasRest]);
 
   useEffect(() => {
     api.get('/announcements/latest', { params: { limit } }).then((r) => setItems(r.data)).catch(() => setItems([]));
@@ -58,19 +72,20 @@ export default function NewsPanel({ limit = 3, heroOnly = false }: { limit?: num
       )}
 
       {rest.length > 0 && (
-        <div className="grid" style={{ gap: 10, marginTop: 14 }}>
-          {rest.map((n) => (
-            <article key={n.id} className="news-item with-thumb">
-              {n.imageUrl && <Link to={`/news/${n.id}`} className="news-thumb"><img src={n.imageUrl} alt="" loading="lazy" /></Link>}
-              <div style={{ minWidth: 0 }}>
-                <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-                  <Link to={`/news/${n.id}`}><strong style={{ fontSize: 15 }}>{kindOf(n.kind).icon} {n.title}</strong></Link>
-                  <span className="muted" style={{ fontSize: 12 }}>{timeAgo(n.createdAt)} · 💬 {n._count?.comments ?? 0}</span>
-                </div>
-                {n.summary ? <p className="muted" style={{ margin: '4px 0' }}>{n.summary}</p> : <div className="news-excerpt bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(n.content) }} />}
-              </div>
-            </article>
-          ))}
+        <div ref={rowRef} className="news-tiles">
+          {rest.slice(0, cols).map((n) => {
+            const nk = kindOf(n.kind);
+            return (
+              <Link key={n.id} to={`/news/${n.id}`} className="news-tile">
+                <span className={`news-tile-img${n.imageUrl ? ' ambient' : ''}`} style={ambient(n.imageUrl)}>{n.imageUrl ? <img src={n.imageUrl} alt="" loading="lazy" /> : nk.icon}</span>
+                <span className="news-tile-body">
+                  <span className={`news-kind k-${(n.kind ?? 'NEWS').toLowerCase()}`}>{nk.icon} {nk.label}</span>
+                  <strong>{n.title}</strong>
+                  <span className="muted news-tile-meta">{timeAgo(n.createdAt)} · 💬 {n._count?.comments ?? 0}</span>
+                </span>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

@@ -3372,3 +3372,13 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .rel-click { cursor: pointer; }
 .rel-click:hover .rel-count { border-color: var(--border-gold, var(--gold)); }
 tr.rel-click:hover td { background: rgba(255,255,255,0.03); }
+/* Accueil : les nouvelles précédentes en petites cartes, une seule rangée (le nombre affiché suit la largeur : 230 px min. + 12 px d'écart, voir NewsPanel.tsx) */
+.news-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 14px; }
+.news-tile { display: flex; flex-direction: column; min-width: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-panel, #10162a); color: inherit; }
+.news-tile:hover { text-decoration: none; border-color: var(--acc-link, #b9a4ff); }
+.news-tile-img { display: grid; place-items: center; aspect-ratio: 16 / 7; font-size: 30px; background: rgba(255,255,255,0.05); overflow: hidden; }
+.news-tile-img > img { width: 100%; height: 100%; object-fit: contain; }
+.news-tile-body { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px 12px 12px; min-width: 0; }
+.news-tile-body strong { font-size: 14px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.news-tile-meta { font-size: 12px; margin-top: auto; }
+
