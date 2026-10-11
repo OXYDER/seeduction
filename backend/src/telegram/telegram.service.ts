@@ -5,7 +5,7 @@ import { CoversService } from '../covers/covers.service';
 import { SettingsService } from '../settings/settings.service';
 import { Actor, MessengerService } from '../messenger/messenger.service';
 import { TOKEN_FORMAT, TelegramApi, TelegramError, openToken, sealToken } from './telegram-api';
-import { CODE_ALPHABET, INVITE_URL, InEvent, escapeHtml, freeleechHtml, newsHtml, outboundMessage, parseLinkCode, parseUpdate, isStartCommand, torrentHtml } from './telegram-format';
+import { CODE_ALPHABET, INVITE_URL, InEvent, escapeHtml, freeleechHtml, newsHtml, outboundMessage, parseLinkCode, parseUpdate, isStartCommand, isIdCommand, torrentHtml } from './telegram-format';
 
 /** Réglages Telegram, modifiables par les administrateurs (Admin > Telegram), stockés dans SiteSetting « telegram ». Le jeton du robot y est chiffré. */
 export interface TelegramConfig {
@@ -71,7 +71,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   /** Messages en cours de recopie depuis Telegram : ils ne repartent pas vers Telegram. */
   private inbound = new Set<string>();
   private queues = new Map<string, { jobs: Job[]; running: boolean; last: number }>();
-  readonly status = { connected: false, lastPollAt: null as Date | null, lastError: null as string | null, lastSendAt: null as Date | null, relayedIn: 0, relayedOut: 0 };
+  readonly status = { connected: false, lastPollAt: null as Date | null, lastError: null as string | null, lastSendAt: null as Date | null, relayedIn: 0, relayedOut: 0, updatesReceived: 0, lastUpdateAt: null as Date | null, recent: [] as string[] };
 
   constructor(private prisma: PrismaService, private settings: SettingsService, private messenger: MessengerService, private covers: CoversService) {}
 
@@ -173,10 +173,20 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async handleUpdate(cfg: TelegramConfig, api: TelegramApi, u: any) {
+    // Diagnostic (Admin > Telegram) : ce que Telegram a réellement transmis au robot, même ce qui est ignoré ensuite.
+    const kindOf = Object.keys(u ?? {}).find((k) => k !== 'update_id') ?? '?';
+    const where = (u?.message ?? u?.edited_message ?? u?.my_chat_member)?.chat?.type ?? '?';
+    this.status.updatesReceived++;
+    this.status.lastUpdateAt = new Date();
+    this.status.recent = [`${kindOf} · ${where}`, ...this.status.recent].slice(0, 5);
     const ev = parseUpdate(u);
     if (!ev) return;
     if (GROUP_TYPES.includes(ev.chat.type)) await this.rememberChat(ev.chat);
     if (ev.kind === 'member' || !ev.from || ev.from.isBot) return;
+    if (ev.kind === 'message' && isIdCommand(ev.text)) {
+      await api.sendMessage(ev.chat.id, `Identifiant de cette discussion : <code>${escapeHtml(ev.chat.id)}</code>\nType : ${escapeHtml(ev.chat.type)}${ev.chat.title ? ` · ${escapeHtml(ev.chat.title)}` : ''}\nColle-le dans Admin > Telegram si c'est le groupe à relier.`).catch(() => undefined);
+      return;
+    }
 
     // Liaison de compte : « /lier CODE » (en privé avec le robot, ou dans le groupe : le message est alors supprimé pour ne pas montrer le code)
     const code = parseLinkCode(ev.text);
@@ -413,7 +423,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       config: pub,
       hasToken: !!openToken(tokenSealed),
       botUsername: st.botUsername || null,
-      status: { connected: this.status.connected, lastPollAt: this.status.lastPollAt, lastError: this.status.lastError, lastSendAt: this.status.lastSendAt, relayedIn: this.status.relayedIn, relayedOut: this.status.relayedOut },
+      status: { connected: this.status.connected, lastPollAt: this.status.lastPollAt, lastError: this.status.lastError, lastSendAt: this.status.lastSendAt, relayedIn: this.status.relayedIn, relayedOut: this.status.relayedOut, updatesReceived: this.status.updatesReceived, lastUpdateAt: this.status.lastUpdateAt, recent: this.status.recent },
       seenChats: st.seen,
       channels,
       links: links.map((l) => ({ userId: l.user.id, username: l.user.username, tgUsername: l.tgUsername, since: l.createdAt })),

@@ -307,7 +307,7 @@ export const GUIDES_STAFF: WikiSeedCategory = {
         `Le tableau en bas liste les liens (pseudo du site, pseudo Telegram). « Retirer » coupe le lien d'un membre, par exemple si son compte Telegram a changé de main. Un membre banni ou désactivé n'est plus recopié.\n\n` +
         `[b]Dépannage[/b]\n` +
         `• « Non connecté » + « Jeton refusé » : jeton copié incomplet ou régénéré dans @BotFather.\n` +
-        `• Le groupe n'apparaît pas dans la liste : le robot n'a vu aucun message (vérifie /setprivacy ou son rôle d'administrateur), écris un message dans le groupe.\n` +
+        `• Le groupe n'apparaît pas dans la liste : écris [b]/id[/b] dans le groupe, le robot répond avec son identifiant (même sans pouvoir lire les messages) : colle-le dans la case « Identifiant du groupe ». Si tu as changé /setprivacy après avoir ajouté le robot, retire-le du groupe puis ajoute-le de nouveau. La ligne « Ce que Telegram a transmis au robot » indique combien d'événements sont réellement arrivés. Un groupe converti en supergroupe change d'identifiant.\n` +
         `• « Message d'essai refusé » : le robot n'est pas dans le groupe, ou n'a pas le droit d'écrire.\n` +
         `• Rien ne part du site vers Telegram : vérifie « Relier le groupe » et le canal choisi ; le dernier message d'erreur d'envoi s'affiche à côté de l'état.\n` +
         `• Après un changement de JWT_SECRET, le jeton est à ressaisir (il est chiffré avec).`,

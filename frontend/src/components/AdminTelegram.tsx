@@ -7,7 +7,7 @@ interface Config {
 }
 interface Overview {
   config: Config; hasToken: boolean; botUsername: string | null;
-  status: { connected: boolean; lastPollAt: string | null; lastError: string | null; lastSendAt: string | null; relayedIn: number; relayedOut: number };
+  status: { connected: boolean; lastPollAt: string | null; lastError: string | null; lastSendAt: string | null; relayedIn: number; relayedOut: number; updatesReceived: number; lastUpdateAt: string | null; recent: string[] };
   seenChats: { id: string; title: string; type: string; at: string }[];
   channels: { id: string; name: string | null }[];
   links: { userId: string; username: string; tgUsername: string | null; since: string }[];
@@ -102,13 +102,30 @@ export function TelegramAdmin() {
 
       <div className="panel grid" style={{ gap: 12 }}>
         <div className="panel-title"><span className="title-icon">2️⃣</span>Groupe et pont avec le chat</div>
+        <div className="panel" style={{ padding: 10, fontSize: 13 }}>
+          <strong>Le robot ne voit pas ton groupe ?</strong>
+          <ol style={{ margin: '6px 0 0', paddingLeft: 18, display: 'grid', gap: 3 }}>
+            <li>Dans le groupe, écris <code>/id</code> (ou <code>/id@{ov.botUsername ?? 'ton_robot'}</code>) : le robot répond avec l'identifiant du groupe, même s'il ne peut pas lire les autres messages. Colle-le dans la case « Identifiant » ci-dessous.</li>
+            <li>Le robot doit être <strong>membre du groupe</strong>, idéalement <strong>administrateur</strong>. Si tu as changé <code>/setprivacy</code> dans @BotFather <em>après</em> l'avoir ajouté, <strong>retire-le du groupe puis ajoute-le de nouveau</strong> pour que ce soit pris en compte.</li>
+            <li>Un groupe converti en « supergroupe » change d'identifiant : refais <code>/id</code>.</li>
+          </ol>
+          <div className="muted" style={{ marginTop: 6 }}>
+            Ce que Telegram a transmis au robot depuis le démarrage : <strong>{s.updatesReceived}</strong> événement{s.updatesReceived > 1 ? 's' : ''}
+            {s.lastUpdateAt ? ` (dernier : ${new Date(s.lastUpdateAt).toLocaleTimeString('fr-FR')})` : ''}
+            {s.recent.length > 0 && <> — récents : {s.recent.join(' ; ')}</>}
+            {s.updatesReceived === 0 && ' — rien encore : écris /id dans le groupe pour tester.'}
+          </div>
+        </div>
         <label style={field}>Groupe Telegram
           <select value={cfg.chatId} onChange={(e) => up('chatId', e.target.value)}>
             <option value="">— choisir —</option>
             {ov.seenChats.map((c) => <option key={c.id} value={c.id}>{c.title || c.id} ({c.id})</option>)}
             {cfg.chatId && !ov.seenChats.some((c) => c.id === cfg.chatId) && <option value={cfg.chatId}>{cfg.chatId}</option>}
           </select>
-          <span className="muted" style={{ fontSize: 12 }}>La liste montre les groupes où le robot a vu un message. Aucun ? Écris un message dans le groupe (le jeton doit être enregistré).</span>
+          <span className="muted" style={{ fontSize: 12 }}>La liste montre les groupes où le robot a vu un message.</span>
+        </label>
+        <label style={field}>Identifiant du groupe (ou colle-le ici : <code>/id</code> dans le groupe te le donne)
+          <input value={cfg.chatId} onChange={(e) => up('chatId', e.target.value.trim())} placeholder="-1001234567890" />
         </label>
         <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.bridge} onChange={(e) => up('bridge', e.target.checked)} /> Relier le groupe à un canal de la messagerie (échange des messages dans les deux sens)</label>
         <label style={field}>Canal de la messagerie

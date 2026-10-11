@@ -1,4 +1,4 @@
-import { escapeHtml, freeleechHtml, INVITE_URL, isStartCommand, newsHtml, outboundMessage, parseLinkCode, parseUpdate, torrentHtml } from './telegram-format';
+import { escapeHtml, freeleechHtml, INVITE_URL, isIdCommand, isStartCommand, newsHtml, outboundMessage, parseLinkCode, parseUpdate, torrentHtml } from './telegram-format';
 import { TOKEN_FORMAT, openToken, sealToken } from './telegram-api';
 
 const SITE = 'https://seeduction.example';
@@ -97,6 +97,9 @@ describe('Telegram vers Seeduction', () => {
     expect(parseLinkCode('/lier ab')).toBeNull();
     expect(isStartCommand('/start')).toBe(true);
     expect(isStartCommand('/start CODE1234')).toBe(false);
+    expect(isIdCommand('/id')).toBe(true);
+    expect(isIdCommand('/id@Seedduction_bot')).toBe(true);
+    expect(isIdCommand('/identifiant')).toBe(false);
   });
 });
 

@@ -119,6 +119,9 @@ export function parseLinkCode(text: string): string | null {
   return m ? m[1].toUpperCase() : null;
 }
 
+/** « /id » : le robot répond avec l'identifiant de la discussion (toujours reçu par le robot, même sans droit de lire les messages du groupe). */
+export const isIdCommand = (text: string) => /^\/(?:id|chatid)(?:@\w+)?\s*$/i.test((text ?? '').trim());
+
 export const isStartCommand = (text: string) => /^\/(?:start|aide|help)(?:@\w+)?\s*$/i.test((text ?? '').trim());
 
 /** Code de liaison : 8 caractères sans ambiguïté (ni 0/O ni 1/I/L). */
