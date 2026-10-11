@@ -14,6 +14,9 @@ export class StaffMembersController {
   @Get()
   list(@Query() q: any) { return this.members.list({ ...q, page: Number(q?.page) }); }
 
+  @Get('counts')
+  counts() { return this.members.counts(); }
+
   @Get('online')
   online() { return this.members.online(); }
 

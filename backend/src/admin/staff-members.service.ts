@@ -18,6 +18,15 @@ const row = (u: any) => {
 export class StaffMembersService {
   constructor(private prisma: PrismaService, private presence: PresenceService) {}
 
+  /** Les trois nombres affichés à côté des onglets : tous les membres, en ligne (invisibles compris), qui seedent. */
+  async counts() {
+    const [all, seeders] = await Promise.all([
+      this.prisma.user.count({ where: { parentId: null } }),
+      this.prisma.peer.groupBy({ by: ['userId'], where: { isSeeder: true } }),
+    ]);
+    return { all, online: this.presence.listOnlineAll().length, seeders: seeders.length };
+  }
+
   /** Tous les comptes (les profils d'un compte famille ne comptent pas à part), avec recherche, filtres et tri. */
   async list(q: { q?: string; role?: string; status?: string; sort?: string; page?: number }) {
     const where: Prisma.UserWhereInput = { parentId: null };

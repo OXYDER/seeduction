@@ -30,6 +30,7 @@ export default function StaffMembers() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ items: Member[]; total: number; pageSize?: number; invisible?: number; totalPeers?: number; byStatus?: Record<string, number> } | null>(null);
   const [error, setError] = useState('');
+  const [counts, setCounts] = useState<{ all: number; online: number; seeders: number } | null>(null);
 
   const load = useCallback(() => {
     const url = view === 'online' ? '/staff/members/online' : view === 'seeders' ? '/staff/members/seeders' : '/staff/members';
@@ -38,6 +39,13 @@ export default function StaffMembers() {
   }, [view, q, roleF, statusF, sort, page]);
   useEffect(() => { const t = setTimeout(load, q ? 300 : 0); return () => clearTimeout(t); }, [load, q]);
   useEffect(() => { setPage(1); }, [view, q, roleF, statusF, sort]);
+  // Les nombres des trois onglets sont toujours affichés, qu'ils soient sélectionnés ou non.
+  useEffect(() => {
+    const loadCounts = () => api.get('/staff/members/counts').then((r) => setCounts(r.data)).catch(() => undefined);
+    loadCounts();
+    const t = setInterval(loadCounts, 15_000);
+    return () => clearInterval(t);
+  }, []);
   // La liste des membres en ligne se rafraîchit toute seule.
   useEffect(() => { if (view !== 'online') return; const t = setInterval(load, 15_000); return () => clearInterval(t); }, [view, load]);
 
@@ -57,7 +65,7 @@ export default function StaffMembers() {
       <div className="mod-tabs" role="tablist">
         {([['all', 'Tous les membres'], ['online', 'En ligne'], ['seeders', 'Seeders']] as [View, string][]).map(([v, label]) => (
           <button key={v} type="button" role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
-            {label} {data && view === v && <span className="mod-count">{data.total}</span>}
+            {label} {counts && <span className="mod-count">{counts[v]}</span>}
           </button>
         ))}
       </div>
