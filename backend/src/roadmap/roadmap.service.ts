@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { SettingsService } from '../settings/settings.service';
 import { PrismaService } from '../common/prisma.service';
+import { bbcodeToText } from '../common/utils/bbcode';
 
 export interface ChangeEntry { hash: string; at: string; title: string; details: string[] }
 
@@ -77,7 +78,7 @@ export class RoadmapService {
     const rank = (s: string) => (s === 'PROGRESS' ? 0 : 1);
     return rows
       .sort((a, b) => rank(a.status) - rank(b.status) || b.voteCount - a.voteCount)
-      .map((r) => ({ id: r.id, title: r.title, status: r.status, voteCount: r.voteCount, note: r.statusNote && r.statusNote.length > 200 ? r.statusNote.slice(0, 200).trimEnd() + '…' : r.statusNote }));
+      .map((r) => ({ id: r.id, title: r.title, status: r.status, voteCount: r.voteCount, note: r.statusNote ? (() => { const p = bbcodeToText(r.statusNote).replace(/\s+/g, ' ').trim(); return p.length > 200 ? p.slice(0, 200).trimEnd() + '…' : p || null; })() : null }));
   }
 
   async setUpcoming(items: string[]) {

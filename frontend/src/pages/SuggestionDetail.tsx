@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { timeAgo } from '../lib/time';
+import { bbcodeToHtml } from '../lib/bbcode';
+import WysiwygEditor from '../components/WysiwygEditor';
 import { CategoryChip, Progress, StatusChip, VoteButton, errorOf, useSuggestionMeta } from './Suggestions';
 
 interface Detail {
@@ -92,7 +94,7 @@ export default function SuggestionDetail() {
       {(s.statusNote || s.duplicateOf) && s.status !== 'OPEN' && (
         <div className="panel sg-reply">
           <strong>💬 Réponse de l'équipe{s.statusBy ? ` (${s.statusBy.username})` : ''}{s.statusAt ? ` · ${timeAgo(s.statusAt)}` : ''}</strong>
-          {s.statusNote && <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{s.statusNote}</p>}
+          {s.statusNote && <div className="bbcode-content" style={{ margin: '8px 0 0' }} dangerouslySetInnerHTML={{ __html: bbcodeToHtml(s.statusNote) }} />}
           {s.duplicateOf && <p style={{ margin: '6px 0 0' }}>🔁 Doublon de <Link to={`/suggestions/${s.duplicateOf.id}`}>{s.duplicateOf.title}</Link> : les votes y ont été transférés.</p>}
         </div>
       )}
@@ -147,8 +149,9 @@ function StaffPanel({ s, meta, onChanged }: { s: Detail; meta: NonNullable<Retur
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         {meta.statuses.map((st) => <button key={st.id} type="button" className={status === st.id ? '' : 'secondary'} onClick={() => setStatus(st.id)}>{st.icon} {st.label}</button>)}
       </div>
-      <textarea rows={6} maxLength={meta.limits.noteMax} value={note} onChange={(e) => setNote(e.target.value)} placeholder={status === 'DECLINED' ? 'Explique en une phrase pourquoi (obligatoire) : les membres qui ont voté seront prévenus' : 'Message pour les membres (facultatif) : ce qui est prévu, quand, comment…'} />
-      <span className="muted" style={{ fontSize: 12, marginTop: -6 }}>{note.length} / {meta.limits.noteMax} caractères</span>
+      <div className="muted" style={{ fontSize: 13 }}>{status === 'DECLINED' ? 'Explique pourquoi elle est refusée (obligatoire) : les membres qui ont voté seront prévenus.' : 'Message pour les membres (facultatif) : ce qui est prévu, quand, comment…'}</div>
+      <WysiwygEditor value={note} onChange={setNote} minHeight={160} />
+      <span className="muted" style={{ fontSize: 12, marginTop: -6, color: note.length > meta.limits.noteMax ? 'var(--danger)' : undefined }}>{note.length} / {meta.limits.noteMax} caractères (mise en forme comprise){note.length > meta.limits.noteMax ? ' : trop long, raccourcis ton message' : ''}</span>
       {status === 'DUPLICATE' && (
         <div className="grid" style={{ gap: 6 }}>
           <input placeholder="Chercher la suggestion qui la remplace (titre)…" value={dupQ} onChange={(e) => setDupQ(e.target.value)} />

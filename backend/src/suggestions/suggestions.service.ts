@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SettingsService } from '../settings/settings.service';
+import { bbcodeToText } from '../common/utils/bbcode';
 import {
   ACTIVE_STATUSES, CLOSED_STATUSES, LIMITS, SUGGESTION_CATEGORIES, SUGGESTION_STATUSES, SuggestionStatus,
   isCategory, isStatus, keywordsOf, similarityScore, statusLabel,
@@ -13,6 +14,11 @@ const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 export const isStaff = (role?: string) => STAFF.includes(role ?? '');
 const AUTHOR = { select: { id: true, username: true, avatarUrl: true, role: true } } as const;
 const PAGE = 20;
+/** Texte brut (sans balises BBCode) abrégé : listes, notifications et roadmap n'affichent jamais de balises. */
+const plainShort = (t: string | null | undefined, n: number) => {
+  const p = bbcodeToText(t ?? '').replace(/\s+/g, ' ').trim();
+  return p.length > n ? p.slice(0, n).trimEnd() + '…' : p;
+};
 const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\r\n/g, '\n').trim().slice(0, max + 1) : '');
 
 /**
@@ -47,7 +53,7 @@ export class SuggestionsService {
     return {
       id: s.id, title: s.title, category: s.category, status: s.status, voteCount: s.voteCount, commentCount: s.commentCount,
       excerpt: s.body.length > 220 ? s.body.slice(0, 220).trimEnd() + '…' : s.body,
-      statusNote: s.statusNote && s.statusNote.length > 240 ? s.statusNote.slice(0, 240).trimEnd() + '…' : s.statusNote, statusAt: s.statusAt, duplicateOfId: s.duplicateOfId,
+      statusNote: s.statusNote ? plainShort(s.statusNote, 240) || null : null, statusAt: s.statusAt, duplicateOfId: s.duplicateOfId,
       createdAt: s.createdAt, author: s.author, voted, threshold,
     };
   }
@@ -253,7 +259,9 @@ export class SuggestionsService {
     if (!s) throw new NotFoundException('Suggestion introuvable');
     const status = body?.status;
     if (!isStatus(status)) throw new BadRequestException('Statut inconnu');
-    const note = clean(body?.note, LIMITS.noteMax) || null;
+    // La réponse de l'équipe s'écrit dans l'éditeur (BBCode) : une réponse qui ne contient que des balises est une réponse vide.
+    const rawNote = clean(body?.note, LIMITS.noteMax);
+    const note = rawNote && bbcodeToText(rawNote).trim() ? rawNote : null;
     if (note && note.length > LIMITS.noteMax) throw new BadRequestException(`Le message est trop long (${LIMITS.noteMax} caractères maximum)`);
     if (status === 'DECLINED' && !note) throw new BadRequestException('Explique en une phrase pourquoi elle est refusée : les membres qui ont voté seront prévenus');
     let duplicateOfId: string | null = null;
@@ -291,7 +299,7 @@ export class SuggestionsService {
     const people = [...new Set([s.authorId, ...voters.map((v) => v.userId)])].filter((id) => id !== actorId);
     if (!people.length) return;
     const link = `/suggestions/${duplicateOfId ?? s.id}`;
-    const body = status === 'DUPLICATE' ? 'Ton vote a été transféré sur la suggestion qui la remplace.' : note ? (note.length > 300 ? note.slice(0, 300).trimEnd() + '…' : note) : undefined;
+    const body = status === 'DUPLICATE' ? 'Ton vote a été transféré sur la suggestion qui la remplace.' : note ? plainShort(note, 300) || undefined : undefined;
     await this.prisma.notification.createMany({
       data: people.map((userId) => ({ userId, type: 'SYSTEM' as const, title: `💡 « ${s.title.slice(0, 80)} » : ${statusLabel(status).toLowerCase()}`, body, link })),
     });

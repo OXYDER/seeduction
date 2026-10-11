@@ -148,7 +148,7 @@ export function bbcodeToMarkdown(bbcode: string): string {
 
 /** BBCode -> texte brut (toutes les balises retirées). */
 export function bbcodeToText(bbcode: string): string {
-  return bbcode.replace(/\[\/?[a-z]+(=[^\]]*)?\]/gi, '');
+  return bbcode.replace(/\[\*\]/g, '• ').replace(/\[\/?[a-z]+(=[^\]]*)?\]/gi, '');
 }
 
 export function renderAllFormats(bbcode: string) {
