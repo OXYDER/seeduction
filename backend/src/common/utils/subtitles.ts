@@ -1,4 +1,5 @@
-// Sous-titres d'une release : langues lues dans le MediaInfo (pistes « Text »), dans un NFO texte (« Sous-titres : Français, Anglais ») et dans le nom (VOSTFR...).
+// Sous-titres d'une release : langues lues dans le MediaInfo (pistes « Text »), dans un NFO texte (« Sous-titres : Français, Anglais »), dans le nom (VOSTFR...)
+// et dans la liste des fichiers du torrent (fichiers .srt / .ass / .sub / .idx / .sup à côté de la vidéo, dont la langue est lue dans leur nom ou leur dossier).
 // Résultat : codes de langue en majuscules, avec « forcés » ou « SDH » quand c'est précisé (« FR », « EN », « FR forcés », « FR SDH »).
 
 const LANGS: Record<string, string> = {
@@ -46,7 +47,39 @@ function listIn(text: string): string[] {
   return out;
 }
 
-export function subtitlesOf(name: string, nfo = ''): string[] {
+const SUB_EXT = /\.(srt|ass|ssa|sub|idx|sup|vtt|smi|sbv)$/i;
+/** Langues écrites en toutes lettres ou en 3 lettres : sûres dans un nom de fichier. Les codes à 2 lettres (« fr », « en »...) ne comptent qu'en fin de nom (« Film.2020.fr.srt »). */
+const SAFE_TOKEN = (t: string) => t.length >= 3 && !!LANGS[t];
+
+/**
+ * Sous-titres livrés en fichiers séparés dans le torrent : « Film.2020.French.srt », « Subs/2_English.srt », « Film.fr.forced.srt », « Sous-titres/fre.idx ».
+ * La langue vient du nom du fichier, sinon du dossier (« Subs/French/2.srt ») ; un fichier de sous-titres dont la langue est introuvable est ignoré.
+ */
+export function subtitleFilesOf(files: { path: string }[]): string[] {
+  const out: string[] = [];
+  for (const f of files.slice(0, 5000)) {
+    const p = String(f?.path ?? '').replace(/\\/g, '/');
+    if (!SUB_EXT.test(p)) continue;
+    const parts = p.replace(SUB_EXT, '').split('/');
+    const stem = parts[parts.length - 1];
+    const dirs = parts.slice(0, -1).slice(-2);
+    const flags = flagsOf(stem);
+    const tokens = strip(stem.replace(/([a-z])([A-Z])/g, '$1 $2')).split(' ').filter(Boolean);
+    // les « mots » qui ne sont pas des langues (forced, sdh, cc, numéros) sont ignorés ; le dernier mot peut être un code à 2 lettres
+    let code: string | null = null;
+    for (let i = tokens.length - 1; i >= 0 && !code; i--) {
+      const t = tokens[i];
+      if (SAFE_TOKEN(t) || (i === tokens.length - 1 && t.length === 2 && LANGS[t]) || (i === tokens.length - 2 && t.length === 2 && LANGS[t] && /^(forced|forces|sdh|cc|full|signs|songs)$/.test(tokens[i + 1]))) code = LANGS[t];
+    }
+    if (!code) {
+      for (const d of dirs.reverse()) { const dc = codeOf(d); if (dc && strip(d).length >= 2) { code = dc; break; } }
+    }
+    if (code) out.push(label(code, flags));
+  }
+  return out;
+}
+
+export function subtitlesOf(name: string, nfo = '', files: { path: string }[] = []): string[] {
   const found: string[] = [];
 
   // 1. MediaInfo : une section « Text » par piste de sous-titres.
@@ -76,6 +109,9 @@ export function subtitlesOf(name: string, nfo = ''): string[] {
 
   // 3. Le nom : VOSTFR / SUBFRENCH annoncent des sous-titres français.
   if (found.length === 0 && /(?:^|[.\s_\-[(])(?:vostfr|subfrench|st[.\-_ ]?fr)(?:$|[.\s_\-\])])/i.test(name)) found.push('FR');
+
+  // 4. Fichiers de sous-titres livrés dans le torrent : s'ajoutent à ceux qui sont intégrés à la vidéo.
+  found.push(...subtitleFilesOf(files));
 
   return [...new Set(found)].slice(0, 12);
 }

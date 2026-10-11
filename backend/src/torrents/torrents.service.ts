@@ -145,7 +145,7 @@ export class TorrentsService implements OnModuleInit {
         codec: params.codec,
         hdr: params.hdr ?? false,
         audio: params.audio,
-        subtitles: subtitlesOf(releaseName, params.nfo ?? ''),
+        subtitles: subtitlesOf(releaseName, params.nfo ?? '', parsed.files),
         source: params.source,
         containerFormat: params.containerFormat,
         origin: params.origin,
@@ -705,11 +705,11 @@ export class TorrentsService implements OnModuleInit {
     const rows = await this.prisma.torrent.findMany({
       where: this.subsCursor ? { createdAt: { gt: this.subsCursor } } : {},
       orderBy: { createdAt: 'asc' }, take: 200,
-      select: { id: true, name: true, createdAt: true, subtitles: true, nfoFile: { select: { content: true } } },
+      select: { id: true, name: true, createdAt: true, subtitles: true, fileList: true, nfoFile: { select: { content: true } } },
     });
     for (const r of rows) {
       if (r.subtitles.length > 0) continue;
-      const subs = subtitlesOf(r.name, r.nfoFile?.content ?? '');
+      const subs = subtitlesOf(r.name, r.nfoFile?.content ?? '', Array.isArray(r.fileList) ? (r.fileList as any[]) : []);
       if (subs.length > 0) await this.prisma.$executeRaw`UPDATE "Torrent" SET subtitles = ${subs}::text[] WHERE id = ${r.id} AND cardinality(subtitles) = 0`;
     }
     if (rows.length < 200) this.subsDone = true;
