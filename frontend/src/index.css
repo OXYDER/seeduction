@@ -2462,6 +2462,7 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 .vr-chip.ep, .vr-chip.ep2 { color: #f9a8d4; background: rgba(236,72,153,0.16); }
 .vr-chip.yr { color: #cbd5e1; background: rgba(148,163,184,0.16); }
 .vr-chip.org { color: #fda4af; background: rgba(244,63,94,0.15); }
+.vr-chip.sub { color: #7dd3fc; background: rgba(56,189,248,0.16); }
 .vr-chip.cod { color: #c4b5fd; background: rgba(139,92,246,0.18); }
 .tv-meta-chips { margin-top: 4px; }
 .tv-meta-chips .vr-chip { font-size: 11.5px; padding: 1px 7px; }
@@ -3230,6 +3231,7 @@ button.pm-chip.pick:hover { border-color: var(--border-gold); filter: none; tran
 .rt-tag.res b { color: #38bdf8; background: rgba(56,189,248,0.14); }
 .rt-tag.src b { color: #6ee7b7; background: rgba(16,185,129,0.14); }
 .rt-tag.aud b { color: #fbbf24; background: rgba(245,158,11,0.16); }
+.rt-tag.sub b { color: #7dd3fc; background: rgba(56,189,248,0.16); }
 .rt-tag.ep b { color: #f9a8d4; background: rgba(236,72,153,0.16); }
 .rt-tag.yr b { color: #cbd5e1; background: rgba(148,163,184,0.16); }
 .rt-tag.org b { color: #fda4af; background: rgba(244,63,94,0.15); }

@@ -1,9 +1,10 @@
 import { audioFromName, episodeCode, releaseDateFr, seasonEpisodeOf } from '../lib/frText';
+import { subtitleChip, subtitleNames } from '../lib/subtitles';
 
 /** Ordre d'affichage : la date de sortie d'abord, la langue juste après, puis le reste, et le codec audio en dernier. */
-const ORDER = ['dt', 'lang', 'ep', 'ep2', 'yr', 'org', 'res', 'src', 'cod', 'fmt', 'aud'] as const;
+const ORDER = ['dt', 'lang', 'ep', 'ep2', 'yr', 'org', 'res', 'src', 'cod', 'fmt', 'aud', 'sub'] as const;
 /** Quand la place manque (cartes, rangées), on retire d'abord les moins utiles pour se retrouver : l'ordre ci-dessus est conservé pour ce qui reste. */
-const DROP_FIRST = ['org', 'fmt', 'yr', 'cod', 'aud', 'src', 'res', 'ep2', 'ep', 'dt', 'lang'] as const;
+const DROP_FIRST = ['org', 'fmt', 'yr', 'cod', 'aud', 'sub', 'src', 'res', 'ep2', 'ep', 'dt', 'lang'] as const;
 
 /**
  * Infos d'une release en pastilles de couleur : date de SORTIE (film, épisode, saison, jeu : jamais la date de mise en ligne), langue, épisode, année, résolution, source, codec vidéo, format, codec audio.
@@ -27,6 +28,7 @@ export default function MetaChips({ t, className = '', limit, inline, explicitEp
     cod: [t.codec, 'Codec vidéo'],
     fmt: [t.containerFormat, 'Format du fichier'],
     aud: [t.audio || audioFromName(t.name), 'Codec audio'],
+    sub: [subtitleChip(t.subtitles), t.subtitles?.length ? `Sous-titres : ${subtitleNames(t.subtitles)}` : 'Sous-titres'],
   };
   const present = ORDER.filter((k) => all[k][0]);
   if (present.length === 0) return null;

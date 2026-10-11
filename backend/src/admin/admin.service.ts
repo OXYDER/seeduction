@@ -73,7 +73,7 @@ export class AdminService {
       select: {
         id: true, infoHash: true, name: true, size: true, coverImage: true, createdAt: true, year: true, resolution: true, description: true, nfoFile: { select: { content: true } }, fileList: true,
         seeders: true, leechers: true, anonymousUpload: true, freeleech: true, doubleUpload: true,
-        language: true, source: true, codec: true, hdr: true, audio: true, containerFormat: true, season: true, episode: true, releaseDate: true, origin: true,
+        language: true, source: true, codec: true, hdr: true, audio: true, subtitles: true, containerFormat: true, season: true, episode: true, releaseDate: true, origin: true,
         releaseGroup: true, genres: true, videoType: true, durationMinutes: true, metaSource: true, metaExternalId: true, metadata: true,
         category: { select: { name: true, adult: true, parent: { select: { name: true, adult: true } } } },
         uploader: { select: { id: true, username: true, role: true, uploaded: true, downloaded: true, createdAt: true, parentId: true, profileType: true } },
@@ -121,7 +121,7 @@ export class AdminService {
       const miDetail = (mi?.detail ?? {}) as Record<string, any>;
       return {
         id: r.id, infoHash: r.infoHash, name: r.name, size: Number(r.size), coverImage: r.coverImage, createdAt: r.createdAt, year: r.year, resolution: r.resolution,
-        language: r.language, source: r.source, codec: r.codec, hdr: r.hdr, audio: r.audio, containerFormat: r.containerFormat, season: r.season, episode: r.episode,
+        language: r.language, source: r.source, codec: r.codec, hdr: r.hdr, audio: r.audio, subtitles: r.subtitles, containerFormat: r.containerFormat, season: r.season, episode: r.episode,
         releaseDate: r.releaseDate, origin: r.origin, releaseGroup: r.releaseGroup, videoType: r.videoType, durationMinutes: r.durationMinutes, genres: r.genres,
         seeders: r.seeders, leechers: r.leechers, anonymousUpload: r.anonymousUpload, freeleech: r.freeleech, doubleUpload: r.doubleUpload,
         category: r.category ? { name: r.category.name, path: [r.category.parent?.name, r.category.name].filter(Boolean).join(' › '), adult: !!(r.category.adult || r.category.parent?.adult) } : null,
@@ -198,6 +198,7 @@ export class AdminService {
       if (typeof body[key] === 'string') data[key] = body[key].trim().slice(0, 60) || null;
     }
     if (typeof body.hdr === 'boolean') data.hdr = body.hdr;
+    if (Array.isArray(body.subtitles)) data.subtitles = body.subtitles.filter((t: any) => typeof t === 'string').map((t: string) => t.trim().slice(0, 24)).filter(Boolean).slice(0, 12);
     if (typeof body.anonymousUpload === 'boolean') data.anonymousUpload = body.anonymousUpload;
     if (Array.isArray(body.tags)) data.tags = body.tags.filter((t: any) => typeof t === 'string').map((t: string) => t.trim().slice(0, 30)).filter(Boolean).slice(0, 12);
     if (typeof body.releaseDate === 'string') {

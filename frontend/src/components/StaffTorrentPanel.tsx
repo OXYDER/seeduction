@@ -47,6 +47,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
   const [releaseDate, setReleaseDate] = useState<string>(torrent.releaseDate ?? '');
   const [genres, setGenres] = useState<string>((torrent.genres ?? []).join(', '));
   const [tags, setTags] = useState<string>((torrent.tags ?? []).join(', '));
+  const [subtitles, setSubtitles] = useState<string>((torrent.subtitles ?? []).join(', '));
   const [anonymous, setAnonymous] = useState(!!torrent.anonymousUpload);
   const [nfo, setNfo] = useState('');
   const [nfoLoaded, setNfoLoaded] = useState(false);
@@ -105,7 +106,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
     setMessage('');
     const overviewChanged = overview !== (torrent.metadata?.overview ?? '');
     const list = (v: string) => v.split(',').map((x) => x.trim()).filter(Boolean);
-    const tech = { year: year.trim() ? Number(year) : null, resolution, source, codec, audio, containerFormat, hdr, season, episode, origin, releaseDate: releaseDate.trim(), genres: list(genres), tags: list(tags), anonymousUpload: anonymous };
+    const tech = { year: year.trim() ? Number(year) : null, resolution, source, codec, audio, containerFormat, hdr, season, episode, origin, releaseDate: releaseDate.trim(), genres: list(genres), tags: list(tags), subtitles: list(subtitles), anonymousUpload: anonymous };
     const patch = { name, categoryId, description, coverImage: coverImage || null, attrs, language: language || null, ...tech, ...(owner ? {} : { status, freeleech, doubleUpload }) };
     try {
       const { data: saved } = await api.patch(`${base}/${torrent.id}`, { ...patch, language, ...(overviewChanged ? { overview } : {}), ...(nfoLoaded && nfo.trim() ? { nfo } : {}) });
@@ -205,6 +206,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
               <label className="grid" style={{ gap: 2 }}><span className="muted">Épisode</span><input value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="5 ou Saison complète" /></label>
               <label className="grid" style={{ gap: 2 }}><span className="muted">Genres (séparés par une virgule)</span><input value={genres} onChange={(e) => setGenres(e.target.value)} /></label>
               <label className="grid" style={{ gap: 2 }}><span className="muted">Mots-clés (séparés par une virgule)</span><input value={tags} onChange={(e) => setTags(e.target.value)} /></label>
+              <label className="grid" style={{ gap: 2 }} title="Lus automatiquement dans le MediaInfo / NFO : corrige-les ici (FR, EN, ES, FR forcés, FR SDH...)"><span className="muted">Sous-titres (FR, EN, FR forcés…)</span><input value={subtitles} onChange={(e) => setSubtitles(e.target.value)} placeholder="FR, EN" /></label>
               <label className="row muted" style={{ gap: 6 }}><input type="checkbox" style={{ width: 'auto' }} checked={hdr} onChange={(e) => setHdr(e.target.checked)} /> HDR</label>
               <label className="row muted" style={{ gap: 6 }}><input type="checkbox" style={{ width: 'auto' }} checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} /> Envoi anonyme</label>
             </div>

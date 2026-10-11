@@ -1,4 +1,5 @@
 import { minutesFr, releaseDateFr } from '../lib/frText';
+import { subtitleNames } from '../lib/subtitles';
 
 /**
  * Caractéristiques techniques d'un torrent, en étiquettes lisibles (« Langue : VFQ »), sous le nom et le hash de sa page :
@@ -26,6 +27,7 @@ export default function ReleaseTags({ torrent: t }: { torrent: any }) {
     ['yr', 'Images/s', t.fps ? `${t.fps} fps` : null],
     ['org', 'Type', t.videoType && t.videoType !== '2D' ? t.videoType : null],
     ['aud', 'Audio', t.audio],
+    ['sub', 'Sous-titres', subtitleNames(t.subtitles) || null],
   ];
   const shown = tags.filter(([, , v]) => v);
   if (shown.length === 0) return null;

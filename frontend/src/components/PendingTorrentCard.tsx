@@ -6,7 +6,7 @@ import RejectReason from './RejectReason';
 
 export interface PendingTorrent {
   id: string; infoHash: string; name: string; size: number; coverImage: string | null; createdAt: string; year: number | null; resolution: string | null;
-  language: string | null; source: string | null; codec: string | null; hdr: boolean; audio: string | null; containerFormat: string | null; season: string | null; episode: string | null;
+  language: string | null; source: string | null; codec: string | null; hdr: boolean; audio: string | null; subtitles?: string[]; containerFormat: string | null; season: string | null; episode: string | null;
   releaseDate: string | null; origin: string | null; releaseGroup: string | null; videoType: string | null; durationMinutes: number | null; genres: string[];
   seeders: number; leechers: number; anonymousUpload: boolean; freeleech: boolean; doubleUpload: boolean; openReports: number;
   category: { name: string; path: string; adult: boolean } | null;

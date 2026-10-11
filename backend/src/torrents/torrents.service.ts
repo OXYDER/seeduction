@@ -11,6 +11,7 @@ import { parseCoverage } from '../common/utils/coverage';
 import { languageAtoms, normalizeLanguage, storedValuesFor } from '../common/utils/language';
 import { extractInstallNotes } from '../common/utils/install-notes';
 import { audioOf } from '../importer/audio-codec';
+import { subtitlesOf } from '../common/utils/subtitles';
 import { groupKeyOf } from './group-key';
 import { RELEASE_EXTENSION_SQL, stripReleaseExtension } from '../common/utils/release-name';
 import { Cron } from '@nestjs/schedule';
@@ -144,6 +145,7 @@ export class TorrentsService implements OnModuleInit {
         codec: params.codec,
         hdr: params.hdr ?? false,
         audio: params.audio,
+        subtitles: subtitlesOf(releaseName, params.nfo ?? ''),
         source: params.source,
         containerFormat: params.containerFormat,
         origin: params.origin,
@@ -518,7 +520,7 @@ export class TorrentsService implements OnModuleInit {
         ],
       },
       select: {
-        id: true, name: true, size: true, resolution: true, source: true, codec: true, audio: true, language: true, hdr: true, containerFormat: true, releaseDate: true,
+        id: true, name: true, size: true, resolution: true, source: true, codec: true, audio: true, subtitles: true, language: true, hdr: true, containerFormat: true, releaseDate: true,
         seeders: true, leechers: true, freeleech: true, createdAt: true, anonymousUpload: true, completedCount: true, season: true, episode: true, status: true, releaseGroup: true, _count: { select: { comments: true } }, uploader: { select: { id: true, username: true } },
       },
       take: 60,
@@ -537,7 +539,7 @@ export class TorrentsService implements OnModuleInit {
     const t = await this.prisma.torrent.findUnique({ where: { id }, select: { metaSource: true, metaExternalId: true, metadata: true } });
     if (!t || t.metaSource !== 'tmdb' || !t.metaExternalId) return { kind: null };
     const info = (t.metadata ?? {}) as any;
-    const card = { id: true, name: true, size: true, year: true, resolution: true, language: true, seeders: true, leechers: true, coverImage: true, source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true, createdAt: true };
+    const card = { id: true, name: true, size: true, year: true, resolution: true, language: true, seeders: true, leechers: true, coverImage: true, source: true, codec: true, audio: true, subtitles: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true, createdAt: true };
 
     if (info.kind === 'movie') {
       const parts: any[] = info.collection?.parts ?? [];
@@ -576,7 +578,7 @@ export class TorrentsService implements OnModuleInit {
 
   private readonly cardSelect = {
     id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true,
-    source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true,
+    source: true, codec: true, audio: true, subtitles: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true,
     seeders: true, leechers: true, freeleech: true, doubleUpload: true, createdAt: true, category: { select: { name: true, slug: true, parent: { select: { slug: true, name: true } } } },
   } as const;
 
@@ -630,7 +632,7 @@ export class TorrentsService implements OnModuleInit {
       where: { id },
       select: {
         id: true, name: true, coverImage: true, year: true, resolution: true, language: true, size: true, seeders: true, leechers: true,
-        source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true,
+        source: true, codec: true, audio: true, subtitles: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true,
         createdAt: true, status: true, categoryId: true, genres: true,
         category: { select: { name: true, slug: true, parent: { select: { slug: true, name: true } } } }, metadata: true,
         entities: {
@@ -688,6 +690,30 @@ export class TorrentsService implements OnModuleInit {
     }
     if (rows.length < 200) this.audioDone = true;
     else this.audioCursor = rows[rows.length - 1].createdAt;
+  }
+
+  private subsCursor: Date | null = null;
+  private subsDone = false;
+
+  /**
+   * Rattrapage : les langues de sous-titres des torrents déjà en ligne sont lues dans leur NFO / MediaInfo et dans leur nom. 200 torrents toutes les 10 minutes ;
+   * la date de modification n'est pas touchée et une liste déjà renseignée n'est jamais remplacée.
+   */
+  @Cron('*/10 * * * *')
+  async backfillSubtitles() {
+    if (this.subsDone) return;
+    const rows = await this.prisma.torrent.findMany({
+      where: this.subsCursor ? { createdAt: { gt: this.subsCursor } } : {},
+      orderBy: { createdAt: 'asc' }, take: 200,
+      select: { id: true, name: true, createdAt: true, subtitles: true, nfoFile: { select: { content: true } } },
+    });
+    for (const r of rows) {
+      if (r.subtitles.length > 0) continue;
+      const subs = subtitlesOf(r.name, r.nfoFile?.content ?? '');
+      if (subs.length > 0) await this.prisma.$executeRaw`UPDATE "Torrent" SET subtitles = ${subs}::text[] WHERE id = ${r.id} AND cardinality(subtitles) = 0`;
+    }
+    if (rows.length < 200) this.subsDone = true;
+    else this.subsCursor = rows[rows.length - 1].createdAt;
   }
 
   /** Instructions d'installation / d'utilisation trouvées dans le NFO (rubriques « INSTALL NOTES », « HOW TO »...), pour les logiciels et les jeux. */

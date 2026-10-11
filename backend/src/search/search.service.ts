@@ -91,7 +91,7 @@ export class SearchService {
         take: 6,
         select: {
           id: true, name: true, coverImage: true, year: true, resolution: true, seeders: true, searchTitles: true, category: { select: { name: true } },
-          language: true, source: true, codec: true, audio: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true, // pour les pastilles d'information
+          language: true, source: true, codec: true, audio: true, subtitles: true, hdr: true, containerFormat: true, origin: true, season: true, episode: true, releaseDate: true, // pour les pastilles d'information
         },
       }).then((r) => {
         // Si le torrent est trouvé par un autre titre que son nom, on l'indique (« aussi connu sous : ... »).

@@ -336,6 +336,8 @@ model Torrent {
   season          String?
   episode         String?
   genres          String[]
+  // Langues des sous-titres (« FR », « EN », « FR forcés »...) lues dans le MediaInfo, le NFO ou le nom.
+  subtitles       String[]      @default([])
   // Filtres propres à la catégorie ({ clé: [valeurs] }, voir common/utils/facet-schema.ts) ; null = pas encore analysé, {} = analysé sans rien trouver.
   attrs           Json?
   videoType       String?
