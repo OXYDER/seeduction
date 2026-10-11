@@ -8,6 +8,7 @@ interface Config {
   announceNews: boolean; announceFreeleech: boolean; announceTorrents: boolean; announceChatId: string;
 }
 interface Overview {
+  bridge?: { active: boolean; issue: string | null; channelName: string | null };
   config: Config; hasToken: boolean; botUsername: string | null;
   status: { connected: boolean; lastPollAt: string | null; lastError: string | null; lastSendAt: string | null; relayedIn: number; relayedOut: number; updatesReceived: number; lastUpdateAt: string | null; recent: string[] };
   seenChats: { id: string; title: string; type: string; at: string }[];
@@ -77,6 +78,11 @@ export function TelegramAdmin() {
           État : {s.connected ? <strong style={{ color: 'var(--success)' }}>● connecté{ov.botUsername ? ` (@${ov.botUsername})` : ''}</strong> : <strong style={{ color: 'var(--danger)' }}>● non connecté</strong>}
           {cfg.enabled ? '' : ' — désactivé'}
           {s.lastError && <span style={{ color: 'var(--danger)' }}> · {s.lastError}</span>}
+        </p>
+        <p style={{ margin: '6px 0 0' }}>
+          Pont avec le chat : {ov.bridge?.active
+            ? <strong style={{ color: 'var(--success)' }}>● actif — seul le canal « {ov.bridge.channelName} » est relayé vers le groupe Telegram</strong>
+            : <><strong style={{ color: 'var(--danger)' }}>○ inactif</strong>{ov.bridge?.issue && <span> — {ov.bridge.issue}</span>}</>}
         </p>
         <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
           {s.relayedIn} message{s.relayedIn > 1 ? 's' : ''} vers le site · {s.relayedOut} vers Telegram · {s.updatesReceived} événement{s.updatesReceived > 1 ? 's' : ''} reçu{s.updatesReceived > 1 ? 's' : ''} de Telegram{s.lastUpdateAt ? ` (dernier à ${new Date(s.lastUpdateAt).toLocaleTimeString('fr-FR')})` : ''}

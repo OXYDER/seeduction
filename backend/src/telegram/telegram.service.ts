@@ -419,7 +419,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.prisma.conversation.findMany({ where: { type: 'CHANNEL', archived: false, readRole: null, NOT: { slug: 'support' } }, orderBy: { position: 'asc' }, select: { id: true, name: true } }),
     ]);
     const { tokenSealed, ...pub } = cfg;
+    // Le pont n'envoie rien tant que toutes ces conditions ne sont pas réunies : on dit laquelle manque.
+    const bridgeIssue = !cfg.enabled ? 'Telegram n\'est pas activé (case « Telegram activé »).'
+      : !this.active(cfg) ? 'Le jeton du robot manque.'
+      : !cfg.chatId ? 'Aucun groupe choisi : écris /id dans le groupe Telegram, puis colle l\'identifiant ci-dessous.'
+      : !cfg.bridge ? 'La case « Relier le groupe à un canal de la messagerie » n\'est pas cochée.'
+      : !cfg.bridgeChannelId ? 'Aucun canal de la messagerie choisi.'
+      : !this.status.connected ? 'Le robot n\'est pas connecté à Telegram.'
+      : null;
     return {
+      bridge: { active: !bridgeIssue, issue: bridgeIssue, channelName: channels.find((c) => c.id === cfg.bridgeChannelId)?.name ?? null },
       config: pub,
       hasToken: !!openToken(tokenSealed),
       botUsername: st.botUsername || null,
