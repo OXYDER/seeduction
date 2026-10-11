@@ -47,7 +47,7 @@ export class SuggestionsService {
     return {
       id: s.id, title: s.title, category: s.category, status: s.status, voteCount: s.voteCount, commentCount: s.commentCount,
       excerpt: s.body.length > 220 ? s.body.slice(0, 220).trimEnd() + '…' : s.body,
-      statusNote: s.statusNote, statusAt: s.statusAt, duplicateOfId: s.duplicateOfId,
+      statusNote: s.statusNote && s.statusNote.length > 240 ? s.statusNote.slice(0, 240).trimEnd() + '…' : s.statusNote, statusAt: s.statusAt, duplicateOfId: s.duplicateOfId,
       createdAt: s.createdAt, author: s.author, voted, threshold,
     };
   }
@@ -105,7 +105,7 @@ export class SuggestionsService {
       s.statusById ? this.prisma.user.findUnique({ where: { id: s.statusById }, select: { id: true, username: true } }) : null,
     ]);
     return {
-      ...this.view(s, !!voted, threshold), body: s.body, duplicateOf: dup, statusBy,
+      ...this.view(s, !!voted, threshold), statusNote: s.statusNote, body: s.body, duplicateOf: dup, statusBy,
       comments: s.comments.map((c) => ({ id: c.id, content: c.content, staff: c.staff, createdAt: c.createdAt, user: c.user })),
     };
   }
@@ -291,7 +291,7 @@ export class SuggestionsService {
     const people = [...new Set([s.authorId, ...voters.map((v) => v.userId)])].filter((id) => id !== actorId);
     if (!people.length) return;
     const link = `/suggestions/${duplicateOfId ?? s.id}`;
-    const body = status === 'DUPLICATE' ? 'Ton vote a été transféré sur la suggestion qui la remplace.' : note ?? undefined;
+    const body = status === 'DUPLICATE' ? 'Ton vote a été transféré sur la suggestion qui la remplace.' : note ? (note.length > 300 ? note.slice(0, 300).trimEnd() + '…' : note) : undefined;
     await this.prisma.notification.createMany({
       data: people.map((userId) => ({ userId, type: 'SYSTEM' as const, title: `💡 « ${s.title.slice(0, 80)} » : ${statusLabel(status).toLowerCase()}`, body, link })),
     });

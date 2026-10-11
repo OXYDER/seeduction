@@ -1613,7 +1613,7 @@ model Suggestion {
   voteCount    Int      @default(0)
   commentCount Int      @default(0)
   // Réponse du staff affichée sous le titre (pourquoi refusée, ce qui est prévu...).
-  statusNote   String?  @db.VarChar(600)
+  statusNote   String?  @db.Text
   statusAt     DateTime?
   statusById   String?
   // Doublon : la suggestion qui la remplace (ses votes lui ont été transférés).
@@ -1645,7 +1645,7 @@ model SuggestionComment {
   suggestionId String
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId       String
-  content      String     @db.VarChar(2000)
+  content      String     @db.Text
   // Écrit par un membre de l'équipe (affiché avec un badge)
   staff        Boolean    @default(false)
   createdAt    DateTime   @default(now())

@@ -110,7 +110,8 @@ export default function SuggestionDetail() {
             <p style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap' }}>{c.content}</p>
           </div>
         ))}
-        <textarea rows={3} placeholder="Ajoute ton avis, un détail, un cas d'usage…" value={comment} maxLength={2000} onChange={(e) => setComment(e.target.value)} />
+        <textarea rows={5} placeholder="Ajoute ton avis, un détail, un cas d'usage…" value={comment} maxLength={meta?.limits.commentMax ?? 5000} onChange={(e) => setComment(e.target.value)} />
+        <span className="muted" style={{ fontSize: 12, marginTop: -6 }}>{comment.length} / {meta?.limits.commentMax ?? 5000} caractères</span>
         {err && <p style={{ color: 'var(--danger)', margin: 0 }}>{err}</p>}
         <div><button type="button" onClick={sendComment} disabled={busy || !comment.trim()}>Commenter</button></div>
       </div>
@@ -146,7 +147,8 @@ function StaffPanel({ s, meta, onChanged }: { s: Detail; meta: NonNullable<Retur
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         {meta.statuses.map((st) => <button key={st.id} type="button" className={status === st.id ? '' : 'secondary'} onClick={() => setStatus(st.id)}>{st.icon} {st.label}</button>)}
       </div>
-      <textarea rows={3} maxLength={600} value={note} onChange={(e) => setNote(e.target.value)} placeholder={status === 'DECLINED' ? 'Explique en une phrase pourquoi (obligatoire) : les membres qui ont voté seront prévenus' : 'Message pour les membres (facultatif) : ce qui est prévu, quand, comment…'} />
+      <textarea rows={6} maxLength={meta.limits.noteMax} value={note} onChange={(e) => setNote(e.target.value)} placeholder={status === 'DECLINED' ? 'Explique en une phrase pourquoi (obligatoire) : les membres qui ont voté seront prévenus' : 'Message pour les membres (facultatif) : ce qui est prévu, quand, comment…'} />
+      <span className="muted" style={{ fontSize: 12, marginTop: -6 }}>{note.length} / {meta.limits.noteMax} caractères</span>
       {status === 'DUPLICATE' && (
         <div className="grid" style={{ gap: 6 }}>
           <input placeholder="Chercher la suggestion qui la remplace (titre)…" value={dupQ} onChange={(e) => setDupQ(e.target.value)} />

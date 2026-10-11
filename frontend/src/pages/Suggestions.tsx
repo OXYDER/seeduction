@@ -8,7 +8,7 @@ export interface SuggestionMeta {
   categories: { id: string; icon: string; label: string }[];
   statuses: { id: string; icon: string; label: string }[];
   threshold: number;
-  limits: { titleMin: number; titleMax: number; bodyMin: number; bodyMax: number; perDay: number };
+  limits: { titleMin: number; titleMax: number; bodyMin: number; bodyMax: number; perDay: number; commentMax: number; noteMax: number };
 }
 export interface SuggestionItem {
   id: string; title: string; category: string; status: string; voteCount: number; commentCount: number; excerpt: string; statusNote: string | null;

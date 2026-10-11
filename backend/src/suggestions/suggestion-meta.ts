@@ -31,7 +31,7 @@ export const isStatus = (v: unknown): v is SuggestionStatus => SUGGESTION_STATUS
 export const statusLabel = (id: string) => SUGGESTION_STATUSES.find((s) => s.id === id)?.label ?? id;
 
 export const LIMITS = {
-  titleMin: 8, titleMax: 120, bodyMin: 20, bodyMax: 4000, commentMin: 2, commentMax: 2000, noteMax: 600,
+  titleMin: 8, titleMax: 120, bodyMin: 20, bodyMax: 4000, commentMin: 2, commentMax: 5000, noteMax: 3000,
   perDay: 3, openPerMember: 15, commentsPerHour: 20,
   defaultThreshold: 10, thresholdMin: 2, thresholdMax: 500,
 } as const;
