@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { EconomyService } from './economy.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -16,6 +16,12 @@ export class EconomyController {
   async freeleech() {
     const state = await this.settings.freeleechState();
     return { until: state.until, event: state.event, upcoming: state.upcoming };
+  }
+
+  /** Public : tout le calendrier des freeleech (passés, en cours, à venir) sur une période, pour la page « Calendrier freeleech ». */
+  @Get('freeleech/calendar')
+  freeleechCalendar(@Query('from') from?: string, @Query('to') to?: string) {
+    return this.settings.freeleechCalendar(from, to);
   }
 
   @UseGuards(JwtAuthGuard)

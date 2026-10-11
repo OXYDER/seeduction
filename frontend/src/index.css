@@ -3533,3 +3533,49 @@ body.has-chat-rail .dm-bubble-avatar { display: none; }
 /* Sourdine, signalement et bannissement du chat */
 .msgr-mod-quote { margin: 0; padding: 8px 10px; border-left: 3px solid var(--gold, #e0b84a); background: rgba(255, 255, 255, 0.05); border-radius: 6px; font-size: 13px; overflow-wrap: anywhere; }
 .msgr-banned { border: 1px solid var(--danger, #e5384f); color: #fff; }
+/* Fichiers d'un torrent en arborescence */
+.ftree-tools { gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.ftree-tools button { padding: 3px 10px; font-size: 12px; }
+.ftree-body { display: grid; font-size: 13.5px; max-height: 70vh; overflow: auto; }
+.ftree-row { display: flex; align-items: center; gap: 8px; padding-top: 3px; padding-bottom: 3px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); min-width: 0; }
+.ftree-row:hover { background: rgba(255, 255, 255, 0.04); }
+.ftree-box { flex: none; width: 20px; height: 20px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 14px; font-weight: 700; line-height: 1; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.28); color: inherit; cursor: pointer; }
+.ftree-row.file .ftree-box { visibility: hidden; border: 0; background: none; }
+.ftree-box { box-shadow: none !important; }
+.ftree-box:hover { border-color: var(--gold, #e0b84a); filter: none; transform: none; }
+.ftree-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.ftree-name.dirname { background: none !important; box-shadow: none !important; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 600; cursor: pointer; text-align: left; transform: none; }
+.ftree-name.dirname:hover { filter: none; text-decoration: underline; }
+.ftree-size { flex: none; white-space: nowrap; font-size: 12px; }
+.ftree-icon { flex: none; width: 24px; text-align: center; font-size: 18px; line-height: 1; }
+.ftree-icon.dir { font-size: 20px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
+/* Calendrier freeleech : lien de l'accueil et page complète */
+.fl-all { font-size: 13px; font-weight: 700; white-space: nowrap; }
+.fl-item.past { opacity: 0.6; }
+.flcal-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.flcal-head > button { width: 40px; height: 36px; padding: 0; font-size: 20px; line-height: 1; }
+.flcal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.flcal-dow { text-align: center; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--gold, #e0b84a); padding: 4px 0; }
+.flcal-day { display: flex; flex-direction: column; align-items: stretch; gap: 3px; min-height: 84px; padding: 5px 6px; text-align: left; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); color: inherit; font: inherit; overflow: hidden; box-shadow: none; transform: none; }
+.flcal-day:hover { background: rgba(255, 255, 255, 0.09); filter: none; }
+.flcal-day.out { opacity: 0.4; }
+.flcal-day.today .flcal-num { background: var(--gold, #e0b84a); color: #14110a; }
+.flcal-day.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--gold, #e0b84a); }
+.flcal-day.has.live { background: rgba(74, 222, 128, 0.16); border-color: rgba(74, 222, 128, 0.55); }
+.flcal-day.has.soon { background: rgba(224, 184, 74, 0.16); border-color: rgba(224, 184, 74, 0.55); }
+.flcal-day.has.past { background: rgba(255, 255, 255, 0.08); }
+.flcal-num { align-self: flex-start; min-width: 22px; padding: 1px 6px; border-radius: 999px; font-size: 13px; font-weight: 700; text-align: center; }
+.flcal-pill { display: block; font-size: 10.5px; line-height: 1.25; padding: 1px 5px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flcal-pill.live { background: rgba(74, 222, 128, 0.35); } .flcal-pill.soon { background: rgba(224, 184, 74, 0.35); } .flcal-pill.past { background: rgba(255, 255, 255, 0.15); }
+.flcal-more { font-size: 10.5px; opacity: 0.8; }
+.flcal-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; }
+.flcal-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.flcal-dot.live { background: rgba(74, 222, 128, 0.8); } .flcal-dot.soon { background: rgba(224, 184, 74, 0.8); } .flcal-dot.past { background: rgba(255, 255, 255, 0.35); }
+@media (max-width: 700px) { .flcal-day { min-height: 56px; padding: 3px; } .flcal-pill { font-size: 9.5px; padding: 0 3px; } }
+/* Historique des recherches dans le moteur du site */
+.sb-hist-head { display: flex; justify-content: space-between; align-items: center; }
+.sb-hist-clear { background: none; border: 0; padding: 0 4px; font-size: 11px; font-weight: 700; color: var(--gold, #e0b84a); text-transform: none; cursor: pointer; box-shadow: none; }
+.sb-hist-clear:hover { text-decoration: underline; filter: none; transform: none; }
+.sb-item.sb-hist { align-items: center; }
+.sb-hist-x { margin-left: auto; width: 22px; height: 22px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; background: transparent; border: 0; color: inherit; opacity: 0.55; box-shadow: none; }
+.sb-item.sb-hist:hover .sb-hist-x, .sb-hist-x:hover { opacity: 1; background: rgba(255, 255, 255, 0.14); transform: none; filter: none; }

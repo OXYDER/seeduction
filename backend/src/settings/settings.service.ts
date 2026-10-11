@@ -52,6 +52,26 @@ export class SettingsService {
     return value;
   }
 
+  /**
+   * Calendrier complet : tous les événements freeleech programmés qui touchent la période demandée (passés, en cours et à venir), pour la page « Calendrier freeleech ».
+   * `from` et `to` sont des dates ISO ; sans elles, du début du mois courant à 12 mois plus loin.
+   */
+  async freeleechCalendar(fromIso?: string, toIso?: string) {
+    const now = new Date();
+    const from = fromIso && !Number.isNaN(Date.parse(fromIso)) ? new Date(fromIso) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const to = toIso && !Number.isNaN(Date.parse(toIso)) ? new Date(toIso) : new Date(from.getFullYear(), from.getMonth() + 12, 1);
+    // Au plus deux ans de calendrier d'un coup.
+    const cappedTo = new Date(Math.min(to.getTime(), from.getTime() + 740 * 86_400_000));
+    const events = await this.prisma.freeleechEvent.findMany({
+      where: { startsAt: { lt: cappedTo }, endsAt: { gt: from } },
+      orderBy: { startsAt: 'asc' },
+      take: 400,
+      select: { id: true, title: true, message: true, startsAt: true, endsAt: true },
+    });
+    const state = await this.freeleechState();
+    return { from, to: cappedTo, now, events, until: state.until, activeEventId: state.event?.id ?? null };
+  }
+
   invalidateFreeleech() {
     this.freeleechCache = null;
     this.cache.delete('freeleechUntil');

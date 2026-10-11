@@ -29,6 +29,7 @@ import { useFavorites } from '../lib/favorites';
 import { usePageBackdrop } from '../lib/backdrop';
 import { useTheme } from '../lib/theme';
 import { formatBytes } from '../lib/format';
+import FileTree from '../components/FileTree';
 import { resolveContentKind } from '../lib/categoryKind';
 import { useCrumbTitle } from '../store/crumbs';
 
@@ -183,13 +184,7 @@ export default function TorrentDetail() {
   const filesPanel = (
     <div className="panel">
       <h3>Fichiers</h3>
-      <table>
-        <tbody>
-          {(torrent.fileList ?? []).map((f: any, i: number) => (
-            <tr key={i}><td>{f.path}</td><td className="muted" style={{ whiteSpace: 'nowrap' }}>{formatBytes(f.size)}</td></tr>
-          ))}
-        </tbody>
-      </table>
+      <FileTree files={torrent.fileList ?? []} />
     </div>
   );
 

@@ -10,6 +10,7 @@ import TelegramHeaderLink from './TelegramHeaderLink';
 import InstallPrompt from './InstallPrompt';
 import ThemeSwitcher from './ThemeSwitcher';
 import SearchBox from './SearchBox';
+import { addSearch } from '../lib/searchHistory';
 import Avatar from './Avatar';
 import ChatDock from './ChatDock';
 import BrowserNotifications from './BrowserNotifications';
@@ -128,6 +129,10 @@ function LayoutInner() {
   // Torrents sans seeder que ce membre a déjà téléchargés : la pastille « Réanimation » l'invite à les remettre en seed.
   const [deadMine, setDeadMine] = useState(0);
   const [search, setSearch] = useState('');
+  // Le texte du champ de recherche ne suit pas le membre d'une section à l'autre : il n'est conservé que tant qu'on affiche les résultats de cette recherche.
+  useEffect(() => {
+    setSearch(location.pathname === '/browse' ? new URLSearchParams(location.search).get('search') ?? '' : '');
+  }, [location.pathname, location.search]);
   const [statusOpen, setStatusOpen] = useState(false);
   const theme = useTheme();
   const [drawer, setDrawer] = useState(false);
@@ -292,8 +297,10 @@ function LayoutInner() {
     return null;
   };
 
-  function goSearch() {
-    navigate(`/browse?search=${encodeURIComponent(search)}`);
+  function goSearch(query?: string) {
+    const q = query ?? search;
+    addSearch(q);
+    navigate(`/browse?search=${encodeURIComponent(q)}`);
   }
 
   function submitSearch(e: FormEvent) {
@@ -412,6 +419,7 @@ function LayoutInner() {
                 onChange={setSearch}
                 onSubmit={goSearch}
                 scopes={['torrents', 'users', 'categories', 'entities']}
+                history
               />
             </form>
             {profile && (
@@ -541,6 +549,7 @@ function LayoutInner() {
             onChange={setSearch}
             onSubmit={goSearch}
             scopes={['torrents', 'users', 'categories', 'entities']}
+            history
           />
           <button type="submit">Rechercher</button>
         </form>

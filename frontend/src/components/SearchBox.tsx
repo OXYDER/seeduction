@@ -7,6 +7,7 @@ import { CATEGORY_STYLE } from './Layout';
 import { TYPE_LABEL } from '../lib/entityLabels';
 import { displayRank } from '../lib/memberClass';
 import { ROLE_LABEL } from './StaffUserPanel';
+import { clearSearchHistory, readSearchHistory, removeSearch } from '../lib/searchHistory';
 
 export type EntityGroup = 'actors' | 'directors' | 'producers' | 'genres' | 'creators';
 export type SuggestScope = 'torrents' | 'users' | 'categories' | 'entities' | 'topics' | EntityGroup;
@@ -29,14 +30,16 @@ interface Entry { key: string; scope: SuggestScope; data: any }
  * pochette), des membres (avec leur avatar), des catégories, etc. Flèches + Entrée au clavier.
  */
 export default function SearchBox({
-  value, onChange, scopes = ['torrents', 'users', 'categories'], placeholder, onSubmit, onPickUser, autoFocus, inputStyle,
+  value, onChange, scopes = ['torrents', 'users', 'categories'], placeholder, onSubmit, onPickUser, autoFocus, inputStyle, history,
 }: {
   value: string;
   onChange: (v: string) => void;
   scopes?: SuggestScope[];
   placeholder?: string;
   /** Appelé sur Entrée quand aucune suggestion n'est sélectionnée, ou via la dernière ligne « Rechercher ». */
-  onSubmit?: () => void;
+  onSubmit?: (query?: string) => void;
+  /** Au clic dans le champ vide, propose l'historique des dernières recherches (moteur du site). */
+  history?: boolean;
   /** Si fourni, choisir un membre appelle cette fonction (auto-remplissage) au lieu d'ouvrir son profil. */
   onPickUser?: (user: { id: string; username: string }) => void;
   autoFocus?: boolean;
@@ -46,6 +49,9 @@ export default function SearchBox({
   const [data, setData] = useState<Record<string, any[]>>({});
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const [focused, setFocused] = useState(false);
+  const [hist, setHist] = useState<string[]>([]);
+  const [hActive, setHActive] = useState(-1);
   const wrapRef = useRef<HTMLDivElement>(null);
   const requestId = useRef(0);
   // « entities » est le raccourci de tous les groupes de fiches : acteurs, réalisateurs, producteurs, genres...
@@ -68,7 +74,7 @@ export default function SearchBox({
   }, [value, scopeKey]);
 
   useEffect(() => {
-    const close = (e: MouseEvent) => { if (!wrapRef.current?.contains(e.target as Node)) setOpen(false); };
+    const close = (e: MouseEvent) => { if (!wrapRef.current?.contains(e.target as Node)) { setOpen(false); setFocused(false); } };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, []);
@@ -96,10 +102,28 @@ export default function SearchBox({
 
   function submit() {
     setOpen(false);
+    setFocused(false);
     onSubmit?.();
   }
 
+  // Champ vide (moins de 2 lettres) : l'historique des recherches remplace les suggestions.
+  const showHistory = !!history && focused && value.trim().length < 2 && hist.length > 0;
+  function pickHistory(q: string) {
+    setFocused(false);
+    suppress.current = true;
+    onChange(q);
+    onSubmit?.(q);
+  }
+  function dropHistory(q: string) { setHist(removeSearch(q)); setHActive(-1); }
+  function wipeHistory() { clearSearchHistory(); setHist([]); setHActive(-1); }
+
   function onKeyDown(e: React.KeyboardEvent) {
+    if (showHistory) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setHActive((a) => (a + 1) % hist.length); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setHActive((a) => (a <= 0 ? hist.length - 1 : a - 1)); return; }
+      if (e.key === 'Escape') { setFocused(false); return; }
+      if (e.key === 'Enter' && hActive >= 0) { e.preventDefault(); pickHistory(hist[hActive]); return; }
+    }
     if (e.key === 'ArrowDown' && total > 0) { e.preventDefault(); setOpen(true); setActive((a) => (a + 1) % total); }
     else if (e.key === 'ArrowUp' && total > 0) { e.preventDefault(); setActive((a) => (a <= 0 ? total - 1 : a - 1)); }
     else if (e.key === 'Escape') setOpen(false);
@@ -184,8 +208,29 @@ export default function SearchBox({
         style={inputStyle}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        onFocus={() => { if (entries.length > 0) setOpen(true); }}
+        onFocus={() => {
+          if (history) { setHist(readSearchHistory()); setHActive(-1); setFocused(true); }
+          if (entries.length > 0) setOpen(true);
+        }}
+        onBlur={(e) => { if (!wrapRef.current?.contains(e.relatedTarget as Node | null)) setFocused(false); }}
       />
+      {showHistory && (
+        <div className="sb-menu" role="listbox" aria-label="Recherches récentes">
+          <div className="sb-group sb-hist-head">
+            <span>🕘 Recherches récentes</span>
+            <button type="button" className="sb-hist-clear" onMouseDown={(e) => { e.preventDefault(); wipeHistory(); }}>Effacer</button>
+          </div>
+          {hist.map((q, i) => (
+            <div key={q} role="option" aria-selected={hActive === i} className={`sb-item sb-hist${hActive === i ? ' active' : ''}`}
+              onMouseDown={(e) => { e.preventDefault(); pickHistory(q); }} onMouseEnter={() => setHActive(i)}>
+              <span className="sb-thumb sb-icon">🔍</span>
+              <span className="sb-text"><span className="sb-title">{q}</span></span>
+              <button type="button" className="sb-hist-x" title="Retirer de l'historique" aria-label={`Retirer « ${q} » de l'historique`}
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); dropHistory(q); }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
       {open && total > 0 && (
         <div className="sb-menu" role="listbox">
           {shown.map((scope) => {

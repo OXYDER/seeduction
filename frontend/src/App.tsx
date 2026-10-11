@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Browse from './pages/Browse';
 import Favorites from './pages/Favorites';
 import Bonus from './pages/Bonus';
+import FreeleechCalendarPage from './pages/FreeleechCalendarPage';
 import Pot from './pages/Pot';
 import MySeeds from './pages/MySeeds';
 import MyActivity from './pages/MyActivity';
@@ -114,6 +115,7 @@ export default function App() {
           <Route path="/rules" element={<Navigate to="/wiki" replace />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/bonus" element={<Bonus />} />
+          <Route path="/freeleech" element={<FreeleechCalendarPage />} />
           <Route path="/pot" element={<Pot />} />
           <Route path="/activity" element={<MyActivity />} />
           <Route path="/seeds" element={<MySeeds />} />

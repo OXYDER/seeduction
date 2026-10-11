@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { bbcodeToHtml } from '../lib/bbcode';
 
@@ -35,11 +36,17 @@ export default function FreeleechCalendar({ compact }: { compact?: boolean }) {
   useEffect(() => { api.get('/bonus/freeleech').then((r) => setState(r.data)).catch(() => {}); }, []);
   if (!state) return null;
   const upcoming: any[] = state.upcoming ?? [];
-  if (!state.until && upcoming.length === 0) return null;
+  const empty = !state.until && upcoming.length === 0;
+  // Sur l'accueil, le panneau reste affiché même sans période prévue : il donne accès au calendrier complet.
+  if (empty && !compact) return null;
 
   return (
     <section className={`panel fl-cal${compact ? ' compact' : ''}`} aria-label="Calendrier freeleech">
-      <h3 style={{ margin: 0 }}>🗓️ Calendrier freeleech</h3>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <h3 style={{ margin: 0 }}>🗓️ Calendrier freeleech</h3>
+        <Link to="/freeleech" className="fl-all">Voir tout le calendrier →</Link>
+      </div>
+      {empty && <p className="muted" style={{ margin: 0 }}>Aucune période de freeleech prévue pour l'instant.</p>}
       <div className="fl-list">
         {state.until && (
           <div className="fl-item live">

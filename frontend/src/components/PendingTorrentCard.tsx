@@ -3,6 +3,7 @@ import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import MetaChips from './MetaChips';
 import RejectReason from './RejectReason';
+import FileTree from './FileTree';
 
 export interface PendingTorrent {
   id: string; infoHash: string; name: string; size: number; coverImage: string | null; createdAt: string; year: number | null; resolution: string | null;
@@ -108,10 +109,7 @@ export default function PendingTorrentCard({ t, compact, busy, rejecting, select
             {t.files.length > 0 && (
               <>
                 <strong>Fichiers ({t.fileCount})</strong>
-                <ul className="mod-files">
-                  {t.files.map((f) => <li key={f.path}><span>{f.path}</span><span className="muted">{formatBytes(f.size)}</span></li>)}
-                  {t.filesTruncated && <li className="muted">… et {t.fileCount - t.files.length} autre(s)</li>}
-                </ul>
+                <FileTree files={t.files} truncatedBy={t.filesTruncated ? t.fileCount - t.files.length : 0} />
               </>
             )}
           </div>
