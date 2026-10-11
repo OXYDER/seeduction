@@ -3435,3 +3435,8 @@ tr.rel-click:hover td { background: rgba(255,255,255,0.03); }
 .sg-reply { border-left: 3px solid var(--acc-link, #b9a4ff); }
 .sg-comment { padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.06); }
 @media (max-width: 600px) { .sg-item, .sg-detail { flex-direction: column; } }
+/* Édition d'un torrent : caractéristiques de la release, chaque case reste dans sa colonne */
+.tech-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 12px; align-items: end; }
+.tech-grid > label { min-width: 0; }
+.tech-grid input:not([type="checkbox"]), .tech-grid select { width: 100%; min-width: 0; box-sizing: border-box; }
+.tech-grid > label.row { align-self: center; }

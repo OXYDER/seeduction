@@ -186,7 +186,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
           </div>
           <div>
             <div className="muted" style={{ marginBottom: 6 }}>Caractéristiques de la release</div>
-            <div className="filter-grid">
+            <div className="tech-grid">
               <label className="grid" style={{ gap: 2 }}><span className="muted">Année</span><input value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="2024" /></label>
               <label className="grid" style={{ gap: 2 }}><span className="muted">Date de sortie</span><input value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)} placeholder="AAAA-MM-JJ" /></label>
               <label className="grid" style={{ gap: 2 }}><span className="muted">Résolution</span>
