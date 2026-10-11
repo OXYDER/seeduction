@@ -12,7 +12,7 @@ const timeLabel = (iso: string) => new Date(iso).toLocaleTimeString('fr-CA', { h
 export default function Roadmap() {
   const role = useAuthStore((s) => s.user?.role);
   const canEdit = ['ADMIN', 'OWNER'].includes(role ?? '');
-  const [data, setData] = useState<{ version: string; build: number; updatedAt: string | null; items: Entry[]; hasMore: boolean; upcoming: string[] } | null>(null);
+  const [data, setData] = useState<{ version: string; build: number; updatedAt: string | null; items: Entry[]; hasMore: boolean; upcoming: string[]; suggestions?: { id: string; title: string; status: string; voteCount: number; note: string | null }[] } | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -57,7 +57,7 @@ export default function Roadmap() {
         <div className="muted" style={{ fontSize: 12 }}>Le numéro de version augmente à chaque modification mise en ligne ; ce journal se remplit tout seul.</div>
       </div>
 
-      {(data.upcoming.length > 0 || canEdit) && (
+      {(data.upcoming.length > 0 || (data.suggestions?.length ?? 0) > 0 || canEdit) && (
         <div className="panel">
           <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
             <h3 style={{ margin: 0 }}>🔜 À venir</h3>
@@ -68,8 +68,22 @@ export default function Roadmap() {
               <textarea rows={8} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Une idée ou une fonction prévue par ligne" />
               <div className="row" style={{ gap: 8 }}><button type="button" onClick={saveUpcoming}>Enregistrer</button><button type="button" className="secondary" onClick={() => setEditing(false)}>Annuler</button></div>
             </div>
-          ) : data.upcoming.length === 0 ? <p className="muted">Rien d'annoncé pour l'instant.</p> : (
-            <ul style={{ margin: '8px 0 0', paddingLeft: 20, lineHeight: 1.7 }}>{data.upcoming.map((t, i) => <li key={i}>{t}</li>)}</ul>
+          ) : data.upcoming.length === 0 && !(data.suggestions?.length) ? <p className="muted">Rien d'annoncé pour l'instant.</p> : (
+            <>
+              {(data.suggestions?.length ?? 0) > 0 && (
+                <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+                  {data.suggestions!.map((s) => (
+                    <li key={s.id} className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                      <span className={`sg-status st-${s.status.toLowerCase()}`}>{s.status === 'PROGRESS' ? '🛠️ En cours' : '🗓️ Planifiée'}</span>
+                      <Link to={`/suggestions/${s.id}`}>{s.title}</Link>
+                      <span className="muted" style={{ fontSize: 12 }}>💡 suggestion des membres · ▲ {s.voteCount}</span>
+                      {s.note && <span className="muted" style={{ fontSize: 12, flexBasis: '100%', paddingLeft: 2 }}>{s.note}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {data.upcoming.length > 0 && <ul style={{ margin: '8px 0 0', paddingLeft: 20, lineHeight: 1.7 }}>{data.upcoming.map((t, i) => <li key={i}>{t}</li>)}</ul>}
+            </>
           )}
         </div>
       )}

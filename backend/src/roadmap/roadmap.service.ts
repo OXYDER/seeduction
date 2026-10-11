@@ -3,6 +3,7 @@ import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SettingsService } from '../settings/settings.service';
+import { PrismaService } from '../common/prisma.service';
 
 export interface ChangeEntry { hash: string; at: string; title: string; details: string[] }
 
@@ -19,7 +20,7 @@ const MAJOR_MINOR = (() => {
 export class RoadmapService {
   private cache: { key: string; count: number; entries: ChangeEntry[] } | null = null;
 
-  constructor(private settings: SettingsService) {}
+  constructor(private settings: SettingsService, private prisma: PrismaService) {}
 
   private raw(): { count: number; text: string } | null {
     const file = path.join(process.cwd(), 'changelog.txt');
@@ -60,7 +61,23 @@ export class RoadmapService {
     const { entries } = this.load();
     const list = before ? entries.filter((e) => e.at < before) : entries;
     const items = list.slice(0, Math.min(300, Math.max(1, limit)));
-    return { ...this.version(), items, hasMore: list.length > items.length, upcoming: (await this.settings.get<string[]>('roadmapUpcoming')) ?? [] };
+    return { ...this.version(), items, hasMore: list.length > items.length, upcoming: (await this.settings.get<string[]>('roadmapUpcoming')) ?? [], suggestions: await this.plannedSuggestions() };
+  }
+
+  /**
+   * Les suggestions des membres « planifiées » ou « en cours » figurent dans « À venir » ; elles en sortent toutes seules dès qu'elles passent
+   * « réalisées » (ou refusées). Les plus avancées d'abord, puis les plus votées.
+   */
+  async plannedSuggestions() {
+    const rows = await this.prisma.suggestion.findMany({
+      where: { status: { in: ['PLANNED', 'PROGRESS'] } },
+      select: { id: true, title: true, status: true, voteCount: true, statusNote: true },
+      take: 60,
+    });
+    const rank = (s: string) => (s === 'PROGRESS' ? 0 : 1);
+    return rows
+      .sort((a, b) => rank(a.status) - rank(b.status) || b.voteCount - a.voteCount)
+      .map((r) => ({ id: r.id, title: r.title, status: r.status, voteCount: r.voteCount, note: r.statusNote && r.statusNote.length > 200 ? r.statusNote.slice(0, 200).trimEnd() + '…' : r.statusNote }));
   }
 
   async setUpcoming(items: string[]) {

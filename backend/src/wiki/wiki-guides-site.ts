@@ -398,7 +398,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Ce que deviennent les suggestions[/b]\n` +
         `• 💡 [b]Proposée[/b] : elle attend des votes. Une barre montre où elle en est.\n` +
         `• 🔎 [b]À l'étude[/b] : elle passe ici [b]toute seule[/b] quand elle atteint le nombre de votes réglé par les administrateurs (10 par défaut), et l'équipe est prévenue.\n` +
-        `• 🗓️ [b]Planifiée[/b], 🛠️ [b]En cours[/b], ✅ [b]Réalisée[/b] : l'équipe la fait avancer, avec un message pour expliquer ce qui est prévu.\n` +
+        `• 🗓️ [b]Planifiée[/b], 🛠️ [b]En cours[/b], ✅ [b]Réalisée[/b] : l'équipe la fait avancer, avec un message pour expliquer ce qui est prévu. Une suggestion planifiée ou en cours apparaît automatiquement dans la section [b]« À venir »[/b] de la page [url=/roadmap]Roadmap[/url], avec son nombre de votes, jusqu'à ce qu'elle soit réalisée : elle en disparaît alors toute seule et le changement se retrouve dans le journal des modifications.\n` +
         `• ⛔ [b]Refusée[/b] : l'équipe explique pourquoi.\n` +
         `• 🔁 [b]Doublon[/b] : elle est regroupée avec une autre suggestion, et [b]tes votes sont transférés[/b] sur celle-ci.\n` +
         `Tu reçois une [b]notification[/b] à chaque changement de statut d'une suggestion pour laquelle tu as voté (ou que tu as proposée), et quand quelqu'un commente la tienne.\n\n` +
