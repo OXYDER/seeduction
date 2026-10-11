@@ -217,9 +217,9 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
         )}
 
         {readers.length > 0 && (
-          <div className="msgr-seen" title={`Vu par ${readers.map((r) => r.username).join(', ')}`}>
-            {conv.type === 'DIRECT' ? 'Vu' : readers.slice(0, 6).map((r) => <Avatar key={r.userId} user={r} size={14} />)}
-            {conv.type !== 'DIRECT' && readers.length > 6 && <span className="muted"> +{readers.length - 6}</span>}
+          <div className="msgr-seen" title={`Vu par ${readers.map((r) => r.username).join(', ')}`} style={{ justifyContent: mine ? 'flex-end' : 'flex-start' }}>
+            {readers.slice(0, 6).map((r) => <Avatar key={r.userId} user={r} size={16} />)}
+            {readers.length > 6 && <span className="muted"> +{readers.length - 6}</span>}
           </div>
         )}
       </div>

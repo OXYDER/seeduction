@@ -77,7 +77,7 @@ export interface Thread {
   loading: boolean;
   loaded: boolean;
   myLastReadAt: string | null;
-  readBy: { userId: string; lastReadAt: string }[];
+  readBy: { userId: string; lastReadAt: string; username?: string; avatarUrl?: string | null }[];
   error?: string;
 }
 export interface DockWindow { conversationId: string; minimized: boolean }
@@ -283,13 +283,14 @@ export const useMessenger = create<MsgrState>((set, get) => {
         if (userId === get().myId) return;
         set((s) => ({ typing: { ...s.typing, [conversationId]: { ...(s.typing[conversationId] ?? {}), [userId]: { username, at: Date.now() } } } }));
       });
-      socket.on('conversation:read', ({ conversationId, userId, at }: { conversationId: string; userId: string; at: string }) => {
+      socket.on('conversation:read', ({ conversationId, userId, at, username }: { conversationId: string; userId: string; at: string; username?: string }) => {
         if (userId === get().myId) return;
         set((s) => {
           const t = s.threads[conversationId];
           if (!t) return {};
+          const known = t.readBy.find((r) => r.userId === userId);
           const others = t.readBy.filter((r) => r.userId !== userId);
-          return { threads: { ...s.threads, [conversationId]: { ...t, readBy: [...others, { userId, lastReadAt: at }] } } };
+          return { threads: { ...s.threads, [conversationId]: { ...t, readBy: [...others, { userId, lastReadAt: at, username: username ?? known?.username, avatarUrl: known?.avatarUrl }] } } };
         });
       });
       socket.on('conversation:read-self', ({ conversationId }: { conversationId: string }) => {

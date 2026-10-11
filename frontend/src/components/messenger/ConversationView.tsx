@@ -10,6 +10,7 @@ import { clock, dayLabel, isSameDay } from '../../lib/chatFormat';
 import ConvAvatar from './ConvAvatar';
 import MessageItem, { type Reader } from './MessageItem';
 import Composer from './Composer';
+import Avatar from '../Avatar';
 import PinBar from './PinBar';
 import MotdBanner from './MotdBanner';
 
@@ -165,25 +166,37 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     return [...map.values()];
   }, [conv, onlineList, messages, me?.id]);
 
-  // « Vu par » : sous le dernier de MES messages que chaque personne a lu.
+  // Avatar d'une personne : membres de la conversation, expéditeurs des messages, puis personnes en ligne.
+  const userLookup = useMemo(() => {
+    const lookup = new Map<string, { username: string; avatarUrl?: string | null }>();
+    onlineList.forEach((u: any) => lookup.set(u.id, { username: u.username, avatarUrl: u.avatarUrl }));
+    messages.forEach((m) => lookup.set(m.sender.id, { username: m.sender.username, avatarUrl: m.sender.avatarUrl }));
+    if (conv?.other) lookup.set(conv.other.id, conv.other);
+    (conv?.members ?? []).forEach((m) => lookup.set(m.id, m));
+    return lookup;
+  }, [conv, onlineList, messages]);
+
+  // « Vu par », comme dans Messenger : le mini avatar de chaque personne sous le dernier message qu'elle a lu. En 1 à 1, sous mon dernier message qu'elle a lu ;
+  // en groupe et en canal, sous le dernier message lu, quel qu'en soit l'auteur (dans un canal, seulement parmi les 40 derniers messages).
   const readersByMessage = useMemo(() => {
     const map = new Map<string, Reader[]>();
-    if (!conv || conv.type === 'CHANNEL' || !thread) return map;
-    const mine = messages.filter((m) => m.sender.id === me?.id && !m.pending && !m.failed && !m.deleted);
-    const lookup = new Map<string, MsgUser>();
-    if (conv.other) lookup.set(conv.other.id, conv.other);
-    (conv.members ?? []).forEach((m) => lookup.set(m.id, m));
+    if (!conv || !thread) return map;
+    const seenable = messages.filter((m) => !m.pending && !m.failed && !m.deleted);
+    const pool = conv.type === 'DIRECT' ? seenable.filter((m) => m.sender.id === me?.id) : conv.type === 'CHANNEL' ? seenable.slice(-40) : seenable;
     for (const r of thread.readBy) {
       const at = new Date(r.lastReadAt).getTime();
       let target: Msg | undefined;
-      for (const m of mine) if (new Date(m.createdAt).getTime() <= at) target = m;
-      const user = lookup.get(r.userId);
-      if (target && user) map.set(target.id, [...(map.get(target.id) ?? []), { userId: user.id, username: user.username, avatarUrl: user.avatarUrl }]);
+      for (const m of pool) if (new Date(m.createdAt).getTime() <= at) target = m;
+      const known = userLookup.get(r.userId);
+      const username = r.username ?? known?.username;
+      if (target && username) map.set(target.id, [...(map.get(target.id) ?? []), { userId: r.userId, username, avatarUrl: r.avatarUrl ?? known?.avatarUrl }]);
     }
     return map;
-  }, [conv, thread, messages, me?.id]);
+  }, [conv, thread, messages, me?.id, userLookup]);
 
-  const typingNames = Object.entries(typingMap ?? {}).filter(([, t]) => now - t.at < TYPING_TTL_MS).map(([, t]) => t.username);
+  const typingNow = Object.entries(typingMap ?? {}).filter(([, t]) => now - t.at < TYPING_TTL_MS);
+  const typingNames = typingNow.map(([, t]) => t.username);
+  const typingUsers = typingNow.slice(0, 3).map(([id, t]) => ({ id, username: t.username, avatarUrl: userLookup.get(id)?.avatarUrl }));
 
   const items = useMemo(() => {
     const out: { kind: 'day' | 'new' | 'msg'; key: string; label?: string; msg?: Msg; first?: boolean; last?: boolean }[] = [];
@@ -330,6 +343,12 @@ export default function ConversationView({ conversationId, variant, onClose, onM
             </Fragment>
           );
         })}
+        {typingUsers.map((u) => (
+          <div key={u.id} className="msgr-typing-bubble" aria-live="polite" title={`${u.username} écrit…`}>
+            <Avatar user={u} size={26} />
+            <span className="msgr-typing-pill"><span className="msgr-typing-dots"><span /><span /><span /></span></span>
+          </div>
+        ))}
         </div>
       </div>
 
@@ -338,10 +357,6 @@ export default function ConversationView({ conversationId, variant, onClose, onM
           ↓ {newBelow} nouveau{newBelow > 1 ? 'x' : ''} message{newBelow > 1 ? 's' : ''}
         </button>
       )}
-
-      <div className="msgr-typing-row" aria-live="polite">
-        {typingNames.length > 0 && <><span className="msgr-typing-dots"><span /><span /><span /></span> {typingNames.join(', ')} {typingNames.length > 1 ? 'écrivent' : 'écrit'}…</>}
-      </div>
 
       <Composer
         conversationId={conversationId}

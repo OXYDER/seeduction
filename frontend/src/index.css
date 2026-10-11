@@ -3499,3 +3499,8 @@ body.has-chat-rail .dm-bubble-avatar { display: none; }
 /* Sur petit écran, l'en-tête garde au moins le ratio (les autres pastilles restent masquées) */
 @media (max-width: 980px) { .stat-pills { display: flex; margin-left: auto; } .stat-pills .pill:not(.ratio) { display: none; } }
 .side-topbar .pill.ratio { font-weight: 800; }
+/* Messenger : bulle « écrit… » avec l'avatar de la personne, dans le fil */
+.msgr-typing-bubble { display: flex; align-items: flex-end; gap: 8px; margin: 4px 0 2px; }
+.msgr-typing-pill { display: inline-flex; align-items: center; padding: 10px 14px; border-radius: 18px; background: rgba(255, 255, 255, 0.1); }
+.msgr-typing-pill .msgr-typing-dots span { width: 6px; height: 6px; }
+.msgr-seen .forum-avatar { margin: 0; }

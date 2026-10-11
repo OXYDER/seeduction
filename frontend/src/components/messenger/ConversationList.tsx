@@ -100,11 +100,16 @@ export default function ConversationList({ activeId, onSelect, onNew }: { active
   }, [conversations.length]);
 
   // Ouvrir une conversation (lien, notification, bulle) bascule sur l'onglet qui la contient.
+  // (une seule fois par conversation ouverte, une fois la liste chargée : le membre garde ensuite la main sur l'onglet)
+  const switchedFor = useRef<string | null>(null);
   useEffect(() => {
+    if (!activeId || switchedFor.current === activeId) return;
     const open = conversations.find((c) => c.id === activeId);
-    if (open && kindOf(open) !== kind) setKind(kindOf(open));
+    if (!open) return;
+    switchedFor.current = activeId;
+    if (kindOf(open) !== kind) setKind(kindOf(open));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId]);
+  }, [activeId, conversations]);
 
   const matches = (c: ConvSummary) => {
     const term = q.trim().toLowerCase();

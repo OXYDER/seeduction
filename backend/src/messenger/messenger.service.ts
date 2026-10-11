@@ -447,10 +447,13 @@ export class MessengerService extends EventEmitter {
     });
     const hasMore = rows.length > take;
     const page = rows.slice(0, take).reverse().map(messageToDto);
-    // « Vu par » : jusqu'où chacun a lu (1 à 1 et groupes ; inutile pour un grand canal public).
-    const readBy = conv.type === 'CHANNEL'
-      ? []
-      : (await this.prisma.conversationMember.findMany({ where: { conversationId, userId: { not: actor.userId } }, select: { userId: true, lastReadAt: true } }));
+    // « Vu par » : jusqu'où chacun a lu, avec son pseudo et son avatar (1 à 1, groupes et canaux ; dans un canal, seulement ceux qui l'ont lu ces 7 derniers jours).
+    const rows2 = await this.prisma.conversationMember.findMany({
+      where: { conversationId, userId: { not: actor.userId }, ...(conv.type === 'CHANNEL' ? { lastReadAt: { gt: new Date(Date.now() - 7 * 86_400_000) } } : {}) },
+      select: { userId: true, lastReadAt: true, user: { select: { username: true, avatarUrl: true } } },
+      take: 80,
+    });
+    const readBy = rows2.map((r) => ({ userId: r.userId, lastReadAt: r.lastReadAt, username: r.user.username, avatarUrl: r.user.avatarUrl }));
     return { messages: page, hasMore, myLastReadAt: member.lastReadAt, readBy };
   }
 
@@ -653,7 +656,7 @@ export class MessengerService extends EventEmitter {
     const { conv } = await this.access(actor, conversationId);
     const at = new Date();
     await this.prisma.conversationMember.updateMany({ where: { conversationId, userId: actor.userId }, data: { lastReadAt: at } });
-    if (conv.type !== 'CHANNEL') await this.publish(conv, 'conversation:read', { conversationId, userId: actor.userId, at });
+    await this.publish(conv, 'conversation:read', { conversationId, userId: actor.userId, username: actor.username, at });
     // Ses autres appareils/onglets font tomber le compteur tout de suite.
     this.emit('realtime', { event: 'conversation:read-self', payload: { conversationId }, userIds: [actor.userId] } satisfies RealtimeEvent);
     return { ok: true };
