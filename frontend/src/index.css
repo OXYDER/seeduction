@@ -3486,7 +3486,11 @@ a.community-tile { cursor: pointer; }
 .cr-bubble.open .cr-av { border-color: var(--gold, #e0b84a); box-shadow: 0 0 0 3px rgba(var(--acc-rgb, 224, 184, 74), 0.35), 0 6px 16px rgba(0, 0, 0, 0.45); }
 .cr-bubble.unread .cr-av { border-color: #fff; }
 .cr-bubble.muted { opacity: 0.6; }
-.cr-av .msgr-conv-avatar { border-radius: 50%; overflow: hidden; }
+.cr-av .msgr-conv-avatar { border-radius: 50%; overflow: visible; }
+.cr-av .msgr-conv-avatar > :first-child { border-radius: 50%; overflow: hidden; }
+/* pastille de statut bien visible : plus grande, sortie du cercle, double contour (clair + sombre) */
+.cr-av { overflow: visible; }
+.cr-av .msgr-status-dot { right: -5px; bottom: -5px; width: 15px !important; height: 15px !important; border: 2.5px solid #0b0f1e; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85), 0 2px 5px rgba(0, 0, 0, 0.6); z-index: 3; }
 .cr-av.channel { background: linear-gradient(135deg, var(--acc1, #8b5cf6), var(--acc2, #ec4899)); color: #fff; }
 .cr-hash { font-size: 22px; font-weight: 800; line-height: 1; }
 .cr-name { max-width: 68px; font-size: 10.5px; line-height: 1.15; color: #f2f4fa; background: rgba(8, 10, 22, 0.78); padding: 1px 6px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3504,3 +3508,14 @@ body.has-chat-rail .dm-bubble-avatar { display: none; }
 .msgr-typing-pill { display: inline-flex; align-items: center; padding: 10px 14px; border-radius: 18px; background: rgba(255, 255, 255, 0.1); }
 .msgr-typing-pill .msgr-typing-dots span { width: 6px; height: 6px; }
 .msgr-seen .forum-avatar { margin: 0; }
+/* Fenêtres de discussion déplaçables */
+.msgr-dock-window.floating { max-width: calc(100vw - 8px); max-height: calc(100vh - 8px); border-radius: 10px 10px 0 0; }
+.msgr-view-head.draggable { cursor: grab; user-select: none; touch-action: none; }
+.msgr-view-head.draggable:active { cursor: grabbing; }
+/* Retirer une bulle : une petite croix en haut à droite au survol */
+.cr-item { position: relative; display: flex; justify-content: center; width: 68px; }
+.cr-x { position: absolute; top: -1px; right: 1px; width: 18px; height: 18px; padding: 0; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 10px; line-height: 1; background: #0b0f1e; color: #fff; border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); z-index: 2; cursor: pointer; }
+.cr-item:hover .cr-x, .cr-x:focus-visible { display: inline-flex; }
+.cr-x:hover { background: var(--danger, #e5384f); filter: none; }
+.cr-restore { margin-top: 4px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(8, 10, 22, 0.82); color: #f2f4fa; border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer; }
+.cr-restore:hover { border-color: var(--gold, #e0b84a); filter: none; }

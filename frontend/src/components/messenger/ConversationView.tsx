@@ -23,13 +23,20 @@ interface Props {
   variant: 'page' | 'dock';
   onClose?: () => void;
   onMinimize?: () => void;
+  /** Fenêtre flottante : début d'un déplacement par l'en-tête. */
+  onHeaderPointerDown?: (e: React.PointerEvent) => void;
+  /** Fenêtre flottante : ouvrir cette conversation dans le grand chat. */
+  onExpandToPage?: () => void;
+  /** Fenêtre flottante : agrandir / réduire la fenêtre. */
+  onToggleSize?: () => void;
+  sizeBig?: boolean;
   onOpenInfo?: () => void;
   infoOpen?: boolean;
   onBack?: () => void;
 }
 
 /** Une conversation complète : en-tête, fil de messages (défilement infini vers le haut), « en train d'écrire », composeur. Sert à la page Messenger et aux fenêtres flottantes. */
-export default function ConversationView({ conversationId, variant, onClose, onMinimize, onOpenInfo, infoOpen, onBack }: Props) {
+export default function ConversationView({ conversationId, variant, onClose, onMinimize, onHeaderPointerDown, onExpandToPage, onToggleSize, sizeBig, onOpenInfo, infoOpen, onBack }: Props) {
   const me = useAuthStore((s) => s.user);
   const conv = useMessenger((s) => s.conversations.find((c) => c.id === conversationId));
   const thread = useMessenger((s) => s.threads[conversationId]);
@@ -260,7 +267,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
       onDragLeave={(e) => { if (e.currentTarget === e.target) setDragging(false); }}
       onDrop={(e) => { e.preventDefault(); setDragging(false); if (conv.writable && e.dataTransfer.files.length) setDropped([...e.dataTransfer.files]); }}
     >
-      <header className="msgr-view-head" onClick={variant === 'dock' ? onMinimize : undefined}>
+      <header className={`msgr-view-head${onHeaderPointerDown ? ' draggable' : ''}`} onClick={variant === 'dock' ? onMinimize : undefined} onPointerDown={variant === 'dock' ? onHeaderPointerDown : undefined} title={onHeaderPointerDown ? 'Glisse l\'en-tête pour déplacer la fenêtre' : undefined}>
         {onBack && <button type="button" className="dm-icon-btn msgr-back" onClick={(e) => { e.stopPropagation(); onBack(); }} aria-label="Retour aux conversations">←</button>}
         <ConvAvatar conv={conv} size={variant === 'dock' ? 32 : 40} />
         <div className="msgr-view-title">
@@ -279,7 +286,9 @@ export default function ConversationView({ conversationId, variant, onClose, onM
           <button type="button" className={`dm-icon-btn${searchOpen ? ' on' : ''}`} title="Rechercher dans la conversation" onClick={() => setSearchOpen((v) => !v)}>🔍</button>
           {conv.type === 'CHANNEL' && isStaff && <button type="button" className={`dm-icon-btn${motdEditing ? ' on' : ''}`} title="Message du jour du canal" onClick={() => setMotdEditing((v) => !v)}>📢</button>}
           {onOpenInfo && <button type="button" className={`dm-icon-btn${infoOpen ? ' on' : ''}`} title="Infos et réglages" onClick={onOpenInfo}>ⓘ</button>}
-          {variant === 'dock' && onMinimize && <button type="button" className="dm-icon-btn" title="Réduire" onClick={onMinimize}>⌄</button>}
+          {variant === 'dock' && onExpandToPage && <button type="button" className="dm-icon-btn" title="Ouvrir dans le grand chat" aria-label="Ouvrir dans le grand chat" onClick={onExpandToPage}>⤢</button>}
+          {variant === 'dock' && onToggleSize && <button type="button" className="dm-icon-btn" title={sizeBig ? 'Réduire la fenêtre' : 'Agrandir la fenêtre'} aria-label={sizeBig ? 'Réduire la fenêtre' : 'Agrandir la fenêtre'} onClick={onToggleSize}>{sizeBig ? '🗗' : '🗖'}</button>}
+          {variant === 'dock' && onMinimize && <button type="button" className="dm-icon-btn" title="Réduire en bulle" onClick={onMinimize}>⌄</button>}
           {variant === 'dock' && onClose && <button type="button" className="dm-icon-btn" title="Fermer" onClick={onClose}>✕</button>}
         </div>
       </header>
