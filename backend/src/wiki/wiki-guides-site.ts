@@ -334,7 +334,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
       content:
         `Le Messenger est la messagerie de Seeduction : discussions privées, groupes et canaux publics. Ce guide montre les gestes essentiels.\n\n` +
         `[b]Ouvrir le Messenger[/b]\n` +
-        `Clique sur [b]Chat[/b] dans le menu : la liste de tes conversations est à gauche. Des bulles flottantes en bas à droite te permettent aussi de discuter depuis n'importe quelle page.\n\n` +
+        `Clique sur [b]Chat[/b] dans le menu : la liste de tes conversations est à gauche, en deux onglets : [b]Privées[/b] (1 à 1 et groupes) et [b]Publiques[/b] (canaux). Sur ordinateur, des [b]bulles[/b] sur le côté gauche du site, juste à droite du menu, te montrent tes conversations sur n'importe quelle page : les canaux publics d'abord, puis les conversations privées, avec leurs messages non lus. Un clic ouvre la conversation dans une fenêtre. Tu peux les désactiver dans Profil > Compte > « Bulles de discussion ».\n\n` +
         `[b]Écrire à quelqu'un[/b]\n` +
         `Ouvre le profil du membre et clique sur le bouton de message, ou cherche-le dans le Messenger. Par défaut, tout le monde peut t'écrire ; tu peux réserver ça à tes amis dans Profil > Compte.\n\n` +
         `[b]Créer un groupe[/b]\n` +

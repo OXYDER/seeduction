@@ -39,6 +39,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/chat-bubbles')
+  setChatBubbles(@Body('enabled') enabled: boolean, @Request() req: any) {
+    return this.usersService.setChatBubbles(req.user.userId, enabled);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('me/tip-style')
   setTipStyle(@Body('style') style: string, @Request() req: any) {
     return this.usersService.setTipStyle(req.user.userId, style);

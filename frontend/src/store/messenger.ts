@@ -128,6 +128,9 @@ interface MsgrState {
   /** Dernière annonce (« un nouveau message ») pour le son / la notification du navigateur. */
   incoming: { id: string; conversationId: string; at: number } | null;
   settings: { sound: boolean; desktop: boolean };
+  /** Bulles de discussion sur le côté gauche (réglage du compte, voir User.chatBubbles). */
+  bubbles: boolean;
+  setBubbles: (on: boolean) => void;
 
   connect: (token: string, me: { id: string; username: string }) => void;
   disconnect: () => void;
@@ -227,6 +230,8 @@ export const useMessenger = create<MsgrState>((set, get) => {
     visible: {},
     incoming: null,
     settings: loadSettings(),
+    bubbles: true,
+    setBubbles(on) { set({ bubbles: on }); },
 
     connect(token, me) {
       if (get().socket) return;

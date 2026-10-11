@@ -6,7 +6,11 @@ import { listTime } from '../../lib/chatFormat';
 import ConvAvatar from './ConvAvatar';
 import MessengerSettings from './MessengerSettings';
 
-type Filter = 'all' | 'unread' | 'groups' | 'channels';
+/** Les conversations publiques (canaux) et privées (1 à 1 et groupes) sont séparées en deux onglets. */
+type Kind = 'private' | 'public';
+const KIND_KEY = 'msgr-list-kind';
+const readKind = (): Kind => { try { return localStorage.getItem(KIND_KEY) === 'public' ? 'public' : 'private'; } catch { return 'private'; } };
+const kindOf = (c: ConvSummary): Kind => (c.type === 'CHANNEL' ? 'public' : 'private');
 
 const MUTE_OPTIONS: { label: string; hours: number | null }[] = [
   { label: '1 heure', hours: 1 },
@@ -84,7 +88,9 @@ export default function ConversationList({ activeId, onSelect, onNew }: { active
   const loaded = useMessenger((s) => s.convLoaded);
   const connected = useMessenger((s) => s.connected);
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
+  const [kind, setKindState] = useState<Kind>(readKind);
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const setKind = (k: Kind) => { setKindState(k); try { localStorage.setItem(KIND_KEY, k); } catch { /* préférence facultative */ } };
   const [archived, setArchived] = useState<ConvSummary[] | null>(null);
 
   useEffect(() => {
@@ -93,23 +99,26 @@ export default function ConversationList({ activeId, onSelect, onNew }: { active
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversations.length]);
 
-  const list = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    return conversations.filter((c) => {
-      if (filter === 'unread' && !(c.unread > 0)) return false;
-      if (filter === 'groups' && c.type !== 'GROUP') return false;
-      if (filter === 'channels' && c.type !== 'CHANNEL') return false;
-      if (!term) return true;
-      return (c.name ?? '').toLowerCase().includes(term) || (c.last?.preview ?? '').toLowerCase().includes(term);
-    });
-  }, [conversations, q, filter]);
+  // Ouvrir une conversation (lien, notification, bulle) bascule sur l'onglet qui la contient.
+  useEffect(() => {
+    const open = conversations.find((c) => c.id === activeId);
+    if (open && kindOf(open) !== kind) setKind(kindOf(open));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
 
-  const unreadCount = conversations.filter((c) => c.unread > 0 && !isMuted(c)).length;
-  const tabs: { id: Filter; label: string }[] = [
-    { id: 'all', label: 'Tout' },
-    { id: 'unread', label: unreadCount ? `Non lus (${unreadCount})` : 'Non lus' },
-    { id: 'groups', label: 'Groupes' },
-    { id: 'channels', label: 'Canaux' },
+  const matches = (c: ConvSummary) => {
+    const term = q.trim().toLowerCase();
+    if (!term) return true;
+    return (c.name ?? '').toLowerCase().includes(term) || (c.last?.preview ?? '').toLowerCase().includes(term);
+  };
+  const list = useMemo(() => conversations.filter((c) => kindOf(c) === kind && matches(c) && (!unreadOnly || (c.unread > 0 && !isMuted(c)))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [conversations, q, kind, unreadOnly]);
+  const otherMatches = q.trim() ? conversations.filter((c) => kindOf(c) !== kind && matches(c)).length : 0;
+  const unreadOf = (k: Kind) => conversations.filter((c) => kindOf(c) === k && c.unread > 0 && !isMuted(c)).length;
+  const tabs: { id: Kind; label: string }[] = [
+    { id: 'private', label: '💬 Privées' },
+    { id: 'public', label: '# Publiques' },
   ];
 
   return (
@@ -122,20 +131,28 @@ export default function ConversationList({ activeId, onSelect, onNew }: { active
       </div>
       <input className="msgr-list-search" placeholder="Rechercher une conversation…" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="msgr-tabs" role="tablist">
-        {tabs.map((t) => <button key={t.id} type="button" role="tab" aria-selected={filter === t.id} className={filter === t.id ? 'on' : ''} onClick={() => setFilter(t.id)}>{t.label}</button>)}
+        {tabs.map((t) => (
+          <button key={t.id} type="button" role="tab" aria-selected={kind === t.id} className={kind === t.id ? 'on' : ''} onClick={() => setKind(t.id)}>
+            {t.label}{unreadOf(t.id) > 0 && <span className="msgr-unread" style={{ marginLeft: 6 }}>{unreadOf(t.id)}</span>}
+          </button>
+        ))}
+        <label className="msgr-check" style={{ marginLeft: 'auto', fontSize: 12, whiteSpace: 'nowrap' }} title="N'afficher que les conversations avec des messages non lus">
+          <input type="checkbox" style={{ width: 'auto' }} checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} /> Non lus
+        </label>
       </div>
       <div className="msgr-list-body">
         {!loaded && <p className="muted msgr-center">Chargement…</p>}
         {loaded && list.length === 0 && (
           <div className="msgr-center muted">
-            {q || filter !== 'all' ? 'Aucune conversation ne correspond.' : <>Aucune conversation pour l'instant.<br /><button type="button" style={{ marginTop: 10 }} onClick={onNew}>✏️ Écrire à quelqu'un</button></>}
+            {q || unreadOnly ? 'Aucune conversation ne correspond.' : kind === 'public' ? 'Aucun canal public.' : <>Aucune conversation privée pour l'instant.<br /><button type="button" style={{ marginTop: 10 }} onClick={onNew}>✏️ Écrire à quelqu'un</button></>}
           </div>
         )}
+        {otherMatches > 0 && <button type="button" className="msgr-archived-toggle" onClick={() => setKind(kind === 'private' ? 'public' : 'private')}>{otherMatches} résultat{otherMatches > 1 ? 's' : ''} dans les conversations {kind === 'private' ? 'publiques' : 'privées'} →</button>}
         {list.map((c) => <Row key={c.id} c={c} active={c.id === activeId} onSelect={() => onSelect(c.id)} />)}
         <button type="button" className="msgr-archived-toggle" onClick={() => setArchived((a) => (a === null ? [] : null))}>
           🗄️ Archivées {archived ? `(${archived.length})` : ''} {archived === null ? '▸' : '▾'}
         </button>
-        {archived?.map((c) => <Row key={c.id} c={c} active={c.id === activeId} onSelect={() => onSelect(c.id)} />)}
+        {archived?.filter((c) => kindOf(c) === kind).map((c) => <Row key={c.id} c={c} active={c.id === activeId} onSelect={() => onSelect(c.id)} />)}
       </div>
     </aside>
   );

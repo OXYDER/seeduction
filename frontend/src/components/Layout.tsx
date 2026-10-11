@@ -12,6 +12,7 @@ import ThemeSwitcher from './ThemeSwitcher';
 import SearchBox from './SearchBox';
 import Avatar from './Avatar';
 import ChatDock from './ChatDock';
+import ChatRail from './ChatRail';
 import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
 import { useMessenger, privateUnreadOf, publicUnreadOf } from '../store/messenger';
@@ -208,7 +209,7 @@ function LayoutInner() {
 
   useEffect(() => {
     if (accessToken) {
-      api.get('/users/me').then((r) => { setProfile(r.data); applyDefaultView(r.data.defaultView); applyTipStyle(r.data.tipStyle); }).catch(() => {});
+      api.get('/users/me').then((r) => { setProfile(r.data); applyDefaultView(r.data.defaultView); applyTipStyle(r.data.tipStyle); useMessenger.getState().setBubbles(r.data.chatBubbles !== false); }).catch(() => {});
     } else {
       setProfile(null);
     }
@@ -461,6 +462,7 @@ function LayoutInner() {
         </nav>
 
         <InstallPrompt />
+        <ChatRail />
         <ChatDock />
       </div>
     );
@@ -568,6 +570,7 @@ function LayoutInner() {
       </div>
 
       <InstallPrompt />
+      <ChatRail />
       <ChatDock />
     </div>
   );

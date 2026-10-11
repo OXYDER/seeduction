@@ -416,7 +416,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
         isFaq: true,
         supersedes: ['amis-et-messagerie', 'chat-public'],
         content:
-          `Le Messenger regroupe toutes tes discussions au même endroit : la page [b]Chat[/b] du menu, et des bulles flottantes en bas à droite de n'importe quelle page.\n\n` +
+          `Le Messenger regroupe toutes tes discussions au même endroit : la page [b]Chat[/b] du menu (conversations privées et canaux publics dans deux onglets séparés), et, sur ordinateur, des bulles sur le côté gauche du site, à droite du menu, visibles sur n'importe quelle page (canaux publics puis conversations privées, avec les messages non lus ; désactivables dans Profil > Compte).\n\n` +
           `[b]Trois types de conversations[/b]\n` +
           `• [b]Privées (1 à 1)[/b] : avec n'importe quel membre. Par défaut tout le monde peut t'écrire ; tu peux restreindre ça à tes amis seulement dans Profil > Compte.\n` +
           `• [b]Groupes[/b] : jusqu'à 50 personnes, avec un nom et une image. Seuls tes amis peuvent être ajoutés. Le créateur est propriétaire ; il peut nommer des administrateurs, qui ajoutent et retirent des membres et épinglent des messages. Tu peux quitter un groupe quand tu veux.\n` +
