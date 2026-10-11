@@ -64,6 +64,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   const scroller = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
   const anchor = useRef<{ height: number } | null>(null);
   const initialRead = useRef<string | null>(null);
   const lastCount = useRef(0);
@@ -93,7 +94,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     return () => window.clearInterval(t);
   }, []);
 
-  useEffect(() => { setReplyTo(null); setEditing(null); setSearchOpen(false); setQuery(''); setNewBelow(0); stick.current = true; initialRead.current = null; lastCount.current = 0; }, [conversationId]);
+  useEffect(() => { setReplyTo(null); setEditing(null); setSearchOpen(false); setQuery(''); setNewBelow(0); setAwayFromBottom(false); stick.current = true; initialRead.current = null; lastCount.current = 0; }, [conversationId]);
   useEffect(() => { if (thread?.loaded && initialRead.current === null) initialRead.current = thread.myLastReadAt ?? ''; }, [thread?.loaded, thread?.myLastReadAt]);
 
   const messages = thread?.messages ?? [];
@@ -133,7 +134,9 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   function onScroll() {
     const el = scroller.current;
     if (!el) return;
-    stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+    const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stick.current = fromBottom < 140;
+    setAwayFromBottom(fromBottom > 320);
     if (stick.current && newBelow) { setNewBelow(0); markRead(conversationId); }
     if (el.scrollTop < 140 && thread?.hasMore && !thread.loading) {
       anchor.current = { height: el.scrollHeight };
@@ -326,6 +329,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
 
       <PinBar conversationId={conversationId} pinnedIds={conv.pinnedMessageIds ?? []} canPin={canPin} onJump={jumpTo} me={me?.id} />
 
+      <div className="msgr-scroll-wrap">
       <div className="msgr-scroll" ref={scroller} onScroll={onScroll}>
         <div className="msgr-content" ref={content}>
         {thread?.loading && messages.length > 0 && <div className="msgr-load-more muted">Chargement…</div>}
@@ -359,6 +363,10 @@ export default function ConversationView({ conversationId, variant, onClose, onM
           </div>
         ))}
         </div>
+      </div>
+      {awayFromBottom && newBelow === 0 && (
+        <button type="button" className="msgr-down-btn" title="Aller au dernier message" aria-label="Aller au dernier message" onClick={() => scrollToBottom(true)}>↓</button>
+      )}
       </div>
 
       {newBelow > 0 && (
