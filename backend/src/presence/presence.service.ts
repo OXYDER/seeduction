@@ -63,6 +63,11 @@ export class PresenceService extends EventEmitter {
     return entry.preference;
   }
 
+  /** Tous les membres connectés, y compris ceux qui apparaissent hors ligne (réservé à l'équipe). */
+  listOnlineAll(): { id: string; username: string; preference: PresenceStatus; sockets: number }[] {
+    return [...this.users.entries()].map(([id, e]) => ({ id, username: e.username, preference: e.preference, sockets: e.sockets.size }));
+  }
+
   /** Liste des membres connectés visibles publiquement (le chat public affiche cette liste à droite). */
   listOnline(): { id: string; username: string; status: PublicStatus }[] {
     return [...this.users.entries()]

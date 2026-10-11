@@ -48,6 +48,7 @@ import Wiki from './pages/Wiki';
 import Integrations from './pages/Integrations';
 import Telegram from './pages/Telegram';
 import Suggestions from './pages/Suggestions';
+import StaffMembers from './pages/StaffMembers';
 import SuggestionDetail from './pages/SuggestionDetail';
 import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="/integrations" element={<Integrations />} />
           <Route path="/telegram" element={<Telegram />} />
           <Route path="/suggestions" element={<Suggestions />} />
+          <Route path="/members" element={<StaffMembers />} />
           <Route path="/suggestions/:id" element={<SuggestionDetail />} />
           <Route path="/wiki/:slug" element={<Wiki />} />
           <Route path="/rules" element={<Navigate to="/wiki" replace />} />

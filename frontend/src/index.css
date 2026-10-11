@@ -3467,3 +3467,6 @@ tr.rel-click:hover td { background: rgba(255,255,255,0.03); }
 .notif-body { font-size: 12.5px; color: #c3c9de; margin-top: 2px; word-break: break-word; }
 .notif-time { font-size: 11px; color: #98a0bd; margin-top: 3px; }
 .notif-empty { margin: 0; padding: 14px; color: #c3c9de; }
+.footer-stats a.item { color: inherit; text-decoration: none; border-radius: 8px; transition: background .15s ease; }
+.footer-stats a.item:hover { background: rgba(255, 255, 255, 0.06); }
+a.community-tile { cursor: pointer; }

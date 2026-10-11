@@ -229,13 +229,20 @@ function ClassicDashboard() {
 
       {stats && (
         <div className="footer-stats ornate-frame">
-          <div className="item"><div className="icon">👥</div><div className="n">{formatNumber(stats.totalUsers)}</div><div className="l">Utilisateurs</div></div>
-          <div className="item"><div className="icon">🟢</div><div className="n">{formatNumber(stats.online ?? 0)}</div><div className="l">En ligne</div></div>
-          <div className="item"><div className="icon">📦</div><div className="n">{formatNumber(stats.totalTorrents)}</div><div className="l">Torrents</div></div>
-          <div className="item"><div className="icon">🌱</div><div className="n">{formatNumber(stats.totalSeeders)}</div><div className="l">Seeders</div></div>
-          <div className="item"><div className="icon">📥</div><div className="n">{formatNumber(stats.totalLeechers)}</div><div className="l">Leechers</div></div>
-          <div className="item"><div className="icon">🔗</div><div className="n">{formatNumber(stats.totalPeers)}</div><div className="l">Pairs</div></div>
-          <div className="item"><div className="icon">📊</div><div className="n">{formatBytes(stats.totalTraffic)}</div><div className="l">Trafic total</div></div>
+          {([
+            ['👥', formatNumber(stats.totalUsers), 'Utilisateurs', '/members', false],
+            ['🟢', formatNumber(stats.online ?? 0), 'En ligne', '/members?view=online', false],
+            ['📦', formatNumber(stats.totalTorrents), 'Torrents', '/browse', true],
+            ['🌱', formatNumber(stats.totalSeeders), 'Seeders', '/members?view=seeders', false],
+            ['📥', formatNumber(stats.totalLeechers), 'Leechers', '', false],
+            ['🔗', formatNumber(stats.totalPeers), 'Pairs', '', false],
+            ['📊', formatBytes(stats.totalTraffic), 'Trafic total', '/stats', false],
+          ] as [string, string, string, string, boolean][]).map(([icon, n, label, to, everyone]) => {
+            const inner = <><div className="icon">{icon}</div><div className="n">{n}</div><div className="l">{label}</div></>;
+            // Réservé à l'équipe, sauf les torrents (accessibles aux membres connectés).
+            const allowed = !!to && !!user && (everyone || ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role));
+            return allowed ? <Link key={label} to={to} className="item" title={`Voir : ${label}`}>{inner}</Link> : <div key={label} className="item">{inner}</div>;
+          })}
         </div>
       )}
     </div>

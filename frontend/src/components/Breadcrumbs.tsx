@@ -36,6 +36,7 @@ const NODES: Node[] = [
   { path: '/integrations', label: 'API & flux RSS' },
   { path: '/telegram', label: 'Telegram' },
   { path: '/suggestions', label: 'Suggestions' },
+  { path: '/members', label: 'Membres' },
   { path: '/suggestions/:id', label: 'Suggestion', parent: '/suggestions' },
   { path: '/wiki', label: 'Wiki' },
   { path: '/wiki/:slug', label: 'Article', parent: '/wiki' },

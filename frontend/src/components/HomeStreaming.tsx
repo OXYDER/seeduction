@@ -113,6 +113,7 @@ export default function HomeStreaming() {
   const [byCategory, setByCategory] = useState<{ id: string; name: string; slug: string; items: any[] }[]>([]);
   const [topUploaders, setTopUploaders] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const isStaffUser = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
   const [tg, setTg] = useState<{ enabled?: boolean; inviteUrl?: string | null } | null>(null);
   const [topics, setTopics] = useState<any[]>([]);
   const [active, setActive] = useState<any[]>([]);
@@ -201,9 +202,19 @@ export default function HomeStreaming() {
             <div className="panel st-board">
               <h3>📊 La communauté</h3>
               <div className="community-tiles">
-                {[['👥', 'membres', formatNumber(stats.totalUsers)], ['🟢', 'en ligne', formatNumber(stats.online ?? 0)], ['🎞️', 'torrents', formatNumber(stats.totalTorrents)], ['🌱', 'seeders', formatNumber(stats.totalSeeders)], ['🔁', 'échangés', formatBytes(stats.totalTraffic)]].map(([icon, label, value]) => (
-                  <div key={label} className="community-tile"><span className="community-tile-icon" aria-hidden="true">{icon}</span><strong>{value}</strong><span className="muted">{label}</span></div>
-                ))}
+                {([
+                  ['👥', 'membres', formatNumber(stats.totalUsers), '/members'],
+                  ['🟢', 'en ligne', formatNumber(stats.online ?? 0), '/members?view=online'],
+                  ['🎞️', 'torrents', formatNumber(stats.totalTorrents), '/browse', true],
+                  ['🌱', 'seeders', formatNumber(stats.totalSeeders), '/members?view=seeders'],
+                  ['🔁', 'échangés', formatBytes(stats.totalTraffic), '/stats'],
+                ] as [string, string, string, string, boolean?][]).map(([icon, label, value, to, everyone]) => {
+                  const inner = <><span className="community-tile-icon" aria-hidden="true">{icon}</span><strong>{value}</strong><span className="muted">{label}</span></>;
+                  // Réservé à l'équipe, sauf les torrents (accessibles à tous) et Telegram.
+                  return everyone || isStaffUser
+                    ? <Link key={label} to={to} className="community-tile" title={`Voir : ${label}`}>{inner}</Link>
+                    : <div key={label} className="community-tile">{inner}</div>;
+                })}
                 {tg?.enabled && tg.inviteUrl && (
                   <a className="community-tile" href={tg.inviteUrl} target="_blank" rel="noopener noreferrer" title="Rejoindre le groupe Telegram"><span className="community-tile-icon" aria-hidden="true" style={{ opacity: 1 }}><TelegramLogo size={26} /></span><strong>Telegram</strong><span className="muted">rejoindre le groupe</span></a>
                 )}

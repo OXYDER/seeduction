@@ -11,11 +11,14 @@ import { ReportsModule } from '../reports/reports.module';
 import { SocialModule } from '../social/social.module';
 import { MetadataModule } from '../metadata/metadata.module';
 import { OwnerTorrentsController } from './owner-torrents.controller';
+import { StaffMembersController } from './staff-members.controller';
+import { StaffMembersService } from './staff-members.service';
+import { PresenceModule } from '../presence/presence.module';
 
 @Module({
-  imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule, MetadataModule],
-  controllers: [AdminController, OwnerTorrentsController],
-  providers: [AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService],
+  imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule, MetadataModule, PresenceModule],
+  controllers: [AdminController, OwnerTorrentsController, StaffMembersController],
+  providers: [AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService, StaffMembersService],
   exports: [AccountDeletionService, AdminService],
 })
 export class AdminModule {}
