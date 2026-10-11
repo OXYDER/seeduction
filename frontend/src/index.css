@@ -3496,3 +3496,6 @@ a.community-tile { cursor: pointer; }
 :root body.has-chat-rail .shell main.container { margin-left: 80px; }
 body.has-chat-rail .dm-dock { right: auto; left: calc(252px + 88px); }
 body.has-chat-rail .dm-bubble-avatar { display: none; }
+/* Sur petit écran, l'en-tête garde au moins le ratio (les autres pastilles restent masquées) */
+@media (max-width: 980px) { .stat-pills { display: flex; margin-left: auto; } .stat-pills .pill:not(.ratio) { display: none; } }
+.side-topbar .pill.ratio { font-weight: 800; }

@@ -57,7 +57,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
     <div className="account-menu" ref={ref} role="menu" aria-label="Menu du compte" style={pos ? { left: pos.left, top: pos.top } : { visibility: 'hidden' }}>
       {profile && (
         <div className="account-stats">
-          <Link to="/profile" onClick={onClose}><span className="muted">Ratio</span><strong>{profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong></Link>
+          <Link to="/profile" onClick={onClose}><span className="muted">Ratio</span><strong style={{ color: profile.ratio != null && profile.ratio < 1 ? 'var(--danger)' : 'var(--success)' }}>{profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong></Link>
           <Link to="/profile" onClick={onClose}><span className="muted">Upload</span><strong style={{ color: 'var(--success)' }}>{formatBytes(profile.uploaded)}</strong></Link>
           <Link to="/profile" onClick={onClose}><span className="muted">Téléchargé</span><strong style={{ color: 'var(--danger)' }}>{formatBytes(profile.downloaded)}</strong></Link>
           <Link to="/bonus" onClick={onClose}><span className="muted">Points bonus</span><strong style={{ color: '#fbbf24' }}>{formatNumber(Math.round(profile.bonusPoints))}</strong></Link>

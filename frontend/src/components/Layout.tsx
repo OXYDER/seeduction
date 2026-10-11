@@ -352,14 +352,13 @@ function LayoutInner() {
               <div style={{ minWidth: 0 }}>
                 <div className="side-user-name">{user?.username ? <ProfileName username={user.username} /> : null}</div>
                 <div className="side-user-sub">
-                  {profile?.watching ? (
-                    <span title={profile.watching}>🎬 {profile.watching}</span>
-                  ) : profile?.statusText ? (
-                    <span style={{ fontStyle: 'italic' }}>{profile.statusText}</span>
-                  ) : (
-                    <>Ratio {profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</>
-                  )}
+                  Ratio <strong style={{ color: profile?.ratio != null && profile.ratio < 1 ? 'var(--danger)' : 'var(--success)' }}>{profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong>
                 </div>
+                {(profile?.watching || profile?.statusText) && (
+                  <div className="side-user-sub">
+                    {profile?.watching ? <span title={profile.watching}>🎬 {profile.watching}</span> : <span style={{ fontStyle: 'italic' }}>{profile?.statusText}</span>}
+                  </div>
+                )}
               </div>
               <StatusSwitcher
                 value={profile?.presenceStatus}
@@ -415,6 +414,7 @@ function LayoutInner() {
             </form>
             {profile && (
               <div className="stat-pills">
+                <Link to="/profile" className={`pill ratio ${profile.ratio != null && profile.ratio < 1 ? 'down' : 'up'}`} title="Ratio : upload ÷ téléchargé">⚖ Ratio {profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</Link>
                 <span className="pill up" title="Upload">▲ {formatBytes(profile.uploaded)}</span>
                 <span className="pill down" title="Téléchargé">▼ {formatBytes(profile.downloaded)}</span>
                 <Link to="/bonus" className="pill gold" title="Points bonus : boutique et règle du seed">✦ {formatNumber(Math.round(profile.bonusPoints))}</Link>
