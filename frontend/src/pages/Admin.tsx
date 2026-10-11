@@ -68,6 +68,49 @@ const AUDIT_LABELS: Record<string, string> = {
   TWO_FACTOR_ENABLED: '🛡️ 2FA activée', TWO_FACTOR_DISABLED: '🛡️ 2FA désactivée', RESET_LINK_ISSUED: '🔗 Lien de réinitialisation émis',
 };
 
+const META_LABELS: Record<string, string> = {
+  targetId: 'Identifiant du compte', target: 'Pseudo', email: 'Courriel', role: 'Rôle', status: 'Statut', memberClass: 'Classe', createdAt: 'Inscrit le', lastSeenAt: 'Dernière visite',
+  uploaded: 'Envoyé', downloaded: 'Reçu', ratio: 'Ratio', bonusPoints: 'Points bonus', profiles: 'Profils famille', team: 'Team', counts: 'Activité', torrents: 'Torrents du compte',
+  reassigned: 'Contenu conservé (réattribué à « [compte supprimé] »)', erased: 'Données effacées', reason: 'Motif', torrentId: 'Torrent', name: 'Nom', fields: 'Champs', username: 'Pseudo',
+};
+const COUNT_LABELS: Record<string, string> = { torrents: 'torrents envoyés', torrentsApproved: 'torrents approuvés', torrentComments: 'commentaires de torrents', forumPosts: 'messages du forum', warnings: 'avertissements', bans: 'bannissements' };
+const TABLE_LABELS: Record<string, string> = {
+  'Torrent.uploaderId': 'torrents', 'TorrentComment.authorId': 'commentaires de torrents', 'TorrentRequest.requestedById': 'demandes', 'ForumTopic.authorId': 'sujets du forum', 'ForumPost.authorId': 'messages du forum',
+  'Announcement.authorId': 'nouvelles', 'AnnouncementComment.authorId': 'commentaires de nouvelles', 'ChatMessage.userId': 'messages du chat public', 'Message.senderId': 'messages de la messagerie', 'PrivateMessage.senderId': 'messages privés envoyés',
+  'Report.reporterId': 'signalements', 'InviteCode.createdById': 'codes d\'invitation', 'Peer.userId': 'pairs', 'Snatch.userId': 'téléchargements terminés', 'Warning.userId': 'avertissements', 'Ban.userId': 'bannissements',
+  'PrivateMessage.recipientId': 'messages privés reçus', 'RatioSnapshot.userId': 'points de ratio', 'MemberActivity.userId': 'activité',
+};
+const fmtBytes = (n: number) => (n >= 1024 ** 4 ? `${(n / 1024 ** 4).toFixed(2)} To` : n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(2)} Go` : `${(n / 1024 ** 2).toFixed(1)} Mo`);
+
+/** Toutes les informations d'une entrée du journal, lisibles (pour une suppression de membre : profil, activité, torrents, données conservées et effacées). */
+function MetaDetails({ meta }: { meta: any }) {
+  if (!meta || typeof meta !== 'object') return null;
+  const rows: [string, React.ReactNode][] = [];
+  for (const [k, v] of Object.entries(meta)) {
+    if (v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0) || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v as object).length === 0)) continue;
+    const label = META_LABELS[k] ?? k;
+    let shown: React.ReactNode;
+    if (k === 'uploaded' || k === 'downloaded') shown = fmtBytes(Number(v));
+    else if ((k === 'createdAt' || k === 'lastSeenAt') && typeof v === 'string') shown = new Date(v).toLocaleString('fr-FR');
+    else if (k === 'counts') shown = <ul style={{ margin: 0, paddingLeft: 16 }}>{Object.entries(v as Record<string, any>).map(([c, n]) => <li key={c}>{n} {COUNT_LABELS[c] ?? c}</li>)}</ul>;
+    else if (k === 'reassigned' || k === 'erased') shown = <ul style={{ margin: 0, paddingLeft: 16 }}>{Object.entries(v as Record<string, number>).map(([t, n]) => <li key={t}>{n} {TABLE_LABELS[t] ?? t}</li>)}</ul>;
+    else if (k === 'torrents' && Array.isArray(v)) shown = <ul style={{ margin: 0, paddingLeft: 16, maxHeight: 220, overflowY: 'auto' }}>{(v as any[]).map((t) => <li key={t.id}><a href={`/torrents/${t.id}`}>{t.name}</a> <span className="muted">({t.status})</span></li>)}</ul>;
+    else if (Array.isArray(v)) shown = v.join(', ');
+    else if (typeof v === 'object') shown = <code>{JSON.stringify(v)}</code>;
+    else shown = String(v);
+    rows.push([label, shown]);
+  }
+  if (rows.length === 0) return null;
+  return (
+    <details style={{ marginTop: 4 }}>
+      <summary style={{ cursor: 'pointer' }}>Voir tout</summary>
+      <dl style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '3px 14px', margin: '6px 0 0', fontSize: 12 }}>
+        {rows.map(([l, v]) => <div key={l} style={{ display: 'contents' }}><dt className="muted">{l}</dt><dd style={{ margin: 0 }}>{v}</dd></div>)}
+      </dl>
+    </details>
+  );
+}
+
 /** Journal d'audit : qui a fait quoi, quand (administrateurs). */
 function AuditAdmin() {
   const [data, setData] = useState<any>(null);
@@ -124,7 +167,7 @@ function AuditAdmin() {
                 <td className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(l.createdAt).toLocaleString('fr-FR')}</td>
                 <td>{l.user ? <a href={`/users/${l.user.id}`}>{l.user.username}</a> : <span className="muted">{l.meta?.username ?? '—'}</span>}</td>
                 <td>{AUDIT_LABELS[l.action] ?? l.action}</td>
-                <td className="muted" style={{ fontSize: 12 }}>{summary(l.meta)}</td>
+                <td className="muted" style={{ fontSize: 12 }}>{summary(l.meta)}<MetaDetails meta={l.meta} /></td>
                 <td className="muted">{l.ip ?? ''}</td>
               </tr>
             ))}

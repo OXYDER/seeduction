@@ -378,8 +378,33 @@ export class AdminService {
     this.assertOutranks(actor, target);
     if (String(body.confirmUsername ?? '').trim() !== target.username) throw new BadRequestException('Pseudo de confirmation incorrect');
     await this.auth.assertStaffReauth(actor.userId, String(body.password ?? ''), body.totpToken, ip);
+    const snapshot = await this.deletionSnapshot(userId); // relevé AVANT l'effacement : c'est tout ce qui restera du compte dans le journal
     const summary = await this.deletion.deleteAccount(userId);
-    return { deleted: true, username: target.username, ...summary };
+    return { deleted: true, username: target.username, snapshot, ...summary };
+  }
+
+  /** Ce qu'il faut savoir d'un compte avant sa suppression (journal d'audit) : profil, activité, et la liste de ses torrents, qui passent au compte « supprimé ». */
+  private async deletionSnapshot(userId: string) {
+    const kids = await this.prisma.user.findMany({ where: { parentId: userId }, select: { id: true, username: true } });
+    const ids = [userId, ...kids.map((k) => k.id)];
+    const [u, torrents, approved, comments, posts, warnings, bans, team] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId }, select: { username: true, email: true, role: true, status: true, createdAt: true, lastSeenAt: true, uploaded: true, downloaded: true, bonusPoints: true, memberClass: true } }),
+      this.prisma.torrent.findMany({ where: { uploaderId: { in: ids } }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, name: true, status: true } }),
+      this.prisma.torrent.count({ where: { uploaderId: { in: ids }, status: 'APPROVED' } }),
+      this.prisma.torrentComment.count({ where: { authorId: { in: ids } } }),
+      this.prisma.forumPost.count({ where: { authorId: { in: ids } } }),
+      this.prisma.warning.count({ where: { userId: { in: ids } } }),
+      this.prisma.ban.count({ where: { userId: { in: ids } } }),
+      this.prisma.teamMember.findFirst({ where: { userId }, include: { team: { select: { name: true } } } }),
+    ]);
+    const up = Number(u?.uploaded ?? 0), down = Number(u?.downloaded ?? 0);
+    return {
+      role: u?.role, status: u?.status, memberClass: u?.memberClass ?? null, createdAt: u?.createdAt ?? null, lastSeenAt: u?.lastSeenAt ?? null,
+      uploaded: up, downloaded: down, ratio: down > 0 ? Math.round((up / down) * 100) / 100 : null, bonusPoints: Math.round(Number(u?.bonusPoints ?? 0)),
+      profiles: kids.map((k) => k.username), team: team?.team?.name ?? null,
+      counts: { torrents: torrents.length >= 100 ? '100+' : torrents.length, torrentsApproved: approved, torrentComments: comments, forumPosts: posts, warnings, bans },
+      torrents: torrents.map((t) => ({ id: t.id, name: t.name, status: t.status })),
+    };
   }
 
   /** Active à la main un compte dont le courriel n'a jamais été confirmé (courriel perdu, boîte pleine...). */
