@@ -13,6 +13,7 @@ import SearchBox from './SearchBox';
 import Avatar from './Avatar';
 import ChatDock from './ChatDock';
 import BrowserNotifications from './BrowserNotifications';
+import IdleWatcher from './IdleWatcher';
 import ChatRail from './ChatRail';
 import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
@@ -466,6 +467,7 @@ function LayoutInner() {
         <ChatRail />
         <ChatDock />
         <BrowserNotifications />
+        <IdleWatcher />
       </div>
     );
   }
@@ -575,6 +577,7 @@ function LayoutInner() {
       <ChatRail />
       <ChatDock />
       <BrowserNotifications />
+      <IdleWatcher />
     </div>
   );
 }

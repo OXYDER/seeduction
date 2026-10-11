@@ -83,6 +83,7 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
       client.join(userRoom(payload.sub));
       for (const id of await this.messenger.readableChannelIds({ role: payload.role })) client.join(channelRoom(id));
       await this.presence.connect(payload.sub, client.id, payload.username);
+      this.presence.watch(payload.sub, client.id);
       client.emit('presence:online', this.presence.listOnline());
     } catch {
       client.disconnect();
@@ -145,6 +146,13 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
     if (!client.data?.userId) return { ok: false };
     const res = await this.guard(() => this.messenger.react(this.actor(client), body?.messageId, body?.emoji));
     return res.ok ? { ok: true } : { ok: false, error: res.error };
+  }
+
+  /** L'onglet signale son inactivité (aucune action depuis quelques minutes) ou son retour : le statut « En ligne » devient « Absent » et inversement. */
+  @SubscribeMessage('presence:idle')
+  onIdle(@ConnectedSocket() client: MessengerSocket, @MessageBody() body: { idle: boolean }) {
+    if (!client.data?.userId) return;
+    this.presence.setIdle(client.data.userId, client.id, body?.idle === true);
   }
 
   @SubscribeMessage('conversation:read')

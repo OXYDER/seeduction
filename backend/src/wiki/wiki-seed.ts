@@ -407,6 +407,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `Depuis ce menu, tu peux choisir ton statut :\n\n` +
           `• [b]En ligne[/b], [b]Absent[/b], [b]Occupé[/b], ou [b]Apparaître hors ligne[/b] (les autres te voient alors comme déconnecté, même si tu es bien là).\n` +
           `• Un [b]message personnalisé[/b] libre (100 caractères) s'affiche à côté, visible dans l'infobulle qui apparaît quand on survole ton pseudo n'importe où sur le site.\n\n` +
+          `[b]Absent automatique[/b] : si tu es « En ligne » mais que tu n'as rien fait sur le site depuis [b]5 minutes[/b] (ni souris, ni clavier, ni défilement, ni navigation), tu apparais « Absent » aux autres ; dès que tu navigues ou interagis de nouveau, tu redeviens « En ligne ». Avec plusieurs onglets ouverts, tu restes « En ligne » tant que l'un d'eux est actif. « Occupé » et « Apparaître hors ligne » ne changent jamais tout seuls.\n` +
           `Ce statut (sauf « Apparaître hors ligne ») et ton message sont visibles de tous les membres.`,
       },
       {
