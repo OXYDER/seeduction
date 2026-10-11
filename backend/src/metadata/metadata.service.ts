@@ -292,6 +292,39 @@ export class MetadataService {
     return { ...rich.variables, affiche: await this.saveFirstCover([rich.coverUrl, ...(rich.coverFallbacks ?? [])]) };
   }
 
+  /**
+   * Fiches de plusieurs films d'un coup (pack) : variables du générateur + date de sortie, triées par date de sortie (les films sans date en dernier).
+   * 12 films au maximum ; un film introuvable est signalé sans faire échouer les autres.
+   */
+  async detailMany(kind: string, ids: string[]) {
+    if (kind !== 'FILM') throw new BadRequestException('Les packs ne sont possibles que pour des films');
+    this.assertSearchable(kind);
+    const unique = [...new Set((ids ?? []).map((i) => String(i).trim()).filter((i) => /^\d{1,10}$/.test(i)))].slice(0, 12);
+    if (unique.length === 0) throw new BadRequestException('Aucun film choisi');
+    const films: (Record<string, any> & { id: string; releaseDate: string | null })[] = [];
+    const failed: string[] = [];
+    for (const id of unique) {
+      try {
+        const rich = await this.rich(kind, id);
+        films.push({ id, releaseDate: (rich.info?.releaseDate as string | null) ?? null, ...rich.variables, affiche: await this.saveFirstCover([rich.coverUrl, ...(rich.coverFallbacks ?? [])]) });
+      } catch { failed.push(id); }
+    }
+    if (films.length === 0) throw new BadRequestException('Aucune fiche n\'a pu être récupérée');
+    const key = (f: { releaseDate: string | null; année?: string }) => (f.releaseDate && /^\d{4}/.test(f.releaseDate) ? f.releaseDate : f.année ? `${f.année}-99-99` : '9999-99-99');
+    films.sort((a, b) => key(a as any).localeCompare(key(b as any)));
+    return { films, failed };
+  }
+
+  /** La saga (collection TMDB) à laquelle appartient un film : tous ses films, par date de sortie. */
+  async saga(id: string) {
+    this.assertSearchable('FILM');
+    if (!/^\d{1,10}$/.test(String(id))) throw new BadRequestException('Identifiant invalide');
+    const rich = await this.richRaw('FILM', String(id));
+    const c = (rich.info as any)?.collection as { id: number; name: string; parts: { tmdbId: number; title: string; releaseDate: string | null; year: string | null }[] } | null;
+    if (!c || c.parts.length === 0) return { name: null, parts: [] };
+    return { name: c.name, parts: c.parts.map((p) => ({ id: String(p.tmdbId), title: p.title, year: p.year, releaseDate: p.releaseDate })) };
+  }
+
   /** Fiche complète, avec le synopsis traduit en français s'il ne l'est pas déjà. */
   private async rich(kind: string, id: string): Promise<RichMetadata> {
     const rich = await this.richRaw(kind, id);

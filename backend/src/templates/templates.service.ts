@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { extractVariables, fillVariables, pruneEmptyLines, renderAllFormats } from '../common/utils/bbcode';
+import { buildPackBBCode, PackFilm } from './pack-description';
 
 // Modèles d'origine (avant le thème doré) : servent uniquement à reconnaître un
 // modèle par défaut resté intact, pour le mettre à jour sans écraser ceux qu'un admin a modifiés.
@@ -339,5 +340,20 @@ export class TemplatesService implements OnModuleInit {
     const filled = fillVariables(pruneEmptyLines(content, params.values), params.values);
     const missingVariables = extractVariables(content).filter((v) => !params.values[v]?.trim());
     return { ...renderAllFormats(filled), missingVariables };
+  }
+
+  /** Description d'un pack de plusieurs films : un bloc par film dans l'ordre chronologique de sortie, puis les informations du torrent une seule fois. */
+  generatePack(params: { films: PackFilm[]; values: Record<string, string> }) {
+    const films = (Array.isArray(params.films) ? params.films : []).slice(0, 12);
+    if (films.filter((f) => f?.titre).length < 2) throw new BadRequestException('Choisis au moins deux films pour un pack');
+    const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : undefined);
+    const clean: PackFilm[] = films.map((f) => ({
+      titre: clip(f.titre, 200) ?? '', titre_original: clip(f.titre_original, 200), année: clip(f.année, 4), releaseDate: clip(f.releaseDate ?? undefined, 10) ?? null,
+      genre: clip(f.genre, 200), durée: clip(f.durée, 40), note: clip(f.note, 40), réalisateur: clip(f.réalisateur, 300), acteurs: clip(f.acteurs, 500), studio: clip(f.studio, 300),
+      description: clip(f.description, 4000), affiche: typeof f.affiche === 'string' && /^\/api\/covers\/[\w.-]+$/.test(f.affiche) ? f.affiche : undefined,
+    }));
+    const torrent: Record<string, string> = {};
+    for (const [k, v] of Object.entries(params.values ?? {})) if (typeof v === 'string') torrent[k] = v.slice(0, 20_000);
+    return renderAllFormats(buildPackBBCode(clean, torrent));
   }
 }

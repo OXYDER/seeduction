@@ -103,6 +103,11 @@ export default function DescriptionGenerator({
   const [searchNote, setSearchNote] = useState('');
   const [searched, setSearched] = useState(false);
   const [progress, setProgress] = useState<{ pct: number; label: string } | null>(null);
+  // Pack de plusieurs films : on coche les films, la description les range par date de sortie.
+  const [multi, setMulti] = useState(false);
+  const [picked, setPicked] = useState<SearchResult[]>([]);
+  const [mainId, setMainId] = useState<string | null>(null);
+  const [sagaBusy, setSagaBusy] = useState(false);
 
   const searchSupported = supportedKinds.includes(kind);
   const lastGenerated = useRef('');
@@ -119,6 +124,8 @@ export default function DescriptionGenerator({
   useEffect(() => {
     if (defaultKind) setKind(defaultKind);
   }, [defaultKind]);
+
+  useEffect(() => { if (kind !== 'FILM') setMulti(false); }, [kind]);
 
   const templatesForKind = templates.filter((t) => t.kind === kind);
 
@@ -314,6 +321,63 @@ export default function DescriptionGenerator({
     }
   }
 
+  const yearOf = (r: SearchResult) => (r.subtitle.match(/\d{4}/) ?? [''])[0];
+  function togglePick(r: SearchResult) {
+    setPicked((cur) => {
+      const has = cur.some((p) => p.id === r.id);
+      if (has && mainId === r.id) setMainId(null);
+      return has ? cur.filter((p) => p.id !== r.id) : [...cur, r];
+    });
+  }
+  /** Ajoute d'un coup tous les films de la saga du film choisi (collection TMDB). */
+  async function addSaga() {
+    const base = picked.find((p) => p.id === mainId) ?? picked[0];
+    if (!base || sagaBusy) return;
+    setSagaBusy(true); setSearchError(''); setSearchNote('');
+    try {
+      const { data } = await api.get('/metadata/saga', { params: { id: base.id } });
+      if (!data.parts?.length) { setSearchNote(`« ${base.title} » ne fait partie d'aucune saga connue : choisis les autres films un par un.`); return; }
+      setPicked((cur) => {
+        const have = new Set(cur.map((p) => p.id));
+        const add = (data.parts as { id: string; title: string; year: string | null }[]).filter((p) => !have.has(p.id)).map((p) => ({ id: p.id, title: p.title, subtitle: p.year ?? '', thumbnail: null }));
+        return [...cur, ...add];
+      });
+      setSearchNote(`Saga « ${data.name} » : ${data.parts.length} film${data.parts.length > 1 ? 's' : ''} ajouté${data.parts.length > 1 ? 's' : ''} à la sélection.`);
+    } catch (err: any) { setSearchError(err.response?.data?.message ?? 'Saga introuvable'); }
+    finally { setSagaBusy(false); }
+  }
+  /** Description du pack : un bloc par film dans l'ordre de sortie, les infos du torrent une seule fois. La fiche principale (affiche, filtres) est le film ★. */
+  async function generatePack() {
+    if (picked.length < 2 || searchLoading) return;
+    const isUntouched = !currentDescription.trim() || squash(currentDescription) === squash(lastGenerated.current);
+    if (!isUntouched && !window.confirm('Remplacer la description actuelle par la description du pack ?')) return;
+    setSearchLoading(true); setSearchError(''); setSearchNote('');
+    const stopProgress = startProgress(`Récupération des ${picked.length} fiches et des affiches…`);
+    try {
+      const { data } = await api.post('/metadata/detail-many', { kind, ids: picked.map((p) => p.id) });
+      stopProgress();
+      setProgress({ pct: 92, label: 'Génération de la description du pack…' });
+      const films = data.films as Record<string, any>[];
+      const main = films.find((f) => f.id === mainId) ?? films[0];
+      if (main.affiche) onCoverChange?.(main.affiche);
+      onMetaChange?.({ kind, id: main.id });
+      onDetail?.(main);
+      const { data: gen } = await api.post('/templates/generate-pack', { films, values: { ...knownValues, ...values } });
+      const out = `[center]${gen.bbcode}[/center]`;
+      lastGenerated.current = out;
+      onGenerate(out);
+      setNotice(`✓ Description du pack générée : ${films.length} films par ordre de sortie. Fiche principale (affiche, filtres) : « ${main.titre} ». Modifie-la comme tu veux dans l'éditeur ci-dessous.${data.failed?.length ? ` ${data.failed.length} fiche(s) introuvable(s) ignorée(s).` : ''}`);
+      setProgress({ pct: 100, label: 'Terminé' });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    } catch (err: any) {
+      setSearchError(err.response?.data?.message ?? 'Impossible de générer le pack');
+    } finally {
+      stopProgress();
+      setProgress(null);
+      setSearchLoading(false);
+    }
+  }
+
   async function saveAsTemplate() {
     if (!saveName.trim()) return;
     await api.post('/templates', { name: saveName, kind, content });
@@ -331,6 +395,14 @@ export default function DescriptionGenerator({
       <div className="grid" style={{ gap: 14 }}>
         {searchSupported ? (
           <div>
+            {kind === 'FILM' && (
+              <div className="row" style={{ marginBottom: 8, gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button type="button" className={multi ? '' : 'secondary'} onClick={() => setMulti((m) => !m)} title="Pour un torrent qui contient plusieurs films : coche-les, ils seront rangés par date de sortie">
+                  📦 {multi ? 'Pack de plusieurs films : activé' : 'Pack de plusieurs films'}
+                </button>
+                {multi && <span className="muted" style={{ fontSize: 12 }}>Coche chaque film dans les résultats (relance la recherche avec un autre titre pour en ajouter), puis génère la description : les films sont classés par date de sortie.</span>}
+              </div>
+            )}
             <div className="row">
               <input
                 style={{ flex: 1 }}
@@ -374,13 +446,16 @@ export default function DescriptionGenerator({
 
             {searchResults.length > 0 && (
               <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 8, marginTop: 8 }}>
-                {searchResults.map((r) => (
+                {searchResults.map((r) => {
+                  const isPicked = multi && picked.some((p) => p.id === r.id);
+                  return (
                   <div
                     key={r.id}
                     className="row"
-                    style={{ cursor: 'pointer', gap: 8, padding: 6, border: '1px solid var(--border)', borderRadius: 6 }}
-                    onClick={() => selectResult(r)}
+                    style={{ cursor: 'pointer', gap: 8, padding: 6, border: isPicked ? '2px solid var(--success)' : '1px solid var(--border)', borderRadius: 6, background: isPicked ? 'rgba(74,222,128,0.08)' : undefined }}
+                    onClick={() => (multi ? togglePick(r) : selectResult(r))}
                   >
+                    {multi && <input type="checkbox" readOnly checked={isPicked} style={{ width: 'auto', flexShrink: 0 }} aria-label={`Choisir ${r.title}`} />}
                     {r.thumbnail
                       ? <img src={r.thumbnail} alt="" style={{ width: 44, height: 62, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
                       : <div style={{ width: 44, height: 62, background: 'var(--bg-panel-raised)', borderRadius: 3, flexShrink: 0 }} />}
@@ -389,7 +464,35 @@ export default function DescriptionGenerator({
                       <div className="muted" style={{ fontSize: 11 }}>{r.subtitle}</div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
+              </div>
+            )}
+            {multi && (
+              <div className="panel" style={{ marginTop: 10, padding: 10, borderColor: 'var(--gold)' }}>
+                <div className="row" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <strong>📦 Pack : {picked.length} film{picked.length > 1 ? 's' : ''} choisi{picked.length > 1 ? 's' : ''}</strong>
+                  <span className="muted" style={{ fontSize: 12 }}>★ = fiche principale (affiche et filtres du torrent) ; l'ordre de la description suit la date de sortie</span>
+                </div>
+                {picked.length === 0 ? <p className="muted" style={{ margin: '6px 0 0' }}>Aucun film choisi : clique sur les films dans les résultats ci-dessus.</p> : (
+                  <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    {picked.map((r, i) => {
+                      const main = mainId ? mainId === r.id : i === 0;
+                      return (
+                        <span key={r.id} className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', background: main ? 'rgba(74,222,128,0.18)' : undefined }}>
+                          <button type="button" className="secondary" style={{ padding: 0, border: 0, background: 'none', cursor: 'pointer', fontSize: 14 }} title="Fiche principale" onClick={() => setMainId(r.id)}>{main ? '★' : '☆'}</button>
+                          {r.title}{yearOf(r) ? ` (${yearOf(r)})` : ''}
+                          <button type="button" className="secondary" style={{ padding: 0, border: 0, background: 'none', cursor: 'pointer' }} title="Retirer" onClick={() => togglePick(r)}>✕</button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                  <button type="button" className="secondary" disabled={picked.length === 0 || sagaBusy || searchLoading} onClick={addSaga}>{sagaBusy ? 'Recherche de la saga…' : '➕ Ajouter toute la saga'}</button>
+                  <button type="button" disabled={picked.length < 2 || searchLoading} onClick={generatePack}>✨ Générer la description du pack ({picked.length} films)</button>
+                  {picked.length > 0 && <button type="button" className="secondary" onClick={() => { setPicked([]); setMainId(null); }}>Tout décocher</button>}
+                </div>
               </div>
             )}
           </div>

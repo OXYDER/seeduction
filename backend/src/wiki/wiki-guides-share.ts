@@ -94,6 +94,8 @@ export const GUIDES_SHARE: WikiSeedCategory = {
         `1. Le site cherche automatiquement avec le titre du torrent. Les résultats s'affichent avec leur affiche.\n` +
         `2. Clique sur la bonne. Si la recherche ne trouve rien : corrige le titre (titre original, sans l'année), ou colle l'adresse de la fiche TMDB.\n` +
         `3. Pas de fiche qui convienne ? Choisis « Sans fiche » : le torrent est publié sans.\n\n` +
+        `[b]Un pack de plusieurs films[/b]\n` +
+        `Ton torrent contient plusieurs films (une saga, une collection) ? Dans le générateur de description, clique sur [b]« 📦 Pack de plusieurs films »[/b] : les résultats ont maintenant une case à cocher. Coche chaque film (relance la recherche avec un autre titre pour en ajouter) ou clique sur [b]« ➕ Ajouter toute la saga »[/b] pour ajouter d'un coup tous les films de la saga du film choisi. Puis [b]« ✨ Générer la description du pack »[/b] : la description contient un sommaire et un bloc par film (affiche, date de sortie, genre, distribution, synopsis), rangés [b]par date de sortie[/b] quel que soit l'ordre où tu les as cochés, puis les informations du torrent une seule fois. L'étoile ★ désigne le film dont la fiche est rattachée au torrent (affiche et filtres) : par défaut le plus ancien. Douze films au maximum ; ensuite, tu peux tout modifier dans l'éditeur.\n\n` +
         `[b]Un pack d'un même studio (adulte)[/b]\n` +
         `Quand ta release contient plusieurs films ou scènes d'un même studio, ne choisis pas un film au hasard : dans les résultats ThePornDB, le [b]🏢 Studio[/b] est proposé en premier. Choisis-le : la release est rattachée au studio (avec son logo et sa description).\n\n` +
         `[b]Que fait le site tout seul ?[/b]\n` +

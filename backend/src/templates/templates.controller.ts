@@ -34,6 +34,12 @@ export class TemplatesController {
     return this.templatesService.delete(id, req.user.userId, STAFF_ROLES.includes(req.user.role));
   }
 
+  /** Description d'un pack de films (ordre chronologique de sortie). */
+  @Post('generate-pack')
+  generatePack(@Body() body: { films: any[]; values?: Record<string, string> }) {
+    return this.templatesService.generatePack({ films: body?.films ?? [], values: body?.values ?? {} });
+  }
+
   @Post('generate')
   generate(@Body() body: { templateId?: string; content?: string; values: Record<string, string> }) {
     return this.templatesService.generate({ templateId: body.templateId, content: body.content, values: body.values ?? {} });
