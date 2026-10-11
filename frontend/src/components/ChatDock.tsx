@@ -21,7 +21,7 @@ function sizeOf(big: boolean, vw: number, vh: number) {
 }
 
 /** Une fenêtre de discussion : déplaçable par son en-tête (gauche, droite, haut, bas), agrandissable, avec un bouton pour l'ouvrir dans le grand chat. */
-function DockWindow({ id, index, count, railActive, vw, vh }: { id: string; index: number; count: number; railActive: boolean; vw: number; vh: number }) {
+function DockWindow({ id, index, count, railActive, sideW, vw, vh }: { id: string; index: number; count: number; railActive: boolean; sideW: number; vw: number; vh: number }) {
   const closeWindow = useMessenger((s) => s.closeWindow);
   const toggleMinimize = useMessenger((s) => s.toggleMinimize);
   const navigate = useNavigate();
@@ -33,7 +33,7 @@ function DockWindow({ id, index, count, railActive, vw, vh }: { id: string; inde
 
   // Position par défaut : à droite des bulles (ou en bas à droite sans bulles), les fenêtres suivantes à côté.
   const gap = 10;
-  const defaultLeft = railActive ? 252 + 88 + index * (width + gap) : vw - 16 - width - (count - 1 - index) * (width + gap);
+  const defaultLeft = railActive ? sideW + 88 + index * (width + gap) : vw - 16 - width - (count - 1 - index) * (width + gap);
   const left = clamp(layout.left ?? defaultLeft, 0, Math.max(0, vw - width));
   const bottom = clamp(layout.bottom ?? 0, 0, Math.max(0, vh - height));
 
@@ -96,11 +96,12 @@ export default function ChatDock() {
   const shownOnPage = onChatPage ? new URLSearchParams(location.search).get('c') : null;
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [railActive, setRailActive] = useState(() => document.body.classList.contains('has-chat-rail'));
+  const [sideW, setSideW] = useState(() => (document.body.classList.contains('side-collapsed') ? 82 : 252));
 
   useEffect(() => {
     const onResize = () => setVp({ w: window.innerWidth, h: window.innerHeight });
     window.addEventListener('resize', onResize);
-    const obs = new MutationObserver(() => setRailActive(document.body.classList.contains('has-chat-rail')));
+    const obs = new MutationObserver(() => { setRailActive(document.body.classList.contains('has-chat-rail')); setSideW(document.body.classList.contains('side-collapsed') ? 82 : 252); });
     obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     return () => { window.removeEventListener('resize', onResize); obs.disconnect(); };
   }, []);
@@ -132,7 +133,7 @@ export default function ChatDock() {
               </div>
             );
           }
-          return <DockWindow key={w.conversationId} id={w.conversationId} index={open.findIndex((x) => x.conversationId === w.conversationId)} count={open.length} railActive={railActive} vw={vp.w} vh={vp.h} />;
+          return <DockWindow key={w.conversationId} id={w.conversationId} index={open.findIndex((x) => x.conversationId === w.conversationId)} count={open.length} railActive={railActive} sideW={sideW} vw={vp.w} vh={vp.h} />;
         })}
       </div>
     </>

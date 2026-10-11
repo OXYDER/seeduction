@@ -424,7 +424,7 @@ export class MemberImportService {
         const meta = detectReleaseMeta(t.name, nfo, { assumeLanguage: true });
         const language = o.language || meta.language;
         const created = await this.torrents.upload({
-          userId: box.userId, fileBuffer: buf, name: t.name, categoryId, tags: [], anonymous: false, nfo, ...meta, ...(language ? { language } : {}),
+          userId: box.userId, fileBuffer: buf, name: t.name, categoryId, tags: [], anonymous: false, nfo, standardizeName: true, ...meta, ...(language ? { language } : {}),
           ...(metaKind && metaId ? { metaKind, metaId } : {}),
         });
         // Le choix fait (catégorie + fiche) est gardé : quand la modération acceptera ce torrent, il gagnera du poids pour les releases qui ressemblent.

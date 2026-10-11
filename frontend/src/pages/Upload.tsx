@@ -10,6 +10,7 @@ import { parseTorrentInfo } from '../lib/bencode';
 import { summarizeTorrent } from '../lib/torrentSummary';
 import { resolveContentKind } from '../lib/categoryKind';
 import DuplicateWarning from '../components/DuplicateWarning';
+import ReleaseNameSuggest from '../components/ReleaseNameSuggest';
 import FacetFields from '../components/FacetFields';
 import GamePlatformPicker, { type GamePlatformInfo } from '../components/GamePlatformPicker';
 import type { FacetDef, FacetValues } from '../lib/facets';
@@ -390,6 +391,7 @@ function UploadOne() {
               <textarea rows={nfoText ? 5 : 2} placeholder="…ou colle ici le texte du NFO ou de MediaInfo" value={nfoText} onChange={(e) => setNfoText(e.target.value.slice(0, 200_000))} style={{ fontFamily: 'Consolas, monospace', fontSize: 12, ...(nfoMissing && nfoText.trim().length < 20 ? { borderColor: 'var(--danger)' } : {}) }} />
             </div>
           <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
+          <ReleaseNameSuggest name={name} files={fileList} nfo={nfoText} onPick={(n) => { setName(n); autoName.current = ''; }} />
           <DuplicateWarning name={name} metaId={meta?.id} />
           </Step>
 

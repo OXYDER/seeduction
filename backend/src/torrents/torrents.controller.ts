@@ -126,6 +126,20 @@ export class TorrentsController {
     return this.torrentsService.activeForUser(accountOf(req), req.user.userId);
   }
 
+  /** Noms de release standardisés proposés d'après le nom, les fichiers et le NFO (envoi en cours, ou torrent existant avec `torrentId`). */
+  @UseGuards(JwtAuthGuard)
+  @Post('release-names')
+  releaseNames(@Body() body: { torrentId?: string; name?: string; files?: { path: string; size?: number }[]; nfo?: string; title?: string; year?: number }, @Request() req: any) {
+    return this.torrentsService.releaseNames(req.user, {
+      torrentId: body?.torrentId,
+      name: String(body?.name ?? '').slice(0, 400),
+      files: (Array.isArray(body?.files) ? body.files : []).slice(0, 2000).map((f) => ({ path: String(f?.path ?? '').slice(0, 400), size: Number(f?.size) || 0 })),
+      nfo: typeof body?.nfo === 'string' ? body.nfo.slice(0, 100_000) : undefined,
+      title: typeof body?.title === 'string' ? body.title.slice(0, 200) : undefined,
+      year: Number(body?.year) || undefined,
+    });
+  }
+
   /** Formulaire d'envoi : filtres de la catégorie choisie et valeurs déjà trouvées (nom, fichiers du .torrent, NFO, genres de la fiche). */
   @UseGuards(JwtAuthGuard)
   @Post('analyze')

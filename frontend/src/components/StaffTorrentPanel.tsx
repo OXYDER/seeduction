@@ -7,6 +7,7 @@ import FichePanel from './FichePanel';
 import { LANGUAGE_GROUPS, LANGUAGE_LABELS } from '../lib/languageTag';
 import type { FacetDef, FacetValues } from '../lib/facets';
 import { ORIGINS, RESOLUTIONS, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
+import ReleaseNameSuggest from './ReleaseNameSuggest';
 
 const STATUSES = [
   { value: 'APPROVED', label: 'Approuvé' },
@@ -147,6 +148,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
           <div>
             <div className="muted" style={{ marginBottom: 4 }}>Nom</div>
             <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%' }} />
+            <ReleaseNameSuggest name={name} torrentId={torrent.id} onPick={setName} />
           </div>
           <div className="filter-grid">
             <div>

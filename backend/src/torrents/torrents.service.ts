@@ -13,6 +13,7 @@ import { extractInstallNotes } from '../common/utils/install-notes';
 import { audioOf } from '../importer/audio-codec';
 import { subtitlesOf } from '../common/utils/subtitles';
 import { containerOf } from '../common/utils/container-format';
+import { isWellFormedName, suggestReleaseNames } from '../common/utils/release-names';
 import { groupKeyOf } from './group-key';
 import { RELEASE_EXTENSION_SQL, stripReleaseExtension } from '../common/utils/release-name';
 import { Cron } from '@nestjs/schedule';
@@ -102,6 +103,8 @@ export class TorrentsService implements OnModuleInit {
     nfo?: string;
     /** Filtres de la catégorie choisis ou confirmés par le membre ; complétés par la détection automatique. */
     attrs?: unknown;
+    /** Import automatique : un nom mal formé (espaces, résolution en majuscule, team isolée...) est remplacé par le nom standard proposé d'après les fichiers et le NFO. */
+    standardizeName?: boolean;
   }) {
     // On stocke (et on calcule l'info_hash sur) la version nettoyée : trackers
     // externes retirés, flag private forcé — voir sanitizeTorrentForUpload.
@@ -122,7 +125,11 @@ export class TorrentsService implements OnModuleInit {
     const storedPath = path.join(STORAGE_DIR, `${parsed.infoHash}.torrent`);
     await fs.writeFile(storedPath, cleanBuffer);
 
-    const rawName = params.name || parsed.name;
+    let rawName = params.name || parsed.name;
+    if (params.standardizeName && !isWellFormedName(stripReleaseExtension(rawName))) {
+      const best = suggestReleaseNames({ name: rawName, files: parsed.files, nfo: params.nfo }).suggestions[0];
+      if (best) rawName = best.name;
+    }
     const releaseName = stripReleaseExtension(rawName); // jamais d'extension de fichier (.mkv...) dans le titre
     const attrs = await this.resolveAttrs(params.categoryId, rawName, parsed.files, params.nfo, params.genres ?? [], params.attrs);
     const releaseGroup = await this.teams.noteRelease(releaseName); // team détectée dans le nom (créée automatiquement si elle est nouvelle)
@@ -240,6 +247,24 @@ export class TorrentsService implements OnModuleInit {
     const chosen = normalizeAttrs(provided, allowed);
     const detected = detectAttrs({ name, files, nfo, top, leaf, metaGenres: genres });
     return { ...detected, ...chosen };
+  }
+
+  /**
+   * Noms de release proposés. Soit pour un envoi en cours (nom, fichiers, NFO et fiche fournis par le formulaire), soit pour un torrent existant
+   * (`torrentId` : son envoyeur ou l'équipe ; les fichiers, le NFO et la fiche sont lus en base).
+   */
+  async releaseNames(user: { userId: string; role?: string }, input: { torrentId?: string; name?: string; files?: { path: string; size?: number }[]; nfo?: string; title?: string; year?: number }) {
+    if (input.torrentId) {
+      const t = await this.prisma.torrent.findUnique({ where: { id: input.torrentId }, select: { name: true, fileList: true, uploaderId: true, metadata: true, year: true, nfoFile: { select: { content: true } } } });
+      if (!t) throw new NotFoundException('Torrent introuvable');
+      const staff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role ?? '');
+      if (!staff && t.uploaderId !== user.userId) throw new ForbiddenException('Ce torrent ne t\'appartient pas');
+      const meta = (t.metadata ?? {}) as any;
+      const files = Array.isArray(t.fileList) ? (t.fileList as any[]).map((f) => ({ path: String(f?.path ?? ''), size: Number(f?.size) || 0 })) : [];
+      return { current: t.name, ...suggestReleaseNames({ name: input.name || t.name, files, nfo: t.nfoFile?.content ?? undefined, title: meta.titles?.[0]?.title ?? meta.title ?? null, year: t.year }) };
+    }
+    const name = String(input.name ?? '').slice(0, 400);
+    return { current: name, ...suggestReleaseNames({ name, files: input.files, nfo: input.nfo, title: input.title ?? null, year: input.year ?? null }) };
   }
 
   /** Aperçu pour le formulaire d'envoi : filtres de la catégorie et valeurs déjà trouvées (nom, fichiers, NFO, genres de la fiche). */

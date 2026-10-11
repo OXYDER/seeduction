@@ -139,6 +139,11 @@ function LayoutInner() {
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('sideCollapsed') === '1'; } catch { return false; }
   });
+  // Menu réduit : les bulles de discussion et les fenêtres se recollent à ses icônes (voir index.css, body.side-collapsed).
+  useEffect(() => {
+    document.body.classList.toggle('side-collapsed', collapsed);
+    return () => document.body.classList.remove('side-collapsed');
+  }, [collapsed]);
   function toggleCollapsed() {
     setCollapsed((v) => {
       try { localStorage.setItem('sideCollapsed', v ? '0' : '1'); } catch { /* stockage indisponible */ }
