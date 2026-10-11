@@ -59,6 +59,15 @@ export class ReportsService {
         const p = await this.prisma.forumPost.findUnique({ where: { id: r.targetId }, select: { topicId: true, content: true, topic: { select: { title: true } } } });
         label = p ? `Message dans « ${p.topic.title} »` : '(message supprimé)';
         link = p ? `/forum/topics/${p.topicId}` : null;
+      } else if (r.targetType === 'chatMessage') {
+        // Message de chat : on affiche la copie prise au signalement (l'auteur a pu le supprimer depuis).
+        let snap: any = null;
+        try { snap = r.snapshot ? JSON.parse(r.snapshot) : null; } catch { /* copie illisible */ }
+        const live = await this.prisma.message.findUnique({ where: { id: r.targetId }, select: { deletedAt: true } });
+        const where = snap?.conversationType === 'CHANNEL' ? `#${snap.conversationName}` : snap?.conversationType === 'GROUP' ? `groupe « ${snap.conversationName} »` : 'conversation privée';
+        label = snap ? `Chat ${where} — ${snap.senderUsername} : « ${String(snap.text).slice(0, 160)} »${live?.deletedAt ? ' (message supprimé depuis)' : ''}` : '(message de chat)';
+        // Une conversation privée ou un groupe ne s'ouvre pas pour le staff : le lien n'existe que pour les canaux publics.
+        link = snap?.conversationType === 'CHANNEL' ? `/chat?c=${snap.conversationId}` : null;
       } else if (r.targetType === 'comment') {
         const c = await this.prisma.torrentComment.findUnique({ where: { id: r.targetId }, select: { torrentId: true, content: true } });
         label = c ? `Commentaire : « ${c.content.slice(0, 80)} »` : '(commentaire supprimé)';

@@ -12,6 +12,7 @@ import UserLink from '../UserLink';
 import TorrentCard from './TorrentCard';
 import Lightbox from './Lightbox';
 import VoicePlayer from './VoicePlayer';
+import ChatModerationModal, { type ModerationMode } from './ChatModerationModal';
 
 export interface Reader { userId: string; username: string; avatarUrl?: string | null }
 
@@ -73,6 +74,7 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
   const [picker, setPicker] = useState(false);
   const [menu, setMenu] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [modal, setModal] = useState<ModerationMode | null>(null);
   const mine = msg.sender.id === me?.id;
   const group = conv.type !== 'DIRECT';
   const isSupportChannel = !!supportChannelId && conv.id === supportChannelId;
@@ -99,6 +101,10 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
   }
 
   const big = !msg.deleted && msg.type === 'TEXT' && !msg.replyTo && isBigEmoji(msg.content);
+  const senderIsStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(msg.sender.role ?? '');
+  const actOnOthers = !mine && !isBot && !msg.pending && !msg.failed && !msg.deleted;
+  // Bannir du chat : la modération, depuis un message d'un canal public, jamais un autre membre de l'équipe.
+  const canBan = actOnOthers && conv.type === 'CHANNEL' && canModerate && !senderIsStaff;
   const canEdit = mine && msg.type === 'TEXT' && !msg.deleted && !msg.pending && !msg.failed;
   const canDelete = !msg.deleted && !msg.pending && !msg.failed && (mine || canModerate);
 
@@ -179,6 +185,9 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
                   {canMakeTicket && <button type="button" onClick={() => { setMenu(false); void makeTicket(); }}>🎫 Ouvrir un billet pour ce membre</button>}
                   {canEdit && <button type="button" onClick={() => { setMenu(false); onEdit(msg); }}>✏️ Modifier</button>}
                   {canPin && <button type="button" onClick={() => { setMenu(false); onPin(msg); }}>{conv.pinnedMessageIds?.includes(msg.id) ? '📌 Désépingler' : '📌 Épingler'}</button>}
+                  {actOnOthers && <button type="button" onClick={() => { setMenu(false); setModal('mute'); }}>🔇 Mettre en sourdine…</button>}
+                  {actOnOthers && <button type="button" onClick={() => { setMenu(false); setModal('report'); }}>🚩 Signaler</button>}
+                  {canBan && <button type="button" className="danger" onClick={() => { setMenu(false); setModal('ban'); }}>🚫 Bannir du chat…</button>}
                   {canDelete && <button type="button" className="danger" onClick={doDelete}>🗑️ {mine ? 'Annuler l\'envoi' : 'Supprimer'}</button>}
                 </div>
               )}
@@ -224,6 +233,7 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
         )}
       </div>
       {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
+      {modal && <ChatModerationModal mode={modal} msg={msg} convType={conv.type} convName={conv.name} convId={conv.id} onClose={() => setModal(null)} />}
     </div>
   );
 }

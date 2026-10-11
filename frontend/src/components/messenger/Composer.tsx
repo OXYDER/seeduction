@@ -15,6 +15,8 @@ const MENTION_AT_CARET = /(^|\s)@([\p{L}\p{N}_.·-]{0,50})$/u;
 interface Props {
   conversationId: string;
   writable: boolean;
+  /** Bannissement du chat en cours : le champ de saisie est remplacé par la raison et la date de fin. */
+  ban?: { reason: string; expiresAt: string | null } | null;
   /** Personnes qu'on peut @mentionner dans cette conversation. */
   people: MsgUser[];
   replyTo: Msg | null;
@@ -27,7 +29,7 @@ interface Props {
   onFilesHandled?: () => void;
 }
 
-export default function Composer({ conversationId, writable, people, replyTo, onCancelReply, editing, onCancelEdit, compact, droppedFiles, onFilesHandled }: Props) {
+export default function Composer({ conversationId, writable, ban, people, replyTo, onCancelReply, editing, onCancelEdit, compact, droppedFiles, onFilesHandled }: Props) {
   const send = useMessenger((s) => s.send);
   const edit = useMessenger((s) => s.edit);
   const typingPing = useMessenger((s) => s.typingPing);
@@ -204,6 +206,14 @@ export default function Composer({ conversationId, writable, people, replyTo, on
     if (files.length) { e.preventDefault(); files.slice(0, 3).forEach((f) => sendFile(f)); }
   }
 
+  if (ban) {
+    return (
+      <div className="msgr-readonly msgr-banned">
+        🚫 Tu es banni du chat {ban.expiresAt ? `jusqu'au ${new Date(ban.expiresAt).toLocaleString('fr-CA', { dateStyle: 'medium', timeStyle: 'short' })}` : 'définitivement'}.<br />
+        <span className="muted">Raison : {ban.reason}</span>
+      </div>
+    );
+  }
   if (!writable) return <div className="msgr-readonly">🔒 Seule la modération peut écrire dans ce canal.</div>;
 
   return (

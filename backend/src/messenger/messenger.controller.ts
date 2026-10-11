@@ -8,6 +8,7 @@ import { ChatFilesService } from '../chat/chat-files.service';
 import { Actor, MessengerService, SendInput } from './messenger.service';
 import { MessengerGifsService } from './messenger-gifs.service';
 import { MessengerCallsService } from './messenger-calls.service';
+import { ChatModerationService } from './chat-moderation.service';
 import { AuditService } from '../audit/audit.service';
 
 const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.user.username, role: req.user.role });
@@ -16,7 +17,7 @@ const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.u
 @UseGuards(JwtAuthGuard)
 @Controller('messenger')
 export class MessengerController {
-  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService, private gifs: MessengerGifsService, private calls: MessengerCallsService, private audit: AuditService) {}
+  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService, private gifs: MessengerGifsService, private calls: MessengerCallsService, private audit: AuditService, private moderation: ChatModerationService) {}
 
   @Get('conversations')
   list(@Query('archived') archived: string | undefined, @Request() req: any) {
@@ -92,6 +93,43 @@ export class MessengerController {
   @Post('conversations/:id/messages')
   send(@Param('id') id: string, @Body() body: SendInput, @Request() req: any) {
     return this.messenger.send(actorOf(req), id, body ?? {});
+  }
+
+  // ---- Sourdine entre membres, signalement et bannissement du chat ----
+
+  @Get('mutes')
+  mutes(@Request() req: any) {
+    return this.moderation.listMutes(req.user.userId);
+  }
+
+  @Post('mutes')
+  mute(@Body() body: { userId: string; minutes?: number | null }, @Request() req: any) {
+    return this.moderation.mute(actorOf(req), body?.userId, body?.minutes);
+  }
+
+  @Delete('mutes/:userId')
+  unmute(@Param('userId') userId: string, @Request() req: any) {
+    return this.moderation.unmute(actorOf(req), userId);
+  }
+
+  @Post('messages/:id/report')
+  report(@Param('id') id: string, @Body('reason') reason: string, @Request() req: any) {
+    return this.moderation.reportMessage(actorOf(req), id, reason);
+  }
+
+  @Get('bans')
+  bans(@Request() req: any) {
+    return this.moderation.listBans(actorOf(req));
+  }
+
+  @Post('bans')
+  ban(@Body() body: { userId: string; conversationId?: string | null; reason: string; minutes?: number | null }, @Request() req: any) {
+    return this.moderation.ban(actorOf(req), body ?? ({} as any), req.ip);
+  }
+
+  @Delete('bans/:id')
+  unban(@Param('id') id: string, @Request() req: any) {
+    return this.moderation.unban(actorOf(req), id, req.ip);
   }
 
   @Post('conversations/:id/read')

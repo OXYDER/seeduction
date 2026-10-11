@@ -15,6 +15,7 @@ import WatchingVisibilityPanel from '../components/WatchingVisibilityPanel';
 import DefaultViewPanel from '../components/DefaultViewPanel';
 import ChatBubblesPanel from '../components/ChatBubblesPanel';
 import BrowserNotifyPanel from '../components/BrowserNotifyPanel';
+import ChatMutesPanel from '../components/ChatMutesPanel';
 import TipStylePanel from '../components/TipStylePanel';
 import Avatar from '../components/Avatar';
 import { displayRank } from '../lib/memberClass';
@@ -202,6 +203,7 @@ export default function Profile() {
       {showTab('account') && <DefaultViewPanel value={profile.defaultView} />}
       {showTab('account') && <ChatBubblesPanel value={profile.chatBubbles !== false} />}
       {showTab('account') && <BrowserNotifyPanel />}
+      {showTab('account') && <ChatMutesPanel />}
       {showTab('account') && <TipStylePanel />}
       {showTab('account') && <WatchingVisibilityPanel value={profile.showWatchingStatus !== false} />}
       {showTab('account') && <AdultPreference enabled={!!profile.showAdult} />}

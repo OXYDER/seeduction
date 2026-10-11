@@ -70,7 +70,10 @@ export default function StatusSwitcher({ value, statusText, open, onOpenChange, 
           onKeyDown={(e) => { if (e.key === 'Enter') save(current, text); }}
           style={{ width: '100%' }}
         />
-        <button type="button" className="secondary" disabled={busy} style={{ width: '100%', marginTop: 6 }} onClick={() => save(current, text)}>Enregistrer</button>
+        <div className="row" style={{ gap: 6, marginTop: 6 }}>
+          <button type="button" className="secondary" disabled={busy} style={{ flex: 1 }} onClick={() => save(current, text)}>Enregistrer</button>
+          {(text || statusText) && <button type="button" className="secondary" disabled={busy} title="Supprimer complètement le message de statut" onClick={() => { setText(''); save(current, ''); }}>🗑 Retirer</button>}
+        </div>
       </div>
       <Link to="/profile" className="muted" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }} onClick={() => onOpenChange(false)}>
         Voir mon profil →

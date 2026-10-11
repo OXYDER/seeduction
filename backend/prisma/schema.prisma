@@ -145,6 +145,9 @@ model User {
   @@index([status])
   @@index([parentId])
   telegramLink     TelegramLink?
+  chatBans         ChatBan[]  @relation("ChatBanned")
+  chatMutes        ChatMute[] @relation("ChatMuter")
+  chatMutedBy      ChatMute[] @relation("ChatMuted")
   suggestions      Suggestion[]
   suggestionVotes  SuggestionVote[]
   suggestionComments SuggestionComment[]
@@ -614,6 +617,8 @@ model Report {
   targetId    String
   reason      String       @db.Text
   status      ReportStatus @default(OPEN)
+  // Message de chat signalé : copie du texte au moment du signalement (l'auteur peut le supprimer ensuite), au format JSON.
+  snapshot    String?      @db.Text
   createdAt   DateTime     @default(now())
 }
 
@@ -1655,4 +1660,35 @@ model SuggestionComment {
   createdAt    DateTime   @default(now())
 
   @@index([suggestionId, createdAt])
+}
+
+// Bannissement du chat décidé par la modération : d'un canal public (conversationId) ou de tous les canaux publics (null), pour une durée ou à vie.
+model ChatBan {
+  id             String    @id @default(uuid())
+  user           User      @relation("ChatBanned", fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  conversationId String?
+  reason         String    @db.VarChar(500)
+  issuedById     String
+  issuedByName   String    @db.VarChar(60)
+  expiresAt      DateTime? // null = définitif
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([userId, revokedAt])
+  @@index([revokedAt, createdAt])
+}
+
+// Mise en sourdine d'un membre par un autre membre : ses messages n'apparaissent plus chez celui qui l'a mis en sourdine, pour une durée ou à vie.
+model ChatMute {
+  id        String    @id @default(uuid())
+  user      User      @relation("ChatMuter", fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  target    User      @relation("ChatMuted", fields: [targetId], references: [id], onDelete: Cascade)
+  targetId  String
+  expiresAt DateTime? // null = sans limite
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, targetId])
+  @@index([targetId])
 }

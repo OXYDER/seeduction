@@ -8,6 +8,7 @@ import { timeAgo } from '../lib/time';
 import RejectReason from '../components/RejectReason';
 import PendingTorrentCard, { type PendingTorrent } from '../components/PendingTorrentCard';
 import { SupportQueue, SupportStats } from '../components/AdminSupport';
+import ChatBansPanel from '../components/ChatBansPanel';
 import { useSupport } from '../store/support';
 
 interface ReportRow {
@@ -16,7 +17,7 @@ interface ReportRow {
   torrent: { id: string; name: string; coverImage: string | null; status: string; seeders: number } | null;
 }
 
-const TYPE_LABEL: Record<string, string> = { torrent: 'Torrent', user: 'Membre', forumPost: 'Forum', comment: 'Commentaire' };
+const TYPE_LABEL: Record<string, string> = { torrent: 'Torrent', user: 'Membre', forumPost: 'Forum', comment: 'Commentaire', chatMessage: 'Chat' };
 const isOld = (iso: string) => Date.now() - new Date(iso).getTime() > 24 * 3600_000;
 
 /** La file de modération du staff : torrents à valider et signalements, avec les actions à portée de clic. */
@@ -26,9 +27,9 @@ export default function Moderation() {
   const refreshQueue = useQueue((s) => s.refresh);
   const location = useLocation();
   const [params, setParams] = useSearchParams();
-  type Tab = 'torrents' | 'reports' | 'billets' | 'support-stats';
+  type Tab = 'torrents' | 'reports' | 'billets' | 'support-stats' | 'chat-bans';
   const fromUrl = params.get('tab');
-  const tab: Tab = fromUrl === 'billets' || fromUrl === 'support-stats' || fromUrl === 'reports' || fromUrl === 'torrents' ? fromUrl : (location.state as any)?.tab === 'reports' ? 'reports' : 'torrents';
+  const tab: Tab = fromUrl === 'billets' || fromUrl === 'support-stats' || fromUrl === 'chat-bans' || fromUrl === 'reports' || fromUrl === 'torrents' ? fromUrl : (location.state as any)?.tab === 'reports' ? 'reports' : 'torrents';
   const setTab = (t: Tab) => { const next = new URLSearchParams(params); if (t === 'torrents') next.delete('tab'); else next.set('tab', t); setParams(next, { replace: true }); };
   const openTickets = useSupport((s) => s.staff);
   const refreshSupport = useSupport((s) => s.refreshBadge);
@@ -136,6 +137,9 @@ export default function Moderation() {
         <button type="button" role="tab" aria-selected={tab === 'support-stats'} className={tab === 'support-stats' ? 'on' : ''} onClick={() => setTab('support-stats')}>
           📊 Statistiques du support
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'chat-bans'} className={tab === 'chat-bans' ? 'on' : ''} onClick={() => setTab('chat-bans')}>
+          🚫 Bannis du chat
+        </button>
       </div>
 
       {error && <div className="panel" style={{ borderColor: 'var(--danger)' }}>{error}</div>}
@@ -143,6 +147,7 @@ export default function Moderation() {
 
       {tab === 'billets' && <SupportQueue />}
       {tab === 'support-stats' && <SupportStats />}
+      {tab === 'chat-bans' && <ChatBansPanel />}
 
       {tab === 'torrents' && (
         <>

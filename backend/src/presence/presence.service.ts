@@ -5,7 +5,7 @@ import { PrismaService } from '../common/prisma.service';
 
 export type PublicStatus = 'ONLINE' | 'AWAY' | 'BUSY' | 'OFFLINE';
 
-interface Entry { sockets: Set<string>; username: string; preference: PresenceStatus; watchers: Set<string>; idle: Set<string> }
+interface Entry { sockets: Set<string>; username: string; role: string; preference: PresenceStatus; watchers: Set<string>; idle: Set<string> }
 
 /**
  * Présence en direct de tout le site (chat public ET chat privé partagent la même instance) : qui est connecté
@@ -28,8 +28,8 @@ export class PresenceService extends EventEmitter {
   async connect(userId: string, socketId: string, username: string): Promise<boolean> {
     const existing = this.users.get(userId);
     if (existing) { existing.sockets.add(socketId); return false; }
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { presenceStatus: true } });
-    this.users.set(userId, { sockets: new Set([socketId]), username, preference: user?.presenceStatus ?? 'ONLINE', watchers: new Set(), idle: new Set() });
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { presenceStatus: true, role: true } });
+    this.users.set(userId, { sockets: new Set([socketId]), username, role: user?.role ?? 'USER', preference: user?.presenceStatus ?? 'ONLINE', watchers: new Set(), idle: new Set() });
     this.emit('presence-changed', { userId, online: true });
     return true;
   }
@@ -103,9 +103,9 @@ export class PresenceService extends EventEmitter {
   }
 
   /** Liste des membres connectés visibles publiquement (le chat public affiche cette liste à droite). */
-  listOnline(): { id: string; username: string; status: PublicStatus }[] {
+  listOnline(): { id: string; username: string; role: string; status: PublicStatus }[] {
     return [...this.users.entries()]
       .filter(([, e]) => e.preference !== 'INVISIBLE')
-      .map(([id]) => ({ id, username: this.users.get(id)!.username, status: this.publicStatus(id) }));
+      .map(([id]) => ({ id, username: this.users.get(id)!.username, role: this.users.get(id)!.role, status: this.publicStatus(id) }));
   }
 }

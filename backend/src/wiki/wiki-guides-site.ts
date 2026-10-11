@@ -348,6 +348,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Appeler[/b]\n` +
         `Dans une conversation privée, 📞 lance un appel audio et 🎥 un appel vidéo (si l'autre est en ligne). Tu peux couper ton micro, activer la caméra, partager ton écran.\n\n` +
         `[b]S'organiser[/b]\n` +
+        `[b]Mettre un membre en sourdine, signaler, bannir[/b]\n` +
+        `Le menu ⋯ d'un message ouvre trois actions. [b]🔇 Mettre en sourdine[/b] : pour la durée de ton choix, tu ne vois plus les messages de ce membre (il n'est pas prévenu) ; tu les réactives dans Profil > Compte > « Membres en sourdine ». [b]🚩 Signaler[/b] : le message part au staff avec ton motif. [b]🚫 Bannir du chat[/b] (modération) : raison, durée, ce canal ou tous les canaux ; le membre voit la raison et la date de fin. Dans le panneau ⓘ d'un canal, les membres en ligne sont classés par rang.\n\n` +
         `Le menu ⋯ d'une conversation permet de l'épingler, de la mettre en sourdine ou de l'archiver. Les messages importants peuvent être épinglés (25 maximum par conversation).\n\n` +
         `[b]Les canaux publics[/b]\n` +
         `Des salons ouverts à toute la communauté (« Général » est le principal). Lis le message du jour en haut du canal : il rappelle ses règles.\n\n` +

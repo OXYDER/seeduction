@@ -6,6 +6,7 @@ import { KLIPY_MEDIA } from './messenger-gifs.service';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from '../presence/presence.service';
+import { ChatModerationService, describeExpiry } from './chat-moderation.service';
 
 const ROLE_ORDER = ['USER', 'UPLOADER', 'MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const rank = (r?: string | null) => (r ? ROLE_ORDER.indexOf(r) : -1);
@@ -113,7 +114,7 @@ export interface RealtimeEvent {
 export class MessengerService extends EventEmitter {
   private readonly logger = new Logger(MessengerService.name);
 
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private presence: PresenceService) {
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private presence: PresenceService, private moderation: ChatModerationService) {
     super();
     this.setMaxListeners(20);
   }
@@ -206,17 +207,19 @@ export class MessengerService extends EventEmitter {
     const visible = mine.filter((m) => m.conversation.type !== 'CHANNEL' || !m.conversation.readRole || rank(actor.role) >= rank(m.conversation.readRole));
     const ids = visible.map((m) => m.conversationId);
     if (ids.length === 0) return [];
+    // Membres mis en sourdine : leurs messages ne comptent ni dans « non lus » ni dans l'aperçu de la conversation. Bannissements : le canal devient en lecture seule.
+    const [muted, bans] = await Promise.all([this.moderation.mutedIds(actor.userId), this.moderation.activeBansOf(actor.userId)]);
 
     const [lasts, unreadRows, participants, pinRows] = await Promise.all([
       this.prisma.$queryRaw<{ id: string; conversationId: string; type: string; content: string; fileName: string | null; senderId: string; createdAt: Date; deletedAt: Date | null; username: string }[]>`
         SELECT DISTINCT ON (m."conversationId") m.id, m."conversationId", m.type::text AS type, m.content, m."fileName", m."senderId", m."createdAt", m."deletedAt", u.username
         FROM "Message" m JOIN "User" u ON u.id = m."senderId"
-        WHERE m."conversationId" = ANY(${ids}::text[])
+        WHERE m."conversationId" = ANY(${ids}::text[]) AND m."senderId" <> ALL(${muted}::text[])
         ORDER BY m."conversationId", m."createdAt" DESC`,
       this.prisma.$queryRaw<{ conversationId: string; n: number; mentions: number }[]>`
         SELECT m."conversationId", COUNT(*)::int AS n, COUNT(*) FILTER (WHERE ${actor.userId} = ANY(m."mentionIds"))::int AS mentions
         FROM "Message" m JOIN "ConversationMember" cm ON cm."conversationId" = m."conversationId" AND cm."userId" = ${actor.userId}
-        WHERE m."createdAt" > cm."lastReadAt" AND m."senderId" <> ${actor.userId} AND m."deletedAt" IS NULL AND m."conversationId" = ANY(${ids}::text[])
+        WHERE m."createdAt" > cm."lastReadAt" AND m."senderId" <> ${actor.userId} AND m."deletedAt" IS NULL AND m."conversationId" = ANY(${ids}::text[]) AND m."senderId" <> ALL(${muted}::text[])
         GROUP BY m."conversationId"`,
       this.prisma.conversationMember.findMany({
         where: { conversationId: { in: visible.filter((m) => m.conversation.type !== 'CHANNEL').map((m) => m.conversationId) } },
@@ -238,6 +241,7 @@ export class MessengerService extends EventEmitter {
       const people = peopleBy.get(c.id) ?? [];
       const other = c.type === 'DIRECT' ? people.find((p) => p.userId !== actor.userId)?.user ?? null : null;
       const unread = unreadBy.get(c.id);
+      const ban = c.type === 'CHANNEL' ? bans.filter((b) => !b.conversationId || b.conversationId === c.id).sort((a, b) => (b.expiresAt?.getTime() ?? Infinity) - (a.expiresAt?.getTime() ?? Infinity))[0] ?? null : null;
       return [{
         id: c.id,
         type: c.type,
@@ -258,7 +262,8 @@ export class MessengerService extends EventEmitter {
         pinnedMessageIds: pinsBy.get(c.id) ?? [],
         motd: c.motd,
         motdAt: c.motdAt,
-        writable: !(c.type === 'CHANNEL' && c.writeRole && rank(actor.role) < rank(c.writeRole)),
+        writable: !ban && !(c.type === 'CHANNEL' && c.writeRole && rank(actor.role) < rank(c.writeRole)),
+        ban: ban ? { reason: ban.reason, expiresAt: ban.expiresAt } : null,
         position: c.position,
         lastMessageAt: last?.createdAt ?? c.lastMessageAt,
       }];
@@ -281,7 +286,7 @@ export class MessengerService extends EventEmitter {
     return {
       id: conv.id, type: conv.type, name: conv.type === 'DIRECT' ? other?.username ?? 'Membre' : conv.name, slug: conv.slug, description: conv.description,
       iconUrl: conv.iconUrl, other: other ? { ...other, status: this.presence.publicStatus(other.id) } : null, members: undefined, memberCount: conv.members.length,
-      last: null, unread: 0, mentions: 0, mutedUntil: null, pinned: false, archived: false, myRole: 'MEMBER', pinnedMessageIds: [] as string[], motd: conv.motd, motdAt: conv.motdAt, writable: true, position: conv.position, lastMessageAt: conv.lastMessageAt,
+      last: null, unread: 0, mentions: 0, mutedUntil: null, pinned: false, archived: false, myRole: 'MEMBER', pinnedMessageIds: [] as string[], motd: conv.motd, motdAt: conv.motdAt, writable: true, ban: null, position: conv.position, lastMessageAt: conv.lastMessageAt,
     };
   }
 
@@ -439,8 +444,9 @@ export class MessengerService extends EventEmitter {
     const take = Math.max(1, Math.min(limit, 100));
     let cursor: { createdAt: Date; id: string } | null = null;
     if (before) cursor = await this.prisma.message.findFirst({ where: { id: before, conversationId }, select: { createdAt: true, id: true } });
+    const muted = await this.moderation.mutedIds(actor.userId);
     const rows = await this.prisma.message.findMany({
-      where: { conversationId, ...(cursor ? { OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: cursor.id } }] } : {}) },
+      where: { conversationId, ...(muted.length ? { senderId: { notIn: muted } } : {}), ...(cursor ? { OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: cursor.id } }] } : {}) },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: take + 1,
       include: MESSAGE_INCLUDE,
@@ -462,8 +468,9 @@ export class MessengerService extends EventEmitter {
     await this.access(actor, conversationId);
     const term = (q ?? '').trim();
     if (term.length < 2) return [];
+    const muted = await this.moderation.mutedIds(actor.userId);
     const rows = await this.prisma.message.findMany({
-      where: { conversationId, deletedAt: null, content: { contains: term, mode: 'insensitive' } },
+      where: { conversationId, deletedAt: null, content: { contains: term, mode: 'insensitive' }, ...(muted.length ? { senderId: { notIn: muted } } : {}) },
       orderBy: { createdAt: 'desc' },
       take: 30,
       include: MESSAGE_INCLUDE,
@@ -487,6 +494,10 @@ export class MessengerService extends EventEmitter {
     await this.assertMessaging(actor.userId);
     const { conv } = await this.access(actor, conversationId);
     this.assertCanWrite(actor, conv);
+    if (conv.type === 'CHANNEL') {
+      const ban = await this.moderation.activeBanFor(actor.userId, conv.id);
+      if (ban) throw new ForbiddenException(`Tu es banni du chat ${describeExpiry(ban.expiresAt)}. Raison : ${ban.reason}`);
+    }
 
     if (conv.slowModeSeconds > 0 && !isStaff(actor.role)) {
       const last = await this.prisma.message.findFirst({ where: { conversationId, senderId: actor.userId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
@@ -586,12 +597,14 @@ export class MessengerService extends EventEmitter {
       if (dup) return;
       await this.notifications.notify({ userId, type: 'MESSAGE', title, body: previewOf({ type: dto.type, content: dto.content, fileName: dto.fileName }).slice(0, 120), link });
     };
-    const mentioned = new Set(dto.mentionIds.filter((id) => id !== actor.userId));
+    // Les membres qui ont mis l'auteur en sourdine ne sont jamais notifiés de ses messages.
+    const muters = await this.moderation.mutersAmong(actor.userId, [...new Set([...dto.mentionIds, ...(conv.type === 'CHANNEL' ? [] : await this.memberIds(conv.id))])]);
+    const mentioned = new Set(dto.mentionIds.filter((id) => id !== actor.userId && !muters.has(id)));
     for (const id of mentioned) await notify(id, `${actor.username} t'a mentionné${conv.name ? ` dans ${conv.type === 'CHANNEL' ? '#' : ''}${conv.name}` : ''}`);
     if (conv.type === 'CHANNEL') return;
     const members = await this.prisma.conversationMember.findMany({ where: { conversationId: conv.id, userId: { not: actor.userId } }, select: { userId: true, mutedUntil: true } });
     for (const m of members) {
-      if (mentioned.has(m.userId) || this.presence.isOnline(m.userId)) continue;
+      if (mentioned.has(m.userId) || this.presence.isOnline(m.userId) || muters.has(m.userId)) continue;
       if (m.mutedUntil && m.mutedUntil > new Date()) continue;
       await notify(m.userId, conv.type === 'GROUP' ? `${actor.username} dans « ${conv.name} »` : `Nouveau message de ${actor.username}`);
     }

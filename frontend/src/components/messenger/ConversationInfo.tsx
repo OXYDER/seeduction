@@ -12,6 +12,16 @@ import Lightbox from './Lightbox';
 
 const ROLE_LABEL: Record<string, string> = { OWNER: 'Propriétaire', SUPER_MODERATOR: 'Super modérateur', ADMIN: 'Administrateur', MEMBER: '' };
 
+/** Liste des membres en ligne d'un canal : regroupés par rang, du plus haut au plus bas. */
+const RANKS: { role: string; label: string; icon: string }[] = [
+  { role: 'OWNER', label: 'Propriétaire', icon: '👑' },
+  { role: 'ADMIN', label: 'Administrateurs', icon: '🛡️' },
+  { role: 'SUPER_MODERATOR', label: 'Super modérateurs', icon: '⚔️' },
+  { role: 'MODERATOR', label: 'Modérateurs', icon: '🔰' },
+  { role: 'UPLOADER', label: 'Uploaders', icon: '⬆️' },
+  { role: 'USER', label: 'Membres', icon: '👤' },
+];
+
 /** Panneau de droite : membres et réglages d'un groupe, médias partagés, personnes en ligne d'un canal. */
 export default function ConversationInfo({ conversationId, onClose, onLeft }: { conversationId: string; onClose: () => void; onLeft: () => void }) {
   const me = useAuthStore((s) => s.user);
@@ -138,15 +148,24 @@ export default function ConversationInfo({ conversationId, onClose, onLeft }: { 
       {conv.type === 'CHANNEL' && (
         <section className="msgr-info-section">
           <div className="msgr-info-title"><span>En ligne — {onlineList.length}</span></div>
-          {onlineList.slice(0, 40).map((u) => (
-            <button key={u.id} type="button" className="msgr-member msgr-member-btn" disabled={u.id === me?.id} onClick={() => openDirect({ id: u.id, username: u.username })} title={u.id === me?.id ? undefined : `Écrire à ${u.username}`}>
-              <span className="msgr-conv-avatar" style={{ width: 28, height: 28 }}>
-                <Avatar user={{ username: u.username }} size={28} />
-                <span className="msgr-status-dot" style={{ background: STATUS_COLOR[u.status], width: 9, height: 9 }} />
-              </span>
-              <span>{u.username}</span>
-            </button>
-          ))}
+          {RANKS.map((rk) => {
+            const people = onlineList.filter((u) => (RANKS.some((r) => r.role === u.role) ? u.role : 'USER') === rk.role).sort((a, b) => a.username.localeCompare(b.username, 'fr', { sensitivity: 'base' }));
+            if (people.length === 0) return null;
+            return (
+              <div key={rk.role} className="msgr-rank-group">
+                <div className="msgr-rank-title">{rk.icon} {rk.label} — {people.length}</div>
+                {people.slice(0, 100).map((u) => (
+                  <button key={u.id} type="button" className="msgr-member msgr-member-btn" disabled={u.id === me?.id} onClick={() => openDirect({ id: u.id, username: u.username })} title={u.id === me?.id ? undefined : `Écrire à ${u.username}`}>
+                    <span className="msgr-conv-avatar" style={{ width: 28, height: 28 }}>
+                      <Avatar user={{ username: u.username }} size={28} />
+                      <span className="msgr-status-dot" style={{ background: STATUS_COLOR[u.status], width: 11, height: 11 }} />
+                    </span>
+                    <span>{u.username}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </section>
       )}
 

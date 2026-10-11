@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
-import { statusOf, useMessenger, type Msg, type MsgUser } from '../../store/messenger';
+import { isUserMuted, statusOf, useMessenger, type Msg, type MsgUser } from '../../store/messenger';
 import { useCalls } from '../../store/calls';
 import { useSupport } from '../../store/support';
 import { STATUS_LABEL } from '../../lib/presence';
@@ -97,7 +97,9 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   useEffect(() => { setReplyTo(null); setEditing(null); setSearchOpen(false); setQuery(''); setNewBelow(0); setAwayFromBottom(false); stick.current = true; initialRead.current = null; lastCount.current = 0; }, [conversationId]);
   useEffect(() => { if (thread?.loaded && initialRead.current === null) initialRead.current = thread.myLastReadAt ?? ''; }, [thread?.loaded, thread?.myLastReadAt]);
 
-  const messages = thread?.messages ?? [];
+  const mutes = useMessenger((s) => s.mutes);
+  const allMessages = thread?.messages ?? [];
+  const messages = useMemo(() => allMessages.filter((m) => !isUserMuted(mutes, m.sender.id)), [allMessages, mutes]);
   const firstId = messages[0]?.id;
 
   const scrollToBottom = useCallback((smooth = false) => {
@@ -378,6 +380,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
       <Composer
         conversationId={conversationId}
         writable={conv.writable}
+        ban={conv.ban}
         people={people}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}

@@ -118,7 +118,8 @@ export class UsersService {
    */
   async setPresenceStatus(userId: string, status: string, statusText?: string | null) {
     if (!PRESENCE_VALUES.includes(status as PresenceStatus)) throw new BadRequestException('Statut invalide');
-    const text = typeof statusText === 'string' ? statusText.trim().slice(0, 100) || null : undefined;
+    // « null » ou une chaîne vide efface le message ; « undefined » (champ absent) le laisse tel quel.
+    const text = typeof statusText === 'string' ? statusText.trim().slice(0, 100) || null : statusText === null ? null : undefined;
     await this.prisma.user.update({ where: { id: userId }, data: { presenceStatus: status as PresenceStatus, ...(text !== undefined ? { statusText: text } : {}) } });
     this.presence.setPreference(userId, status as PresenceStatus);
     return { presenceStatus: status, ...(text !== undefined ? { statusText: text } : {}) };

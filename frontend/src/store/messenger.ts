@@ -68,6 +68,8 @@ export interface ConvSummary {
   motd?: string | null;
   motdAt?: string | null;
   writable: boolean;
+  /** Bannissement du chat en cours pour moi dans ce canal (raison, date de fin ; null = définitif). */
+  ban?: { reason: string; expiresAt: string | null } | null;
   position: number;
   lastMessageAt: string;
 }
@@ -111,7 +113,19 @@ export function publicUnreadOf(conversations: ConvSummary[]) {
   return conversations.reduce((n, c) => (c.type !== 'CHANNEL' || c.archived || isMuted(c) ? n : n + c.unread), 0);
 }
 
+/** Membres que j'ai mis en sourdine : identifiant → date de fin (null = sans limite). Leurs messages disparaissent de mon affichage. */
+export type MuteMap = Record<string, string | null>;
+export const isUserMuted = (mutes: MuteMap, userId?: string | null) => {
+  if (!userId || !(userId in mutes)) return false;
+  const until = mutes[userId];
+  return until === null || new Date(until).getTime() > Date.now();
+};
+
 interface MsgrState {
+  mutes: MuteMap;
+  loadMutes: () => Promise<void>;
+  setMute: (userId: string, minutes: number | null) => Promise<string | null>;
+  removeMute: (userId: string) => Promise<void>;
   socket: Socket | null;
   connected: boolean;
   myId: string | null;
@@ -121,7 +135,7 @@ interface MsgrState {
   threads: Record<string, Thread>;
   typing: Record<string, Record<string, { username: string; at: number }>>;
   online: Record<string, PublicStatus>;
-  onlineList: { id: string; username: string; status: PublicStatus }[];
+  onlineList: { id: string; username: string; role?: string; status: PublicStatus }[];
   windows: DockWindow[];
   /** conversationId -> nombre de vues qui l'affichent en ce moment (page ouverte dessus, fenêtre déployée). */
   visible: Record<string, number>;
@@ -178,6 +192,7 @@ export const useMessenger = create<MsgrState>((set, get) => {
 
   function applyIncoming(m: Msg) {
     const s = get();
+    if (isUserMuted(s.mutes, m.sender.id)) return; // membre en sourdine : ni message, ni non lu, ni son
     const mine = m.sender.id === s.myId;
     const viewing = (s.visible[m.conversationId] ?? 0) > 0 && document.visibilityState === 'visible';
     const known = s.conversations.some((c) => c.id === m.conversationId);
@@ -234,6 +249,26 @@ export const useMessenger = create<MsgrState>((set, get) => {
     settings: loadSettings(),
     bubbles: true,
     setBubbles(on) { set({ bubbles: on }); },
+    mutes: {},
+    async loadMutes() {
+      try {
+        const r = await api.get('/messenger/mutes');
+        set({ mutes: Object.fromEntries((r.data as { userId: string; expiresAt: string | null }[]).map((m) => [m.userId, m.expiresAt])) });
+      } catch { /* on réessaiera à la prochaine connexion */ }
+    },
+    async setMute(userId, minutes) {
+      try {
+        const r = await api.post('/messenger/mutes', { userId, minutes });
+        set((s) => ({ mutes: { ...s.mutes, [userId]: r.data.expiresAt ?? null } }));
+        get().loadConversations(); // les « non lus » et les aperçus ne comptent plus ses messages
+        return null;
+      } catch (err: any) { return err.response?.data?.message ?? 'Impossible de mettre en sourdine'; }
+    },
+    async removeMute(userId) {
+      await api.delete(`/messenger/mutes/${userId}`).catch(() => {});
+      set((s) => { const { [userId]: _gone, ...rest } = s.mutes; return { mutes: rest }; });
+      get().loadConversations();
+    },
 
     connect(token, me) {
       if (get().socket) return;
@@ -244,6 +279,7 @@ export const useMessenger = create<MsgrState>((set, get) => {
       socket.on('connect', () => {
         set({ connected: true });
         get().loadConversations();
+        get().loadMutes();
         // Reconnexion après une coupure : on rattrape les messages manqués dans les conversations déjà ouvertes.
         if (wasConnected) {
           Object.entries(get().threads).filter(([, t]) => t.loaded).forEach(([id]) => {
@@ -262,7 +298,7 @@ export const useMessenger = create<MsgrState>((set, get) => {
       });
       socket.on('disconnect', () => set({ connected: false }));
 
-      socket.on('presence:online', (list: { id: string; username: string; status: PublicStatus }[]) => {
+      socket.on('presence:online', (list: { id: string; username: string; role?: string; status: PublicStatus }[]) => {
         set({ onlineList: list, online: Object.fromEntries(list.map((u) => [u.id, u.status])) });
       });
       socket.on('message:new', (m: Msg) => applyIncoming(m));
