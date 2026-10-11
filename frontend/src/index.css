@@ -3583,3 +3583,5 @@ body.has-chat-rail .dm-bubble-avatar { display: none; }
 .vr-chip.team { display: inline-flex; align-items: center; gap: 4px; color: #1a1205; font-weight: 800; letter-spacing: .02em; background: linear-gradient(135deg, #f6d365, #e0a43a); border: 1px solid rgba(255, 244, 200, 0.75); box-shadow: 0 0 0 1px rgba(224, 164, 58, 0.35), 0 2px 8px rgba(224, 164, 58, 0.35); cursor: pointer; }
 .vr-chip.team:hover { filter: brightness(1.08); }
 .vr-chip.team:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+/* Les pré-résultats de la recherche passent au-dessus des bulles de discussion (le haut de l'écran est sous les bulles sinon) */
+.side-topbar:has(.sb-menu), :root[data-theme="prestige"] .side-topbar:has(.sb-menu) { z-index: 80; }
