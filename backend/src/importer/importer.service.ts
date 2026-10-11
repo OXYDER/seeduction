@@ -750,24 +750,24 @@ export class ImporterService {
       this.prisma.memberImportItem.findMany({ where: { status: 'UPLOADED', torrentId: { not: null } }, select: { torrentId: true } }),
     ]);
     const ids = [...new Set([...staffItems.map((i) => i.torrentId!), ...memberItems.map((i) => i.torrentId!)])];
-    const empty: { id: string; name: string; nfo: string | null }[] = [];
+    const empty: { id: string; name: string; nfoFile: { content: string } | null }[] = [];
     for (let i = 0; i < ids.length; i += 500) {
-      empty.push(...(await this.prisma.torrent.findMany({ where: { id: { in: ids.slice(i, i + 500) }, OR: [{ language: null }, { language: '' }] }, select: { id: true, name: true, nfo: true } })));
+      empty.push(...(await this.prisma.torrent.findMany({ where: { id: { in: ids.slice(i, i + 500) }, OR: [{ language: null }, { language: '' }] }, select: { id: true, name: true, nfoFile: { select: { content: true } } } })));
     }
     st.total = empty.length;
     const stillEmpty = new Map<string, { name: string; nfo: string }>();
     const apply = async (torrentId: string, name: string, nfo: string, assume: boolean, extraNfo?: string) => {
       const meta = detectReleaseMeta(name, nfo, { assumeLanguage: assume });
       if (!meta.language) return false;
-      await this.prisma.torrent.update({ where: { id: torrentId }, data: { language: meta.language, ...(extraNfo ? { nfo: extraNfo } : {}) } });
+      await this.prisma.torrent.update({ where: { id: torrentId }, data: { language: meta.language, ...(extraNfo ? { nfoFile: { upsert: { create: { content: extraNfo }, update: { content: extraNfo } } } } : {}) } });
       st.fixed++;
       if (meta.languageAssumed) st.assumed++;
       return true;
     };
     // 1. nom + NFO déjà enregistré (aucun accès à la seedbox), sans rien supposer
     for (const t of empty) {
-      if (await apply(t.id, t.name, t.nfo ?? '', false)) st.done++;
-      else stillEmpty.set(t.id, { name: t.name, nfo: t.nfo ?? '' });
+      if (await apply(t.id, t.name, t.nfoFile?.content ?? '', false)) st.done++;
+      else stillEmpty.set(t.id, { name: t.name, nfo: t.nfoFile?.content ?? '' });
     }
     // 2. MediaInfo relu sur la seedbox, pour les torrents de l'import staff
     const bySource = new Map<string, { key: string; torrentId: string }[]>();

@@ -10,10 +10,11 @@ import { BadgesModule } from '../badges/badges.module';
 import { ReportsModule } from '../reports/reports.module';
 import { SocialModule } from '../social/social.module';
 import { MetadataModule } from '../metadata/metadata.module';
+import { OwnerTorrentsController } from './owner-torrents.controller';
 
 @Module({
   imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule, MetadataModule],
-  controllers: [AdminController],
+  controllers: [AdminController, OwnerTorrentsController],
   providers: [AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService],
   exports: [AccountDeletionService, AdminService],
 })

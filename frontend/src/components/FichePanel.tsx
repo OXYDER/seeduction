@@ -31,7 +31,7 @@ function guessTitle(name: string): { title: string; year: string } {
  * Changer ou retirer la fiche (TMDB, Deezer, livres, jeux) d'un torrent déjà sur le site : la fiche automatique n'est pas toujours la bonne.
  * Chercher par titre, ou coller l'adresse de la fiche TMDB ; l'ancienne fiche (acteurs, studios, genres, fond) est remplacée par la nouvelle.
  */
-export default function FichePanel({ torrent, onChanged }: { torrent: any; onChanged: (patch: any) => void }) {
+export default function FichePanel({ torrent, onChanged, base = '/admin/torrents' }: { torrent: any; onChanged: (patch: any) => void; base?: string }) {
   const current = ficheKind(torrent);
   const guess = guessTitle(torrent.name);
   const [kinds, setKinds] = useState<string[]>([]);
@@ -72,7 +72,7 @@ export default function FichePanel({ torrent, onChanged }: { torrent: any; onCha
     if (!pick) return;
     setBusy(true); setErr(''); setMsg('');
     try {
-      await api.post(`/admin/torrents/${torrent.id}/metadata`, { kind: pick.kind, id: pick.id, replaceCover });
+      await api.post(`${base}/${torrent.id}/metadata`, { kind: pick.kind, id: pick.id, replaceCover });
       setMsg(`✓ Fiche remplacée par « ${pick.title} »`);
       setPick(null);
       void refresh();
@@ -82,7 +82,7 @@ export default function FichePanel({ torrent, onChanged }: { torrent: any; onCha
   async function clear() {
     if (!window.confirm('Retirer la fiche de ce torrent ? Les acteurs, studios, genres et le fond liés sont supprimés (la pochette est gardée).')) return;
     setBusy(true); setErr(''); setMsg('');
-    try { await api.delete(`/admin/torrents/${torrent.id}/metadata`); setMsg('✓ Fiche retirée'); void refresh(); }
+    try { await api.delete(`${base}/${torrent.id}/metadata`); setMsg('✓ Fiche retirée'); void refresh(); }
     catch (e: any) { setErr(e.response?.data?.message ?? 'Suppression impossible'); }
     finally { setBusy(false); }
   }

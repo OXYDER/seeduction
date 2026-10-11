@@ -71,7 +71,7 @@ export class AdminService {
       orderBy: { createdAt: 'asc' },
       take: 200,
       select: {
-        id: true, infoHash: true, name: true, size: true, coverImage: true, createdAt: true, year: true, resolution: true, description: true, nfo: true, fileList: true,
+        id: true, infoHash: true, name: true, size: true, coverImage: true, createdAt: true, year: true, resolution: true, description: true, nfoFile: { select: { content: true } }, fileList: true,
         seeders: true, leechers: true, anonymousUpload: true, freeleech: true, doubleUpload: true,
         language: true, source: true, codec: true, hdr: true, audio: true, containerFormat: true, season: true, episode: true, releaseDate: true, origin: true,
         releaseGroup: true, genres: true, videoType: true, durationMinutes: true, metaSource: true, metaExternalId: true, metadata: true,
@@ -109,7 +109,7 @@ export class AdminService {
       const meta = (r.metadata ?? {}) as Record<string, any>;
       const files: { path: string; size: number }[] = Array.isArray(r.fileList) ? (r.fileList as any[]) : [];
       const text = plain(r.description ?? '');
-      const nfo = (r.nfo ?? '').trim();
+      const nfo = (r.nfoFile?.content ?? '').trim(); // le NFO est rangé à part (TorrentNfo), pas dans la fiche
       const up = Number(r.uploader.uploaded), down = Number(r.uploader.downloaded);
       const dupes = [
         ...sameFiche.filter((o) => o.id !== r.id && o.metaExternalId === r.metaExternalId && o.metaSource === r.metaSource && r.metaExternalId && (!r.season || !o.season || o.season === r.season) && (!r.episode || !o.episode || o.episode === r.episode)).map((o) => ({ ...pick(o), why: 'même fiche' })),
@@ -157,7 +157,7 @@ export class AdminService {
   }
 
   /** Seuls ces champs sont modifiables (le corps de la requête n'est jamais passé tel quel à la base). */
-  async updateTorrent(id: string, body: Record<string, any>) {
+  async updateTorrent(id: string, body: Record<string, any>, opts: { owner?: boolean } = {}) {
     const data: Record<string, any> = {};
     if (typeof body.name === 'string' && body.name.trim()) data.name = stripReleaseExtension(body.name.trim().slice(0, 300));
     if (typeof body.description === 'string') data.description = body.description;
@@ -187,10 +187,49 @@ export class AdminService {
       data.metadata = { ...((cur?.metadata as object) ?? {}), overview: body.overview.trim().slice(0, 4000) || null };
       data.overviewTranslatedAt = new Date();
     }
-    if (typeof body.freeleech === 'boolean') data.freeleech = body.freeleech;
-    if (typeof body.doubleUpload === 'boolean') data.doubleUpload = body.doubleUpload;
-    if (body.coverImage === null || typeof body.coverImage === 'string') data.coverImage = body.coverImage || null;
-    if (TORRENT_STATUSES.includes(body.status)) data.status = body.status;
+    // Caractéristiques de la release : l'envoyeur peut corriger toutes ses erreurs, comme le staff.
+    if (body.year === null || body.year === '') data.year = null;
+    else if (body.year !== undefined) {
+      const y = Number(body.year);
+      if (!Number.isInteger(y) || y < 1880 || y > new Date().getFullYear() + 2) throw new BadRequestException('Année invalide');
+      data.year = y;
+    }
+    for (const key of ['codec', 'audio', 'containerFormat'] as const) {
+      if (typeof body[key] === 'string') data[key] = body[key].trim().slice(0, 60) || null;
+    }
+    if (typeof body.hdr === 'boolean') data.hdr = body.hdr;
+    if (typeof body.anonymousUpload === 'boolean') data.anonymousUpload = body.anonymousUpload;
+    if (Array.isArray(body.tags)) data.tags = body.tags.filter((t: any) => typeof t === 'string').map((t: string) => t.trim().slice(0, 30)).filter(Boolean).slice(0, 12);
+    if (typeof body.releaseDate === 'string') {
+      const d = body.releaseDate.trim();
+      if (d && !/^\d{4}(-\d{2}(-\d{2})?)?$/.test(d)) throw new BadRequestException('Date de sortie invalide (AAAA, AAAA-MM ou AAAA-MM-JJ)');
+      data.releaseDate = d || null;
+    }
+    for (const key of ['fps', 'durationMinutes'] as const) {
+      if (body[key] === null || body[key] === '') data[key] = null;
+      else if (body[key] !== undefined) {
+        const n = Number(body[key]);
+        if (!Number.isInteger(n) || n < 0 || n > 100_000) throw new BadRequestException('Valeur numérique invalide');
+        data[key] = n;
+      }
+    }
+    if (typeof body.nfo === 'string') {
+      const nfo = body.nfo.trim();
+      if (nfo.replace(/\s+/g, ' ').length < 20) throw new BadRequestException('Le NFO ou le MediaInfo est obligatoire (20 caractères minimum)');
+      data.nfoFile = { upsert: { create: { content: nfo.slice(0, 200_000) }, update: { content: nfo.slice(0, 200_000) } } };
+    }
+    if (body.coverImage === null || typeof body.coverImage === 'string') {
+      const cover = body.coverImage || null;
+      // L'envoyeur ne peut choisir qu'une image enregistrée sur Seeduction (jamais un lien externe).
+      if (cover && opts.owner && !/^\/api\/covers\/[\w.-]+$/.test(cover)) throw new BadRequestException('Pochette invalide : téléverse une image');
+      data.coverImage = cover;
+    }
+    if (!opts.owner) {
+      // Réservé à l'équipe : mise en avant (freeleech, double upload) et statut.
+      if (typeof body.freeleech === 'boolean') data.freeleech = body.freeleech;
+      if (typeof body.doubleUpload === 'boolean') data.doubleUpload = body.doubleUpload;
+      if (TORRENT_STATUSES.includes(body.status)) data.status = body.status;
+    }
     if (Object.keys(data).length === 0) throw new BadRequestException('Aucune modification valide');
     return this.prisma.torrent.update({ where: { id }, data });
   }

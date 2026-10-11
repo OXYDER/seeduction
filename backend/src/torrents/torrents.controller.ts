@@ -200,8 +200,11 @@ export class TorrentsController {
 
   @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() req: any) {
-    return this.torrentsService.findOne(id, req.user);
+  async findOne(@Param('id') id: string, @Request() req: any) {
+    const t = await this.torrentsService.findOne(id, req.user);
+    // « C'est le mien » : ouvre la modification complète à l'envoyeur (compte famille : le compte, pas le profil).
+    const isMine = !!req.user && (t.uploaderId === req.user.userId || t.uploaderId === accountOf(req));
+    return { ...t, isMine };
   }
 
   @UseGuards(JwtAuthGuard)

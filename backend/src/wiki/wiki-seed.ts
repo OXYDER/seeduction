@@ -229,7 +229,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Aucune piste française[/b] : [b]VOSTFR[/b], seulement si le fichier inclut des sous-titres français complets ; sinon [b]VO[/b] (version originale : ni piste française ni sous-titres français, par exemple un film anglais ou japonais). Une piste audio muette : MUET (MUET.VOSTFR avec sous-titres).\n` +
           `Sur Parcourir, le filtre « VFQ » retrouve aussi les MULTI.VFQ et MULTI.VF2 ; « VFF » les MULTI.VFF et MULTI.VF2 ; « MULTI » tous les MULTI.\n\n` +
           `[b]Doublons[/b] : un torrent avec la même empreinte (info_hash) qu'un torrent déjà présent est refusé. Si une version différente (qualité, langue...) existe déjà, le panneau « Versions » te la signale avant l'envoi.\n\n` +
-          `[b]Modération[/b] : ton torrent passe en attente jusqu'à validation par le staff (sauf configuration particulière) — tu peux le modifier tant qu'il n'est pas encore approuvé.`,
+          `[b]Modération[/b] : ton torrent passe en attente jusqu'à validation par le staff (sauf configuration particulière) — tu peux le corriger à tout moment depuis sa fiche (bouton « Modifier mon torrent »).`,
       },
       {
         title: 'Envoyer plusieurs torrents depuis mon client',

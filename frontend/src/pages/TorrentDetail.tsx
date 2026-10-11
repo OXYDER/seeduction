@@ -169,8 +169,9 @@ export default function TorrentDetail() {
 
   const staffBanner = isStaff && <StaffQueueBanner key={`q-${torrent.id}`} torrent={torrent} onPatch={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} onEdit={() => setEditSignal((n) => n + 1)} />;
 
-  const staffPanel = isStaff && (
-    <StaffTorrentPanel key={`staff-${torrent.id}`} torrent={torrent} startOpen={searchParams.get('edit') === '1'} openSignal={editSignal} onSaved={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} />
+  const ownerEdit = !isStaff && !!torrent.isMine;
+  const staffPanel = (isStaff || ownerEdit) && (
+    <StaffTorrentPanel key={`staff-${torrent.id}`} owner={ownerEdit} torrent={torrent} startOpen={searchParams.get('edit') === '1'} openSignal={editSignal} onSaved={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} />
   );
 
   const descriptionPanel = torrent.description && (
