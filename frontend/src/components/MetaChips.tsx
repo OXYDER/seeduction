@@ -1,21 +1,27 @@
+import { useNavigate } from 'react-router-dom';
 import { audioFromName, episodeCode, releaseDateFr, seasonEpisodeOf } from '../lib/frText';
+import { releaseGroup, teamSlug } from '../lib/releaseGroup';
 import { subtitleChip, subtitleNames } from '../lib/subtitles';
 
-/** Ordre d'affichage : la date de sortie d'abord, la langue juste après, puis le reste, et le codec audio en dernier. */
-const ORDER = ['dt', 'lang', 'ep', 'ep2', 'yr', 'org', 'res', 'src', 'cod', 'fmt', 'aud', 'sub'] as const;
+/** Ordre d'affichage : la team en tête (pastille en évidence), puis la date de sortie, la langue juste après, puis le reste. */
+const ORDER = ['team', 'dt', 'lang', 'ep', 'ep2', 'yr', 'org', 'res', 'src', 'cod', 'fmt', 'aud', 'sub'] as const;
 /** Quand la place manque (cartes, rangées), on retire d'abord les moins utiles pour se retrouver : l'ordre ci-dessus est conservé pour ce qui reste. */
-const DROP_FIRST = ['org', 'fmt', 'yr', 'cod', 'aud', 'sub', 'src', 'res', 'ep2', 'ep', 'dt', 'lang'] as const;
+const DROP_FIRST = ['org', 'fmt', 'yr', 'cod', 'aud', 'sub', 'src', 'res', 'ep2', 'ep', 'dt', 'lang', 'team'] as const;
 
 /**
  * Infos d'une release en pastilles de couleur : date de SORTIE (film, épisode, saison, jeu : jamais la date de mise en ligne), langue, épisode, année, résolution, source, codec vidéo, format, codec audio.
  * `limit` : nombre maximum de pastilles (cartes, rangées étroites) ; les autres sont résumées par « +N » (leur détail est dans l'infobulle).
  */
 export default function MetaChips({ t, className = '', limit, inline, explicitEpisode }: { t: any; className?: string; limit?: number; /** Sans conteneur : les pastilles s'insèrent dans une ligne existante (lignes groupées). */ inline?: boolean; /** « Saison 17 » et « Épisode 3 » en toutes lettres (vedette de l'accueil) au lieu de « S17E03 ». */ explicitEpisode?: boolean }) {
+  const navigate = useNavigate();
+  // Le nom de la release garde la casse d'origine (« -CHiLL ») ; la team enregistrée sert quand le nom ne la donne pas.
+  const team: string | null = releaseGroup(String(t.name ?? '')) || t.releaseGroup || null;
   const se = seasonEpisodeOf(t);
   const seasonNum = se.season && /^\d+$/.test(se.season);
   const epLabel = explicitEpisode && seasonNum ? `Saison ${Number(se.season)}` : episodeCode(se.season, se.episode);
   const ep2Label = explicitEpisode && seasonNum && se.episode ? (/^\d+$/.test(se.episode) ? `Épisode ${Number(se.episode)}` : se.episode) : null;
   const all: Record<(typeof ORDER)[number], [string | number | null | undefined, string]> = {
+    team: [team, team ? `Team ${team}` : 'Team'],
     dt: [releaseDateFr(t.releaseDate), 'Date de sortie'],
     // Langue inconnue d'une vidéo : « Langue ? » plutôt qu'une absence qui passe inaperçue (le staff la renseigne depuis « Modifier ce torrent »).
     lang: [t.language || (t.resolution ? 'Langue ?' : null), t.language ? 'Langue' : 'Langue non précisée'],
@@ -42,7 +48,15 @@ export default function MetaChips({ t, className = '', limit, inline, explicitEp
   }
   const content = (
     <>
-      {shown.map((k) => <span key={k} className={`vr-chip ${k}${k === 'lang' && !t.language ? ' nolang' : ''}`} title={all[k][1]}>{all[k][0]}</span>)}
+      {shown.map((k) => k === 'team' && team
+        ? (
+          <span key={k} role="link" tabIndex={0} className="vr-chip team" title={`Team ${team} : voir toutes ses releases`}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/team/${teamSlug(team)}`); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); navigate(`/team/${teamSlug(team)}`); } }}>
+            <span aria-hidden>🛡️</span> {team}
+          </span>
+        )
+        : <span key={k} className={`vr-chip ${k}${k === 'lang' && !t.language ? ' nolang' : ''}`} title={all[k][1]}>{all[k][0]}</span>)}
       {hidden.length > 0 && <span className="vr-chip more" title={ORDER.filter((k) => hidden.includes(k)).map((k) => `${all[k][1]} : ${all[k][0]}`).join('\n')}>+{hidden.length}</span>}
     </>
   );

@@ -3579,3 +3579,7 @@ body.has-chat-rail .dm-bubble-avatar { display: none; }
 .sb-item.sb-hist { align-items: center; }
 .sb-hist-x { margin-left: auto; width: 22px; height: 22px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; background: transparent; border: 0; color: inherit; opacity: 0.55; box-shadow: none; }
 .sb-item.sb-hist:hover .sb-hist-x, .sb-hist-x:hover { opacity: 1; background: rgba(255, 255, 255, 0.14); transform: none; filter: none; }
+/* Pastille de la team : bien distincte des autres (dorée, en relief, avec un bouclier) */
+.vr-chip.team { display: inline-flex; align-items: center; gap: 4px; color: #1a1205; font-weight: 800; letter-spacing: .02em; background: linear-gradient(135deg, #f6d365, #e0a43a); border: 1px solid rgba(255, 244, 200, 0.75); box-shadow: 0 0 0 1px rgba(224, 164, 58, 0.35), 0 2px 8px rgba(224, 164, 58, 0.35); cursor: pointer; }
+.vr-chip.team:hover { filter: brightness(1.08); }
+.vr-chip.team:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }

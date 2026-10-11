@@ -9,6 +9,7 @@ import CategoryTag from './CategoryTag';
 import UserLink from './UserLink';
 import CopyButton from './CopyButton';
 import MetaChips from './MetaChips';
+import { releaseGroup, teamSlug } from '../lib/releaseGroup';
 
 const RES_RANK = (r?: string | null) => (!r ? 0 : /^(4k|2160)/i.test(r) ? 5 : /1080/.test(r) ? 4 : /720/.test(r) ? 3 : /576|480/.test(r) ? 2 : 1);
 
@@ -25,19 +26,6 @@ export function releaseTitle(name: string): string {
   const title = out.join(' ').trim();
   return title.length >= 2 ? title : name;
 }
-
-const GENERIC_GROUPS = new Set(['notag', 'nogrp', 'nogroup', 'unknown', 'scene', 'p2p', 'repack', 'proper', 'internal', 'readnfo']);
-const TECH_TAGS = /^(?:\d{3,4}p|x26[45]|h26[45]|hevc|avc|aac|ac3|eac3|dts|flac|mp3|web|webdl|webrip|bluray|bdrip|hdtv|dvdrip|multi|vff|vfq|vf2|vfi|vostfr|truefrench|french|remux|hdr|hdr10|dv|uhd|sdr|atmos)$/i;
-
-/** Équipe de release : ce qui suit le dernier tiret du nom (« …x264-TOXIC » → TOXIC) — même règle que le serveur, qui en fait une team. */
-export function releaseGroup(name: string): string | null {
-  const base = name.replace(/\[[^\]]*\]\s*$/, '').replace(/\.(mkv|mp4|avi|iso|zip|rar|torrent|nfo)$/i, '').trim();
-  const m = /-([A-Za-z0-9][A-Za-z0-9_]{1,19})$/.exec(base);
-  if (!m) return null;
-  const g = m[1];
-  return /^\d+$/.test(g) || GENERIC_GROUPS.has(g.toLowerCase()) || TECH_TAGS.test(g) ? null : g;
-}
-const teamSlug = (g: string) => g.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 /** Clé de regroupement : la même fiche (TMDB, Deezer...) si elle est connue, sinon le titre nettoyé de la release. */
 export function groupKey(t: any): string {
@@ -93,7 +81,6 @@ interface RowProps { t: any; current?: boolean; /** Release seule (sans titre de
  */
 export function VersionRow({ t, current, standalone, nameLink, star, actions, depth = 0 }: RowProps) {
   const navigate = useNavigate();
-  const group = releaseGroup(t.name);
   return (
     <div
       className={`vr-row clickable${current ? ' current' : ''}${standalone ? ' standalone' : ''}${depth ? ` d${depth}` : ''}`}
@@ -116,7 +103,6 @@ export function VersionRow({ t, current, standalone, nameLink, star, actions, de
         <div className="vr-chips">
           {standalone && t.category && <CategoryTag category={t.category} />}
           <MetaChips t={t} inline />{/* date, langue, épisode, année, résolution, source, codec vidéo, format, codec audio (en dernier) */}
-          {!standalone && group && <Link to={`/team/${teamSlug(group)}`} className="vr-group" title={`Team ${group}`}>{group}</Link>}
           {t.freeleech && <span className="badge freeleech">FL</span>}
           {t.status === 'DEAD' && <span className="vr-dead" title="Plus aucun seeder">☠️</span>}
           <span className="vr-uploader">{t.uploader && !t.anonymousUpload ? <UserLink user={t.uploader} /> : <span className="muted">Anonyme</span>}</span>

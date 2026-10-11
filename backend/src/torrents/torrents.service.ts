@@ -12,6 +12,7 @@ import { languageAtoms, normalizeLanguage, storedValuesFor } from '../common/uti
 import { extractInstallNotes } from '../common/utils/install-notes';
 import { audioOf } from '../importer/audio-codec';
 import { subtitlesOf } from '../common/utils/subtitles';
+import { containerOf } from '../common/utils/container-format';
 import { groupKeyOf } from './group-key';
 import { RELEASE_EXTENSION_SQL, stripReleaseExtension } from '../common/utils/release-name';
 import { Cron } from '@nestjs/schedule';
@@ -147,7 +148,7 @@ export class TorrentsService implements OnModuleInit {
         audio: params.audio,
         subtitles: subtitlesOf(releaseName, params.nfo ?? '', parsed.files),
         source: params.source,
-        containerFormat: params.containerFormat,
+        containerFormat: params.containerFormat || containerOf(parsed.files) || undefined,
         origin: params.origin,
         fps: params.fps,
         durationMinutes: params.durationMinutes,
@@ -690,6 +691,29 @@ export class TorrentsService implements OnModuleInit {
     }
     if (rows.length < 200) this.audioDone = true;
     else this.audioCursor = rows[rows.length - 1].createdAt;
+  }
+
+  private containerCursor: Date | null = null;
+  private containerDone = false;
+
+  /**
+   * Rattrapage : le format du fichier (MKV, MP4, AVI...) des torrents en ligne qui n'en ont pas est lu dans leur liste de fichiers (extension du plus gros fichier
+   * vidéo). 300 torrents toutes les 10 minutes ; un format déjà renseigné n'est jamais remplacé et la date de modification n'est pas touchée.
+   */
+  @Cron('*/10 * * * *')
+  async backfillContainer() {
+    if (this.containerDone) return;
+    const rows = await this.prisma.torrent.findMany({
+      where: { containerFormat: null, ...(this.containerCursor ? { createdAt: { gt: this.containerCursor } } : {}) },
+      orderBy: { createdAt: 'asc' }, take: 300,
+      select: { id: true, createdAt: true, fileList: true },
+    });
+    for (const r of rows) {
+      const format = containerOf(Array.isArray(r.fileList) ? (r.fileList as any[]) : []);
+      if (format) await this.prisma.$executeRaw`UPDATE "Torrent" SET "containerFormat" = ${format} WHERE id = ${r.id} AND "containerFormat" IS NULL`;
+    }
+    if (rows.length < 300) this.containerDone = true;
+    else this.containerCursor = rows[rows.length - 1].createdAt;
   }
 
   private subsCursor: Date | null = null;
