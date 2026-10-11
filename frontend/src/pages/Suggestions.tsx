@@ -99,7 +99,7 @@ export default function Suggestions() {
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
-    <div className="grid" style={{ gap: 16, maxWidth: 940 }}>
+    <div className="grid" style={{ gap: 16 }}>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h1 style={{ margin: 0 }}>💡 Suggestions</h1>

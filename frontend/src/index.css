@@ -3405,7 +3405,9 @@ tr.rel-click:hover td { background: rgba(255,255,255,0.03); }
 .mod-rail-card { margin-top: 10px; }
 .mod-rail-more { margin-top: 6px; font-size: 13px; text-align: right; }
 /* Suggestions des membres */
-.sg-list { display: grid; gap: 10px; }
+/* Pleine largeur : plusieurs colonnes sur grand écran, une seule sur petit écran */
+.sg-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 10px; align-items: stretch; }
+.sg-list .sg-item { min-width: 0; }
 .sg-item, .sg-detail { display: flex; gap: 14px; align-items: flex-start; padding: 12px; border-radius: 12px; background: var(--bg-panel, #10162a); border: 1px solid var(--border); }
 .sg-detail { padding: 16px; }
 .sg-vote { display: grid; justify-items: center; gap: 0; flex: none; min-width: 54px; padding: 8px 6px; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: inherit; cursor: pointer; line-height: 1.15; }
