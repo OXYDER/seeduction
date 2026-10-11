@@ -15,7 +15,14 @@ export interface NameAnalysis {
   suggestions: NameSuggestion[];
   /** Ce qui n'a pas pu être lu et que le membre peut compléter à la main (« langue », « source »...). */
   missing: string[];
+  /** Vrai quand le nom est correct et porte toutes les informations nécessaires : aucune proposition n'est faite. */
+  complete?: boolean;
+  /** Vrai quand le nom n'est pas conforme mais que le NFO / MediaInfo manque : les propositions attendent le NFO. */
+  waitingForNfo?: boolean;
 }
+
+/** Team absente du nom : l'étiquette « NoTaG » la remplace. */
+export const NO_TEAM = 'NoTaG';
 
 const GENERIC_GROUPS = new Set(['notag', 'nogrp', 'nogroup', 'unknown', 'scene', 'p2p', 'repack', 'proper', 'internal', 'readnfo']);
 const TECH_TAGS = /^(?:\d{3,4}p|x26[45]|h26[45]|hevc|avc|aac|ac3|eac3|dts|flac|mp3|web|webdl|webrip|bluray|bdrip|hdtv|dvdrip|multi|vff|vfq|vf2|vfi|vostfr|truefrench|french|remux|hdr|hdr10|dv|uhd|sdr|atmos)$/i;
@@ -30,6 +37,8 @@ function groupOf(base: string): { rest: string; group: string | null } {
   const m = /(?:\s+[-–]\s*|-)([A-Za-z0-9][A-Za-z0-9_]{1,19})\s*$/.exec(base);
   if (!m) return { rest: base, group: null };
   const g = m[1];
+  // « NoTaG » / « NoGrp » : la team est absente, ce qui est une réponse valable (écrite NoTaG).
+  if (/^(?:notag|nogrp|nogroup)$/i.test(g)) return { rest: base.slice(0, m.index).trim(), group: NO_TEAM };
   if (/^\d+$/.test(g) || GENERIC_GROUPS.has(g.toLowerCase()) || TECH_TAGS.test(g)) return { rest: base, group: null };
   return { rest: base.slice(0, m.index).trim(), group: g };
 }
@@ -78,6 +87,7 @@ export function isWellFormedName(name: string): boolean {
 
 export function suggestReleaseNames(input: { name: string; files?: { path: string; size?: number }[]; nfo?: string; title?: string | null; year?: number | null }): NameAnalysis {
   const files = (input.files ?? []).filter((f) => f && typeof f.path === 'string');
+  const hasNfo = (input.nfo ?? '').trim().length >= 20;
   const current = stripReleaseExtension(String(input.name ?? '')).trim();
   const wellFormed = isWellFormedName(current);
   if (!current) return { wellFormed: false, suggestions: [], missing: [] };
@@ -113,10 +123,21 @@ export function suggestReleaseNames(input: { name: string; files?: { path: strin
   const hdr = pick('hdr') ? [/dolby[ ._]?vision|\bdv\b/i.test(current) ? 'DV' : '', /hdr/i.test(current) || !/dolby|\bdv\b/i.test(current) ? 'HDR' : ''].filter(Boolean).join('.') : '';
   const audio = pick('audio') ? AUDIO_TOKEN[String(pick('audio'))] ?? '' : '';
 
+  const teamName = group ?? NO_TEAM;
   const build = (title: string, withAudio: boolean) => {
     const core = [title, se ? null : year, se, language, res, hdr, source, withAudio ? audio : '', codec].filter((p) => p !== null && p !== '' && p !== undefined).join('.');
-    return `${core}${group ? `-${group}` : ''}`;
+    return `${core}-${teamName}`;
   };
+
+  const yearInName = /(?:^|[.\s_()[\]])(?:19|20)\d{2}(?:$|[.\s_()[\]])/.test(rest);
+  // Nom correct avec toutes les informations nécessaires (forme standard, langue, résolution, source, codec, team, année ou épisode) : rien à proposer.
+  const hasSeInName = !se || /(?:^|[^A-Za-z0-9])S\d{1,2}(?:E\d{1,3})?(?![A-Za-z0-9])/i.test(current);
+  // Les informations doivent être dans le NOM lui-même (pas seulement lues dans le NFO ou les fichiers).
+  const inName = detectReleaseMeta(current, '');
+  const complete = wellFormed && !!inName.language && !!inName.resolution && !!inName.source && !!inName.codec && !!group && hasSeInName && (!!se || !year || yearInName);
+  if (complete) return { wellFormed, complete: true, suggestions: [], missing: [] };
+  // Nom non conforme : les propositions attendent le NFO / MediaInfo (langue, codec, source en dépendent).
+  if (!hasNfo) return { wellFormed, waitingForNfo: true, suggestions: [], missing: [] };
 
   const ownTitle = titleOf(rest);
   const out: NameSuggestion[] = [];
@@ -133,6 +154,6 @@ export function suggestReleaseNames(input: { name: string; files?: { path: strin
   if (!res) missing.push('résolution');
   if (!source) missing.push('source (WEB, BluRay...)');
   if (!codec) missing.push('codec vidéo');
-  if (!group) missing.push('team (après le dernier tiret)');
+  if (!group) missing.push(`team (« ${NO_TEAM} » mis à la place)`);
   return { wellFormed, suggestions: out, missing };
 }

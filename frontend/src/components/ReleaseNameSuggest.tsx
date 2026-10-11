@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 
-interface Analysis { current: string; wellFormed: boolean; suggestions: { name: string; label: string }[]; missing: string[] }
+interface Analysis { current: string; wellFormed: boolean; complete?: boolean; waitingForNfo?: boolean; suggestions: { name: string; label: string }[]; missing: string[] }
 
 /**
  * Propose des noms de release standardisés (Titre.Année.LANGUE.1080p.WEB.H265-TEAM) d'après le nom actuel, les fichiers du torrent et le NFO / MediaInfo.
+ * Rien n'est proposé quand le nom est déjà correct avec toutes les informations ; un nom non conforme attend le NFO avant d'avoir des propositions.
  * Un clic sur une proposition la met dans le champ du nom. Envoi : fichiers, NFO et fiche viennent du formulaire ; torrent existant : `torrentId`.
  */
 export default function ReleaseNameSuggest({ name, files, nfo, title, year, torrentId, onPick }: {
@@ -22,12 +23,16 @@ export default function ReleaseNameSuggest({ name, files, nfo, title, year, torr
     return () => window.clearTimeout(timer);
   }, [name, torrentId, files, nfo, title, year]);
 
-  if (!data || hidden || data.suggestions.length === 0) return null;
+  if (!data || hidden) return null;
+  if (data.waitingForNfo) {
+    return <div className="rn-suggest rn-wait muted">⏳ Ce nom ne suit pas le format du site : des noms standards seront proposés dès que le NFO ou le MediaInfo sera ajouté.</div>;
+  }
+  if (data.suggestions.length === 0) return null;
   return (
     <div className="rn-suggest" role="region" aria-label="Noms de release proposés">
       <div className="rn-head">
-        <strong>{data.wellFormed ? '✨ Autres noms possibles' : '⚠️ Nom à standardiser'}</strong>
-        <span className="muted">{data.wellFormed ? 'Le nom suit déjà le format du site.' : 'Le nom ne suit pas le format des autres torrents : choisis une proposition.'}</span>
+        <strong>{data.wellFormed ? '✨ Informations à compléter dans le nom' : '⚠️ Nom à standardiser'}</strong>
+        <span className="muted">{data.wellFormed ? 'Le format est bon, mais des informations manquent.' : 'Le nom ne suit pas le format des autres torrents : choisis une proposition.'}</span>
         <button type="button" className="rn-x" onClick={() => setHidden(true)} aria-label="Masquer les propositions" title="Masquer">✕</button>
       </div>
       <div className="rn-list">

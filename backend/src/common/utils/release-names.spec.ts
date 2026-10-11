@@ -4,10 +4,17 @@ const NFO = (audio = 'E-AC-3') => `General\nFormat : Matroska\n\nVideo\nFormat :
 
 describe('noms de release standardisés', () => {
   it('le nom mal fait de l\'exemple (espaces, tiret isolé, « P » majuscule)', () => {
-    const r = suggestReleaseNames({ name: 'Sword Art Online MULTI 1080P - TARDiS', files: [{ path: 'Sword.Art.Online.S01E01.mkv', size: 1e9 }, { path: 'Sword.Art.Online.S01E02.mkv', size: 1e9 }] });
+    const r = suggestReleaseNames({ name: 'Sword Art Online MULTI 1080P - TARDiS', nfo: NFO(), files: [{ path: 'Sword.Art.Online.S01E01.mkv', size: 1e9 }, { path: 'Sword.Art.Online.S01E02.mkv', size: 1e9 }] });
     expect(r.wellFormed).toBe(false);
-    expect(r.suggestions[0].name).toBe('Sword.Art.Online.S01.MULTi.1080p-TARDiS');
-    expect(r.missing).toEqual(expect.arrayContaining([expect.stringMatching(/langue/), expect.stringMatching(/source/), expect.stringMatching(/codec/)]));
+    expect(r.suggestions[0].name).toBe('Sword.Art.Online.S01.MULTi.VFF.1080p-TARDiS');
+    expect(r.missing).toEqual(expect.arrayContaining([expect.stringMatching(/source/), expect.stringMatching(/codec/)]));
+  });
+
+  it('nom non conforme : les propositions attendent le NFO', () => {
+    const r = suggestReleaseNames({ name: 'Sword Art Online MULTI 1080P - TARDiS', files: [{ path: 'Sword.Art.Online.S01E01.mkv', size: 1e9 }] });
+    expect(r.waitingForNfo).toBe(true);
+    expect(r.suggestions).toEqual([]);
+    expect(suggestReleaseNames({ name: 'Sword Art Online MULTI 1080P - TARDiS', nfo: 'trop court' }).waitingForNfo).toBe(true);
   });
 
   it('source, codec et langue complétés par le NFO et les fichiers', () => {
@@ -18,39 +25,50 @@ describe('noms de release standardisés', () => {
     expect(r.suggestions.map((s) => s.name)).toEqual(['No.String.Attached.2011.MULTi.VFF.1080p.WEB.H265-CHiLL', 'No.String.Attached.2011.MULTi.VFF.1080p.WEB.DDP.H265-CHiLL']);
   });
 
-  it('un nom déjà standard n\'est pas re-proposé tel quel', () => {
-    const name = 'Alone.UK.S01E03.MULTi.VFF.1080p.WEB.H264-COLL3CTiF';
-    expect(isWellFormedName(name)).toBe(true);
-    const r = suggestReleaseNames({ name, files: [{ path: name + '.mkv', size: 1e9 }] });
-    expect(r.wellFormed).toBe(true);
-    expect(r.suggestions.find((s) => s.name === name)).toBeUndefined();
+  it('nom correct avec toutes les informations : aucun choix proposé', () => {
+    for (const name of ['Alone.UK.S01E03.MULTi.VFF.1080p.WEB.H264-COLL3CTiF', 'No.String.Attached.2011.MULTi.VFF.1080p.WEB.H265-CHiLL', 'Film.2020.VFQ.2160p.BluRay.x265-NoTaG']) {
+      expect(isWellFormedName(name)).toBe(true);
+      const r = suggestReleaseNames({ name, nfo: NFO(), files: [{ path: name + '.mkv', size: 1e9 }] });
+      expect(r.complete).toBe(true);
+      expect(r.suggestions).toEqual([]);
+    }
+    // sans NFO non plus : le nom suffit
+    expect(suggestReleaseNames({ name: 'Film.2020.VFQ.2160p.BluRay.x265-NoTaG' }).complete).toBe(true);
+  });
+
+  it('bien formé mais incomplet (pas de langue précise, pas d\'année connue de la fiche) : des propositions sont faites', () => {
+    const noLang = suggestReleaseNames({ name: 'Film.2020.1080p.WEB.H264-GRP', nfo: NFO(), files: [{ path: 'Film.2020.mkv', size: 1 }] });
+    expect(noLang.complete).toBeFalsy();
+    expect(noLang.suggestions[0].name).toBe('Film.2020.MULTi.VFF.1080p.WEB.H264-GRP');
+    const noYear = suggestReleaseNames({ name: 'Film.MULTi.VFF.1080p.WEB.H264-GRP', year: 2020, nfo: NFO(), files: [{ path: 'Film.mkv', size: 1 }] });
+    expect(noYear.suggestions[0].name).toBe('Film.2020.MULTi.VFF.1080p.WEB.H264-GRP');
   });
 
   it('accents, apostrophes et & du titre ; WEB-DL encodé en x264 devient H264 pour un WEB', () => {
-    const r = suggestReleaseNames({ name: "L'Été d'Anna & Léo 2019 FRENCH 720p WEB-DL x264-TEAM", files: [{ path: 'a.mkv', size: 1 }] });
-    expect(r.suggestions[0].name).toBe('LEte.dAnna.and.Leo.2019.FRENCH.720p.WEB.H264-TEAM');
+    const r = suggestReleaseNames({ name: "L'Été d'Anna & Léo 2019 FRENCH 720p WEB-DL x264-TEAM", nfo: NFO(), files: [{ path: 'a.mkv', size: 1 }] });
+    expect(r.suggestions[0].name).toMatch(/^LEte\.dAnna\.and\.Leo\.2019\.[A-Za-z.]+\.720p\.WEB\.H264-TEAM$/);
   });
 
-  it('titre de la fiche proposé en plus quand il diffère', () => {
-    const r = suggestReleaseNames({ name: 'les sorcieres 2020 multi 1080p web h265-chill', title: 'Les Sorcières', year: 2020, files: [{ path: 'a.mkv', size: 1 }] });
-    const names = r.suggestions.map((s) => s.name);
-    expect(names.some((n) => n.startsWith('les.sorcieres'))).toBe(true);
-    expect(r.suggestions.some((s) => /fiche/.test(s.label))).toBe(false); // même titre sans accents : pas de doublon
+  it('titre de la fiche proposé en plus quand il diffère vraiment', () => {
+    const r = suggestReleaseNames({ name: 'sorcieres 2020 multi 1080p web h265-chill', title: 'Les Sorcières', year: 2020, nfo: NFO(), files: [{ path: 'a.mkv', size: 1 }] });
+    expect(r.suggestions.some((s) => /fiche/.test(s.label) && s.name.startsWith('Les.Sorcieres.2020'))).toBe(true);
   });
 
-  it('pas de team : aucune inventée, signalée comme manquante', () => {
-    const r = suggestReleaseNames({ name: 'Film 2020 1080p BluRay x264', files: [{ path: 'Film.mkv', size: 1 }] });
-    expect(r.suggestions[0].name).toBe('Film.2020.1080p.BluRay.x264');
-    expect(r.missing.join(' ')).toMatch(/team/);
+  it('pas de team : NoTaG à la fin', () => {
+    const r = suggestReleaseNames({ name: 'Film 2020 1080p BluRay x264', nfo: NFO(), files: [{ path: 'Film.mkv', size: 1 }] });
+    expect(r.suggestions[0].name).toMatch(/^Film\.2020\.[A-Za-z.]+\.1080p\.BluRay\.x264-NoTaG$/);
+    expect(r.missing.join(' ')).toMatch(/NoTaG/);
+    // un « -NOTAG » existant est normalisé en NoTaG
+    expect(suggestReleaseNames({ name: 'Film 2020 1080p BluRay x264-NOTAG', nfo: NFO(), files: [{ path: 'Film.mkv', size: 1 }] }).suggestions[0].name).toMatch(/-NoTaG$/);
   });
 
   it('ce qui n\'est pas une vidéo (logiciel, musique) n\'a pas de proposition', () => {
-    expect(suggestReleaseNames({ name: 'Some Software v1.2 Setup', files: [{ path: 'setup.exe', size: 1e8 }] }).suggestions).toEqual([]);
-    expect(suggestReleaseNames({ name: 'Artiste - Album 2020 FLAC', files: [{ path: '01.flac', size: 1e7 }] }).suggestions).toEqual([]);
+    expect(suggestReleaseNames({ name: 'Some Software v1.2 Setup', nfo: 'Instructions : lance setup.exe puis suis les étapes', files: [{ path: 'setup.exe', size: 1e8 }] }).suggestions).toEqual([]);
+    expect(suggestReleaseNames({ name: 'Artiste - Album 2020 FLAC', nfo: 'Tracklist : 01 Intro 02 Chanson 03 Fin', files: [{ path: '01.flac', size: 1e7 }] }).suggestions).toEqual([]);
   });
 
   it('plusieurs saisons dans le torrent', () => {
     const files = [1, 2].flatMap((s) => [1, 2].map((e) => ({ path: `S0${s}E0${e}.mkv`, size: 1e9 })));
-    expect(suggestReleaseNames({ name: 'Serie MULTI 1080p WEB x265-GRP', files }).suggestions[0].name).toBe('Serie.S01-S02.MULTi.1080p.WEB.H265-GRP');
+    expect(suggestReleaseNames({ name: 'Serie MULTI 1080p WEB x265-GRP', nfo: NFO(), files }).suggestions[0].name).toBe('Serie.S01-S02.MULTi.VFF.1080p.WEB.H265-GRP');
   });
 });
