@@ -156,8 +156,10 @@ interface MsgrState {
 }
 
 const SETTINGS_KEY = 'seeduction:messenger-settings';
+/** Notifications du navigateur : activées par défaut dès que la permission est accordée, tant que le membre n'a pas fait son propre choix. */
+const permissionGranted = () => typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
 function loadSettings() {
-  try { return { sound: true, desktop: false, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') }; } catch { return { sound: true, desktop: false }; }
+  try { return { sound: true, desktop: permissionGranted(), ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') }; } catch { return { sound: true, desktop: permissionGranted() }; }
 }
 
 let refreshTimer: number | null = null;

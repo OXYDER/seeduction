@@ -12,6 +12,7 @@ import ThemeSwitcher from './ThemeSwitcher';
 import SearchBox from './SearchBox';
 import Avatar from './Avatar';
 import ChatDock from './ChatDock';
+import BrowserNotifications from './BrowserNotifications';
 import ChatRail from './ChatRail';
 import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
@@ -464,6 +465,7 @@ function LayoutInner() {
         <InstallPrompt />
         <ChatRail />
         <ChatDock />
+        <BrowserNotifications />
       </div>
     );
   }
@@ -572,6 +574,7 @@ function LayoutInner() {
       <InstallPrompt />
       <ChatRail />
       <ChatDock />
+      <BrowserNotifications />
     </div>
   );
 }
