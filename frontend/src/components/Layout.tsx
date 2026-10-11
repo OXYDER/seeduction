@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
 import { formatBytes, formatNumber } from '../lib/format';
 import NotificationsBell from './NotificationsBell';
+import TelegramHeaderLink from './TelegramHeaderLink';
 import InstallPrompt from './InstallPrompt';
 import ThemeSwitcher from './ThemeSwitcher';
 import SearchBox from './SearchBox';
@@ -424,6 +425,7 @@ function LayoutInner() {
             <div className="row" style={{ gap: 8 }}>
               <ThemeSwitcher />
               <SeedObligations />
+              <TelegramHeaderLink />
               <NotificationsBell />
               <Link to="/messages" className={`icon-pill${starts('/messages')(location.pathname) ? ' active' : ''}`} title="Messages">
                 ✉️{unreadMessages > 0 && <span className="dot-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
@@ -503,6 +505,7 @@ function LayoutInner() {
         <div className="row">
           <ThemeSwitcher />
           <SeedObligations />
+          <TelegramHeaderLink />
           <NotificationsBell />
           <Link to="/messages" className={`top-link${starts('/messages')(location.pathname) ? ' active' : ''}`}>Messages</Link>
           <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{pendingFriendRequests > 0 ? ` (${pendingFriendRequests})` : ''}{friendsOnline > 0 && <span className="online-count" title="Amis en ligne"> ● {friendsOnline}</span>}</Link>

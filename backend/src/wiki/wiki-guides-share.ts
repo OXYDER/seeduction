@@ -288,7 +288,7 @@ export const GUIDES_STAFF: WikiSeedCategory = {
       slug: 'guide-staff-telegram',
       keywords: 'telegram, robot, bot, botfather, groupe, pont, canal, annonces, freeleech, jeton, lier, administration',
       content:
-        `Ce guide s'adresse aux administrateurs. L'onglet [b]Admin > Telegram[/b] relie un groupe Telegram au chat du site et publie des annonces automatiques. Les membres voient la page [url=/wiki/guide-telegram]Telegram[/url] de leur compte.\n\n` +
+        `Ce guide s'adresse à toute l'équipe (modérateurs et plus : l'onglet [b]Admin > Telegram[/b] leur est ouvert). Il relie un groupe Telegram au chat du site et publie des annonces automatiques. Les membres voient la page [url=/wiki/guide-telegram]Telegram[/url] de leur compte.\n\n` +
         `[b]Comment ça marche[/b]\n` +
         `Un robot Telegram (créé avec @BotFather) est ajouté à ton groupe. Le site interroge lui-même Telegram toutes les quelques secondes : il n'y a rien à ouvrir sur le NAS, seulement l'accès sortant vers api.telegram.org. Le jeton du robot est chiffré en base et n'est jamais réaffiché.\n\n` +
         `[b]Mise en place (5 étapes)[/b]\n` +

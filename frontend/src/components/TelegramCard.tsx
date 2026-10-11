@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import TelegramLogo from './TelegramLogo';
 
 /** Accueil : petit rappel pour rejoindre le groupe Telegram ; rien n'est affiché tant que l'équipe ne l'a pas ouvert. */
 export default function TelegramCard() {
@@ -9,7 +10,7 @@ export default function TelegramCard() {
   if (!info?.enabled || !info.inviteUrl) return null;
   return (
     <div className="panel row" style={{ gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-      <span><strong>✈️ Rejoins le groupe Telegram</strong> <span className="muted">— discussions, annonces et freeleech en direct.</span></span>
+      <span className="row" style={{ gap: 10, alignItems: 'center' }}><TelegramLogo size={28} /><strong>Rejoins le groupe Telegram</strong> <span className="muted">— discussions, annonces et freeleech en direct.</span></span>
       <span className="row" style={{ gap: 8 }}>
         <a className="tg-btn" href={info.inviteUrl} target="_blank" rel="noopener noreferrer">Rejoindre</a>
         {info.bridge && !info.linked && <Link className="secondary dd-link" to="/telegram">Lier mon compte</Link>}

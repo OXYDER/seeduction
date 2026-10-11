@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import TelegramLogo from './TelegramLogo';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { formatBytes, formatNumber } from '../lib/format';
@@ -34,9 +35,9 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
   }, [open, onClose]);
 
   if (!open) return null;
-  const links: [string, string, string][] = [
+  const links: [string, ReactNode, string][] = [
     ['/profile', '👤', 'Mon profil'],
-    ...(canUpload && userId ? [[`/browse?uploaderId=${userId}`, '⬆️', 'Mes uploads'] as [string, string, string]] : []),
+    ...(canUpload && userId ? [[`/browse?uploaderId=${userId}`, '⬆️', 'Mes uploads'] as [string, ReactNode, string]] : []),
     ['/activity', '📈', 'Mon activité'],
     ['/seeds', '🌱', 'Mes seeds'],
     ['/hit-and-run', '⚠️', 'Hit & run'],
@@ -47,7 +48,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
     ['/bonus', '🎁', 'Boutique bonus'],
     ['/friends', '👫', 'Amis'],
     ['/integrations', '🔌', 'API & flux RSS'],
-    ['/telegram', '✈️', 'Telegram'],
+    ['/telegram', <TelegramLogo size={16} />, 'Telegram'],
     ['/wiki', '📖', 'Wiki'],
   ];
 

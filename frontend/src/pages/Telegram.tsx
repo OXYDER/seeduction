@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import TelegramLogo from '../components/TelegramLogo';
 
 interface Info {
   enabled: boolean;
@@ -55,7 +56,7 @@ export default function Telegram() {
   if (!info.enabled) {
     return (
       <div className="panel">
-        <div className="panel-title"><span className="title-icon">✈️</span>Telegram</div>
+        <div className="panel-title"><span className="title-icon"><TelegramLogo size={18} /></span>Telegram</div>
         <p className="muted">Le groupe Telegram de Seeduction n'est pas ouvert pour l'instant.</p>
       </div>
     );
@@ -66,7 +67,7 @@ export default function Telegram() {
 
   return (
     <div className="grid" style={{ gap: 16, maxWidth: 820 }}>
-      <h1>✈️ Telegram</h1>
+      <h1 className="row" style={{ gap: 10, alignItems: 'center' }}><TelegramLogo size={34} />Telegram</h1>
       <p className="muted" style={{ margin: 0 }}>
         Discute avec les autres membres sur Telegram. Tu peux aussi relier ton compte : tes messages du groupe apparaissent alors dans le canal « {info.channel?.name ?? 'Telegram'} » de la messagerie, sous ton pseudo Seeduction.
       </p>
@@ -75,7 +76,7 @@ export default function Telegram() {
         <div className="panel-title"><span className="title-icon">1️⃣</span>Rejoindre le groupe</div>
         {info.inviteUrl
           ? <><p className="muted">Le groupe est privé : le lien ci-dessous est réservé aux membres de Seeduction. Ne le partage pas.</p>
-              <a className="tg-btn" href={info.inviteUrl} target="_blank" rel="noopener noreferrer">✈️ Rejoindre sur Telegram</a></>
+              <a className="tg-btn" href={info.inviteUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><TelegramLogo size={20} />Rejoindre sur Telegram</a></>
           : <p className="muted">Le lien d'invitation n'a pas encore été publié par l'équipe.</p>}
       </div>
 
@@ -102,7 +103,7 @@ export default function Telegram() {
                     <code style={{ fontSize: 22, letterSpacing: 3, padding: '6px 12px', background: 'rgba(255,255,255,0.06)', borderRadius: 6 }}>{code.code}</code>
                     <span className="muted">{left > 0 ? `valable encore ${Math.floor(left / 60)} min ${String(left % 60).padStart(2, '0')} s` : 'expiré : génère-en un nouveau'}</span>
                   </div>
-                  {deep && left > 0 && <div><a className="tg-btn" href={deep} target="_blank" rel="noopener noreferrer">✈️ Ouvrir Telegram et lier</a></div>}
+                  {deep && left > 0 && <div><a className="tg-btn" href={deep} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><TelegramLogo size={20} />Ouvrir Telegram et lier</a></div>}
                   <p className="muted" style={{ margin: 0 }}>
                     Ou envoie-le toi-même en message privé au robot{bot ? <> <strong>@{bot}</strong></> : null} : <code>/lier {code.code}</code>
                   </p>

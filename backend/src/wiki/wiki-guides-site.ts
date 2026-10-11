@@ -360,7 +360,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
       content:
         `Seeduction a un groupe Telegram : tu peux y discuter avec les autres membres et y recevoir les annonces du site. Ce guide explique comment le rejoindre et, si tu veux, relier ton compte pour que ton chat Telegram et le Messenger du site ne fassent qu'un.\n\n` +
         `[b]Rejoindre le groupe[/b]\n` +
-        `Ouvre [b]Telegram[/b] dans le menu de ton compte (ou la petite carte « Rejoins le groupe Telegram » sur l'accueil) et clique sur [b]Rejoindre sur Telegram[/b]. Le groupe est privé : le lien est réservé aux membres de Seeduction, ne le partage pas. L'équipe peut valider chaque entrée.\n\n` +
+        `Clique sur le [b]logo Telegram[/b] en haut du site (à côté des notifications), ou ouvre [b]Telegram[/b] dans le menu de ton compte (la tuile Telegram de l'accueil fonctionne aussi) : la page propose [b]Rejoindre sur Telegram[/b]. Le groupe est privé : le lien est réservé aux membres de Seeduction, ne le partage pas. L'équipe peut valider chaque entrée.\n\n` +
         `[b]Ce que tu reçois dans le groupe[/b]\n` +
         `• Les [b]nouvelles[/b] du site, le début de chaque [b]freeleech global[/b] et, si l'équipe l'a activé, les [b]nouveaux torrents[/b] (jamais le contenu adulte).\n` +
         `• Le chat : ce que tu écris dans le groupe peut apparaître dans le canal « Telegram » du Messenger, et inversement.\n\n` +

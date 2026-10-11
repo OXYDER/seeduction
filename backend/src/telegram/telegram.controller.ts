@@ -4,9 +4,9 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { TelegramService } from './telegram.service';
 
-const ADMINS = ['ADMIN', 'OWNER'] as const;
+const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'] as const;
 
-/** Telegram : page « Telegram » du compte (rejoindre, lier son compte) et réglages des administrateurs. */
+/** Telegram : page « Telegram » du compte (rejoindre, lier son compte) et réglages de l'équipe (modérateurs et plus). */
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('telegram')
 export class TelegramController {
@@ -26,22 +26,22 @@ export class TelegramController {
   // --- Administrateurs ---
 
   @Get('admin')
-  @Roles(...ADMINS)
+  @Roles(...STAFF)
   overview() { return this.telegram.adminOverview(); }
 
   @Put('admin')
-  @Roles(...ADMINS)
+  @Roles(...STAFF)
   save(@Body() body: any) { return this.telegram.saveAdmin(body ?? {}); }
 
   @Post('admin/test')
-  @Roles(...ADMINS)
+  @Roles(...STAFF)
   test(@Body() body: any) { return this.telegram.test(body ?? {}); }
 
   @Post('admin/channel')
-  @Roles(...ADMINS)
+  @Roles(...STAFF)
   createChannel(@Request() req: any) { return this.telegram.createChannel({ userId: req.user.userId, username: req.user.username, role: req.user.role }); }
 
   @Delete('admin/links/:userId')
-  @Roles(...ADMINS)
+  @Roles(...STAFF)
   adminUnlink(@Param('userId') userId: string) { return this.telegram.adminUnlink(userId); }
 }

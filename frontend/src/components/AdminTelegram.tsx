@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import TelegramLogo from './TelegramLogo';
 
 interface Config {
   enabled: boolean; inviteUrl: string; chatId: string; bridge: boolean; bridgeChannelId: string | null;
@@ -14,8 +16,9 @@ interface Overview {
 }
 
 const errorOf = (e: any) => e?.response?.data?.message ?? 'Une erreur est survenue';
+const GUIDE = '/wiki/guide-staff-telegram';
 
-/** Admin > Telegram : jeton du robot, groupe, pont avec un canal de la messagerie et annonces automatiques. */
+/** Admin > Telegram (équipe) : jeton du robot, groupe, pont avec un canal de la messagerie et annonces. Les explications sont dans le guide du wiki. */
 export function TelegramAdmin() {
   const [ov, setOv] = useState<Overview | null>(null);
   const [cfg, setCfg] = useState<Config | null>(null);
@@ -43,7 +46,7 @@ export function TelegramAdmin() {
     try {
       const { data } = await api.post('/telegram/admin/test', { ...(token.trim() ? { token: token.trim() } : {}), chatId: cfg!.chatId });
       if (data.error) setErr(`Robot ${data.bot} trouvé, mais : ${data.error}`);
-      else flash(`✓ Robot ${data.bot} connecté${data.sent ? ` — message d'essai envoyé dans « ${data.chat} »` : ' (aucun groupe choisi : pas de message d\'essai)'}`);
+      else flash(`✓ Robot ${data.bot} connecté${data.sent ? ` — message d'essai envoyé dans « ${data.chat} »` : ''}`);
       load();
     } catch (e) { setErr(errorOf(e)); }
     finally { setBusy(false); }
@@ -66,93 +69,64 @@ export function TelegramAdmin() {
   return (
     <div className="grid" style={{ gap: 16, maxWidth: 860 }}>
       <div className="panel">
-        <div className="panel-title"><span className="title-icon">✈️</span>Telegram</div>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Un robot Telegram relie le groupe au chat du site et annonce les nouvelles, les freeleech et (en option) les nouveaux torrents.
-          Le site interroge Telegram lui-même : rien à ouvrir sur le NAS, seulement l'accès sortant vers api.telegram.org.
-        </p>
-        <p style={{ margin: 0 }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div className="panel-title" style={{ margin: 0, padding: 0, border: 0 }}><span className="title-icon"><TelegramLogo size={18} /></span>Telegram</div>
+          <Link className="secondary dd-link" to={GUIDE}>📖 Guide complet : mise en place et dépannage</Link>
+        </div>
+        <p style={{ margin: '10px 0 0' }}>
           État : {s.connected ? <strong style={{ color: 'var(--success)' }}>● connecté{ov.botUsername ? ` (@${ov.botUsername})` : ''}</strong> : <strong style={{ color: 'var(--danger)' }}>● non connecté</strong>}
           {cfg.enabled ? '' : ' — désactivé'}
           {s.lastError && <span style={{ color: 'var(--danger)' }}> · {s.lastError}</span>}
         </p>
-        <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>Messages recopiés depuis le dernier démarrage : {s.relayedIn} vers le site, {s.relayedOut} vers Telegram.</p>
+        <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
+          {s.relayedIn} message{s.relayedIn > 1 ? 's' : ''} vers le site · {s.relayedOut} vers Telegram · {s.updatesReceived} événement{s.updatesReceived > 1 ? 's' : ''} reçu{s.updatesReceived > 1 ? 's' : ''} de Telegram{s.lastUpdateAt ? ` (dernier à ${new Date(s.lastUpdateAt).toLocaleTimeString('fr-FR')})` : ''}
+          {s.recent.length > 0 && ` · ${s.recent.join(' ; ')}`}
+        </p>
       </div>
 
       <div className="panel grid" style={{ gap: 12 }}>
         <div className="panel-title"><span className="title-icon">1️⃣</span>Le robot</div>
-        <details>
-          <summary>Comment créer le robot et le groupe (2 minutes)</summary>
-          <ol style={{ margin: '8px 0 0', paddingLeft: 18, display: 'grid', gap: 4 }}>
-            <li>Sur Telegram, écris à <strong>@BotFather</strong>, envoie <code>/newbot</code>, choisis un nom puis un identifiant se terminant par « bot ». Copie le <strong>jeton</strong> qu'il te donne.</li>
-            <li>Toujours avec @BotFather : <code>/setprivacy</code> → ton robot → <strong>Disable</strong> (ou ajoute le robot comme administrateur du groupe) pour qu'il voie tous les messages du groupe.</li>
-            <li>Crée ton groupe Telegram (privé), ajoute le robot, puis nomme-le <strong>administrateur</strong> (il doit pouvoir écrire et supprimer des messages).</li>
-            <li>Colle le jeton ci-dessous, enregistre, puis écris un message dans le groupe : il apparaît dans « Groupe Telegram ».</li>
-            <li>Copie le lien d'invitation du groupe (Telegram → groupe → Inviter par lien) : active « Demander l'approbation des administrateurs » si tu veux valider chaque entrée.</li>
-          </ol>
-        </details>
         <label style={field}>Jeton du robot {ov.hasToken && <span className="muted">(enregistré, chiffré — laisse vide pour le garder)</span>}
           <input type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder={ov.hasToken ? '••••••••••••••••••' : '123456789:AAH…'} />
         </label>
-        <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.enabled} onChange={(e) => up('enabled', e.target.checked)} /> Telegram activé (page « Telegram » pour les membres, relais et annonces)</label>
-        <label style={field}>Lien d'invitation du groupe (montré aux membres connectés seulement)
+        <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.enabled} onChange={(e) => up('enabled', e.target.checked)} /> Telegram activé</label>
+        <label style={field}>Lien d'invitation du groupe
           <input value={cfg.inviteUrl} onChange={(e) => up('inviteUrl', e.target.value)} placeholder="https://t.me/+AbCdEf…" />
         </label>
       </div>
 
       <div className="panel grid" style={{ gap: 12 }}>
         <div className="panel-title"><span className="title-icon">2️⃣</span>Groupe et pont avec le chat</div>
-        <div className="panel" style={{ padding: 10, fontSize: 13 }}>
-          <strong>Le robot ne voit pas ton groupe ?</strong>
-          <ol style={{ margin: '6px 0 0', paddingLeft: 18, display: 'grid', gap: 3 }}>
-            <li>Dans le groupe, écris <code>/id</code> (ou <code>/id@{ov.botUsername ?? 'ton_robot'}</code>) : le robot répond avec l'identifiant du groupe, même s'il ne peut pas lire les autres messages. Colle-le dans la case « Identifiant » ci-dessous.</li>
-            <li>Le robot doit être <strong>membre du groupe</strong>, idéalement <strong>administrateur</strong>. Si tu as changé <code>/setprivacy</code> dans @BotFather <em>après</em> l'avoir ajouté, <strong>retire-le du groupe puis ajoute-le de nouveau</strong> pour que ce soit pris en compte.</li>
-            <li>Un groupe converti en « supergroupe » change d'identifiant : refais <code>/id</code>.</li>
-          </ol>
-          <div className="muted" style={{ marginTop: 6 }}>
-            Ce que Telegram a transmis au robot depuis le démarrage : <strong>{s.updatesReceived}</strong> événement{s.updatesReceived > 1 ? 's' : ''}
-            {s.lastUpdateAt ? ` (dernier : ${new Date(s.lastUpdateAt).toLocaleTimeString('fr-FR')})` : ''}
-            {s.recent.length > 0 && <> — récents : {s.recent.join(' ; ')}</>}
-            {s.updatesReceived === 0 && ' — rien encore : écris /id dans le groupe pour tester.'}
-          </div>
-        </div>
-        <label style={field}>Groupe Telegram
-          <select value={cfg.chatId} onChange={(e) => up('chatId', e.target.value)}>
-            <option value="">— choisir —</option>
-            {ov.seenChats.map((c) => <option key={c.id} value={c.id}>{c.title || c.id} ({c.id})</option>)}
-            {cfg.chatId && !ov.seenChats.some((c) => c.id === cfg.chatId) && <option value={cfg.chatId}>{cfg.chatId}</option>}
-          </select>
-          <span className="muted" style={{ fontSize: 12 }}>La liste montre les groupes où le robot a vu un message.</span>
-        </label>
-        <label style={field}>Identifiant du groupe (ou colle-le ici : <code>/id</code> dans le groupe te le donne)
-          <input value={cfg.chatId} onChange={(e) => up('chatId', e.target.value.trim())} placeholder="-1001234567890" />
-        </label>
-        <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.bridge} onChange={(e) => up('bridge', e.target.checked)} /> Relier le groupe à un canal de la messagerie (échange des messages dans les deux sens)</label>
-        <label style={field}>Canal de la messagerie
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <select style={{ flex: 1, minWidth: 200 }} value={cfg.bridgeChannelId ?? ''} onChange={(e) => up('bridgeChannelId', e.target.value || null)}>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <label style={{ ...field, flex: '1 1 260px' }}>Groupe détecté
+            <select value={cfg.chatId} onChange={(e) => up('chatId', e.target.value)}>
               <option value="">— choisir —</option>
-              {ov.channels.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {ov.seenChats.map((c) => <option key={c.id} value={c.id}>{c.title || c.id} ({c.id})</option>)}
+              {cfg.chatId && !ov.seenChats.some((c) => c.id === cfg.chatId) && <option value={cfg.chatId}>{cfg.chatId}</option>}
             </select>
-            <button type="button" className="secondary" onClick={createChannel} disabled={busy}>Créer le canal « Telegram »</button>
-          </div>
-          <span className="muted" style={{ fontSize: 12 }}>Seuls les canaux ouverts à tous peuvent être reliés (ni Support, ni canaux réservés). Tout ce qui est écrit dans ce canal part vers Telegram : prévois-le comme canal dédié.</span>
-        </label>
-        <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-          Seuls les membres qui ont <strong>lié leur compte</strong> (page « Telegram », code à usage unique) sont recopiés sur le site, sous leur vrai pseudo et avec leurs vrais droits (mode lent, bannissement…). Les autres peuvent lire et écrire sur Telegram, sans être transmis.
-          Les torrents adultes ne sont jamais détaillés sur Telegram.
-        </p>
+          </label>
+          <label style={{ ...field, flex: '1 1 220px' }}>ou identifiant <span className="muted">(<code>/id</code> dans le groupe)</span>
+            <input value={cfg.chatId} onChange={(e) => up('chatId', e.target.value.trim())} placeholder="-1001234567890" />
+          </label>
+        </div>
+        <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.bridge} onChange={(e) => up('bridge', e.target.checked)} /> Relier le groupe à un canal de la messagerie (messages dans les deux sens)</label>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <select style={{ flex: 1, minWidth: 200 }} value={cfg.bridgeChannelId ?? ''} onChange={(e) => up('bridgeChannelId', e.target.value || null)}>
+            <option value="">— canal de la messagerie —</option>
+            {ov.channels.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <button type="button" className="secondary" onClick={createChannel} disabled={busy}>Créer le canal « Telegram »</button>
+        </div>
       </div>
 
       <div className="panel grid" style={{ gap: 10 }}>
         <div className="panel-title"><span className="title-icon">3️⃣</span>Annonces automatiques</div>
         <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.announceNews} onChange={(e) => up('announceNews', e.target.checked)} /> Nouvelles du site</label>
-        <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.announceFreeleech} onChange={(e) => up('announceFreeleech', e.target.checked)} /> Début d'un freeleech global (programmé ou récompense du pot commun)</label>
-        <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.announceTorrents} onChange={(e) => up('announceTorrents', e.target.checked)} /> Nouveaux torrents approuvés (jamais les catégories adultes)</label>
-        <label style={field}>Destination des annonces (facultatif)
-          <input value={cfg.announceChatId} onChange={(e) => up('announceChatId', e.target.value)} placeholder="vide = le groupe ci-dessus ; sinon l'identifiant d'un autre groupe ou canal où le robot est administrateur" />
+        <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.announceFreeleech} onChange={(e) => up('announceFreeleech', e.target.checked)} /> Début d'un freeleech global</label>
+        <label className="row" style={{ gap: 8 }}><input type="checkbox" style={{ width: 'auto' }} checked={cfg.announceTorrents} onChange={(e) => up('announceTorrents', e.target.checked)} /> Nouveaux torrents approuvés (jamais l'adulte)</label>
+        <label style={field}>Destination des annonces <span className="muted">(facultatif : vide = le groupe)</span>
+          <input value={cfg.announceChatId} onChange={(e) => up('announceChatId', e.target.value)} placeholder="identifiant d'un autre groupe ou canal" />
         </label>
-        <p className="muted" style={{ margin: 0, fontSize: 12 }}>Activer une annonce ne rejoue pas l'historique : elle commence à partir de maintenant.</p>
       </div>
 
       <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -170,8 +144,8 @@ export function TelegramAdmin() {
             <tbody>
               {ov.links.map((l) => (
                 <tr key={l.userId}>
-                  <td>{l.username}</td>
-                  <td>{l.tgUsername ? `@${l.tgUsername}` : <span className="muted">—</span>}</td>
+                  <td><Link to={`/users/${l.userId}`}>{l.username}</Link></td>
+                  <td>{l.tgUsername ? <a href={`https://t.me/${l.tgUsername}`} target="_blank" rel="noopener noreferrer">@{l.tgUsername}</a> : <span className="muted">—</span>}</td>
                   <td className="muted">{new Date(l.since).toLocaleDateString('fr-FR')}</td>
                   <td><button type="button" className="secondary" onClick={() => removeLink(l.userId, l.username)}>Retirer</button></td>
                 </tr>

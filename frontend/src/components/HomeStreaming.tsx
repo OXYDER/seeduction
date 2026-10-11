@@ -11,6 +11,7 @@ import MetaChips from './MetaChips';
 import PotWidget from './PotWidget';
 import { Board } from './stats/StatsBits';
 import NewsPanel from './NewsPanel';
+import TelegramLogo from './TelegramLogo';
 import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
 import HomeShortcuts from './HomeShortcuts';
@@ -204,7 +205,7 @@ export default function HomeStreaming() {
                   <div key={label} className="community-tile"><span className="community-tile-icon" aria-hidden="true">{icon}</span><strong>{value}</strong><span className="muted">{label}</span></div>
                 ))}
                 {tg?.enabled && tg.inviteUrl && (
-                  <a className="community-tile" href={tg.inviteUrl} target="_blank" rel="noopener noreferrer" title="Rejoindre le groupe Telegram"><span className="community-tile-icon" aria-hidden="true">✈️</span><strong>Telegram</strong><span className="muted">rejoindre le groupe</span></a>
+                  <a className="community-tile" href={tg.inviteUrl} target="_blank" rel="noopener noreferrer" title="Rejoindre le groupe Telegram"><span className="community-tile-icon" aria-hidden="true" style={{ opacity: 1 }}><TelegramLogo size={26} /></span><strong>Telegram</strong><span className="muted">rejoindre le groupe</span></a>
                 )}
               </div>
               <div className="st-board-footer"><Link to="/stats" className="muted">Toutes les statistiques →</Link></div>
