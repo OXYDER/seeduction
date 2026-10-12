@@ -297,7 +297,9 @@ export default function Requests() {
                         <div className="panel" style={{ padding: 10, borderColor: '#fbbf24' }}>
                           <div>Sélectionné : <Link to={`/torrents/${sitePick.id}`} target="_blank">{sitePick.name}</Link></div>
                           {sitePick.uploader?.id === user?.id || r.requestedBy?.id === user?.id || isStaff ? (
-                            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>La demande sera comblée tout de suite{sitePick.uploader && sitePick.uploader.id !== user?.id ? ` : ✦ ${Math.round(r.bounty)} pour ${sitePick.uploader.username}, l'envoyeur` : ''}.</div>
+                            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>{isStaff && sitePick.uploader?.id !== user?.id && r.requestedBy?.id !== user?.id
+                              ? <>Équipe : la demande est comblée <strong>tout de suite</strong>, sans confirmation du demandeur. L'envoyeur reçoit la récompense{r.bounty >= 10 ? <> moins 10 %, et <strong>toi, qui l'as trouvé, ✦ {Math.max(1, Math.floor(r.bounty / 10))}</strong></> : ''}.</>
+                              : <>La demande sera comblée tout de suite{sitePick.uploader && sitePick.uploader.id !== user?.id ? ` : ✦ ${Math.round(r.bounty)} pour ${sitePick.uploader.username}, l'envoyeur` : ''}.</>}</div>
                           ) : (
                             <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
                               Tu n'es pas l'envoyeur : ta sélection est une <strong>proposition</strong>. <UserLink user={r.requestedBy} /> la confirme (ou la refuse ; sans réponse, elle est confirmée après 3 jours).

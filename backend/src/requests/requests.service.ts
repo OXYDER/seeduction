@@ -133,9 +133,11 @@ export class RequestsService {
     const isRequester = mine(request.requestedById);
     if (isRequester && isUploader && request.backers > 1) throw new BadRequestException("Tu ne peux pas combler ta propre demande avec ton propre torrent quand d'autres membres y ont contribué");
 
-    // Direct : envoyeur, demandeur ou équipe. Les points vont à l'envoyeur du torrent.
+    // Direct : envoyeur, demandeur ou équipe (SDT) : pas besoin de confirmation. Les points vont à l'envoyeur du torrent ; un membre de l'équipe qui a trouvé
+    // le torrent d'un autre dans les listes reçoit, comme tout trouveur, la petite part.
     if (isUploader || isRequester || staff) {
-      await this.complete(request, torrent, null, torrent.uploaderId === filler.alt ? filler.alt : filler.userId);
+      const finder = staff && !isUploader && !isRequester ? filler.userId : null;
+      await this.complete(request, torrent, finder, torrent.uploaderId === filler.alt ? filler.alt : filler.userId);
       return { status: 'filled' as const };
     }
 
