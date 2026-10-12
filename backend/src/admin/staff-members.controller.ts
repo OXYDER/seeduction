@@ -17,6 +17,10 @@ export class StaffMembersController {
   @Get('counts')
   counts() { return this.members.counts(); }
 
+  /** Page « Équipe et rangs » : l'équipe et son activité, membres par rôle et par rang. */
+  @Get('team')
+  team() { return this.members.team(); }
+
   @Get('online')
   online() { return this.members.online(); }
 
