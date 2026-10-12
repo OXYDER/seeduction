@@ -1,0 +1,2 @@
+# Les scripts shell doivent rester en fins de ligne Unix (LF), même édités sous Windows : un retour chariot casserait bash sur le NAS / le serveur.
+*.sh text eol=lf

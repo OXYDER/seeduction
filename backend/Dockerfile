@@ -8,7 +8,8 @@ RUN npx prisma generate
 RUN npm run build
 
 FROM node:20-alpine
-RUN apk add --no-cache openssl mediainfo
+# Outils des sauvegardes complètes (voir src/backup) : pg_dump / pg_restore / psql (client PostgreSQL 16, comme le serveur), GNU tar, rclone (copie vers un nuage ou un serveur SFTP).
+RUN apk add --no-cache openssl mediainfo postgresql16-client tar rclone
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist

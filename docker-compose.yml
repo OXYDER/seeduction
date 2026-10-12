@@ -68,6 +68,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracker}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-tracker}?schema=public
       LOCKDOWN_DIR: /app/storage/lockdown
       BACKUPS_DIR: /app/backups
+      # Sauvegardes complètes (Admin > Sauvegardes) : le dossier du projet, monté en LECTURE SEULE ci-dessous, sert à y inclure les fichiers .env
+      # (qui ne sont pas dans git : sans eux, un site restauré ne pourrait pas relire les mots de passe chiffrés ni les connexions), le code et la version.
+      PROJECT_DIR: /host/project
     volumes:
       - torrent_storage:/app/storage/torrents
       - cover_storage:/app/storage/covers
@@ -75,6 +78,10 @@ services:
       # Alerte générale : coffre chiffré (jamais effacé automatiquement) et sauvegardes du NAS, chiffrées elles aussi pendant le verrouillage.
       - lockdown_storage:/app/storage/lockdown
       - ./backups:/app/backups
+      - ./:/host/project:ro
+      # Copie hors du serveur (recommandé) : monte ici un disque USB ou un partage réseau, puis indique « /offsite » dans Admin > Sauvegardes > Réglages.
+      # Synology : le chemin ressemble à /volumeUSB1/usbshare/seeduction. Décommente et adapte la ligne :
+      # - /chemin/vers/ton/disque/externe:/offsite
     networks:
       - tracker_net
     # Pas de port exposé publiquement ici — passe par Nginx Proxy Manager

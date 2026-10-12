@@ -17,16 +17,17 @@ import { ImportAdmin } from '../components/AdminImport';
 import PotAdmin from '../components/AdminPot';
 import { TelegramAdmin } from '../components/AdminTelegram';
 import AdminAntiCheat from '../components/AdminAntiCheat';
+import AdminBackup from '../components/AdminBackup';
 
 const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki', 'Support', 'Telegram', 'Anti-triche'] as const;
-type Tab = typeof BASE_TABS[number] | 'Paramètres' | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal' | 'Sécurité' | 'Import' | 'Pot commun' | 'Dons';
+type Tab = typeof BASE_TABS[number] | 'Paramètres' | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal' | 'Sécurité' | 'Import' | 'Pot commun' | 'Dons' | 'Sauvegardes';
 
 export default function Admin() {
   const role = useAuthStore((s) => s.user?.role);
   const [params] = useSearchParams();
-  const [tab, setTab] = useState<Tab>(() => (([...BASE_TABS, 'Import', 'Pot commun', 'Dons'] as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'Vue d\'ensemble'));
+  const [tab, setTab] = useState<Tab>(() => (([...BASE_TABS, 'Import', 'Pot commun', 'Dons', 'Sauvegardes'] as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'Vue d\'ensemble'));
   // Le monitoring expose des détails d'infrastructure : réservé ADMIN/OWNER (les modérateurs voient le reste).
-  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Paramètres', 'Invitations', 'Canaux', 'Journal', 'Monitoring', 'Import', 'Pot commun', 'Dons', 'Sécurité'] : [...BASE_TABS];
+  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Paramètres', 'Invitations', 'Canaux', 'Journal', 'Monitoring', 'Import', 'Pot commun', 'Dons', 'Sauvegardes', 'Sécurité'] : [...BASE_TABS];
 
   return (
     <div className="grid">
@@ -56,6 +57,7 @@ export default function Admin() {
       {tab === 'Dons' && <AdminDonations />}
       {tab === 'Telegram' && <TelegramAdmin />}
       {tab === 'Anti-triche' && <AdminAntiCheat />}
+      {tab === 'Sauvegardes' && <AdminBackup />}
       {tab === 'Sécurité' && <LockdownAdmin />}
     </div>
   );

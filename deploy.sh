@@ -25,6 +25,14 @@ maintenance() {
 NOTICE=0
 if maintenance start; then NOTICE=1; echo "→ Message de maintenance affiché sur le site."; fi
 
+# Filet de sécurité : instantané chiffré de la base juste avant la mise à jour (les 5 derniers sont gardés dans backups/full/). Ne bloque jamais le déploiement :
+# sans effet, sans erreur, si le backend ne tourne pas encore ou n'a pas encore cette fonction.
+echo "→ Instantané de la base avant la mise à jour..."
+if docker compose exec -T backend node -e "
+    fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/backup/predeploy', { method: 'POST' })
+      .then(async (r) => { const j = await r.json().catch(() => ({})); console.log(j.file || ''); process.exit(r.ok && j.ok ? 0 : 1); }).catch(() => process.exit(1));
+  " 2>/dev/null; then echo "✓ Instantané enregistré."; else echo "  (pas d'instantané : première installation, ou la sauvegarde n'est pas encore en place)"; fi
+
 echo "→ Récupération des dernières modifications..."
 git fetch origin main
 git reset --hard origin/main
