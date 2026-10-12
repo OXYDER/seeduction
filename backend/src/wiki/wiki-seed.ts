@@ -110,6 +110,24 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `Des freeleech (globaux, personnels ou par jeton) permettent de télécharger sans faire baisser ton ratio — voir [url=/wiki/freeleech]Freeleech, tous les types[/url].`,
       },
       {
+        title: 'Fair-play : la triche aux statistiques',
+        slug: 'fair-play-anti-triche',
+        keywords: 'triche, tricheur, anti-triche, ratio truqué, faux upload, ratiomaster, passkey partagée, compte multiple, seedbox, vpn, fair-play',
+        isFaq: true,
+        content:
+          `Un ratio, c'est de la confiance : chacun partage ce qu'il prend. Tricher (gonfler son upload, cacher ses téléchargements, partager sa passkey, faire des comptes multiples pour s'envoyer des données ou des points) est [b]interdit[/b] et abîme le site pour tout le monde.\n\n` +
+          `[b]Le site vérifie-t-il ?[/b]\n` +
+          `Oui. Le tracker recoupe en continu ce que les clients déclarent : une vitesse que la connexion ne peut pas tenir, des compteurs qui reculent, un client qui se fait passer pour un autre, de l'upload que personne n'a reçu, une même passkey utilisée depuis trop de réseaux différents, des comptes liés qui s'envoient des données ou des points... Chaque indice compte peu seul, et s'estompe avec le temps ; c'est la [b]concordance de plusieurs indices[/b] qui prévient l'équipe.\n\n` +
+          `[b]Qui décide ?[/b]\n` +
+          `Jamais une machine seule : aucune sanction n'est automatique. Un dossier est ouvert pour l'équipe, qui examine les preuves et peut très bien conclure à un faux positif.\n\n` +
+          `[b]Je n'ai rien à me reprocher, qu'est-ce qui peut me faire remarquer ?[/b]\n` +
+          `• [b]Une seedbox rapide[/b] ou une très grosse ligne : normal, la vitesse n'est signalée que si elle dépasse ce qu'une connexion peut réellement débiter.\n` +
+          `• [b]Une famille ou une colocation[/b] qui partage la même adresse : ça arrive, ça ne pèse presque rien sans autre indice. Dis-le à l'équipe si on t'écrit.\n` +
+          `• [b]Un VPN[/b] qui change d'adresse souvent : garde-le stable quand c'est possible, et ne donne jamais ta passkey (visible dans ton profil) à quelqu'un.\n` +
+          `• Utilise un client reconnu (qBittorrent, Transmission, Deluge...) sans outil de « ratio ».\n\n` +
+          `Si l'équipe te contacte, réponds simplement : un dossier se clôt aussi vite qu'il s'est ouvert quand l'explication est bonne.`,
+      },
+      {
         title: 'Hit & Run : l\'obligation de seed',
         slug: 'hit-and-run',
         keywords: 'hnr, hit and run, obligation de seed, abandon, icône, pastille, seeds à terminer',

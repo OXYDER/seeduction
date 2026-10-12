@@ -16,8 +16,9 @@ import { LockdownAdmin } from '../components/AdminLockdown';
 import { ImportAdmin } from '../components/AdminImport';
 import PotAdmin from '../components/AdminPot';
 import { TelegramAdmin } from '../components/AdminTelegram';
+import AdminAntiCheat from '../components/AdminAntiCheat';
 
-const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki', 'Support', 'Telegram'] as const;
+const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki', 'Support', 'Telegram', 'Anti-triche'] as const;
 type Tab = typeof BASE_TABS[number] | 'Paramètres' | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal' | 'Sécurité' | 'Import' | 'Pot commun' | 'Dons';
 
 export default function Admin() {
@@ -54,6 +55,7 @@ export default function Admin() {
       {tab === 'Pot commun' && <PotAdmin />}
       {tab === 'Dons' && <AdminDonations />}
       {tab === 'Telegram' && <TelegramAdmin />}
+      {tab === 'Anti-triche' && <AdminAntiCheat />}
       {tab === 'Sécurité' && <LockdownAdmin />}
     </div>
   );

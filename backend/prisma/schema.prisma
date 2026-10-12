@@ -163,6 +163,11 @@ model User {
   suggestions      Suggestion[]
   suggestionVotes  SuggestionVote[]
   suggestionComments SuggestionComment[]
+  // Anti-triche (voir src/anticheat) : signaux détectés, dossier de suspicion, adresses vues à l'announce et flux par torrent.
+  cheatEvents      CheatEvent[]
+  cheatCase        CheatCase?
+  userIps          UserIp[]
+  torrentFlows     UserTorrentFlow[]
 }
 
 // Journal « qui a fait quoi » des profils d'un compte famille, lu par le profil principal.
@@ -429,6 +434,7 @@ model Peer {
   userId        String
 
   peerId        String    // peer_id envoyé par le client BitTorrent
+  userAgent     String?   @db.VarChar(120) // User-Agent du client à son dernier announce (anti-triche : cohérence avec le peer_id)
   ip            String
   port          Int
 
@@ -1787,4 +1793,96 @@ model PollVote {
 
   @@unique([optionId, userId])
   @@index([pollId, userId])
+}
+
+// ---------------------------------------------------------------------------
+// ANTI-TRICHE
+// ---------------------------------------------------------------------------
+
+/// Un signal suspect détecté sur un membre (announce, analyse horaire...). Les doublons proches sont fusionnés (count).
+model CheatEvent {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  torrentId String?
+  kind      String   @db.VarChar(32)
+  points    Float
+  count     Int      @default(1)
+  details   Json?
+  createdAt DateTime @default(now())
+  lastAt    DateTime @default(now())
+
+  @@index([userId, lastAt])
+  @@index([kind, lastAt])
+}
+
+/// Dossier de suspicion d'un membre : score (avec décroissance), niveau, statut de traitement par l'équipe.
+model CheatCase {
+  id              String    @id @default(uuid())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String    @unique
+  score           Float     @default(0)
+  level           String    @default("NONE") @db.VarChar(10) // NONE | WATCH | SUSPECT | LIKELY | CRITICAL
+  confidence      Int       @default(0) // 0-100
+  status          String    @default("OPEN") @db.VarChar(10) // OPEN | REVIEWING | CLEARED | ACTIONED | EXPIRED
+  breakdown       Json?     // par type de signal : points restants après décroissance, nombre, dernier
+  families        String[]  // familles de signaux en jeu (ratio, client, network, bonus)
+  alertedLevel    Int       @default(0)
+  alertedAt       DateTime?
+  clearedScore    Float?    // score au moment où le membre a été innocenté (pour ne rouvrir que sur de nouveaux indices)
+  immuneUntil     DateTime?
+  assigneeName    String?   @db.VarChar(40)
+  reviewedByName  String?   @db.VarChar(40)
+  resolvedAt      DateTime?
+  firstFlaggedAt  DateTime  @default(now())
+  lastEventAt     DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  notes           CheatCaseNote[]
+
+  @@index([status, score])
+  @@index([level])
+}
+
+model CheatCaseNote {
+  id         String    @id @default(uuid())
+  case       CheatCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String
+  authorName String    @db.VarChar(40)
+  body       String    @db.VarChar(2000)
+  kind       String    @default("NOTE") @db.VarChar(12) // NOTE | STATUS | ALERT
+  createdAt  DateTime  @default(now())
+
+  @@index([caseId, createdAt])
+}
+
+/// Adresses IP vues à l'announce pour chaque membre (détection de partage de passkey et de comptes multiples).
+model UserIp {
+  id          String   @id @default(uuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  ip          String   @db.VarChar(64)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  announces   Int      @default(1)
+
+  @@unique([userId, ip])
+  @@index([ip])
+  @@index([lastSeenAt])
+}
+
+/// Octets annoncés par un membre sur un torrent, par jour : sert à recouper ce que les uns envoient avec ce que les autres reçoivent.
+model UserTorrentFlow {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  torrentId String
+  day       DateTime @db.Date
+  up        BigInt   @default(0)
+  down      BigInt   @default(0)
+  got       BigInt   @default(0) // octets réellement acquis d'après la baisse de « left » (≠ down si le client sous-déclare)
+  announces Int      @default(0)
+
+  @@unique([userId, torrentId, day])
+  @@index([torrentId, day])
+  @@index([day])
 }

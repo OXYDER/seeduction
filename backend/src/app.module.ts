@@ -48,6 +48,7 @@ import { MemberActivityModule } from './member-activity/member-activity.module';
 import { RoadmapModule } from './roadmap/roadmap.module';
 import { SystemModule } from './system/system.module';
 import { DonationsModule } from './donations/donations.module';
+import { AntiCheatModule } from './anticheat/anticheat.module';
 import { TeamsModule } from './teams/teams.module';
 import { SupportModule } from './support/support.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -104,6 +105,7 @@ import { SuggestionsModule } from './suggestions/suggestions.module';
     RoadmapModule,
     SystemModule,
     DonationsModule,
+    AntiCheatModule,
     TeamsModule,
     SupportModule,
     TelegramModule,

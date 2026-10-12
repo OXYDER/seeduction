@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { PeerEvent } from '@prisma/client';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AntiCheatService } from '../anticheat/anticheat.service';
 import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY, reseedReward } from '../common/utils/economy';
 
 export interface AnnounceParams {
@@ -21,6 +22,8 @@ export interface AnnounceParams {
   // (WebTorrent) qui continue de seeder après la lecture, donc il est soumis aux mêmes règles hit & run qu'un
   // téléchargement classique. Le flag sert uniquement à alimenter un compteur séparé pour les statistiques.
   viaStream?: boolean;
+  /** User-Agent du client (anti-triche : cohérence avec le peer_id). */
+  userAgent?: string;
 }
 
 const EVENT_MAP: Record<string, PeerEvent> = {
@@ -33,7 +36,7 @@ const ANNOUNCE_INTERVAL = ANNOUNCE_INTERVAL_SECONDS; // 30 min — cadence conse
 
 @Injectable()
 export class TrackerService {
-  constructor(private prisma: PrismaService, private settings: SettingsService, private notifications: NotificationsService) {}
+  constructor(private prisma: PrismaService, private settings: SettingsService, private notifications: NotificationsService, private anticheat: AntiCheatService) {}
 
   /**
    * Récompense de reseed : calcul commun (base + par Go + par jour resté mort, plafonnés) et crédit, une fois la
@@ -213,6 +216,7 @@ export class TrackerService {
           left: BigInt(params.left),
           isSeeder: params.left === 0,
           lastEvent: EVENT_MAP[params.event ?? ''] ?? PeerEvent.NONE,
+          userAgent: params.userAgent?.slice(0, 120) ?? null,
         },
         update: {
           ip: params.ip,
@@ -222,6 +226,7 @@ export class TrackerService {
           left: BigInt(params.left),
           isSeeder: params.left === 0,
           lastEvent: EVENT_MAP[params.event ?? ''] ?? PeerEvent.NONE,
+          userAgent: params.userAgent?.slice(0, 120) ?? null,
           lastAnnounceAt: new Date(),
         },
       });
@@ -240,6 +245,13 @@ export class TrackerService {
         },
       });
     }
+
+    // Anti-triche : examine ce que le client déclare (sans attendre, sans jamais faire échouer l'announce).
+    void this.anticheat.onAnnounce({
+      userId: user.id, role: user.role, torrentId: torrent.id, size: Number(torrent.size), peerId: params.peerId, userAgent: params.userAgent, event: params.event, viaStream: params.viaStream,
+      ip: params.ip, uploaded: params.uploaded, downloaded: params.downloaded, left: params.left,
+      prev: existingPeer ? { uploaded: Number(existingPeer.uploaded), downloaded: Number(existingPeer.downloaded), left: Number(existingPeer.left), lastAnnounceAt: existingPeer.lastAnnounceAt } : null,
+    });
 
     if (params.event === 'completed') {
       // Le lecteur Seeduction est un vrai client BitTorrent qui continue de seeder après coup : un téléchargement
