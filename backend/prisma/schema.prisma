@@ -1303,6 +1303,7 @@ enum MessageType {
   BOT_ANSWER   // réponse de l'assistant du canal Support
   TICKET_OFFER // l'assistant propose de demander l'équipe ou d'ouvrir un billet de support
   HANDOFF      // l'assistant confirme avoir prévenu l'équipe et se retire
+  POLL         // sondage : la question est le contenu, les choix et les votes sont dans Poll
 }
 
 model Conversation {
@@ -1385,6 +1386,7 @@ model Message {
   legacyPmId     String?           @unique
   reactions      MessageReaction[]
   pins           ConversationPin[]
+  poll           Poll?
 
   @@index([conversationId, createdAt])
   @@index([senderId])
@@ -1747,4 +1749,42 @@ model Donation {
 
   @@index([receivedAt])
   @@index([userId])
+}
+
+// Sondage posté dans une conversation : un message de type POLL (sa question) et ses choix ; un ou plusieurs votes par membre.
+model Poll {
+  id        String       @id @default(uuid())
+  message   Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String       @unique
+  question  String       @db.VarChar(200)
+  multiple  Boolean      @default(false)
+  closesAt  DateTime?
+  closedAt  DateTime?
+  createdAt DateTime     @default(now())
+  options   PollOption[]
+  votes     PollVote[]
+}
+
+model PollOption {
+  id       String     @id @default(uuid())
+  poll     Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollId   String
+  text     String     @db.VarChar(80)
+  position Int        @default(0)
+  votes    PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id        String     @id @default(uuid())
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollId    String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  optionId  String
+  userId    String
+  createdAt DateTime   @default(now())
+
+  @@unique([optionId, userId])
+  @@index([pollId, userId])
 }

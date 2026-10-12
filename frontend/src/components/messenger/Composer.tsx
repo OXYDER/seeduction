@@ -5,6 +5,8 @@ import { canRecordVoice, pickRecorderMime, uploadAttachment, uploadVoice } from 
 import Avatar from '../Avatar';
 import ShareTorrentModal from './ShareTorrentModal';
 import GifPicker from './GifPicker';
+import PollModal from './PollModal';
+import { useAuthStore } from '../../store/auth';
 
 // Brouillons : ce qu'on a commencé à écrire dans une conversation est gardé quand on passe à une autre, et même après un rechargement de la page (sur cet appareil).
 const DRAFTS_KEY = 'msgr-drafts';
@@ -59,6 +61,11 @@ export default function Composer({ conversationId, writable, ban, people, replyT
   const [recMs, setRecMs] = useState(0);
   const [share, setShare] = useState(false);
   const [fmt, setFmt] = useState(false);
+  const [poll, setPoll] = useState(false);
+  const conv = useMessenger((s) => s.conversations.find((c) => c.id === conversationId));
+  const myRole = useAuthStore((s) => s.user?.role);
+  // Sondage : conversations privées et groupes ; dans un canal public, la modération seulement.
+  const canPoll = !!conv && (conv.type !== 'CHANNEL' || ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(myRole ?? ''));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [mention, setMention] = useState<{ query: string; index: number } | null>(null);
@@ -286,6 +293,7 @@ export default function Composer({ conversationId, writable, ban, people, replyT
             <input ref={fileInput} type="file" hidden multiple onChange={(e) => { [...(e.target.files ?? [])].slice(0, 5).forEach((f) => sendFile(f)); e.target.value = ''; }} />
             <button type="button" className="chat-icon-btn lg" title="Photo ou fichier" disabled={busy} onClick={() => fileInput.current?.click()}>📎</button>
             <button type="button" className="chat-icon-btn lg" title="Partager un torrent" onClick={() => setShare(true)}>🎬</button>
+            {canPoll && <button type="button" className="chat-icon-btn lg" title="Créer un sondage" onClick={() => setPoll(true)}>📊</button>}
           </>
         )}
         <textarea
@@ -350,6 +358,7 @@ export default function Composer({ conversationId, writable, ban, people, replyT
         )}
       </div>
       )}
+      {poll && <PollModal conversationId={conversationId} onClose={() => setPoll(false)} />}
       {share && <ShareTorrentModal onClose={() => setShare(false)} onPick={(torrentId) => { setShare(false); send(conversationId, { torrentId, content: text.trim() || undefined, replyToId: replyTo?.id }); setText(''); drafts.delete(conversationId); onCancelReply(); }} />}
     </div>
   );

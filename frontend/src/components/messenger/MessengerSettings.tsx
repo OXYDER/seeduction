@@ -51,6 +51,7 @@ export default function MessengerSettings() {
               <option value="s">Petite</option><option value="m">Normale</option><option value="l">Grande</option>
             </select>
           </label>
+          <label className="msgr-check"><input type="checkbox" style={{ width: 'auto' }} checked={settings.previews} onChange={(e) => setSettings({ previews: e.target.checked })} /> Aperçu des liens (titre et description)</label>
           <label className="msgr-check"><input type="checkbox" style={{ width: 'auto' }} checked={settings.avatars} onChange={(e) => setSettings({ avatars: e.target.checked })} /> Avatars (mode lignes)</label>
         </div>
       )}

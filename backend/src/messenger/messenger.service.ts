@@ -37,6 +37,7 @@ export interface SendInput {
 const MESSAGE_INCLUDE = {
   sender: { select: USER_SELECT },
   reactions: { select: { emoji: true, userId: true } },
+  poll: { select: { id: true } },
   replyTo: { select: { id: true, type: true, content: true, fileName: true, deletedAt: true, sender: { select: { id: true, username: true } } } },
   torrent: {
     select: {
@@ -55,6 +56,7 @@ function previewOf(m: { type: string; content: string; fileName?: string | null;
     case 'GIF': return 'GIF';
     case 'VOICE': return '🎤 Message vocal';
     case 'FILE': return `📎 ${m.fileName ?? 'Fichier'}`.slice(0, 100);
+    case 'POLL': return `📊 ${m.content}`.slice(0, 100);
     default: return m.content.replace(/\s+/g, ' ').slice(0, 100);
   }
 }
@@ -93,6 +95,7 @@ export function messageToDto(m: MessageRow) {
         : { id: t.id, adult: false, name: t.name, coverImage: t.coverImage, size: Number(t.size), seeders: t.seeders, leechers: t.leechers, resolution: t.resolution, year: t.year, category: t.category?.name ?? null })
       : null,
     reactions: groupReactions(m.reactions),
+    pollId: deleted ? null : m.poll?.id ?? null,
   };
 }
 export type MessageDto = ReturnType<typeof messageToDto>;
@@ -461,6 +464,90 @@ export class MessengerService extends EventEmitter {
     });
     const readBy = rows2.map((r) => ({ userId: r.userId, lastReadAt: r.lastReadAt, username: r.user.username, avatarUrl: r.user.avatarUrl }));
     return { messages: page, hasMore, myLastReadAt: member.lastReadAt, readBy };
+  }
+
+  // ------------------------------------------------------------------ sondages
+
+  /** Crée un sondage (question, 2 à 8 choix, un ou plusieurs votes par membre, durée facultative). Dans un canal public, réservé à la modération. */
+  async createPoll(actor: Actor, conversationId: string, input: { question?: string; options?: string[]; multiple?: boolean; hours?: number | null }) {
+    await this.assertMessaging(actor.userId);
+    const { conv } = await this.access(actor, conversationId);
+    this.assertCanWrite(actor, conv);
+    if (conv.type === 'CHANNEL') {
+      if (!isStaff(actor.role)) throw new ForbiddenException("Dans un canal public, seule la modération crée des sondages");
+      const ban = await this.moderation.activeBanFor(actor.userId, conv.id);
+      if (ban) throw new ForbiddenException(`Tu es banni du chat ${describeExpiry(ban.expiresAt)}. Raison : ${ban.reason}`);
+    }
+    const question = (input.question ?? '').trim();
+    if (question.length < 3 || question.length > 200) throw new BadRequestException('La question doit faire entre 3 et 200 caractères');
+    const options = [...new Set((input.options ?? []).map((o) => String(o ?? '').trim()).filter(Boolean))];
+    if (options.length < 2) throw new BadRequestException('Il faut au moins deux choix différents');
+    if (options.length > 8) throw new BadRequestException('8 choix au maximum');
+    if (options.some((o) => o.length > 80)) throw new BadRequestException('Un choix fait 80 caractères au plus');
+    const hours = input.hours == null ? null : Math.floor(Number(input.hours));
+    if (hours !== null && (!Number.isFinite(hours) || hours < 1 || hours > 720)) throw new BadRequestException('Durée invalide (1 heure à 30 jours)');
+    const row = await this.prisma.message.create({
+      data: {
+        conversationId, senderId: actor.userId, type: 'POLL', content: question,
+        poll: { create: { question, multiple: !!input.multiple, closesAt: hours ? new Date(Date.now() + hours * 3_600_000) : null, options: { create: options.map((text, position) => ({ text, position })) } } },
+      },
+      include: MESSAGE_INCLUDE,
+    });
+    await Promise.all([
+      this.prisma.conversation.update({ where: { id: conv.id }, data: { lastMessageAt: row.createdAt } }),
+      this.prisma.conversationMember.updateMany({ where: { conversationId: conv.id, userId: actor.userId }, data: { lastReadAt: row.createdAt } }),
+    ]);
+    const dto = messageToDto(row);
+    await this.publish(conv, 'message:new', dto);
+    this.notifyRecipients(actor, conv, dto).catch((err) => this.logger.warn(`Notification de sondage échouée : ${err?.message}`));
+    return dto;
+  }
+
+  private async loadPoll(actor: Actor, pollId: string) {
+    const poll = await this.prisma.poll.findUnique({ where: { id: pollId }, include: { options: { orderBy: { position: 'asc' } }, message: { select: { conversationId: true, senderId: true, deletedAt: true, conversation: { select: { id: true, type: true } } } } } });
+    if (!poll || poll.message.deletedAt) throw new NotFoundException('Sondage introuvable');
+    await this.access(actor, poll.message.conversationId);
+    return poll;
+  }
+
+  /** Le sondage avec ses résultats et mes votes (les résultats sont visibles de tous les membres de la conversation). */
+  async getPoll(actor: Actor, pollId: string) {
+    const poll = await this.loadPoll(actor, pollId);
+    const votes = await this.prisma.pollVote.findMany({ where: { pollId }, select: { optionId: true, userId: true } });
+    const count = new Map<string, number>();
+    for (const v of votes) count.set(v.optionId, (count.get(v.optionId) ?? 0) + 1);
+    const closed = !!poll.closedAt || (!!poll.closesAt && poll.closesAt.getTime() <= Date.now());
+    return {
+      id: poll.id, messageId: poll.messageId, conversationId: poll.message.conversationId, question: poll.question, multiple: poll.multiple,
+      closesAt: poll.closesAt, closedAt: poll.closedAt, closed, authorId: poll.message.senderId,
+      options: poll.options.map((o) => ({ id: o.id, text: o.text, votes: count.get(o.id) ?? 0 })),
+      voters: new Set(votes.map((v) => v.userId)).size, total: votes.length,
+      myVotes: votes.filter((v) => v.userId === actor.userId).map((v) => v.optionId),
+    };
+  }
+
+  /** Vote : remplace mes choix précédents (liste vide = retirer mon vote) ; un seul choix si le sondage n'est pas à choix multiples. */
+  async votePoll(actor: Actor, pollId: string, optionIds: string[]) {
+    const poll = await this.loadPoll(actor, pollId);
+    if (poll.closedAt || (poll.closesAt && poll.closesAt.getTime() <= Date.now())) throw new BadRequestException('Ce sondage est terminé');
+    const ids = [...new Set((optionIds ?? []).map(String))];
+    if (ids.some((id) => !poll.options.some((o) => o.id === id))) throw new BadRequestException('Choix inconnu');
+    if (!poll.multiple && ids.length > 1) throw new BadRequestException('Un seul choix possible');
+    await this.prisma.$transaction([
+      this.prisma.pollVote.deleteMany({ where: { pollId, userId: actor.userId } }),
+      ...(ids.length ? [this.prisma.pollVote.createMany({ data: ids.map((optionId) => ({ pollId, optionId, userId: actor.userId })), skipDuplicates: true })] : []),
+    ]);
+    await this.publish(poll.message.conversation, 'poll:updated', { pollId, conversationId: poll.message.conversationId });
+    return this.getPoll(actor, pollId);
+  }
+
+  /** Termine le sondage maintenant (son auteur ou la modération). */
+  async closePoll(actor: Actor, pollId: string) {
+    const poll = await this.loadPoll(actor, pollId);
+    if (poll.message.senderId !== actor.userId && !isStaff(actor.role)) throw new ForbiddenException('Seul l\'auteur ou la modération peut terminer ce sondage');
+    if (!poll.closedAt) await this.prisma.poll.update({ where: { id: pollId }, data: { closedAt: new Date() } });
+    await this.publish(poll.message.conversation, 'poll:updated', { pollId, conversationId: poll.message.conversationId });
+    return this.getPoll(actor, pollId);
   }
 
   /**

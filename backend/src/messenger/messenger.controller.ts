@@ -9,6 +9,7 @@ import { Actor, MessengerService, SendInput } from './messenger.service';
 import { MessengerGifsService } from './messenger-gifs.service';
 import { MessengerCallsService } from './messenger-calls.service';
 import { ChatModerationService } from './chat-moderation.service';
+import { LinkPreviewService } from './link-preview.service';
 import { AuditService } from '../audit/audit.service';
 
 const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.user.username, role: req.user.role });
@@ -17,7 +18,7 @@ const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.u
 @UseGuards(JwtAuthGuard)
 @Controller('messenger')
 export class MessengerController {
-  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService, private gifs: MessengerGifsService, private calls: MessengerCallsService, private audit: AuditService, private moderation: ChatModerationService) {}
+  constructor(private messenger: MessengerService, private covers: CoversService, private files: ChatFilesService, private gifs: MessengerGifsService, private calls: MessengerCallsService, private audit: AuditService, private moderation: ChatModerationService, private previews: LinkPreviewService) {}
 
   @Get('conversations')
   list(@Query('archived') archived: string | undefined, @Request() req: any) {
@@ -82,6 +83,36 @@ export class MessengerController {
   @Get('conversations/:id/messages')
   messages(@Param('id') id: string, @Query('before') before: string | undefined, @Query('limit') limit: string | undefined, @Request() req: any) {
     return this.messenger.messages(actorOf(req), id, before || undefined, limit ? Number(limit) : undefined);
+  }
+
+  /** Aperçu d'un lien (titre, description, nom du site) ; rien pour un lien du site lui-même. */
+  @Get('link-preview')
+  async linkPreview(@Query('url') url: string, @Request() req: any) {
+    let own: string | undefined;
+    try { own = process.env.SITE_URL ? new URL(process.env.SITE_URL).host : undefined; } catch { /* SITE_URL absente ou invalide */ }
+    return (await this.previews.preview(req.user.userId, url, own)) ?? { url, title: null, description: null, siteName: null };
+  }
+
+  // ---- Sondages ----
+
+  @Post('conversations/:id/polls')
+  createPoll(@Param('id') id: string, @Body() body: { question?: string; options?: string[]; multiple?: boolean; hours?: number | null }, @Request() req: any) {
+    return this.messenger.createPoll(actorOf(req), id, body ?? {});
+  }
+
+  @Get('polls/:id')
+  poll(@Param('id') id: string, @Request() req: any) {
+    return this.messenger.getPoll(actorOf(req), id);
+  }
+
+  @Post('polls/:id/vote')
+  vote(@Param('id') id: string, @Body('optionIds') optionIds: string[], @Request() req: any) {
+    return this.messenger.votePoll(actorOf(req), id, Array.isArray(optionIds) ? optionIds : []);
+  }
+
+  @Post('polls/:id/close')
+  closePoll(@Param('id') id: string, @Request() req: any) {
+    return this.messenger.closePoll(actorOf(req), id);
   }
 
   /** Recherche dans toutes mes conversations. */

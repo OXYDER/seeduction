@@ -3745,3 +3745,26 @@ a.mention:hover { background: rgba(var(--acc-rgb, 224, 184, 74), 0.35); }
 .mention-pop { position: fixed; z-index: 500; display: grid; min-width: 180px; max-height: 240px; overflow-y: auto; padding: 4px; border-radius: 10px; background: #151b33; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
 .mention-opt { text-align: left; padding: 6px 10px; border-radius: 6px; font-size: 14px; background: transparent; border: 0; color: inherit; box-shadow: none; transform: none; }
 .mention-opt.on, .mention-opt:hover { background: rgba(255, 255, 255, 0.12); filter: none; }
+/* Sondages */
+.msgr-poll { width: min(380px, 100%); display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: rgba(8, 10, 22, 0.55); border: 1px solid rgba(255, 255, 255, 0.16); }
+.msgr-poll-q { font-weight: 800; overflow-wrap: anywhere; }
+.msgr-poll-sub { font-size: 12px; }
+.msgr-poll-options { display: grid; gap: 5px; }
+.msgr-poll-opt { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; overflow: hidden; text-align: left; font: inherit; color: inherit; border-radius: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: none; transform: none; }
+.msgr-poll-opt:hover:not(:disabled) { border-color: var(--gold, #e0b84a); filter: none; }
+.msgr-poll-opt.on { border-color: var(--gold, #e0b84a); }
+.msgr-poll-opt:disabled { opacity: 1; cursor: default; }
+.msgr-poll-bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(224, 184, 74, 0.22); transition: width .4s ease; z-index: 0; }
+.msgr-poll-opt.on .msgr-poll-bar { background: rgba(224, 184, 74, 0.38); }
+.msgr-poll-check, .msgr-poll-text, .msgr-poll-count { position: relative; z-index: 1; }
+.msgr-poll-text { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13.5px; }
+.msgr-poll-count { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.msgr-poll-foot { font-size: 12px; }
+.msgr-poll-link { background: none; border: 0; padding: 0; font: inherit; color: var(--gold, #e0b84a); text-decoration: underline; box-shadow: none; cursor: pointer; }
+.msgr-poll-link:hover { filter: none; transform: none; }
+/* Aperçu d'un lien dans un message */
+.msgr-link-card { display: grid; gap: 2px; max-width: min(380px, 100%); margin-top: 4px; padding: 8px 12px; border-radius: 10px; text-decoration: none; color: inherit; background: rgba(8, 10, 22, 0.5); border: 1px solid rgba(255, 255, 255, 0.14); border-left: 3px solid var(--gold, #e0b84a); }
+.msgr-link-card:hover { background: rgba(8, 10, 22, 0.7); }
+.msgr-link-site { font-size: 11.5px; opacity: 0.65; }
+.msgr-link-title { font-weight: 700; font-size: 13.5px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.msgr-link-desc { font-size: 12.5px; opacity: 0.8; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

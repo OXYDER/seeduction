@@ -9,7 +9,7 @@ export interface TorrentCardData {
   id: string; adult: boolean; name?: string; coverImage?: string | null; size?: number; seeders?: number; leechers?: number;
   resolution?: string | null; year?: number | null; category?: string | null;
 }
-export type MsgType = 'TEXT' | 'IMAGE' | 'FILE' | 'VOICE' | 'GIF' | 'SYSTEM' | 'BOT_ANSWER' | 'TICKET_OFFER' | 'HANDOFF';
+export type MsgType = 'TEXT' | 'IMAGE' | 'FILE' | 'VOICE' | 'GIF' | 'SYSTEM' | 'BOT_ANSWER' | 'TICKET_OFFER' | 'HANDOFF' | 'POLL';
 export interface Msg {
   id: string;
   conversationId: string;
@@ -29,6 +29,8 @@ export interface Msg {
   mentionIds: string[];
   torrent: TorrentCardData | null;
   reactions: Reaction[];
+  /** Sondage (type POLL) : identifiant, ses résultats se chargent à part. */
+  pollId?: string | null;
   // Local seulement
   pending?: boolean;
   failed?: string;
@@ -139,6 +141,8 @@ interface MsgrState {
   windows: DockWindow[];
   /** Message à rejoindre après avoir ouvert une conversation (résultat de la recherche globale). */
   pendingJump: { conversationId: string; messageId: string } | null;
+  /** Compteur par sondage, incrémenté à chaque vote reçu en direct : la carte du sondage se recharge. */
+  pollTick: Record<string, number>;
   setPendingJump: (j: { conversationId: string; messageId: string } | null) => void;
   /** conversationId -> nombre de vues qui l'affichent en ce moment (page ouverte dessus, fenêtre déployée). */
   visible: Record<string, number>;
@@ -184,9 +188,11 @@ export interface MsgrSettings {
   fontSize: 's' | 'm' | 'l';
   /** Mode lignes : afficher les avatars. */
   avatars: boolean;
+  /** Aperçu (titre et description) des liens collés dans les messages. */
+  previews: boolean;
 }
 function loadSettings(): MsgrSettings {
-  const base: MsgrSettings = { sound: true, desktop: permissionGranted(), layout: 'auto', fontSize: 'm', avatars: true };
+  const base: MsgrSettings = { sound: true, desktop: permissionGranted(), layout: 'auto', fontSize: 'm', avatars: true, previews: true };
   try { return { ...base, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') }; } catch { return base; }
 }
 
@@ -262,6 +268,7 @@ export const useMessenger = create<MsgrState>((set, get) => {
     onlineList: [],
     windows: [],
     pendingJump: null,
+    pollTick: {},
     setPendingJump(j) { set({ pendingJump: j }); },
     visible: {},
     incoming: null,
@@ -321,6 +328,7 @@ export const useMessenger = create<MsgrState>((set, get) => {
         set({ onlineList: list, online: Object.fromEntries(list.map((u) => [u.id, u.status])) });
       });
       socket.on('message:new', (m: Msg) => applyIncoming(m));
+      socket.on('poll:updated', ({ pollId }: { pollId: string }) => set((s) => ({ pollTick: { ...s.pollTick, [pollId]: (s.pollTick[pollId] ?? 0) + 1 } })));
       socket.on('message:updated', (m: Msg) => {
         set((s) => {
           const t = s.threads[m.conversationId];

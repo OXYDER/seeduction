@@ -14,6 +14,8 @@ import Lightbox from './Lightbox';
 import VoicePlayer from './VoicePlayer';
 import ChatModerationModal, { type ModerationMode } from './ChatModerationModal';
 import ForwardModal from './ForwardModal';
+import PollCard from './PollCard';
+import LinkPreviewCard, { firstExternalUrl } from './LinkPreviewCard';
 
 export interface Reader { userId: string; username: string; avatarUrl?: string | null }
 
@@ -75,6 +77,7 @@ function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, 
   }
   const isBot = !!botId && msg.sender.id === botId;
   const isPinned = !!conv.pinnedMessageIds?.includes(msg.id);
+  const showPreviews = useMessenger((s) => s.settings.previews);
   const react = useMessenger((s) => s.react);
   const remove = useMessenger((s) => s.remove);
   const retry = useMessenger((s) => s.retry);
@@ -166,8 +169,9 @@ function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, 
             <div className="msgr-bubble deleted">Message supprimé</div>
           ) : (
             <>
-              {(msg.content || msg.type === 'TEXT') && msg.content && (
-                <div className={`msgr-bubble${big ? ' big-emoji' : ''}${msg.pending ? ' pending' : ''}${msg.failed ? ' failed' : ''}`}>
+              {msg.type === 'POLL' && msg.pollId && <PollCard pollId={msg.pollId} canClose={canModerate} />}
+              {msg.type !== 'POLL' && (msg.content || msg.type === 'TEXT') && msg.content && (
+                <div className={`msgr-bubble${big ? ' big-emoji' : ''}${msg.pending ? ' pending' : ''}${msg.failed ? ' failed' : ''}`} title={new Date(msg.createdAt).toLocaleString('fr-CA', { dateStyle: 'full', timeStyle: 'short' })}>
                   <ChatText text={msg.content} myUsername={me?.username} />
                   {msg.editedAt && <span className="msgr-edited"> (modifié)</span>}
                   {isPinned && <span className="msgr-pinned-mark" title="Message épinglé"> 📌</span>}
@@ -188,6 +192,7 @@ function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, 
                 </a>
               )}
               {msg.torrent && <TorrentCard t={msg.torrent} />}
+              {showPreviews && msg.type === 'TEXT' && !msg.pending && !msg.failed && msg.content && (() => { const u = firstExternalUrl(msg.content); return u ? <LinkPreviewCard url={u} /> : null; })()}
             </>
           )}
 
