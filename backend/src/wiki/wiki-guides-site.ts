@@ -286,6 +286,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Six façons de voir les torrents : [b]Liste[/b] (tableau complet), [b]Détails[/b] (grandes lignes avec affiche et synopsis), [b]Grille[/b] (cartes), [b]Affiches[/b] (grandes images), [b]Compact[/b] (une ligne fine) et [b]Groupé[/b] (une ligne par film ou série).\n` +
         `• Ton affichage par défaut se règle dans Profil > Compte (« Affichage des listes de torrents »).\n` +
         `• Les boutons en haut d'une liste changent l'affichage de cette page, dans ce navigateur.\n\n` +
+        `[b]Icônes du haut de l'écran[/b]\n` +
+        `En haut à droite, chaque icône ouvre un petit cadre qui reste toujours dans l'écran, même sur téléphone : 🎨 la couleur d'accent, 🌱 les seeds à terminer (le temps de seed restant de chaque torrent), 🔔 les notifications et 👫 les [b]amis en ligne[/b] (leur statut, un bouton 💬 pour leur écrire, le rappel des demandes d'ami en attente et le lien « Voir tous mes amis »).\n\n` +
         `[b]Alléger l'accueil[/b]\n` +
         `Chaque section de la page d'accueil (calendrier freeleech, raccourcis, nouvelles, forum, classements, torrents populaires...) a une petite icône [b]−[/b] en haut à droite : un clic la réduit en une fine barre avec son nom, et un clic sur la barre (＋) la rouvre. Les boutons « Tout réduire » et « Tout afficher » en haut de l'accueil agissent sur toutes les sections d'un coup. Ton choix est mémorisé sur cet appareil.\n\n` +
         `[b]Infobulles des torrents[/b]\n` +
