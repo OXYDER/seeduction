@@ -84,6 +84,18 @@ export class MessengerController {
     return this.messenger.messages(actorOf(req), id, before || undefined, limit ? Number(limit) : undefined);
   }
 
+  /** Recherche dans toutes mes conversations. */
+  @Get('search')
+  searchAll(@Query('q') q: string, @Request() req: any) {
+    return this.messenger.searchAll(actorOf(req), q);
+  }
+
+  /** Transférer un message dans une autre conversation. */
+  @Post('messages/:id/forward')
+  forward(@Param('id') id: string, @Body('conversationId') conversationId: string, @Request() req: any) {
+    return this.messenger.forward(actorOf(req), id, conversationId);
+  }
+
   @Get('conversations/:id/search')
   search(@Param('id') id: string, @Query('q') q: string, @Request() req: any) {
     return this.messenger.search(actorOf(req), id, q);

@@ -147,6 +147,8 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     }
   }
 
+  const pendingJump = useMessenger((s) => s.pendingJump);
+  const setPendingJump = useMessenger((s) => s.setPendingJump);
   const jumpTo = useCallback((id: string) => {
     const el = document.getElementById(`msg-${id}`);
     if (!el) return false;
@@ -155,6 +157,25 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     window.setTimeout(() => setFlash((f) => (f === id ? null : f)), 1800);
     return true;
   }, []);
+
+  // Résultat de la recherche globale : on charge l'historique plus ancien (12 pages au plus) jusqu'à trouver le message, puis on s'y rend.
+  useEffect(() => {
+    if (!pendingJump || pendingJump.conversationId !== conversationId || !thread?.loaded) return;
+    let cancelled = false;
+    (async () => {
+      for (let tries = 0; tries < 12 && !cancelled; tries++) {
+        if (document.getElementById(`msg-${pendingJump.messageId}`)) break;
+        const t = useMessenger.getState().threads[conversationId];
+        if (!t?.hasMore) break;
+        stick.current = false;
+        await useMessenger.getState().loadOlder(conversationId);
+        await new Promise((r) => window.setTimeout(r, 60));
+      }
+      if (cancelled) return;
+      window.setTimeout(() => { if (!jumpTo(pendingJump.messageId)) window.alert('Ce message est trop ancien pour être affiché ici.'); setPendingJump(null); }, 150);
+    })();
+    return () => { cancelled = true; };
+  }, [pendingJump, conversationId, thread?.loaded, jumpTo, setPendingJump]);
 
   // Recherche dans la conversation
   useEffect(() => {

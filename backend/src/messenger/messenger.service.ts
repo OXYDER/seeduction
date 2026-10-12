@@ -463,6 +463,55 @@ export class MessengerService extends EventEmitter {
     return { messages: page, hasMore, myLastReadAt: member.lastReadAt, readBy };
   }
 
+  /**
+   * Transfère un message (texte, image, GIF, fichier, vocal ou torrent partagé) dans une autre conversation, avec la mention « Transféré de … ». Il faut pouvoir
+   * lire la conversation d'origine et écrire dans la conversation de destination (mode lent, bannissement et droits compris : c'est un envoi ordinaire).
+   */
+  async forward(actor: Actor, messageId: string, targetConversationId: string) {
+    const msg = await this.prisma.message.findUnique({ where: { id: messageId }, include: { sender: { select: USER_SELECT } } });
+    if (!msg || msg.deletedAt) throw new NotFoundException('Message introuvable');
+    if (msg.type === 'SYSTEM' || msg.type === 'BOT_ANSWER' || msg.type === 'TICKET_OFFER' || msg.type === 'HANDOFF') throw new BadRequestException('Ce message ne peut pas être transféré');
+    await this.access(actor, msg.conversationId);
+    const head = `↪ Transféré de ${msg.sender.username}`;
+    const body = (msg.content ?? '').trim();
+    const input: SendInput = {
+      content: (body ? `${head}\n${body}` : head).slice(0, MAX_LENGTH),
+      imageUrl: msg.imageUrl, fileUrl: msg.fileUrl, fileName: msg.fileName, fileSize: msg.fileSize, mime: msg.mime, durationMs: msg.durationMs, torrentId: msg.torrentId,
+      type: msg.type === 'VOICE' ? 'VOICE' : undefined,
+    };
+    return this.send(actor, targetConversationId, input);
+  }
+
+  /**
+   * Recherche dans toutes mes conversations (privées, groupes et canaux que je suis) : les messages texte qui contiennent ces mots, du plus récent au plus ancien,
+   * sans ceux des membres que j'ai mis en sourdine.
+   */
+  async searchAll(actor: Actor, q: string) {
+    const term = (q ?? '').trim().slice(0, 80);
+    if (term.length < 3) return [];
+    const muted = await this.moderation.mutedIds(actor.userId);
+    const rows = await this.prisma.message.findMany({
+      where: {
+        deletedAt: null, type: 'TEXT', content: { contains: term, mode: 'insensitive' },
+        conversation: { archived: false, members: { some: { userId: actor.userId } } },
+        ...(muted.length ? { senderId: { notIn: muted } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+      include: { sender: { select: USER_SELECT }, conversation: { select: { id: true, type: true, name: true, members: { select: { userId: true, user: { select: { username: true } } } } } } },
+    });
+    const at = (text: string) => {
+      const i = text.toLowerCase().indexOf(term.toLowerCase());
+      const from = Math.max(0, i - 40);
+      return `${from > 0 ? '…' : ''}${text.slice(from, from + 140).replace(/\s+/g, ' ')}${text.length > from + 140 ? '…' : ''}`;
+    };
+    return rows.map((m) => ({
+      id: m.id, conversationId: m.conversationId, conversationType: m.conversation.type,
+      conversationName: m.conversation.type === 'DIRECT' ? m.conversation.members.find((x) => x.userId !== actor.userId)?.user.username ?? 'Membre' : m.conversation.name,
+      sender: { id: m.sender.id, username: m.sender.username }, preview: at(m.content), createdAt: m.createdAt,
+    }));
+  }
+
   /** Messages d'une conversation contenant ce texte (recherche dans la discussion ouverte). */
   async search(actor: Actor, conversationId: string, q: string) {
     await this.access(actor, conversationId);

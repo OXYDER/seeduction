@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import { useMessenger, type ConvSummary } from '../../store/messenger';
-import { listTime } from '../../lib/chatFormat';
+import { clock, dayLabel, listTime } from '../../lib/chatFormat';
 import ConvAvatar from './ConvAvatar';
 import MessengerSettings from './MessengerSettings';
 
@@ -92,6 +92,17 @@ export default function ConversationList({ activeId, onSelect, onNew }: { active
   const [unreadOnly, setUnreadOnly] = useState(false);
   const setKind = (k: Kind) => { setKindState(k); try { localStorage.setItem(KIND_KEY, k); } catch { /* préférence facultative */ } };
   const [archived, setArchived] = useState<ConvSummary[] | null>(null);
+  const setPendingJump = useMessenger((s) => s.setPendingJump);
+  // Recherche dans le texte de tous mes messages (à partir de 3 lettres).
+  const [hits, setHits] = useState<{ id: string; conversationId: string; conversationName: string | null; conversationType: string; sender: { username: string }; preview: string; createdAt: string }[] | null>(null);
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 3) { setHits(null); return; }
+    let cancelled = false;
+    const t = window.setTimeout(() => { api.get('/messenger/search', { params: { q: term } }).then((r) => { if (!cancelled) setHits(r.data); }).catch(() => { if (!cancelled) setHits([]); }); }, 350);
+    return () => { cancelled = true; window.clearTimeout(t); };
+  }, [q]);
+  const openHit = (h: { id: string; conversationId: string }) => { setPendingJump({ conversationId: h.conversationId, messageId: h.id }); onSelect(h.conversationId); };
 
   useEffect(() => {
     if (archived === null) return;
@@ -154,6 +165,22 @@ export default function ConversationList({ activeId, onSelect, onNew }: { active
         )}
         {otherMatches > 0 && <button type="button" className="msgr-archived-toggle" onClick={() => setKind(kind === 'private' ? 'public' : 'private')}>{otherMatches} résultat{otherMatches > 1 ? 's' : ''} dans les conversations {kind === 'private' ? 'publiques' : 'privées'} →</button>}
         {list.map((c) => <Row key={c.id} c={c} active={c.id === activeId} onSelect={() => onSelect(c.id)} />)}
+        {hits !== null && (
+          <div className="msgr-hits">
+            <div className="msgr-hits-title">💬 Dans les messages{hits.length ? ` (${hits.length}${hits.length >= 30 ? '+' : ''})` : ''}</div>
+            {hits.length === 0 && <div className="muted" style={{ padding: '4px 12px 8px', fontSize: 13 }}>Aucun message ne contient « {q.trim()} ».</div>}
+            {hits.map((h) => {
+              const term = q.trim();
+              const i = h.preview.toLowerCase().indexOf(term.toLowerCase());
+              return (
+                <button key={h.id} type="button" className="msgr-hit" onClick={() => openHit(h)}>
+                  <span className="msgr-hit-top"><strong>{h.conversationType === 'CHANNEL' ? '# ' : ''}{h.conversationName}</strong><span className="muted">{dayLabel(h.createdAt)} · {clock(h.createdAt)}</span></span>
+                  <span className="msgr-hit-text"><span className="muted">{h.sender.username} : </span>{i >= 0 ? <>{h.preview.slice(0, i)}<mark>{h.preview.slice(i, i + term.length)}</mark>{h.preview.slice(i + term.length)}</> : h.preview}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
         <button type="button" className="msgr-archived-toggle" onClick={() => setArchived((a) => (a === null ? [] : null))}>
           🗄️ Archivées {archived ? `(${archived.length})` : ''} {archived === null ? '▸' : '▾'}
         </button>

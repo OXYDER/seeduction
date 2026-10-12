@@ -3726,3 +3726,16 @@ a.msgr-mention { text-decoration: none; }
 .msgr-fs-s .msgr-bubble, .msgr-fs-s .msgr-sender { font-size: 12.5px; }
 .msgr-fs-l .msgr-bubble, .msgr-fs-l .msgr-sender { font-size: 16px; }
 .msgr-fs-l .msgr-line-time { font-size: 12px; }
+/* Transfert de message et recherche dans tous les messages */
+.msgr-fwd-list { display: grid; gap: 4px; max-height: 320px; overflow-y: auto; }
+.msgr-fwd-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; color: inherit; font: inherit; background: rgba(255, 255, 255, 0.05); border: 1px solid transparent; box-shadow: none; transform: none; }
+.msgr-fwd-item:hover { border-color: var(--gold, #e0b84a); filter: none; }
+.msgr-fwd-go { font-size: 12px; font-weight: 800; padding: 2px 10px; border-radius: 999px; background: var(--gold, #e0b84a); color: #14110a; }
+.msgr-hits { margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.msgr-hits-title { padding: 8px 12px 4px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--gold, #e0b84a); }
+.msgr-hit { display: grid; gap: 2px; width: 100%; text-align: left; padding: 7px 12px; color: inherit; font: inherit; background: transparent; border: 0; border-radius: 0; box-shadow: none; transform: none; }
+.msgr-hit:hover { background: rgba(255, 255, 255, 0.07); filter: none; }
+.msgr-hit-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.msgr-hit-top .muted { font-size: 11.5px; white-space: nowrap; }
+.msgr-hit-text { font-size: 13px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.msgr-hit-text mark { background: rgba(224, 184, 74, 0.45); color: inherit; border-radius: 3px; padding: 0 1px; }

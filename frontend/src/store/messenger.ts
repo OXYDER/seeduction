@@ -137,6 +137,9 @@ interface MsgrState {
   online: Record<string, PublicStatus>;
   onlineList: { id: string; username: string; role?: string; status: PublicStatus }[];
   windows: DockWindow[];
+  /** Message à rejoindre après avoir ouvert une conversation (résultat de la recherche globale). */
+  pendingJump: { conversationId: string; messageId: string } | null;
+  setPendingJump: (j: { conversationId: string; messageId: string } | null) => void;
   /** conversationId -> nombre de vues qui l'affichent en ce moment (page ouverte dessus, fenêtre déployée). */
   visible: Record<string, number>;
   /** Dernière annonce (« un nouveau message ») pour le son / la notification du navigateur. */
@@ -188,6 +191,9 @@ function loadSettings(): MsgrSettings {
 }
 
 let refreshTimer: number | null = null;
+let restoredWindows = false;
+const WINDOWS_KEY = 'msgr-open-windows';
+const readWindows = (): { conversationId: string; minimized: boolean }[] => { try { const v = JSON.parse(localStorage.getItem(WINDOWS_KEY) ?? '[]'); return Array.isArray(v) ? v.filter((x) => x && typeof x.conversationId === 'string') : []; } catch { return []; } };
 let readTimers: Record<string, number> = {};
 
 export const useMessenger = create<MsgrState>((set, get) => {
@@ -255,6 +261,8 @@ export const useMessenger = create<MsgrState>((set, get) => {
     online: {},
     onlineList: [],
     windows: [],
+    pendingJump: null,
+    setPendingJump(j) { set({ pendingJump: j }); },
     visible: {},
     incoming: null,
     settings: loadSettings(),
@@ -377,6 +385,12 @@ export const useMessenger = create<MsgrState>((set, get) => {
           const justOpened = s.conversations.filter((c) => !serverIds.has(c.id) && c.type === 'DIRECT' && c.last === null);
           return { conversations: [...data, ...justOpened], convLoaded: true };
         });
+        // Au premier chargement, les fenêtres de discussion laissées ouvertes reviennent (sur cet appareil).
+        if (!restoredWindows) {
+          restoredWindows = true;
+          const ids = new Set((data as ConvSummary[]).map((c) => c.id));
+          for (const w of readWindows().filter((x) => ids.has(x.conversationId)).slice(0, MAX_WINDOWS)) get().openWindow(w.conversationId, { minimized: w.minimized });
+        }
       } catch { set({ convLoaded: true }); }
     },
 
@@ -561,6 +575,12 @@ export const useMessenger = create<MsgrState>((set, get) => {
 });
 
 /** Statut de présence affiché pour un membre : celui du direct s'il est connecté, sinon hors ligne. */
+// Les fenêtres ouvertes sont mémorisées pour revenir après un rechargement de la page.
+useMessenger.subscribe((state, prev) => {
+  if (state.windows === prev.windows || !state.convLoaded) return;
+  try { localStorage.setItem(WINDOWS_KEY, JSON.stringify(state.windows)); } catch { /* facultatif */ }
+});
+
 export function statusOf(online: Record<string, PublicStatus>, userId?: string | null): PublicStatus {
   return (userId && online[userId]) || 'OFFLINE';
 }

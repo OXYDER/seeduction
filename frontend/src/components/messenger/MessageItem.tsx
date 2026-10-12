@@ -13,6 +13,7 @@ import TorrentCard from './TorrentCard';
 import Lightbox from './Lightbox';
 import VoicePlayer from './VoicePlayer';
 import ChatModerationModal, { type ModerationMode } from './ChatModerationModal';
+import ForwardModal from './ForwardModal';
 
 export interface Reader { userId: string; username: string; avatarUrl?: string | null }
 
@@ -82,6 +83,7 @@ function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, 
   const [menu, setMenu] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [modal, setModal] = useState<ModerationMode | null>(null);
+  const [forwarding, setForwarding] = useState(false);
   const mine = msg.sender.id === me?.id;
   const group = conv.type !== 'DIRECT';
   const isSupportChannel = !!supportChannelId && conv.id === supportChannelId;
@@ -198,6 +200,7 @@ function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, 
               {menu && (
                 <div className="msgr-menu" onClick={(e) => e.stopPropagation()}>
                   {msg.content && <button type="button" onClick={() => { navigator.clipboard?.writeText(msg.content).catch(() => {}); setMenu(false); }}>📋 Copier le texte</button>}
+                  <button type="button" onClick={() => { setMenu(false); setForwarding(true); }}>↪ Transférer…</button>
                   {canMakeTicket && <button type="button" onClick={() => { setMenu(false); void makeTicket(); }}>🎫 Ouvrir un billet pour ce membre</button>}
                   {canEdit && <button type="button" onClick={() => { setMenu(false); onEdit(msg); }}>✏️ Modifier</button>}
                   {canPin && <button type="button" onClick={() => { setMenu(false); onPin(msg); }}>{conv.pinnedMessageIds?.includes(msg.id) ? '📌 Désépingler' : '📌 Épingler'}</button>}
@@ -249,6 +252,7 @@ function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, 
         )}
       </div>
       {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
+      {forwarding && <ForwardModal msg={msg} onClose={() => setForwarding(false)} />}
       {modal && <ChatModerationModal mode={modal} msg={msg} convType={conv.type} convName={conv.name} convId={conv.id} onClose={() => setModal(null)} />}
     </div>
   );
