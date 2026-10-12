@@ -141,7 +141,7 @@ interface MsgrState {
   visible: Record<string, number>;
   /** Dernière annonce (« un nouveau message ») pour le son / la notification du navigateur. */
   incoming: { id: string; conversationId: string; at: number } | null;
-  settings: { sound: boolean; desktop: boolean };
+  settings: MsgrSettings;
   /** Bulles de discussion sur le côté gauche (réglage du compte, voir User.chatBubbles). */
   bubbles: boolean;
   setBubbles: (on: boolean) => void;
@@ -166,14 +166,25 @@ interface MsgrState {
   closeWindow: (conversationId: string) => void;
   toggleMinimize: (conversationId: string) => void;
   patchConversation: (id: string, patch: Partial<ConvSummary>) => void;
-  setSettings: (patch: Partial<{ sound: boolean; desktop: boolean }>) => void;
+  setSettings: (patch: Partial<MsgrSettings>) => void;
 }
 
 const SETTINGS_KEY = 'seeduction:messenger-settings';
 /** Notifications du navigateur : activées par défaut dès que la permission est accordée, tant que le membre n'a pas fait son propre choix. */
 const permissionGranted = () => typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
-function loadSettings() {
-  try { return { sound: true, desktop: permissionGranted(), ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') }; } catch { return { sound: true, desktop: permissionGranted() }; }
+/** Réglages du Messenger, propres à l'appareil : son, notifications du navigateur et présentation des messages. */
+export interface MsgrSettings {
+  sound: boolean;
+  desktop: boolean;
+  /** « auto » : lignes serrées dans les canaux publics, bulles ailleurs. */
+  layout: 'auto' | 'bubbles' | 'lines';
+  fontSize: 's' | 'm' | 'l';
+  /** Mode lignes : afficher les avatars. */
+  avatars: boolean;
+}
+function loadSettings(): MsgrSettings {
+  const base: MsgrSettings = { sound: true, desktop: permissionGranted(), layout: 'auto', fontSize: 'm', avatars: true };
+  try { return { ...base, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') }; } catch { return base; }
 }
 
 let refreshTimer: number | null = null;

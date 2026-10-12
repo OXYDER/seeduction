@@ -3681,3 +3681,48 @@ body.has-chat-rail .dm-bubble-avatar { display: none; }
 .hs-controls { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: -6px; }
 .hs-controls button { padding: 2px 10px; font-size: 12px; border-radius: 999px; background: transparent; color: inherit; border: 1px solid rgba(255, 255, 255, 0.2); opacity: 0.65; box-shadow: none; transform: none; }
 .hs-controls button:hover { opacity: 1; filter: none; border-color: var(--gold, #e0b84a); }
+/* Chat : mise en forme du texte (code, citation, spoiler) */
+.msgr-code { padding: 1px 6px; border-radius: 5px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.14); }
+.msgr-codeblock { margin: 4px 0; padding: 8px 10px; border-radius: 8px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; line-height: 1.45; white-space: pre; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.14); }
+.msgr-quote { display: block; margin: 3px 0; padding: 2px 0 2px 10px; border-left: 3px solid var(--gold, #e0b84a); opacity: 0.88; white-space: pre-wrap; }
+.msgr-spoiler { border-radius: 4px; padding: 0 3px; cursor: pointer; background: #0b0f1e; color: transparent; user-select: none; transition: color .15s ease, background .15s ease; }
+.msgr-spoiler.on { background: rgba(255, 255, 255, 0.14); color: inherit; user-select: text; }
+.msgr-spoiler:not(.on) * { color: transparent; }
+a.msgr-mention { text-decoration: none; }
+.msgr-fmt-pop { position: absolute; bottom: calc(100% + 8px); right: 0; display: flex; gap: 4px; padding: 6px; border-radius: 10px; background: #151b33; border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); z-index: 15; }
+.msgr-fmt-pop button { min-width: 32px; height: 30px; padding: 0 8px; border-radius: 7px; font-size: 13px; font-weight: 800; background: rgba(255, 255, 255, 0.08); border: 0; color: inherit; box-shadow: none; }
+.msgr-fmt-pop button:hover { background: rgba(255, 255, 255, 0.2); transform: none; filter: none; }
+/* Messenger : pseudos du staff, mode « lignes compactes », taille du texte */
+.msgr-sender .user-link { font-weight: 700; }
+.msgr-sender.role-OWNER .user-link { color: #fbbf24; }
+.msgr-sender.role-ADMIN .user-link { color: #f87171; }
+.msgr-sender.role-SUPER_MODERATOR .user-link { color: #c084fc; }
+.msgr-sender.role-MODERATOR .user-link { color: #4ade80; }
+.msgr-role-tag { margin-left: 6px; padding: 0 6px; border-radius: 4px; font-size: 9.5px; font-weight: 800; letter-spacing: .05em; vertical-align: middle; background: rgba(255, 255, 255, 0.14); }
+.msgr-sender.role-OWNER .msgr-role-tag { background: rgba(251, 191, 36, 0.28); color: #fde68a; }
+.msgr-sender.role-ADMIN .msgr-role-tag { background: rgba(248, 113, 113, 0.28); color: #fecaca; }
+.msgr-sender.role-SUPER_MODERATOR .msgr-role-tag { background: rgba(192, 132, 252, 0.28); color: #e9d5ff; }
+.msgr-sender.role-MODERATOR .msgr-role-tag { background: rgba(74, 222, 128, 0.25); color: #bbf7d0; }
+.msgr-line-time { margin-left: 8px; font-size: 11px; font-weight: 400; opacity: 0.55; }
+.msgr-set-sep { margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.12); font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; opacity: 0.7; }
+.msgr-set-row { display: grid; gap: 4px; font-size: 13px; }
+.msgr-set-row select { width: 100%; }
+
+.msgr-lines .msgr-row, .msgr-lines .msgr-row.mine { flex-direction: row; justify-content: flex-start; gap: 10px; margin-top: 0; padding: 1px 8px; border-radius: 6px; }
+.msgr-lines .msgr-row.first { margin-top: 10px; }
+.msgr-lines .msgr-row:hover { background: rgba(255, 255, 255, 0.04); }
+.msgr-lines .msgr-col { align-items: flex-start; max-width: 100%; min-width: 0; flex: 1; }
+.msgr-lines .msgr-row.mine .msgr-bubble-wrap, .msgr-lines .msgr-bubble-wrap { align-items: flex-start; }
+.msgr-lines .msgr-avatar-slot { align-self: flex-start; width: 30px; flex: none; }
+.msgr-lines.msgr-noav .msgr-avatar-slot { display: none; }
+.msgr-lines .msgr-bubble { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; color: inherit !important; max-width: 100%; }
+.msgr-lines .msgr-bubble.big-emoji { font-size: 2.2em; }
+.msgr-lines .msgr-bubble.pending { opacity: 0.55; }
+.msgr-lines .msgr-meta { display: none; }
+.msgr-lines .msgr-sender { margin-bottom: 1px; }
+.msgr-lines .msgr-image { max-width: min(320px, 100%); border-radius: 8px; }
+.msgr-lines .msgr-row.mine .msgr-mention { color: var(--acc-light, #f4d06a); background: rgba(var(--acc-rgb, 224,184,74), 0.18); }
+.msgr-lines .msgr-tools { top: -14px; }
+.msgr-fs-s .msgr-bubble, .msgr-fs-s .msgr-sender { font-size: 12.5px; }
+.msgr-fs-l .msgr-bubble, .msgr-fs-l .msgr-sender { font-size: 16px; }
+.msgr-fs-l .msgr-line-time { font-size: 12px; }

@@ -69,6 +69,20 @@ export class UsersController {
     return this.usersService.getRatioHistory(accountOf(req), parseInt(days, 10));
   }
 
+  /** @pseudo cliqué dans un message, un sujet ou un commentaire : retrouve le membre par son pseudo. */
+  @UseGuards(JwtAuthGuard)
+  @Get('by-name/:username')
+  byName(@Param('username') username: string) {
+    return this.usersService.findByName(username);
+  }
+
+  /** Suggestions de pseudos quand on tape « @ » dans un éditeur. */
+  @UseGuards(JwtAuthGuard)
+  @Get('mention-search')
+  mentionSearch(@Query('q') q = '') {
+    return this.usersService.mentionSearch(q);
+  }
+
   @Get('leaderboard')
   leaderboard(@Query('limit') limit = '50') {
     return this.usersService.leaderboard(parseInt(limit, 10));

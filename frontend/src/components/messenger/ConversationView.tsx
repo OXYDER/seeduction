@@ -98,6 +98,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   useEffect(() => { if (thread?.loaded && initialRead.current === null) initialRead.current = thread.myLastReadAt ?? ''; }, [thread?.loaded, thread?.myLastReadAt]);
 
   const mutes = useMessenger((s) => s.mutes);
+  const display = useMessenger((s) => s.settings);
   const allMessages = thread?.messages ?? [];
   const messages = useMemo(() => allMessages.filter((m) => !isUserMuted(mutes, m.sender.id)), [allMessages, mutes]);
   const firstId = messages[0]?.id;
@@ -265,9 +266,12 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     : conv.type === 'GROUP' ? <span className="muted">{conv.memberCount} membres</span>
     : <span className="muted">{conv.description ?? 'Canal public'} · {onlineList.length} en ligne</span>;
 
+  // Présentation : lignes serrées (canaux publics en mode « auto ») ou bulles.
+  const lines = display.layout === 'lines' || (display.layout === 'auto' && conv.type === 'CHANNEL');
+
   return (
     <div
-      className={`msgr-view ${variant}${dragging ? ' dragging' : ''}`}
+      className={`msgr-view ${variant}${dragging ? ' dragging' : ''}${lines ? ' msgr-lines' : ''}${display.fontSize !== 'm' ? ` msgr-fs-${display.fontSize}` : ''}${lines && !display.avatars ? ' msgr-noav' : ''}`}
       onDragOver={(e) => { if (e.dataTransfer.types.includes('Files') && conv.writable) { e.preventDefault(); setDragging(true); } }}
       onDragLeave={(e) => { if (e.currentTarget === e.target) setDragging(false); }}
       onDrop={(e) => { e.preventDefault(); setDragging(false); if (conv.writable && e.dataTransfer.files.length) setDropped([...e.dataTransfer.files]); }}
@@ -351,7 +355,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
           return (
             <Fragment key={it.key}>
               <MessageItem
-                msg={m} conv={conv} first={!!it.first} last={!!it.last} readers={readersByMessage.get(m.id) ?? []}
+                msg={m} conv={conv} lines={lines} first={!!it.first} last={!!it.last} readers={readersByMessage.get(m.id) ?? []}
                 highlighted={flash === m.id} canModerate={canModerate} canPin={canPin} feedbackOpen={feedbackId === m.id}
                 onReply={(x) => { setEditing(null); setReplyTo(x); }} onEdit={(x) => { setReplyTo(null); setEditing(x); }} onJump={jumpTo} onPin={togglePin}
               />

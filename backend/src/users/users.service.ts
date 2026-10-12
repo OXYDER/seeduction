@@ -99,6 +99,23 @@ export class UsersService {
     return { chatBubbles: value };
   }
 
+  /** Membre (compte principal) d'après son pseudo, sans tenir compte de la casse. */
+  async findByName(username: string) {
+    const u = await this.prisma.user.findFirst({ where: { username: { equals: String(username ?? '').trim().slice(0, 50), mode: 'insensitive' }, parentId: null }, select: { id: true, username: true } });
+    if (!u) throw new NotFoundException('Membre introuvable');
+    return u;
+  }
+
+  /** Jusqu'à 8 pseudos qui commencent par ce texte (puis qui le contiennent), pour l'autocomplétion des @mentions. */
+  async mentionSearch(q: string) {
+    const text = String(q ?? '').trim().slice(0, 30);
+    const where = { parentId: null, status: 'ACTIVE' as const };
+    const starts = await this.prisma.user.findMany({ where: { ...where, username: { startsWith: text, mode: 'insensitive' } }, select: { id: true, username: true, avatarUrl: true }, orderBy: { username: 'asc' }, take: 8 });
+    if (starts.length >= 8 || text.length < 2) return starts;
+    const more = await this.prisma.user.findMany({ where: { ...where, username: { contains: text, mode: 'insensitive' }, id: { notIn: starts.map((s) => s.id) } }, select: { id: true, username: true, avatarUrl: true }, orderBy: { username: 'asc' }, take: 8 - starts.length });
+    return [...starts, ...more];
+  }
+
   /** Style des info-bulles de torrents (ou « off » pour les désactiver). */
   async setTipStyle(userId: string, style: string) {
     if (!TIP_STYLES.includes(style)) throw new BadRequestException('Style inconnu');

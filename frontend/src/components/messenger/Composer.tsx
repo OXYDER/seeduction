@@ -6,8 +6,27 @@ import Avatar from '../Avatar';
 import ShareTorrentModal from './ShareTorrentModal';
 import GifPicker from './GifPicker';
 
-// Brouillons : ce qu'on a commencé à écrire dans une conversation est gardé quand on passe à une autre.
-const drafts = new Map<string, string>();
+// Brouillons : ce qu'on a commencé à écrire dans une conversation est gardé quand on passe à une autre, et même après un rechargement de la page (sur cet appareil).
+const DRAFTS_KEY = 'msgr-drafts';
+const readDrafts = (): Record<string, string> => { try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) ?? '{}') || {}; } catch { return {}; } };
+const mem = new Map<string, string>(Object.entries(readDrafts()));
+const drafts = {
+  get: (id: string) => mem.get(id),
+  set(id: string, v: string) {
+    if (v) mem.set(id, v); else mem.delete(id);
+    try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(Object.fromEntries([...mem].slice(-40)))); } catch { /* brouillon valable pour cette visite seulement */ }
+  },
+  delete(id: string) { this.set(id, ''); },
+};
+/** Mise en forme proposée sous le bouton « Aa » : marqueur ouvrant / fermant, exemple affiché. */
+const FORMATS: { label: string; title: string; open: string; close?: string; keys?: string }[] = [
+  { label: 'B', title: 'Gras', open: '**', keys: 'Ctrl+B' },
+  { label: 'I', title: 'Italique', open: '*', keys: 'Ctrl+I' },
+  { label: 'S', title: 'Barré', open: '~~' },
+  { label: '</>', title: 'Code', open: '`', keys: 'Ctrl+E' },
+  { label: '▮▮', title: 'Spoiler (un clic le révèle)', open: '||' },
+  { label: '❝', title: 'Citation (début de ligne)', open: '> ', close: '' },
+];
 const TYPING_EVERY_MS = 1500;
 const MAX_VOICE_MS = 5 * 60 * 1000;
 const MENTION_AT_CARET = /(^|\s)@([\p{L}\p{N}_.·-]{0,50})$/u;
@@ -39,6 +58,7 @@ export default function Composer({ conversationId, writable, ban, people, replyT
   const [rec, setRec] = useState<{ startedAt: number } | null>(null);
   const [recMs, setRecMs] = useState(0);
   const [share, setShare] = useState(false);
+  const [fmt, setFmt] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [mention, setMention] = useState<{ query: string; index: number } | null>(null);
@@ -190,7 +210,24 @@ export default function Composer({ conversationId, writable, ban, people, replyT
     setText(''); setEmoji(false); setMention(null); onCancelReply();
   }
 
+  /** Entoure la sélection (ou place le curseur entre les marqueurs) : « **gras** », « `code` »... */
+  function wrap(open: string, close = open) {
+    const el = area.current;
+    if (!el) return;
+    const a = el.selectionStart, b = el.selectionEnd;
+    const sel = text.slice(a, b);
+    const next = text.slice(0, a) + open + sel + close + text.slice(b);
+    setText(next);
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a + open.length, a + open.length + sel.length); });
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'b') { e.preventDefault(); wrap('**'); return; }
+      if (k === 'i') { e.preventDefault(); wrap('*'); return; }
+      if (k === 'e') { e.preventDefault(); wrap('`'); return; }
+    }
     if (suggestions.length && (e.key === 'Tab' || e.key === 'Enter')) { e.preventDefault(); pickMention(suggestions[mention?.index ?? 0] ?? suggestions[0]); return; }
     if (suggestions.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
       e.preventDefault();
@@ -262,6 +299,16 @@ export default function Composer({ conversationId, writable, ban, people, replyT
           onPaste={onPaste}
           aria-label="Message"
         />
+        <div className="msgr-emoji-anchor">
+          <button type="button" className="chat-icon-btn lg" title="Mise en forme : gras, italique, code, spoiler, citation" aria-label="Mise en forme" onClick={() => setFmt((v) => !v)}>Aa</button>
+          {fmt && (
+            <div className="msgr-fmt-pop" role="toolbar" aria-label="Mise en forme">
+              {FORMATS.map((f) => (
+                <button key={f.title} type="button" title={`${f.title}${f.keys ? ` (${f.keys})` : ''}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { wrap(f.open, f.close ?? f.open); setFmt(false); }}>{f.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
         {!editing && (
           <div className="msgr-emoji-anchor">
             <button type="button" className="chat-icon-btn lg" title="Émojis, autocollants et GIF" onClick={() => setEmoji((v) => !v)}>😀</button>

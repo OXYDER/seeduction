@@ -24,6 +24,8 @@ interface Props {
   last: boolean;
   readers: Reader[];
   highlighted?: boolean;
+  /** Présentation en lignes compactes (pseudo, heure et texte sur une ligne) au lieu de bulles. */
+  lines?: boolean;
   canModerate: boolean;
   canPin: boolean;
   onReply: (m: Msg) => void;
@@ -33,6 +35,11 @@ interface Props {
   /** Réponse de l'assistant à laquelle on peut encore répondre « résolu » / « pas résolu ». */
   feedbackOpen?: boolean;
 }
+
+/** Étiquette du staff à côté du pseudo (canaux et groupes). */
+const STAFF_TAG: Record<string, { label: string; title: string }> = {
+  OWNER: { label: 'PROPRIO', title: 'Propriétaire' }, ADMIN: { label: 'ADMIN', title: 'Administrateur' }, SUPER_MODERATOR: { label: 'SUPER MOD', title: 'Super modérateur' }, MODERATOR: { label: 'MOD', title: 'Modérateur' },
+};
 
 function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) {
   const [full, setFull] = useState(false);
@@ -50,7 +57,7 @@ function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) {
   );
 }
 
-function MessageItemBase({ msg, conv, first, last, readers, highlighted, canModerate, canPin, onReply, onEdit, onJump, onPin, feedbackOpen }: Props) {
+function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, canModerate, canPin, onReply, onEdit, onJump, onPin, feedbackOpen }: Props) {
   const me = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const botId = useSupport((s) => s.overview?.botUserId);
@@ -126,15 +133,24 @@ function MessageItemBase({ msg, conv, first, last, readers, highlighted, canMode
     catch { setFeedbackDone(false); }
   }
 
-  const avatar = !mine && group ? (
-    <span className="msgr-avatar-slot">{last ? <Avatar user={msg.sender} size={28} /> : null}</span>
-  ) : null;
+  const avatar = lines
+    ? <span className="msgr-avatar-slot">{first ? <Avatar user={msg.sender} size={30} /> : null}</span>
+    : !mine && group ? (
+      <span className="msgr-avatar-slot">{last ? <Avatar user={msg.sender} size={28} /> : null}</span>
+    ) : null;
+  const roleTag = STAFF_TAG[msg.sender.role ?? ''];
 
   return (
     <div id={`msg-${msg.id}`} className={`msgr-row ${mine ? 'mine' : 'them'}${first ? ' first' : ''}${last ? ' last' : ''}${highlighted ? ' flash' : ''}`}>
       {avatar}
       <div className="msgr-col">
-        {first && group && !mine && <div className="msgr-sender">{isBot ? <><strong>{msg.sender.username}</strong> <span className="msgr-bot-badge">🤖 Assistant</span></> : <UserLink user={msg.sender} />}</div>}
+        {first && (lines || (group && !mine)) && (
+          <div className={`msgr-sender role-${msg.sender.role ?? 'USER'}`}>
+            {isBot ? <><strong>{msg.sender.username}</strong> <span className="msgr-bot-badge">🤖 Assistant</span></> : <UserLink user={msg.sender} />}
+            {roleTag && !isBot && <span className="msgr-role-tag" title={roleTag.title}>{roleTag.label}</span>}
+            {lines && <span className="msgr-line-time">{clock(msg.createdAt)}</span>}
+          </div>
+        )}
 
         {msg.replyTo && !msg.deleted && (
           <button type="button" className="msgr-reply-quote" onClick={() => onJump(msg.replyTo!.id)} title="Voir le message d'origine">
