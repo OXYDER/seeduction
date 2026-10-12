@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 import Browse from './pages/Browse';
 import Favorites from './pages/Favorites';
 import Bonus from './pages/Bonus';
+import Donate from './pages/Donate';
 import TeamManagement from './pages/TeamManagement';
 import Notifications from './pages/Notifications';
 import FreeleechCalendarPage from './pages/FreeleechCalendarPage';
@@ -119,6 +120,7 @@ export default function App() {
           <Route path="/rules" element={<Navigate to="/wiki" replace />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/bonus" element={<Bonus />} />
+          <Route path="/soutenir" element={<Donate />} />
           <Route path="/equipe" element={<TeamManagement />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/freeleech" element={<FreeleechCalendarPage />} />

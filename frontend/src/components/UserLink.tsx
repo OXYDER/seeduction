@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import HoverCard from './HoverCard';
+import DonorMark from './DonorMark';
 import Avatar from './Avatar';
 import { formatBytes } from '../lib/format';
 import { displayRank } from '../lib/memberClass';
@@ -101,9 +102,12 @@ export default function UserLink({ user, fallback = '' }: { user?: { id?: string
   const id = user.id;
   return (
     <HoverCard cacheKey={`user:${id}`} load={() => api.get(`/users/${id}`).then((r) => r.data)} render={(u: any) => <UserCard u={u} />}>
-      <Link to={`/users/${id}`} onClick={(e) => e.stopPropagation()} className="user-link">
-        <ProfileName username={user.username} />
-      </Link>
+      <span style={{ whiteSpace: 'nowrap' }}>
+        <Link to={`/users/${id}`} onClick={(e) => e.stopPropagation()} className="user-link">
+          <ProfileName username={user.username} />
+        </Link>
+        <DonorMark id={id} />
+      </span>
     </HoverCard>
   );
 }

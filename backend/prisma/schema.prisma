@@ -149,6 +149,14 @@ model User {
   requestsFound    TorrentRequest[] @relation("RequestFinder")
   // Préférences de notifications : { catégorie: false } coupe cette catégorie (tout est actif par défaut).
   notifPrefs       Json?
+  // Dons : statut « donateur » (permanent une fois acquis), durée des avantages en cours, et réglages (voir DonationsService).
+  donorSince       DateTime?
+  donorUntil       DateTime?
+  donorTotal       Float      @default(0)
+  donorInvites     Int        @default(0)
+  hnrExemptUntil   DateTime?
+  donorWall        Boolean    @default(false) // apparaître sur le mur des donateurs (opt-in)
+  donations        Donation[]
   requestsProposed TorrentRequest[] @relation("RequestProposer")
   chatMutes        ChatMute[] @relation("ChatMuter")
   chatMutedBy      ChatMute[] @relation("ChatMuted")
@@ -1716,4 +1724,27 @@ model ChatMute {
 
   @@unique([userId, targetId])
   @@index([targetId])
+}
+
+// Don reçu, inscrit à la main par l'administration (les dons se font sur une plateforme externe : aucun paiement ne passe par le site).
+model Donation {
+  id             String   @id @default(uuid())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  amount         Float
+  currency       String   @default("CAD") @db.VarChar(6)
+  note           String?  @db.VarChar(300)
+  tierLabel      String?  @db.VarChar(60)
+  // Avantages accordés par ce don (copie de ce qui a été versé).
+  daysGranted    Int      @default(0)
+  freeleechDays  Int      @default(0)
+  hnrDays        Int      @default(0)
+  pointsGranted  Int      @default(0)
+  recordedById   String
+  recordedByName String   @db.VarChar(60)
+  receivedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([receivedAt])
+  @@index([userId])
 }

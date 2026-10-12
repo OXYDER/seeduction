@@ -478,11 +478,12 @@ export class AuthService {
 
   /** Génère un nouveau code d'invitation pour un user (limité par son rang). */
   async createInvite(userId: string, expiresInDays = 7) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, memberClass: true } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, memberClass: true, donorUntil: true, donorInvites: true } });
     if (!user) throw new UnauthorizedException();
     const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role);
     if (!isStaff) {
-      const quota = INVITE_QUOTA[user.memberClass] ?? 0;
+      // Donateur actif : des invitations en plus de celles de son rang.
+      const quota = (INVITE_QUOTA[user.memberClass] ?? 0) + (user.donorUntil && user.donorUntil > new Date() ? user.donorInvites : 0);
       const open = await this.prisma.inviteCode.count({ where: { createdById: userId, used: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });
       if (quota === 0) {
         throw new BadRequestException(`Ton rang (${CLASS_LABELS[user.memberClass]}) ne permet pas encore de créer des invitations : monte en rang, ou achète-en une dans la boutique bonus.`);

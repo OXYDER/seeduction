@@ -83,7 +83,10 @@ export class EconomyService {
       take: 500,
       orderBy: { completedAt: 'asc' },
     });
+    // Donateurs : hit & run désactivé tant que leur avantage est actif (leurs torrents complétés sont comptés comme réguliers).
+    const exempt = new Set((await this.prisma.user.findMany({ where: { id: { in: [...new Set(candidates.map((c) => c.userId))] }, hnrExemptUntil: { gt: new Date() } }, select: { id: true } })).map((u) => u.id));
     for (const s of candidates) {
+      if (exempt.has(s.userId)) { await this.prisma.snatch.update({ where: { id: s.id }, data: { satisfied: true } }); continue; }
       const seeding = await this.prisma.peer.count({ where: { userId: s.userId, torrentId: s.torrentId, isSeeder: true } });
       if (seeding > 0) continue; // il seede encore : on lui laisse le temps
       const torrent = await this.prisma.torrent.findUnique({ where: { id: s.torrentId }, select: { name: true, uploaderId: true } });

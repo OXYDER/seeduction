@@ -16,6 +16,7 @@ import ChatDock from './ChatDock';
 import BrowserNotifications from './BrowserNotifications';
 import IdleWatcher from './IdleWatcher';
 import NotificationAutoRead from './NotificationAutoRead';
+import { useDonors } from '../store/donors';
 import ChatRail from './ChatRail';
 import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
@@ -104,6 +105,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/suggestions', icon: '💡', cls: 'c-forum', label: 'Suggestions', match: starts('/suggestions') },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
   { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead') },
+  { to: '/soutenir', icon: '❤️', cls: 'c-rules', label: 'Soutenir', match: starts('/soutenir') },
   { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p) },
   { to: '/support', icon: '🛟', cls: 'c-livechat', label: 'Support', match: starts('/support') },
   { to: '/moderation', icon: '🛡️', cls: 'c-staff', label: 'Modération', match: starts('/moderation'), staffOnly: true },
@@ -141,6 +143,13 @@ function LayoutInner() {
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('sideCollapsed') === '1'; } catch { return false; }
   });
+  // Les donateurs (❤️ à côté de leur pseudo, partout) : chargés une fois connecté, rafraîchis toutes les 10 minutes.
+  useEffect(() => {
+    if (!profile) return;
+    void useDonors.getState().load();
+    const t = window.setInterval(() => void useDonors.getState().load(), 10 * 60_000);
+    return () => window.clearInterval(t);
+  }, [profile?.id]);
   // Menu réduit : les bulles de discussion et les fenêtres se recollent à ses icônes (voir index.css, body.side-collapsed).
   useEffect(() => {
     document.body.classList.toggle('side-collapsed', collapsed);

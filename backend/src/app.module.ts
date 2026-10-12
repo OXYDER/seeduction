@@ -47,6 +47,7 @@ import { PrismaModule } from './common/prisma.module';
 import { MemberActivityModule } from './member-activity/member-activity.module';
 import { RoadmapModule } from './roadmap/roadmap.module';
 import { SystemModule } from './system/system.module';
+import { DonationsModule } from './donations/donations.module';
 import { TeamsModule } from './teams/teams.module';
 import { SupportModule } from './support/support.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -102,6 +103,7 @@ import { SuggestionsModule } from './suggestions/suggestions.module';
     MemberActivityModule,
     RoadmapModule,
     SystemModule,
+    DonationsModule,
     TeamsModule,
     SupportModule,
     TelegramModule,

@@ -3654,3 +3654,13 @@ body.has-chat-rail .dm-bubble-avatar { display: none; }
 .tm-class:hover { filter: none; border-color: var(--gold, #e0b84a); }
 .tm-class.on { border-color: var(--gold, #e0b84a); box-shadow: 0 0 0 2px rgba(224, 184, 74, 0.45); }
 .tm-class-head { display: flex; gap: 8px; align-items: center; }
+/* Dons : ❤️ à côté des pseudos, page Soutenir */
+.donor-mark { margin-left: 3px; font-size: 0.85em; cursor: help; }
+.donor-mark.past { opacity: 0.8; }
+.don-bar { height: 14px; margin-top: 8px; border-radius: 999px; overflow: hidden; background: rgba(255, 255, 255, 0.1); }
+.don-bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #fb7185, #f59e0b); transition: width .6s ease; }
+.don-link { display: inline-flex; align-items: center; padding: 10px 18px; border-radius: 999px; font-weight: 800; background: linear-gradient(135deg, #fb7185, #f59e0b); color: #1a0b10; text-decoration: none; }
+.don-link:hover { filter: brightness(1.08); }
+.don-tier { display: grid; gap: 6px; align-content: start; }
+.don-amount { font-size: 13px; font-weight: 700; color: #fbbf24; }
+.don-tier ul { margin: 4px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; }
