@@ -150,6 +150,17 @@ function LayoutInner() {
     const t = window.setInterval(() => void useDonors.getState().load(), 10 * 60_000);
     return () => window.clearInterval(t);
   }, [profile?.id]);
+  // Les @pseudo écrits dans du texte formaté (forum, commentaires...) sont des liens simples : on les ouvre sans recharger le site.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.('a.mention') as HTMLAnchorElement | null;
+      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      e.preventDefault();
+      navigate(a.getAttribute('href') ?? '/');
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [navigate]);
   // Menu réduit : les bulles de discussion et les fenêtres se recollent à ses icônes (voir index.css, body.side-collapsed).
   useEffect(() => {
     document.body.classList.toggle('side-collapsed', collapsed);

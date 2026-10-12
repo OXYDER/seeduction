@@ -345,6 +345,11 @@ export class ForumService implements OnModuleInit {
       create: { userId: authorId, topicId: topic.id },
     });
     await this.badges.checkAndAward(authorId);
+    const who = await this.prisma.user.findUnique({ where: { id: authorId }, select: { username: true } });
+    await this.notifications.notifyMentions({
+      text: `${title} ${firstPostContent}`, authorId, authorName: who?.username ?? 'Un membre', link: `/forum/topics/${topic.id}`, where: `dans le sujet « ${title.trim().slice(0, 80)} »`,
+      canSee: (u) => !forum.staffOnly || STAFF.includes(u.role),
+    }).catch(() => undefined);
     return topic;
   }
 
@@ -406,6 +411,13 @@ export class ForumService implements OnModuleInit {
       update: { readAt: new Date() },
       create: { userId: authorId, topicId },
     });
+    {
+      const [who, cat] = await Promise.all([this.prisma.user.findUnique({ where: { id: authorId }, select: { username: true } }), this.prisma.forumCategory.findUnique({ where: { id: topic.categoryId }, select: { staffOnly: true } })]);
+      await this.notifications.notifyMentions({
+        text: content, authorId, authorName: who?.username ?? 'Un membre', link: `/forum/topics/${topicId}`, where: `dans le sujet « ${topic.title.slice(0, 80)} »`,
+        skip: [topic.authorId], canSee: (u) => !cat?.staffOnly || STAFF.includes(u.role),
+      }).catch(() => undefined);
+    }
     if (topic.authorId !== authorId) {
       await this.notifications.notify({
         userId: topic.authorId,

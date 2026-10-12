@@ -134,6 +134,7 @@ export class SuggestionsService {
     const created = await this.prisma.suggestion.create({
       data: { title, body: text, category, authorId: actor.userId, voteCount: 1, votes: { create: { userId: actor.userId } } },
     });
+    await this.notifications.notifyMentions({ text: `${title} ${text}`, authorId: actor.userId, authorName: actor.username, link: `/suggestions/${created.id}`, where: `dans la suggestion « ${title.slice(0, 80)} »` }).catch(() => undefined);
     return this.get(actor.userId, created.id);
   }
 
@@ -236,6 +237,7 @@ export class SuggestionsService {
     if (s.authorId !== actor.userId) {
       await this.notifications.notify({ userId: s.authorId, type: 'SYSTEM', category: 'forum', title: `💬 ${actor.username} a commenté ta suggestion`, titleMany: '💬 {n} nouveaux commentaires sur ta suggestion', groupKey: `sg:${id}`, body: s.title.slice(0, 120), link: `/suggestions/${id}` }).catch(() => undefined);
     }
+    await this.notifications.notifyMentions({ text, authorId: actor.userId, authorName: actor.username, link: `/suggestions/${id}`, where: `dans la suggestion « ${s.title.slice(0, 80)} »`, skip: [s.authorId] }).catch(() => undefined);
     return { id: c.id, content: c.content, staff: c.staff, createdAt: c.createdAt, user: c.user };
   }
 

@@ -45,6 +45,24 @@ type NotifyInput = {
 };
 
 const MAX_PER_USER = 500;
+const MAX_MENTIONS = 10;
+
+/**
+ * Pseudos @mentionnés dans un texte (BBCode compris) : le texte cité ([quote]), le code et les adresses ne comptent pas, ni une adresse de courriel ;
+ * 10 au plus, sans doublon.
+ */
+export function extractMentions(text: string): string[] {
+  const clean = String(text ?? '')
+    .replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, ' ')
+    .replace(/\[code\][\s\S]*?\[\/code\]/gi, ' ')
+    .replace(/https?:\/\/\S+/gi, ' ');
+  const found = new Map<string, string>();
+  for (const m of clean.matchAll(/(?<![\p{L}\p{N}_.@/])@([\p{L}\p{N}_.·-]{2,50})/gu)) {
+    const name = m[1].replace(/[.\-·]+$/, '');
+    if (name.length >= 2 && !found.has(name.toLowerCase())) found.set(name.toLowerCase(), name);
+  }
+  return [...found.values()].slice(0, MAX_MENTIONS);
+}
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -103,6 +121,28 @@ export class NotificationsService implements OnModuleInit {
       }
     }
     return this.prisma.notification.create({ data: { ...rest, category, groupKey: groupKey ?? null } });
+  }
+
+  /**
+   * Prévient les membres @mentionnés dans un sujet, un commentaire, une suggestion... (catégorie « Messages et mentions »). L'auteur et ceux de `skip` (déjà
+   * prévenus pour une autre raison) sont ignorés ; `canSee` écarte ceux qui ne peuvent pas ouvrir le contenu (forum réservé à l'équipe...).
+   */
+  async notifyMentions(opts: { text: string; authorId: string; authorName: string; link: string; where: string; skip?: string[]; canSee?: (u: { id: string; role: string }) => boolean }) {
+    const names = extractMentions(opts.text);
+    if (names.length === 0) return 0;
+    const users = await this.prisma.user.findMany({
+      where: { parentId: null, status: 'ACTIVE', OR: names.map((n) => ({ username: { equals: n, mode: 'insensitive' as const } })) },
+      select: { id: true, role: true },
+      take: MAX_MENTIONS,
+    });
+    const skip = new Set([opts.authorId, ...(opts.skip ?? [])]);
+    let sent = 0;
+    for (const u of users) {
+      if (skip.has(u.id) || (opts.canSee && !opts.canSee(u))) continue;
+      await this.notify({ userId: u.id, type: 'MESSAGE', category: 'messages', title: `${opts.authorName} t'a mentionné ${opts.where}`, link: opts.link }).catch(() => undefined);
+      sent++;
+    }
+    return sent;
   }
 
   /** Plusieurs notifications d'un coup (suivis...), en respectant les préférences. */

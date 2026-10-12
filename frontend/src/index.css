@@ -3739,3 +3739,9 @@ a.msgr-mention { text-decoration: none; }
 .msgr-hit-top .muted { font-size: 11.5px; white-space: nowrap; }
 .msgr-hit-text { font-size: 13px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .msgr-hit-text mark { background: rgba(224, 184, 74, 0.45); color: inherit; border-radius: 3px; padding: 0 1px; }
+/* @mentions dans le forum, les commentaires et partout où du BBCode est affiché */
+.bbcode-content a.mention, a.mention { font-weight: 700; text-decoration: none; padding: 0 4px; border-radius: 4px; color: var(--acc-light, #f4d06a); background: rgba(var(--acc-rgb, 224, 184, 74), 0.18); }
+a.mention:hover { background: rgba(var(--acc-rgb, 224, 184, 74), 0.35); }
+.mention-pop { position: fixed; z-index: 500; display: grid; min-width: 180px; max-height: 240px; overflow-y: auto; padding: 4px; border-radius: 10px; background: #151b33; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
+.mention-opt { text-align: left; padding: 6px 10px; border-radius: 6px; font-size: 14px; background: transparent; border: 0; color: inherit; box-shadow: none; transform: none; }
+.mention-opt.on, .mention-opt:hover { background: rgba(255, 255, 255, 0.12); filter: none; }

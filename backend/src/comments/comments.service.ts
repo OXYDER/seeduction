@@ -53,6 +53,9 @@ export class CommentsService {
         link: `/torrents/${torrent.id}`,
       });
     }
+    await this.notifications.notifyMentions({
+      text: content, authorId: user.userId, authorName: user.username, link: `/torrents/${torrent.id}`, where: `dans un commentaire sur « ${torrent.name.slice(0, 80)} »`, skip: [torrent.uploaderId],
+    }).catch(() => undefined);
     return comment;
   }
 

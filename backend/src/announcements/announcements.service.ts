@@ -123,6 +123,7 @@ export class AnnouncementsService {
     if (news.authorId !== user.userId) {
       await this.notifications.notify({ userId: news.authorId, type: 'ANNOUNCEMENT', title: `${user.username} a commenté ta nouvelle`, titleMany: '{n} nouveaux commentaires sur ta nouvelle', groupKey: `nc:${id}`, body: news.title, link: `/news/${id}#commentaires` });
     }
+    await this.notifications.notifyMentions({ text: content, authorId: user.userId, authorName: user.username, link: `/news/${id}`, where: `dans un commentaire sur « ${news.title.slice(0, 80)} »`, skip: [news.authorId] }).catch(() => undefined);
     return comment;
   }
 

@@ -1,5 +1,5 @@
 import { NotificationType } from '@prisma/client';
-import { NOTIFICATION_CATEGORIES, categoryOfType } from './notifications.service';
+import { NOTIFICATION_CATEGORIES, categoryOfType, extractMentions } from './notifications.service';
 
 describe('catégories de notifications', () => {
   const keys = NOTIFICATION_CATEGORIES.map((c) => c.key as string);
@@ -19,5 +19,22 @@ describe('catégories de notifications', () => {
     expect(categoryOfType('REQUEST_FILLED')).toBe('requests');
     expect(categoryOfType('SUPPORT')).toBe('support');
     expect(categoryOfType('SYSTEM')).toBe('system');
+  });
+});
+
+describe('@mentions dans un texte', () => {
+  it('trouve les pseudos, sans doublon ni casse', () => {
+    expect(extractMentions('Salut @Alice et @bob.lee, encore @alice !')).toEqual(['Alice', 'bob.lee']);
+  });
+  it('ignore les courriels, les adresses, les citations et le code', () => {
+    const t = 'écris à jean@exemple.com ou https://site.org/@carl [quote=Dan]@dan avait dit[/quote] [code]@zoe[/code] mais @eve oui';
+    expect(extractMentions(t)).toEqual(['eve']);
+  });
+  it('accepte accents, soulignés et ponctuation finale, 10 au plus', () => {
+    expect(extractMentions('Merci @Léa_92, @Émile.')).toEqual(['Léa_92', 'Émile']);
+    expect(extractMentions(Array.from({ length: 15 }, (_, i) => `@membre${i}`).join(' ')).length).toBe(10);
+  });
+  it("un @ seul ou trop court n'est pas un pseudo", () => {
+    expect(extractMentions('un @ seul, @a et @')).toEqual([]);
   });
 });

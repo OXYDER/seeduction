@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api/client';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { htmlToBbcode } from '../lib/htmlToBbcode';
@@ -51,7 +52,7 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
   // l'extérieur (nouvelle génération...) — pas à chaque frappe, sinon le curseur saute.
   useEffect(() => {
     if (!ref.current || value === lastValue.current) return;
-    ref.current.innerHTML = bbcodeToHtml(value);
+    ref.current.innerHTML = bbcodeToHtml(value, { mentions: false });
     lastValue.current = value;
   }, [value]);
 
@@ -76,11 +77,50 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
+  // Autocomplétion des @pseudo : en tapant « @ma », une liste de membres propose de compléter (flèches + Entrée ou Tab, Échap pour fermer).
+  const [mention, setMention] = useState<{ query: string; x: number; y: number } | null>(null);
+  const [people, setPeople] = useState<{ id: string; username: string; avatarUrl?: string | null }[]>([]);
+  const [mIndex, setMIndex] = useState(0);
+  const mentionRange = useRef<{ node: Text; start: number; end: number } | null>(null);
+
+  function detectMention() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !sel.isCollapsed || !ref.current?.contains(sel.anchorNode) || sel.anchorNode?.nodeType !== Node.TEXT_NODE) { mentionRange.current = null; setMention(null); return; }
+    const node = sel.anchorNode as Text;
+    const before = (node.textContent ?? '').slice(0, sel.anchorOffset);
+    const m = /(^|[\s ])@([\p{L}\p{N}_.·-]{1,30})$/u.exec(before);
+    if (!m) { mentionRange.current = null; setMention(null); return; }
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    mentionRange.current = { node, start: sel.anchorOffset - m[2].length - 1, end: sel.anchorOffset };
+    setMention({ query: m[2], x: rect.left, y: rect.bottom + 6 });
+  }
+  useEffect(() => {
+    if (!mention) { setPeople([]); return; }
+    let cancelled = false;
+    const t = window.setTimeout(() => { api.get('/users/mention-search', { params: { q: mention.query } }).then((r) => { if (!cancelled) { setPeople(r.data); setMIndex(0); } }).catch(() => {}); }, 150);
+    return () => { cancelled = true; window.clearTimeout(t); };
+  }, [mention?.query]);
+
+  function pickMention(name: string) {
+    const r = mentionRange.current;
+    const sel = window.getSelection();
+    if (!r || !sel) return;
+    const range = document.createRange();
+    range.setStart(r.node, r.start);
+    range.setEnd(r.node, r.end);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand('insertText', false, `@${name} `);
+    setMention(null); mentionRange.current = null;
+    sync();
+  }
+
   function sync() {
     if (!ref.current) return;
     const bbcode = htmlToBbcode(ref.current.innerHTML);
     lastValue.current = bbcode;
     onChange(bbcode);
+    detectMention();
   }
 
   function exec(command: string, arg?: string) {
@@ -258,7 +298,16 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
         suppressContentEditableWarning
         spellCheck
         lang="fr"
-        onKeyDown={(e) => { if (autoFix) autocorrectKey(e, ref.current); }}
+        onKeyDown={(e) => {
+          if (mention && people.length > 0) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); setMIndex((i) => (i + 1) % people.length); return; }
+            if (e.key === 'ArrowUp') { e.preventDefault(); setMIndex((i) => (i + people.length - 1) % people.length); return; }
+            if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(people[mIndex]?.username ?? people[0].username); return; }
+            if (e.key === 'Escape') { e.preventDefault(); setMention(null); return; }
+          }
+          if (autoFix) autocorrectKey(e, ref.current);
+        }}
+        onClick={detectMention}
         data-placeholder={placeholder ?? 'Écris ta description ici...'}
         onInput={sync}
         onBlur={sync}
@@ -268,6 +317,17 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
         }}
         style={{ minHeight, display: sourceMode ? 'none' : 'block' }}
       />
+
+      {mention && people.length > 0 && createPortal(
+        <div className="mention-pop" role="listbox" aria-label="Membres à mentionner" style={{ left: Math.max(8, Math.min(mention.x, window.innerWidth - 240)), top: Math.min(mention.y, window.innerHeight - 220) }}>
+          {people.map((p, i) => (
+            <button key={p.id} type="button" role="option" aria-selected={i === mIndex} className={`mention-opt${i === mIndex ? ' on' : ''}`} onMouseDown={(e) => { e.preventDefault(); pickMention(p.username); }} onMouseEnter={() => setMIndex(i)}>
+              @{p.username}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
 
       {sourceMode && (
         <textarea

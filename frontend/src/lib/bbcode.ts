@@ -44,7 +44,30 @@ const SAFE_URL = '(?:https?:\\/\\/|\\/)[^\\]\\s]*';
  * contenu dans l'éditeur WYSIWYG, sans jamais faire confiance au texte source :
  * tout est échappé avant la conversion des balises BBCode elles-mêmes.
  */
-export function bbcodeToHtml(bbcode: string): string {
+/** @pseudo (hors adresses, courriels et blocs de code) : lien vers le profil du membre (route /u/pseudo). */
+const MENTION_RE = /(?<![\p{L}\p{N}_.@/&;])@([\p{L}\p{N}_.·-]{2,50})/gu;
+function linkMentions(html: string): string {
+  let inLink = 0;
+  let inPre = 0;
+  return html.split(/(<[^>]+>)/).map((part) => {
+    if (part.startsWith('<')) {
+      if (/^<a[\s>]/i.test(part)) inLink++;
+      else if (/^<\/a>/i.test(part)) inLink = Math.max(0, inLink - 1);
+      else if (/^<pre[\s>]/i.test(part)) inPre++;
+      else if (/^<\/pre>/i.test(part)) inPre = Math.max(0, inPre - 1);
+      return part;
+    }
+    if (inLink || inPre) return part;
+    return part.replace(MENTION_RE, (_m, raw: string) => {
+      const name = raw.replace(/[.\-·]+$/, '');
+      const tail = raw.slice(name.length);
+      return name.length < 2 ? `@${raw}` : `<a class="mention" href="/u/${encodeURIComponent(name)}">@${name}</a>${tail}`;
+    });
+  }).join('');
+}
+
+/** `mentions: false` pour l'éditeur (le texte « @pseudo » doit y rester du texte simple, jamais un lien enregistré). */
+export function bbcodeToHtml(bbcode: string, opts: { mentions?: boolean } = {}): string {
   let html = escapeHtml(bbcode);
 
   html = html.replace(/(?:^• .*(?:\n|$))+/gm, (block) =>
@@ -71,9 +94,10 @@ export function bbcodeToHtml(bbcode: string): string {
   html = replacePairs(html, 's', (inner) => `<s>${inner}</s>`);
   html = replacePairs(html, 'url', (inner, href) => `<a href="${href}" rel="noopener noreferrer" target="_blank">${inner}</a>`, SAFE_URL);
 
-  return html
+  const out = html
     .replace(new RegExp(`\\[img\\](${SAFE_URL})\\[\\/img\\]`, 'gi'), '<img src="$1" alt="" />')
     .replace(/\[hr\]/gi, '<hr />')
     .replace(/(<\/div>|<\/blockquote>|<\/pre>|<\/details>|<hr \/>)\n/g, '$1')
     .replace(/\n/g, '<br />');
+  return opts.mentions === false ? out : linkMentions(out);
 }
