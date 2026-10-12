@@ -25,8 +25,8 @@ export interface NameAnalysis {
 export const NO_TEAM = 'NoTaG';
 
 const GENERIC_GROUPS = new Set(['notag', 'nogrp', 'nogroup', 'unknown', 'scene', 'p2p', 'repack', 'proper', 'internal', 'readnfo']);
-const TECH_TAGS = /^(?:\d{3,4}p|x26[45]|h26[45]|hevc|avc|aac|ac3|eac3|dts|flac|mp3|web|webdl|webrip|bluray|bdrip|hdtv|dvdrip|multi|vff|vfq|vf2|vfi|vostfr|truefrench|french|remux|hdr|hdr10|dv|uhd|sdr|atmos)$/i;
-const QUALITY_TOKEN = /^(?:(?:19|20)\d{2}|\d{3,4}[pi]|4k|uhd|hdr\d*|dv|bluray|blu-ray|bdrip|brrip|web-?dl|web-?rip|webrip|web|hdtv|dvdrip|cam|multi\d?|multilang|multilangue|dual|vo|vof|vff|vfq|vfb|vfi|vf2|vostfr|vost|truefrench|french|subfrench|muet|x26[45]|h[ .]?26[45]|hevc|avc|av1|xvid|remux|s\d{1,2}(?:e\d{1,3})?|e\d{1,3}|saison|season|int[eé]grale|complete|flac|mp3|aac|ac3|eac3|dts|ddp\d*|atmos|amzn|nf|dsnp|atvp|hmax|proper|repack|internal|extended|unrated|imax)$/i;
+const TECH_TAGS = /^(?:\d{3,4}p|x26[45]|h26[45]|hevc|avc|aac|ac3|eac3|dts|flac|mp3|web|webdl|webrip|bluray|bdrip|hdtv|dvdrip|multi|vff|vfq|vf2|vfi|vostfr|truefrench|french|remux|hdr|hdr10|dv|uhd|sdr|atmos|10bit|8bit|hi10p|hdr10|imax|proper|repack|internal|extended|dubbed|subbed|eng|english|sub|subs)$/i;
+const QUALITY_TOKEN = /^(?:(?:19|20)\d{2}(?:[-–](?:19|20)\d{2})?|eng|english|anglais|vf|sub|subs|\d{3,4}[pi]|4k|uhd|hdr\d*|dv|bluray|blu-ray|bdrip|brrip|web-?dl|web-?rip|webrip|web|hdtv|dvdrip|cam|multi\d?|multilang|multilangue|dual|vo|vof|vff|vfq|vfb|vfi|vf2|vostfr|vost|truefrench|french|subfrench|muet|x26[45]|h[ .]?26[45]|hevc|avc|av1|xvid|remux|s\d{1,2}(?:e\d{1,3})?|e\d{1,3}|saison|season|int[eé]grale|complete|flac|mp3|aac|ac3|eac3|dts|ddp\d*|atmos|amzn|nf|dsnp|atvp|hmax|proper|repack|internal|extended|unrated|imax)$/i;
 
 const strip = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 /** Un mot de nom de release : sans accents, apostrophes ni signes, mots séparés par des points. */
@@ -34,8 +34,15 @@ const dotted = (s: string) => strip(s).replace(/&/g, ' and ').replace(/['’`]/g
 
 /** La team : ce qui suit le dernier tiret (« …-TARDiS », « … - TARDiS »). */
 function groupOf(base: string): { rest: string; group: string | null } {
-  const m = /(?:\s+[-–]\s*|-)([A-Za-z0-9][A-Za-z0-9_]{1,19})\s*$/.exec(base);
-  if (!m) return { rest: base, group: null };
+  let m = /(?:\s+[-–]\s*|-)([A-Za-z0-9][A-Za-z0-9_]{1,19})\s*$/.exec(base);
+  // Team collée par un point ou un espace après un mot technique (« …BluRay 1080p x264.GHT ») : le dernier mot est la team, pas un tiret.
+  if (!m) {
+    const dot = /[.\s]((?:x26[45]|h[ .]?26[45]|hevc|avc|av1|xvid|aac|ac3|eac3|ddp?\d*|dts|flac|mp3|atmos|bluray|bdrip|brrip|webrip|web-?dl|web|hdtv|dvdrip|remux|\d{3,4}[pi]|10bit|hdr10?))[.\s]([A-Za-z0-9][A-Za-z0-9_]{1,19})\s*$/i.exec(base);
+    if (dot && !TECH_TAGS.test(dot[2]) && !GENERIC_GROUPS.has(dot[2].toLowerCase()) && !/^\d+$/.test(dot[2])) {
+      return { rest: base.slice(0, base.length - dot[2].length - 1).trim(), group: dot[2] };
+    }
+    return { rest: base, group: null };
+  }
   const g = m[1];
   // « NoTaG » / « NoGrp » : la team est absente, ce qui est une réponse valable (écrite NoTaG).
   if (/^(?:notag|nogrp|nogroup)$/i.test(g)) return { rest: base.slice(0, m.index).trim(), group: NO_TEAM };
@@ -45,10 +52,10 @@ function groupOf(base: string): { rest: string; group: string | null } {
 
 /** Le titre : le nom jusqu'au premier mot de qualité, d'année, de langue ou de saison. */
 function titleOf(rest: string): string {
-  const parts = rest.split(/[.\s_]+/).filter(Boolean);
+  const parts = rest.replace(/[()[\]]+/g, ' ').split(/[.\s_]+/).filter(Boolean);
   const out: string[] = [];
   for (const p of parts) {
-    if (out.length > 0 && QUALITY_TOKEN.test(p)) break;
+    if (out.length > 0 && (QUALITY_TOKEN.test(p) || (p.includes('-') && p.split('-').every((x) => QUALITY_TOKEN.test(x))))) break;
     out.push(p);
   }
   return dotted(out.join(' '));
@@ -103,10 +110,11 @@ export function suggestReleaseNames(input: { name: string; files?: { path: strin
   const isVideo = !!resolution || !!video || !!containerOf(files) || /\bS\d{1,2}(?:E\d{1,3})?\b/i.test(current);
   if (!isVideo) return { wellFormed, suggestions: [], missing: [] };
 
-  const year = (() => {
-    const m = [...rest.split(/[.\s_()[\]]+/)].slice(1).find((t) => /^(?:19|20)\d{2}$/.test(t) && Number(t) <= new Date().getFullYear() + 1);
-    return m ? Number(m) : (meta.year ?? input.year ?? null);
-  })();
+  const yearTokens = rest.split(/[.\s_()[\]]+/).slice(1);
+  const range = yearTokens.find((t) => /^(?:19|20)\d{2}[-–](?:19|20)\d{2}$/.test(t));
+  const single = yearTokens.find((t) => /^(?:19|20)\d{2}$/.test(t) && Number(t) <= new Date().getFullYear() + 1);
+  /** Année du nom : une plage (« 2014-2018 », une trilogie) ou une année ; à défaut celle du MediaInfo ou de la fiche. */
+  const year: string | null = range ? range.replace('–', '-') : single ?? (meta.year ?? input.year ?? null)?.toString() ?? null;
   const se = episodeTag(current, files);
 
   // Langue : l'étiquette de la règle du site (MULTi.VFF, VFQ, VOSTFR...) ; à défaut ce que le nom annonce déjà.
@@ -124,12 +132,12 @@ export function suggestReleaseNames(input: { name: string; files?: { path: strin
   const audio = pick('audio') ? AUDIO_TOKEN[String(pick('audio'))] ?? '' : '';
 
   const teamName = group ?? NO_TEAM;
-  const build = (title: string, withAudio: boolean) => {
-    const core = [title, se ? null : year, se, language, res, hdr, source, withAudio ? audio : '', codec].filter((p) => p !== null && p !== '' && p !== undefined).join('.');
+  const build = (title: string, withAudio: boolean, yearOverride?: string | null) => {
+    const core = [title, se ? null : (yearOverride === undefined ? year : yearOverride), se, language, res, hdr, source, withAudio ? audio : '', codec].filter((p) => p !== null && p !== '' && p !== undefined).join('.');
     return `${core}-${teamName}`;
   };
 
-  const yearInName = /(?:^|[.\s_()[\]])(?:19|20)\d{2}(?:$|[.\s_()[\]])/.test(rest);
+  const yearInName = !!range || !!single;
   // Nom correct avec toutes les informations nécessaires (forme standard, langue, résolution, source, codec, team, année ou épisode) : rien à proposer.
   const hasSeInName = !se || /(?:^|[^A-Za-z0-9])S\d{1,2}(?:E\d{1,3})?(?![A-Za-z0-9])/i.test(current);
   // Les informations doivent être dans le NOM lui-même (pas seulement lues dans le NFO ou les fichiers).
@@ -147,7 +155,7 @@ export function suggestReleaseNames(input: { name: string; files?: { path: strin
     if (audio) add(build(ownTitle, true), "Nom standard avec le codec audio");
   }
   const ficheTitle = input.title ? dotted(input.title) : '';
-  if (ficheTitle && ficheTitle.toLowerCase() !== ownTitle.toLowerCase()) add(build(ficheTitle, false), `Avec le titre de la fiche (${input.title})`);
+  if (ficheTitle && ficheTitle.toLowerCase() !== ownTitle.toLowerCase()) add(build(ficheTitle, false, input.year ? String(input.year) : year && !range ? year : (year ?? '').split('-')[0] || null), `Avec le titre de la fiche (${input.title})`);
 
   const missing: string[] = [];
   if (!languageExact) missing.push('langue (VFF, VFQ, MULTi.VFF, VOSTFR...)');

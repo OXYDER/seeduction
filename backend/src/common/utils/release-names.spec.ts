@@ -71,4 +71,23 @@ describe('noms de release standardisés', () => {
     const files = [1, 2].flatMap((s) => [1, 2].map((e) => ({ path: `S0${s}E0${e}.mkv`, size: 1e9 })));
     expect(suggestReleaseNames({ name: 'Serie MULTI 1080p WEB x265-GRP', nfo: NFO(), files }).suggestions[0].name).toBe('Serie.S01-S02.MULTi.VFF.1080p.WEB.H265-GRP');
   });
+
+  it("team collée par un point (« …x264.GHT ») : devient -GHT, et la plage d'années reste lisible", () => {
+    const name = 'Maze Runner Trilogie (2014-2018) VF2-ENG AC3 BluRay 1080p x264.GHT';
+    const r = suggestReleaseNames({ name, nfo: NFO('AC-3'), title: 'Le Labyrinthe', year: 2014, files: [{ path: 'Maze.Runner.1.mkv', size: 4e9 }, { path: 'Maze.Runner.2.mkv', size: 4e9 }, { path: 'Maze.Runner.3.mkv', size: 4e9 }] });
+    expect(r.suggestions.map((x) => x.name)).toEqual([
+      'Maze.Runner.Trilogie.2014-2018.MULTi.VF2.1080p.BluRay.x264-GHT',
+      'Maze.Runner.Trilogie.2014-2018.MULTi.VF2.1080p.BluRay.DD.x264-GHT',
+      'Le.Labyrinthe.2014.MULTi.VF2.1080p.BluRay.x264-GHT',
+    ]);
+    expect(r.missing.join(' ')).not.toMatch(/team/);
+  });
+
+  it("une équipe écrite après un point n'est jamais confondue avec une étiquette technique", () => {
+    for (const tail of ['FRENCH', 'MULTi', '10bit', 'DUBBED', 'x265']) {
+      const r = suggestReleaseNames({ name: `Film 2020 1080p BluRay x264.${tail}`, nfo: NFO(), files: [{ path: 'a.mkv', size: 1 }] });
+      expect(r.suggestions[0].name).toMatch(/-NoTaG$/);
+    }
+    expect(suggestReleaseNames({ name: 'Film 2020 1080p BluRay x264 TEAMX', nfo: NFO(), files: [{ path: 'a.mkv', size: 1 }] }).suggestions[0].name).toMatch(/-TEAMX$/);
+  });
 });
