@@ -16,6 +16,7 @@ import ChatDock from './ChatDock';
 import BrowserNotifications from './BrowserNotifications';
 import IdleWatcher from './IdleWatcher';
 import NotificationAutoRead from './NotificationAutoRead';
+import FriendsMenu from './FriendsMenu';
 import { useDonors } from '../store/donors';
 import ChatRail from './ChatRail';
 import StatusSwitcher from './StatusSwitcher';
@@ -468,9 +469,7 @@ function LayoutInner() {
               <Link to="/messages" className={`icon-pill${starts('/messages')(location.pathname) ? ' active' : ''}`} title="Messages">
                 ✉️{unreadMessages > 0 && <span className="dot-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
               </Link>
-              <Link to="/friends" className={`icon-pill${starts('/friends')(location.pathname) ? ' active' : ''}`} title="Amis">
-                👫{pendingFriendRequests > 0 && <span className="dot-badge" title="Demandes d'ami">{pendingFriendRequests > 99 ? '99+' : pendingFriendRequests}</span>}{friendsOnline > 0 && <span className="dot-badge green" title={`${friendsOnline} ami${friendsOnline > 1 ? 's' : ''} en ligne`}>{friendsOnline > 99 ? '99+' : friendsOnline}</span>}
-              </Link>
+              <FriendsMenu pending={pendingFriendRequests} online={friendsOnline} active={starts('/friends')(location.pathname)} />
             </div>
           </header>
 

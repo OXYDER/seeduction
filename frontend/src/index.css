@@ -3768,3 +3768,21 @@ a.mention:hover { background: rgba(var(--acc-rgb, 224, 184, 74), 0.35); }
 .msgr-link-site { font-size: 11.5px; opacity: 0.65; }
 .msgr-link-title { font-weight: 700; font-size: 13.5px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .msgr-link-desc { font-size: 12.5px; opacity: 0.8; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* Cadre déroulant des icônes du haut (thèmes, seeds, amis) : fixe, dans la partie visible de l'écran, même sur téléphone */
+.hp-panel { position: fixed; z-index: 1000; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; border-radius: 10px; background: #0d1224; color: #eef0f8; border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.65); }
+.hp-panel .seedob-pop-inner { display: flex; flex-direction: column; min-height: 0; }
+.hp-panel .seedob-list { max-height: none; flex: 1; min-height: 0; overflow-y: auto; }
+.hp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); flex: none; }
+.hp-alert { display: block; padding: 8px 14px; font-size: 13px; font-weight: 700; background: rgba(224, 184, 74, 0.14); border-bottom: 1px solid rgba(255, 255, 255, 0.08); flex: none; }
+.hp-list { overflow-y: auto; overscroll-behavior: contain; padding: 6px; display: grid; gap: 2px; min-height: 0; }
+.hp-empty { margin: 0; padding: 14px; text-align: center; }
+.hp-friend { display: flex; align-items: center; gap: 4px; border-radius: 8px; }
+.hp-friend:hover { background: rgba(255, 255, 255, 0.07); }
+.hp-friend-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 8px; color: inherit; text-decoration: none; }
+.hp-av { position: relative; flex: none; display: inline-flex; line-height: 0; }
+.hp-av i { position: absolute; right: -2px; bottom: -2px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid #0d1224; }
+.hp-friend-name { display: grid; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hp-friend-name small { font-size: 11.5px; font-weight: 400; }
+.hp-msg { flex: none; width: 32px; height: 32px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; background: rgba(255, 255, 255, 0.09); border: 0; box-shadow: none; }
+.hp-msg:hover { background: rgba(255, 255, 255, 0.2); transform: none; filter: none; }
+.hp-foot { display: block; text-align: center; padding: 10px; font-size: 13px; font-weight: 700; border-top: 1px solid rgba(255, 255, 255, 0.1); flex: none; }

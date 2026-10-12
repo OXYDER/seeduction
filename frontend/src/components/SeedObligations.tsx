@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import HeaderPopover from './HeaderPopover';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
@@ -25,7 +26,8 @@ const dayTime = (iso: string) => new Date(iso).toLocaleString('fr-CA', { weekday
 export default function SeedObligations() {
   const [data, setData] = useState<SeedData | null>(null);
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => setOpen(false), []);
 
   const load = useCallback(() => { api.get('/bonus/seeds').then((r) => setData(r.data)).catch(() => {}); }, []);
 
@@ -35,19 +37,14 @@ export default function SeedObligations() {
     return () => clearInterval(t);
   }, [load]);
 
-  useEffect(() => {
-    function outside(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
-    document.addEventListener('mousedown', outside);
-    return () => document.removeEventListener('mousedown', outside);
-  }, []);
-
   if (!data || data.counts.total === 0) return null;
   const tone = data.counts.hnr > 0 ? 'bad' : data.counts.idle > 0 ? 'warn' : 'ok';
   const { rules } = data;
 
   return (
-    <div ref={ref} className="seedob" style={{ position: 'relative' }}>
+    <div className="seedob">
       <button
+        ref={ref}
         type="button"
         className={`secondary seedob-btn ${tone}`}
         title={`${data.counts.total} torrent${data.counts.total > 1 ? 's' : ''} à seeder encore`}
@@ -57,8 +54,8 @@ export default function SeedObligations() {
       >
         🌱<span className={`seedob-badge ${tone}`}>{data.counts.total}</span>
       </button>
-      {open && (
-        <div className="seedob-pop" role="dialog" aria-label="Seeds à terminer">
+      <HeaderPopover open={open} anchorRef={ref} onClose={close} width={400} label="Seeds à terminer">
+        <div className="seedob-pop-inner">
           <div className="seedob-head">
             <strong>Seeds à terminer</strong>
             <span className="muted">{rules.hnrSeedHours} h de seed (ou ratio {String(rules.hnrRatio).replace('.', ',')}) par torrent</span>
@@ -87,7 +84,7 @@ export default function SeedObligations() {
           </div>
           <Link to="/seeds" className="seedob-foot" onClick={() => setOpen(false)}>Voir tous mes seeds →</Link>
         </div>
-      )}
+      </HeaderPopover>
     </div>
   );
 }

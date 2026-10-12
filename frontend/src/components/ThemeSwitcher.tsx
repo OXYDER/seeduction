@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import HeaderPopover from './HeaderPopover';
 import { ACCENTS, setAccent, useAccent, useCategoryAccentEnabled, setCategoryAccentEnabled } from '../lib/theme';
 
 export { THEME_STORAGE_KEY } from '../lib/theme';
@@ -8,21 +9,14 @@ export default function ThemeSwitcher() {
   const [open, setOpen] = useState(false);
   const accent = useAccent();
   const categoryAccent = useCategoryAccentEnabled();
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, []);
+  const ref = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => setOpen(false), []);
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button type="button" className="secondary" onClick={() => setOpen((v) => !v)} title="Couleur d'accent">🎨</button>
-      {open && (
-        <div className="panel ornate theme-menu" style={{ position: 'absolute', right: 0, top: '110%', width: 260, zIndex: 80, padding: 10 }}>
+    <>
+      <button ref={ref} type="button" className="secondary" onClick={() => setOpen((v) => !v)} title="Couleur d'accent" aria-label="Couleur d'accent" aria-expanded={open}>🎨</button>
+      <HeaderPopover open={open} anchorRef={ref} onClose={close} width={280} label="Couleur d'accent">
+        <div className="theme-menu" style={{ padding: 12, overflowY: 'auto' }}>
           <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Couleur d'accent</div>
           <div className="accent-grid">
             {ACCENTS.map((a) => (
@@ -42,7 +36,7 @@ export default function ThemeSwitcher() {
             L'accent suit la catégorie parcourue
           </label>
         </div>
-      )}
-    </div>
+      </HeaderPopover>
+    </>
   );
 }
