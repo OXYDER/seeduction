@@ -13,6 +13,18 @@ set -e
 
 cd "$(dirname "$0")"
 
+# Message de maintenance affiché à tous les visiteurs du site pendant la mise à jour (voir backend/src/system) : « petite mise à jour en cours, instabilité
+# possible durant les 5 à 10 prochaines minutes ». Il passe par le conteneur du backend lui-même (aucun secret) et n'a aucun effet, sans erreur, si le backend
+# ne tourne pas encore ou n'a pas encore cette fonction (premier déploiement qui l'installe). Il s'efface tout seul après 20 minutes si le déploiement échoue.
+maintenance() {
+  docker compose exec -T backend node -e "
+    fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/system/maintenance', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: process.argv[1], minutes: 20 }) })
+      .then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1));
+  " "$1" >/dev/null 2>&1
+}
+NOTICE=0
+if maintenance start; then NOTICE=1; echo "→ Message de maintenance affiché sur le site."; fi
+
 echo "→ Récupération des dernières modifications..."
 git fetch origin main
 git reset --hard origin/main
@@ -28,6 +40,15 @@ mkdir -p backups/db backups/files
 
 echo "→ Reconstruction et redémarrage des conteneurs..."
 docker compose up -d --build
+
+# Le nouveau backend met quelques secondes à démarrer : on retire le message de maintenance dès qu'il répond.
+if [ "$NOTICE" = "1" ]; then
+  echo "→ Attente du nouveau backend pour retirer le message de maintenance..."
+  for _ in $(seq 1 60); do
+    if maintenance end; then echo "✓ Message de maintenance retiré."; break; fi
+    sleep 3
+  done
+fi
 
 echo "→ Nettoyage des anciennes images..."
 docker image prune -f

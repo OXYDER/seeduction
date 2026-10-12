@@ -531,6 +531,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
         isFaq: true,
         content:
           `Besoin d'aide ? La section [b]Support[/b] du menu rassemble tout au même endroit : une recherche dans le wiki, le chat en direct et tes billets.\n` +
+          `[b]Mises à jour du site[/b] : pendant une mise à jour, un bandeau en bas de l'écran le dit (« petite mise à jour en cours, le site peut être instable pendant 5 à 10 minutes »). Si le serveur redémarre, un bandeau rouge l'indique et la page se reconnecte toute seule. Quand une nouvelle version est en ligne, un bandeau bleu te propose de [b]recharger la page[/b]. Les administrateurs peuvent aussi afficher un message de maintenance à la main (Admin > Paramètres).\n` +
           `\n` +
           `[b]1. Cherche dans le wiki[/b]\n` +
           `Décris ton problème en quelques mots : les articles du wiki les plus proches s'affichent aussitôt. Beaucoup de réponses y sont déjà (ratio, hit & run, upload, lecteur, compte...).\n` +

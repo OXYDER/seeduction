@@ -3,6 +3,7 @@ import axios from 'axios';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LockScreen from './components/LockScreen';
 import GlobalLoader from './components/GlobalLoader';
+import MaintenanceBanner from './components/MaintenanceBanner';
 import { useLockdownStore } from './store/lockdown';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -67,6 +68,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <GlobalLoader />
+      <MaintenanceBanner />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/profiles" element={<Profiles />} />

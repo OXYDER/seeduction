@@ -3603,3 +3603,16 @@ body.has-chat-rail .dm-bubble-avatar { display: none; }
   body.side-collapsed .chat-rail { left: 82px; }
   body.side-collapsed.has-chat-rail .dm-dock { left: calc(82px + 88px); }
 }
+/* Bandeau d'état du site : mise à jour en cours, serveur injoignable, nouvelle version */
+.maint-bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 10px; width: min(760px, calc(100vw - 24px)); padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.35; color: #fff; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.28); }
+.maint-bar.maintenance { background: linear-gradient(135deg, #b45309, #d97706); }
+.maint-bar.down { background: linear-gradient(135deg, #991b1b, #dc2626); }
+.maint-bar.update { background: linear-gradient(135deg, #1d4ed8, #7c3aed); }
+.maint-bar.back { background: linear-gradient(135deg, #15803d, #16a34a); }
+.maint-icon { font-size: 20px; flex: none; }
+.maint-text { flex: 1; min-width: 0; }
+.maint-btn { flex: none; padding: 5px 14px; border-radius: 999px; font-weight: 800; background: #fff; color: #1e1b4b; border: 0; box-shadow: none; }
+.maint-btn:hover { filter: brightness(0.92); transform: none; }
+.maint-x { flex: none; width: 24px; height: 24px; padding: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.25); border: 0; color: #fff; font-size: 12px; box-shadow: none; }
+.maint-x:hover { background: rgba(0, 0, 0, 0.45); transform: none; filter: none; }
+@media (max-width: 700px) { .maint-bar { bottom: 74px; font-size: 13px; } }

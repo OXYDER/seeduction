@@ -9,6 +9,7 @@ import { WikiAdmin } from '../components/AdminWiki';
 import { ChannelsAdmin } from '../components/AdminChannels';
 import { InvitesAdmin } from '../components/AdminInvites';
 import { ConfigAdmin } from '../components/AdminConfig';
+import MaintenanceAdmin from '../components/MaintenanceAdmin';
 import { SupportAdmin } from '../components/AdminSupport';
 import { LockdownAdmin } from '../components/AdminLockdown';
 import { ImportAdmin } from '../components/AdminImport';
@@ -43,7 +44,7 @@ export default function Admin() {
       {tab === 'Templates' && <TemplatesAdmin />}
       {tab === 'Wiki' && <WikiAdmin />}
       {tab === 'Support' && <SupportAdmin />}
-      {tab === 'Paramètres' && <ConfigAdmin />}
+      {tab === 'Paramètres' && <><MaintenanceAdmin /><ConfigAdmin /></>}
       {tab === 'Invitations' && <InvitesAdmin />}
       {tab === 'Canaux' && <ChannelsAdmin />}
       {tab === 'Journal' && <AuditAdmin />}

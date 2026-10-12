@@ -46,6 +46,7 @@ import { FamilyModule } from './family/family.module';
 import { PrismaModule } from './common/prisma.module';
 import { MemberActivityModule } from './member-activity/member-activity.module';
 import { RoadmapModule } from './roadmap/roadmap.module';
+import { SystemModule } from './system/system.module';
 import { TeamsModule } from './teams/teams.module';
 import { SupportModule } from './support/support.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -100,6 +101,7 @@ import { SuggestionsModule } from './suggestions/suggestions.module';
     FamilyModule,
     MemberActivityModule,
     RoadmapModule,
+    SystemModule,
     TeamsModule,
     SupportModule,
     TelegramModule,
