@@ -10,6 +10,7 @@ import WysiwygEditor from '../components/WysiwygEditor';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { dayLabel, isSameDay } from '../lib/chatFormat';
 import { timeAgo } from '../lib/time';
+import { notifyMessagesChanged } from '../components/MessagesMenu';
 
 type Filter = 'all' | 'unread' | 'sent';
 interface Person { id?: string; username: string; avatarUrl?: string | null }
@@ -43,7 +44,7 @@ export default function Messages() {
   const [thread, setThread] = useState<any>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
-  const [composing, setComposing] = useState(!!prefilledTo);
+  const [composing, setComposing] = useState(!!prefilledTo || params.get('compose') === '1');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [friends, setFriends] = useState<Person[]>([]);
@@ -68,7 +69,7 @@ export default function Messages() {
   useEffect(() => { api.get('/friends').then((r) => setFriends((r.data.friends ?? []).map((f: any) => f.user ?? f))).catch(() => {}); }, []);
 
   const loadThread = useCallback((id: string) => {
-    return api.get(`/messages/thread/${id}`).then((r) => { setThread(r.data); loadThreads(); }).catch(() => { setThread(null); setError('Conversation introuvable'); });
+    return api.get(`/messages/thread/${id}`).then((r) => { setThread(r.data); loadThreads(); notifyMessagesChanged(); }).catch(() => { setThread(null); setError('Conversation introuvable'); });
   }, [loadThreads]);
 
   useEffect(() => {

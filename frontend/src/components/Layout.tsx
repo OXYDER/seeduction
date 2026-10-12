@@ -1,6 +1,6 @@
 import { applyDefaultView } from '../lib/viewMode';
 import { applyTipStyle } from '../lib/tipStyle';
-import { useEffect, useState, FormEvent } from 'react';
+import { useCallback, useEffect, useState, FormEvent } from 'react';
 import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
@@ -17,6 +17,7 @@ import BrowserNotifications from './BrowserNotifications';
 import IdleWatcher from './IdleWatcher';
 import NotificationAutoRead from './NotificationAutoRead';
 import FriendsMenu from './FriendsMenu';
+import MessagesMenu from './MessagesMenu';
 import { useDonors } from '../store/donors';
 import ChatRail from './ChatRail';
 import StatusSwitcher from './StatusSwitcher';
@@ -204,12 +205,21 @@ function LayoutInner() {
     return () => clearInterval(t);
   }, [accessToken, refreshNews]);
 
-  // Compteur de messages non lus (thème Prestige) : rafraîchi à chaque changement de page.
-  useEffect(() => {
-    setDrawer(false);
+  // Compteur de messages privés non lus (pastille de l'icône ✉️) : rafraîchi à chaque changement de page, toutes les minutes, et dès qu'un message est lu.
+  const refreshUnreadMessages = useCallback(() => {
     if (!accessToken) return;
     api.get('/messages/unread-count').then((r) => setUnreadMessages(Number(r.data) || 0)).catch(() => {});
-  }, [location.pathname, accessToken]);
+  }, [accessToken]);
+  useEffect(() => {
+    setDrawer(false);
+    refreshUnreadMessages();
+  }, [location.pathname, refreshUnreadMessages]);
+  useEffect(() => {
+    if (!accessToken) return;
+    const t = setInterval(() => { if (!document.hidden) refreshUnreadMessages(); }, 60_000);
+    window.addEventListener('pm:changed', refreshUnreadMessages);
+    return () => { clearInterval(t); window.removeEventListener('pm:changed', refreshUnreadMessages); };
+  }, [accessToken, refreshUnreadMessages]);
 
   // Chat privé (amis) et chat public : connectés tant qu'on est authentifié, indépendamment de la page affichée
   // (façon Messenger — accessibles partout via les bulles, pas seulement sur leurs pages dédiées).
@@ -466,9 +476,7 @@ function LayoutInner() {
               <SeedObligations />
               <TelegramHeaderLink />
               <NotificationsBell />
-              <Link to="/messages" className={`icon-pill${starts('/messages')(location.pathname) ? ' active' : ''}`} title="Messages">
-                ✉️{unreadMessages > 0 && <span className="dot-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
-              </Link>
+              <MessagesMenu unread={unreadMessages} active={starts('/messages')(location.pathname)} />
               <FriendsMenu pending={pendingFriendRequests} online={friendsOnline} active={starts('/friends')(location.pathname)} />
             </div>
           </header>
