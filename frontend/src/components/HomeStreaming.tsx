@@ -15,6 +15,7 @@ import TelegramLogo from './TelegramLogo';
 import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
 import HomeShortcuts from './HomeShortcuts';
+import HomeSection, { HomeSectionsControls } from './HomeSection';
 import UserLink from './UserLink';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
@@ -179,12 +180,14 @@ export default function HomeStreaming() {
 
   return (
     <div className="home-plex">
-      <ModerationRail />
-      <FreeleechCalendar compact />
-      <PotWidget />
-      <HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} />
-      <NewsPanel />
+      <HomeSectionsControls />
+      <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
+      <HomeSection id="freeleech" label="Calendrier freeleech" icon="🗓️"><FreeleechCalendar compact /></HomeSection>
+      <HomeSection id="pot" label="Pot commun" icon="🍯"><PotWidget /></HomeSection>
+      <HomeSection id="shortcuts" label="Raccourcis" icon="⚡"><HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} /></HomeSection>
+      <HomeSection id="news" label="Nouvelles" icon="📰"><NewsPanel /></HomeSection>
         <div className="home-bottom">
+          <HomeSection id="forum" label="Derniers sujets du forum" icon="💬">
           <Board
             icon="💬" title="Derniers sujets du forum"
             rows={topics.map((t) => ({ key: t.id, who: <Link to={`/forum/topics/${t.id}`} title={t.title}>{t.title}</Link>, value: t.replies + 1, text: `${t.replies} rép. · ${timeAgo(t.lastPostAt)}` }))}
@@ -192,12 +195,16 @@ export default function HomeStreaming() {
             empty="Aucun sujet pour l'instant."
             footer={<Link to="/forum" className="muted">Aller au forum →</Link>}
           />
+          </HomeSection>
+          <HomeSection id="uploaders" label="Top uploaders" icon="👑">
           <Board
             icon="👑" title="Top uploaders"
             rows={topUploaders.map((u) => ({ key: u.id, who: <UserLink user={u} />, value: Number(u.uploaded), text: formatBytes(u.uploaded) }))}
             empty="Pas encore de classement."
             footer={<Link to="/leaderboard" className="muted">Voir le Top 100 →</Link>}
           />
+          </HomeSection>
+          <HomeSection id="community" label="La communauté" icon="📊">
           {stats && (
             <div className="panel st-board">
               <h3>📊 La communauté</h3>
@@ -222,9 +229,11 @@ export default function HomeStreaming() {
               <div className="st-board-footer"><Link to="/stats" className="muted">Toutes les statistiques →</Link></div>
             </div>
           )}
+          </HomeSection>
         </div>
       
 
+          <HomeSection id="hero" label="À la une" icon="⭐">
           {featured ? (
             <section key={featured.id} className="panel ornate hero-frame hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
               {/* La même image que le fond de la page, bien visible à droite du texte. */}
@@ -263,20 +272,25 @@ export default function HomeStreaming() {
               </div>
             </section>
           )}
+          </HomeSection>
 
+          <HomeSection id="activity" label="Mon activité" icon="⏯️">
           {active.length > 0 && (
             <section className="panel ornate rail-section rail-plex">
               <div className="panel-title"><span className="title-icon">⏯️</span>Mon activité<span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 400 }}>Tes téléchargements et seeds en cours</span><Link to="/activity" className="rail-all" style={{ marginLeft: 14, fontFamily: "var(--font-body)", fontWeight: 400 }}>Voir toute mon activité →</Link></div>
               <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
             </section>
           )}
-          <Rail icon="⚠️" title="Torrents à risque (1-2 seeders)" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />
-          <Rail icon="🔔" title="De tes abonnements" to="/favorites" items={followed} />
-          <Rail icon="✨" title="Recommandé pour toi" to="/browse" items={recommended} />
-          <TimeRangeRail title="Derniers torrents" sort="date" icon="🆕" />
-          <TimeRangeRail title="Les plus populaires" sort="seeders" allowCount icon="🔥" />
+          </HomeSection>
+          <HomeSection id="atrisk" label="Torrents à risque" icon="⚠️"><Rail icon="⚠️" title="Torrents à risque (1-2 seeders)" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} /></HomeSection>
+          <HomeSection id="followed" label="De tes abonnements" icon="🔔"><Rail icon="🔔" title="De tes abonnements" to="/favorites" items={followed} /></HomeSection>
+          <HomeSection id="recommended" label="Recommandé pour toi" icon="✨"><Rail icon="✨" title="Recommandé pour toi" to="/browse" items={recommended} /></HomeSection>
+          <HomeSection id="latest" label="Derniers torrents" icon="🆕"><TimeRangeRail title="Derniers torrents" sort="date" icon="🆕" /></HomeSection>
+          <HomeSection id="popular" label="Les plus populaires" icon="🔥"><TimeRangeRail title="Les plus populaires" sort="seeders" allowCount icon="🔥" /></HomeSection>
           {byCategory.map((row) => (
-            <Rail key={row.id} icon={CATEGORY_STYLE[row.slug]?.icon ?? '📁'} title={row.name} to={`/browse?categoryId=${row.id}`} items={row.items} />
+            <HomeSection key={row.id} id={`cat:${row.slug}`} label={row.name} icon={CATEGORY_STYLE[row.slug]?.icon ?? '📁'}>
+              <Rail icon={CATEGORY_STYLE[row.slug]?.icon ?? '📁'} title={row.name} to={`/browse?categoryId=${row.id}`} items={row.items} />
+            </HomeSection>
           ))}
     </div>
   );

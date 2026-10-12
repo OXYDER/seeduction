@@ -286,6 +286,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Six façons de voir les torrents : [b]Liste[/b] (tableau complet), [b]Détails[/b] (grandes lignes avec affiche et synopsis), [b]Grille[/b] (cartes), [b]Affiches[/b] (grandes images), [b]Compact[/b] (une ligne fine) et [b]Groupé[/b] (une ligne par film ou série).\n` +
         `• Ton affichage par défaut se règle dans Profil > Compte (« Affichage des listes de torrents »).\n` +
         `• Les boutons en haut d'une liste changent l'affichage de cette page, dans ce navigateur.\n\n` +
+        `[b]Alléger l'accueil[/b]\n` +
+        `Chaque section de la page d'accueil (calendrier freeleech, raccourcis, nouvelles, forum, classements, torrents populaires...) a une petite icône [b]−[/b] en haut à droite : un clic la réduit en une fine barre avec son nom, et un clic sur la barre (＋) la rouvre. Les boutons « Tout réduire » et « Tout afficher » en haut de l'accueil agissent sur toutes les sections d'un coup. Ton choix est mémorisé sur cet appareil.\n\n` +
         `[b]Infobulles des torrents[/b]\n` +
         `Au survol d'un titre ou d'une affiche, une infobulle montre le détail. 4 styles : [b]Affiche[/b], [b]Cinéma[/b], [b]Classique[/b], [b]Minimal[/b], ou aucune. Un aperçu de chacun est affiché dans Profil > Compte.\n\n` +
         `[b]Tags sous les titres[/b]\n` +
