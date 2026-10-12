@@ -215,7 +215,7 @@ export class SuggestionsService {
     const staff = await this.prisma.user.findMany({ where: { role: { in: STAFF as any }, status: 'ACTIVE', parentId: null }, select: { id: true } });
     const people = [...new Set([authorId, ...staff.map((u) => u.id)])];
     await this.prisma.notification.createMany({
-      data: people.map((userId) => ({ userId, type: 'SYSTEM' as const, title: `💡 « ${title.slice(0, 80)} » a atteint ${threshold} votes`, body: 'Elle passe « à l\'étude » : à l\'équipe de la planifier ou de répondre.', link })),
+      data: people.map((userId) => ({ userId, type: 'SYSTEM' as const, category: 'forum', title: `💡 « ${title.slice(0, 80)} » a atteint ${threshold} votes`, body: 'Elle passe « à l\'étude » : à l\'équipe de la planifier ou de répondre.', link })),
     });
   }
 
@@ -234,7 +234,7 @@ export class SuggestionsService {
       this.prisma.suggestion.update({ where: { id }, data: { commentCount: { increment: 1 } } }),
     ]);
     if (s.authorId !== actor.userId) {
-      await this.notifications.notify({ userId: s.authorId, type: 'SYSTEM', title: `💬 ${actor.username} a commenté ta suggestion`, body: s.title.slice(0, 120), link: `/suggestions/${id}` }).catch(() => undefined);
+      await this.notifications.notify({ userId: s.authorId, type: 'SYSTEM', category: 'forum', title: `💬 ${actor.username} a commenté ta suggestion`, titleMany: '💬 {n} nouveaux commentaires sur ta suggestion', groupKey: `sg:${id}`, body: s.title.slice(0, 120), link: `/suggestions/${id}` }).catch(() => undefined);
     }
     return { id: c.id, content: c.content, staff: c.staff, createdAt: c.createdAt, user: c.user };
   }
@@ -300,8 +300,6 @@ export class SuggestionsService {
     if (!people.length) return;
     const link = `/suggestions/${duplicateOfId ?? s.id}`;
     const body = status === 'DUPLICATE' ? 'Ton vote a été transféré sur la suggestion qui la remplace.' : note ? plainShort(note, 300) || undefined : undefined;
-    await this.prisma.notification.createMany({
-      data: people.map((userId) => ({ userId, type: 'SYSTEM' as const, title: `💡 « ${s.title.slice(0, 80)} » : ${statusLabel(status).toLowerCase()}`, body, link })),
-    });
+    await this.notifications.notifyMany(people.map((userId) => ({ userId, type: 'SYSTEM' as const, category: 'forum' as const, title: `💡 « ${s.title.slice(0, 80)} » : ${statusLabel(status).toLowerCase()}`, body, link })));
   }
 }

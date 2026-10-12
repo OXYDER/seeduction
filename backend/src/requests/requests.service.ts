@@ -90,7 +90,14 @@ export class RequestsService {
     const request = await this.prisma.torrentRequest.findUnique({ where: { id: requestId } });
     if (!request || request.filledById) throw new BadRequestException('Demande introuvable ou déjà comblée');
     await this.charge(userId, amount);
-    return this.prisma.torrentRequest.update({ where: { id: requestId }, data: { bounty: { increment: amount }, backers: { increment: 1 } } });
+    const updated = await this.prisma.torrentRequest.update({ where: { id: requestId }, data: { bounty: { increment: amount }, backers: { increment: 1 } } });
+    if (request.requestedById !== userId) {
+      await this.notifications.notify({
+        userId: request.requestedById, type: 'REQUEST_FILLED', category: 'requests', title: `+${amount} points ajoutés à ta demande`, titleMany: 'Des points ont été ajoutés à ta demande ({n} contributions)',
+        groupKey: `bounty:${requestId}`, body: `${request.title} : récompense de ${Math.round(updated.bounty)} points`, link: '/requests',
+      }).catch(() => undefined);
+    }
+    return updated;
   }
 
   async remove(requestId: string, user: { userId: string; role: string }) {

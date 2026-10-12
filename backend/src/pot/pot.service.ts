@@ -158,7 +158,7 @@ export class PotService {
     if (!cfg.milestones) return;
     for (const pct of [50, 90]) {
       if (before * 100 < pct * goal && after * 100 >= pct * goal) {
-        await this.notifications.notifyAll({ type: 'SYSTEM', title: `${cfg.icon} ${cfg.name} : ${pct} % !`, body: `Encore ${goal - after} points avant la récompense finale pour tout le monde. Donne ta part !`, link: '/pot' }).catch(() => undefined);
+        await this.notifications.notifyAll({ category: 'pot', type: 'SYSTEM', title: `${cfg.icon} ${cfg.name} : ${pct} % !`, body: `Encore ${goal - after} points avant la récompense finale pour tout le monde. Donne ta part !`, link: '/pot' }).catch(() => undefined);
       }
     }
   }
@@ -212,7 +212,7 @@ export class PotService {
     if (tier.rainPoints > 0) { const n = await this.rain({ ...cfg, rainPoints: tier.rainPoints }); if (n > 0) perks.push(`${tier.rainPoints} points offerts à chaque membre actif`); }
     if (perks.length === 0) return;
     this.logger.log(`${label} du pot atteint : ${perks.join(', ')}`);
-    if (cfg.announce) await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `${cfg.icon} ${cfg.name} : ${label} atteint !`, body: perks.join(' · '), link: '/pot' }).catch(() => undefined);
+    if (cfg.announce) await this.notifications.notifyAll({ category: 'pot', type: 'ANNOUNCEMENT', title: `${cfg.icon} ${cfg.name} : ${label} atteint !`, body: perks.join(' · '), link: '/pot' }).catch(() => undefined);
   }
 
   // ------------------------------------------------------------------ remplissage et récompense
@@ -225,7 +225,7 @@ export class PotService {
     this.logger.log(`${cfg.name} plein (cycle ${cycleId.slice(0, 8)})`);
     if (cfg.autoStart) { await this.start(cycleId); return; }
     await this.notifyAdmins(`${cfg.icon} ${cfg.name} est plein`, 'À toi de lancer la récompense : Admin > Pot commun.');
-    if (cfg.announce) await this.notifications.notifyAll({ type: 'SYSTEM', title: `${cfg.icon} ${cfg.name} est plein !`, body: 'Merci à tous les donateurs : la récompense sera lancée très bientôt.', link: '/pot' }).catch(() => undefined);
+    if (cfg.announce) await this.notifications.notifyAll({ category: 'pot', type: 'SYSTEM', title: `${cfg.icon} ${cfg.name} est plein !`, body: 'Merci à tous les donateurs : la récompense sera lancée très bientôt.', link: '/pot' }).catch(() => undefined);
   }
 
   /** Lance la récompense d'un pot plein (automatique, ou à la main par un administrateur). */
@@ -303,7 +303,7 @@ export class PotService {
         bonus > 0 ? `${bonus} points de bonus (n° ${rank + 1} des donateurs)` : '',
         cfg.rewardTokens > 0 ? `${cfg.rewardTokens} jeton${cfg.rewardTokens > 1 ? 's' : ''} freeleech` : '',
       ].filter(Boolean);
-      await this.notifications.notify({ userId: row.userId, type: 'SYSTEM', title: `${cfg.icon} Merci pour ta générosité !`, body: parts.join(' + '), link: '/pot' }).catch(() => undefined);
+      await this.notifications.notify({ userId: row.userId, category: 'pot', type: 'SYSTEM', title: `${cfg.icon} Merci pour ta générosité !`, body: parts.join(' + '), link: '/pot' }).catch(() => undefined);
     }
   }
 
@@ -319,7 +319,7 @@ export class PotService {
     const body = `[b]Du ${fmtDate(startsAt)}\nau ${fmtDate(endsAt)}[/b]\n\n${perks}${r.fast ? '\n\n⚡ Pot rempli en un temps record : les récompenses durent plus longtemps !' : ''}\n\nMerci à tous les donateurs !`;
     if (author) await this.prisma.announcement.create({ data: { title: `${cfg.icon} ${cfg.name} est plein !`, content: body, kind: 'EVENT', pinned: false, authorId: author.id } }).catch((e) => this.logger.warn(`Annonce du pot : ${e?.message ?? e}`));
     const what = r.freeleechHours > 0 ? 'Freeleech global' : r.doubleHours > 0 ? 'Double upload global' : 'Récompenses';
-    await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `${cfg.icon} ${cfg.name} est plein !`, body: now ? `${what} jusqu'au ${fmtDate(endsAt)}` : `${what} du ${fmtDate(startsAt)} au ${fmtDate(endsAt)}`, link: '/pot' }).catch(() => undefined);
+    await this.notifications.notifyAll({ category: 'pot', type: 'ANNOUNCEMENT', title: `${cfg.icon} ${cfg.name} est plein !`, body: now ? `${what} jusqu'au ${fmtDate(endsAt)}` : `${what} du ${fmtDate(startsAt)} au ${fmtDate(endsAt)}`, link: '/pot' }).catch(() => undefined);
   }
 
   /** Lancement à la main d'un pot plein (quand « démarrage automatique » est décoché). */
@@ -339,6 +339,6 @@ export class PotService {
 
   private async notifyAdmins(title: string, body: string) {
     const admins = await this.prisma.user.findMany({ where: { role: { in: ['OWNER', 'ADMIN'] as any }, parentId: null, status: 'ACTIVE' }, select: { id: true } });
-    await Promise.all(admins.map((a) => this.notifications.notify({ userId: a.id, type: 'SYSTEM', title, body, link: '/admin?tab=Pot%20commun' }).catch(() => undefined)));
+    await Promise.all(admins.map((a) => this.notifications.notify({ userId: a.id, category: 'pot', type: 'SYSTEM', title, body, link: '/admin?tab=Pot%20commun' }).catch(() => undefined)));
   }
 }

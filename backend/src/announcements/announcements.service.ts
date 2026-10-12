@@ -121,7 +121,7 @@ export class AnnouncementsService {
     if (news.commentsLocked) throw new ForbiddenException('Les commentaires sont fermés pour cette nouvelle');
     const comment = await this.prisma.announcementComment.create({ data: { announcementId: id, authorId: user.userId, content: text } });
     if (news.authorId !== user.userId) {
-      await this.notifications.notify({ userId: news.authorId, type: 'ANNOUNCEMENT', title: `${user.username} a commenté ta nouvelle`, body: news.title, link: `/news/${id}#commentaires` });
+      await this.notifications.notify({ userId: news.authorId, type: 'ANNOUNCEMENT', title: `${user.username} a commenté ta nouvelle`, titleMany: '{n} nouveaux commentaires sur ta nouvelle', groupKey: `nc:${id}`, body: news.title, link: `/news/${id}#commentaires` });
     }
     return comment;
   }

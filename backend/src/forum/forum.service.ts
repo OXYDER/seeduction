@@ -411,6 +411,8 @@ export class ForumService implements OnModuleInit {
         userId: topic.authorId,
         type: 'FORUM_REPLY',
         title: 'Nouvelle réponse à ton sujet',
+        titleMany: '{n} nouvelles réponses à ton sujet',
+        groupKey: `forum:${topicId}`,
         body: topic.title,
         link: `/forum/topics/${topicId}`,
       });

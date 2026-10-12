@@ -47,6 +47,8 @@ export class CommentsService {
         userId: torrent.uploaderId,
         type: 'TORRENT_COMMENT',
         title: `${user.username} a commenté ton torrent`,
+        titleMany: '{n} nouveaux commentaires sur ton torrent',
+        groupKey: `tc:${torrent.id}`,
         body: torrent.name,
         link: `/torrents/${torrent.id}`,
       });

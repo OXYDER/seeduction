@@ -49,11 +49,19 @@ export class EconomyService {
     // reçoit sa date de dernière modification comme début, pour qu'il puisse enfin passer DEAD.
     await this.prisma.$executeRaw`UPDATE "Torrent" SET "zeroSeedersSince" = "updatedAt" WHERE status = 'APPROVED' AND seeders = 0 AND "zeroSeedersSince" IS NULL`;
     const cutoff = new Date(Date.now() - ECONOMY.deadAfterHours * 3600_000);
+    const dying = await this.prisma.torrent.findMany({ where: { status: 'APPROVED', seeders: 0, zeroSeedersSince: { lte: cutoff } }, select: { id: true, name: true, uploaderId: true }, take: 500 });
     const { count } = await this.prisma.torrent.updateMany({
-      where: { status: 'APPROVED', seeders: 0, zeroSeedersSince: { lte: cutoff } },
+      where: { id: { in: dying.map((t) => t.id) }, status: 'APPROVED', seeders: 0 },
       data: { status: 'DEAD', diedAt: new Date() },
     });
     if (count > 0) this.logger.log(`${count} torrent(s) passé(s) DEAD (0 seeder depuis plus de ${ECONOMY.deadAfterHours}h)`);
+    // L'envoyeur est prévenu (une notification regroupée s'il en a plusieurs) : à lui de remettre le torrent en seed ou de demander un reseed.
+    for (const t of dying) {
+      await this.notifications.notify({
+        userId: t.uploaderId, type: 'RESEED_REQUEST', category: 'torrents', title: `☠️ « ${t.name.slice(0, 80)} » n'a plus de seeder`, titleMany: '☠️ {n} de tes torrents n’ont plus de seeder',
+        groupKey: `dead:${t.uploaderId}`, body: 'Remets-le en seed ou demande un reseed pour que les autres puissent le télécharger.', link: `/torrents/${t.id}`,
+      }).catch(() => undefined);
+    }
   }
 
   /**
@@ -388,7 +396,7 @@ export class EconomyService {
       await tx.pointTransfer.create({ data: { fromId, toId, amount, message } });
     });
     await this.notifications.notify({
-      userId: toId, type: 'SYSTEM', title: `${sender?.username ?? 'Un membre'} t'a envoyé ${amount} points bonus`,
+      userId: toId, type: 'SYSTEM', category: 'social', title: `${sender?.username ?? 'Un membre'} t'a envoyé ${amount} points bonus`,
       body: message ?? 'Cadeau de points bonus', link: '/bonus',
     });
     return { ok: true, amount, to: recipient.username };

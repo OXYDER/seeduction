@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
+import { CATEGORY_ICON, notifyChanged, onNotificationsChanged } from '../lib/notifications';
 
 interface Notification {
   id: string;
@@ -12,6 +13,8 @@ interface Notification {
   link: string | null;
   read: boolean;
   createdAt: string;
+  category?: string;
+  count?: number;
 }
 
 /**
@@ -22,6 +25,7 @@ export default function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<Notification[]>([]);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -34,7 +38,10 @@ export default function NotificationsBell() {
   useEffect(() => {
     refreshCount();
     const interval = setInterval(refreshCount, 30_000);
-    return () => clearInterval(interval);
+    // Une notification lue / supprimée ailleurs (page Notifications, ouverture de la page concernée) met la pastille à jour tout de suite.
+    const off = onNotificationsChanged(() => { refreshCount(); if (openRef.current) loadItems(); });
+    return () => { clearInterval(interval); off(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /** Place le cadre sous la cloche, sans jamais dépasser de l'écran. */
@@ -70,9 +77,24 @@ export default function NotificationsBell() {
     };
   }, [open, place]);
 
+  const openRef = useRef(false);
+  openRef.current = open;
+  function loadItems() { api.get('/notifications', { params: { limit: 40 } }).then((r) => setItems(r.data)).catch(() => {}); }
+
   function toggle() {
-    if (!open) api.get('/notifications').then((r) => setItems(r.data));
+    if (!open) loadItems();
     setOpen((v) => !v);
+  }
+
+  async function toggleRead(n: Notification) {
+    await api.post(`/notifications/${n.id}/${n.read ? 'unread' : 'read'}`);
+    setItems((l) => l.map((x) => (x.id === n.id ? { ...x, read: !n.read } : x)));
+    refreshCount(); notifyChanged();
+  }
+  async function remove(n: Notification) {
+    await api.delete(`/notifications/${n.id}`);
+    setItems((l) => l.filter((x) => x.id !== n.id));
+    refreshCount(); notifyChanged();
   }
 
   async function openNotification(n: Notification) {
@@ -105,21 +127,30 @@ export default function NotificationsBell() {
         <div ref={panelRef} className="notif-panel" role="dialog" aria-label="Notifications" style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: `calc(100dvh - ${pos.top}px - 12px)` }}>
           <div className="notif-head">
             <strong>Notifications</strong>
-            {unread > 0 && <button type="button" className="secondary" onClick={markAllRead} style={{ fontSize: 11, padding: '4px 8px' }}>Tout marquer lu</button>}
+            <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button type="button" className="secondary" onClick={() => setUnreadOnly((v) => !v)} style={{ fontSize: 11, padding: '4px 8px', opacity: unreadOnly ? 1 : 0.7 }} aria-pressed={unreadOnly}>Non lues</button>
+              {unread > 0 && <button type="button" className="secondary" onClick={markAllRead} style={{ fontSize: 11, padding: '4px 8px' }}>Tout marquer lu</button>}
+            </span>
           </div>
           <div className="notif-list">
-            {items.length === 0 && <p className="notif-empty">Aucune notification.</p>}
-            {items.map((n) => (
+            {items.filter((n) => !unreadOnly || !n.read).length === 0 && <p className="notif-empty">{unreadOnly ? 'Aucune notification non lue.' : 'Aucune notification.'}</p>}
+            {items.filter((n) => !unreadOnly || !n.read).map((n) => (
               <div key={n.id} onClick={() => openNotification(n)} className={`notif-item${n.read ? '' : ' unread'}`}>
                 {!n.read && <span className="notif-dot" />}
-                <div style={{ minWidth: 0 }}>
-                  <div className="notif-title">{n.title}</div>
+                <span className="notif-cat" aria-hidden>{CATEGORY_ICON[n.category ?? ''] ?? '🔔'}</span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="notif-title">{n.title}{(n.count ?? 1) > 1 && <span className="np-x">×{n.count}</span>}</div>
                   {n.body && <div className="notif-body">{n.body}</div>}
                   <div className="notif-time">{timeAgo(n.createdAt)}</div>
                 </div>
+                <span className="notif-actions" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" title={n.read ? 'Marquer comme non lue' : 'Marquer comme lue'} aria-label={n.read ? 'Marquer comme non lue' : 'Marquer comme lue'} onClick={() => toggleRead(n)}>{n.read ? '○' : '●'}</button>
+                  <button type="button" title="Supprimer" aria-label="Supprimer cette notification" onClick={() => remove(n)}>✕</button>
+                </span>
               </div>
             ))}
           </div>
+          <Link to="/notifications" className="notif-all" onClick={() => setOpen(false)}>Voir toutes les notifications →</Link>
         </div>,
         document.body,
       )}

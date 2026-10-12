@@ -304,7 +304,7 @@ export class SupportBotService implements OnModuleInit {
       const staff = await this.prisma.user.findMany({ where: { role: { in: ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'] }, status: 'ACTIVE', parentId: null }, select: { id: true } });
       await this.prisma.notification.createMany({
         data: staff.filter((s) => s.id !== actor.userId).map((s) => ({
-          userId: s.id, type: 'SUPPORT' as const, title: `🙋 ${actor.username} demande l’aide de l’équipe`,
+          userId: s.id, type: 'SUPPORT' as const, category: 'support', title: `🙋 ${actor.username} demande l’aide de l’équipe`,
           body: (last?.content ?? 'Dans le canal Support').replace(/\s+/g, ' ').slice(0, 140), link: `/chat?c=${channelId}`,
         })),
       });

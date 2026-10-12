@@ -94,7 +94,7 @@ export class TeamsService implements OnModuleInit {
 
   private async notifyStaff(title: string, body: string, link: string) {
     const staff = await this.prisma.user.findMany({ where: { role: { in: STAFF as any }, parentId: null, status: 'ACTIVE' }, select: { id: true } });
-    await Promise.all(staff.map((s) => this.notifications.notify({ userId: s.id, type: 'SYSTEM', title, body, link }).catch(() => undefined)));
+    await Promise.all(staff.map((s) => this.notifications.notify({ userId: s.id, type: 'SYSTEM', category: 'social', title, body, link }).catch(() => undefined)));
   }
 
   // ------------------------------------------------------------------ lecture
@@ -208,7 +208,7 @@ export class TeamsService implements OnModuleInit {
       teamId = team.id;
     }
     await this.prisma.teamApplication.updateMany({ where: { userId: leader.id, status: 'PENDING' }, data: { status: 'WITHDRAWN', decidedAt: new Date() } });
-    await this.notifications.notify({ userId: leader.id, type: 'SYSTEM', title: `Tu diriges la team ${name}`, body: 'Tu peux examiner les candidatures et gérer les membres depuis la page de ta team.', link: `/teams/${teamId}` }).catch(() => undefined);
+    await this.notifications.notify({ userId: leader.id, type: 'SYSTEM', category: 'social', title: `Tu diriges la team ${name}`, body: 'Tu peux examiner les candidatures et gérer les membres depuis la page de ta team.', link: `/teams/${teamId}` }).catch(() => undefined);
     return { id: teamId };
   }
 
@@ -264,7 +264,7 @@ export class TeamsService implements OnModuleInit {
     const user = await this.prisma.user.findUnique({ where: { id: v.accountId }, select: { username: true } });
     if (team.leaderId) {
       const leads = await this.prisma.teamMember.findMany({ where: { teamId: id, role: { in: ['LEADER', 'OFFICER'] } }, select: { userId: true } });
-      await Promise.all(leads.map((l) => this.notifications.notify({ userId: l.userId, type: 'SYSTEM', title: `Nouvelle candidature pour ${team.name}`, body: `${user?.username ?? 'Un membre'} souhaite rejoindre la team.`, link: `/teams/${id}` }).catch(() => undefined)));
+      await Promise.all(leads.map((l) => this.notifications.notify({ userId: l.userId, type: 'SYSTEM', category: 'social', title: `Nouvelle candidature pour ${team.name}`, body: `${user?.username ?? 'Un membre'} souhaite rejoindre la team.`, link: `/teams/${id}` }).catch(() => undefined)));
     } else {
       await this.notifyStaff(`Revendication de la team ${team.name}`, `${user?.username ?? 'Un membre'} affirme faire partie de cette team (preuve jointe).`, `/teams/${id}`);
     }
@@ -299,7 +299,7 @@ export class TeamsService implements OnModuleInit {
       await this.prisma.teamApplication.update({ where: { id: app.id }, data: { status: 'DECLINED', decidedAt: new Date(), decidedById: v.accountId } });
     }
     await this.notifications.notify({
-      userId: app.userId, type: 'SYSTEM',
+      userId: app.userId, type: 'SYSTEM', category: 'social',
       title: accept ? (claiming ? `Tu es le propriétaire de la team ${team.name} !` : `Bienvenue dans la team ${team.name} !`) : `Candidature refusée : ${team.name}`,
       body: accept ? (claiming ? 'Ta preuve a été validée : tu diriges la team et gères ses candidatures.' : 'Ta candidature a été acceptée.') : 'Ta candidature n\'a pas été retenue cette fois.', link: `/teams/${team.id}`,
     }).catch(() => undefined);
@@ -331,7 +331,7 @@ export class TeamsService implements OnModuleInit {
     await this.prisma.teamMember.delete({ where: { id: target.id } });
     // L'administration retire le chef : la team redevient sans propriétaire.
     if (target.role === 'LEADER') await this.prisma.team.update({ where: { id }, data: { leaderId: null } });
-    await this.notifications.notify({ userId, type: 'SYSTEM', title: 'Tu as été retiré d\'une team', link: '/teams' }).catch(() => undefined);
+    await this.notifications.notify({ userId, type: 'SYSTEM', category: 'social', title: 'Tu as été retiré d\'une team', link: '/teams' }).catch(() => undefined);
     return { ok: true };
   }
 

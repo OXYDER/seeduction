@@ -28,6 +28,15 @@ export class SocialService {
       // Petit remerciement pour l'uploader (pas pour un « merci » à soi-même).
       if (torrent.uploaderId !== userId) {
         await this.prisma.user.update({ where: { id: torrent.uploaderId }, data: { bonusPoints: { increment: LIKE_BONUS_POINTS } } });
+        // Les remerciements d'un même torrent s'additionnent dans une seule notification tant qu'elle n'est pas lue.
+        const [who, t] = await Promise.all([
+          this.prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
+          this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { name: true } }),
+        ]);
+        await this.notifications.notify({
+          userId: torrent.uploaderId, type: 'TORRENT_COMMENT', category: 'torrents', title: `${who?.username ?? 'Un membre'} t'a remercié pour ton torrent`,
+          titleMany: '{n} membres t\'ont remercié pour ton torrent', groupKey: `like:${torrentId}`, body: t?.name, link: `/torrents/${torrentId}`,
+        }).catch(() => undefined);
       }
     }
     return this.likeStatus(torrentId, userId);
@@ -119,15 +128,13 @@ export class SocialService {
     for (const f of follows) if (!firstMatch.has(f.userId)) firstMatch.set(f.userId, nameById.get(f.entityId) ?? '');
     if (firstMatch.size === 0) return;
 
-    await this.prisma.notification.createMany({
-      data: [...firstMatch.entries()].map(([userId, entityName]) => ({
-        userId,
-        type: 'FOLLOW' as const,
-        title: `Nouveau torrent : ${entityName}`,
-        body: torrent.name,
-        link: `/torrents/${torrent.id}`,
-      })),
-    });
+    await this.notifications.notifyMany([...firstMatch.entries()].map(([userId, entityName]) => ({
+      userId,
+      type: 'FOLLOW' as const,
+      title: `Nouveau torrent : ${entityName}`,
+      body: torrent.name,
+      link: `/torrents/${torrent.id}`,
+    })));
   }
 
   // ------------------------------------------------------------------ demande de reseed
@@ -153,6 +160,7 @@ export class SocialService {
         data: snatchers.map((s) => ({
           userId: s.userId,
           type: 'RESEED_REQUEST' as const,
+          category: 'torrents',
           title: 'Demande de reseed',
           body: `« ${torrent.name} » n'a plus de seeder : si tu l'as encore, remets-le en seed !`,
           link: `/torrents/${torrentId}`,

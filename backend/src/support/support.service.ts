@@ -210,7 +210,7 @@ export class SupportService implements OnModuleInit {
     try {
       const staff = await this.prisma.user.findMany({ where: { role: { in: STAFF_ROLES as any }, status: 'ACTIVE', parentId: null }, select: { id: true } });
       await this.prisma.notification.createMany({
-        data: staff.map((s) => ({ userId: s.id, type: 'SUPPORT' as const, title: `🎫 Nouveau billet #${number}`, body: `${username} : ${subject}${category ? ` (${category})` : ''}`.slice(0, 160), link: `/support/${ticketId}` })),
+        data: staff.map((s) => ({ userId: s.id, type: 'SUPPORT' as const, category: 'support', title: `🎫 Nouveau billet #${number}`, body: `${username} : ${subject}${category ? ` (${category})` : ''}`.slice(0, 160), link: `/support/${ticketId}` })),
       });
     } catch (err: any) { this.log.warn(`Notification du staff échouée : ${err?.message}`); }
   }
