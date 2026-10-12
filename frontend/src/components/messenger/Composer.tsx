@@ -5,8 +5,10 @@ import { canRecordVoice, pickRecorderMime, uploadAttachment, uploadVoice } from 
 import Avatar from '../Avatar';
 import ShareTorrentModal from './ShareTorrentModal';
 import GifPicker from './GifPicker';
+import ChatEditor, { type ChatEditorHandle, type ChatFormat } from './ChatEditor';
 import PollModal from './PollModal';
 import { useAuthStore } from '../../store/auth';
+import { plainMarkup } from '../../lib/chatFormat';
 
 // Brouillons : ce qu'on a commencé à écrire dans une conversation est gardé quand on passe à une autre, et même après un rechargement de la page (sur cet appareil).
 const DRAFTS_KEY = 'msgr-drafts';
@@ -21,17 +23,16 @@ const drafts = {
   delete(id: string) { this.set(id, ''); },
 };
 /** Mise en forme proposée sous le bouton « Aa » : marqueur ouvrant / fermant, exemple affiché. */
-const FORMATS: { label: string; title: string; open: string; close?: string; keys?: string }[] = [
-  { label: 'B', title: 'Gras', open: '**', keys: 'Ctrl+B' },
-  { label: 'I', title: 'Italique', open: '*', keys: 'Ctrl+I' },
-  { label: 'S', title: 'Barré', open: '~~' },
-  { label: '</>', title: 'Code', open: '`', keys: 'Ctrl+E' },
-  { label: '▮▮', title: 'Spoiler (un clic le révèle)', open: '||' },
-  { label: '❝', title: 'Citation (début de ligne)', open: '> ', close: '' },
+const FORMATS: { label: string; title: string; fmt: ChatFormat; keys?: string; style?: React.CSSProperties }[] = [
+  { label: 'B', title: 'Gras', fmt: 'bold', keys: 'Ctrl+B', style: { fontWeight: 900 } },
+  { label: 'I', title: 'Italique', fmt: 'italic', keys: 'Ctrl+I', style: { fontStyle: 'italic' } },
+  { label: 'S', title: 'Barré', fmt: 'strike', keys: 'Ctrl+Maj+X', style: { textDecoration: 'line-through' } },
+  { label: '</>', title: 'Code', fmt: 'code', keys: 'Ctrl+E' },
+  { label: '▮▮', title: 'Spoiler (un clic le révèle)', fmt: 'spoiler' },
+  { label: '❝', title: 'Citation', fmt: 'quote' },
 ];
 const TYPING_EVERY_MS = 1500;
 const MAX_VOICE_MS = 5 * 60 * 1000;
-const MENTION_AT_CARET = /(^|\s)@([\p{L}\p{N}_.·-]{0,50})$/u;
 
 interface Props {
   conversationId: string;
@@ -69,7 +70,7 @@ export default function Composer({ conversationId, writable, ban, people, replyT
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [mention, setMention] = useState<{ query: string; index: number } | null>(null);
-  const area = useRef<HTMLTextAreaElement>(null);
+  const area = useRef<ChatEditorHandle>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const gifInput = useRef<HTMLInputElement>(null);
   const recorder = useRef<{ mr: MediaRecorder; stream: MediaStream; chunks: Blob[]; startedAt: number; send: boolean } | null>(null);
@@ -87,13 +88,6 @@ export default function Composer({ conversationId, writable, ban, people, replyT
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing?.id]);
   useEffect(() => { if (replyTo) area.current?.focus(); }, [replyTo?.id]);
-
-  useEffect(() => {
-    const el = area.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
-  }, [text]);
 
   const suggestions = useMemo(() => {
     if (!mention) return [];
@@ -183,24 +177,17 @@ export default function Composer({ conversationId, writable, ban, people, replyT
     setEmoji(false); onCancelReply();
   }
 
-  function onChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const v = e.target.value;
+  function onChange(v: string) {
     setText(v);
-    const caret = e.target.selectionStart ?? v.length;
-    const m = v.slice(0, caret).match(MENTION_AT_CARET);
-    setMention(m ? { query: m[2], index: 0 } : null);
+    const q = area.current?.mentionQuery() ?? null;
+    setMention(q !== null ? { query: q, index: 0 } : null);
     const now = Date.now();
     if (!editing && v.trim() && now - lastTyping.current > TYPING_EVERY_MS) { typingPing(conversationId); lastTyping.current = now; }
   }
 
   function pickMention(p: MsgUser) {
-    const el = area.current;
-    const caret = el?.selectionStart ?? text.length;
-    const before = text.slice(0, caret).replace(MENTION_AT_CARET, (_m, lead) => `${lead}@${p.username} `);
-    const next = before + text.slice(caret);
-    setText(next);
+    area.current?.replaceMention(p.username);
     setMention(null);
-    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(before.length, before.length); });
   }
 
   async function submit() {
@@ -217,24 +204,8 @@ export default function Composer({ conversationId, writable, ban, people, replyT
     setText(''); setEmoji(false); setMention(null); onCancelReply();
   }
 
-  /** Entoure la sélection (ou place le curseur entre les marqueurs) : « **gras** », « `code` »... */
-  function wrap(open: string, close = open) {
-    const el = area.current;
-    if (!el) return;
-    const a = el.selectionStart, b = el.selectionEnd;
-    const sel = text.slice(a, b);
-    const next = text.slice(0, a) + open + sel + close + text.slice(b);
-    setText(next);
-    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a + open.length, a + open.length + sel.length); });
-  }
-
-  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
-      const k = e.key.toLowerCase();
-      if (k === 'b') { e.preventDefault(); wrap('**'); return; }
-      if (k === 'i') { e.preventDefault(); wrap('*'); return; }
-      if (k === 'e') { e.preventDefault(); wrap('`'); return; }
-    }
+  // Les raccourcis de mise en forme (Ctrl+B, Ctrl+I, Ctrl+E, Ctrl+Maj+X) sont gérés par l'éditeur lui-même.
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (suggestions.length && (e.key === 'Tab' || e.key === 'Enter')) { e.preventDefault(); pickMention(suggestions[mention?.index ?? 0] ?? suggestions[0]); return; }
     if (suggestions.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
       e.preventDefault();
@@ -245,7 +216,7 @@ export default function Composer({ conversationId, writable, ban, people, replyT
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
   }
 
-  function onPaste(e: React.ClipboardEvent) {
+  function onPaste(e: React.ClipboardEvent<HTMLDivElement>) {
     const files = [...e.clipboardData.files];
     if (files.length) { e.preventDefault(); files.slice(0, 3).forEach((f) => sendFile(f)); }
   }
@@ -264,7 +235,7 @@ export default function Composer({ conversationId, writable, ban, people, replyT
     <div className={`msgr-composer${compact ? ' compact' : ''}`}>
       {(replyTo || editing) && (
         <div className="msgr-composer-bar">
-          <span>{editing ? '✏️ Modification du message' : <>↩ Réponse à <strong>{replyTo!.sender.username}</strong> : <span className="muted">{(replyTo!.content || 'pièce jointe').slice(0, 70)}</span></>}</span>
+          <span>{editing ? '✏️ Modification du message' : <>↩ Réponse à <strong>{replyTo!.sender.username}</strong> : <span className="muted">{plainMarkup(replyTo!.content || 'pièce jointe').slice(0, 70)}</span></>}</span>
           <button type="button" className="dm-icon-btn" onClick={editing ? onCancelEdit : onCancelReply} aria-label="Annuler">✕</button>
         </div>
       )}
@@ -296,23 +267,21 @@ export default function Composer({ conversationId, writable, ban, people, replyT
             {canPoll && <button type="button" className="chat-icon-btn lg" title="Créer un sondage" onClick={() => setPoll(true)}>📊</button>}
           </>
         )}
-        <textarea
+        <ChatEditor
           ref={area}
-          rows={1}
           value={text}
           placeholder={editing ? 'Modifier le message…' : 'Écris un message…'}
           maxLength={4000}
           onChange={onChange}
           onKeyDown={onKeyDown}
           onPaste={onPaste}
-          aria-label="Message"
         />
         <div className="msgr-emoji-anchor">
           <button type="button" className="chat-icon-btn lg" title="Mise en forme : gras, italique, code, spoiler, citation" aria-label="Mise en forme" onClick={() => setFmt((v) => !v)}>Aa</button>
           {fmt && (
             <div className="msgr-fmt-pop" role="toolbar" aria-label="Mise en forme">
               {FORMATS.map((f) => (
-                <button key={f.title} type="button" title={`${f.title}${f.keys ? ` (${f.keys})` : ''}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { wrap(f.open, f.close ?? f.open); setFmt(false); }}>{f.label}</button>
+                <button key={f.title} type="button" style={f.style} title={`${f.title}${f.keys ? ` (${f.keys})` : ''}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { area.current?.format(f.fmt); setFmt(false); }}>{f.label}</button>
               ))}
             </div>
           )}
@@ -329,7 +298,7 @@ export default function Composer({ conversationId, writable, ban, people, replyT
                 </div>
                 {tab === 'emoji' && (
                   <div className="chat-emoji-grid">
-                    {EMOJI_GRID.map((e) => <button key={e} type="button" onClick={() => { setText((v) => v + e); area.current?.focus(); }}>{e}</button>)}
+                    {EMOJI_GRID.map((e) => <button key={e} type="button" onMouseDown={(ev) => ev.preventDefault()} onClick={() => area.current?.insertText(e)}>{e}</button>)}
                   </div>
                 )}
                 {tab === 'sticker' && (

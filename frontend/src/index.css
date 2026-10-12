@@ -2092,6 +2092,13 @@ a.msgr-torrent:hover { background: rgba(255,255,255,0.16); color: var(--text); b
 .msgr-composer { position: relative; padding: 8px 12px 12px; border-top: 1px solid rgba(255,255,255,0.07); display: grid; gap: 6px; flex-shrink: 0; }
 .msgr-composer-row { display: flex; align-items: flex-end; gap: 4px; }
 .msgr-composer textarea { flex: 1; min-width: 0; resize: none; border-radius: 20px; padding: 9px 14px; line-height: 1.35; max-height: 140px; background: rgba(255,255,255,0.08); }
+/* Champ de saisie « tel quel » : la mise en forme se voit pendant qu'on écrit */
+.msgr-editor { flex: 1; min-width: 0; box-sizing: border-box; border-radius: 20px; padding: 9px 14px; line-height: 1.35; min-height: 38px; max-height: 140px; overflow-y: auto; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 14.5px; font-family: var(--font-body); color: var(--text); background: rgba(255,255,255,0.08); border: 1px solid var(--border); outline: none; cursor: text; }
+.msgr-editor:focus { border-color: var(--border-gold); }
+.msgr-editor:empty::before { content: attr(data-placeholder); color: var(--text-dim); pointer-events: none; white-space: nowrap; }
+.msgr-editor code { padding: 1px 6px; border-radius: 5px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.14); }
+.msgr-editor .msgr-ed-spoiler { border-radius: 4px; padding: 0 3px; background: rgba(255, 255, 255, 0.16); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset; }
+.msgr-editor blockquote { display: block; margin: 2px 0; padding: 2px 0 2px 10px; border-left: 3px solid var(--gold, #e0b84a); opacity: 0.9; }
 .msgr-composer .chat-icon-btn.lg, .msgr-composer .chat-send-btn { flex-shrink: 0; }
 .msgr-composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border-radius: 10px; background: rgba(255,255,255,0.06); border-left: 3px solid var(--acc1, #e0b84a); font-size: 12.5px; }
 .msgr-composer-bar > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

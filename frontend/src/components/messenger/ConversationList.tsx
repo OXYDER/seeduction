@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import { useMessenger, type ConvSummary } from '../../store/messenger';
-import { clock, dayLabel, listTime } from '../../lib/chatFormat';
+import { clock, dayLabel, listTime, plainMarkup } from '../../lib/chatFormat';
 import ConvAvatar from './ConvAvatar';
 import MessengerSettings from './MessengerSettings';
 
@@ -59,7 +59,7 @@ function Row({ c, active, onSelect }: { c: ConvSummary; active: boolean; onSelec
             <span className="msgr-row-time muted">{c.last ? listTime(c.last.createdAt) : ''}</span>
           </span>
           <span className="msgr-row-bottom">
-            <span className="msgr-row-preview">{c.last ? `${prefix}${c.last.preview}` : c.type === 'CHANNEL' ? c.description ?? 'Canal public' : 'Aucun message'}</span>
+            <span className="msgr-row-preview">{c.last ? `${prefix}${plainMarkup(c.last.preview)}` : c.type === 'CHANNEL' ? c.description ?? 'Canal public' : 'Aucun message'}</span>
             {unreadShown && <span className="msgr-unread">{c.mentions > 0 ? '@' : c.unread > 99 ? '99+' : c.unread}</span>}
           </span>
         </span>

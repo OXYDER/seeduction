@@ -5,7 +5,7 @@ import { useSupport } from '../../store/support';
 import { useMessenger, type ConvSummary, type Msg } from '../../store/messenger';
 import { useAuthStore } from '../../store/auth';
 import { QUICK_REACTIONS, EMOJI_GRID } from '../../lib/emoji';
-import { ChatText, clock, isBigEmoji } from '../../lib/chatFormat';
+import { ChatText, clock, isBigEmoji, plainMarkup } from '../../lib/chatFormat';
 import { formatBytes } from '../../lib/format';
 import Avatar from '../Avatar';
 import UserLink from '../UserLink';
@@ -160,7 +160,7 @@ function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, 
         {msg.replyTo && !msg.deleted && (
           <button type="button" className="msgr-reply-quote" onClick={() => onJump(msg.replyTo!.id)} title="Voir le message d'origine">
             <strong>↩ {msg.replyTo.senderId === me?.id ? 'Toi' : msg.replyTo.senderUsername}</strong>
-            <span>{msg.replyTo.preview || '…'}</span>
+            <span>{plainMarkup(msg.replyTo.preview) || '…'}</span>
           </button>
         )}
 

@@ -19,7 +19,7 @@ function internalPath(url: string): string | null {
 }
 
 /** Mise en forme légère : **gras**, *italique* ou _italique_, ~~barré~~, `code`, ||spoiler|| (rendue en éléments React : jamais de HTML brut). */
-const INLINE = /(`[^`\n]+`)|(\*\*[^*\n]+?\*\*)|(~~[^~\n]+?~~)|(\|\|[^|\n]+?\|\|)|(\*[^*\s][^*\n]*?\*)|((?<![\p{L}\p{N}])_[^_\s][^_\n]*?_(?![\p{L}\p{N}]))/gu;
+export const INLINE_MARKS = /(`[^`\n]+`)|(\*\*(?:[^*\n]|\*(?!\*)|\*(?=\*\*(?!\*)))+?\*\*(?!\*))|(~~[^~\n]+?~~)|(\|\|[^|\n]+?\|\|)|(\*(?![*\s])(?:\*\*[^*\n]+?\*\*|[^*\n])+?\*(?!\*))|((?<![\p{L}\p{N}])_[^_\s][^_\n]*?_(?![\p{L}\p{N}]))/gu;
 
 function Spoiler({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState(false);
@@ -30,7 +30,7 @@ function formatInline(text: string, key: string, depth = 0): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   let n = 0;
-  for (const m of text.matchAll(INLINE)) {
+  for (const m of text.matchAll(INLINE_MARKS)) {
     const start = m.index ?? 0;
     if (start > last) out.push(text.slice(last, start));
     const k = `${key}.${n++}`;
@@ -102,6 +102,16 @@ export function ChatText({ text, myUsername }: { text: string; myUsername?: stri
     flush(lines.length);
   });
   return <>{out}</>;
+}
+
+/** Texte d'un message sans les marqueurs de mise en forme (aperçus, citations de réponse) : « **gras** » devient « gras ». */
+export function plainMarkup(text: string): string {
+  let t = String(text ?? '').replace(/```([\s\S]*?)```/g, '$1').replace(/^>\s?/gm, '');
+  for (let i = 0; i < 2; i++) {
+    t = t.replace(/`([^`\n]+)`/g, '$1').replace(/\*\*((?:[^*\n]|\*(?!\*))+?)\*\*/g, '$1').replace(/~~([^~\n]+?)~~/g, '$1')
+      .replace(/\|\|([^|\n]+?)\|\|/g, '$1').replace(/\*(?![*\s])([^*\n]+?)\*/g, '$1');
+  }
+  return t;
 }
 
 export const clock = (iso: string | Date) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
