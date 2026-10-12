@@ -1981,12 +1981,12 @@ td.cat-cell .cat-tag { display: flex; height: 44px; width: 140px; border-radius:
 .msgr-bubble-wrap { position: relative; display: flex; flex-direction: column; gap: 3px; max-width: 100%; }
 .msgr-row.mine .msgr-bubble-wrap { align-items: flex-end; }
 .msgr-bubble {
-  padding: 8px 13px; border-radius: 18px; font-size: 14.5px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%;
+  padding: 8px 13px; border-radius: 10px; font-size: 14.5px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%;
   background: rgba(255,255,255,0.1); color: var(--text);
 }
 .msgr-bubble a { color: inherit; text-decoration: underline; }
 .msgr-row.mine .msgr-bubble { background: linear-gradient(135deg, var(--acc1, #e0b84a), var(--acc2, #f4d06a)); color: #fff; }
-.msgr-row.them:not(.first) .msgr-bubble { border-top-left-radius: 5px; }
+.msgr-row.them:not(.first) .msgr-bubble { border-top-left-radius: 4px; }
 .msgr-row.them:not(.last) .msgr-bubble { border-bottom-left-radius: 5px; }
 .msgr-row.mine:not(.first) .msgr-bubble { border-top-right-radius: 5px; }
 .msgr-row.mine:not(.last) .msgr-bubble { border-bottom-right-radius: 5px; }
@@ -3708,20 +3708,22 @@ a.msgr-mention { text-decoration: none; }
 .msgr-set-row { display: grid; gap: 4px; font-size: 13px; }
 .msgr-set-row select { width: 100%; }
 
-.msgr-lines .msgr-row, .msgr-lines .msgr-row.mine { flex-direction: row; justify-content: flex-start; gap: 10px; margin-top: 0; padding: 1px 8px; border-radius: 6px; }
+.msgr-lines .msgr-row { gap: 10px; margin-top: 2px; padding: 0 8px; align-items: flex-start; }
+.msgr-lines .msgr-row.mine { justify-content: flex-end; }
 .msgr-lines .msgr-row.first { margin-top: 10px; }
-.msgr-lines .msgr-row:hover { background: rgba(255, 255, 255, 0.04); }
-.msgr-lines .msgr-col { align-items: flex-start; max-width: 100%; min-width: 0; flex: 1; }
-.msgr-lines .msgr-row.mine .msgr-bubble-wrap, .msgr-lines .msgr-bubble-wrap { align-items: flex-start; }
+.msgr-lines .msgr-col { max-width: min(85%, 640px); min-width: 0; }
+.msgr-lines .msgr-row.mine .msgr-col { align-items: flex-end; }
+.msgr-lines .msgr-row.mine .msgr-sender { margin-left: 0; margin-right: 4px; }
+.msgr-lines .msgr-row.them .msgr-bubble-wrap { align-items: flex-start; }
+.msgr-lines .msgr-sender { margin-left: 4px; }
 .msgr-lines .msgr-avatar-slot { align-self: flex-start; width: 30px; flex: none; }
 .msgr-lines.msgr-noav .msgr-avatar-slot { display: none; }
-.msgr-lines .msgr-bubble { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; color: inherit !important; max-width: 100%; }
+.msgr-lines .msgr-bubble { padding: 6px 11px; }
+.msgr-lines .msgr-bubble.big-emoji { padding: 0 4px; }
 .msgr-lines .msgr-bubble.big-emoji { font-size: 2.2em; }
 .msgr-lines .msgr-bubble.pending { opacity: 0.55; }
 .msgr-lines .msgr-meta { display: none; }
-.msgr-lines .msgr-sender { margin-bottom: 1px; }
 .msgr-lines .msgr-image { max-width: min(320px, 100%); border-radius: 8px; }
-.msgr-lines .msgr-row.mine .msgr-mention { color: var(--acc-light, #f4d06a); background: rgba(var(--acc-rgb, 224,184,74), 0.18); }
 .msgr-lines .msgr-tools { top: -14px; }
 .msgr-fs-s .msgr-bubble, .msgr-fs-s .msgr-sender { font-size: 12.5px; }
 .msgr-fs-l .msgr-bubble, .msgr-fs-l .msgr-sender { font-size: 16px; }

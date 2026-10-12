@@ -139,7 +139,7 @@ function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, 
   }
 
   const avatar = lines
-    ? <span className="msgr-avatar-slot">{first ? <Avatar user={msg.sender} size={30} /> : null}</span>
+    ? mine ? null : <span className="msgr-avatar-slot">{first ? <Avatar user={msg.sender} size={30} /> : null}</span>
     : !mine && group ? (
       <span className="msgr-avatar-slot">{last ? <Avatar user={msg.sender} size={28} /> : null}</span>
     ) : null;
@@ -151,8 +151,8 @@ function MessageItemBase({ msg, conv, lines, first, last, readers, highlighted, 
       <div className="msgr-col">
         {first && (lines || (group && !mine)) && (
           <div className={`msgr-sender role-${msg.sender.role ?? 'USER'}`}>
-            {isBot ? <><strong>{msg.sender.username}</strong> <span className="msgr-bot-badge">🤖 Assistant</span></> : <UserLink user={msg.sender} />}
-            {roleTag && !isBot && <span className="msgr-role-tag" title={roleTag.title}>{roleTag.label}</span>}
+            {mine && lines ? null : isBot ? <><strong>{msg.sender.username}</strong> <span className="msgr-bot-badge">🤖 Assistant</span></> : <UserLink user={msg.sender} />}
+            {roleTag && !isBot && !(mine && lines) && <span className="msgr-role-tag" title={roleTag.title}>{roleTag.label}</span>}
             {lines && <span className="msgr-line-time">{clock(msg.createdAt)}</span>}
           </div>
         )}
