@@ -39,6 +39,10 @@ export default function Requests() {
   const [fillFor, setFillFor] = useState<string | null>(null);
   const [myTorrents, setMyTorrents] = useState<any[] | null>(null);
   const [fillTorrentId, setFillTorrentId] = useState('');
+  const [fillTab, setFillTab] = useState<'mine' | 'site'>('site');
+  const [siteQuery, setSiteQuery] = useState('');
+  const [siteResults, setSiteResults] = useState<any[] | null>(null);
+  const [sitePick, setSitePick] = useState<any | null>(null);
 
   function refresh() {
     api.get('/requests', { params: { status, search: search || undefined, categoryId: filterCat || undefined, sort, mine: mine ? '1' : undefined } })
@@ -58,6 +62,15 @@ export default function Requests() {
     refreshBalance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // Recherche d'un torrent déjà sur le site pour combler une demande.
+  useEffect(() => {
+    if (!fillFor || fillTab !== 'site' || siteQuery.trim().length < 2) { setSiteResults(null); return; }
+    const t = window.setTimeout(() => {
+      api.get('/torrents', { params: { search: siteQuery.trim(), pageSize: 8 } }).then((r) => setSiteResults(r.data.items ?? [])).catch(() => setSiteResults([]));
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [siteQuery, fillFor, fillTab]);
 
   const mainCategory = categories.find((c) => c.id === form.mainId);
   const subs: any[] = mainCategory?.children ?? [];
@@ -91,7 +104,7 @@ export default function Requests() {
   }
 
   async function openFill(id: string) {
-    setFillFor(fillFor === id ? null : id); setBountyFor(null); setFillTorrentId('');
+    setFillFor(fillFor === id ? null : id); setBountyFor(null); setFillTorrentId(''); setSitePick(null); setSiteQuery(data.items.find((x) => x.id === id)?.title ?? ''); setFillTab('site');
     if (myTorrents === null && user) {
       try {
         const r = await api.get('/torrents', { params: { uploaderId: user.id, pageSize: 100, sort: 'date' } });
@@ -218,7 +231,21 @@ export default function Requests() {
                   </div>
                   {r.filledTorrent && (
                     <div style={{ marginTop: 8, color: 'var(--success)' }}>
-                      ✅ Comblée par <UserLink user={r.filledBy} /> : <Link to={`/torrents/${r.filledTorrent.id}`}>{r.filledTorrent.name}</Link>
+                      ✅ Comblée : <Link to={`/torrents/${r.filledTorrent.id}`}>{r.filledTorrent.name}</Link> — envoyé par <UserLink user={r.filledBy} />
+                      {r.finder && <> · trouvé par <UserLink user={r.finder} /> <span className="muted">(✦ {Math.round(r.finderPoints)} pour l'avoir trouvé, ✦ {Math.round(r.uploaderPoints)} pour l'envoyeur)</span></>}
+                    </div>
+                  )}
+                  {!r.filledById && r.proposedTorrent && (
+                    <div className="panel" style={{ marginTop: 8, borderColor: '#fbbf24', padding: 10 }}>
+                      💡 <UserLink user={r.proposedBy} /> propose : <Link to={`/torrents/${r.proposedTorrent.id}`}>{r.proposedTorrent.name}</Link>
+                      {r.proposedTorrent.uploader && <> <span className="muted">(envoyé par {r.proposedTorrent.uploader.username})</span></>}
+                      {user && (r.requestedBy?.id === user.id || isStaff) ? (
+                        <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                          <button type="button" style={{ padding: '4px 12px' }} onClick={() => act(async () => { await api.post(`/requests/${r.id}/confirm`); }, '✓ Demande comblée, les points ont été versés.')}>✓ C'est bien ça</button>
+                          <button type="button" className="secondary" style={{ padding: '4px 12px' }} onClick={() => act(async () => { await api.post(`/requests/${r.id}/decline`); }, 'Proposition refusée : la demande reste ouverte.')}>✕ Ce n'est pas ça</button>
+                          <span className="muted" style={{ fontSize: 12 }}>Sans réponse, elle sera confirmée d'office 3 jours après la proposition.</span>
+                        </div>
+                      ) : <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>En attente de la confirmation du demandeur.</div>}
                     </div>
                   )}
                 </div>
@@ -227,7 +254,7 @@ export default function Requests() {
                   {!r.filledById && user && (
                     <div className="row" style={{ gap: 6, justifyContent: 'flex-end', marginTop: 8, flexWrap: 'wrap' }}>
                       <button type="button" className="secondary" style={{ padding: '4px 12px' }} onClick={() => { setBountyFor(bountyFor === r.id ? null : r.id); setFillFor(null); }}>＋ Points</button>
-                      <button type="button" style={{ padding: '4px 12px' }} onClick={() => openFill(r.id)}>✅ Combler</button>
+                      <button type="button" style={{ padding: '4px 12px' }} disabled={!!r.proposedTorrent} title={r.proposedTorrent ? 'Une proposition attend déjà la réponse du demandeur' : undefined} onClick={() => openFill(r.id)}>✅ Combler</button>
                       {(r.requestedBy?.id === user.id || isStaff) && (
                         <button type="button" className="danger" style={{ padding: '4px 12px' }} title="Supprimer la demande"
                           onClick={() => window.confirm('Supprimer cette demande ?') && act(async () => { await api.delete(`/requests/${r.id}`); }, 'Demande supprimée.')}>🗑️</button>
@@ -247,14 +274,55 @@ export default function Requests() {
               )}
 
               {fillFor === r.id && (
-                <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span className="muted">Choisis un de tes torrents approuvés :</span>
-                  <select value={fillTorrentId} onChange={(e) => setFillTorrentId(e.target.value)} style={{ minWidth: 280 }}>
-                    <option value="">— Sélectionner —</option>
-                    {(myTorrents ?? []).filter((t) => t.status === 'APPROVED').map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-                  <button type="button" disabled={!fillTorrentId} onClick={() => act(async () => { await api.post(`/requests/${r.id}/fill`, { torrentId: fillTorrentId }); setFillFor(null); }, '✓ Demande comblée, la récompense a été versée !')}>Combler</button>
-                  <Link to="/upload" className="muted">Envoyer un nouveau torrent →</Link>
+                <div className="grid" style={{ gap: 10, marginTop: 12 }}>
+                  <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" className={fillTab === 'site' ? '' : 'secondary'} style={{ padding: '4px 14px' }} onClick={() => setFillTab('site')}>🔎 Un torrent déjà sur le site</button>
+                    <button type="button" className={fillTab === 'mine' ? '' : 'secondary'} style={{ padding: '4px 14px' }} onClick={() => setFillTab('mine')}>📤 Un de mes torrents</button>
+                  </div>
+
+                  {fillTab === 'site' && (
+                    <div className="grid" style={{ gap: 8 }}>
+                      <input placeholder="Cherche le torrent qui répond à la demande…" value={siteQuery} onChange={(e) => { setSiteQuery(e.target.value); setSitePick(null); }} autoFocus />
+                      {siteResults === null && siteQuery.trim().length >= 2 && <span className="muted">Recherche…</span>}
+                      {siteResults?.length === 0 && <span className="muted">Aucun torrent trouvé. <Link to="/upload">Envoyer un nouveau torrent →</Link></span>}
+                      <div className="grid" style={{ gap: 6 }}>
+                        {siteResults?.map((t) => (
+                          <button key={t.id} type="button" className={sitePick?.id === t.id ? '' : 'secondary'} style={{ textAlign: 'left', padding: '6px 10px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }} onClick={() => setSitePick(t)}>
+                            <span style={{ flex: 1, minWidth: 220, overflowWrap: 'anywhere' }}>{t.name}</span>
+                            <span className="muted" style={{ fontSize: 12 }}>{t.uploader?.username ?? ''}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {sitePick && (
+                        <div className="panel" style={{ padding: 10, borderColor: '#fbbf24' }}>
+                          <div>Sélectionné : <Link to={`/torrents/${sitePick.id}`} target="_blank">{sitePick.name}</Link></div>
+                          {sitePick.uploader?.id === user?.id || r.requestedBy?.id === user?.id || isStaff ? (
+                            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>La demande sera comblée tout de suite{sitePick.uploader && sitePick.uploader.id !== user?.id ? ` : ✦ ${Math.round(r.bounty)} pour ${sitePick.uploader.username}, l'envoyeur` : ''}.</div>
+                          ) : (
+                            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+                              Tu n'es pas l'envoyeur : ta sélection est une <strong>proposition</strong>. <UserLink user={r.requestedBy} /> la confirme (ou la refuse ; sans réponse, elle est confirmée après 3 jours).
+                              Une fois confirmée, l'envoyeur reçoit la récompense{r.bounty >= 10 ? <> et <strong>toi, 10 % (✦ {Math.max(1, Math.floor(r.bounty / 10))})</strong> pour l'avoir trouvé</> : ''}.
+                            </div>
+                          )}
+                          <button type="button" style={{ marginTop: 8 }} onClick={async () => { setError(''); setNotice(''); try { const res = await api.post(`/requests/${r.id}/fill`, { torrentId: sitePick.id }); setFillFor(null); setNotice(res.data?.status === 'proposed' ? '✓ Proposition envoyée au demandeur, merci !' : '✓ Demande comblée, la récompense a été versée !'); refresh(); refreshBalance(); } catch (err: any) { setError(err.response?.data?.message ?? 'Action impossible'); } }}>
+                            {sitePick.uploader?.id === user?.id || r.requestedById === user?.id || isStaff ? 'Combler la demande' : 'Proposer ce torrent'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {fillTab === 'mine' && (
+                    <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span className="muted">Choisis un de tes torrents approuvés :</span>
+                      <select value={fillTorrentId} onChange={(e) => setFillTorrentId(e.target.value)} style={{ minWidth: 280 }}>
+                        <option value="">— Sélectionner —</option>
+                        {(myTorrents ?? []).filter((t) => t.status === 'APPROVED').map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                      <button type="button" disabled={!fillTorrentId} onClick={() => act(async () => { await api.post(`/requests/${r.id}/fill`, { torrentId: fillTorrentId }); setFillFor(null); }, '✓ Demande comblée, la récompense a été versée !')}>Combler</button>
+                      <Link to="/upload" className="muted">Envoyer un nouveau torrent →</Link>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

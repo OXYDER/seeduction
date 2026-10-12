@@ -146,6 +146,8 @@ model User {
   @@index([parentId])
   telegramLink     TelegramLink?
   chatBans         ChatBan[]  @relation("ChatBanned")
+  requestsFound    TorrentRequest[] @relation("RequestFinder")
+  requestsProposed TorrentRequest[] @relation("RequestProposer")
   chatMutes        ChatMute[] @relation("ChatMuter")
   chatMutedBy      ChatMute[] @relation("ChatMuted")
   suggestions      Suggestion[]
@@ -320,6 +322,7 @@ model Torrent {
   playbackPositions PlaybackPosition[]
   chatShares     Message[]
   requestFilled  TorrentRequest?
+  requestProposals TorrentRequest[] @relation("RequestProposedTorrent")
   collectionItems CollectionItem[]
 
   tags           String[]
@@ -514,6 +517,19 @@ model TorrentRequest {
   filledById  String?
   filledTorrent Torrent? @relation(fields: [filledTorrentId], references: [id], onDelete: SetNull)
   filledTorrentId String? @unique
+  // « Trouvé par » : le membre qui a désigné un torrent déjà sur le site (il n'en est pas l'envoyeur) ; il reçoit une petite part de la récompense.
+  finder      User?    @relation("RequestFinder", fields: [finderId], references: [id], onDelete: SetNull)
+  finderId    String?
+  finderPoints Float   @default(0)
+  uploaderPoints Float @default(0)
+  // Proposition en attente de la confirmation du demandeur (un torrent désigné par un autre membre que son envoyeur).
+  proposedTorrent   Torrent? @relation("RequestProposedTorrent", fields: [proposedTorrentId], references: [id], onDelete: SetNull)
+  proposedTorrentId String?
+  proposedBy        User?    @relation("RequestProposer", fields: [proposedById], references: [id], onDelete: SetNull)
+  proposedById      String?
+  proposedAt        DateTime?
+  // Torrents refusés par le demandeur pour cette demande (ils ne peuvent plus être proposés).
+  declinedTorrentIds String[] @default([])
 
   createdAt   DateTime @default(now())
 }

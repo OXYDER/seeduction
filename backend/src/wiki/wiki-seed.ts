@@ -181,7 +181,8 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `[b]Comment en gagner[/b]\n` +
           `• [b]1 point par heure[/b] et par torrent activement seedé (plafonné à 200 torrents comptés par heure, pour éviter l'abus par des centaines de tout petits torrents).\n` +
           `• [b]1 point[/b] à chaque fois qu'un autre membre te remercie (👍) sur un de tes torrents.\n` +
-          `• Une récompense en cas de reseed d'un torrent mort — voir [url=/wiki/torrents-morts-et-reseed]Torrents morts et récompense de reseed[/url].\n\n` +
+          `• Une récompense en cas de reseed d'un torrent mort — voir [url=/wiki/torrents-morts-et-reseed]Torrents morts et récompense de reseed[/url].\n` +
+          `• Combler une [b]demande[/b] (page Demandes) : la récompense va à l'envoyeur du torrent. Tu peux aussi combler une demande avec un torrent [b]déjà sur le site[/b], même si tu n'en es pas l'envoyeur : bouton « ✅ Combler » > « Un torrent déjà sur le site », cherche et sélectionne le torrent. Ta sélection est alors une [b]proposition[/b] que le demandeur confirme (« C'est bien ça ») ou refuse (« Ce n'est pas ça » : la demande reste ouverte et ce torrent ne peut plus être proposé pour elle) ; sans réponse, elle est confirmée d'office après 3 jours. Une fois confirmée, l'[b]envoyeur reçoit la récompense moins 10 %[/b], et [b]toi, qui l'as trouvé, 10 %[/b] (au moins 1 point ; pas de part quand la récompense est inférieure à 10 points). Le demandeur, l'envoyeur lui-même ou l'équipe comblent la demande tout de suite, sans proposition ; l'envoyeur garde alors tous les points.\n\n` +
           `[b]Ce qu'on peut acheter[/b] (voir la page Boutique)\n` +
           `• De l'upload supplémentaire (5 Go ou 20 Go, le paquet de 20 Go coûtant proportionnellement un peu moins cher).\n` +
           `• Un jeton freeleech, à dépenser sur le torrent de ton choix.\n` +

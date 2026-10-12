@@ -31,7 +31,21 @@ export class RequestsController {
   @UseGuards(JwtAuthGuard)
   @Post(':id/fill')
   fill(@Param('id') id: string, @Body('torrentId') torrentId: string, @Request() req: any) {
-    return this.requestsService.fill(id, torrentId, req.user);
+    return this.requestsService.fill(id, torrentId, { userId: accountOf(req), role: req.user.role, alt: req.user.userId });
+  }
+
+  /** Le demandeur confirme le torrent proposé par un autre membre. */
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/confirm')
+  confirm(@Param('id') id: string, @Request() req: any) {
+    return this.requestsService.confirm(id, { userId: accountOf(req), role: req.user.role });
+  }
+
+  /** Le demandeur refuse le torrent proposé : la demande reste ouverte. */
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/decline')
+  decline(@Param('id') id: string, @Request() req: any) {
+    return this.requestsService.decline(id, { userId: accountOf(req), role: req.user.role });
   }
 
   @UseGuards(JwtAuthGuard)

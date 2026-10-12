@@ -2,9 +2,17 @@ import { Injectable, BadRequestException, ForbiddenException, NotFoundException 
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
+import { Cron } from '@nestjs/schedule';
 
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const MAX_BOUNTY = 100_000;
+/** Part de la récompense pour le membre qui a trouvé un torrent déjà sur le site (sans en être l'envoyeur) ; l'envoyeur garde le reste. */
+export const FINDER_PERCENT = 10;
+/** Sous ce montant, pas de part : tout va à l'envoyeur. */
+const MIN_BOUNTY_FOR_SHARE = 10;
+/** Sans réponse du demandeur, une proposition est confirmée d'office après ce délai. */
+export const AUTO_CONFIRM_DAYS = 3;
+const MAX_OPEN_PROPOSALS = 5;
 
 export interface RequestInput {
   title?: string; description?: string; bounty?: number; year?: number; language?: string; resolution?: string; categoryId?: string;
@@ -31,6 +39,9 @@ export class RequestsService {
           requestedBy: { select: { id: true, username: true } },
           filledBy: { select: { id: true, username: true } },
           filledTorrent: { select: { id: true, name: true } },
+          finder: { select: { id: true, username: true } },
+          proposedBy: { select: { id: true, username: true } },
+          proposedTorrent: { select: { id: true, name: true, uploader: { select: { id: true, username: true } } } },
           category: { select: { id: true, name: true, slug: true, parent: { select: { slug: true, name: true } } } },
         },
       }),
@@ -97,31 +108,126 @@ export class RequestsService {
     return { ok: true, refunded: refund };
   }
 
-  async fill(requestId: string, torrentId: string, filler: { userId: string; role: string }) {
+  /** Un membre qui n'est pas l'envoyeur désigne un torrent du site : le demandeur confirme (ou refuse). */
+  private async openProposals(userId: string) {
+    return this.prisma.torrentRequest.count({ where: { proposedById: userId, filledById: null } });
+  }
+
+  /**
+   * Combler une demande avec un torrent. Trois cas :
+   * - l'envoyeur du torrent, le demandeur ou l'équipe : la demande est comblée tout de suite ;
+   * - un autre membre qui a trouvé ce torrent sur le site : c'est une proposition, que le demandeur confirme ou refuse (sans réponse, elle est
+   *   confirmée d'office après {AUTO_CONFIRM_DAYS} jours). À la confirmation, l'envoyeur reçoit la récompense moins une petite part ({FINDER_PERCENT} %) pour celui qui l'a trouvé.
+   */
+  async fill(requestId: string, torrentId: string, filler: { userId: string; role: string; alt?: string }) {
     const request = await this.prisma.torrentRequest.findUnique({ where: { id: requestId } });
     if (!request || request.filledById) throw new BadRequestException('Demande déjà comblée ou introuvable');
-    const torrent = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { id: true, uploaderId: true, status: true, requestFilled: { select: { id: true } } } });
+    const torrent = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { id: true, name: true, uploaderId: true, status: true, requestFilled: { select: { id: true } } } });
     if (!torrent) throw new BadRequestException('Torrent introuvable');
     if (torrent.requestFilled) throw new BadRequestException('Ce torrent a déjà servi à combler une autre demande');
     if (torrent.status !== 'APPROVED') throw new BadRequestException('Le torrent doit être approuvé par le staff');
-    if (torrent.uploaderId !== filler.userId && !STAFF.includes(filler.role)) throw new ForbiddenException('Tu ne peux combler une demande qu\'avec un de tes propres torrents');
-    if (request.requestedById === filler.userId && request.backers > 1) throw new BadRequestException("Tu ne peux pas combler ta propre demande quand d'autres membres y ont contribué");
+    if (request.declinedTorrentIds.includes(torrentId)) throw new BadRequestException('Le demandeur a déjà refusé ce torrent pour cette demande');
+    const staff = STAFF.includes(filler.role);
+    const mine = (id: string) => id === filler.userId || id === filler.alt; // compte principal ou profil famille
+    const isUploader = mine(torrent.uploaderId);
+    const isRequester = mine(request.requestedById);
+    if (isRequester && isUploader && request.backers > 1) throw new BadRequestException("Tu ne peux pas combler ta propre demande avec ton propre torrent quand d'autres membres y ont contribué");
 
-    const result = await this.prisma.$transaction([
-      this.prisma.torrentRequest.update({ where: { id: requestId }, data: { filledById: filler.userId, filledTorrentId: torrentId } }),
-      this.prisma.user.update({ where: { id: torrent.uploaderId }, data: { bonusPoints: { increment: request.bounty } } }),
+    // Direct : envoyeur, demandeur ou équipe. Les points vont à l'envoyeur du torrent.
+    if (isUploader || isRequester || staff) {
+      await this.complete(request, torrent, null, torrent.uploaderId === filler.alt ? filler.alt : filler.userId);
+      return { status: 'filled' as const };
+    }
+
+    // Proposition d'un membre qui a trouvé ce torrent sur le site.
+    if (request.proposedTorrentId) throw new BadRequestException('Une proposition attend déjà la réponse du demandeur');
+    if ((await this.openProposals(filler.userId)) >= MAX_OPEN_PROPOSALS) throw new BadRequestException(`Tu as déjà ${MAX_OPEN_PROPOSALS} propositions en attente de réponse`);
+    await this.prisma.torrentRequest.update({ where: { id: requestId }, data: { proposedTorrentId: torrentId, proposedById: filler.userId, proposedAt: new Date() } });
+    await this.notifications.notify({
+      userId: request.requestedById, type: 'REQUEST_FILLED', title: 'Un torrent est proposé pour ta demande',
+      body: `${request.title} → ${torrent.name} : confirme ou refuse dans Demandes (sans réponse, il sera accepté dans ${AUTO_CONFIRM_DAYS} jours)`, link: '/requests',
+    }).catch(() => undefined);
+    return { status: 'proposed' as const };
+  }
+
+  /** Le demandeur (ou l'équipe) confirme la proposition en attente : la demande est comblée et les points sont versés. */
+  async confirm(requestId: string, user: { userId: string; role: string }) {
+    const request = await this.prisma.torrentRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.filledById) throw new BadRequestException('Demande déjà comblée ou introuvable');
+    if (request.requestedById !== user.userId && !STAFF.includes(user.role)) throw new ForbiddenException('Seul le demandeur peut confirmer');
+    if (!request.proposedTorrentId) throw new BadRequestException('Aucune proposition en attente');
+    return this.completeProposal(request);
+  }
+
+  /** Le demandeur (ou l'équipe) refuse la proposition : la demande reste ouverte et ce torrent ne peut plus être proposé pour elle. */
+  async decline(requestId: string, user: { userId: string; role: string }) {
+    const request = await this.prisma.torrentRequest.findUnique({ where: { id: requestId }, include: { proposedTorrent: { select: { name: true } } } });
+    if (!request || request.filledById) throw new BadRequestException('Demande déjà comblée ou introuvable');
+    if (request.requestedById !== user.userId && !STAFF.includes(user.role)) throw new ForbiddenException('Seul le demandeur peut refuser');
+    if (!request.proposedTorrentId) throw new BadRequestException('Aucune proposition en attente');
+    await this.prisma.torrentRequest.update({
+      where: { id: requestId },
+      data: { proposedTorrentId: null, proposedById: null, proposedAt: null, declinedTorrentIds: { push: request.proposedTorrentId } },
+    });
+    if (request.proposedById) {
+      await this.notifications.notify({
+        userId: request.proposedById, type: 'REQUEST_FILLED', title: 'Ta proposition a été refusée',
+        body: `${request.title}${request.proposedTorrent ? ` : « ${request.proposedTorrent.name} » ne correspond pas à la demande` : ''}`, link: '/requests',
+      }).catch(() => undefined);
+    }
+    return { ok: true };
+  }
+
+  private async completeProposal(request: { id: string; title: string; bounty: number; requestedById: string; proposedTorrentId: string | null; proposedById: string | null }) {
+    const torrent = request.proposedTorrentId
+      ? await this.prisma.torrent.findUnique({ where: { id: request.proposedTorrentId }, select: { id: true, name: true, uploaderId: true, status: true, requestFilled: { select: { id: true } } } })
+      : null;
+    // Le torrent proposé a disparu, a été retiré ou a servi ailleurs entre-temps : la proposition tombe.
+    if (!torrent || torrent.status !== 'APPROVED' || torrent.requestFilled) {
+      await this.prisma.torrentRequest.update({ where: { id: request.id }, data: { proposedTorrentId: null, proposedById: null, proposedAt: null } });
+      throw new BadRequestException("Le torrent proposé n'est plus disponible : la proposition est annulée");
+    }
+    await this.complete(request, torrent, request.proposedById, null);
+    return { status: 'filled' as const };
+  }
+
+  /** Verse la récompense : à l'envoyeur du torrent, moins la part de celui qui l'a trouvé (s'il n'est ni l'envoyeur ni le demandeur). */
+  private async complete(request: { id: string; title: string; bounty: number; requestedById: string }, torrent: { id: string; name?: string; uploaderId: string }, finderId: string | null, actorId: string | null) {
+    const finder = finderId && finderId !== torrent.uploaderId && finderId !== request.requestedById ? finderId : null;
+    const finderPoints = finder && request.bounty >= MIN_BOUNTY_FOR_SHARE ? Math.max(1, Math.floor((request.bounty * FINDER_PERCENT) / 100)) : 0;
+    const uploaderPoints = request.bounty - finderPoints;
+    await this.prisma.$transaction([
+      this.prisma.torrentRequest.update({
+        where: { id: request.id },
+        data: {
+          filledById: torrent.uploaderId, filledTorrentId: torrent.id, finderId: finderPoints > 0 || finder ? finder : null, finderPoints, uploaderPoints,
+          proposedTorrentId: null, proposedById: null, proposedAt: null,
+        },
+      }),
+      this.prisma.user.update({ where: { id: torrent.uploaderId }, data: { bonusPoints: { increment: uploaderPoints } } }),
+      ...(finderPoints > 0 && finder ? [this.prisma.user.update({ where: { id: finder }, data: { bonusPoints: { increment: finderPoints } } })] : []),
     ]);
 
-    if (request.requestedById !== filler.userId) {
-      await this.notifications.notify({
-        userId: request.requestedById,
-        type: 'REQUEST_FILLED',
-        title: 'Ta demande a été comblée',
-        body: request.title,
-        link: `/torrents/${torrentId}`,
-      });
+    const link = `/torrents/${torrent.id}`;
+    if (request.requestedById !== torrent.uploaderId && request.requestedById !== actorId) {
+      await this.notifications.notify({ userId: request.requestedById, type: 'REQUEST_FILLED', title: 'Ta demande a été comblée', body: request.title, link }).catch(() => undefined);
+    }
+    if (torrent.uploaderId !== actorId && uploaderPoints > 0) {
+      await this.notifications.notify({ userId: torrent.uploaderId, type: 'REQUEST_FILLED', title: `Ton torrent a comblé une demande : +${Math.round(uploaderPoints)} points`, body: request.title, link }).catch(() => undefined);
+    }
+    if (finder && finderPoints > 0) {
+      await this.notifications.notify({ userId: finder, type: 'REQUEST_FILLED', title: `Merci ! +${Math.round(finderPoints)} points pour avoir trouvé ce torrent`, body: request.title, link }).catch(() => undefined);
     }
     await this.badges.checkAndAward(torrent.uploaderId);
-    return result[0];
+  }
+
+  /** Propositions sans réponse du demandeur depuis 3 jours : confirmées d'office (le demandeur a pu refuser avant, pas après). */
+  @Cron('7 * * * *')
+  async autoConfirm() {
+    const due = await this.prisma.torrentRequest.findMany({
+      where: { filledById: null, proposedTorrentId: { not: null }, proposedAt: { lt: new Date(Date.now() - AUTO_CONFIRM_DAYS * 86_400_000) } },
+      take: 50,
+    });
+    for (const r of due) await this.completeProposal(r).catch(() => undefined);
   }
 }
