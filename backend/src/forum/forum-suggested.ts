@@ -58,6 +58,7 @@ export const SUGGESTED_FORUMS: SuggestedCategory[] = [
           { name: 'Consoles et émulation', icon: '🕹️', description: 'Consoles actuelles et rétro, émulateurs.' },
         ],
       },
+      { name: 'Émulation', icon: '🕹️', description: 'Émulateurs, configurations, rétro-gaming : faire revivre les jeux d\'hier sur les machines d\'aujourd\'hui.' },
       { name: 'Applications et logiciels', icon: '💻', description: 'Outils, alternatives libres, astuces d\'installation.' },
     ],
   },
