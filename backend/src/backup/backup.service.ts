@@ -41,7 +41,7 @@ export interface RunRecord {
   offsite?: { ok: boolean; info: string } | null;
 }
 export interface RestoreTestRecord { at: string; ok: boolean; file: string; info: string; ms: number }
-interface StatusFile { lastRun?: RunRecord; lastSuccess?: RunRecord; lastRestoreTest?: RestoreTestRecord; history: RunRecord[]; lastStaleAlertAt?: string }
+interface StatusFile { lastRun?: RunRecord; lastSuccess?: RunRecord; lastRestoreTest?: RestoreTestRecord; history: RunRecord[]; lastStaleAlertAt?: string; lastFailAlertAt?: string }
 
 interface RunOpts { env?: NodeJS.ProcessEnv; cwd?: string; timeoutMs?: number; stdoutFile?: string; stdinFile?: string }
 interface RunResult { code: number; stdout: string; stderr: string }
@@ -60,6 +60,24 @@ const sha256File = (file: string) => new Promise<string>((resolve, reject) => {
 });
 /** GNU tar sous Windows prend « C:\\dossier » pour une machine distante (« hôte:chemin ») : --force-local l'en empêche. Sans effet utile sous Linux. */
 const tarArgs = (a: string[]) => (process.platform === 'win32' ? ['--force-local', ...a] : a);
+/** Octets libres sur le disque qui porte `dir` (null si le système ne sait pas le dire). */
+const freeBytes = (dir: string): number | null => {
+  try { const st = (fs as any).statfsSync(dir); return Number(st.bavail) * Number(st.bsize); } catch { return null; }
+};
+/** Taille totale d'un dossier (les fichiers à sauvegarder), sans suivre les liens. */
+const dirBytes = (dir: string): number => {
+  let n = 0;
+  const walk = (d: string) => {
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p); else if (e.isFile()) { try { n += fs.statSync(p).size; } catch { /* disparu */ } }
+    }
+  };
+  walk(dir);
+  return n;
+};
 const exists = (p: string) => { try { fs.accessSync(p); return true; } catch { return false; } };
 const size = (p: string) => { try { return fs.statSync(p).size; } catch { return 0; } };
 
@@ -90,7 +108,7 @@ export class BackupService implements OnModuleInit {
     try { fs.mkdirSync(this.dir, { recursive: true }); } catch { /* le dossier sera recréé à la première sauvegarde */ }
     // Un redémarrage en pleine sauvegarde (déploiement) laisse un dossier de travail et un état « en cours » orphelins : on les nettoie.
     try {
-      for (const e of fs.readdirSync(this.dir)) if (e.startsWith('.work-')) fs.rmSync(path.join(this.dir, e), { recursive: true, force: true });
+      for (const e of fs.readdirSync(this.dir)) if (/^\.(work|pack|verify|rt)-|\.part$/.test(e)) fs.rmSync(path.join(this.dir, e), { recursive: true, force: true });
       const st = this.readStatus();
       if (st.lastRun && !st.lastRun.finishedAt) {
         st.lastRun = { ...st.lastRun, finishedAt: new Date().toISOString(), ok: false, error: 'Interrompue (le serveur a redémarré pendant la sauvegarde).' };
@@ -182,6 +200,9 @@ export class BackupService implements OnModuleInit {
     if (!cfg.passphrase || !cfg.passphraseConfirmedAt) warnings.push({ level: 'error', text: "Ta phrase de récupération n'est pas confirmée : sans elle, les sauvegardes ne se rouvrent pas si le serveur est perdu. Affiche-la et note-la ailleurs." });
     if (!cfg.offsiteDir && !cfg.rcloneRemote) warnings.push({ level: 'warn', text: "Aucune copie hors du serveur n'est configurée : une panne de la machine emporterait aussi les sauvegardes." });
     if (st.lastRestoreTest && !st.lastRestoreTest.ok) warnings.push({ level: 'error', text: "Le dernier test de restauration a échoué : la sauvegarde ne semble pas restaurable." });
+    const free = freeBytes(this.dir);
+    const lastBytes = st.lastSuccess?.bytes ?? 0;
+    if (free !== null && lastBytes > 0 && free < lastBytes * 2.5) warnings.push({ level: free < lastBytes * 1.5 ? 'error' : 'warn', text: `Il ne reste que ${formatBytes(free)} sur le disque des sauvegardes (un paquet fait ${formatBytes(lastBytes)} et a besoin d'environ le double pendant sa fabrication). Libère de la place : anciens paquets, dossiers backups/db et backups/files des deux sauvegardes d'origine, réglages de rotation.` });
     if (!exists(this.projectDir)) warnings.push({ level: 'warn', text: "Le dossier du projet n'est pas monté dans le conteneur : les fichiers .env et le code ne sont pas inclus (voir docker-compose.yml)." });
     return {
       config: await this.publicConfig(),
@@ -194,7 +215,7 @@ export class BackupService implements OnModuleInit {
       totalBytes: files.reduce((n, f) => n + f.bytes, 0),
       warnings,
       serverTime: now.toISOString(),
-      engine: { projectMounted: exists(this.projectDir), dir: this.dir },
+      engine: { projectMounted: exists(this.projectDir), dir: this.dir, freeBytes: free },
     };
   }
 
@@ -208,9 +229,9 @@ export class BackupService implements OnModuleInit {
       const st = this.readStatus();
       const last = st.lastSuccess?.finishedAt ? new Date(st.lastSuccess.finishedAt) : null;
       if (isDue(new Date(), last, cfg)) {
-        // Après un échec, on réessaie au plus toutes les 30 minutes (inutile de marteler un disque plein).
+        // Après un échec, on réessaie seulement toutes les 3 heures (inutile de marteler un disque plein).
         const lastTry = st.lastRun?.finishedAt ? new Date(st.lastRun.finishedAt).getTime() : 0;
-        if (st.lastRun && st.lastRun.ok === false && Date.now() - lastTry < 30 * 60_000) return;
+        if (st.lastRun && st.lastRun.ok === false && Date.now() - lastTry < 3 * 3600_000) return;
         await this.run('schedule');
         return;
       }
@@ -289,6 +310,7 @@ export class BackupService implements OnModuleInit {
       fs.mkdirSync(path.join(work, 'config'), { recursive: true });
       persist();
 
+      await step('Contrôle de la place disponible', () => this.assertSpace(kind), (r) => `${formatBytes(r.free)} libres, ${formatBytes(r.need)} nécessaires`);
       const db = await step('Base de données', () => this.dumpDatabase(work), (r) => `${formatBytes(r.bytes)} · ${r.entries} objets · ${r.counts.users} membres, ${r.counts.torrents} torrents`);
       const files: Record<string, { bytes: number; sha256: string }> = {};
       let source: { bytes: number; sha256: string } | null = null;
@@ -325,22 +347,46 @@ export class BackupService implements OnModuleInit {
 
       rec.ok = true;
       rec.finishedAt = new Date().toISOString();
+      { const st = this.readStatus(); if (st.lastFailAlertAt) { delete st.lastFailAlertAt; this.writeStatus(st); } }
       this.finish(rec);
       this.logger.log(`Sauvegarde ${kind} terminée : ${name} (${formatBytes(out.bytes)}) en ${Math.round((Date.now() - t0) / 1000)} s`);
       if (kind === 'full') this.maybeRestoreTest().catch(() => undefined);
     } catch (err: any) {
       rec.ok = false;
-      rec.error = String(err?.message ?? err).slice(0, 500);
+      rec.error = this.friendlyError(String(err?.message ?? err)).slice(0, 600);
       rec.finishedAt = new Date().toISOString();
       this.finish(rec);
       this.logger.error(`Sauvegarde ${kind} échouée : ${rec.error}`);
-      if (cfg.notifyFailure && trigger !== 'predeploy') await this.notifyAdmins('❌ Sauvegarde échouée', rec.error);
+      // Une seule alerte par série d'échecs (puis un rappel par jour) : pas 22 notifications pour le même disque plein.
+      if (cfg.notifyFailure && trigger !== 'predeploy') {
+        const st = this.readStatus();
+        if (!st.lastFailAlertAt || Date.now() - new Date(st.lastFailAlertAt).getTime() > 24 * 3600_000) {
+          st.lastFailAlertAt = new Date().toISOString();
+          this.writeStatus(st);
+          await this.notifyAdmins('❌ Sauvegarde échouée', this.friendlyError(rec.error));
+        }
+      }
     } finally {
       try { fs.rmSync(work, { recursive: true, force: true }); } catch { /* nettoyé au prochain démarrage */ }
       this.current = null;
       this.busy = false;
     }
     return rec;
+  }
+
+  /** Ajoute au message d'erreur technique ce qu'il faut faire quand le disque est plein. */
+  private friendlyError(msg: string) {
+    if (!/No space left|ENOSPC|Espace insuffisant/i.test(msg)) return msg;
+    return `${msg} — ${this.diskInfo()} Si le disque principal a pourtant de la place : vérifie le quota du dossier partagé, la partition où se trouve le dossier du site (« df -h » dans ce dossier) et les inodes (« df -i »).`;
+  }
+
+  /** Ce que le serveur voit réellement du disque des sauvegardes (utile quand « disque plein » surprend : quota, petite partition, inodes). */
+  private diskInfo() {
+    try {
+      const st = (fs as any).statfsSync(this.dir);
+      const free = Number(st.bavail) * Number(st.bsize), total = Number(st.blocks) * Number(st.bsize);
+      return `Disque des sauvegardes vu par le serveur : ${formatBytes(free)} libres sur ${formatBytes(total)}, ${Number(st.ffree).toLocaleString('fr-CA')} inodes libres (${this.dir}).`;
+    } catch { return `Disque des sauvegardes : ${this.dir}.`; }
   }
 
   private finish(rec: RunRecord) {
@@ -381,6 +427,23 @@ export class BackupService implements OnModuleInit {
     const p = parseDatabaseUrl(process.env.DATABASE_URL ?? '');
     if (!p) throw new Error('DATABASE_URL absente ou illisible');
     return { p, env: { PGPASSWORD: p.password } as NodeJS.ProcessEnv, conn: ['-h', p.host, '-p', p.port, '-U', p.user] };
+  }
+
+  /**
+   * Refuse de commencer s'il n'y a pas assez de place : un dossier de travail (≈ la taille des données) PLUS le paquet chiffré (≈ la même taille)
+   * existent en même temps. Mieux vaut un message clair tout de suite qu'un disque saturé à mi-chemin.
+   */
+  private async assertSpace(kind: RunRecord['kind']) {
+    let data = 0;
+    try { data += Number((await this.prisma.$queryRaw<{ s: bigint }[]>`SELECT pg_database_size(current_database()) AS s`)[0]?.s ?? 0); } catch { /* estimation seulement */ }
+    if (kind === 'full') {
+      for (const r of this.storageRoots) if (exists(r.dir)) data += dirBytes(r.dir);
+      data += 60 * 1024 * 1024; // code du site
+    }
+    const need = Math.round(data * 2.2);
+    const free = freeBytes(this.dir);
+    if (free !== null && free < need) throw new Error(`Espace insuffisant : il reste ${formatBytes(free)} et la sauvegarde en demande environ ${formatBytes(need)}.`);
+    return { free: free ?? 0, need };
   }
 
   private async dumpDatabase(work: string) {
@@ -489,34 +552,68 @@ export class BackupService implements OnModuleInit {
     ].join('\n');
   }
 
+  /** Enchaîne deux commandes (A | B) sans fichier intermédiaire : la sortie de A est l'entrée de B. */
+  private pipe(a: { tool: string[]; args: string[]; env?: NodeJS.ProcessEnv; cwd?: string }, b: { tool: string[]; args: string[]; env?: NodeJS.ProcessEnv; cwd?: string }, timeoutMs = 60 * 60_000) {
+    return new Promise<{ codeA: number; codeB: number; stdout: string; stderrA: string; stderrB: string }>((resolve, reject) => {
+      const [ca, ...pa] = a.tool, [cb, ...pb] = b.tool;
+      const A = spawn(ca, [...pa, ...a.args], { env: { ...process.env, ...a.env }, cwd: a.cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+      const B = spawn(cb, [...pb, ...b.args], { env: { ...process.env, ...b.env }, cwd: b.cwd, stdio: ['pipe', 'pipe', 'pipe'] });
+      let stdout = '', stderrA = '', stderrB = '', codeA = -1, codeB = -1, closed = 0, failed = false;
+      const fail = (e: any, cmd: string) => { if (failed) return; failed = true; A.kill('SIGKILL'); B.kill('SIGKILL'); reject(new Error(e?.code === 'ENOENT' ? `Outil introuvable : ${cmd}` : String(e?.message ?? e))); };
+      const timer = setTimeout(() => { A.kill('SIGKILL'); B.kill('SIGKILL'); }, timeoutMs);
+      A.on('error', (e) => fail(e, ca)); B.on('error', (e) => fail(e, cb));
+      B.stdin.on('error', () => { /* B a fini avant d'avoir tout lu (ex. extraction d'un seul fichier) */ });
+      A.stdout.pipe(B.stdin);
+      A.stderr.on('data', (c) => { if (stderrA.length < 10_000) stderrA += c; });
+      B.stderr.on('data', (c) => { if (stderrB.length < 10_000) stderrB += c; });
+      B.stdout.on('data', (c) => { if (stdout.length < 400_000) stdout += c; });
+      const end = () => { if (++closed === 2) { clearTimeout(timer); if (!failed) resolve({ codeA, codeB, stdout, stderrA, stderrB }); } };
+      A.on('close', (c) => { codeA = c ?? -1; end(); });
+      B.on('close', (c) => { codeB = c ?? -1; end(); });
+    });
+  }
+
+  private encArgs(extra: string[]) { return ['enc', ...extra, '-aes-256-cbc', '-pbkdf2', '-iter', String(ENC_ITER), '-pass', 'env:SEED_BACKUP_PASS']; }
+
+  /** tar | openssl : le paquet chiffré est écrit directement, sans copie « en clair » intermédiaire (qui doublerait la place nécessaire). */
   private async pack(work: string, name: string, pass: string) {
-    const tarFile = path.join(this.dir, `.pack-${name}.tar`);
     const finalFile = path.join(this.dir, name);
     try {
-      await this.must(bin('TAR_BIN', 'tar'), tarArgs(['-cf', tarFile, '-C', work, '.']), {}, 'Emballage');
-      await this.must(bin('OPENSSL_BIN', 'openssl'), ['enc', '-aes-256-cbc', '-pbkdf2', '-iter', String(ENC_ITER), '-salt', '-pass', 'env:SEED_BACKUP_PASS', '-in', tarFile, '-out', finalFile + '.part'], { env: { SEED_BACKUP_PASS: pass } }, 'Chiffrement');
+      const r = await this.pipe(
+        { tool: bin('TAR_BIN', 'tar'), args: tarArgs(['-cf', '-', '-C', work, '.']) },
+        { tool: bin('OPENSSL_BIN', 'openssl'), args: [...this.encArgs(['-salt']), '-out', finalFile + '.part'], env: { SEED_BACKUP_PASS: pass } },
+      );
+      if (r.codeA !== 0) throw new Error(`Emballage échoué : ${r.stderrA.trim().split('\n').slice(-2).join(' ').slice(0, 250)}`);
+      if (r.codeB !== 0) throw new Error(`Chiffrement échoué : ${r.stderrB.trim().split('\n').slice(-2).join(' ').slice(0, 250)}`);
       fs.renameSync(finalFile + '.part', finalFile);
     } finally {
-      try { fs.rmSync(tarFile, { force: true }); fs.rmSync(finalFile + '.part', { force: true }); } catch { /* ignoré */ }
+      try { fs.rmSync(finalFile + '.part', { force: true }); } catch { /* ignoré */ }
     }
     const sha256 = await sha256File(finalFile);
     fs.writeFileSync(`${finalFile}.sha256`, `${sha256}  ${name}\n`);
     return { bytes: size(finalFile), sha256 };
   }
 
-  /** Déchiffre le paquet vers un fichier tar, ou le simple listing du contenu. */
-  private async decryptTo(file: string, pass: string, outFile: string) {
-    await this.must(bin('OPENSSL_BIN', 'openssl'), ['enc', '-d', '-aes-256-cbc', '-pbkdf2', '-iter', String(ENC_ITER), '-pass', 'env:SEED_BACKUP_PASS', '-in', file, '-out', outFile], { env: { SEED_BACKUP_PASS: pass } }, 'Déchiffrement');
+  /** openssl -d | tar : relit tout le paquet sans rien écrire sur le disque. */
+  private async verifyBundle(file: string, pass: string) {
+    const r = await this.pipe(
+      { tool: bin('OPENSSL_BIN', 'openssl'), args: [...this.encArgs(['-d']), '-in', file], env: { SEED_BACKUP_PASS: pass } },
+      { tool: bin('TAR_BIN', 'tar'), args: tarArgs(['-tf', '-']) },
+    );
+    if (r.codeA !== 0) throw new Error(`Le paquet ne se déchiffre pas : ${r.stderrA.trim().slice(0, 200)}`);
+    if (r.codeB !== 0) throw new Error(`Le paquet déchiffré est illisible : ${r.stderrB.trim().slice(0, 200)}`);
+    if (!/manifest\.json/.test(r.stdout) || !/db\.dump/.test(r.stdout)) throw new Error('Le paquet relu est incomplet (manifest.json ou db.dump manquant)');
+    return true;
   }
 
-  private async verifyBundle(file: string, pass: string) {
-    const tmp = path.join(this.dir, `.verify-${randomBytes(3).toString('hex')}.tar`);
-    try {
-      await this.decryptTo(file, pass, tmp);
-      const l = await this.must(bin('TAR_BIN', 'tar'), tarArgs(['-tf', tmp]), {}, 'Lecture du paquet');
-      if (!/manifest\.json/.test(l.stdout) || !/db\.dump/.test(l.stdout)) throw new Error('Le paquet relu est incomplet (manifest.json ou db.dump manquant)');
-      return true;
-    } finally { try { fs.rmSync(tmp, { force: true }); } catch { /* ignoré */ } }
+  /** Extrait quelques fichiers du paquet (déchiffrement en flux : seul le contenu demandé est écrit). */
+  private async extractFromBundle(file: string, pass: string, into: string, members: string[]) {
+    const r = await this.pipe(
+      { tool: bin('OPENSSL_BIN', 'openssl'), args: [...this.encArgs(['-d']), '-in', file], env: { SEED_BACKUP_PASS: pass } },
+      { tool: bin('TAR_BIN', 'tar'), args: tarArgs(['-xf', '-', ...members]), cwd: into },
+    );
+    // openssl peut être interrompu quand tar a fini d'extraire ce qu'on lui demandait : seul compte ce qui a été extrait.
+    if (r.codeB !== 0 || !members.every((m) => exists(path.join(into, m)))) throw new Error(`Extraction du paquet impossible : ${(r.stderrA || r.stderrB).trim().slice(0, 200) || 'phrase incorrecte ou paquet abîmé'}`);
   }
 
   // ------------------------------------------------------------------ rotation et copie externe
@@ -629,8 +726,7 @@ export class BackupService implements OnModuleInit {
     let created = false;
     try {
       fs.mkdirSync(tmp, { recursive: true });
-      await this.decryptTo(path.join(this.dir, latest.name), cfg.passphrase, path.join(tmp, 'b.tar'));
-      await this.must(bin('TAR_BIN', 'tar'), tarArgs(['-xf', 'b.tar', './db.dump', './manifest.json']), { cwd: tmp }, 'Extraction');
+      await this.extractFromBundle(path.join(this.dir, latest.name), cfg.passphrase, tmp, ['./db.dump', './manifest.json']);
       const manifest = JSON.parse(fs.readFileSync(path.join(tmp, 'manifest.json'), 'utf8'));
       await this.must(bin('PSQL_BIN', 'psql'), [...conn, '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE "${scratch}"`], { env }, 'Création de la base jetable');
       created = true;
