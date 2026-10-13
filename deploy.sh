@@ -44,7 +44,8 @@ git clean -fd
 
 # Docker (surtout sur Synology) refuse de monter un dossier hôte qui n'existe pas :
 # les sauvegardes automatiques écrivent dans ./backups.
-mkdir -p backups/db backups/files
+BK="$(grep -E '^BACKUPS_PATH=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"   # dossier des sauvegardes choisi dans .env (sinon ./backups)
+mkdir -p "${BK:-backups}/db" "${BK:-backups}/files" "${BK:-backups}/full"
 
 echo "→ Reconstruction et redémarrage des conteneurs..."
 docker compose up -d --build

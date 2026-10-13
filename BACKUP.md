@@ -41,7 +41,11 @@ Une sauvegarde qui ne vit que sur la machine à protéger ne la protège pas d'u
 
 Chaque nouveau paquet y est copié, avec le script de restauration et le mode d'emploi, et la même rotation y est appliquée.
 
-### Les deux autres sauvegardes (filet de sécurité, inchangées)
+#### Déplacer les sauvegardes sur un autre disque (NAS : le gros disque)
+
+Si le dossier du site est sur une petite partition (typiquement `/root` sur Synology, 2,3 Go), place les sauvegardes sur le gros disque : crée le dossier (`mkdir -p /volume1/docker/seeduction-backups`), déplace-y le contenu de `backups/`, ajoute `BACKUPS_PATH=/volume1/docker/seeduction-backups` dans le fichier `.env` à la racine, puis `./deploy.sh`. Les données du site (base, fichiers) sont dans des volumes Docker et ne sont pas concernées.
+
+## Les deux autres sauvegardes (filet de sécurité, inchangées)
 
 Les conteneurs `db-backup` (base en `.sql.gz`) et `files-backup` (fichiers) tournent toujours dans `./backups/db/` et `./backups/files/` : ils ne dépendent pas du backend, donc continuent même si celui-ci ne démarre plus.
 

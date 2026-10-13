@@ -30,7 +30,7 @@ services:
       BACKUP_KEEP_WEEKS: 4
       BACKUP_KEEP_MONTHS: 6
     volumes:
-      - ./backups/db:/backups
+      - ${BACKUPS_PATH:-./backups}/db:/backups
     networks:
       - tracker_net
 
@@ -42,7 +42,7 @@ services:
       - torrent_storage:/data/torrents:ro
       - cover_storage:/data/covers:ro
       - chat_file_storage:/data/chat-files:ro
-      - ./backups/files:/backups
+      - ${BACKUPS_PATH:-./backups}/files:/backups
     command:
       - sh
       - -c
@@ -77,7 +77,8 @@ services:
       - chat_file_storage:/app/storage/chat-files
       # Alerte générale : coffre chiffré (jamais effacé automatiquement) et sauvegardes du NAS, chiffrées elles aussi pendant le verrouillage.
       - lockdown_storage:/app/storage/lockdown
-      - ./backups:/app/backups
+      # Dossier des sauvegardes : ./backups par défaut ; BACKUPS_PATH (dans le .env racine) le place ailleurs, p. ex. sur le gros disque d'un NAS (/volume1/...).
+      - ${BACKUPS_PATH:-./backups}:/app/backups
       - ./:/host/project:ro
       # Copie hors du serveur (recommandé) : monte ici un disque USB ou un partage réseau, puis indique « /offsite » dans Admin > Sauvegardes > Réglages.
       # Synology : le chemin ressemble à /volumeUSB1/usbshare/seeduction. Décommente et adapte la ligne :
