@@ -13,8 +13,11 @@ function ForumRow({ f }: { f: any }) {
       <td className="forum-icon" title={f.unread ? 'Nouveaux messages' : 'Aucun nouveau message'}>{f.icon || (f.unread ? '🟡' : '💬')}</td>
       <td>
         <Link to={`/forum/f/${f.id}`} className="forum-name">{f.name}</Link>
-        {f.staffOnly && <span className="badge double" style={{ marginLeft: 6 }}>Staff</span>}
-        {f.locked && <span title="Verrouillé" style={{ marginLeft: 6 }}>🔒</span>}
+        {f.unreadCount > 0 && <span className="badge new" style={{ marginLeft: 6 }} title={`${f.unreadCount} sujet(s) non lu(s)`}>{f.unreadCount}</span>}
+        {f.staffOnly && <span className="badge double" style={{ marginLeft: 6 }}>Équipe</span>}
+        {!f.staffOnly && f.readLabel && <span className="badge double" style={{ marginLeft: 6 }} title={`Réservé à ${f.readLabel}`}>🔑 Réservé</span>}
+        {f.qa && <span className="badge freeleech" style={{ marginLeft: 6 }} title="Forum d'entraide : on marque la réponse qui règle le problème">✅ Entraide</span>}
+        {f.locked && <span title="Lecture seule" style={{ marginLeft: 6 }}>🔒</span>}
         {f.description && <div className="muted forum-desc">{f.description}</div>}
         {f.subforums.length > 0 && (
           <div className="forum-subs">
@@ -75,6 +78,10 @@ export default function Forum() {
 
   // Forums de premier niveau (sans catégorie) regroupés dans un seul tableau ; chaque catégorie a le sien.
   const loose = data.roots.filter((r: any) => !r.isCategory);
+  // Les forums archivés quittent leur catégorie pour une section « Archives » repliée en bas de page.
+  const archives: any[] = [];
+  const collect = (nodes: any[]) => nodes.forEach((n) => { if (!n.isCategory && n.archived) archives.push(n); else if (n.isCategory) collect(n.subforums); });
+  collect(data.roots);
 
   return (
     <div className="grid" style={{ width: '100%', gap: 18 }}>
@@ -96,6 +103,7 @@ export default function Forum() {
           </div>
           <button type="submit" className="secondary">🔍</button>
           <Link to="/forum/latest" className="icon-btn">🕒 Derniers messages</Link>
+          {user && <Link to="/forum/latest?unread=1" className="icon-btn">🟡 Non lus</Link>}
           {user && <button type="button" className="secondary" onClick={markRead}>✓ Tout marquer comme lu</button>}
         </form>
       </div>
@@ -107,17 +115,23 @@ export default function Forum() {
         </nav>
       )}
 
-      {data.roots.filter((r: any) => r.isCategory).map((c: any) => (
-        <ForumTable key={c.id} title={c.name} forums={c.subforums} isSection />
+      {data.roots.filter((r: any) => r.isCategory && !r.archived).map((c: any) => (
+        <ForumTable key={c.id} title={c.name} forums={c.subforums.filter((f: any) => !f.archived)} isSection />
       ))}
-      {loose.length > 0 && <ForumTable title="Forums" forums={loose} />}
+      {loose.filter((f: any) => !f.archived).length > 0 && <ForumTable title="Forums" forums={loose.filter((f: any) => !f.archived)} />}
+      {archives.length > 0 && (
+        <details className="panel">
+          <summary style={{ cursor: 'pointer', fontWeight: 700 }}>📦 Archives ({archives.length}) <span className="muted" style={{ fontWeight: 400 }}>· lisibles, plus rien n'y est publié</span></summary>
+          <div style={{ marginTop: 8 }}><ForumTable title="Forums archivés" forums={archives} /></div>
+        </details>
+      )}
       {data.roots.length === 0 && <p className="muted">Aucun forum pour l'instant.</p>}
 
       {data.stats && (
         <div className="panel muted" style={{ fontSize: 13 }}>
           <strong style={{ color: 'var(--gold-bright)' }}>Statistiques</strong> — {data.stats.posts} message(s) · {data.stats.topics} sujet(s) · {data.stats.members} membre(s)
           {data.stats.newestMember && <> · Dernier inscrit : <UserLink user={data.stats.newestMember} /></>}
-          <div style={{ marginTop: 6 }}>🟡 nouveaux messages · 💬 aucun nouveau message · 🔒 verrouillé</div>
+          <div style={{ marginTop: 6 }}>🟡 nouveaux messages · 💬 aucun nouveau message · 🔒 lecture seule · ✅ entraide (réponse « Résolu ») · 🔑 accès réservé</div>
         </div>
       )}
     </div>

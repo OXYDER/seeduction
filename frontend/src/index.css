@@ -3808,3 +3808,21 @@ a.mention:hover { background: rgba(var(--acc-rgb, 224, 184, 74), 0.35); }
 .hp-twin { display: grid; grid-template-columns: 1fr 1fr; flex: none; border-top: 1px solid rgba(255, 255, 255, 0.1); }
 .hp-twin .hp-foot { border-top: 0; }
 .hp-twin .hp-foot + .hp-foot { border-left: 1px solid rgba(255, 255, 255, 0.1); }
+/* Administration du forum : arbre avec glisser-déposer */
+.fa-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; position: relative; }
+.fa-row:hover { background: rgba(255, 255, 255, 0.06); }
+.fa-row.sel { background: rgba(var(--acc-rgb, 224, 184, 74), 0.16); border-color: rgba(var(--acc-rgb, 224, 184, 74), 0.5); }
+.fa-row.dragging { opacity: 0.4; }
+.fa-row.drop-before { box-shadow: inset 0 3px 0 var(--gold, #e0b84a); }
+.fa-row.drop-after { box-shadow: inset 0 -3px 0 var(--gold, #e0b84a); }
+.fa-row.drop-inside { background: rgba(52, 211, 153, 0.18); border-color: #34d399; }
+.fa-row.bad { background: rgba(248, 113, 113, 0.14); border-color: #f87171; box-shadow: none; }
+.fa-handle { cursor: grab; opacity: 0.45; font-size: 15px; user-select: none; }
+.fa-chev { background: none; border: 0; box-shadow: none; padding: 0 4px; color: inherit; font-size: 13px; min-width: 18px; }
+.fa-chev:hover { background: none; transform: none; filter: none; }
+.fa-actions { margin-left: auto; display: none; gap: 4px; }
+.fa-row:hover .fa-actions, .fa-row.sel .fa-actions { display: inline-flex; }
+.fa-actions button { padding: 1px 8px; font-size: 12px; }
+@media (max-width: 900px) { .fa-actions { display: inline-flex; } }
+.fa-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .fa-layout { grid-template-columns: 1fr; } }

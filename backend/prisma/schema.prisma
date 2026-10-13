@@ -62,6 +62,7 @@ model User {
   torrentsUploaded Torrent[]  @relation("Uploader")
   favorites        Favorite[] @relation("UserFavorites")
   forumReads       ForumTopicRead[] @relation("ForumReads")
+  forumFollows     ForumTopicFollow[] @relation("ForumFollows")
   torrentComments  TorrentComment[] @relation("CommentAuthor")
   torrentLikes     TorrentLike[]
   torrentRatings   TorrentRating[]
@@ -568,6 +569,12 @@ model ForumCategory {
   icon        String?      // emoji affiché devant le forum
   staffOnly   Boolean      @default(false) // visible et utilisable uniquement par le staff
   locked      Boolean      @default(false) // plus de nouveaux sujets (sauf staff)
+  // Accès par rang : { read?: { type, minClass? }, write?: { type, minClass? } } avec type ALL | CLASS | UPLOADERS | DONORS | ADULT | STAFF (voir common/utils/forum-access.ts).
+  // null = tout le monde. Se cumule avec staffOnly (lecture réservée au staff) et locked (écriture réservée au staff).
+  access      Json?
+  archived    Boolean      @default(false) // archive : lisible, mais plus rien n'y est publié (sauf staff)
+  qa          Boolean      @default(false) // forum d'entraide : l'auteur d'un sujet (ou le staff) peut marquer la réponse qui règle le problème (« Résolu »)
+  rules       String?      @db.Text        // consignes du forum, affichées en haut de sa page
 }
 
 model ForumTopic {
@@ -581,11 +588,25 @@ model ForumTopic {
   sticky     Boolean       @default(false) // épinglé en haut de la liste
   viewCount  Int           @default(0)
   lastPostAt DateTime      @default(now())
+  solvedPostId String?     // message choisi comme solution (forum d'entraide)
   posts      ForumPost[]
   reads      ForumTopicRead[]
+  follows    ForumTopicFollow[]
   createdAt  DateTime      @default(now())
 
   @@index([categoryId, sticky, lastPostAt])
+}
+
+/// Sujet suivi par un membre : il est prévenu de chaque nouvelle réponse.
+model ForumTopicFollow {
+  user      User       @relation("ForumFollows", fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  topic     ForumTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topicId   String
+  createdAt DateTime   @default(now())
+
+  @@id([userId, topicId])
+  @@index([topicId])
 }
 
 /// Dernier passage d'un membre dans un sujet : sert à repérer les sujets non lus.

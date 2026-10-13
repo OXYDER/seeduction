@@ -100,6 +100,14 @@ export default function ForumTopic() {
     }
   }
 
+  async function follow() {
+    try { await api.post(`/forum/topics/${id}/follow`, { on: !data.topic.following }); load(); } catch (err: any) { window.alert(err.response?.data?.message ?? 'Action impossible'); }
+  }
+
+  async function markSolved(postId: string | null) {
+    try { await api.post(`/forum/topics/${id}/solved`, { postId }); load(); } catch (err: any) { window.alert(err.response?.data?.message ?? 'Action impossible'); }
+  }
+
   async function deleteTopic() {
     if (!window.confirm('Supprimer définitivement ce sujet et tous ses messages ?')) return;
     const { data: res } = await api.delete(`/forum/topics/${id}`);
@@ -115,9 +123,20 @@ export default function ForumTopic() {
   return (
     <div className="grid" style={{ width: '100%', gap: 14 }}>
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
-        <h1>{topic.sticky && '📌 '}{topic.locked && '🔒 '}{topic.title}</h1>
-        <div className="muted">{topic.viewCount} vue(s) · {data.total} message(s)</div>
+        <h1>{topic.sticky && '📌 '}{topic.locked && '🔒 '}{topic.solvedPostId && '✅ '}{topic.title}</h1>
+        <div className="row" style={{ gap: 10 }}>
+          <span className="muted">{topic.viewCount} vue(s) · {data.total} message(s)</span>
+          {user && <button type="button" className="secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={follow} title={topic.following ? 'Tu es prévenu de chaque réponse' : 'Être prévenu de chaque nouvelle réponse'}>{topic.following ? '🔔 Suivi' : '🔕 Suivre'}</button>}
+        </div>
       </div>
+
+      {topic.solvedPostId && (
+        <div className="panel" style={{ borderColor: '#34d399', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span>✅ <strong>Résolu</strong> : une réponse a réglé le problème.</span>
+          <a href={`#post-${topic.solvedPostId}`} onClick={() => document.getElementById(`post-${topic.solvedPostId}`)?.scrollIntoView({ behavior: 'smooth' })}>Voir la solution ↓</a>
+          {data.canMarkSolved && <button type="button" className="secondary" style={{ padding: '2px 10px', fontSize: 12.5 }} onClick={() => markSolved(null)}>Retirer</button>}
+        </div>
+      )}
 
       {staff && (
         <div className="panel row" style={{ flexWrap: 'wrap', gap: 8 }}>
@@ -141,7 +160,7 @@ export default function ForumTopic() {
         const canEdit = !!user && (p.authorId === user.id || staff) && (!topic.locked || staff);
         const canDelete = !!user && (staff || (p.authorId === user.id && p.number !== 1));
         return (
-          <div key={p.id} id={`post-${p.id}`} className="forum-post panel ornate">
+          <div key={p.id} id={`post-${p.id}`} className="forum-post panel ornate" style={topic.solvedPostId === p.id ? { borderColor: '#34d399', boxShadow: '0 0 0 1px #34d39966' } : undefined}>
             <div className="forum-post-author">
               <Avatar user={p.author} size={64} />
               <div style={{ fontWeight: 700 }}><UserLink user={p.author} fallback="Membre supprimé" /></div>
@@ -155,7 +174,7 @@ export default function ForumTopic() {
             </div>
             <div className="forum-post-body">
               <div className="forum-post-head muted">
-                <span>{new Date(p.createdAt).toLocaleString('fr-FR')}</span>
+                <span>{new Date(p.createdAt).toLocaleString('fr-FR')}{topic.solvedPostId === p.id && <strong style={{ color: '#34d399', marginLeft: 8 }}>✅ Solution</strong>}</span>
                 <a href={`#post-${p.id}`} title="Lien vers ce message">#{p.number}</a>
               </div>
               {editingId === p.id ? (
@@ -172,6 +191,7 @@ export default function ForumTopic() {
               {p.editedAt && <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Modifié le {new Date(p.editedAt).toLocaleString('fr-FR')}</div>}
               {p.author?.signature && <div className="forum-signature bbcode-content" dangerouslySetInnerHTML={{ __html: bbcodeToHtml(p.author.signature) }} />}
               <div className="forum-post-actions">
+                {data.canMarkSolved && p.number > 1 && topic.solvedPostId !== p.id && <button type="button" className="secondary" onClick={() => markSolved(p.id)}>✅ C'est la solution</button>}
                 {user && data.canReply && <button type="button" className="secondary" onClick={() => quote(p)}>❝ Citer</button>}
                 {canEdit && editingId !== p.id && <button type="button" className="secondary" onClick={() => { setEditingId(p.id); setEditText(p.content); }}>✏️ Modifier</button>}
                 {canDelete && <button type="button" className="secondary" onClick={() => removePost(p)}>🗑️ Supprimer</button>}
@@ -186,7 +206,7 @@ export default function ForumTopic() {
 
       <div ref={replyRef}>
         {!user && <p className="muted">Connecte-toi pour répondre.</p>}
-        {user && !data.canReply && <p className="muted">🔒 Ce sujet est verrouillé : plus de nouvelles réponses.</p>}
+        {user && !data.canReply && <p className="muted">🔒 Tu ne peux pas répondre ici : le sujet est verrouillé, archivé ou le forum est réservé.</p>}
         {user && data.canReply && (
           <form onSubmit={submitReply} className="panel ornate grid" style={{ gap: 10 }}>
             <div className="panel-title" style={{ margin: 0 }}>Répondre au sujet</div>

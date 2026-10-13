@@ -528,9 +528,18 @@ export const WIKI_SEED: WikiSeedCategory[] = [
       {
         title: 'Forum',
         slug: 'forum',
-        keywords: 'sujets, discussions, sous-forum',
+        keywords: 'sujets, discussions, sous-forum, résolu, entraide, suivre un sujet, non lus, archives, réservé, rang',
         content:
-          `Le forum est organisé en catégories et forums (certains réservés au staff), chacun pouvant contenir des sous-forums. Les sujets épinglés et verrouillés sont signalés clairement ; le staff peut déplacer un sujet mal rangé.`,
+          `Le forum est organisé en [b]catégories[/b] (Communauté, Médias, Entraide, Partage...), chacune avec ses [b]forums[/b], et certains forums ont des [b]sous-forums[/b]. Ce que le site fait déjà ailleurs n'y est pas : les annonces sont dans [b]Nouvelles[/b], les idées dans [b]Suggestions[/b], les problèmes de compte dans [b]Support[/b], les demandes de torrents dans [b]Demandes[/b].\n\n` +
+          `[b]Qui voit quoi[/b]\n` +
+          `Certains forums sont réservés : à un [b]rang[/b] (ex. Élite et plus), aux [b]uploaders[/b], aux [b]donateurs[/b], aux membres qui ont activé le [b]contenu 18+[/b], ou à l'équipe. Un forum peut aussi être en [b]lecture seule[/b] (seule l'équipe y publie) ou [b]archivé[/b] (lisible, mais plus rien n'y est publié ; les archives sont rangées en bas de la page du forum). Quand tu ne peux pas écrire quelque part, la raison est écrite en haut du forum.\n\n` +
+          `[b]Forums d'entraide ✅[/b]\n` +
+          `Dans un forum d'entraide, l'auteur d'un sujet peut marquer la réponse qui règle son problème avec [b]« ✅ C'est la solution »[/b] : le sujet passe en [b]Résolu[/b] et la personne qui a aidé est prévenue. Le filtre « Sans solution » montre les questions qui attendent encore une réponse. Avant de poser une question, cherche dans le [url=/wiki]Wiki[/url].\n\n` +
+          `[b]Ne rien rater[/b]\n` +
+          `• Une [b]pastille rouge[/b] sur « Forums » dans le menu compte les sujets non lus ; chaque forum affiche aussi son nombre de sujets non lus. Le bouton « ✓ Marquer comme lu » vide un forum d'un coup, et « 🟡 Non lus » liste tout ce qui est nouveau.\n` +
+          `• Le bouton [b]🔔 Suivre[/b] d'un sujet te prévient de chaque nouvelle réponse (tu l'es déjà pour tes propres sujets).\n` +
+          `• Chaque forum peut afficher ses [b]règles[/b] en haut de sa page : lis-les avant de publier.\n\n` +
+          `Les sujets [b]épinglés[/b] et [b]verrouillés[/b] sont signalés clairement ; le staff peut déplacer un sujet mal rangé. Côté équipe : Admin > Forum affiche tout en [b]arbre[/b] (on glisse les forums à la souris), permet de régler qui lit et qui écrit, de déplacer les sujets, de fusionner ou d'archiver un forum, et de créer d'un clic la structure recommandée après en avoir vu l'aperçu.`,
       },
       {
         title: 'Demandes (bounties)',

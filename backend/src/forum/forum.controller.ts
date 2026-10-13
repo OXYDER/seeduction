@@ -23,8 +23,15 @@ export class ForumController {
 
   @UseGuards(OptionalJwtAuthGuard)
   @Get('latest')
-  latest(@Request() req: any) {
-    return this.forumService.latest(viewerOf(req));
+  latest(@Query('unread') unread: string, @Request() req: any) {
+    return this.forumService.latest(viewerOf(req), unread === '1');
+  }
+
+  /** Nombre de sujets non lus (pastille du menu). */
+  @UseGuards(JwtAuthGuard)
+  @Get('unread-count')
+  unreadCount(@Request() req: any) {
+    return this.forumService.unreadTotal(viewerOf(req)!);
   }
 
   @UseGuards(OptionalJwtAuthGuard)
@@ -35,8 +42,8 @@ export class ForumController {
 
   @UseGuards(OptionalJwtAuthGuard)
   @Get('forums/:id')
-  forum(@Param('id') id: string, @Query('page') page: string, @Request() req: any) {
-    return this.forumService.forumView(id, parseInt(page ?? '1', 10), viewerOf(req));
+  forum(@Param('id') id: string, @Query('page') page: string, @Query('filter') filter: string, @Request() req: any) {
+    return this.forumService.forumView(id, parseInt(page ?? '1', 10), viewerOf(req), filter);
   }
 
   @UseGuards(OptionalJwtAuthGuard)
@@ -73,6 +80,25 @@ export class ForumController {
     return this.forumService.deletePost(id, viewerOf(req)!);
   }
 
+  /** Forum d'entraide : l'auteur du sujet (ou l'équipe) marque la réponse qui règle le problème (postId nul = retirer la marque). */
+  @UseGuards(JwtAuthGuard)
+  @Post('topics/:id/solved')
+  solved(@Param('id') id: string, @Body('postId') postId: string | null, @Request() req: any) {
+    return this.forumService.markSolved(id, postId || null, viewerOf(req)!);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('topics/:id/follow')
+  follow(@Param('id') id: string, @Body('on') on: boolean, @Request() req: any) {
+    return this.forumService.follow(id, req.user.userId, on !== false, req.user.role);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('forums/:id/mark-read')
+  markForumRead(@Param('id') id: string, @Request() req: any) {
+    return this.forumService.markForumRead(id, viewerOf(req)!);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('mark-read')
   markAllRead(@Request() req: any) {
@@ -106,6 +132,24 @@ export class ForumController {
     return this.forumService.movableForums();
   }
 
+  /** Arbre complet de l'administration : tous les niveaux, réglages, compteurs, accès. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
+  @Get('admin/tree')
+  adminTree() {
+    return this.forumService.adminTree();
+  }
+
+  /** Aperçu de « Appliquer la structure recommandée » : ce qui serait créé et ce qui existe déjà. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Get('admin/preview-suggested')
+  previewSuggested() {
+    return this.forumService.previewSuggested();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Get('categories')
   categories() {
     return this.forumService.listCategories();
@@ -124,7 +168,7 @@ export class ForumController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Post('categories')
-  async createCategory(@Body() body: { name: string; parentId?: string; isCategory?: boolean; description?: string; icon?: string; staffOnly?: boolean; locked?: boolean }, @Request() req: any) {
+  async createCategory(@Body() body: { name: string; parentId?: string; isCategory?: boolean; description?: string; icon?: string; staffOnly?: boolean; locked?: boolean; archived?: boolean; qa?: boolean; rules?: string; access?: any }, @Request() req: any) {
     const result = await this.forumService.createCategory(body.name, body.parentId, !!body.isCategory, body);
     await this.audit.log(req.user.userId, 'FORUM_STRUCTURE_CREATE', { name: body.name, isCategory: !!body.isCategory }, null);
     return result;
@@ -133,11 +177,42 @@ export class ForumController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Patch('categories/:id')
-  updateCategory(
+  async updateCategory(
     @Param('id') id: string,
-    @Body() body: { name?: string; parentId?: string | null; isCategory?: boolean; description?: string | null; icon?: string | null; staffOnly?: boolean; locked?: boolean },
+    @Body() body: { name?: string; parentId?: string | null; isCategory?: boolean; description?: string | null; icon?: string | null; staffOnly?: boolean; locked?: boolean; archived?: boolean; qa?: boolean; rules?: string | null; access?: any },
+    @Request() req: any,
   ) {
-    return this.forumService.updateCategory(id, body);
+    const result = await this.forumService.updateCategory(id, body);
+    await this.audit.log(req.user.userId, 'FORUM_STRUCTURE_UPDATE', { id, name: result.name, fields: Object.keys(body ?? {}) }, null);
+    return result;
+  }
+
+  /** Glisser-déposer : place l'élément sous un parent (ou au premier niveau) à la position donnée. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
+  @Post('categories/:id/place')
+  async place(@Param('id') id: string, @Body() body: { parentId?: string | null; index?: number }, @Request() req: any) {
+    const result = await this.forumService.place(id, body?.parentId || null, Number(body?.index));
+    await this.audit.log(req.user.userId, 'FORUM_STRUCTURE_MOVE', { id, parentId: body?.parentId ?? null, index: body?.index }, null);
+    return result;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Post('categories/:id/merge')
+  async merge(@Param('id') id: string, @Body('targetId') targetId: string, @Request() req: any) {
+    const result = await this.forumService.merge(id, targetId);
+    await this.audit.log(req.user.userId, 'FORUM_STRUCTURE_MERGE', result, null);
+    return result;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Post('categories/:id/move-topics')
+  async moveTopics(@Param('id') id: string, @Body('targetId') targetId: string, @Request() req: any) {
+    const result = await this.forumService.moveTopics(id, targetId);
+    await this.audit.log(req.user.userId, 'FORUM_TOPICS_MOVE', { id, targetId, ...result }, null);
+    return result;
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -147,12 +222,13 @@ export class ForumController {
     return this.forumService.move(id, direction === 'up' ? 'up' : 'down');
   }
 
+  /** Supprime un forum ou une catégorie ; `moveTo` dit où envoyer les sujets (forum) ou les forums (catégorie ; « root » = premier niveau). */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
+  @Roles('ADMIN', 'OWNER')
   @Delete('categories/:id')
-  async deleteCategory(@Param('id') id: string, @Request() req: any) {
-    const result = await this.forumService.deleteCategory(id);
-    await this.audit.log(req.user.userId, 'FORUM_STRUCTURE_DELETE', { name: result.name }, null);
+  async deleteCategory(@Param('id') id: string, @Query('moveTo') moveTo: string, @Request() req: any) {
+    const result = await this.forumService.deleteCategory(id, moveTo || undefined);
+    await this.audit.log(req.user.userId, 'FORUM_STRUCTURE_DELETE', { ...result }, null);
     return result;
   }
 }

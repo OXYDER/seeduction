@@ -18,9 +18,10 @@ export function TopicTable({ topics, showForum }: { topics: any[]; showForum?: b
       <tbody>
         {topics.map((t) => (
           <tr key={t.id} className={t.unread ? 'forum-unread' : undefined}>
-            <td className="forum-icon">{t.sticky ? '📌' : t.locked ? '🔒' : t.unread ? '🟡' : '💬'}</td>
+            <td className="forum-icon">{t.sticky ? '📌' : t.locked ? '🔒' : t.solved ? '✅' : t.unread ? '🟡' : '💬'}</td>
             <td>
               <Link to={`/forum/topics/${t.id}`} className="forum-name">{t.title}</Link>
+              {t.solved && <span className="badge freeleech" style={{ marginLeft: 6 }} title="Une réponse a réglé le problème">Résolu</span>}
               {t.sticky && t.locked && <span title="Verrouillé"> 🔒</span>}
               <div className="muted" style={{ fontSize: 12 }}>
                 par <UserLink user={t.author} /> · {timeAgo(t.createdAt)}
@@ -85,13 +86,20 @@ export default function ForumView() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState('');
   const [composing, setComposing] = useState(false);
+  const filter = params.get('filter') ?? '';
   useCrumbTitle(data?.forum?.name, (data?.breadcrumb ?? []).slice(0, -1).map((c: any) => ({ label: c.name, to: c.isCategory ? '/forum' : `/forum/f/${c.id}` })));
 
-  useEffect(() => {
-    setData(null);
+  function load(keep = false) {
+    if (!keep) setData(null);
     setError('');
-    api.get(`/forum/forums/${id}`, { params: { page } }).then((r) => setData(r.data)).catch((err) => setError(err.response?.data?.message ?? 'Forum introuvable'));
-  }, [id, page]);
+    api.get(`/forum/forums/${id}`, { params: { page, filter: filter || undefined } }).then((r) => setData(r.data)).catch((err) => setError(err.response?.data?.message ?? 'Forum introuvable'));
+  }
+  useEffect(() => { load(); }, [id, page, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function markRead() {
+    await api.post(`/forum/forums/${id}/mark-read`).catch(() => undefined);
+    load(true);
+  }
 
   if (error) return <div className="panel"><p className="muted">{error}</p><Link to="/forum">← Retour au forum</Link></div>;
   if (!data) return <p className="muted">Chargement...</p>;
@@ -102,15 +110,31 @@ export default function ForumView() {
     <div className="grid" style={{ width: '100%', gap: 14 }}>
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <div>
-          <h1>{forum.icon} {forum.name} {forum.locked && <span title="Verrouillé">🔒</span>}</h1>
+          <h1>{forum.icon} {forum.name} {forum.locked && <span title="Lecture seule">🔒</span>} {forum.archived && <span title="Archive">📦</span>}</h1>
           {forum.description && <div className="muted">{forum.description}</div>}
+          {(forum.readLabel || forum.writeLabel || forum.qa) && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+              {forum.readLabel && <span className="badge double" title="Qui peut lire">👁️ Réservé à {forum.readLabel}</span>}
+              {forum.writeLabel && <span className="badge double" title="Qui peut écrire">✍️ Écriture : {forum.writeLabel}</span>}
+              {forum.qa && <span className="badge freeleech" title="Marque la réponse qui règle ton problème">✅ Entraide</span>}
+            </div>
+          )}
         </div>
-        {user && !forum.isCategory && (
-          data.canPost
-            ? <button type="button" onClick={() => setComposing(true)}>＋ Nouveau sujet</button>
-            : <span className="muted">🔒 Seul le staff peut créer des sujets ici.</span>
-        )}
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          {user && forum.unreadCount > 0 && <button type="button" className="secondary" onClick={markRead}>✓ Marquer comme lu ({forum.unreadCount})</button>}
+          {user && !forum.isCategory && data.canPost && <button type="button" onClick={() => setComposing(true)}>＋ Nouveau sujet</button>}
+        </div>
       </div>
+
+      {user && !forum.isCategory && !data.canPost && data.postBlockedReason && <div className="panel muted">🔒 {data.postBlockedReason}</div>}
+      {!user && !forum.isCategory && <div className="panel muted">Connecte-toi pour participer.</div>}
+
+      {data.rules && (
+        <details className="panel" open style={{ borderLeft: '3px solid var(--gold, #e0b84a)' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 700 }}>📋 Règles de ce forum</summary>
+          <div style={{ whiteSpace: 'pre-wrap', marginTop: 8, fontSize: 14 }}>{data.rules}</div>
+        </details>
+      )}
 
       {composing && <NewTopic forumId={forum.id} onCancel={() => setComposing(false)} />}
 
@@ -129,6 +153,8 @@ export default function ForumView() {
                   <td className="forum-icon">{s.icon || (s.unread ? '🟡' : '💬')}</td>
                   <td>
                     <Link to={`/forum/f/${s.id}`} className="forum-name">{s.name}</Link>
+                    {s.unreadCount > 0 && <span className="badge new" style={{ marginLeft: 6 }} title="Sujets non lus">{s.unreadCount}</span>}
+                    {s.qa && <span className="badge freeleech" style={{ marginLeft: 6 }}>✅</span>}
                     {s.description && <div className="muted forum-desc">{s.description}</div>}
                   </td>
                   <td className="forum-num">{s.topics}</td>
@@ -138,6 +164,14 @@ export default function ForumView() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!forum.isCategory && (user || forum.qa) && (
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+          {([['', 'Tous les sujets'], ...(user ? [['unread', 'Non lus']] : []), ...(forum.qa ? [['unsolved', 'Sans solution']] : [])] as [string, string][]).map(([k, label]) => (
+            <button key={k || 'all'} type="button" className={filter === k ? undefined : 'secondary'} style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => setParams(k ? { filter: k } : {})}>{label}</button>
+          ))}
         </div>
       )}
 

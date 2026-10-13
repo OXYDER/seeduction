@@ -430,7 +430,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Le forum[/b]\n` +
         `1. Ouvre [b]Forum[/b] dans le menu et choisis une catégorie, puis un forum.\n` +
         `2. Pour répondre, ouvre un sujet et écris dans la zone en bas. Pour lancer une discussion, clique sur le bouton de nouveau sujet.\n` +
-        `3. Les sujets [b]épinglés[/b] en haut sont importants (règles, annonces). Un sujet [b]verrouillé[/b] n'accepte plus de réponses.\n\n` +
+        `3. Les sujets [b]épinglés[/b] en haut sont importants (règles, annonces). Un sujet [b]verrouillé[/b] n'accepte plus de réponses.\n` +
+        `4. Dans un forum d'entraide (✅), l'auteur du sujet marque la réponse qui l'a aidé avec « C'est la solution » : le sujet devient [b]Résolu[/b]. Le bouton [b]🔔 Suivre[/b] te prévient de chaque réponse ; la pastille rouge de « Forums » compte les sujets non lus, et « ✓ Marquer comme lu » les efface. Certains forums sont réservés à un rang, aux uploaders, aux donateurs ou au 18+ : la page dit toujours pourquoi tu ne peux pas y écrire.\n\n` +
         `[b]Écrire avec l'éditeur[/b]\n` +
         `Tous les champs de texte (forum, commentaires, messages, nouvelles) utilisent le même éditeur : gras, italique, listes, citations, images. Le français est [b]corrigé pendant que tu écris[/b] (accents courants, majuscules, guillemets « », espace avant ? et !) : voir [url=/wiki/notes-merci-commentaires]Notes, Merci et commentaires[/url].\n\n` +
         `[b]Commenter un torrent[/b]\n` +

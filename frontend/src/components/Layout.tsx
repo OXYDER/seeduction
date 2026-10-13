@@ -176,6 +176,7 @@ function LayoutInner() {
   }
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
+  const [forumUnread, setForumUnread] = useState(0);
   const [friendIds, setFriendIds] = useState<string[]>([]);
   const onlineMap = useMessenger((s) => s.online);
   const friendsOnline = friendIds.filter((id) => (onlineMap[id] ?? 'OFFLINE') !== 'OFFLINE').length;
@@ -242,6 +243,15 @@ function LayoutInner() {
   useEffect(() => {
     if (!accessToken) return;
     const load = () => api.get('/bonus/me').then((r) => setEcon({ seeding: r.data.seedingCount ?? 0, hnr: r.data.unresolved?.length ?? 0 })).catch(() => {});
+    load();
+    const t = setInterval(() => { if (!document.hidden) load(); }, 120_000);
+    return () => clearInterval(t);
+  }, [accessToken, location.pathname]);
+
+  // Sujets non lus du forum (pastille du menu) : à chaque page, puis toutes les 2 minutes.
+  useEffect(() => {
+    if (!accessToken) { setForumUnread(0); return; }
+    const load = () => api.get('/forum/unread-count').then((r) => setForumUnread(Number(r.data?.unread) || 0)).catch(() => {});
     load();
     const t = setInterval(() => { if (!document.hidden) load(); }, 120_000);
     return () => clearInterval(t);
@@ -320,6 +330,7 @@ function LayoutInner() {
       );
     }
     if (item.to === '/dead' && deadMine > 0) return <span className="side-badge red" title={`${deadMine} torrent${deadMine > 1 ? 's' : ''} sans seeder que tu peux relancer`}>{fmt(deadMine)}</span>;
+    if (item.to === '/forum' && forumUnread > 0) return <span className="side-badge red" title={`${forumUnread} sujet${forumUnread > 1 ? 's' : ''} non lu${forumUnread > 1 ? 's' : ''} dans le forum`}>{fmt(forumUnread)}</span>;
     if (item.to === '/news' && newsUnseen > 0) return <span className="side-badge red" title={`${newsUnseen} nouvelle${newsUnseen > 1 ? 's' : ''} non lue${newsUnseen > 1 ? 's' : ''}`}>{fmt(newsUnseen)}</span>;
     if (item.to === '/support' && supportMine > 0) {
       return (
