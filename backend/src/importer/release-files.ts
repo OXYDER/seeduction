@@ -47,7 +47,9 @@ function ftpFriendly(e: any, f: NonNullable<ImportConfig['ftp']>): string {
   if (code === 'ENOTFOUND') return `hôte FTP introuvable : ${f.host}`;
   if (code === 'ECONNREFUSED') return `connexion FTP refusée sur ${f.host}:${f.port ?? 21} (port fermé ? Pure-FTPd démarré chez l'hébergeur ?)`;
   if (/\b530\b|login|authentication failed|incorrect/i.test(msg)) return `identifiant ou mot de passe FTP refusé (530) : vérifie-les dans AppBox Manager, ligne Pure-FTPd`;
-  if (/ssl|tls|handshake|wrong version|certificate|self[- ]signed/i.test(msg)) return `échec de la connexion FTP chiffrée (${msg.slice(0, 80)}) : essaie en décochant « FTP sur TLS »`;
+  if (/ssl|tls|handshake|wrong version|certificate|self[- ]signed/i.test(msg)) return /certificate|self[- ]signed|unable to verify|issuer/i.test(msg)
+      ? `le certificat du serveur FTP n'est pas reconnu (${msg.slice(0, 60)}) : coche « Accepter un certificat non reconnu » (la connexion reste chiffrée), ou décoche « FTP sur TLS »`
+      : `échec de la connexion FTP chiffrée (${msg.slice(0, 80)}) : essaie en décochant « FTP sur TLS »`;
   if (/\b(421|425|426|500|502|503|504|550)\b/.test(msg)) return `le serveur FTP a répondu : ${msg.slice(0, 120)}`;
   return `erreur FTP : ${msg.slice(0, 140)}`;
 }

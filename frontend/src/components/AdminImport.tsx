@@ -329,6 +329,11 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
               {field('Mot de passe FTP', <input type="password" autoComplete="new-password" placeholder={source?.hasFtpPassword ? '•••••• (inchangé)' : ''} value={ftpPassword} onChange={(e) => setFtpPassword(e.target.value)} />)}
             </div>
             <label className="row" style={{ gap: 8 }}><input type="checkbox" checked={cfg.ftp.secure} onChange={(e) => set(['ftp', 'secure'], e.target.checked)} /> FTP sur TLS (chiffré — décoche si la connexion échoue)</label>
+            {cfg.ftp.secure && (
+              <label className="row" style={{ gap: 8 }} title="La connexion reste chiffrée ; seule la vérification de l'identité du serveur est ignorée. À réserver à TA seedbox.">
+                <input type="checkbox" checked={cfg.ftp.rejectUnauthorized === false} onChange={(e) => set(['ftp', 'rejectUnauthorized'], !e.target.checked)} /> Accepter un certificat non reconnu (« self-signed certificate » : fréquent sur une seedbox personnelle)
+              </label>
+            )}
             <label className="row" style={{ gap: 8 }}><input type="checkbox" checked={cfg.mediainfo} onChange={(e) => set(['mediainfo'], e.target.checked)} /> Sans .nfo : calculer le MediaInfo sur le début de la vidéo ({cfg.ftp.headMB} Mo lus, jamais le fichier entier)</label>
           </>
         )}
