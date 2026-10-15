@@ -3902,3 +3902,29 @@ html.ev-static .ev-gitems svg, html.ev-static .ev-mascot { animation: none; }
   .row:has(> .mtl-pill), .row:has(> .ev-ny-pill) { flex-wrap: wrap; row-gap: 6px; }
   .row > .mtl-pill, .row > .ev-ny-pill { order: -1; flex: 1 1 100%; justify-content: center; }
 }
+/* Jeux : Mise-O-jeu */
+.moj-match { display: grid; gap: 14px; }
+.moj-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.moj-teams { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.moj-vs { opacity: 0.7; font-weight: 600; }
+.moj-state { padding: 4px 12px; border-radius: 999px; font-size: 13px; background: rgba(251, 191, 36, 0.14); border: 1px solid rgba(251, 191, 36, 0.4); }
+.moj-state.locked { background: rgba(255, 255, 255, 0.08); border-color: var(--border); }
+.moj-markets { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+.moj-market { display: grid; gap: 10px; align-content: start; padding: 12px 14px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); }
+.moj-picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+button.moj-pick { display: grid; gap: 2px; justify-items: start; text-align: left; padding: 8px 10px; background: var(--bg-panel-raised); border: 1px solid var(--border); color: var(--text); box-shadow: none; transform: none; }
+button.moj-pick:hover:not(:disabled) { border-color: var(--border-gold); filter: none; }
+button.moj-pick.on { border-color: var(--gold-bright); background: rgba(251, 191, 36, 0.14); }
+button.moj-pick:disabled { opacity: 0.7; cursor: default; }
+.moj-pick-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.moj-score { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.moj-score input { width: 64px; text-align: center; }
+.moj-form { display: grid; gap: 8px; }
+.moj-mine { padding: 8px 10px; border-radius: 8px; background: rgba(34, 160, 90, 0.12); border: 1px solid rgba(60, 200, 120, 0.35); font-size: 14px; }
+.moj-rules { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13.5px; }
+.moj-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.moj-result { padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, 0.07); }
+.moj-result:first-of-type { border-top: 0; }
+.moj-board { width: 100%; border-collapse: collapse; }
+.moj-board td { padding: 5px 6px; border-top: 1px solid rgba(255, 255, 255, 0.07); }
+@media (max-width: 760px) { .moj-markets { grid-template-columns: 1fr; } }

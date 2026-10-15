@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { spendDonatedFirst } from '../common/utils/points';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { DEFAULT_POT, MAX_REWARD_HOURS, PotConfig, nextAtHour, normalizePotConfig } from './pot.config';
@@ -123,6 +124,7 @@ export class PotService {
     const updated = await this.prisma.$transaction(async (tx) => {
       const debited = await tx.user.updateMany({ where: { id: userId, bonusPoints: { gte: amount } }, data: { bonusPoints: { decrement: amount } } });
       if (debited.count === 0) throw new BadRequestException('Points bonus insuffisants');
+      await spendDonatedFirst(tx, userId, amount);
       const added = await tx.potCycle.updateMany({ where: { id: cycle.id, status: 'OPEN' }, data: { collected: { increment: amount } } });
       if (added.count === 0) throw new BadRequestException(`${cfg.name} vient d'être rempli`); // annule aussi le débit
       await tx.potDonation.create({ data: { cycleId: cycle.id, userId, amount } });

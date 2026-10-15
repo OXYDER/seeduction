@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { spendDonatedFirst } from '../common/utils/points';
 import { NotificationsService } from '../notifications/notifications.service';
 
 const RESEED_COOLDOWN_MS = 7 * 86400_000;
@@ -47,10 +48,11 @@ export class SocialService {
     const torrent = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { uploaderId: true } });
     // Retire le point accordé, sans jamais passer sous zéro.
     if (removed.count > 0 && torrent && torrent.uploaderId !== userId) {
-      await this.prisma.user.updateMany({
+      const taken = await this.prisma.user.updateMany({
         where: { id: torrent.uploaderId, bonusPoints: { gte: LIKE_BONUS_POINTS } },
         data: { bonusPoints: { decrement: LIKE_BONUS_POINTS } },
       });
+      if (taken.count > 0) await spendDonatedFirst(this.prisma, torrent.uploaderId, LIKE_BONUS_POINTS);
     }
     return this.likeStatus(torrentId, userId);
   }

@@ -26,7 +26,7 @@ export default function AdminEventThemes() {
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [hours, setHours] = useState<Record<string, string>>({});
-  const [sports, setSports] = useState<{ enabled: boolean } | null>(null);
+  const [sports, setSports] = useState<{ enabled: boolean; goalBonus: { enabled: boolean; points: number; dailyMax: number; minAccountDays: number } } | null>(null);
   const decor = useEventDecor();
   const preview = useEventTheme((s) => s.preview);
   const setPreview = useEventTheme((s) => s.setPreview);
@@ -40,6 +40,12 @@ export default function AdminEventThemes() {
 
   async function toggleSports(enabled: boolean) {
     try { setSports((await api.put('/sports/admin', { enabled })).data); setMsg(enabled ? '✓ Score des Canadiens activé.' : '✓ Score des Canadiens désactivé.'); } catch (e) { setErr(errorOf(e)); }
+  }
+
+  async function saveGoal(patch: Partial<NonNullable<typeof sports>['goalBonus']>) {
+    if (!sports) return;
+    setSports({ ...sports, goalBonus: { ...sports.goalBonus, ...patch } });
+    try { setSports((await api.put('/sports/admin', { goalBonus: { ...sports.goalBonus, ...patch } })).data); setMsg('✓ Points des buts enregistrés.'); } catch (e) { setErr(errorOf(e)); }
   }
 
   async function save() {
@@ -89,6 +95,13 @@ export default function AdminEventThemes() {
           <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={sports?.enabled ?? true} onChange={(e) => toggleSports(e.target.checked)} /> 🏒 Score des Canadiens de Montréal</label>
           <span className="muted" style={{ fontSize: 12.5 }}>Pastille dans l'en-tête à chaque match (en direct, résultat, prochain match), d'après les données publiques de la LNH. Chaque membre peut la masquer chez lui (🎨).</span>
         </div>
+        {sports && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={sports.goalBonus.enabled} onChange={(e) => saveGoal({ enabled: e.target.checked })} /> 🥅 Points bonus à chaque but du Canadien</label>
+            <span style={{ fontSize: 13 }}><input type="number" min={0} max={1000} defaultValue={sports.goalBonus.points} key={`p${sports.goalBonus.points}`} onBlur={(e) => saveGoal({ points: Number(e.target.value) || 0 })} style={{ width: 70 }} aria-label="Points par but" /> points par but, au plus <input type="number" min={0} max={100000} defaultValue={sports.goalBonus.dailyMax} key={`d${sports.goalBonus.dailyMax}`} onBlur={(e) => saveGoal({ dailyMax: Number(e.target.value) || 0 })} style={{ width: 80 }} aria-label="Maximum par 24 heures" /> par membre sur 24 h</span>
+            <span className="muted" style={{ fontSize: 12.5 }}>Versés aux membres connectés (un compte par personne, compte de plus de {sports.goalBonus.minAccountDays} jours). Tous les membres connectés reçoivent la notification, avec ou sans points.</span>
+          </div>
+        )}
       </div>
 
       {preview && (

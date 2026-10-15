@@ -187,6 +187,9 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Garde un petit stock de points pour un jeton freeleech avant un gros téléchargement.\n` +
         `• Donne au [url=/wiki/guide-pot-commun]pot commun[/url] : si le pot se remplit, tout le monde gagne, toi compris.\n` +
         `• Pour effacer un hit & run, seeder coûte beaucoup moins cher que payer : [url=/wiki/guide-hit-and-run-reparer]Réparer un hit & run[/url].\n\n` +
+        `[b]Jouer ses points[/b] : la section [url=/jeux]Jeux[/url] (Mise-O-jeu) permet de parier des points sur les matchs du Canadien, ou de jouer gratuitement. Les points reçus par un don ne peuvent pas être misés : [url=/wiki/guide-mise-o-jeu]Jouer à Mise-O-jeu[/url].
+
+` +
         `Référence complète : [url=/wiki/points-bonus-et-boutique]Points bonus et la boutique[/url].`,
     },
     {
@@ -208,6 +211,74 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Quand en profiter[/b]\n` +
         `Un freeleech global est le meilleur moment pour télécharger gros sans toucher à ton ratio : surveille le calendrier freeleech (accueil et page Points bonus).\n\n` +
         `Référence complète : [url=/wiki/pot-commun]Le pot commun[/url].`,
+    },
+    {
+      title: 'Jouer à Mise-O-jeu : parier sur les matchs du Canadien',
+      slug: 'guide-mise-o-jeu',
+      keywords: 'mise-o-jeu, jeux, pari, gageure, mise, pronostic, canadien, canadiens, hockey, lnh, points bonus, caisse, classement',
+      content:
+        `[b]Mise-O-jeu[/b] te permet de parier des points bonus sur les matchs du Canadien de Montréal, ou de jouer gratuitement pour gagner quelques points. C'est dans la section [url=/jeux]Jeux[/url] du menu.
+
+` +
+        `[b]Les trois paris de chaque match[/b]
+` +
+        `• [b]Vainqueur[/b] : le Canadien gagne ou perd.
+` +
+        `• [b]Fin du match[/b] : temps réglementaire, prolongation ou tirs de barrage.
+` +
+        `• [b]Score exact[/b] : le score final (le plus difficile, donc le plus payant).
+` +
+        `Chaque pari se joue une seule fois par match. Les paris ouvrent quelques jours avant le match et [b]ferment quand il commence[/b].
+
+` +
+        `[b]Gratuit ou avec une mise[/b]
+` +
+        `• [b]Pronostic gratuit[/b] : aucun risque. S'il est juste, tu gagnes une petite récompense fixe (affichée sur le bouton), jusqu'à un plafond par semaine.
+` +
+        `• [b]Mise[/b] : tu mises des points (minimum et maximum affichés). Ils vont dans la [b]caisse[/b] de ce pari.
+
+` +
+        `[b]Comment la caisse est partagée[/b]
+` +
+        `Les gagnants se partagent [b]toute la caisse[/b], au prorata de leur mise. Le site ne crée aucun point pour les mises : tu gagnes les points misés par les autres. Plus un choix est risqué (peu de monde dessus), plus il rapporte. Avant de miser, la page t'indique le gain estimé, qui change selon les mises des autres joueurs.
+
+` +
+        `[b]Quand tes points te sont rendus[/b]
+` +
+        `• Moins de 2 joueurs différents ont misé sur ce pari.
+` +
+        `• Personne n'a trouvé la bonne réponse, ou tout le monde l'a trouvée.
+` +
+        `• Le match est reporté ou annulé.
+
+` +
+        `[b]Règlement[/b]
+` +
+        `Il est automatique, dès que la LNH publie le résultat officiel. Tu reçois une notification avec tes gains. Le classement de la page Jeux affiche les meilleurs gains nets.
+
+` +
+        `[b]Points de don[/b]
+` +
+        `Les points reçus avec un don ne peuvent pas être misés. Tu peux les dépenser normalement ailleurs (boutique, pot commun, demandes) : ils sont dépensés en premier, pour te laisser le plus de points misables possible. La page Jeux affiche tes points misables et tes points de don.
+
+` +
+        `[b]Limites et sécurité[/b]
+` +
+        `• Ton compte doit avoir quelques jours d'ancienneté, et il y a une limite de points misés par 24 heures.
+` +
+        `• Un compte famille joue avec les points du compte : les mises demandent l'autorisation de dépenser.
+` +
+        `• Tu peux te retirer des jeux à tout moment avec le bouton [b]Me retirer des jeux[/b] de la page.
+` +
+        `• Ce sont des points du site, sans valeur en argent.
+
+` +
+        `[b]Points offerts à chaque but[/b]
+` +
+        `Quand le Canadien marque, tous les membres en ligne reçoivent une notification et quelques points bonus (avec un plafond par jour). Tu peux couper cette notification dans Notifications > catégorie « Jeux et buts du Canadien ».
+
+` +
+        `Voir aussi : [url=/wiki/guide-points-bonus]Gagner et dépenser des points bonus[/url], [url=/wiki/guide-personnaliser]Personnaliser le site[/url] (score du Canadien en direct).`,
     },
     {
       title: 'Faire revivre un torrent mort (Réanimation)',

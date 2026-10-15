@@ -13,6 +13,7 @@ export const NOTIFICATION_CATEGORIES = [
   { key: 'requests', label: 'Demandes', icon: '🙏', hint: 'Demandes comblées, propositions de torrent, points ajoutés à ta récompense.', locked: false },
   { key: 'social', label: 'Amis, équipes et suivis', icon: '👥', hint: 'Demandes d\'ami, équipes, invitations utilisées, nouveaux torrents des acteurs et studios que tu suis.', locked: false },
   { key: 'announcements', label: 'Nouvelles et événements', icon: '📯', hint: 'Nouvelles du site, freeleech et événements.', locked: false },
+  { key: 'games', label: 'Jeux et buts du Canadien', icon: '🏒', hint: 'Buts du Canadien (avec les points bonus offerts aux membres en ligne), résultats de tes paris Mise-O-jeu.', locked: false },
   { key: 'pot', label: 'Pot commun', icon: '🍯', hint: 'Étapes et récompenses du pot commun.', locked: false },
   { key: 'support', label: 'Support', icon: '🎫', hint: 'Réponses à tes billets de support.', locked: false },
   { key: 'system', label: 'Compte et système', icon: '🛡️', hint: 'Sanctions, sécurité du compte, rang, badges. Ne peut pas être coupé.', locked: true },

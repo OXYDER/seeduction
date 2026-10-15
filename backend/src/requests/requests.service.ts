@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { spendDonatedFirst } from '../common/utils/points';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 import { Cron } from '@nestjs/schedule';
@@ -56,6 +57,7 @@ export class RequestsService {
     if (amount <= 0) return;
     const res = await this.prisma.user.updateMany({ where: { id: userId, bonusPoints: { gte: amount } }, data: { bonusPoints: { decrement: amount } } });
     if (res.count === 0) throw new BadRequestException('Points bonus insuffisants');
+    await spendDonatedFirst(this.prisma, userId, amount);
   }
 
   private cleanAmount(value: unknown, min = 0) {

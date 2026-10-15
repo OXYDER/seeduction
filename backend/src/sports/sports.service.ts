@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { Game, Summary, inLiveWindow, normalizeGame, summarize } from '../common/utils/nhl';
+import { DEFAULT_GOAL_BONUS, GoalBonusConfig, GoalBonusService, normalizeGoalBonus } from './goal-bonus.service';
 
 const KEY = 'sports';
 const API = 'https://api-web.nhle.com/v1';
@@ -11,13 +13,17 @@ const SCORE_TTL = 5_000;
 const RESULT_TTL = 4_000;
 const TIMEOUT_MS = 8_000;
 
-export interface SportsConfig { enabled: boolean; team: string }
+export interface SportsConfig { enabled: boolean; team: string; goalBonus: GoalBonusConfig }
 export interface Actor { userId: string; username: string }
 export const TEAMS: Record<string, string> = { MTL: 'Canadiens de Montréal' };
 
-export function normalizeSportsConfig(raw: any): SportsConfig {
+export function normalizeSportsConfig(raw: any, previous?: SportsConfig): SportsConfig {
   const r = raw && typeof raw === 'object' ? raw : {};
-  return { enabled: r.enabled === undefined ? true : r.enabled === true, team: typeof r.team === 'string' && TEAMS[r.team] ? r.team : 'MTL' };
+  return {
+    enabled: r.enabled === undefined ? previous?.enabled ?? true : r.enabled === true,
+    team: typeof r.team === 'string' && TEAMS[r.team] ? r.team : previous?.team ?? 'MTL',
+    goalBonus: normalizeGoalBonus(r.goalBonus, previous?.goalBonus ?? DEFAULT_GOAL_BONUS),
+  };
 }
 
 /**
@@ -36,12 +42,13 @@ export class SportsService {
   private liveAt = 0;
   private logos = new Map<string, { at: number; svg: string }>();
 
-  constructor(private settings: SettingsService, private audit: AuditService) {}
+  constructor(private settings: SettingsService, private audit: AuditService, private goals: GoalBonusService) {}
 
   async config(): Promise<SportsConfig> { return normalizeSportsConfig(await this.settings.get(KEY)); }
 
   async saveConfig(actor: Actor, body: any, ip?: string | null) {
-    const next = normalizeSportsConfig({ ...(await this.config()), ...(body ?? {}) });
+    const before = await this.config();
+    const next = normalizeSportsConfig(body ?? {}, before);
     await this.settings.set(KEY, next);
     this.result = null;
     await this.audit.log(actor.userId, 'SPORTS_CONFIG', next as any, ip);
@@ -111,6 +118,27 @@ export class SportsService {
     });
   }
 
+  /** Tous les matchs de la saison du club (calendrier en cache), pour les jeux. Liste vide si la LNH est injoignable. */
+  async seasonGames(): Promise<Game[]> {
+    const cfg = await this.config();
+    try { return await this.loadSchedule(cfg.team, new Date()); } catch { return this.schedule?.games ?? []; }
+  }
+
+  /**
+   * Pendant un match, le serveur lit lui-même le tableau des scores toutes les 10 secondes : un but est ainsi repéré (et récompensé) même si
+   * aucun membre n'a la pastille ouverte, et le score de départ est connu avant la mise au jeu.
+   */
+  @Interval(10_000)
+  async watch() {
+    try {
+      const cfg = await this.config();
+      if (!cfg.enabled || !cfg.goalBonus.enabled) return;
+      if (!this.schedule) { await this.canadiens(); return; } // premier chargement du calendrier
+      if (!inLiveWindow(this.schedule.games, new Date())) return;
+      await this.canadiens();
+    } catch { /* la prochaine lecture réessaiera */ }
+  }
+
   async canadiens() {
     const cfg = await this.config();
     if (!cfg.enabled) return { enabled: false };
@@ -121,6 +149,7 @@ export class SportsService {
         try {
           const games = await this.overlayLive(cfg.team, await this.loadSchedule(cfg.team, now), now);
           const summary: Summary = summarize(games, now);
+          this.goals.observe(summary.live, cfg.goalBonus, TEAMS[cfg.team]);
           const payload = { enabled: true, available: true, stale: false, team: { abbrev: cfg.team, name: TEAMS[cfg.team] }, ...summary, updatedAt: now.toISOString(), clockAt: new Date(this.liveAt || now.getTime()).toISOString() };
           this.result = { at: now.getTime(), team: cfg.team, payload };
           return { ...payload, serverNow: new Date().toISOString() };

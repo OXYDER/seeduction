@@ -114,7 +114,7 @@ export class DonationsService {
         data: {
           donorSince: member.donorSince ?? now, donorTotal: { increment: amount }, donorUntil, freeleechUntil, hnrExemptUntil,
           donorInvites: tier ? Math.max(member.donorInvites, tier.invites) : member.donorInvites,
-          ...(tier && tier.bonusPoints > 0 ? { bonusPoints: { increment: tier.bonusPoints } } : {}),
+          ...(tier && tier.bonusPoints > 0 ? { bonusPoints: { increment: tier.bonusPoints }, donatedPoints: { increment: tier.bonusPoints } } : {}),
         },
       });
       return d;

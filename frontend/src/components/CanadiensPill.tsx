@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useEventTheme } from '../store/eventTheme';
 import HeaderPopover from './HeaderPopover';
+import TeamLogo from './TeamLogo';
 
 interface Side { abbrev: string; name: string; score: number | null; sog: number | null }
 interface Game {
@@ -29,14 +30,7 @@ const dayFmt = (iso: string) => new Date(iso).toLocaleDateString('fr-CA', { week
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const KIND: Record<string, string> = { PRESAISON: 'Pré-saison', SERIES: 'Séries', SAISON: '', AUTRE: '' };
 
-/** Les logos de la LNH sont plus larges que hauts (3 : 2) : on les met dans une plaque blanche à leur format, pour qu'ils prennent toute la place. */
-function Logo({ abbrev, name, size = 26 }: { abbrev: string; name?: string; size?: number }) {
-  return (
-    <span className="mtl-logo" style={{ width: Math.round(size * 1.5) + 6, height: size + 4 }} title={name ?? abbrev}>
-      <img src={`/api/sports/logo/${abbrev}`} alt={name ?? abbrev} width={Math.round(size * 1.5)} height={size} loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
-    </span>
-  );
-}
+const Logo = TeamLogo;
 
 const suffix = (g: Game) => (g.outcome && g.outcome !== 'Final' ? (g.outcome.includes('tirs') ? ' (TB)' : ' (Pr.)') : '');
 

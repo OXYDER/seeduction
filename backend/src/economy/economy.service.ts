@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
+import { moveDonated, spendDonatedFirst } from '../common/utils/points';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SettingsService } from '../settings/settings.service';
 import { TrackerService } from '../tracker/tracker.service';
@@ -362,6 +363,7 @@ export class EconomyService {
     await this.prisma.$transaction(async (tx) => {
       const debited = await tx.user.updateMany({ where: { id: userId, bonusPoints: { gte: cost } }, data: { bonusPoints: { decrement: cost } } });
       if (debited.count === 0) throw new BadRequestException(`Points bonus insuffisants : il t'en faut ${cost}`);
+      await spendDonatedFirst(tx, userId, cost);
       const done = await tx.snatch.updateMany({ where: { id: snatch.id, hnr: true, satisfied: false }, data: { hnr: false, satisfied: true, hnrClearedAt: new Date() } });
       if (done.count === 0) throw new BadRequestException('Ce hit & run a déjà été régularisé'); // annule aussi le débit
       await tx.warning.deleteMany({ where: { userId, issuedBy: 'Système', reason: { startsWith: `Hit & run : « ${snatch.torrent.name} »` } } });
@@ -396,6 +398,7 @@ export class EconomyService {
       const debited = await tx.user.updateMany({ where: { id: fromId, bonusPoints: { gte: amount } }, data: { bonusPoints: { decrement: amount } } });
       if (debited.count === 0) throw new BadRequestException('Points bonus insuffisants');
       await tx.user.update({ where: { id: toId }, data: { bonusPoints: { increment: amount } } });
+      await moveDonated(tx, fromId, toId, amount);
       await tx.pointTransfer.create({ data: { fromId, toId, amount, message } });
     });
     await this.notifications.notify({
@@ -435,6 +438,7 @@ export class EconomyService {
       data: { bonusPoints: { decrement: item.cost } },
     });
     if (debited.count === 0) throw new BadRequestException('Points bonus insuffisants');
+    await spendDonatedFirst(this.prisma, userId, item.cost);
 
     let code: string | undefined;
     try {

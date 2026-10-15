@@ -52,6 +52,7 @@ import { AntiCheatModule } from './anticheat/anticheat.module';
 import { BackupModule } from './backup/backup.module';
 import { EventThemesModule } from './event-themes/event-themes.module';
 import { SportsModule } from './sports/sports.module';
+import { GamesModule } from './games/games.module';
 import { TeamsModule } from './teams/teams.module';
 import { SupportModule } from './support/support.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -112,6 +113,7 @@ import { SuggestionsModule } from './suggestions/suggestions.module';
     BackupModule,
     EventThemesModule,
     SportsModule,
+    GamesModule,
     TeamsModule,
     SupportModule,
     TelegramModule,

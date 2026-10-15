@@ -51,6 +51,10 @@ model User {
   uploaded         BigInt     @default(0)
   downloaded       BigInt     @default(0)
   bonusPoints      Float      @default(0)
+  /// Part de bonusPoints venue d'un don : elle se dépense normalement mais ne peut pas être misée dans Mise-O-jeu (toujours <= bonusPoints).
+  donatedPoints    Float      @default(0)
+  /// Le membre s'est retiré des jeux (Mise-O-jeu) : plus de paris ni de pronostics.
+  gamesOptOut      Boolean    @default(false)
 
   // Parrainage
   invitedById      String?
@@ -1906,4 +1910,59 @@ model UserTorrentFlow {
   @@unique([userId, torrentId, day])
   @@index([torrentId, day])
   @@index([day])
+}
+
+// ---------------------------------------------------------------------------
+// MISE-O-JEU : paris et pronostics sur les matchs du Canadien (caisse commune : les gagnants se partagent les mises des participants)
+// ---------------------------------------------------------------------------
+model MojMatch {
+  id         String    @id @default(uuid())
+  nhlGameId  Int       @unique
+  team       String    @db.VarChar(4)
+  startUtc   DateTime
+  kind       String    @db.VarChar(12)
+  homeAbbrev String    @db.VarChar(4)
+  awayAbbrev String    @db.VarChar(4)
+  homeName   String    @db.VarChar(60)
+  awayName   String    @db.VarChar(60)
+  mineSide   String    @db.VarChar(4) // 'home' | 'away' : de quel côté joue notre équipe
+  status     String    @default("OPEN") @db.VarChar(10) // OPEN | SETTLED | REFUNDED
+  result     Json? // { mine, theirs, mode } une fois le match terminé
+  settledAt  DateTime?
+  createdAt  DateTime  @default(now())
+  bets       MojBet[]
+
+  @@index([status, startUtc])
+}
+
+model MojBet {
+  id        String    @id @default(uuid())
+  match     MojMatch  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId   String
+  userId    String
+  market    String    @db.VarChar(8) // WIN | MODE | SCORE
+  pick      String    @db.VarChar(12)
+  stake     Int       @default(0) // 0 = pronostic gratuit
+  payout    Int? // points reçus (mise remboursée comprise)
+  status    String    @default("PENDING") @db.VarChar(10) // PENDING | WON | LOST | REFUNDED
+  createdAt DateTime  @default(now())
+  settledAt DateTime?
+
+  @@unique([matchId, userId, market])
+  @@index([userId, createdAt])
+  @@index([matchId, market])
+}
+
+/// Points bonus offerts aux membres en ligne quand le Canadien marque (un seul versement par membre et par but).
+model GoalReward {
+  id        String   @id @default(uuid())
+  userId    String
+  gameId    Int
+  goal      Int // numéro du but du Canadien dans ce match (1, 2, 3...)
+  points    Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, gameId, goal])
+  @@index([userId, createdAt])
+  @@index([gameId])
 }
