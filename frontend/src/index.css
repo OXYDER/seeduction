@@ -3887,7 +3887,7 @@ html.ev-static .ev-gitems svg, html.ev-static .ev-mascot { animation: none; }
 .mtl-row { display: grid; grid-template-columns: 74px 1fr auto; gap: 8px; padding: 4px 0; font-size: 13px; border-top: 1px solid rgba(255, 255, 255, 0.07); align-items: baseline; }
 .mtl-w { color: #6ee7a0; } .mtl-l { color: #fca5a5; }
 @media (max-width: 760px) { .mtl-pill, .ev-ny-pill { padding: 4px 9px; font-size: 12px; } }
-.mtl-logo { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; background: rgba(255, 255, 255, 0.94); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); vertical-align: middle; }
+.mtl-logo { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 7px; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3); vertical-align: middle; }
 .mtl-logo img { display: block; object-fit: contain; }
 .mtl-pill { gap: 5px; flex: none; }
 .mtl-num { font-variant-numeric: tabular-nums; }

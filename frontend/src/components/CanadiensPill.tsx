@@ -12,11 +12,11 @@ interface Game {
 interface Data { enabled: boolean; available?: boolean; stale?: boolean; live: Game | null; featured: Game | null; last: Game[]; next: Game[]; updatedAt?: string; clockAt?: string; serverNow?: string }
 
 /** Chrono affiché : le temps restant donné par la LNH, diminué du temps écoulé depuis (les horloges du serveur donnent l'âge exact de la donnée, celle de l'appareil fait avancer les secondes). */
-function clockLeft(g: Game, d: Data, receivedAt: number, now: number): string {
+function clockLeft(g: Game, d: Data, receivedAt: number, now: number, moving: boolean): string {
   const c = g.clock;
   if (!c) return '';
   const m = /^(\d+):(\d{2})$/.exec(c.remaining);
-  if (!m || !c.running) return c.remaining;
+  if (!m || !moving) return c.remaining;
   const age = d.clockAt && d.serverNow ? Math.max(0, (Date.parse(d.serverNow) - Date.parse(d.clockAt)) / 1000) : 0;
   const left = Math.max(0, Number(m[1]) * 60 + Number(m[2]) - Math.floor(age + (now - receivedAt) / 1000));
   return `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;
@@ -29,10 +29,11 @@ const dayFmt = (iso: string) => new Date(iso).toLocaleDateString('fr-CA', { week
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const KIND: Record<string, string> = { PRESAISON: 'Pré-saison', SERIES: 'Séries', SAISON: '', AUTRE: '' };
 
-function Logo({ abbrev, name, size = 20 }: { abbrev: string; name?: string; size?: number }) {
+/** Les logos de la LNH sont plus larges que hauts (3 : 2) : on les met dans une plaque blanche à leur format, pour qu'ils prennent toute la place. */
+function Logo({ abbrev, name, size = 26 }: { abbrev: string; name?: string; size?: number }) {
   return (
-    <span className="mtl-logo" style={{ width: size + 6, height: size + 6 }} title={name ?? abbrev}>
-      <img src={`/api/sports/logo/${abbrev}`} alt={name ?? abbrev} width={size} height={size} loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
+    <span className="mtl-logo" style={{ width: Math.round(size * 1.5) + 6, height: size + 4 }} title={name ?? abbrev}>
+      <img src={`/api/sports/logo/${abbrev}`} alt={name ?? abbrev} width={Math.round(size * 1.5)} height={size} loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
     </span>
   );
 }
@@ -70,12 +71,15 @@ function GameRow({ g }: { g: Game }) {
 export default function CanadiensPill() {
   const enabled = useEventTheme((s) => s.mtl);
   const sound = useEventTheme((s) => s.mtlSound);
+  const inferredRef = useRef(false);
   const soundRef = useRef(sound);
   soundRef.current = sound;
   const [data, setData] = useState<Data | null>(null);
   const [open, setOpen] = useState(false);
   const [goal, setGoal] = useState(false);
   const [receivedAt, setReceivedAt] = useState(0);
+  const [inferred, setInferred] = useState(false);
+  const sample = useRef<{ key: string; secs: number; at: string } | null>(null);
   const [now, setNow] = useState(Date.now());
   const prev = useRef<{ id: number; score: number; at: number } | null>(null);
   const btn = useRef<HTMLButtonElement>(null);
@@ -87,6 +91,15 @@ export default function CanadiensPill() {
       const d = (await api.get('/sports/canadiens')).data as Data;
       setData(d);
       setReceivedAt(Date.now());
+      // La LNH indique « arrêté » pendant les entractes et parfois en retard : si le chrono a baissé entre deux lectures, c'est qu'il tourne.
+      const c = d.live?.clock;
+      const t = c && /^(\d+):(\d{2})$/.exec(c.remaining);
+      if (d.live && c && t && d.clockAt) {
+        const secs = Number(t[1]) * 60 + Number(t[2]), key = `${d.live.id}:${d.live.period}`, p = sample.current;
+        if (!p || p.key !== key) setInferred(false);
+        else if (p.at !== d.clockAt) setInferred(secs < p.secs ? true : secs === p.secs && !c.running && !c.intermission ? false : inferredRef.current);
+        if (!p || p.at !== d.clockAt) sample.current = { key, secs, at: d.clockAt };
+      } else { sample.current = null; setInferred(false); }
       const g = d.live;
       if (g) {
         const score = mine(g).score ?? 0;
@@ -94,7 +107,7 @@ export default function CanadiensPill() {
         prev.current = { id: g.id, score, at: Date.now() };
       } else prev.current = null;
       const f = d.featured;
-      return f && (f.state === 'LIVE' || (f.state !== 'FINAL' && new Date(f.startUtc).getTime() - Date.now() < 3600_000)) ? (f.state === 'LIVE' ? 10_000 : 20_000) : 5 * 60_000;
+      return f && (f.state === 'LIVE' || (f.state !== 'FINAL' && new Date(f.startUtc).getTime() - Date.now() < 3600_000)) ? (f.state === 'LIVE' ? 5_000 : 20_000) : 5 * 60_000;
     } catch { return 60_000; /* la LNH ou le serveur ne répond pas : on garde ce qu'on a et on réessaie */ }
   }, []);
 
@@ -114,7 +127,10 @@ export default function CanadiensPill() {
     return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVis); };
   }, [enabled, load]);
 
-  const ticking = enabled && data?.featured?.state === 'LIVE' && !!data.featured.clock?.running;
+  inferredRef.current = inferred;
+  const clk = data?.featured?.clock;
+  const moving = !!(clk && (clk.running || clk.intermission || inferred));
+  const ticking = enabled && data?.featured?.state === 'LIVE' && moving;
   useEffect(() => {
     if (!ticking) return;
     const t = window.setInterval(() => { if (!document.hidden) setNow(Date.now()); }, 1000);
@@ -131,14 +147,14 @@ export default function CanadiensPill() {
       <button ref={btn} type="button" className={`mtl-pill ${tone}${goal ? ' goal' : ''}`} onClick={() => setOpen((v) => !v)} aria-expanded={open} title="Canadiens de Montréal : score et calendrier">
         {tone === 'live' && <i className="mtl-dot" aria-hidden="true" />}
         {goal ? <strong className="mtl-but">BUT !</strong> : null}{body}
-        {g.state === 'LIVE' && g.period && <small className="mtl-per">{g.clock?.intermission ? 'Entr.' : g.period.replace(' période', '')} {clockLeft(g, data, receivedAt, now)}</small>}
+        {g.state === 'LIVE' && g.period && <small className="mtl-per">{g.clock?.intermission ? 'Entr.' : g.period.replace(' période', '')} {clockLeft(g, data, receivedAt, now, moving)}</small>}
       </button>
       <HeaderPopover open={open} anchorRef={btn} onClose={close} width={380} label="Canadiens de Montréal">
         <div className="hp-head"><strong>🏒 Canadiens de Montréal</strong>{data.stale && <span className="muted" style={{ fontSize: 11.5 }}>données en attente de la LNH</span>}</div>
         <div style={{ padding: '10px 14px', overflowY: 'auto' }}>
           <div className="mtl-card">
             <div className="muted" style={{ fontSize: 12 }}>
-              {g.state === 'LIVE' ? `En direct · ${g.clock?.intermission ? 'Entracte' : g.period ?? ''} ${clockLeft(g, data, receivedAt, now)}` : g.state === 'FINAL' ? (g.outcome ?? 'Final') : 'À venir'}
+              {g.state === 'LIVE' ? `En direct · ${g.clock?.intermission ? 'Entracte' : g.period ?? ''} ${clockLeft(g, data, receivedAt, now, moving)}` : g.state === 'FINAL' ? (g.outcome ?? 'Final') : 'À venir'}
               {KIND[g.kind] ? ` · ${KIND[g.kind]}` : ''}
             </div>
             <div className="mtl-score">
@@ -152,7 +168,7 @@ export default function CanadiensPill() {
           </div>
           {data.last.length > 0 && <><div className="mtl-sub">Derniers résultats</div>{data.last.map((x) => <GameRow key={x.id} g={x} />)}</>}
           {data.next.length > 0 && <><div className="mtl-sub">Prochains matchs</div>{data.next.filter((x) => x.id !== g.id || g.state === 'FINAL').map((x) => <GameRow key={x.id} g={x} />)}</>}
-          <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Données : LNH. Le chrono avance en direct ; score mis à jour toutes les 10 secondes pendant un match.</div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Données : LNH. Le chrono avance en direct ; score mis à jour toutes les 5 secondes pendant un match.</div>
         </div>
       </HeaderPopover>
     </>
