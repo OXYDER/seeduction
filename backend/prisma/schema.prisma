@@ -1982,3 +1982,20 @@ model UploadCredit {
 
   @@index([userId, createdAt])
 }
+
+/// Machines à sous : une ligne par partie (tirage payant + tours gratuits éventuels). Sert à l'historique, aux limites de pertes et aux comptes de la maison.
+model SlotSpin {
+  id        String   @id @default(uuid())
+  userId    String
+  machine   String   @db.VarChar(12)
+  stake     Int // mise débitée (0 pour le tour gratuit quotidien)
+  valued    Int // mise sur laquelle les gains sont calculés (= stake, ou la mise fictive du tour gratuit)
+  daily     Boolean  @default(false) // tour gratuit quotidien
+  win       Int
+  freeSpins Int      @default(0)
+  rounds    Json // [{ stops: [a, b, c], mult, win, free }]
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}

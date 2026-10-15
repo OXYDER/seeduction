@@ -241,7 +241,11 @@ export default function Jeux() {
         </div>
       </div>
 
-      <div className="panel muted">🎰 D'autres jeux arrivent bientôt.</div>
+      <Link to="/jeux/machines" className="panel ornate moj-slots-link">
+        <span style={{ fontSize: 34 }}>🎰</span>
+        <div><strong style={{ fontSize: 18 }}>Machines à sous</strong><div className="muted">Six machines à thèmes (Cinéma, Seeduction Or, Hockey, Cabane à sucre, Fêtes, Pirates). Mise de 5 à 100 points, et un tour gratuit par jour.</div></div>
+        <span className="muted">Jouer →</span>
+      </Link>
     </div>
   );
 }

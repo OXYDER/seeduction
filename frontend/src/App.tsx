@@ -18,6 +18,7 @@ import Notifications from './pages/Notifications';
 import FreeleechCalendarPage from './pages/FreeleechCalendarPage';
 import Pot from './pages/Pot';
 import Jeux from './pages/Jeux';
+import Slots from './pages/Slots';
 import MySeeds from './pages/MySeeds';
 import MyActivity from './pages/MyActivity';
 import HitAndRun from './pages/HitAndRun';
@@ -129,6 +130,7 @@ export default function App() {
           <Route path="/freeleech" element={<FreeleechCalendarPage />} />
           <Route path="/pot" element={<Pot />} />
           <Route path="/jeux" element={<Jeux />} />
+          <Route path="/jeux/machines" element={<Slots />} />
           <Route path="/activity" element={<MyActivity />} />
           <Route path="/seeds" element={<MySeeds />} />
           <Route path="/hit-and-run" element={<HitAndRun />} />
