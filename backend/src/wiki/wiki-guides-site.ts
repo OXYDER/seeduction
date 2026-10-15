@@ -126,6 +126,11 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `7. [b]Envoie du contenu[/b] : un bon torrent partagé qui est téléchargé par beaucoup de membres fait monter ton upload très vite ([url=/wiki/guide-envoyer-premier-torrent]Envoyer ton premier torrent[/url]).\n\n` +
         `[b]Tes points bonus travaillent pour toi[/b]\n` +
         `Chaque torrent que tu seedes rapporte [b]1 point par heure[/b]. Tu peux les échanger contre de l'upload, des jetons freeleech ou des invitations : [url=/wiki/guide-points-bonus]Gagner et dépenser des points bonus[/url].\n\n` +
+        `[b]J'ai envoyé des torrents mais mon upload ne bouge pas : normal ?[/b]\n` +
+        `L'upload mesure ce que ton client envoie réellement : tant que personne ne télécharge ta release, rien ne circule. Trois choses jouent pour toi pendant ce temps :\n` +
+        `• [b]Le crédit d'envoi[/b] : quand le staff approuve ton torrent, [b]25 % de sa taille[/b] est ajouté à ton upload, même si personne ne l'a encore téléchargé (jusqu'à 25 Go par torrent et 100 Go par jour). Il faut que ton client [b]seede[/b] le torrent à ce moment-là ; sinon le crédit est versé dès que tu le seedes. Il est repris si le torrent est supprimé ou rejeté. Tu le vois dans [url=/bonus]Points bonus[/url].\n` +
+        `• [b]Les points bonus[/b] : chaque torrent seedé rapporte 1 point par heure, que quelqu'un le télécharge ou non. 50 torrents en seed, c'est 1 200 points par jour, à échanger contre de l'upload dans la boutique.\n` +
+        `• [b]Le vrai upload[/b] arrive ensuite, dès que des membres téléchargent : c'est ce qui fait monter ton ratio durablement.\n\n` +
         `[b]Où suivre ta situation[/b]\n` +
         `• L'en-tête de l'écran : ratio, upload, téléchargé, points, seeds (🌱) et hit & run.\n` +
         `• [b]📈 Mon activité[/b] : tout ce que tu télécharges et partages.\n` +

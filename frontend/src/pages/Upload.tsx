@@ -14,6 +14,7 @@ import ReleaseNameSuggest from '../components/ReleaseNameSuggest';
 import FacetFields from '../components/FacetFields';
 import GamePlatformPicker, { type GamePlatformInfo } from '../components/GamePlatformPicker';
 import type { FacetDef, FacetValues } from '../lib/facets';
+import UploadCreditPanel from '../components/UploadCreditPanel';
 import { LANGUAGE_GROUPS, LANGUAGE_LABELS, languageTagFrom } from '../lib/languageTag';
 import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeFromRelease, detectVideoType, matchGenres, looksLikeCode, titleFromNfo } from '../lib/uploadMeta';
 
@@ -342,6 +343,7 @@ function UploadOne() {
   return (
     <div className="grid">
       <h1>Uploader un torrent</h1>
+      <UploadCreditPanel compact />
 
       <div className="panel ornate">
         <div className="panel-title"><span className="title-icon">📜</span>À savoir avant d'uploader</div>

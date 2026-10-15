@@ -53,6 +53,7 @@ import { BackupModule } from './backup/backup.module';
 import { EventThemesModule } from './event-themes/event-themes.module';
 import { SportsModule } from './sports/sports.module';
 import { GamesModule } from './games/games.module';
+import { UploadCreditModule } from './upload-credit/upload-credit.module';
 import { TeamsModule } from './teams/teams.module';
 import { SupportModule } from './support/support.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -114,6 +115,7 @@ import { SuggestionsModule } from './suggestions/suggestions.module';
     EventThemesModule,
     SportsModule,
     GamesModule,
+    UploadCreditModule,
     TeamsModule,
     SupportModule,
     TelegramModule,

@@ -14,9 +14,10 @@ import { OwnerTorrentsController } from './owner-torrents.controller';
 import { StaffMembersController } from './staff-members.controller';
 import { StaffMembersService } from './staff-members.service';
 import { PresenceModule } from '../presence/presence.module';
+import { UploadCreditModule } from '../upload-credit/upload-credit.module';
 
 @Module({
-  imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule, MetadataModule, PresenceModule],
+  imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule, MetadataModule, PresenceModule, UploadCreditModule],
   controllers: [AdminController, OwnerTorrentsController, StaffMembersController],
   providers: [AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService, StaffMembersService],
   exports: [AccountDeletionService, AdminService],

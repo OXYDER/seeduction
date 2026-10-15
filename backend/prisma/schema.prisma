@@ -302,6 +302,7 @@ model Torrent {
   anonymousUpload Boolean      @default(false)
 
   status         TorrentStatus @default(PENDING)
+  approvedAt     DateTime? // moment de l'approbation par le staff (sert au crédit d'envoi)
   freeleech      Boolean       @default(false)
   doubleUpload   Boolean       @default(false)
 
@@ -1965,4 +1966,19 @@ model GoalReward {
   @@unique([userId, gameId, goal])
   @@index([userId, createdAt])
   @@index([gameId])
+}
+
+/// Crédit d'envoi : à l'approbation d'un torrent, une part de sa taille est ajoutée à l'upload de son uploader, même si personne ne l'a encore téléchargé.
+/// Une ligne par torrent (versé une seule fois). Sans lien vers Torrent pour survivre à sa suppression, qui reprend le crédit (revokedAt).
+model UploadCredit {
+  id          String    @id @default(uuid())
+  torrentId   String    @unique
+  userId      String // compte crédité
+  torrentName String    @db.VarChar(300)
+  bytes       BigInt
+  percent     Int
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  @@index([userId, createdAt])
 }

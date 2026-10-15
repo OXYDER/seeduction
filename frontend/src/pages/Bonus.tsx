@@ -3,6 +3,7 @@ import FreeleechCalendar from '../components/FreeleechCalendar';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import TransferPoints from '../components/TransferPoints';
+import UploadCreditPanel from '../components/UploadCreditPanel';
 import { timeAgo } from '../lib/time';
 
 /** Points bonus, boutique, jetons freeleech et suivi des « hit & run ». */
@@ -49,6 +50,8 @@ export default function Bonus() {
         <div className="panel"><div className="muted">Gain actuel</div><div style={{ fontSize: 26, fontWeight: 700 }}>+{data.perHour}<span className="muted"> / heure</span></div><div className="muted">{data.seedingCount} torrent(s) seedé(s)</div></div>
         <div className="panel"><div className="muted">Jetons freeleech</div><div style={{ fontSize: 26, fontWeight: 700 }}>{data.tokens}</div></div>
       </div>
+
+      <UploadCreditPanel />
 
       {data.freeleechUntil && (
         <div className="panel ornate">🎉 <strong>Freeleech global</strong> jusqu'au {new Date(data.freeleechUntil).toLocaleString('fr-FR')} : tes téléchargements ne comptent pas dans ton ratio.</div>

@@ -39,7 +39,7 @@ export const GUIDES_SHARE: WikiSeedCategory = {
         `[b]Étape 8 : le plus important, remettre le torrent en seed[/b]\n` +
         `Après l'envoi, une bannière te l'explique : [b]télécharge le .torrent de Seeduction[/b] (il contient ta passkey) et ajoute-le à ton client en choisissant [b]le même dossier[/b] que tes fichiers. Le client vérifie les fichiers et se met à seeder. Sans seeder, personne ne peut télécharger ton torrent. Pour automatiser tout ça avec plusieurs torrents : [url=/wiki/guide-envoyer-plusieurs]Envoyer plusieurs torrents depuis ton client[/url].\n\n` +
         `[b]Étape 9 : la modération[/b]\n` +
-        `Ton torrent est en attente de validation par le staff. Tu peux le corriger à tout moment depuis sa fiche (bouton « Modifier mon torrent » : nom, catégorie, langue, fiche, présentation, NFO...). Tu es prévenu de l'approbation (ou du rejet, avec le motif).\n\n` +
+        `Ton torrent est en attente de validation par le staff. Tu peux le corriger à tout moment depuis sa fiche (bouton « Modifier mon torrent » : nom, catégorie, langue, fiche, présentation, NFO...). Tu es prévenu de l'approbation (ou du rejet, avec le motif). À l'approbation, si ton client seede le torrent, [b]25 % de sa taille est ajouté à ton upload[/b] (crédit d'envoi), même si personne ne l'a encore téléchargé : voir [url=/wiki/guide-ratio-seed]Garder un bon ratio[/url].\n\n` +
         `[b]Et après ?[/b]\n` +
         `Chaque membre qui le télécharge te fait gagner de l'upload ; les 👍 Merci te rapportent des points. Garde-le en seed.\n\n` +
         `Référence : [url=/wiki/envoyer-un-torrent]Envoyer un torrent[/url].`,

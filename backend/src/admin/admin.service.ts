@@ -18,15 +18,17 @@ import { AccountDeletionService, DELETED_USER_ID } from './account-deletion.serv
 import { normalizeLanguage } from '../common/utils/language';
 import { stripReleaseExtension } from '../common/utils/release-name';
 import { AuthService } from '../auth/auth.service';
+import { UploadCreditService } from '../upload-credit/upload-credit.service';
 
 export interface Actor { userId: string; username: string; role: string }
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService, private social: SocialService, private deletion: AccountDeletionService, private auth: AuthService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService, private social: SocialService, private deletion: AccountDeletionService, private auth: AuthService, private uploadCredit: UploadCreditService) {}
 
   async approveTorrent(id: string) {
-    const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED' } });
+    const previous = await this.prisma.torrent.findUnique({ where: { id }, select: { approvedAt: true } });
+    const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED', ...(previous?.approvedAt ? {} : { approvedAt: new Date() }) } });
     await this.notifications.notify({
       userId: torrent.uploaderId,
       type: 'TORRENT_APPROVED',
@@ -35,6 +37,7 @@ export class AdminService {
       link: `/torrents/${torrent.id}`,
     });
     await this.badges.checkAndAward(torrent.uploaderId);
+    await this.uploadCredit.onApproved(torrent.id); // crédit d'envoi (versé tout de suite si l'uploader seede, sinon rattrapé plus tard)
     // Les abonnés à un acteur, studio, genre... de ce torrent sont prévenus (sans jamais bloquer l'approbation).
     await this.social.notifyFollowers(torrent.id).catch(() => undefined);
     return torrent;
@@ -43,6 +46,7 @@ export class AdminService {
   async rejectTorrent(id: string, reason?: string) {
     const why = (reason ?? '').trim().slice(0, 300);
     const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'REJECTED' } });
+    await this.uploadCredit.revoke(id).catch(() => undefined);
     await this.notifications.notify({
       userId: torrent.uploaderId,
       type: 'TORRENT_REJECTED',
@@ -341,7 +345,8 @@ export class AdminService {
     return this.userDetail(userId);
   }
 
-  deleteTorrent(id: string) {
+  async deleteTorrent(id: string) {
+    await this.uploadCredit.revoke(id).catch(() => undefined); // le crédit d'envoi de ce torrent est repris
     return this.prisma.torrent.delete({ where: { id } });
   }
 
