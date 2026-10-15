@@ -5,7 +5,7 @@ import { useEventDecor, useEventTheme } from '../store/eventTheme';
 import { EventSprite } from './EventDecor';
 
 interface Schedule { enabled: boolean; from: string; to: string; easterBefore: number; easterAfter: number }
-interface Config { enabled: boolean; particles: boolean; timezone: string; events: Record<EventId, Schedule>; force: { id: EventId | null; until: string | null } }
+interface Config { enabled: boolean; particles: boolean; timezone: string; events: Record<EventId, Schedule>; force: { id: EventId | null; until: string | null }; countdown: { enabled: boolean; daysBefore: number } }
 interface Info { id: EventId; name: string; icon: string; blurb: string; defaults: Schedule; window: { start: string; end: string; running: boolean } }
 interface Data { config: Config; active: { id: EventId | null; name: string | null; source: 'forced' | 'schedule' | null; until: string | null }; events: Info[] }
 
@@ -26,6 +26,7 @@ export default function AdminEventThemes() {
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [hours, setHours] = useState<Record<string, string>>({});
+  const [sports, setSports] = useState<{ enabled: boolean } | null>(null);
   const decor = useEventDecor();
   const preview = useEventTheme((s) => s.preview);
   const setPreview = useEventTheme((s) => s.setPreview);
@@ -35,12 +36,17 @@ export default function AdminEventThemes() {
     try { const r = (await api.get('/event-themes/admin')).data as Data; setData(r); setCfg((c) => (c && dirty ? c : r.config)); } catch (e) { setErr(errorOf(e)); }
   }, [dirty]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { api.get('/sports/admin').then((r) => setSports(r.data)).catch(() => undefined); }, []);
+
+  async function toggleSports(enabled: boolean) {
+    try { setSports((await api.put('/sports/admin', { enabled })).data); setMsg(enabled ? '✓ Score des Canadiens activé.' : '✓ Score des Canadiens désactivé.'); } catch (e) { setErr(errorOf(e)); }
+  }
 
   async function save() {
     if (!cfg) return;
     setBusy(true); setErr('');
     try {
-      const r = (await api.put('/event-themes/admin', { enabled: cfg.enabled, particles: cfg.particles, events: cfg.events })).data as Data;
+      const r = (await api.put('/event-themes/admin', { enabled: cfg.enabled, particles: cfg.particles, events: cfg.events, countdown: cfg.countdown })).data as Data;
       setData(r); setCfg(r.config); setDirty(false); setMsg('✓ Calendrier enregistré.'); reload();
     } catch (e) { setErr(errorOf(e)); } finally { setBusy(false); }
   }
@@ -70,6 +76,19 @@ export default function AdminEventThemes() {
         {act.source === 'forced' && <button type="button" className="secondary" onClick={() => force(null, null)} disabled={busy}>⏹ Arrêter l'activation immédiate</button>}
         <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={cfg.enabled} onChange={(e) => { setCfg({ ...cfg, enabled: e.target.checked }); setDirty(true); }} /> Thèmes d'événements activés</label>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center' }} title="Chaque membre peut aussi les couper chez lui (🎨 en haut de l'écran)"><input type="checkbox" checked={cfg.particles} onChange={(e) => { setCfg({ ...cfg, particles: e.target.checked }); setDirty(true); }} /> Particules animées</label>
+      </div>
+
+      <div className="panel" style={{ display: 'grid', gap: 10 }}>
+        <strong>Autres animations</strong>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={cfg.countdown.enabled} onChange={(e) => { setCfg({ ...cfg, countdown: { ...cfg.countdown, enabled: e.target.checked } }); setDirty(true); }} /> 🎆 Compte à rebours du Jour de l'An</label>
+          <span style={{ fontSize: 13 }}>à partir de <input type="number" min={1} max={120} value={cfg.countdown.daysBefore} onChange={(e) => { setCfg({ ...cfg, countdown: { ...cfg.countdown, daysBefore: Number(e.target.value) || 1 } }); setDirty(true); }} style={{ width: 70 }} aria-label="Jours avant minuit" /> jours avant minuit</span>
+          <span className="muted" style={{ fontSize: 12.5 }}>Les dix dernières secondes s'affichent en grand, puis « Bonne année ! » et des confettis à minuit pile ({cfg.timezone}).</span>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={sports?.enabled ?? true} onChange={(e) => toggleSports(e.target.checked)} /> 🏒 Score des Canadiens de Montréal</label>
+          <span className="muted" style={{ fontSize: 12.5 }}>Pastille dans l'en-tête à chaque match (en direct, résultat, prochain match), d'après les données publiques de la LNH. Chaque membre peut la masquer chez lui (🎨).</span>
+        </div>
       </div>
 
       {preview && (

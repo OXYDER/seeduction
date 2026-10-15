@@ -3861,3 +3861,29 @@ html:root[data-ev="nouvelan"][data-evc="on"] { --aurora-a: 140, 100, 20; --auror
 html.ev-static .ev-gitems svg, html.ev-static .ev-mascot { animation: none; }
 @media (prefers-reduced-motion: reduce) { .ev-p, .ev-gitems svg, .ev-mascot { animation: none !important; } .ev-layer { display: none; } }
 @media (max-width: 700px) { .ev-gitems svg:nth-child(n+6) { display: none; } .ev-strip { min-height: 44px; } .ev-mascot { width: 44px; height: 44px; } }
+/* Compte à rebours du Jour de l'An et score des Canadiens (pastilles de l'en-tête) */
+.ev-ny-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 13px; white-space: nowrap; background: rgba(251, 191, 36, 0.16); border: 1px solid rgba(251, 191, 36, 0.5); color: #fde68a; }
+.ev-ny-pill strong { font-variant-numeric: tabular-nums; color: #fff; }
+.ev-ny-pill.done { background: rgba(255, 92, 138, 0.2); border-color: rgba(255, 92, 138, 0.6); color: #fff; animation: ev-bob 1.6s ease-in-out infinite; }
+.ev-count-big { position: fixed; left: 50%; top: 42%; z-index: 1500; transform: translate(-50%, -50%); font-size: clamp(90px, 22vw, 220px); font-weight: 800; color: #fff; text-shadow: 0 0 40px rgba(251, 191, 36, 0.8), 0 4px 0 rgba(0, 0, 0, 0.35); pointer-events: none; animation: ev-countpulse 1s ease-out both; }
+@keyframes ev-countpulse { 0% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.15; } }
+.ev-burst { position: fixed; inset: 0; pointer-events: none; z-index: 1500; overflow: hidden; }
+.ev-burst i { position: absolute; left: 50%; top: 38%; width: 9px; height: 15px; border-radius: 2px; background: var(--c, #ffd54a); animation: ev-boom 2.8s cubic-bezier(.2, .7, .4, 1) forwards; }
+@keyframes ev-boom { 0% { transform: translate(0, 0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--x, 0), var(--y, 300px)) rotate(var(--r, 360deg)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ev-burst, .ev-count-big { display: none; } .ev-ny-pill.done { animation: none; } }
+.mtl-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; white-space: nowrap; color: #fff; background: rgba(175, 30, 45, 0.28); border: 1px solid rgba(220, 60, 75, 0.6); box-shadow: none; }
+.mtl-pill small { font-size: 11.5px; opacity: 0.85; font-weight: 400; }
+.mtl-pill:hover { background: rgba(175, 30, 45, 0.42); filter: none; transform: none; }
+.mtl-pill.win { background: rgba(34, 160, 90, 0.25); border-color: rgba(60, 200, 120, 0.6); }
+.mtl-pill.loss { background: rgba(110, 110, 125, 0.25); border-color: rgba(150, 150, 165, 0.5); }
+.mtl-pill.goal { animation: mtl-goal 0.7s ease-in-out 12; background: rgba(220, 40, 55, 0.7); }
+@keyframes mtl-goal { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+.mtl-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff3b4a; animation: mtl-blink 1.2s ease-in-out infinite; }
+@keyframes mtl-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.mtl-card { padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); display: grid; gap: 6px; }
+.mtl-score { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; font-size: 15px; align-items: baseline; }
+.mtl-score strong { font-size: 24px; font-variant-numeric: tabular-nums; text-align: right; }
+.mtl-sub { margin: 12px 0 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.65; }
+.mtl-row { display: grid; grid-template-columns: 74px 1fr auto; gap: 8px; padding: 4px 0; font-size: 13px; border-top: 1px solid rgba(255, 255, 255, 0.07); align-items: baseline; }
+.mtl-w { color: #6ee7a0; } .mtl-l { color: #fca5a5; }
+@media (max-width: 760px) { .mtl-pill, .ev-ny-pill { padding: 4px 9px; font-size: 12px; } }

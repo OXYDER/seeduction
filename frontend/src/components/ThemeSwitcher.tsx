@@ -49,6 +49,10 @@ export default function ThemeSwitcher() {
               <input type="checkbox" checked={ev.colors} onChange={(e) => ev.setColors(e.target.checked)} />
               Couleurs de l'événement
             </label>
+            <label className="row" style={{ gap: 8, marginTop: 8, fontSize: 12.5, cursor: 'pointer' }}>
+              <input type="checkbox" checked={ev.mtl} onChange={(e) => ev.setMtl(e.target.checked)} />
+              Score des Canadiens en direct
+            </label>
             <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
               {ev.server?.id ? `En ce moment : ${ART[ev.server.id].name}.` : 'Aucun événement en ce moment.'} Halloween, Noël, Saint-Valentin, Pâques, Saint-Jean, fête du Canada.
             </div>

@@ -1,4 +1,4 @@
-import { activeEvent, defaultEventConfig, easterDate, localDate, nextWindow, normalizeEventConfig } from './event-themes';
+import { activeEvent, defaultEventConfig, easterDate, localDate, nextNewYear, nextWindow, normalizeEventConfig } from './event-themes';
 
 const at = (iso: string) => new Date(iso);
 const cfg = () => defaultEventConfig();
@@ -119,5 +119,24 @@ describe('valeurs invalides à l\'enregistrement', () => {
     const prev = defaultEventConfig(); prev.events.halloween = { ...prev.events.halloween, from: '10-01' };
     const c = normalizeEventConfig({ ...prev, events: { ...prev.events, halloween: { ...prev.events.halloween, from: '99-99' } } }, prev);
     expect(c.events.halloween.from).toBe('10-01');
+  });
+});
+
+describe('compte à rebours du Jour de l\'An', () => {
+  it('minuit pile dans le fuseau choisi (heure d\'hiver : UTC-5 à Montréal)', () => {
+    expect(nextNewYear(at('2026-10-14T16:00:00Z'), 'America/Toronto')).toEqual({ at: new Date('2027-01-01T05:00:00Z'), year: 2027 });
+    expect(nextNewYear(at('2026-12-31T23:30:00Z'), 'America/Toronto').year).toBe(2027);
+  });
+  it('autres fuseaux', () => {
+    expect(nextNewYear(at('2026-06-01T00:00:00Z'), 'UTC').at.toISOString()).toBe('2027-01-01T00:00:00.000Z');
+    expect(nextNewYear(at('2026-06-01T00:00:00Z'), 'Europe/Paris').at.toISOString()).toBe('2026-12-31T23:00:00.000Z');
+    expect(nextNewYear(at('2026-06-01T00:00:00Z'), 'Pacific/Kiritimati').at.toISOString()).toBe('2026-12-31T10:00:00.000Z');
+  });
+  it('après minuit, le suivant est dans un an', () => {
+    expect(nextNewYear(at('2027-01-01T05:00:01Z'), 'America/Toronto')).toEqual({ at: new Date('2028-01-01T05:00:00Z'), year: 2028 });
+  });
+  it('réglages : activé, 30 jours par défaut, bornes', () => {
+    expect(defaultEventConfig().countdown).toEqual({ enabled: true, daysBefore: 30 });
+    expect(normalizeEventConfig({ countdown: { enabled: false, daysBefore: 9999 } }).countdown).toEqual({ enabled: false, daysBefore: 120 });
   });
 });

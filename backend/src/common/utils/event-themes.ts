@@ -22,6 +22,8 @@ export interface EventConfig {
   events: Record<EventId, EventSchedule>;
   /** Activation immédiate pour tout le monde, hors calendrier (jusqu'à `until`, ou jusqu'à arrêt manuel si null). */
   force: { id: EventId | null; until: string | null };
+  /** Compte à rebours du Jour de l'An : affiché à partir de `daysBefore` jours avant minuit, avec des confettis à minuit. */
+  countdown: { enabled: boolean; daysBefore: number };
 }
 
 export interface EventInfo { id: EventId; name: string; icon: string; blurb: string; defaults: Omit<EventSchedule, 'enabled'> }
@@ -52,6 +54,7 @@ export function defaultEventConfig(): EventConfig {
     enabled: true, particles: true, timezone: 'America/Toronto',
     events: Object.fromEntries(EVENTS.map((e) => [e.id, { enabled: true, ...e.defaults }])) as Record<EventId, EventSchedule>,
     force: { id: null, until: null },
+    countdown: { enabled: true, daysBefore: 30 },
   };
 }
 
@@ -78,6 +81,10 @@ export function normalizeEventConfig(raw: any, previous?: EventConfig): EventCon
     timezone: typeof r.timezone === 'string' && isValidTimezone(r.timezone) ? r.timezone : base.timezone,
     events,
     force: { id: isEventId(r.force?.id) ? r.force.id : null, until: isEventId(r.force?.id) ? until : null },
+    countdown: {
+      enabled: r.countdown?.enabled === undefined ? previous?.countdown.enabled ?? true : r.countdown.enabled === true,
+      daysBefore: int(r.countdown?.daysBefore, previous?.countdown.daysBefore ?? 30, 1, 120),
+    },
   };
 }
 
@@ -153,4 +160,16 @@ export function nextWindow(id: EventId, now: Date, cfg: EventConfig): { start: s
   const a = fromDayNumber(w.start), b = fromDayNumber(w.end);
   const iso = (x: { y: number; m: number; d: number }) => `${x.y}-${String(x.m).padStart(2, '0')}-${String(x.d).padStart(2, '0')}`;
   return { start: iso(a), end: iso(b), running: false };
+}
+
+/** Prochain minuit du Jour de l'An (le 1er janvier 00:00 dans le fuseau choisi) : l'instant exact, pour que tout le monde compte vers le même moment. */
+export function nextNewYear(now: Date, timezone: string): { at: Date; year: number } {
+  const year = localDate(now, timezone).y + 1;
+  let lo = Date.UTC(year, 0, 1) - 15 * 3600_000; // encore l'année précédente, quel que soit le fuseau
+  let hi = Date.UTC(year, 0, 1) + 15 * 3600_000; // déjà la nouvelle année
+  while (hi - lo > 1000) {
+    const mid = Math.floor((lo + hi) / 2 / 1000) * 1000; // toujours une seconde entière : l'instant est exact à la seconde
+    if (localDate(new Date(mid), timezone).y >= year) hi = mid; else lo = mid;
+  }
+  return { at: new Date(hi), year };
 }

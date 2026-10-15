@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
-import { EVENTS, EVENT_IDS, EventConfig, EventId, activeEvent, nextWindow, normalizeEventConfig } from '../common/utils/event-themes';
+import { EVENTS, EVENT_IDS, EventConfig, EventId, activeEvent, nextNewYear, nextWindow, normalizeEventConfig } from '../common/utils/event-themes';
 
 const KEY = 'eventThemes';
 export interface Actor { userId: string; username: string }
@@ -17,7 +17,12 @@ export class EventThemesService {
     const cfg = await this.config();
     const a = activeEvent(new Date(), cfg);
     const info = a ? EVENTS.find((e) => e.id === a.id) : null;
-    return { id: a?.id ?? null, name: info?.name ?? null, source: a?.source ?? null, until: a?.until ?? null, particles: cfg.particles };
+    const ny = nextNewYear(new Date(), cfg.timezone);
+    return {
+      id: a?.id ?? null, name: info?.name ?? null, source: a?.source ?? null, until: a?.until ?? null, particles: cfg.particles,
+      // Compte à rebours du Jour de l'An : l'instant de minuit et à partir de quand l'afficher (null = désactivé).
+      newYear: cfg.enabled && cfg.countdown.enabled ? { at: ny.at.toISOString(), year: ny.year, daysBefore: cfg.countdown.daysBefore } : null,
+    };
   }
 
   /** Écran d'administration : réglages, et pour chaque événement sa période en cours ou à venir. */
@@ -37,6 +42,7 @@ export class EventThemesService {
       ...cur, ...body,
       events: Object.fromEntries(EVENT_IDS.map((id) => [id, { ...cur.events[id], ...(body?.events?.[id] ?? {}) }])),
       force: cur.force,
+      countdown: { ...cur.countdown, ...(body?.countdown ?? {}) },
     }, cur);
     await this.settings.set(KEY, merged);
     await this.audit.log(actor.userId, 'EVENT_THEMES_CONFIG', { enabled: merged.enabled, particles: merged.particles, events: Object.fromEntries(EVENT_IDS.map((id) => [id, merged.events[id].enabled])) }, ip);

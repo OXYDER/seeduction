@@ -17,6 +17,8 @@ import BrowserNotifications from './BrowserNotifications';
 import IdleWatcher from './IdleWatcher';
 import NotificationAutoRead from './NotificationAutoRead';
 import { EventIcon, EventRoot, EventStrip } from './EventDecor';
+import NewYearCountdown from './NewYearCountdown';
+import CanadiensPill from './CanadiensPill';
 import FriendsMenu from './FriendsMenu';
 import MessagesMenu from './MessagesMenu';
 import { useDonors } from '../store/donors';
@@ -487,6 +489,8 @@ function LayoutInner() {
               </div>
             )}
             <div className="row" style={{ gap: 8 }}>
+              <NewYearCountdown />
+              <CanadiensPill />
               <ThemeSwitcher />
               <SeedObligations />
               <TelegramHeaderLink />
@@ -569,6 +573,8 @@ function LayoutInner() {
           </div>
         )}
         <div className="row">
+          <NewYearCountdown />
+          <CanadiensPill />
           <ThemeSwitcher />
           <SeedObligations />
           <TelegramHeaderLink />
