@@ -16,6 +16,7 @@ import ChatDock from './ChatDock';
 import BrowserNotifications from './BrowserNotifications';
 import IdleWatcher from './IdleWatcher';
 import NotificationAutoRead from './NotificationAutoRead';
+import { EventIcon, EventRoot, EventStrip } from './EventDecor';
 import FriendsMenu from './FriendsMenu';
 import MessagesMenu from './MessagesMenu';
 import { useDonors } from '../store/donors';
@@ -311,6 +312,9 @@ function LayoutInner() {
   }, [accessToken, refreshSupport, location.pathname]);
 
   /** Pastilles d'un lien du menu : messages privés / publics non lus pour « Chat », éléments à traiter pour « Modération ». */
+  // Thème d'événement : une petite icône à la suite de quelques entrées du menu (chacune la sienne).
+  const EVENT_NAV: Record<string, number> = { '/news': 0, '/forum': 1, '/chat': 2, '/requests': 3, '/suggestions': 4, '/soutenir': 5 };
+  const evNav = (to: string) => (to in EVENT_NAV ? <EventIcon seed={EVENT_NAV[to]} size={15} className="ev-nav" /> : null);
   const badgesFor = (item: NavItem) => {
     const fmt = (n: number) => (n > 99 ? '99+' : String(n));
     if (item.to === '/chat') {
@@ -449,7 +453,7 @@ function LayoutInner() {
                 <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={item.label}>
                   <span className="side-icon">{item.icon}</span>
                   <span>{item.label}</span>
-                  {badgesFor(item)}
+                  {evNav(item.to)}{badgesFor(item)}
                 </Link>
               );
             })}
@@ -493,6 +497,7 @@ function LayoutInner() {
           </header>
 
           <main className="container">
+            <EventStrip />
             <Breadcrumbs />
             <div key={location.pathname} className="page-enter">
               <Outlet context={{ profile, categories } satisfies LayoutContext} />
@@ -516,6 +521,7 @@ function LayoutInner() {
           </button>
         </nav>
 
+        <EventRoot />
         <InstallPrompt />
         <ChatRail />
         <ChatDock />
@@ -582,7 +588,7 @@ function LayoutInner() {
             const active = item.match(location.pathname);
             return (
               <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
-                <span className={`nav-icon ${item.cls}`}>{item.icon}</span>{item.label}{badgesFor(item)}
+                <span className={`nav-icon ${item.cls}`}>{item.icon}</span>{item.label}{evNav(item.to)}{badgesFor(item)}
               </Link>
             );
           })}
@@ -624,10 +630,12 @@ function LayoutInner() {
       </div>
 
       <div className="container">
+        <EventStrip />
         <Breadcrumbs />
         <Outlet context={{ profile, categories } satisfies LayoutContext} />
       </div>
 
+      <EventRoot />
       <InstallPrompt />
       <ChatRail />
       <ChatDock />

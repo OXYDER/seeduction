@@ -3826,3 +3826,37 @@ a.mention:hover { background: rgba(var(--acc-rgb, 224, 184, 74), 0.35); }
 @media (max-width: 900px) { .fa-actions { display: inline-flex; } }
 .fa-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
 @media (max-width: 900px) { .fa-layout { grid-template-columns: 1fr; } }
+/* Thèmes d'événements (Halloween, Noël, Saint-Valentin, Pâques, Saint-Jean, fête du Canada) : couleurs, guirlande, mascotte et particules (voir components/EventDecor.tsx) */
+html:root[data-ev="halloween"][data-evc="on"] { --aurora-a: 120, 60, 160; --aurora-b: 230, 110, 20; --aurora-c: 50, 20, 80; --aurora-d: 40, 16, 60; --acc1: #f08a24; --acc2: #8b5cf6; --acc-rgb: 240, 138, 36; --acc2-rgb: 139, 92, 246; --acc-light: #fed7aa; --acc-link: #fdba74; --acc-link-hover: #ffedd5; }
+html:root[data-ev="noel"][data-evc="on"] { --aurora-a: 150, 30, 50; --aurora-b: 20, 120, 80; --aurora-c: 10, 60, 50; --aurora-d: 60, 20, 30; --acc1: #ef4444; --acc2: #10b981; --acc-rgb: 239, 68, 68; --acc2-rgb: 16, 185, 129; --acc-light: #fecaca; --acc-link: #fca5a5; --acc-link-hover: #fee2e2; }
+html:root[data-ev="valentin"][data-evc="on"] { --aurora-a: 190, 40, 110; --aurora-b: 240, 90, 130; --aurora-c: 90, 20, 70; --aurora-d: 70, 14, 50; --acc1: #ff6b9a; --acc2: #f43f5e; --acc-rgb: 255, 107, 154; --acc2-rgb: 244, 63, 94; --acc-light: #fbcfe8; --acc-link: #f9a8d4; --acc-link-hover: #fce7f3; }
+html:root[data-ev="paques"][data-evc="on"] { --aurora-a: 130, 90, 200; --aurora-b: 60, 180, 160; --aurora-c: 60, 40, 100; --aurora-d: 30, 80, 80; --acc1: #c084fc; --acc2: #5eead4; --acc-rgb: 192, 132, 252; --acc2-rgb: 94, 234, 212; --acc-light: #e9d5ff; --acc-link: #d8b4fe; --acc-link-hover: #f3e8ff; }
+html:root[data-ev="saintjean"][data-evc="on"] { --aurora-a: 30, 70, 170; --aurora-b: 90, 130, 230; --aurora-c: 15, 40, 100; --aurora-d: 10, 25, 70; --acc1: #3b82f6; --acc2: #93c5fd; --acc-rgb: 59, 130, 246; --acc2-rgb: 147, 197, 253; --acc-light: #bfdbfe; --acc-link: #93c5fd; --acc-link-hover: #dbeafe; }
+html:root[data-ev="canada"][data-evc="on"] { --aurora-a: 170, 20, 30; --aurora-b: 230, 90, 90; --aurora-c: 80, 16, 24; --aurora-d: 50, 10, 16; --acc1: #ef4444; --acc2: #fda4af; --acc-rgb: 239, 68, 68; --acc2-rgb: 253, 164, 175; --acc-light: #fecaca; --acc-link: #fca5a5; --acc-link-hover: #fee2e2; }
+
+.ev-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.ev-layer { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 40; }
+.ev-p { position: absolute; top: 0; left: 0; will-change: transform; opacity: 0.85; animation-timing-function: linear; animation-iteration-count: infinite; }
+.ev-fall { animation-name: ev-fall; }
+.ev-rise { animation-name: ev-rise; }
+.ev-fly { animation-name: ev-fly; animation-timing-function: ease-in-out; }
+.ev-drift { animation-name: ev-drift; animation-timing-function: ease-in-out; }
+@keyframes ev-fall { 0% { transform: translate3d(0, -12vh, 0) rotate(0deg); } 100% { transform: translate3d(var(--dx, 20px), 112vh, 0) rotate(var(--rot, 360deg)); } }
+@keyframes ev-rise { 0% { transform: translate3d(0, 112vh, 0) rotate(-8deg); } 50% { transform: translate3d(var(--dx, 20px), 55vh, 0) rotate(8deg); } 100% { transform: translate3d(calc(var(--dx, 20px) * -1), -14vh, 0) rotate(-6deg); } }
+@keyframes ev-fly { 0% { transform: translate3d(-80px, 0, 0); } 25% { transform: translate3d(25vw, -26px, 0); } 50% { transform: translate3d(50vw, 14px, 0); } 75% { transform: translate3d(75vw, -20px, 0); } 100% { transform: translate3d(calc(100vw + 80px), 0, 0); } }
+@keyframes ev-drift { 0%, 100% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0.2; } 50% { transform: translate3d(var(--dx, 20px), -30px, 0) scale(1.15); opacity: 0.95; } }
+@keyframes ev-bob { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg) translateY(-3px); } }
+@keyframes ev-sway { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+.ev-strip { display: flex; align-items: flex-start; gap: 8px; min-height: 54px; margin: 0 0 6px; position: relative; pointer-events: none; }
+.ev-gar { flex: 1; position: relative; height: 50px; min-width: 0; }
+.ev-gstring { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 22px; }
+.ev-gitems { position: absolute; left: 0; right: 0; top: 5px; display: flex; justify-content: space-around; padding: 0 12px; }
+.ev-gitems svg { width: 26px; height: 26px; flex: none; transform-origin: 50% 0; animation: ev-sway 3.2s ease-in-out infinite; }
+.ev-gitems svg:nth-child(even) { margin-top: 10px; animation-delay: -1.4s; }
+.ev-mascot { width: 54px; height: 54px; flex: none; transform-origin: 50% 100%; animation: ev-bob 2.6s ease-in-out infinite; }
+.ev-preview-chip { pointer-events: auto; align-self: center; font-size: 12px; padding: 3px 10px; white-space: nowrap; }
+.ev-icon { display: inline-block; vertical-align: -3px; flex: none; }
+.ev-icon.big { width: 22px; height: 22px; }
+html.ev-static .ev-gitems svg, html.ev-static .ev-mascot { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ev-p, .ev-gitems svg, .ev-mascot { animation: none !important; } .ev-layer { display: none; } }
+@media (max-width: 700px) { .ev-gitems svg:nth-child(n+6) { display: none; } .ev-strip { min-height: 44px; } .ev-mascot { width: 44px; height: 44px; } }

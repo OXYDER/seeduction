@@ -6,11 +6,13 @@ import { useAuthStore } from '../store/auth';
 import UserLink from '../components/UserLink';
 import SearchBox from '../components/SearchBox';
 import { LastPostCell } from '../components/ForumBits';
+import { EventIcon, useEventActive } from '../components/EventDecor';
 
 function ForumRow({ f }: { f: any }) {
+  const evt = useEventActive();
   return (
     <tr className={f.unread ? 'forum-unread' : undefined}>
-      <td className="forum-icon" title={f.unread ? 'Nouveaux messages' : 'Aucun nouveau message'}>{f.icon || (f.unread ? '🟡' : '💬')}</td>
+      <td className="forum-icon" title={f.unread ? 'Nouveaux messages' : 'Aucun nouveau message'}>{f.icon || (f.unread ? '🟡' : evt ? <EventIcon seed={f.id} size={22} /> : '💬')}</td>
       <td>
         <Link to={`/forum/f/${f.id}`} className="forum-name">{f.name}</Link>
         {f.unreadCount > 0 && <span className="badge new" style={{ marginLeft: 6 }} title={`${f.unreadCount} sujet(s) non lu(s)`}>{f.unreadCount}</span>}

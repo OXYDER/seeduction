@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import HeaderPopover from './HeaderPopover';
 import { ACCENTS, setAccent, useAccent, useCategoryAccentEnabled, setCategoryAccentEnabled } from '../lib/theme';
+import { useEventTheme } from '../store/eventTheme';
+import { ART } from '../lib/eventArt';
 
 export { THEME_STORAGE_KEY } from '../lib/theme';
 
@@ -10,6 +12,7 @@ export default function ThemeSwitcher() {
   const accent = useAccent();
   const categoryAccent = useCategoryAccentEnabled();
   const ref = useRef<HTMLButtonElement>(null);
+  const ev = useEventTheme();
   const close = useCallback(() => setOpen(false), []);
 
   return (
@@ -35,6 +38,21 @@ export default function ThemeSwitcher() {
             <input type="checkbox" checked={categoryAccent} onChange={(e) => setCategoryAccentEnabled(e.target.checked)} />
             L'accent suit la catégorie parcourue
           </label>
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+            <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Décors de saison</div>
+            <select value={ev.mode} onChange={(e) => ev.setMode(e.target.value as any)} aria-label="Décors de saison" style={{ width: '100%' }}>
+              <option value="full">Complets (particules animées)</option>
+              <option value="static">Sans animation</option>
+              <option value="off">Désactivés</option>
+            </select>
+            <label className="row" style={{ gap: 8, marginTop: 8, fontSize: 12.5, cursor: 'pointer' }}>
+              <input type="checkbox" checked={ev.colors} onChange={(e) => ev.setColors(e.target.checked)} />
+              Couleurs de l'événement
+            </label>
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+              {ev.server?.id ? `En ce moment : ${ART[ev.server.id].name}.` : 'Aucun événement en ce moment.'} Halloween, Noël, Saint-Valentin, Pâques, Saint-Jean, fête du Canada.
+            </div>
+          </div>
         </div>
       </HeaderPopover>
     </>

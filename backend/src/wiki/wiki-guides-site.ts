@@ -280,6 +280,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
       keywords: 'thème, couleur, accent, affichage, vue, grille, liste, compact, infobulle, info-bulle, préférences, profil, compte',
       content:
         `Tu peux adapter l'apparence de Seeduction à tes goûts. Tous ces réglages se trouvent dans [b]Profil > Compte[/b] et te suivent sur tous tes appareils.\n\n` +
+        `[b]Décors de saison[/b]\n` +
+        `À certaines dates, le site se met aux couleurs de la fête : [b]Saint-Valentin[/b] (cœurs et lettres d'amour), [b]Pâques[/b] (lapin, poussin, œufs et tulipes), [b]Saint-Jean-Baptiste[/b] (fleur de lys et feu de joie), [b]fête du Canada[/b] (feuilles d'érable et feux d'artifice), [b]Halloween[/b] (citrouilles, fantômes, chauves-souris) et [b]Noël[/b] (sapin, bonhomme de neige, flocons). Tu verras une guirlande et une mascotte en haut des pages, de petites icônes dans le menu et le forum, et des particules animées qui flottent à l'écran. Tout se règle dans la fenêtre [b]🎨[/b] en haut à droite, sous « Décors de saison » : [b]Complets[/b] (avec animations), [b]Sans animation[/b] ou [b]Désactivés[/b], et une case pour garder ou non les couleurs de l'événement. Le choix est mémorisé sur cet appareil, et les animations s'arrêtent d'elles-mêmes si ton appareil est réglé sur « réduire les animations ». Les dates sont réglées par les administrateurs (Admin > Événements).\n\n` +
         `[b]Thèmes et couleur d'accent[/b]\n` +
         `Choisis le thème (clair ou sombre, selon ceux proposés) et une couleur d'accent : elle colore les boutons et les éléments actifs. Voir [url=/wiki/themes-et-accents]Thèmes et couleurs d'accent[/url].\n\n` +
         `[b]Affichage des listes de torrents[/b]\n` +
