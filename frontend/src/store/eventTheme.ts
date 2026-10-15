@@ -5,6 +5,8 @@ import { COLORS_KEY, MODE_KEY, readColors, readMode, type EventId, type EventMod
 const PREVIEW_KEY = 'seeduction-event-preview';
 const MTL_KEY = 'seeduction-mtl';
 const readMtl = (): boolean => { try { return localStorage.getItem(MTL_KEY) !== '0'; } catch { return true; } };
+const MTLSND_KEY = 'seeduction-mtl-sound';
+const readMtlSound = (): boolean => { try { return localStorage.getItem(MTLSND_KEY) !== '0'; } catch { return true; } };
 const readPreview = (): EventId | null => { try { return (sessionStorage.getItem(PREVIEW_KEY) as EventId) || null; } catch { return null; } };
 
 interface ServerState { id: EventId | null; name: string | null; source: 'forced' | 'schedule' | null; until: string | null; particles: boolean; newYear: { at: string; year: number; daysBefore: number } | null }
@@ -18,11 +20,14 @@ interface EventThemeStore {
   colors: boolean;
   /** Afficher le score des Canadiens (préférence de ce membre, sur cet appareil). */
   mtl: boolean;
+  /** Sirène quand le Canadien marque (préférence de ce membre, sur cet appareil). */
+  mtlSound: boolean;
   load: () => Promise<void>;
   setPreview: (id: EventId | null) => void;
   setMode: (m: EventMode) => void;
   setColors: (v: boolean) => void;
   setMtl: (v: boolean) => void;
+  setMtlSound: (v: boolean) => void;
 }
 
 export const useEventTheme = create<EventThemeStore>((set) => ({
@@ -31,6 +36,7 @@ export const useEventTheme = create<EventThemeStore>((set) => ({
   mode: readMode(),
   colors: readColors(),
   mtl: readMtl(),
+  mtlSound: readMtlSound(),
   async load() {
     try { set({ server: (await api.get('/event-themes/active')).data }); } catch { /* sans réponse : on garde l'état précédent (aucun décor au départ) */ }
   },
@@ -40,6 +46,7 @@ export const useEventTheme = create<EventThemeStore>((set) => ({
   },
   setMode(mode) { try { localStorage.setItem(MODE_KEY, mode); } catch { /* ignoré */ } set({ mode }); },
   setColors(colors) { try { localStorage.setItem(COLORS_KEY, colors ? '1' : '0'); } catch { /* ignoré */ } set({ colors }); },
+  setMtlSound(mtlSound) { try { localStorage.setItem(MTLSND_KEY, mtlSound ? '1' : '0'); } catch { /* ignoré */ } set({ mtlSound }); },
   setMtl(mtl) { try { localStorage.setItem(MTL_KEY, mtl ? '1' : '0'); } catch { /* ignoré */ } set({ mtl }); },
 }));
 

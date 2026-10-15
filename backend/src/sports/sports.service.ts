@@ -7,8 +7,8 @@ const KEY = 'sports';
 const API = 'https://api-web.nhle.com/v1';
 const SCHEDULE_TTL = 15 * 60_000;
 const SCHEDULE_TTL_GAME = 60_000;
-const SCORE_TTL = 15_000;
-const RESULT_TTL = 10_000;
+const SCORE_TTL = 5_000;
+const RESULT_TTL = 4_000;
 const TIMEOUT_MS = 8_000;
 
 export interface SportsConfig { enabled: boolean; team: string }
@@ -32,6 +32,9 @@ export class SportsService {
   private scores = new Map<string, { at: number; raw: any[] }>();
   private result: { at: number; team: string; payload: any } | null = null;
   private inflight: Promise<any> | null = null;
+  /** Moment où le tableau des scores en direct a été lu (le chrono du match est exact à cet instant). */
+  private liveAt = 0;
+  private logos = new Map<string, { at: number; svg: string }>();
 
   constructor(private settings: SettingsService, private audit: AuditService) {}
 
@@ -52,6 +55,27 @@ export class SportsService {
       const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Seeduction/1.0 (score des Canadiens)', Accept: 'application/json' } });
       if (!r.ok) throw new Error(`LNH : réponse ${r.status}`);
       return await r.json();
+    } finally { clearTimeout(timer); }
+  }
+
+  /** Logo d'une équipe de la LNH (SVG pour fond sombre), gardé en mémoire : les membres ne contactent jamais la LNH directement. */
+  async logo(abbrev: string): Promise<string | null> {
+    if (!/^[A-Z]{2,3}$/.test(abbrev)) return null;
+    const hit = this.logos.get(abbrev);
+    if (hit && Date.now() - hit.at < 7 * 86400_000) return hit.svg;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const r = await fetch(`https://assets.nhle.com/logos/nhl/svg/${abbrev}_dark.svg`, { signal: ctrl.signal, headers: { 'User-Agent': 'Seeduction/1.0 (score des Canadiens)' } });
+      if (!r.ok) throw new Error(`LNH : réponse ${r.status}`);
+      const svg = await r.text();
+      if (!svg.trimStart().startsWith('<svg') && !svg.trimStart().startsWith('<?xml')) throw new Error('logo invalide');
+      if (this.logos.size > 80) this.logos.clear();
+      this.logos.set(abbrev, { at: Date.now(), svg });
+      return svg;
+    } catch (e) {
+      this.logger.warn(`Logo ${abbrev} indisponible : ${(e as Error).message}`);
+      return hit?.svg ?? null;
     } finally { clearTimeout(timer); }
   }
 
@@ -77,6 +101,7 @@ export class SportsService {
         catch (e: any) { this.logger.debug(`Scores en direct indisponibles (${e?.message ?? e})`); }
       }
       for (const g of c?.raw ?? []) byId.set(Number(g.id), g);
+      if (c) this.liveAt = Math.max(this.liveAt, c.at);
     }
     return games.map((g) => {
       const live = byId.get(g.id);
@@ -90,15 +115,15 @@ export class SportsService {
     const cfg = await this.config();
     if (!cfg.enabled) return { enabled: false };
     const now = new Date();
-    if (this.result && this.result.team === cfg.team && now.getTime() - this.result.at < RESULT_TTL) return this.result.payload;
+    if (this.result && this.result.team === cfg.team && now.getTime() - this.result.at < RESULT_TTL) return { ...this.result.payload, serverNow: now.toISOString() };
     if (!this.inflight) {
       this.inflight = (async () => {
         try {
           const games = await this.overlayLive(cfg.team, await this.loadSchedule(cfg.team, now), now);
           const summary: Summary = summarize(games, now);
-          const payload = { enabled: true, available: true, stale: false, team: { abbrev: cfg.team, name: TEAMS[cfg.team] }, ...summary, updatedAt: now.toISOString() };
+          const payload = { enabled: true, available: true, stale: false, team: { abbrev: cfg.team, name: TEAMS[cfg.team] }, ...summary, updatedAt: now.toISOString(), clockAt: new Date(this.liveAt || now.getTime()).toISOString() };
           this.result = { at: now.getTime(), team: cfg.team, payload };
-          return payload;
+          return { ...payload, serverNow: new Date().toISOString() };
         } catch (e: any) {
           this.logger.warn(`LNH injoignable : ${e?.message ?? e}`);
           return this.result ? { ...this.result.payload, stale: true } : { enabled: true, available: false };

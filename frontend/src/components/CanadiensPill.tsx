@@ -1,3 +1,4 @@
+import { playGoalHorn, primeGoalHorn } from '../lib/goalHorn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useEventTheme } from '../store/eventTheme';
@@ -8,7 +9,18 @@ interface Game {
   id: number; date: string; startUtc: string; state: 'FUT' | 'PRE' | 'LIVE' | 'FINAL' | 'PPD'; kind: string; home: Side; away: Side; venue: string | null; tv: string[];
   period: string | null; clock: { remaining: string; running: boolean; intermission: boolean } | null; outcome: string | null; won: boolean | null; side: 'home' | 'away';
 }
-interface Data { enabled: boolean; available?: boolean; stale?: boolean; live: Game | null; featured: Game | null; last: Game[]; next: Game[]; updatedAt?: string }
+interface Data { enabled: boolean; available?: boolean; stale?: boolean; live: Game | null; featured: Game | null; last: Game[]; next: Game[]; updatedAt?: string; clockAt?: string; serverNow?: string }
+
+/** Chrono affiché : le temps restant donné par la LNH, diminué du temps écoulé depuis (les horloges du serveur donnent l'âge exact de la donnée, celle de l'appareil fait avancer les secondes). */
+function clockLeft(g: Game, d: Data, receivedAt: number, now: number): string {
+  const c = g.clock;
+  if (!c) return '';
+  const m = /^(\d+):(\d{2})$/.exec(c.remaining);
+  if (!m || !c.running) return c.remaining;
+  const age = d.clockAt && d.serverNow ? Math.max(0, (Date.parse(d.serverNow) - Date.parse(d.clockAt)) / 1000) : 0;
+  const left = Math.max(0, Number(m[1]) * 60 + Number(m[2]) - Math.floor(age + (now - receivedAt) / 1000));
+  return `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;
+}
 
 const mine = (g: Game) => (g.side === 'home' ? g.home : g.away);
 const other = (g: Game) => (g.side === 'home' ? g.away : g.home);
@@ -17,14 +29,24 @@ const dayFmt = (iso: string) => new Date(iso).toLocaleDateString('fr-CA', { week
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const KIND: Record<string, string> = { PRESAISON: 'Pré-saison', SERIES: 'Séries', SAISON: '', AUTRE: '' };
 
-/** Texte court de l'en-tête. */
-function pillText(g: Game): { text: string; tone: 'live' | 'win' | 'loss' | 'soon' } {
+function Logo({ abbrev, name, size = 20 }: { abbrev: string; name?: string; size?: number }) {
+  return <img className="mtl-logo" src={`/api/sports/logo/${abbrev}`} alt={name ?? abbrev} title={name ?? abbrev} width={size} height={size} loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />;
+}
+
+const suffix = (g: Game) => (g.outcome && g.outcome !== 'Final' ? (g.outcome.includes('tirs') ? ' (TB)' : ' (Pr.)') : '');
+
+/** Contenu de la pastille : logos des deux équipes et score (sur téléphone, on ne garde que ça). */
+function pillBody(g: Game): { body: JSX.Element; tone: 'live' | 'win' | 'loss' | 'soon' } {
   const m = mine(g), o = other(g);
-  if (g.state === 'LIVE') return { text: `${m.abbrev} ${m.score ?? 0} – ${o.score ?? 0} ${o.abbrev}`, tone: 'live' };
-  if (g.state === 'FINAL') return { text: `Final · ${m.abbrev} ${m.score ?? 0} – ${o.score ?? 0} ${o.abbrev}${g.outcome && g.outcome !== 'Final' ? ` ${g.outcome.includes('tirs') ? '(TB)' : '(Pr.)'}` : ''}`, tone: g.won ? 'win' : 'loss' };
+  if (g.state === 'LIVE' || g.state === 'FINAL') {
+    return {
+      tone: g.state === 'LIVE' ? 'live' : g.won ? 'win' : 'loss',
+      body: <>{g.state === 'FINAL' && <span className="mtl-opt">Final · </span>}<Logo abbrev={m.abbrev} name={m.name} /> <strong className="mtl-num">{m.score ?? 0}</strong>–<strong className="mtl-num">{o.score ?? 0}</strong> <Logo abbrev={o.abbrev} name={o.name} />{g.state === 'FINAL' && suffix(g) && <small>{suffix(g)}</small>}</>,
+    };
+  }
   const start = new Date(g.startUtc);
   const when = sameDay(start, new Date()) ? timeFmt(g.startUtc) : `${dayFmt(g.startUtc)} ${timeFmt(g.startUtc)}`;
-  return { text: `${g.side === 'home' ? `${m.abbrev} vs ${o.abbrev}` : `${m.abbrev} @ ${o.abbrev}`} · ${when}`, tone: 'soon' };
+  return { tone: 'soon', body: <><Logo abbrev={m.abbrev} name={m.name} /> <span className="muted">{g.side === 'home' ? 'vs' : '@'}</span> <Logo abbrev={o.abbrev} name={o.name} /> <small className="mtl-when">{when}</small></> };
 }
 
 function GameRow({ g }: { g: Game }) {
@@ -32,9 +54,9 @@ function GameRow({ g }: { g: Game }) {
   return (
     <div className="mtl-row">
       <span className="muted">{dayFmt(g.startUtc)}</span>
-      <span>{g.side === 'home' ? 'vs' : '@'} {o.name}{KIND[g.kind] ? <em className="muted"> · {KIND[g.kind]}</em> : null}</span>
+      <span className="mtl-team"><span className="muted">{g.side === 'home' ? 'vs' : '@'}</span> <Logo abbrev={o.abbrev} name={o.name} size={18} /> {o.name}{KIND[g.kind] ? <em className="muted"> · {KIND[g.kind]}</em> : null}</span>
       {g.state === 'FINAL'
-        ? <strong className={g.won ? 'mtl-w' : 'mtl-l'}>{g.won ? 'V' : 'D'} {m.score}–{o.score}{g.outcome && g.outcome !== 'Final' ? (g.outcome.includes('tirs') ? ' (TB)' : ' (Pr.)') : ''}</strong>
+        ? <strong className={g.won ? 'mtl-w' : 'mtl-l'}>{g.won ? 'V' : 'D'} {m.score}–{o.score}{suffix(g)}</strong>
         : <span className="muted">{timeFmt(g.startUtc)}{g.tv.length ? ` · ${g.tv.slice(0, 2).join(', ')}` : ''}</span>}
     </div>
   );
@@ -43,10 +65,15 @@ function GameRow({ g }: { g: Game }) {
 /** Score des Canadiens de Montréal à chaque match (données de la LNH) : une pastille dans l'en-tête, et au clic le détail, les derniers résultats et les prochains matchs. */
 export default function CanadiensPill() {
   const enabled = useEventTheme((s) => s.mtl);
+  const sound = useEventTheme((s) => s.mtlSound);
+  const soundRef = useRef(sound);
+  soundRef.current = sound;
   const [data, setData] = useState<Data | null>(null);
   const [open, setOpen] = useState(false);
   const [goal, setGoal] = useState(false);
-  const prev = useRef<{ id: number; score: number } | null>(null);
+  const [receivedAt, setReceivedAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const prev = useRef<{ id: number; score: number; at: number } | null>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
 
@@ -55,16 +82,19 @@ export default function CanadiensPill() {
     try {
       const d = (await api.get('/sports/canadiens')).data as Data;
       setData(d);
+      setReceivedAt(Date.now());
       const g = d.live;
       if (g) {
         const score = mine(g).score ?? 0;
-        if (prev.current && prev.current.id === g.id && score > prev.current.score) { setGoal(true); window.setTimeout(() => setGoal(false), 9000); }
-        prev.current = { id: g.id, score };
+        if (prev.current && prev.current.id === g.id && score > prev.current.score) { setGoal(true); if (soundRef.current && Date.now() - prev.current.at < 60_000) playGoalHorn(); /* pas de sirène pour un but marqué pendant que l'onglet dormait */ window.setTimeout(() => setGoal(false), 9000); }
+        prev.current = { id: g.id, score, at: Date.now() };
       } else prev.current = null;
       const f = d.featured;
-      return f && (f.state === 'LIVE' || (f.state !== 'FINAL' && new Date(f.startUtc).getTime() - Date.now() < 3600_000)) ? 20_000 : 5 * 60_000;
+      return f && (f.state === 'LIVE' || (f.state !== 'FINAL' && new Date(f.startUtc).getTime() - Date.now() < 3600_000)) ? (f.state === 'LIVE' ? 10_000 : 20_000) : 5 * 60_000;
     } catch { return 60_000; /* la LNH ou le serveur ne répond pas : on garde ce qu'on a et on réessaie */ }
   }, []);
+
+  useEffect(() => { if (enabled && sound) primeGoalHorn(); }, [enabled, sound]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -80,29 +110,36 @@ export default function CanadiensPill() {
     return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVis); };
   }, [enabled, load]);
 
+  const ticking = enabled && data?.featured?.state === 'LIVE' && !!data.featured.clock?.running;
+  useEffect(() => {
+    if (!ticking) return;
+    const t = window.setInterval(() => { if (!document.hidden) setNow(Date.now()); }, 1000);
+    return () => clearInterval(t);
+  }, [ticking]);
+
   if (!enabled || !data || !data.enabled || !data.available || !data.featured) return null;
   const g = data.featured;
-  const { text, tone } = pillText(g);
+  const { body, tone } = pillBody(g);
   const m = mine(g), o = other(g);
 
   return (
     <>
       <button ref={btn} type="button" className={`mtl-pill ${tone}${goal ? ' goal' : ''}`} onClick={() => setOpen((v) => !v)} aria-expanded={open} title="Canadiens de Montréal : score et calendrier">
         {tone === 'live' && <i className="mtl-dot" aria-hidden="true" />}
-        <span aria-hidden="true">🏒</span> {goal ? <strong>BUT ! </strong> : null}{text}
-        {g.state === 'LIVE' && g.period && <small>{g.clock?.intermission ? 'Entracte' : g.period.replace(' période', '')} {g.clock?.remaining}</small>}
+        <span className="mtl-opt" aria-hidden="true">🏒</span>{goal ? <strong className="mtl-but">BUT !</strong> : null}{body}
+        {g.state === 'LIVE' && g.period && <small className="mtl-per">{g.clock?.intermission ? 'Entr.' : g.period.replace(' période', '')} {clockLeft(g, data, receivedAt, now)}</small>}
       </button>
       <HeaderPopover open={open} anchorRef={btn} onClose={close} width={380} label="Canadiens de Montréal">
         <div className="hp-head"><strong>🏒 Canadiens de Montréal</strong>{data.stale && <span className="muted" style={{ fontSize: 11.5 }}>données en attente de la LNH</span>}</div>
         <div style={{ padding: '10px 14px', overflowY: 'auto' }}>
           <div className="mtl-card">
             <div className="muted" style={{ fontSize: 12 }}>
-              {g.state === 'LIVE' ? `En direct · ${g.clock?.intermission ? 'Entracte' : g.period ?? ''} ${g.clock?.remaining ?? ''}` : g.state === 'FINAL' ? (g.outcome ?? 'Final') : 'À venir'}
+              {g.state === 'LIVE' ? `En direct · ${g.clock?.intermission ? 'Entracte' : g.period ?? ''} ${clockLeft(g, data, receivedAt, now)}` : g.state === 'FINAL' ? (g.outcome ?? 'Final') : 'À venir'}
               {KIND[g.kind] ? ` · ${KIND[g.kind]}` : ''}
             </div>
             <div className="mtl-score">
-              <span>{m.name}</span><strong>{g.state === 'FUT' || g.state === 'PRE' ? '–' : m.score ?? 0}</strong>
-              <span>{o.name}</span><strong>{g.state === 'FUT' || g.state === 'PRE' ? '–' : o.score ?? 0}</strong>
+              <span className="mtl-team"><Logo abbrev={m.abbrev} name={m.name} size={28} /> {m.name}</span><strong>{g.state === 'FUT' || g.state === 'PRE' ? '–' : m.score ?? 0}</strong>
+              <span className="mtl-team"><Logo abbrev={o.abbrev} name={o.name} size={28} /> {o.name}</span><strong>{g.state === 'FUT' || g.state === 'PRE' ? '–' : o.score ?? 0}</strong>
             </div>
             <div className="muted" style={{ fontSize: 12 }}>
               {g.state === 'FUT' || g.state === 'PRE' ? `${dayFmt(g.startUtc)} à ${timeFmt(g.startUtc)}` : g.state === 'LIVE' && m.sog !== null ? `Tirs au but : ${m.abbrev} ${m.sog} – ${o.sog ?? 0} ${o.abbrev}` : ''}
@@ -111,7 +148,7 @@ export default function CanadiensPill() {
           </div>
           {data.last.length > 0 && <><div className="mtl-sub">Derniers résultats</div>{data.last.map((x) => <GameRow key={x.id} g={x} />)}</>}
           {data.next.length > 0 && <><div className="mtl-sub">Prochains matchs</div>{data.next.filter((x) => x.id !== g.id || g.state === 'FINAL').map((x) => <GameRow key={x.id} g={x} />)}</>}
-          <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Données : LNH. Mises à jour toutes les 20 secondes pendant un match.</div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Données : LNH. Le chrono avance en direct ; score mis à jour toutes les 10 secondes pendant un match.</div>
         </div>
       </HeaderPopover>
     </>
