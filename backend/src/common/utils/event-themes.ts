@@ -1,7 +1,7 @@
 // Thèmes d'événements (Halloween, Noël, Saint-Valentin...) : calendrier et choix du thème actif. Logique pure, sans base, pour pouvoir la tester.
 // Le service (src/event-themes) l'applique à la configuration enregistrée ; les dessins et les couleurs vivent côté site (frontend/src/lib/eventArt.ts).
 
-export type EventId = 'valentin' | 'paques' | 'saintjean' | 'canada' | 'halloween' | 'noel';
+export type EventId = 'valentin' | 'paques' | 'saintjean' | 'canada' | 'halloween' | 'noel' | 'nouvelan';
 
 export interface EventSchedule {
   enabled: boolean;
@@ -34,6 +34,7 @@ export const EVENTS: EventInfo[] = [
   { id: 'canada', name: 'Fête du Canada', icon: '🍁', blurb: 'Feuilles d\'érable, feux d\'artifice (1er juillet)', defaults: { from: '06-27', to: '07-02', easterBefore: 0, easterAfter: 0 } },
   { id: 'halloween', name: 'Halloween', icon: '🎃', blurb: 'Citrouilles, fantômes, chauves-souris', defaults: { from: '10-15', to: '11-01', easterBefore: 0, easterAfter: 0 } },
   { id: 'noel', name: 'Noël', icon: '🎄', blurb: 'Sapin, bonhomme de neige, flocons', defaults: { from: '12-01', to: '12-27', easterBefore: 0, easterAfter: 0 } },
+  { id: 'nouvelan', name: 'Jour de l\'An', icon: '🥂', blurb: 'Champagne, confettis, horloge de minuit', defaults: { from: '12-28', to: '01-03', easterBefore: 0, easterAfter: 0 } },
 ];
 export const EVENT_IDS = EVENTS.map((e) => e.id);
 const isEventId = (v: any): v is EventId => EVENT_IDS.includes(v);

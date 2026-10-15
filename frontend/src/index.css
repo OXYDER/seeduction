@@ -3834,6 +3834,7 @@ html:root[data-ev="paques"][data-evc="on"] { --aurora-a: 130, 90, 200; --aurora-
 html:root[data-ev="saintjean"][data-evc="on"] { --aurora-a: 30, 70, 170; --aurora-b: 90, 130, 230; --aurora-c: 15, 40, 100; --aurora-d: 10, 25, 70; --acc1: #3b82f6; --acc2: #93c5fd; --acc-rgb: 59, 130, 246; --acc2-rgb: 147, 197, 253; --acc-light: #bfdbfe; --acc-link: #93c5fd; --acc-link-hover: #dbeafe; }
 html:root[data-ev="canada"][data-evc="on"] { --aurora-a: 170, 20, 30; --aurora-b: 230, 90, 90; --aurora-c: 80, 16, 24; --aurora-d: 50, 10, 16; --acc1: #ef4444; --acc2: #fda4af; --acc-rgb: 239, 68, 68; --acc2-rgb: 253, 164, 175; --acc-light: #fecaca; --acc-link: #fca5a5; --acc-link-hover: #fee2e2; }
 
+html:root[data-ev="nouvelan"][data-evc="on"] { --aurora-a: 140, 100, 20; --aurora-b: 120, 80, 220; --aurora-c: 40, 30, 90; --aurora-d: 25, 20, 60; --acc1: #fbbf24; --acc2: #a78bfa; --acc-rgb: 251, 191, 36; --acc2-rgb: 167, 139, 250; --acc-light: #fde68a; --acc-link: #fcd34d; --acc-link-hover: #fef3c7; }
 .ev-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 .ev-layer { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 40; }
 .ev-p { position: absolute; top: 0; left: 0; will-change: transform; opacity: 0.85; animation-timing-function: linear; animation-iteration-count: infinite; }

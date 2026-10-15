@@ -59,6 +59,21 @@ describe('thème actif selon la date', () => {
   });
 });
 
+describe('Jour de l\'An', () => {
+  it('du 28 décembre au 3 janvier, à cheval sur le changement d\'année', () => {
+    expect(activeEvent(at('2026-12-27T16:00:00Z'), cfg())?.id).toBe('noel');
+    expect(activeEvent(at('2026-12-28T16:00:00Z'), cfg())?.id).toBe('nouvelan');
+    expect(activeEvent(at('2026-12-31T23:00:00Z'), cfg())?.id).toBe('nouvelan');
+    expect(activeEvent(at('2027-01-01T16:00:00Z'), cfg())?.id).toBe('nouvelan');
+    expect(activeEvent(at('2027-01-03T16:00:00Z'), cfg())?.id).toBe('nouvelan');
+    expect(activeEvent(at('2027-01-04T16:00:00Z'), cfg())).toBeNull();
+  });
+  it('une ancienne configuration sans cet événement le reçoit avec ses valeurs par défaut', () => {
+    const old: any = defaultEventConfig(); delete old.events.nouvelan;
+    expect(normalizeEventConfig(old).events.nouvelan).toMatchObject({ enabled: true, from: '12-28', to: '01-03' });
+  });
+});
+
 describe('forçage manuel', () => {
   it('l\'emporte sur le calendrier, même hors période', () => {
     const c = cfg(); c.force = { id: 'noel', until: null };
