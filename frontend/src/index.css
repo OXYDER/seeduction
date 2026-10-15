@@ -3887,7 +3887,8 @@ html.ev-static .ev-gitems svg, html.ev-static .ev-mascot { animation: none; }
 .mtl-row { display: grid; grid-template-columns: 74px 1fr auto; gap: 8px; padding: 4px 0; font-size: 13px; border-top: 1px solid rgba(255, 255, 255, 0.07); align-items: baseline; }
 .mtl-w { color: #6ee7a0; } .mtl-l { color: #fca5a5; }
 @media (max-width: 760px) { .mtl-pill, .ev-ny-pill { padding: 4px 9px; font-size: 12px; } }
-.mtl-logo { display: inline-block; flex: none; object-fit: contain; vertical-align: middle; }
+.mtl-logo { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; background: rgba(255, 255, 255, 0.94); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); vertical-align: middle; }
+.mtl-logo img { display: block; object-fit: contain; }
 .mtl-pill { gap: 5px; flex: none; }
 .mtl-num { font-variant-numeric: tabular-nums; }
 .mtl-but { color: #fff; letter-spacing: 0.04em; }
@@ -3896,7 +3897,6 @@ html.ev-static .ev-gitems svg, html.ev-static .ev-mascot { animation: none; }
 @media (max-width: 760px) {
   .mtl-opt, .mtl-when { display: none; }
   .mtl-pill { padding: 3px 8px; gap: 4px; }
-  .mtl-pill .mtl-logo { width: 22px; height: 22px; }
   .mtl-pill .mtl-per { font-size: 12px; }
   /* Sur téléphone, les pastilles ont leur propre ligne au-dessus des boutons, pour rester lisibles. */
   .row:has(> .mtl-pill), .row:has(> .ev-ny-pill) { flex-wrap: wrap; row-gap: 6px; }

@@ -58,7 +58,7 @@ export class SportsService {
     } finally { clearTimeout(timer); }
   }
 
-  /** Logo d'une équipe de la LNH (SVG pour fond sombre), gardé en mémoire : les membres ne contactent jamais la LNH directement. */
+  /** Logo d'une équipe de la LNH (SVG en couleurs), gardé en mémoire : les membres ne contactent jamais la LNH directement. */
   async logo(abbrev: string): Promise<string | null> {
     if (!/^[A-Z]{2,3}$/.test(abbrev)) return null;
     const hit = this.logos.get(abbrev);
@@ -66,7 +66,7 @@ export class SportsService {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
-      const r = await fetch(`https://assets.nhle.com/logos/nhl/svg/${abbrev}_dark.svg`, { signal: ctrl.signal, headers: { 'User-Agent': 'Seeduction/1.0 (score des Canadiens)' } });
+      const r = await fetch(`https://assets.nhle.com/logos/nhl/svg/${abbrev}_light.svg`, { signal: ctrl.signal, headers: { 'User-Agent': 'Seeduction/1.0 (score des Canadiens)' } });
       if (!r.ok) throw new Error(`LNH : réponse ${r.status}`);
       const svg = await r.text();
       if (!svg.trimStart().startsWith('<svg') && !svg.trimStart().startsWith('<?xml')) throw new Error('logo invalide');

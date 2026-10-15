@@ -30,7 +30,11 @@ const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const KIND: Record<string, string> = { PRESAISON: 'Pré-saison', SERIES: 'Séries', SAISON: '', AUTRE: '' };
 
 function Logo({ abbrev, name, size = 20 }: { abbrev: string; name?: string; size?: number }) {
-  return <img className="mtl-logo" src={`/api/sports/logo/${abbrev}`} alt={name ?? abbrev} title={name ?? abbrev} width={size} height={size} loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />;
+  return (
+    <span className="mtl-logo" style={{ width: size + 6, height: size + 6 }} title={name ?? abbrev}>
+      <img src={`/api/sports/logo/${abbrev}`} alt={name ?? abbrev} width={size} height={size} loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
+    </span>
+  );
 }
 
 const suffix = (g: Game) => (g.outcome && g.outcome !== 'Final' ? (g.outcome.includes('tirs') ? ' (TB)' : ' (Pr.)') : '');
@@ -54,7 +58,7 @@ function GameRow({ g }: { g: Game }) {
   return (
     <div className="mtl-row">
       <span className="muted">{dayFmt(g.startUtc)}</span>
-      <span className="mtl-team"><span className="muted">{g.side === 'home' ? 'vs' : '@'}</span> <Logo abbrev={o.abbrev} name={o.name} size={18} /> {o.name}{KIND[g.kind] ? <em className="muted"> · {KIND[g.kind]}</em> : null}</span>
+      <span className="mtl-team"><span className="muted">{g.side === 'home' ? 'vs' : '@'}</span> <Logo abbrev={o.abbrev} name={o.name} size={16} /> {o.name}{KIND[g.kind] ? <em className="muted"> · {KIND[g.kind]}</em> : null}</span>
       {g.state === 'FINAL'
         ? <strong className={g.won ? 'mtl-w' : 'mtl-l'}>{g.won ? 'V' : 'D'} {m.score}–{o.score}{suffix(g)}</strong>
         : <span className="muted">{timeFmt(g.startUtc)}{g.tv.length ? ` · ${g.tv.slice(0, 2).join(', ')}` : ''}</span>}
@@ -126,7 +130,7 @@ export default function CanadiensPill() {
     <>
       <button ref={btn} type="button" className={`mtl-pill ${tone}${goal ? ' goal' : ''}`} onClick={() => setOpen((v) => !v)} aria-expanded={open} title="Canadiens de Montréal : score et calendrier">
         {tone === 'live' && <i className="mtl-dot" aria-hidden="true" />}
-        <span className="mtl-opt" aria-hidden="true">🏒</span>{goal ? <strong className="mtl-but">BUT !</strong> : null}{body}
+        {goal ? <strong className="mtl-but">BUT !</strong> : null}{body}
         {g.state === 'LIVE' && g.period && <small className="mtl-per">{g.clock?.intermission ? 'Entr.' : g.period.replace(' période', '')} {clockLeft(g, data, receivedAt, now)}</small>}
       </button>
       <HeaderPopover open={open} anchorRef={btn} onClose={close} width={380} label="Canadiens de Montréal">
@@ -138,8 +142,8 @@ export default function CanadiensPill() {
               {KIND[g.kind] ? ` · ${KIND[g.kind]}` : ''}
             </div>
             <div className="mtl-score">
-              <span className="mtl-team"><Logo abbrev={m.abbrev} name={m.name} size={28} /> {m.name}</span><strong>{g.state === 'FUT' || g.state === 'PRE' ? '–' : m.score ?? 0}</strong>
-              <span className="mtl-team"><Logo abbrev={o.abbrev} name={o.name} size={28} /> {o.name}</span><strong>{g.state === 'FUT' || g.state === 'PRE' ? '–' : o.score ?? 0}</strong>
+              <span className="mtl-team"><Logo abbrev={m.abbrev} name={m.name} size={30} /> {m.name}</span><strong>{g.state === 'FUT' || g.state === 'PRE' ? '–' : m.score ?? 0}</strong>
+              <span className="mtl-team"><Logo abbrev={o.abbrev} name={o.name} size={30} /> {o.name}</span><strong>{g.state === 'FUT' || g.state === 'PRE' ? '–' : o.score ?? 0}</strong>
             </div>
             <div className="muted" style={{ fontSize: 12 }}>
               {g.state === 'FUT' || g.state === 'PRE' ? `${dayFmt(g.startUtc)} à ${timeFmt(g.startUtc)}` : g.state === 'LIVE' && m.sog !== null ? `Tirs au but : ${m.abbrev} ${m.sog} – ${o.sog ?? 0} ${o.abbrev}` : ''}
