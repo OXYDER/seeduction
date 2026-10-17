@@ -2118,3 +2118,72 @@ model QuizPlay {
   @@index([day, status, correct])
   @@index([userId, createdAt])
 }
+
+/// Un match de la LNH ouvert aux pronostics gratuits (toutes les équipes de la ligue, pas seulement le Canadien).
+model NhlGame {
+  id         Int       @id // numéro du match dans l'API de la LNH
+  day        String    @db.VarChar(10) // AAAA-MM-JJ (heure de l'Est)
+  startUtc   DateTime
+  kind       String    @db.VarChar(12)
+  homeAbbrev String    @db.VarChar(4)
+  awayAbbrev String    @db.VarChar(4)
+  homeName   String    @db.VarChar(60)
+  awayName   String    @db.VarChar(60)
+  status     String    @default("OPEN") @db.VarChar(10) // OPEN | SETTLED | VOID
+  homeScore  Int?
+  awayScore  Int?
+  outcome    String?   @db.VarChar(30)
+  settledAt  DateTime?
+  createdAt  DateTime  @default(now())
+  picks      NhlPick[]
+
+  @@index([day])
+  @@index([status, startUtc])
+}
+
+/// Le pronostic d'un membre pour un match : le vainqueur choisi (H = domicile, A = visiteur). Modifiable jusqu'au début du match.
+model NhlPick {
+  id        String    @id @default(uuid())
+  userId    String
+  game      NhlGame   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId    Int
+  day       String    @db.VarChar(10)
+  pick      String    @db.VarChar(1)
+  status    String    @default("PENDING") @db.VarChar(10) // PENDING | WON | LOST | VOID
+  points    Int       @default(0) // points versés (plafonds appliqués)
+  streak    Int       @default(0) // bonnes prédictions de suite avant celle-ci
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  settledAt DateTime?
+
+  @@unique([userId, gameId])
+  @@index([userId, day])
+  @@index([day, status])
+  @@index([userId, settledAt])
+}
+
+/// Bonus d'une journée parfaite (toutes les prédictions du jour gagnées) : une seule fois par membre et par jour.
+model NhlDayBonus {
+  id        String   @id @default(uuid())
+  userId    String
+  day       String   @db.VarChar(10)
+  points    Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, day])
+}
+
+/// Prix hebdomadaire du podium des pronostics : un seul versement par semaine et par rang.
+model NhlWeekPrize {
+  id        String   @id @default(uuid())
+  weekStart String   @db.VarChar(10) // lundi de la semaine concernée
+  userId    String
+  rank      Int
+  points    Int
+  wins      Int
+  picks     Int
+  createdAt DateTime @default(now())
+
+  @@unique([weekStart, rank])
+  @@unique([weekStart, userId])
+}

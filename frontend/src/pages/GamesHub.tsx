@@ -15,6 +15,7 @@ interface Summary {
   hilo: { enabled: boolean; gamesToday: number; bestStreak: { username: string; step: number } | null; myGames: number; myBest: number; myWon: number; activeStep: number | null; dailyFreeAvailable: boolean };
   wheel: { enabled: boolean; playedToday: boolean; streak: number; won: number; tokens: number };
   quiz: { enabled: boolean; playedToday: boolean; inProgress: boolean; todayCorrect: number | null; questions: number; streak: number; won: number; best: number };
+  picks: { enabled: boolean; gamesToday: number; pickedToday: number; toPick: number; streak: number; weekWins: number; weekPicks: number; won: number };
   slots: { enabled: boolean; machines: number; spins24h: number; jackpot: number | null; mySpins: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
 }
 
@@ -131,6 +132,27 @@ function QuizCard({ d }: { d: Summary['quiz'] }) {
   );
 }
 
+/** La case des pronostics LNH : matchs du jour, mes pronostics à faire, série et gains. */
+function PicksCard({ d }: { d: Summary['picks'] }) {
+  return (
+    <Link to="/jeux/pronostics" className="gh-card gh-picks">
+      <div className="gh-head"><span className="gh-icon">🎯</span><div><h2>Pronostics LNH</h2><div className="gh-tag">Tous les matchs de la ligue, gratuit</div></div></div>
+      <p className="gh-desc">Choisis le vainqueur de chaque match avant le début. Chaque bonne prédiction rapporte des points, avec un bonus de série, un bonus de journée parfaite et un prix pour les meilleurs de la semaine.</p>
+      <div className="gh-icons" aria-hidden="true"><span>🏒</span><span>🥅</span><span>🏆</span><span>🔥</span></div>
+      {d.streak > 0 ? <div className="gh-next"><span style={{ fontSize: 22 }}>🔥</span><div><strong>{d.streak} bonne{d.streak > 1 ? 's' : ''} prédiction{d.streak > 1 ? 's' : ''} de suite</strong><div className="muted" style={{ fontSize: 12.5 }}>Continue pour des points de bonus</div></div></div>
+        : d.gamesToday > 0 ? <div className="gh-next"><span style={{ fontSize: 22 }}>🏒</span><div><strong>{d.gamesToday} match{d.gamesToday > 1 ? 's' : ''} aujourd'hui</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.pickedToday} pronostic{d.pickedToday > 1 ? 's' : ''} fait{d.pickedToday > 1 ? 's' : ''}</div></div></div>
+        : <div className="gh-next muted">Aucun match aujourd'hui : regarde ceux des prochains jours.</div>}
+      <div className="gh-stats">
+        <Stat label="matchs aujourd'hui" value={d.gamesToday} />
+        {d.weekPicks > 0 && <Stat label="réussis cette semaine" value={`${d.weekWins}/${d.weekPicks}`} tone="good" />}
+        {d.won > 0 && <Stat label="gagné au total" value={`+${formatNumber(d.won)} pts`} tone="good" />}
+      </div>
+      {d.toPick > 0 && <span className="gh-badge">🎯 {d.toPick} match{d.toPick > 1 ? 's' : ''} à pronostiquer aujourd'hui</span>}
+      <span className="gh-go">Pronostiquer →</span>
+    </Link>
+  );
+}
+
 /** Page d'accueil des jeux : une case par jeu avec sa description et ses statistiques ; un clic ouvre le jeu. */
 export default function GamesHub() {
   const [data, setData] = useState<Summary | null>(null);
@@ -173,6 +195,7 @@ export default function GamesHub() {
         {data.hilo?.enabled && <HiLoCard d={data.hilo} />}
         {data.wheel?.enabled && <WheelCard d={data.wheel} />}
         {data.quiz?.enabled && <QuizCard d={data.quiz} />}
+        {data.picks?.enabled && <PicksCard d={data.picks} />}
         <div className="gh-card gh-soon"><span className="gh-icon">🎲</span><h2>Bientôt</h2><p className="gh-desc">D'autres jeux arrivent. Dis-nous ceux que tu aimerais voir !</p></div>
       </div>
     </div>

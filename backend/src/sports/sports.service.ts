@@ -8,6 +8,7 @@ import { MAX_SOUND_BYTES, detectAudio } from '../common/utils/audio-file';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { Game, Summary, inLiveWindow, normalizeGame, summarize } from '../common/utils/nhl';
+import { TeamRecord, recordOf } from '../common/utils/picks';
 import { DEFAULT_GOAL_BONUS, GoalBonusConfig, GoalBonusService, normalizeGoalBonus } from './goal-bonus.service';
 
 const KEY = 'sports';
@@ -55,6 +56,8 @@ export class SportsService {
   /** Moment où le tableau des scores en direct a été lu (le chrono du match est exact à cet instant). */
   private liveAt = 0;
   private logos = new Map<string, { at: number; svg: string }>();
+  private league = new Map<string, { at: number; games: Game[] }>();
+  private standingsCache: { at: number; map: Map<string, TeamRecord> } | null = null;
 
   constructor(private settings: SettingsService, private audit: AuditService, private goals: GoalBonusService) {}
 
@@ -199,6 +202,45 @@ export class SportsService {
       const n = normalizeGame(live, team);
       return { ...n, venue: n.venue ?? g.venue, tv: n.tv.length ? n.tv : g.tv, kind: n.kind === 'AUTRE' ? g.kind : n.kind };
     });
+  }
+
+  /**
+   * Tous les matchs de la ligue pour la semaine qui commence le jour `from` (AAAA-MM-JJ, heure de l'Est), pour les pronostics. En cache (30 secondes quand un match
+   * est en cours, sinon 5 minutes) ; si la LNH ne répond pas, la dernière réponse connue est servie, ou une liste vide.
+   */
+  async leagueGames(from: string): Promise<Game[]> {
+    const hit = this.league.get(from);
+    const busy = hit?.games.some((g) => g.state === 'LIVE' || g.state === 'PRE');
+    if (hit && Date.now() - hit.at < (busy ? 30_000 : 5 * 60_000)) return hit.games;
+    try {
+      const data = await this.getJson(`${API}/schedule/${from}`);
+      const games: Game[] = (data.gameWeek ?? []).flatMap((d: any) => (d.games ?? []).map((g: any) => normalizeGame({ ...g, gameDate: d.date }, '')));
+      if (this.league.size > 12) this.league.clear();
+      this.league.set(from, { at: Date.now(), games });
+      return games;
+    } catch (e) {
+      this.logger.warn(`Calendrier de la LNH indisponible : ${(e as Error).message}`);
+      return hit?.games ?? [];
+    }
+  }
+
+  /** Fiche de chaque équipe (victoires, défaites, derniers matchs) d'après le classement de la LNH, gardée une heure. Vide si la LNH ne répond pas. */
+  async standings(): Promise<Map<string, TeamRecord>> {
+    if (this.standingsCache && Date.now() - this.standingsCache.at < 3600_000) return this.standingsCache.map;
+    try {
+      const data = await this.getJson(`${API}/standings/now`);
+      const map = new Map<string, TeamRecord>();
+      for (const t of data.standings ?? []) {
+        const rec = recordOf(t);
+        const abbrev = t?.teamAbbrev?.default;
+        if (rec && typeof abbrev === 'string') map.set(abbrev, rec);
+      }
+      this.standingsCache = { at: Date.now(), map };
+      return map;
+    } catch (e) {
+      this.logger.warn(`Classement de la LNH indisponible : ${(e as Error).message}`);
+      return this.standingsCache?.map ?? new Map();
+    }
   }
 
   /** Tous les matchs de la saison du club (calendrier en cache), pour les jeux. Liste vide si la LNH est injoignable. */

@@ -375,7 +375,32 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Les bonnes réponses restent sur le serveur jusqu'à ce que tu aies répondu, et le chrono est surveillé par le serveur : la page ne fait qu'afficher.\n` +
         `• Les questions viennent d'une banque (cinéma, séries, musique, hockey, sciences, géographie, technologie…) que l'équipe enrichit. Une erreur dans une question ? Signale-la à l'équipe.\n` +
         `• Ce sont des points du site, sans valeur en argent. Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n\n` +
-        `Voir aussi : [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url], [url=/wiki/guide-plus-haut-plus-bas]Jouer à Plus haut ou plus bas[/url].`,
+        `Voir aussi : [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url], [url=/wiki/guide-plus-haut-plus-bas]Jouer à Plus haut ou plus bas[/url], [url=/wiki/guide-pronostics-lnh]Faire ses pronostics sur la LNH[/url].`,
+    },
+    {
+      title: 'Faire ses pronostics sur la LNH',
+      slug: 'guide-pronostics-lnh',
+      keywords: 'pronostics, lnh, hockey, matchs, prédictions, vainqueur, série, journée parfaite, classement, jeux, gratuit',
+      content:
+        `Les [b]pronostics LNH[/b] sont un jeu gratuit de la section [url=/jeux]Jeux[/url] : choisis le vainqueur des matchs de la ligue avant leur début. Tu ne mises rien et tu ne perds rien.\n\n` +
+        `[b]Comment jouer[/b]\n` +
+        `1. Ouvre les pronostics depuis la page Jeux : les matchs du jour s'affichent, avec la fiche de chaque équipe (victoires, défaites, derniers matchs). Les onglets du haut donnent accès à hier et aux prochains jours.\n` +
+        `2. Touche l'équipe que tu penses gagnante. Tu peux changer d'avis, ou retirer ton choix en touchant l'équipe de nouveau, jusqu'au début du match.\n` +
+        `3. Une fois le match commencé, ton choix est verrouillé. Dès que la LNH publie le score final, le match est réglé automatiquement et tu reçois une notification si tu as gagné.\n` +
+        `4. Un match reporté ou annulé est annulé : ton pronostic ne compte pas, pour ou contre toi.\n\n` +
+        `[b]Les points[/b]\n` +
+        `• Chaque bonne prédiction rapporte [b]5 points[/b].\n` +
+        `• Chaque bonne prédiction de suite avant celle-ci ajoute [b]1 point[/b], jusqu'à +5 : une série de 6 bonnes prédictions rapporte 10 points la suivante. Une mauvaise prédiction remet la série à zéro (un match annulé ne la casse pas).\n` +
+        `• Une [b]journée parfaite[/b] (au moins 3 matchs pronostiqués ce jour-là, tous gagnés) rapporte [b]20 points[/b] de plus.\n` +
+        `• Les points des bonnes prédictions sont plafonnés à 60 par jour et 250 par semaine : ton plafond restant est indiqué sur la page.\n\n` +
+        `[b]Classement et prix de la semaine[/b]\n` +
+        `• Le classement de la semaine (du lundi au dimanche) range les membres par nombre de bonnes prédictions, puis par pourcentage de réussite.\n` +
+        `• Chaque lundi matin, les [b]trois meilleurs de la semaine précédente[/b] (au moins 5 prédictions) reçoivent 100, 60 et 40 points, avec une notification.\n\n` +
+        `[b]À savoir[/b]\n` +
+        `• La barre sous chaque match montre comment les autres membres ont voté.\n` +
+        `• Les résultats viennent de l'API publique de la LNH. Si elle ne répond plus, l'équipe peut régler ou annuler un match à la main.\n` +
+        `• Pour parier sur les matchs du Canadien avec des points, voir [url=/wiki/guide-mise-o-jeu]Mise-O-jeu[/url]. Ce sont des points du site, sans valeur en argent. Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n\n` +
+        `Voir aussi : [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url], [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url].`,
     },
     {
       title: 'Faire revivre un torrent mort (Réanimation)',
