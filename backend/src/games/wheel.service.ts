@@ -7,6 +7,7 @@ import { PresenceService } from '../presence/presence.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { startOfDayToronto } from './slots.service';
 import { CardsService } from './cards.service';
+import { emitChallenge } from '../common/utils/challenge-bus';
 import { DEFAULT_WHEEL, WheelConfig, dayBefore, expectedValue, nextStreak, normalizeWheel, pickSegment, rewardFor, streakMultiplier } from '../common/utils/wheel';
 
 const KEY = 'wheel';
@@ -139,6 +140,7 @@ export class WheelService {
 
     // le bonus de sept jours de suite rapporte aussi un paquet de cartes
     if (reward.streakBonus > 0) void this.cards.grantPack(accountId, 'wheel', today);
+    emitChallenge({ userId: accountId, event: 'wheel', game: 'wheel' });
     const bal = await this.prisma.user.findUnique({ where: { id: accountId }, select: { bonusPoints: true, freeleechTokens: true } });
     if (reward.total >= NOTIFY_FROM) void this.announce(accountId, account.username, reward.total);
     return {

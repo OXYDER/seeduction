@@ -9,6 +9,7 @@ import type { Game } from '../common/utils/nhl';
 import { DEFAULT_PICKS, PicksConfig, Side, addDays, capped, isPerfectDay, normalizePicks, streakOf, weekStart, winPoints, winnerOf } from '../common/utils/picks';
 import { torontoDay } from './wheel.service';
 import { CardsService } from './cards.service';
+import { emitChallenge } from '../common/utils/challenge-bus';
 
 const KEY = 'picks';
 const TZ = 'America/Toronto';
@@ -141,6 +142,7 @@ export class PicksService {
     for (const w of paid) {
       // une journée parfaite rapporte aussi un paquet de cartes
       if (w.bonus > 0) void this.cards.grantPack(w.userId, 'picks', game.day);
+      emitChallenge({ userId: w.userId, event: 'picks_won' });
       const total = w.points + w.bonus;
       if (total <= 0) continue;
       await this.notifications.notify({
@@ -303,7 +305,9 @@ export class PicksService {
     if (!game || game.status !== 'OPEN') throw new BadRequestException('Les pronostics sont fermés pour ce match');
     if (game.startUtc.getTime() <= Date.now()) throw new BadRequestException('Le match a commencé : les pronostics sont fermés');
     const pick = input.pick as Side;
+    const existed = await this.prisma.nhlPick.findUnique({ where: { userId_gameId: { userId: accountId, gameId } }, select: { id: true } });
     await this.prisma.nhlPick.upsert({ where: { userId_gameId: { userId: accountId, gameId } }, create: { userId: accountId, gameId, day: game.day, pick }, update: { pick } });
+    if (!existed) emitChallenge({ userId: accountId, event: 'picks', game: 'picks' }); // changer d'avis ne compte pas deux fois
     return { ok: true, pick };
   }
 

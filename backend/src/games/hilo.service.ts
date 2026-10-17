@@ -7,6 +7,7 @@ import { AuditService } from '../audit/audit.service';
 import { Config, DEFAULT_HILO, DECK, Guess, isWin, nextMultBp, normalizeHiLo, odds, payoutOf, rankOf, stepHundredths, suitOf } from '../common/utils/hilo';
 import { stakeable } from '../common/utils/points';
 import { startOfDayToronto } from './slots.service';
+import { emitChallenge } from '../common/utils/challenge-bus';
 
 const KEY = 'hilo';
 const DAY = 86400_000;
@@ -136,6 +137,7 @@ export class HiLoService {
           }
           return tx.hiLoGame.create({ data: { userId: accountId, stake: daily ? 0 : stake, valued: stake, daily, card, active: 'A', history: [{ card }] as any } });
         });
+        if (daily) emitChallenge({ userId: accountId, event: 'free_play', game: 'hilo' });
         return { game: this.view(game as GameRow, cfg) };
       } catch (e: any) {
         if (e?.code === 'P2002') throw new BadRequestException('Tu as déjà une partie en cours : termine-la d\'abord');

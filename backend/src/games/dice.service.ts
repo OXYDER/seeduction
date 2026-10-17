@@ -6,6 +6,7 @@ import { AuditService } from '../audit/audit.service';
 import { Bet, DEFAULT_DICE, DiceConfig, KINDS, Kind, allBets, multH, normalizeDice, payoutOf, roll, wins } from '../common/utils/dice';
 import { stakeable } from '../common/utils/points';
 import { startOfDayToronto } from './slots.service';
+import { emitChallenge } from '../common/utils/challenge-bus';
 
 const KEY = 'dice';
 const DAY = 86400_000;
@@ -119,6 +120,7 @@ export class DiceService {
         await tx.diceRoll.create({ data: { userId: accountId, stake: daily ? 0 : stake, valued: stake, daily, kind: bet.kind, n: bet.n, d1, d2, mult, payout } });
         return tx.user.findUniqueOrThrow({ where: { id: accountId }, select: { bonusPoints: true, donatedPoints: true } });
       });
+      if (daily) emitChallenge({ userId: accountId, event: 'free_play', game: 'dice' });
       const ratio = stake > 0 ? payout / stake : 0;
       return {
         d1, d2, total: d1 + d2, win: won, doubles: d1 === d2, stake, daily, mult: mult / 100, payout,

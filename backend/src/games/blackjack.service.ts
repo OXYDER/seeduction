@@ -8,6 +8,7 @@ import { Action, BjConfig, DEFAULT_BJ, Draw, State, act, drawFromShoe, handValue
 import { rankOf, suitOf } from '../common/utils/hilo';
 import { stakeable } from '../common/utils/points';
 import { startOfDayToronto } from './slots.service';
+import { emitChallenge } from '../common/utils/challenge-bus';
 
 const KEY = 'blackjack';
 const DAY = 86400_000;
@@ -161,6 +162,7 @@ export class BlackjackService {
           if (r.payout > 0) await tx.user.update({ where: { id: accountId }, data: { bonusPoints: { increment: r.payout } } });
           return tx.blackjackGame.create({ data: { ...base, status: 'DONE', active: null, payout: r.payout, outcome: r.outcome, endedAt: new Date() } });
         });
+        if (daily) emitChallenge({ userId: accountId, event: 'free_play', game: 'blackjack' });
         return await this.reply(game as GameRow, cfg, accountId);
       } catch (e: any) {
         if (e?.code === 'P2002') throw new BadRequestException('Tu as déjà une partie en cours : termine-la d\'abord');

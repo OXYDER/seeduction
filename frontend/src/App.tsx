@@ -27,6 +27,7 @@ import Pronostics from './pages/Pronostics';
 import Blackjack from './pages/Blackjack';
 import Dice from './pages/Dice';
 import Cartes from './pages/Cartes';
+import Defis from './pages/Defis';
 import MyUploads from './pages/MyUploads';
 import MySeeds from './pages/MySeeds';
 import MyActivity from './pages/MyActivity';
@@ -149,6 +150,7 @@ export default function App() {
           <Route path="/jeux/blackjack" element={<Blackjack />} />
           <Route path="/jeux/des" element={<Dice />} />
           <Route path="/jeux/cartes" element={<Cartes />} />
+          <Route path="/jeux/defis" element={<Defis />} />
           <Route path="/activity" element={<MyActivity />} />
           <Route path="/seeds" element={<MySeeds />} />
           <Route path="/hit-and-run" element={<HitAndRun />} />

@@ -7,6 +7,7 @@ import { stakeable } from '../common/utils/points';
 import { PresenceService } from '../presence/presence.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { winOf, secureRng, type Rng } from '../common/utils/slots';
+import { emitChallenge } from '../common/utils/challenge-bus';
 
 const KEY = 'slots';
 const DAY = 86400_000;
@@ -185,6 +186,7 @@ export class SlotsService {
         this.logger.log(`GROS LOT : ${bal.username} remporte ${jackpotWon} points (mise ${stake}, ${machine})`);
         void this.announceJackpot(accountId, bal.username, jackpotWon);
       } else if (tier === 'mega') this.logger.log(`Machine à sous : gros gain de ${win} points (mise ${stake}, ${machine})`);
+      if (daily) emitChallenge({ userId: accountId, event: 'free_play', game: 'slots' }); // seuls les tours gratuits comptent pour les défis
       return {
         machine, stake, daily, win, tier, freeSpins: round.freeSpins, jackpot: jackpotWon > 0 ? { amount: jackpotWon } : null,
         rounds: round.spins.map((x) => ({ stops: x.stops, grid: x.grid, lines: x.lines, mult: x.mult, win: x.win, free: x.free })),

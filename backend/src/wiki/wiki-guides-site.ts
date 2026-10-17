@@ -458,6 +458,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Comment obtenir des paquets[/b]\n` +
         `• [b]Un paquet gratuit par jour[/b] : clique sur « Réclamer le paquet du jour » (le compteur repart à minuit, heure de Montréal).\n` +
         `• Un [b]quiz du jour sans faute[/b], [b]sept jours de suite[/b] à la roue de la fortune et une [b]journée parfaite[/b] aux pronostics LNH rapportent chacun un paquet de plus.\n` +
+        `• Les [b]défis[/b] (le bonus des trois défis du jour ou de la semaine) rapportent aussi des paquets.\n` +
         `• Les paquets ne s'achètent jamais avec des points.\n\n` +
         `[b]Ouvrir un paquet[/b]\n` +
         `1. Clique sur « Ouvrir un paquet », puis touche le paquet pour le déchirer.\n` +
@@ -473,6 +474,29 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Les cartes n'ont aucune valeur en argent et ne s'échangent pas : c'est une collection.\n` +
         `• Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n\n` +
         `Voir aussi : [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url], [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url], [url=/wiki/guide-pronostics-lnh]Faire ses pronostics sur la LNH[/url].`,
+    },
+    {
+      title: 'Relever les défis',
+      slug: 'guide-defis',
+      keywords: 'défis, défi quotidien, défi hebdomadaire, objectifs, bonus, série, récompenses, jeux, gratuit',
+      content:
+        `Les [b]défis[/b] sont de petits objectifs de la section [url=/jeux]Jeux[/url] : chaque défi réussi rapporte des points, et les réussir tous rapporte un bonus.\n\n` +
+        `[b]Comment ça marche[/b]\n` +
+        `• Chaque jour, tous les membres ont les [b]mêmes trois défis du jour[/b] : un facile, un moyen et un difficile. Ils changent à minuit, heure de Montréal.\n` +
+        `• Chaque semaine (du lundi au dimanche), trois [b]défis de la semaine[/b] plus longs et mieux récompensés.\n` +
+        `• Ta progression s'affiche sur la page des défis et se met à jour toute seule pendant que tu joues. Le bouton « Y aller » t'amène au bon jeu.\n\n` +
+        `[b]Les récompenses[/b]\n` +
+        `• Un défi réussi rapporte des [b]points[/b] tout de suite (de 5 à 25 points pour un défi du jour, de 25 à 70 pour un défi de la semaine), et parfois un paquet de cartes.\n` +
+        `• Réussir les [b]trois défis du jour[/b] rapporte un bonus de 15 points et un [b]paquet de cartes[/b] ; les trois défis de la semaine, 60 points et 2 paquets.\n` +
+        `• Chaque jour où tu réussis tous tes défis allonge ta [b]série[/b] 🔥.\n\n` +
+        `[b]Ce qui compte[/b]\n` +
+        `• Les défis portent sur des [b]activités gratuites[/b] : la roue de la fortune, le quiz quotidien, les pronostics LNH, les cartes à collectionner et les [b]parties gratuites du jour[/b] (machines à sous, Plus haut ou plus bas, blackjack, dés).\n` +
+        `• Aucun défi ne te demande de miser des points, et les parties payantes ne comptent pas.\n` +
+        `• « Jeux différents » compte les jeux que tu as essayés dans la période.\n\n` +
+        `[b]À savoir[/b]\n` +
+        `• Chaque défi n'est payé qu'une fois. Les récompenses sont des points du site, sans valeur en argent.\n` +
+        `• Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n\n` +
+        `Voir aussi : [url=/wiki/guide-cartes]Collectionner les cartes[/url], [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url], [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url].`,
     },
     {
       title: 'Faire revivre un torrent mort (Réanimation)',

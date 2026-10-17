@@ -6,13 +6,14 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CATALOG, CRAFT_COST, CardsConfig, DEFAULT_CARDS, ODDS, RARITIES, RARITY_LABEL, SETS, SHARDS, SetId, albumComplete, cardById, cardsOf, completedSets, drawPack, normalizeCards } from '../common/utils/cards';
 import { torontoDay } from './wheel.service';
+import { emitChallenge } from '../common/utils/challenge-bus';
 
 const KEY = 'cards';
 const DAY = 86400_000;
 
 export interface Actor { userId: string; username: string }
-export type PackSource = 'quiz' | 'wheel' | 'picks';
-const SOURCE_TEXT: Record<PackSource, string> = { quiz: 'un quiz sans faute', wheel: 'sept jours de suite à la roue de la fortune', picks: 'une journée parfaite aux pronostics' };
+export type PackSource = 'quiz' | 'wheel' | 'picks' | 'challenge';
+const SOURCE_TEXT: Record<PackSource, string> = { quiz: 'un quiz sans faute', wheel: 'sept jours de suite à la roue de la fortune', picks: 'une journée parfaite aux pronostics', challenge: 'tes défis' };
 
 /**
  * Cartes à collectionner. Les paquets se gagnent (un par jour, plus des récompenses des autres jeux) et ne s'achètent jamais avec des points. Le tirage est fait par le
@@ -89,6 +90,7 @@ export class CardsService {
     const r = await this.prisma.cardWallet.updateMany({ where: { userId: accountId, OR: [{ lastDaily: null }, { lastDaily: { not: today } }] }, data: { lastDaily: today, packs: { increment: cfg.dailyPacks } } });
     if (r.count === 0) throw new BadRequestException('Tu as déjà réclamé ton paquet du jour : reviens demain');
     const w = await this.ensureWallet(accountId);
+    emitChallenge({ userId: accountId, event: 'cards_daily', game: 'cards' });
     return { packs: w.packs, claimed: cfg.dailyPacks };
   }
 
@@ -144,6 +146,7 @@ export class CardsService {
         return { cards, shards, packs: after.packs, totalShards: after.shards, pity: after.pity, sets };
       }, { timeout: 30_000 });
       void this.announceSets(accountId, result.sets);
+      emitChallenge({ userId: accountId, event: 'cards_open', game: 'cards' });
       return result;
     } finally { this.busy.delete(accountId); }
   }

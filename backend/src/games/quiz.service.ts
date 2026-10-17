@@ -11,6 +11,7 @@ import { AnswerRec, DEFAULT_QUIZ, QuizConfig, choicesFor, nextQuizStreak, normal
 import { QUIZ_SEED } from '../common/utils/quiz-seed';
 import { nextMidnightToronto, torontoDay } from './wheel.service';
 import { CardsService } from './cards.service';
+import { emitChallenge } from '../common/utils/challenge-bus';
 
 const KEY = 'quiz';
 const SEEDED_KEY = 'quizSeeded';
@@ -106,7 +107,11 @@ export class QuizService implements OnModuleInit {
         await tx.user.update({ where: { id: play.userId }, data: { bonusPoints: { increment: reward.total } } });
       });
       // un sans-faute rapporte aussi un paquet de cartes (une seule fois par jour)
-      if (reward.correct === play.questionIds.length) void this.cards.grantPack(play.userId, 'quiz', play.day);
+      const perfect = reward.correct === play.questionIds.length;
+      if (perfect) void this.cards.grantPack(play.userId, 'quiz', play.day);
+      emitChallenge({ userId: play.userId, event: 'quiz', game: 'quiz' });
+      if (reward.correct > 0) emitChallenge({ userId: play.userId, event: 'quiz_correct', amount: reward.correct });
+      if (perfect) emitChallenge({ userId: play.userId, event: 'quiz_perfect' });
     }
     return this.prisma.quizPlay.findUniqueOrThrow({ where: { id: play.id } });
   }

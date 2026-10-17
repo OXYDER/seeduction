@@ -19,6 +19,7 @@ interface Summary {
   blackjack: { enabled: boolean; gamesToday: number; myGames: number; myWon: number; active: boolean; dailyFreeAvailable: boolean; biggest: { username: string; payout: number; stake: number } | null };
   dice: { enabled: boolean; rollsToday: number; myRolls: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; payout: number; stake: number } | null };
   cards: { enabled: boolean; packs: number; shards: number; owned: number; total: number; dailyAvailable: boolean };
+  challenges: { enabled: boolean; dailyDone: number; dailyTotal: number; weeklyDone: number; weeklyTotal: number; bonus: boolean; streak: number };
   slots: { enabled: boolean; machines: number; spins24h: number; jackpot: number | null; mySpins: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
 }
 
@@ -215,6 +216,24 @@ function CardsCard({ d }: { d: Summary['cards'] }) {
   );
 }
 
+/** La case des défis : avancement des défis du jour et de la semaine, bonus et série. */
+function ChallengesCard({ d }: { d: Summary['challenges'] }) {
+  return (
+    <Link to="/jeux/defis" className="gh-card gh-challenges">
+      <div className="gh-head"><span className="gh-icon">🎯</span><div><h2>Défis</h2><div className="gh-tag">Trois défis par jour, trois par semaine</div></div></div>
+      <p className="gh-desc">Relève de petits défis sur les activités gratuites : roue, quiz, pronostics, cartes et parties gratuites. Chaque défi réussi rapporte des points, et les réussir tous donne un bonus avec un paquet de cartes.</p>
+      <div className="gh-icons" aria-hidden="true"><span>🎡</span><span>🧠</span><span>🎯</span><span>🎴</span></div>
+      <div className="gh-next"><span style={{ fontSize: 22 }}>{d.dailyDone >= d.dailyTotal ? '🌟' : '☀️'}</span><div><strong>Défis du jour : {d.dailyDone} / {d.dailyTotal}</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.dailyDone >= d.dailyTotal ? (d.bonus ? 'Bonus du jour reçu !' : 'Bravo !') : 'Réussis-les tous pour le bonus du jour'}</div></div></div>
+      <div className="gh-stats">
+        <Stat label="défis de la semaine" value={`${d.weeklyDone}/${d.weeklyTotal}`} tone={d.weeklyDone > 0 ? 'good' : undefined} />
+        {d.streak > 0 && <Stat label="jours de suite complets" value={`🔥 ${d.streak}`} tone="good" />}
+      </div>
+      {d.dailyDone < d.dailyTotal && <span className="gh-badge">🎯 {d.dailyTotal - d.dailyDone} défi{d.dailyTotal - d.dailyDone > 1 ? 's' : ''} à relever aujourd'hui</span>}
+      <span className="gh-go">Voir les défis →</span>
+    </Link>
+  );
+}
+
 /** Page d'accueil des jeux : une case par jeu avec sa description et ses statistiques ; un clic ouvre le jeu. */
 export default function GamesHub() {
   const [data, setData] = useState<Summary | null>(null);
@@ -252,6 +271,7 @@ export default function GamesHub() {
       </div>
 
       <div className="gh-grid">
+        {data.challenges?.enabled && <ChallengesCard d={data.challenges} />}
         {data.moj.enabled && <MojCard d={data.moj} />}
         {data.slots.enabled && <SlotsCard d={data.slots} />}
         {data.hilo?.enabled && <HiLoCard d={data.hilo} />}

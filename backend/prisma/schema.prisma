@@ -2287,3 +2287,48 @@ model CardOpening {
 
   @@index([userId, createdAt])
 }
+
+/// Progression d'un membre sur un défi (quotidien ou hebdomadaire). La récompense est versée une seule fois, au moment où le défi est réussi.
+model ChallengeProgress {
+  id        String    @id @default(uuid())
+  userId    String
+  scope     String    @db.VarChar(6) // daily | weekly
+  period    String    @db.VarChar(10) // jour (AAAA-MM-JJ) ou lundi de la semaine
+  cid       String    @db.VarChar(24) // identifiant du défi dans le catalogue (common/utils/challenges.ts)
+  progress  Int       @default(0)
+  done      Boolean   @default(false)
+  points    Int       @default(0) // points versés pour ce défi
+  packs     Int       @default(0)
+  doneAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, period, cid])
+  @@index([userId, scope, period])
+  @@index([doneAt])
+}
+
+/// Un jeu essayé par un membre un jour donné (activités gratuites seulement) : sert aux défis « jeux différents ».
+model ChallengeActivity {
+  id     String @id @default(uuid())
+  userId String
+  day    String @db.VarChar(10)
+  game   String @db.VarChar(12)
+
+  @@unique([userId, day, game])
+  @@index([userId, day])
+}
+
+/// Bonus d'une période où les trois défis ont été réussis (une seule fois par membre et par période).
+model ChallengeBonus {
+  id        String   @id @default(uuid())
+  userId    String
+  scope     String   @db.VarChar(6)
+  period    String   @db.VarChar(10)
+  points    Int
+  packs     Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, scope, period])
+  @@index([userId, scope])
+}
