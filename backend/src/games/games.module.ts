@@ -11,6 +11,8 @@ import { GamesHubService } from './games-hub.service';
 import { HiLoController } from './hilo.controller';
 import { HiLoService } from './hilo.service';
 import { GamesCashbackService } from './games-cashback.service';
+import { WheelController } from './wheel.controller';
+import { WheelService } from './wheel.service';
 
-@Module({ imports: [NotificationsModule, SportsModule, PresenceModule], controllers: [GamesController, SlotsController, GamesHubController, HiLoController], providers: [MojService, SlotsService, GamesHubService, HiLoService, GamesCashbackService], exports: [MojService, SlotsService, HiLoService, GamesCashbackService] })
+@Module({ imports: [NotificationsModule, SportsModule, PresenceModule], controllers: [GamesController, SlotsController, GamesHubController, HiLoController, WheelController], providers: [MojService, SlotsService, GamesHubService, HiLoService, GamesCashbackService, WheelService], exports: [MojService, SlotsService, HiLoService, GamesCashbackService, WheelService] })
 export class GamesModule {}

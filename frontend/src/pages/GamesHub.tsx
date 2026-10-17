@@ -13,6 +13,7 @@ interface Summary {
     next: { startUtc: string; side: 'home' | 'away'; kind: string; mine: { abbrev: string; name: string }; other: { abbrev: string; name: string } } | null;
   };
   hilo: { enabled: boolean; gamesToday: number; bestStreak: { username: string; step: number } | null; myGames: number; myBest: number; myWon: number; activeStep: number | null; dailyFreeAvailable: boolean };
+  wheel: { enabled: boolean; playedToday: boolean; streak: number; won: number; tokens: number };
   slots: { enabled: boolean; machines: number; spins24h: number; jackpot: number | null; mySpins: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
 }
 
@@ -90,6 +91,24 @@ function HiLoCard({ d }: { d: Summary['hilo'] }) {
   );
 }
 
+/** La case de la roue de la fortune : tour du jour, série en cours et ce que j'ai déjà gagné. */
+function WheelCard({ d }: { d: Summary['wheel'] }) {
+  return (
+    <Link to="/jeux/roue" className="gh-card gh-wheel">
+      <div className="gh-head"><span className="gh-icon">🎡</span><div><h2>Roue de la fortune</h2><div className="gh-tag">Un tour gratuit chaque jour</div></div></div>
+      <p className="gh-desc">Tourne la roue une fois par jour, sans rien miser : points, jetons freeleech et gros lots. Plus tu joues de jours de suite, plus tes gains grossissent, avec un bonus le 7<sup>e</sup> jour.</p>
+      <div className="gh-icons" aria-hidden="true"><span>🪙</span><span>🎟️</span><span>🎁</span><span>⭐</span></div>
+      {d.streak > 0 ? <div className="gh-next"><span style={{ fontSize: 22 }}>🔥</span><div><strong>Série en cours : {d.streak} jour{d.streak > 1 ? 's' : ''}</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.playedToday ? 'Reviens demain pour la garder' : "Joue aujourd'hui pour la garder"}</div></div></div> : <div className="gh-next muted">Commence une série dès aujourd'hui !</div>}
+      <div className="gh-stats">
+        {d.won > 0 && <Stat label="gagné au total" value={`+${formatNumber(d.won)} pts`} tone="good" />}
+        {d.tokens > 0 && <Stat label="jetons gagnés" value={d.tokens} tone="good" />}
+      </div>
+      {!d.playedToday && <span className="gh-badge">🎁 Ton tour gratuit du jour t'attend</span>}
+      <span className="gh-go">{d.playedToday ? 'Voir →' : 'Tourner →'}</span>
+    </Link>
+  );
+}
+
 /** Page d'accueil des jeux : une case par jeu avec sa description et ses statistiques ; un clic ouvre le jeu. */
 export default function GamesHub() {
   const [data, setData] = useState<Summary | null>(null);
@@ -130,6 +149,7 @@ export default function GamesHub() {
         {data.moj.enabled && <MojCard d={data.moj} />}
         {data.slots.enabled && <SlotsCard d={data.slots} />}
         {data.hilo?.enabled && <HiLoCard d={data.hilo} />}
+        {data.wheel?.enabled && <WheelCard d={data.wheel} />}
         <div className="gh-card gh-soon"><span className="gh-icon">🎲</span><h2>Bientôt</h2><p className="gh-desc">D'autres jeux arrivent. Dis-nous ceux que tu aimerais voir !</p></div>
       </div>
     </div>

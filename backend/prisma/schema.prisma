@@ -2054,3 +2054,20 @@ model SlotCashback {
   @@unique([userId, day])
   @@index([userId, createdAt])
 }
+
+/// Roue de la fortune : un tour gratuit par membre et par jour (heure de Montréal). Les récompenses sont des cadeaux du site, sans mise.
+model WheelSpin {
+  id          String   @id @default(uuid())
+  userId      String
+  day         String   @db.VarChar(10) // AAAA-MM-JJ, heure de Montréal
+  segment     Int // secteur tiré (0 à 15)
+  points      Int // points du secteur, série comprise
+  tokens      Int // jetons freeleech gagnés
+  streak      Int // jours de suite à ce tour
+  streakBonus Int // bonus des 7 jours de suite
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, day])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}

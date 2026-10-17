@@ -332,6 +332,27 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Voir aussi : [url=/wiki/guide-machines-a-sous]Jouer aux machines à sous[/url], [url=/wiki/guide-mise-o-jeu]Jouer à Mise-O-jeu[/url].`,
     },
     {
+      title: 'Tourner la roue de la fortune',
+      slug: 'guide-roue-de-la-fortune',
+      keywords: 'roue de la fortune, roue, tour gratuit, quotidien, série, bonus, jeton, freeleech, jeux, cadeau',
+      content:
+        `La [b]roue de la fortune[/b] est un cadeau quotidien de la section [url=/jeux]Jeux[/url] : un tour gratuit par jour, sans rien miser et sans rien perdre.\n\n` +
+        `[b]Comment jouer[/b]\n` +
+        `1. Ouvre la roue depuis la page Jeux et clique sur [b]Tourner la roue[/b].\n` +
+        `2. La roue tourne, ralentit, puis la languette du haut désigne ton lot. Il est ajouté tout de suite à tes points bonus.\n` +
+        `3. Les lots sont des points, des [b]jetons freeleech[/b] 🎟️ ou, avec un peu de chance, un très gros lot de 500 ou 1 000 points. Tous les lots possibles sont affichés sous la roue.\n` +
+        `4. Tu peux tourner la roue une fois par jour (le compteur repart à minuit, heure de Montréal). Un compte à rebours indique le prochain tour.\n\n` +
+        `[b]La série de jours de suite[/b]\n` +
+        `• Chaque jour de suite où tu tournes la roue améliore tes gains : [b]+5 % par jour[/b], jusqu'à +50 %.\n` +
+        `• Le [b]7e jour de suite[/b], un bonus de 100 points s'ajoute à ton lot, et la semaine recommence.\n` +
+        `• Si tu manques un jour, la série repart de zéro : reviens chaque jour pour la garder.\n\n` +
+        `[b]À savoir[/b]\n` +
+        `• Le tirage est fait par le serveur, jamais par ton navigateur : l'animation ne fait que montrer le résultat.\n` +
+        `• Les gros lots sont annoncés par notification, et ceux de la semaine sont affichés sur la page de la roue.\n` +
+        `• Ce sont des points du site, sans valeur en argent. Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n\n` +
+        `Voir aussi : [url=/wiki/guide-machines-a-sous]Jouer aux machines à sous[/url], [url=/wiki/guide-plus-haut-plus-bas]Jouer à Plus haut ou plus bas[/url].`,
+    },
+    {
       title: 'Faire revivre un torrent mort (Réanimation)',
       slug: 'guide-reanimation',
       keywords: 'réanimation, torrent mort, 0 seeder, reseed, relancer, récompense, demander un reseed, je le relance',
