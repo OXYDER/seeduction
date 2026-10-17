@@ -14,6 +14,7 @@ interface Summary {
   };
   hilo: { enabled: boolean; gamesToday: number; bestStreak: { username: string; step: number } | null; myGames: number; myBest: number; myWon: number; activeStep: number | null; dailyFreeAvailable: boolean };
   wheel: { enabled: boolean; playedToday: boolean; streak: number; won: number; tokens: number };
+  quiz: { enabled: boolean; playedToday: boolean; inProgress: boolean; todayCorrect: number | null; questions: number; streak: number; won: number; best: number };
   slots: { enabled: boolean; machines: number; spins24h: number; jackpot: number | null; mySpins: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
 }
 
@@ -109,6 +110,27 @@ function WheelCard({ d }: { d: Summary['wheel'] }) {
   );
 }
 
+/** La case du quiz quotidien : résultat du jour, série en cours et ce que j'ai déjà gagné. */
+function QuizCard({ d }: { d: Summary['quiz'] }) {
+  return (
+    <Link to="/jeux/quiz" className="gh-card gh-quiz">
+      <div className="gh-head"><span className="gh-icon">🧠</span><div><h2>Quiz quotidien</h2><div className="gh-tag">{d.questions} questions par jour, les mêmes pour tous</div></div></div>
+      <p className="gh-desc">Cinéma, hockey, musique, sciences, géographie… Réponds vite : chaque bonne réponse rapporte des points, plus un bonus de rapidité et un gros bonus pour un sans-faute. Les trois meilleurs du jour gagnent un prix.</p>
+      <div className="gh-icons" aria-hidden="true"><span>🎬</span><span>🏒</span><span>🎵</span><span>🔬</span></div>
+      {d.playedToday ? <div className="gh-next"><span style={{ fontSize: 22 }}>✅</span><div><strong>Quiz du jour terminé : {d.todayCorrect}/{d.questions}</strong><div className="muted" style={{ fontSize: 12.5 }}>Nouveau quiz demain</div></div></div>
+        : d.inProgress ? <div className="gh-next"><span style={{ fontSize: 22 }}>▶️</span><div><strong>Un quiz t'attend</strong><div className="muted" style={{ fontSize: 12.5 }}>Reprends là où tu t'étais arrêté</div></div></div>
+        : d.streak > 0 ? <div className="gh-next"><span style={{ fontSize: 22 }}>🔥</span><div><strong>Série en cours : {d.streak} jour{d.streak > 1 ? 's' : ''}</strong><div className="muted" style={{ fontSize: 12.5 }}>Joue aujourd'hui pour la garder</div></div></div>
+        : <div className="gh-next muted">Teste tes connaissances dès aujourd'hui !</div>}
+      <div className="gh-stats">
+        {d.won > 0 && <Stat label="gagné au total" value={`+${formatNumber(d.won)} pts`} tone="good" />}
+        {d.best > 0 && <Stat label="meilleur score" value={`${d.best}/${d.questions}`} tone="good" />}
+      </div>
+      {!d.playedToday && <span className="gh-badge">🎁 Ton quiz du jour t'attend</span>}
+      <span className="gh-go">{d.playedToday ? 'Voir →' : d.inProgress ? 'Reprendre →' : 'Jouer →'}</span>
+    </Link>
+  );
+}
+
 /** Page d'accueil des jeux : une case par jeu avec sa description et ses statistiques ; un clic ouvre le jeu. */
 export default function GamesHub() {
   const [data, setData] = useState<Summary | null>(null);
@@ -150,6 +172,7 @@ export default function GamesHub() {
         {data.slots.enabled && <SlotsCard d={data.slots} />}
         {data.hilo?.enabled && <HiLoCard d={data.hilo} />}
         {data.wheel?.enabled && <WheelCard d={data.wheel} />}
+        {data.quiz?.enabled && <QuizCard d={data.quiz} />}
         <div className="gh-card gh-soon"><span className="gh-icon">🎲</span><h2>Bientôt</h2><p className="gh-desc">D'autres jeux arrivent. Dis-nous ceux que tu aimerais voir !</p></div>
       </div>
     </div>

@@ -350,7 +350,32 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Le tirage est fait par le serveur, jamais par ton navigateur : l'animation ne fait que montrer le résultat.\n` +
         `• Les gros lots sont annoncés par notification, et ceux de la semaine sont affichés sur la page de la roue.\n` +
         `• Ce sont des points du site, sans valeur en argent. Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n\n` +
-        `Voir aussi : [url=/wiki/guide-machines-a-sous]Jouer aux machines à sous[/url], [url=/wiki/guide-plus-haut-plus-bas]Jouer à Plus haut ou plus bas[/url].`,
+        `Voir aussi : [url=/wiki/guide-machines-a-sous]Jouer aux machines à sous[/url], [url=/wiki/guide-plus-haut-plus-bas]Jouer à Plus haut ou plus bas[/url], [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url].`,
+    },
+    {
+      title: 'Jouer au quiz quotidien',
+      slug: 'guide-quiz-quotidien',
+      keywords: 'quiz, quiz quotidien, questions, culture, trivia, série, podium, classement, jeux, points',
+      content:
+        `Le [b]quiz quotidien[/b] est un jeu gratuit de la section [url=/jeux]Jeux[/url] : chaque jour, les mêmes questions pour tous les membres. Tu ne mises rien et tu ne perds rien.\n\n` +
+        `[b]Comment jouer[/b]\n` +
+        `1. Ouvre le quiz depuis la page Jeux et clique sur [b]Commencer le quiz[/b] : 5 questions t'attendent.\n` +
+        `2. Chaque question a quatre réponses et un chrono de 20 secondes. Clique sur ta réponse : la bonne s'affiche tout de suite, avec une courte explication quand il y en a une.\n` +
+        `3. Si le temps est écoulé, la question compte comme ratée et on passe à la suivante. Une seule partie par jour : le compteur repart à minuit, heure de Montréal.\n` +
+        `4. Si tu quittes en cours de route, tu peux reprendre où tu étais, mais le chrono continue de tourner.\n\n` +
+        `[b]Les points[/b]\n` +
+        `• Chaque bonne réponse rapporte [b]10 points[/b], plus un [b]bonus de rapidité[/b] jusqu'à 5 points : plus tu réponds vite, plus il est grand.\n` +
+        `• Un [b]sans-faute[/b] (5 sur 5) rapporte [b]50 points[/b] de plus.\n` +
+        `• Chaque [b]jour de suite[/b] où tu joues ajoute 5 % à tes points, jusqu'à +50 %. Si tu manques un jour, la série repart de zéro.\n` +
+        `• Même quand aucune réponse n'est bonne, tu reçois un [b]prix de consolation[/b] de 10 points : on ne repart jamais les mains vides.\n\n` +
+        `[b]Classements et podium[/b]\n` +
+        `• Le classement du jour range les joueurs par nombre de bonnes réponses, puis par temps total. Un classement de la semaine est aussi affiché.\n` +
+        `• Chaque matin, les [b]trois meilleurs de la veille[/b] reçoivent 50, 30 et 20 points, avec une notification.\n\n` +
+        `[b]À savoir[/b]\n` +
+        `• Les bonnes réponses restent sur le serveur jusqu'à ce que tu aies répondu, et le chrono est surveillé par le serveur : la page ne fait qu'afficher.\n` +
+        `• Les questions viennent d'une banque (cinéma, séries, musique, hockey, sciences, géographie, technologie…) que l'équipe enrichit. Une erreur dans une question ? Signale-la à l'équipe.\n` +
+        `• Ce sont des points du site, sans valeur en argent. Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n\n` +
+        `Voir aussi : [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url], [url=/wiki/guide-plus-haut-plus-bas]Jouer à Plus haut ou plus bas[/url].`,
     },
     {
       title: 'Faire revivre un torrent mort (Réanimation)',

@@ -22,6 +22,7 @@ import GamesHub from './pages/GamesHub';
 import Slots from './pages/Slots';
 import HiLo from './pages/HiLo';
 import Wheel from './pages/Wheel';
+import Quiz from './pages/Quiz';
 import MyUploads from './pages/MyUploads';
 import MySeeds from './pages/MySeeds';
 import MyActivity from './pages/MyActivity';
@@ -139,6 +140,7 @@ export default function App() {
           <Route path="/jeux/machines" element={<Slots />} />
           <Route path="/jeux/plus-haut-plus-bas" element={<HiLo />} />
           <Route path="/jeux/roue" element={<Wheel />} />
+          <Route path="/jeux/quiz" element={<Quiz />} />
           <Route path="/activity" element={<MyActivity />} />
           <Route path="/seeds" element={<MySeeds />} />
           <Route path="/hit-and-run" element={<HitAndRun />} />

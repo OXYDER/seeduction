@@ -2071,3 +2071,50 @@ model WheelSpin {
   @@index([createdAt])
   @@index([userId, createdAt])
 }
+
+/// Banque de questions du quiz quotidien (la bonne réponse est `answer`, indice dans `choices`).
+model QuizQuestion {
+  id        String   @id @default(uuid())
+  category  String   @db.VarChar(30)
+  text      String   @db.VarChar(300)
+  choices   String[]
+  answer    Int
+  explain   String?  @db.VarChar(300)
+  active    Boolean  @default(true)
+  asked     Int      @default(0) // fois où elle a été répondue
+  right     Int      @default(0) // dont bonnes réponses
+  createdAt DateTime @default(now())
+
+  @@index([active])
+}
+
+/// Les questions d'un jour (les mêmes pour tous les membres), tirées à la première demande du jour.
+model QuizDay {
+  day         String   @id @db.VarChar(10) // AAAA-MM-JJ, heure de Montréal
+  questionIds String[]
+  createdAt   DateTime @default(now())
+}
+
+/// La partie d'un membre pour un jour : une seule par jour. Les réponses sont chronométrées par le serveur.
+model QuizPlay {
+  id          String    @id @default(uuid())
+  userId      String
+  day         String    @db.VarChar(10)
+  questionIds String[]
+  answers     Json      @default("[]")
+  current     Int       @default(0) // indice de la question en cours
+  startsAt    DateTime // début de la question en cours (le chrono part de là)
+  status      String    @default("ACTIVE") @db.VarChar(10) // ACTIVE | DONE
+  correct     Int       @default(0)
+  points      Int       @default(0) // points des réponses (base + rapidité)
+  bonus       Int       @default(0) // bonus sans-faute, série ou consolation
+  streak      Int       @default(1)
+  totalMs     Int       @default(0)
+  podium      Int       @default(0) // rang au podium de la veille une fois payé (1 à 3)
+  createdAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  @@unique([userId, day])
+  @@index([day, status, correct])
+  @@index([userId, createdAt])
+}
