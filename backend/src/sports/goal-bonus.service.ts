@@ -113,7 +113,7 @@ export class GoalBonusService {
         userId: m.id, type: 'SYSTEM', category: 'games',
         title: given ? `🏒 BUT du Canadien ! +${given} points bonus` : '🏒 BUT du Canadien !',
         titleMany: '🏒 {n} buts du Canadien !',
-        body: scoreLine, link: '/jeux', groupKey: `goal-${gameId}`,
+        body: scoreLine, link: '/jeux/mise-o-jeu', groupKey: `goal-${gameId}`,
       }).catch(() => undefined);
     }
     this.logger.log(`But n°${goal} du Canadien (match ${gameId}) : ${members.length} membre(s) prévenu(s), ${paid} récompensé(s)`);

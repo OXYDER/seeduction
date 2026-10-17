@@ -82,6 +82,25 @@ export class SlotsService {
     };
   }
 
+  /** Statistiques pour la case des machines à sous sur la page des jeux. */
+  async summary(accountId: string) {
+    const cfg = await this.config();
+    const since = new Date(Date.now() - DAY);
+    const [all24, mine, big, freeToday] = await Promise.all([
+      this.prisma.slotSpin.aggregate({ where: { createdAt: { gt: since } }, _count: { _all: true } }),
+      this.prisma.slotSpin.aggregate({ where: { userId: accountId, daily: false }, _sum: { stake: true, win: true }, _count: { _all: true } }),
+      this.prisma.slotSpin.findFirst({ where: { win: { gt: 0 }, createdAt: { gt: new Date(Date.now() - 7 * DAY) } }, orderBy: { win: 'desc' }, select: { userId: true, win: true, valued: true, machine: true } }),
+      this.prisma.slotSpin.count({ where: { userId: accountId, daily: true, createdAt: { gte: startOfDayToronto() } } }),
+    ]);
+    const who = big ? await this.prisma.user.findUnique({ where: { id: big.userId }, select: { username: true } }) : null;
+    const stats = exactRtp();
+    return {
+      enabled: cfg.enabled, machines: MACHINES.filter((m) => cfg.machines[m]).length, spins24h: all24._count._all, rtp: Math.round(stats.rtp * 1000) / 10,
+      mySpins: mine._count._all, myNet: (mine._sum.win ?? 0) - (mine._sum.stake ?? 0), dailyFreeAvailable: cfg.dailyFree.enabled && freeToday === 0,
+      biggest: big ? { username: who?.username ?? 'Membre supprimé', win: big.win, stake: big.valued, machine: big.machine } : null,
+    };
+  }
+
   /** Un tour (ou le tour gratuit quotidien). Renvoie le déroulement complet pour que le navigateur l'anime. */
   async spin(accountId: string, input: { machine: string; stake?: number; daily?: boolean }) {
     const cfg = await this.config();

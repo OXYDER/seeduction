@@ -173,7 +173,10 @@ export default function Jeux() {
 
   return (
     <div className="grid" style={{ gap: 16 }}>
-      <h1>🎲 Jeux</h1>
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        <h1 style={{ margin: 0 }}>🏒 Mise-O-jeu</h1>
+        <Link to="/jeux" className="muted">← Tous les jeux</Link>
+      </div>
 
       <div className="panel ornate">
         <div className="row" style={{ justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -241,11 +244,6 @@ export default function Jeux() {
         </div>
       </div>
 
-      <Link to="/jeux/machines" className="panel ornate moj-slots-link">
-        <span style={{ fontSize: 34 }}>🎰</span>
-        <div><strong style={{ fontSize: 18 }}>Machines à sous</strong><div className="muted">Six machines à thèmes (Cinéma, Seeduction Or, Hockey, Cabane à sucre, Fêtes, Pirates). Mise de 5 à 100 points, et un tour gratuit par jour.</div></div>
-        <span className="muted">Jouer →</span>
-      </Link>
     </div>
   );
 }

@@ -177,7 +177,7 @@ export class MojService implements OnModuleInit {
       await this.notifications.notify({
         userId, type: 'SYSTEM', category: 'games',
         title: s.won > 0 ? `🏆 Mise-O-jeu : tu as gagné ${s.won} points !` : s.refunded > 0 && s.lost === 0 ? '🏒 Mise-O-jeu : tes mises te sont rendues' : '🏒 Mise-O-jeu : résultat du match',
-        body: `${line}. ${parts.join(' · ')}${s.wins.length ? `. Gagné : ${s.wins.join(', ')}` : ''}`, link: '/jeux',
+        body: `${line}. ${parts.join(' · ')}${s.wins.length ? `. Gagné : ${s.wins.join(', ')}` : ''}`, link: '/jeux/mise-o-jeu',
       }).catch(() => undefined);
     }
     return true;
@@ -199,7 +199,7 @@ export class MojService implements OnModuleInit {
     if (!match) return false;
     this.logger.log(`Mise-O-jeu : ${match.homeAbbrev}-${match.awayAbbrev} remboursé (${reason})`);
     for (const [userId, points] of touched) {
-      await this.notifications.notify({ userId, type: 'SYSTEM', category: 'games', title: `🏒 Mise-O-jeu : ${points} points remboursés`, body: `${match.awayName} @ ${match.homeName} : ${reason}.`, link: '/jeux' }).catch(() => undefined);
+      await this.notifications.notify({ userId, type: 'SYSTEM', category: 'games', title: `🏒 Mise-O-jeu : ${points} points remboursés`, body: `${match.awayName} @ ${match.homeName} : ${reason}.`, link: '/jeux/mise-o-jeu' }).catch(() => undefined);
     }
     return true;
   }
@@ -211,6 +211,29 @@ export class MojService implements OnModuleInit {
   }
 
   // ------------------------------------------------------------------ côté membre
+
+  /** Statistiques pour la case de Mise-O-jeu sur la page des jeux. */
+  async summary(accountId: string) {
+    const cfg = await this.config();
+    const now = new Date();
+    const [openMatches, next, openPool, players, mine, active] = await Promise.all([
+      this.prisma.mojMatch.count({ where: { status: 'OPEN', startUtc: { gt: now } } }),
+      this.prisma.mojMatch.findFirst({ where: { status: 'OPEN', startUtc: { gt: now } }, orderBy: { startUtc: 'asc' } }),
+      this.prisma.mojBet.aggregate({ where: { stake: { gt: 0 }, match: { status: 'OPEN' } }, _sum: { stake: true } }),
+      this.prisma.mojBet.groupBy({ by: ['userId'], where: { createdAt: { gt: new Date(now.getTime() - 7 * DAY) } } }),
+      this.prisma.mojBet.aggregate({ where: { userId: accountId, status: { in: ['WON', 'LOST', 'REFUNDED'] } }, _sum: { payout: true, stake: true }, _count: { _all: true } }),
+      this.prisma.mojBet.count({ where: { userId: accountId, status: 'PENDING' } }),
+    ]);
+    return {
+      enabled: cfg.enabled, openMatches, openPool: openPool._sum.stake ?? 0, playersWeek: players.length, myActiveBets: active, myBetsSettled: mine._count._all,
+      myNet: (mine._sum.payout ?? 0) - (mine._sum.stake ?? 0),
+      next: next ? {
+        startUtc: next.startUtc, side: next.mineSide, kind: next.kind,
+        mine: next.mineSide === 'home' ? { abbrev: next.homeAbbrev, name: next.homeName } : { abbrev: next.awayAbbrev, name: next.awayName },
+        other: next.mineSide === 'home' ? { abbrev: next.awayAbbrev, name: next.awayName } : { abbrev: next.homeAbbrev, name: next.homeName },
+      } : null,
+    };
+  }
 
   /** Pourquoi ce compte ne peut pas parier (null : il peut). */
   private async blocked(account: { status: string; createdAt: Date; gamesOptOut: boolean; parentId: string | null }, cfg: MojConfig): Promise<string | null> {
