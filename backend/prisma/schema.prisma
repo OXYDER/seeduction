@@ -2229,3 +2229,61 @@ model DiceRoll {
   @@index([createdAt])
   @@index([userId, createdAt])
 }
+
+/// Cartes à collectionner : le portefeuille d'un membre (paquets à ouvrir, éclats issus des doublons, compteur de garantie légendaire).
+model CardWallet {
+  userId    String   @id
+  packs     Int      @default(0)
+  shards    Int      @default(0)
+  pity      Int      @default(0) // paquets ouverts depuis la dernière carte légendaire
+  opened    Int      @default(0) // paquets ouverts au total
+  lastDaily String?  @db.VarChar(10) // dernier jour (heure de Montréal) où le paquet quotidien a été réclamé
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Une carte possédée par un membre (avec son nombre d'exemplaires). Le catalogue des cartes est dans le code (common/utils/cards.ts).
+model UserCard {
+  id        String   @id @default(uuid())
+  userId    String
+  cardId    String   @db.VarChar(40)
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, cardId])
+  @@index([userId])
+}
+
+/// Paquet gagné en jouant (une seule fois par membre, source et clé : le même exploit ne rapporte jamais deux paquets).
+model CardPackGrant {
+  id        String   @id @default(uuid())
+  userId    String
+  source    String   @db.VarChar(12) // quiz | wheel | picks
+  key       String   @db.VarChar(40)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, source, key])
+}
+
+/// Points offerts une seule fois pour une série complétée (ou « album » pour la collection entière).
+model CardSetReward {
+  id        String   @id @default(uuid())
+  userId    String
+  setId     String   @db.VarChar(12)
+  points    Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, setId])
+}
+
+/// Historique des paquets ouverts (cartes tirées et éclats gagnés).
+model CardOpening {
+  id        String   @id @default(uuid())
+  userId    String
+  cards     Json
+  shards    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

@@ -18,6 +18,7 @@ interface Summary {
   picks: { enabled: boolean; gamesToday: number; pickedToday: number; toPick: number; streak: number; weekWins: number; weekPicks: number; won: number };
   blackjack: { enabled: boolean; gamesToday: number; myGames: number; myWon: number; active: boolean; dailyFreeAvailable: boolean; biggest: { username: string; payout: number; stake: number } | null };
   dice: { enabled: boolean; rollsToday: number; myRolls: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; payout: number; stake: number } | null };
+  cards: { enabled: boolean; packs: number; shards: number; owned: number; total: number; dailyAvailable: boolean };
   slots: { enabled: boolean; machines: number; spins24h: number; jackpot: number | null; mySpins: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
 }
 
@@ -195,6 +196,25 @@ function DiceCard({ d }: { d: Summary['dice'] }) {
   );
 }
 
+/** La case des cartes à collectionner : paquets à ouvrir, progression de l'album et paquet du jour. */
+function CardsCard({ d }: { d: Summary['cards'] }) {
+  return (
+    <Link to="/jeux/cartes" className="gh-card gh-cards">
+      <div className="gh-head"><span className="gh-icon">🎴</span><div><h2>Cartes à collectionner</h2><div className="gh-tag">Un paquet gratuit chaque jour</div></div></div>
+      <p className="gh-desc">Ouvre des paquets, retourne tes cartes et complète ton album : équipes de la LNH, cinéma, musique et Seeduction. Les cartes rares brillent, les doublons deviennent des éclats pour fabriquer celles qui te manquent. Rien à miser : les paquets se gagnent.</p>
+      <div className="gh-icons" aria-hidden="true"><span>🏒</span><span>🎬</span><span>🎵</span><span>⚜️</span></div>
+      {d.packs > 0 ? <div className="gh-next"><span style={{ fontSize: 22 }}>🎴</span><div><strong>{d.packs} paquet{d.packs > 1 ? 's' : ''} à ouvrir</strong><div className="muted" style={{ fontSize: 12.5 }}>Ouvre-les pour compléter ton album</div></div></div>
+        : <div className="gh-next"><span style={{ fontSize: 22 }}>📖</span><div><strong>Album : {d.owned} / {d.total} cartes</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.shards > 0 ? `${d.shards} éclats pour fabriquer une carte` : 'Réclame ton paquet du jour'}</div></div></div>}
+      <div className="gh-stats">
+        <Stat label="cartes obtenues" value={`${d.owned}/${d.total}`} tone={d.owned > 0 ? 'good' : undefined} />
+        {d.shards > 0 && <Stat label="éclats" value={formatNumber(d.shards)} />}
+      </div>
+      {d.dailyAvailable && <span className="gh-badge">🎁 Ton paquet du jour t'attend</span>}
+      <span className="gh-go">Ouvrir →</span>
+    </Link>
+  );
+}
+
 /** Page d'accueil des jeux : une case par jeu avec sa description et ses statistiques ; un clic ouvre le jeu. */
 export default function GamesHub() {
   const [data, setData] = useState<Summary | null>(null);
@@ -237,6 +257,7 @@ export default function GamesHub() {
         {data.hilo?.enabled && <HiLoCard d={data.hilo} />}
         {data.blackjack?.enabled && <BlackjackCard d={data.blackjack} />}
         {data.dice?.enabled && <DiceCard d={data.dice} />}
+        {data.cards?.enabled && <CardsCard d={data.cards} />}
         {data.wheel?.enabled && <WheelCard d={data.wheel} />}
         {data.quiz?.enabled && <QuizCard d={data.quiz} />}
         {data.picks?.enabled && <PicksCard d={data.picks} />}

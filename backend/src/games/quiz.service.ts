@@ -10,6 +10,7 @@ import { dayBefore } from '../common/utils/wheel';
 import { AnswerRec, DEFAULT_QUIZ, QuizConfig, choicesFor, nextQuizStreak, normalizeQuiz, pickDailyIds, pointsFor, rewardFor, streakMultiplier, validateQuestion } from '../common/utils/quiz';
 import { QUIZ_SEED } from '../common/utils/quiz-seed';
 import { nextMidnightToronto, torontoDay } from './wheel.service';
+import { CardsService } from './cards.service';
 
 const KEY = 'quiz';
 const SEEDED_KEY = 'quizSeeded';
@@ -31,7 +32,7 @@ export interface Actor { userId: string; username: string }
 export class QuizService implements OnModuleInit {
   private readonly logger = new Logger(QuizService.name);
 
-  constructor(private prisma: PrismaService, private settings: SettingsService, private audit: AuditService, private notifications: NotificationsService) {}
+  constructor(private prisma: PrismaService, private settings: SettingsService, private audit: AuditService, private notifications: NotificationsService, private cards: CardsService) {}
 
   /** Ajoute la banque de questions fournie, une seule fois : si l'administration vide la banque, elle ne revient pas toute seule. */
   async onModuleInit() {
@@ -104,6 +105,8 @@ export class QuizService implements OnModuleInit {
         if (r.count !== 1) throw conflict();
         await tx.user.update({ where: { id: play.userId }, data: { bonusPoints: { increment: reward.total } } });
       });
+      // un sans-faute rapporte aussi un paquet de cartes (une seule fois par jour)
+      if (reward.correct === play.questionIds.length) void this.cards.grantPack(play.userId, 'quiz', play.day);
     }
     return this.prisma.quizPlay.findUniqueOrThrow({ where: { id: play.id } });
   }

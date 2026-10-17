@@ -29,7 +29,8 @@ function setup(opts: { picks?: { all: any[]; wins: any[] }; openGames?: any[]; e
   const settings: any = { get: jest.fn(async () => null) };
   const notes: any[] = [];
   const notifications: any = { notify: jest.fn(async (n: any) => { notes.push(n); return n; }) };
-  const svc = new PicksService(prisma, settings, { log: jest.fn() } as any, notifications, {} as any);
+  const cards = { grantPack: jest.fn(async () => true) };
+  const svc = new PicksService(prisma, settings, { log: jest.fn() } as any, notifications, {} as any, cards as any);
   return { svc, prisma, created, credited, prizes, notes };
 }
 

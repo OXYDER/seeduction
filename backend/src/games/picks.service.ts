@@ -8,6 +8,7 @@ import { SportsService } from '../sports/sports.service';
 import type { Game } from '../common/utils/nhl';
 import { DEFAULT_PICKS, PicksConfig, Side, addDays, capped, isPerfectDay, normalizePicks, streakOf, weekStart, winPoints, winnerOf } from '../common/utils/picks';
 import { torontoDay } from './wheel.service';
+import { CardsService } from './cards.service';
 
 const KEY = 'picks';
 const TZ = 'America/Toronto';
@@ -26,7 +27,7 @@ export class PicksService {
   private readonly logger = new Logger(PicksService.name);
   private running = false;
 
-  constructor(private prisma: PrismaService, private settings: SettingsService, private audit: AuditService, private notifications: NotificationsService, private sports: SportsService) {}
+  constructor(private prisma: PrismaService, private settings: SettingsService, private audit: AuditService, private notifications: NotificationsService, private sports: SportsService, private cards: CardsService) {}
 
   async config(): Promise<PicksConfig> { return normalizePicks(await this.settings.get(KEY), DEFAULT_PICKS); }
 
@@ -138,6 +139,8 @@ export class PicksService {
     const line = this.line(game, result.home, result.away, result.outcome);
     this.logger.log(`Pronostics LNH : ${line} réglé (${paid.length} bonne(s) prédiction(s))`);
     for (const w of paid) {
+      // une journée parfaite rapporte aussi un paquet de cartes
+      if (w.bonus > 0) void this.cards.grantPack(w.userId, 'picks', game.day);
       const total = w.points + w.bonus;
       if (total <= 0) continue;
       await this.notifications.notify({

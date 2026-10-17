@@ -23,9 +23,10 @@ function setup(opts: { random: number; last?: { day: string; streak: number } | 
   };
   const notes: any[] = [];
   const notifications: any = { notify: jest.fn(async (n: any) => { notes.push(n); return n; }) };
-  const svc = new WheelService(prisma, { get: jest.fn(async () => null) } as any, { log: jest.fn() } as any, { listOnlineAll: () => [] } as any, notifications);
+  const cards = { grantPack: jest.fn(async () => true) };
+  const svc = new WheelService(prisma, { get: jest.fn(async () => null) } as any, { log: jest.fn() } as any, { listOnlineAll: () => [] } as any, notifications, cards as any);
   (svc as any).random = () => opts.random;
-  return { svc, state, notes, prisma };
+  return { svc, state, notes, prisma, cards };
 }
 
 /** Nombre de [0,1[ qui tombe au milieu du secteur `i`. */
@@ -46,6 +47,7 @@ describe('Roue de la fortune (service)', () => {
     expect(r.streak).toBe(1);
     expect(t.state.credited).toBe(50);
     expect(t.state.spins[0]).toMatchObject({ userId: 'u1', day: today, segment: 1, points: 50, streak: 1 });
+    expect(t.cards.grantPack).not.toHaveBeenCalled(); // pas de paquet hors des sept jours de suite
   });
 
   it('jouer le lendemain de son dernier tour prolonge la série et augmente le lot', async () => {
@@ -69,6 +71,7 @@ describe('Roue de la fortune (service)', () => {
     expect(r.streak).toBe(7);
     expect(r.reward.streakBonus).toBe(100);
     expect(t.state.credited).toBe(r.reward.points + 100);
+    expect(t.cards.grantPack).toHaveBeenCalledWith('u1', 'wheel', today); // le bonus de sept jours rapporte aussi un paquet de cartes
   });
 
   it('les jetons freeleech sont ajoutés au compte', async () => {

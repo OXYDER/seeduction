@@ -450,6 +450,31 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Voir aussi : [url=/wiki/guide-blackjack]Jouer au blackjack[/url], [url=/wiki/guide-machines-a-sous]Jouer aux machines à sous[/url].`,
     },
     {
+      title: 'Collectionner les cartes',
+      slug: 'guide-cartes',
+      keywords: 'cartes, cartes à collectionner, paquet, album, éclats, rare, légendaire, collection, jeux, gratuit',
+      content:
+        `Les [b]cartes à collectionner[/b] sont un jeu de la section [url=/jeux]Jeux[/url] : ouvre des paquets, retourne tes cartes et complète ton album. Il n'y a rien à miser : les paquets se gagnent.\n\n` +
+        `[b]Comment obtenir des paquets[/b]\n` +
+        `• [b]Un paquet gratuit par jour[/b] : clique sur « Réclamer le paquet du jour » (le compteur repart à minuit, heure de Montréal).\n` +
+        `• Un [b]quiz du jour sans faute[/b], [b]sept jours de suite[/b] à la roue de la fortune et une [b]journée parfaite[/b] aux pronostics LNH rapportent chacun un paquet de plus.\n` +
+        `• Les paquets ne s'achètent jamais avec des points.\n\n` +
+        `[b]Ouvrir un paquet[/b]\n` +
+        `1. Clique sur « Ouvrir un paquet », puis touche le paquet pour le déchirer.\n` +
+        `2. Chaque paquet contient 3 cartes. Touche une carte pour la retourner, ou « Tout révéler ». La dernière carte est toujours au moins [b]rare[/b].\n` +
+        `3. Les cartes sont tirées par le serveur, jamais par ton navigateur. Les chances de chaque rareté (commune, rare, épique, légendaire) sont affichées sur la page.\n` +
+        `4. Une carte [b]légendaire[/b] est garantie au plus tard dans 30 paquets sans en avoir eu.\n\n` +
+        `[b]L'album, les éclats et les récompenses[/b]\n` +
+        `• L'album compte 4 séries : les équipes de la LNH (le Canadien est légendaire), le cinéma, la musique et Seeduction. Les cartes pas encore obtenues apparaissent en silhouette.\n` +
+        `• Un [b]doublon[/b] devient des [b]éclats[/b] (5 pour une commune, jusqu'à 100 pour une légendaire). Avec assez d'éclats, tu peux [b]fabriquer[/b] une carte qui te manque : touche sa silhouette dans l'album.\n` +
+        `• Compléter une série rapporte des points, une seule fois (400 pour les équipes de la LNH, 150 pour le cinéma et Seeduction, 100 pour la musique), et l'album entier 1 000 points de plus.\n` +
+        `• Les cartes rares brillent : passe la souris dessus pour voir le reflet.\n\n` +
+        `[b]À savoir[/b]\n` +
+        `• Les cartes n'ont aucune valeur en argent et ne s'échangent pas : c'est une collection.\n` +
+        `• Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n\n` +
+        `Voir aussi : [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url], [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url], [url=/wiki/guide-pronostics-lnh]Faire ses pronostics sur la LNH[/url].`,
+    },
+    {
       title: 'Faire revivre un torrent mort (Réanimation)',
       slug: 'guide-reanimation',
       keywords: 'réanimation, torrent mort, 0 seeder, reseed, relancer, récompense, demander un reseed, je le relance',

@@ -20,7 +20,8 @@ function setup(opts: { winners?: any[]; seeded?: boolean; count?: number; enable
   const settings: any = { get: jest.fn(async (k: string) => store.get(k) ?? null), set: jest.fn(async (k: string, v: any) => { store.set(k, v); if (k === 'quizSeeded') state.seeded = true; }) };
   const notes: any[] = [];
   const notifications: any = { notify: jest.fn(async (n: any) => { notes.push(n); return n; }) };
-  const svc = new QuizService(prisma, settings, { log: jest.fn() } as any, notifications);
+  const cards = { grantPack: jest.fn(async () => true) };
+  const svc = new QuizService(prisma, settings, { log: jest.fn() } as any, notifications, cards as any);
   return { svc, state, notes, prisma, store };
 }
 
