@@ -5,11 +5,12 @@ import { MACHINE_ORDER, SKINS, type MachineId } from '../lib/slotSkins';
 
 interface Cfg {
   enabled: boolean; minStake: number; maxStake: number; dailyLossMax: number; maxWin: number; minAccountDays: number;
-  dailyFree: { enabled: boolean; stake: number; maxWin: number }; machines: Record<MachineId, boolean>;
+  dailyFree: { enabled: boolean; stake: number; maxWin: number }; machines: Record<MachineId, boolean>; profile: 'prudent' | 'equilibre' | 'genereux';
 }
 interface Totals { spins: number; wagered: number; paid: number; houseProfit: number; observedRtp: number | null }
 interface Admin {
-  config: Cfg; theoretical: { rtp: number; hitRate: number; houseEdge: number; maxMultiple: number };
+  config: Cfg; profiles: { id: 'prudent' | 'equilibre' | 'genereux'; label: string; rtp: number; houseEdge: number; atLeastStake: number; bonusRate: number }[];
+  theoretical: { rtp: number; hitRate: number; atLeastStake: number; houseEdge: number; maxMultiple: number };
   totals: { day: Totals; week: Totals; all: Totals }; machines: { machine: string; spins: number; wagered: number; paid: number }[];
 }
 
@@ -48,10 +49,22 @@ export default function AdminSlots() {
       <div className="panel" style={{ display: 'grid', gap: 12 }}>
         <h2 style={{ margin: 0 }}>🎰 Machines à sous : réglages</h2>
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-          Le site paie les gains et garde les mises perdues. Le jeu est réglé pour que la maison gagne en moyenne <strong>{d.theoretical.houseEdge} %</strong> de ce qui est misé (retour théorique au joueur : {d.theoretical.rtp} %, un tour sur {Math.round(100 / d.theoretical.hitRate)} rembourse ou paie quelque chose, gain maximal de {d.theoretical.maxMultiple} fois la mise sur un tour).
-          Ce pourcentage est fixé par le jeu lui-même et ne se règle pas ici : on règle les limites. Les résultats varient beaucoup à court terme.
+          Le site paie les gains et garde les mises perdues. Avec le réglage choisi, la maison gagne en moyenne <strong>{d.theoretical.houseEdge} %</strong> de ce qui est misé (retour théorique au joueur : {d.theoretical.rtp} %) ; environ {Math.round(d.theoretical.atLeastStake)} % des tours rendent au moins la mise, sans compter le bonus. Les résultats varient beaucoup à court terme.
         </p>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={cfg.enabled} onChange={(e) => setCfg({ ...cfg, enabled: e.target.checked })} /> Machines à sous ouvertes aux membres</label>
+        <div>
+          <strong style={{ fontSize: 13 }}>Générosité des machines</strong>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+            {d.profiles.map((p) => (
+              <label key={p.id} className="panel" style={{ display: 'grid', gap: 2, padding: '8px 12px', cursor: 'pointer', borderColor: cfg.profile === p.id ? 'var(--gold-bright)' : undefined, minWidth: 200 }}>
+                <span><input type="radio" name="slot-profile" checked={cfg.profile === p.id} onChange={() => setCfg({ ...cfg, profile: p.id })} /> <strong>{p.label}</strong></span>
+                <span style={{ fontSize: 12.5 }}>Retour au joueur : {p.rtp} % · le site garde {p.houseEdge} %</span>
+                <span className="muted" style={{ fontSize: 12 }}>Bonus : 1 tour sur {Math.round(100 / p.bonusRate)}</span>
+              </label>
+            ))}
+          </div>
+          <span className="muted" style={{ fontSize: 12 }}>Le retour reste toujours sous 100 % : la maison gagne à long terme, quel que soit le choix. Plus c'est généreux, plus les membres gagnent souvent.</span>
+        </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           {num(cfg.minStake, (n) => setCfg({ ...cfg, minStake: n }), 'Mise minimale', 'Multiple de 5')}
           {num(cfg.maxStake, (n) => setCfg({ ...cfg, maxStake: n }), 'Mise maximale', 'Multiple de 5')}

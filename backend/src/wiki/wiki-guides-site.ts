@@ -293,16 +293,16 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Les [b]machines à sous[/b] sont dans la section [url=/jeux]Jeux[/url] (bouton « Machines à sous »). Six machines au choix : [b]Grand Écran[/b] (cinéma), [b]Seeduction Or[/b], [b]Rondelle d'Or[/b] (hockey), [b]Cabane à Sucre[/b], [b]Fête du Moment[/b] (elle prend l'habillage de l'événement en cours : Halloween, Noël...) et [b]Trésor des Mers[/b] (pirates). Elles se jouent toutes de la même façon : seuls les dessins et les sons changent.\n\n` +
         `[b]Comment jouer[/b]\n` +
         `1. Choisis ta mise : [b]5, 10, 25, 50 ou 100 points[/b].\n` +
-        `2. Clique sur [b]Tourner[/b]. Trois rouleaux s'arrêtent l'un après l'autre.\n` +
-        `3. Si des symboles identiques sont alignés sur l'une des [b]5 lignes[/b] (3 horizontales et 2 diagonales), tu gagnes. Les gains de toutes les lignes s'additionnent.\n\n` +
+        `2. Clique sur [b]Tourner[/b] ou tire le [b]levier[/b] à droite de la machine. Trois rouleaux s'arrêtent l'un après l'autre.\n` +
+        `3. Si des symboles identiques sont alignés sur l'une des [b]5 lignes[/b] (3 horizontales et 2 diagonales), tu gagnes. Une [b]paire[/b] de symboles identiques à gauche (le troisième est différent) paie aussi un petit gain. Les gains de toutes les lignes s'additionnent.\n\n` +
         `[b]Les symboles spéciaux[/b]\n` +
         `• [b]Joker (WILD)[/b] : remplace n'importe quel symbole pour former une ligne.\n` +
-        `• [b]Bonus[/b] : trois bonus ou plus visibles n'importe où déclenchent [b]5 tours gratuits[/b] à la même mise.\n` +
+        `• [b]Bonus[/b] : trois bonus ou plus visibles n'importe où déclenchent [b]5 tours gratuits[/b] à la même mise, dont [b]les gains sont doublés[/b]. Le bonus tombe environ une fois sur vingt.\n` +
         `• Le bouton [b]Gains[/b] de la machine montre ce que paie chaque symbole pour ta mise.\n\n` +
         `[b]Un tour gratuit par jour[/b]\n` +
         `Chaque jour, tu as un tour gratuit (bouton « Tour gratuit du jour ») : rien n'est débité, et ton gain, plafonné, est pour toi.\n\n` +
         `[b]À savoir[/b]\n` +
-        `• C'est un jeu de hasard : le serveur tire le résultat, jamais ton navigateur. [b]Gagner n'est jamais garanti.[/b] Le retour théorique est d'environ 90 % : à long terme, le site garde environ 10 % de ce qui est misé. Certains joueurs gagnent gros, d'autres moins, au hasard.\n` +
+        `• C'est un jeu de hasard : le serveur tire le résultat, jamais ton navigateur. [b]Gagner n'est jamais garanti.[/b] Le retour théorique est affiché sur chaque machine (environ 95 % par défaut, 92 à 97 % selon le réglage de l'administration) : à long terme, le site garde le reste de ce qui est misé. Environ un tour sur trois rend au moins la mise. Certains joueurs gagnent gros, d'autres moins, au hasard.\n` +
         `• Les [b]points reçus par un don ne peuvent pas être misés[/b].\n` +
         `• Il y a une [b]limite de pertes par 24 heures[/b] et un [b]gain maximal par partie[/b], affichés sur la page. Un rappel s'affiche après 20 minutes de jeu.\n` +
         `• Le son peut se couper avec le bouton 🔊 de la machine. Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n` +

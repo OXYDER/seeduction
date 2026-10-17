@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger } from '@ne
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
-import { DEFAULT_SLOTS, MACHINES, MachineId, PAYLINES, PAY_THREE, PAY_TWO, SlotsConfig, STAKE_STEP, STRIPS, exactRtp, normalizeSlotsConfig, playRound, winTier } from '../common/utils/slots';
+import { DEFAULT_SLOTS, FREE_MULT, MACHINES, MachineId, PAYLINES, PROFILES, PROFILE_IDS, SlotsConfig, STAKE_STEP, STRIPS, exactRtp, normalizeSlotsConfig, playRound, winTier } from '../common/utils/slots';
 import { stakeable } from '../common/utils/points';
 
 const KEY = 'slots';
@@ -69,7 +69,8 @@ export class SlotsService {
     ]);
     const names = await this.prisma.user.findMany({ where: { id: { in: [...new Set(big.map((b) => b.userId))] } }, select: { id: true, username: true } });
     const name = new Map(names.map((u) => [u.id, u.username]));
-    const stats = exactRtp();
+    const profile = PROFILES[cfg.profile];
+    const stats = exactRtp(profile);
     return {
       config: { enabled: cfg.enabled, minStake: cfg.minStake, maxStake: cfg.maxStake, dailyLossMax: cfg.dailyLossMax, maxWin: cfg.maxWin, dailyFree: cfg.dailyFree, machines: cfg.machines },
       me: {
@@ -77,7 +78,7 @@ export class SlotsService {
         blocked: this.blocked(account, cfg), optOut: account.gamesOptOut, lossToday: loss, lossLeft: cfg.dailyLossMax > 0 ? Math.max(0, cfg.dailyLossMax - loss) : null,
         dailyFreeAvailable: cfg.dailyFree.enabled && freeToday === 0,
       },
-      game: { strips: STRIPS, paylines: PAYLINES, payThree: PAY_THREE, payTwo: PAY_TWO, step: STAKE_STEP, rtp: Math.round(stats.rtp * 1000) / 10, hitRate: Math.round(stats.hitRate * 1000) / 10, maxMultiple: stats.maxMultiple },
+      game: { strips: STRIPS, paylines: PAYLINES, payThree: profile.pay3, payPair: profile.pair, freeMult: FREE_MULT, step: STAKE_STEP, rtp: Math.round(stats.rtp * 1000) / 10, hitRate: Math.round(stats.hitRate * 1000) / 10, atLeastStake: Math.round(stats.atLeastStake * 1000) / 10, maxMultiple: stats.maxMultiple },
       recent, biggest: big.map((b) => ({ username: name.get(b.userId) ?? 'Membre supprimé', machine: b.machine, stake: b.valued, win: b.win, at: b.createdAt })),
     };
   }
@@ -93,7 +94,7 @@ export class SlotsService {
       this.prisma.slotSpin.count({ where: { userId: accountId, daily: true, createdAt: { gte: startOfDayToronto() } } }),
     ]);
     const who = big ? await this.prisma.user.findUnique({ where: { id: big.userId }, select: { username: true } }) : null;
-    const stats = exactRtp();
+    const stats = exactRtp(PROFILES[cfg.profile]);
     return {
       enabled: cfg.enabled, machines: MACHINES.filter((m) => cfg.machines[m]).length, spins24h: all24._count._all, rtp: Math.round(stats.rtp * 1000) / 10,
       mySpins: mine._count._all, myNet: (mine._sum.win ?? 0) - (mine._sum.stake ?? 0), dailyFreeAvailable: cfg.dailyFree.enabled && freeToday === 0,
@@ -132,7 +133,7 @@ export class SlotsService {
 
     this.busy.add(accountId);
     try {
-      const round = playRound(stake, undefined, daily ? Math.min(cfg.dailyFree.maxWin || Infinity, cfg.maxWin || Infinity) : cfg.maxWin);
+      const round = playRound(stake, undefined, daily ? Math.min(cfg.dailyFree.maxWin || Infinity, cfg.maxWin || Infinity) : cfg.maxWin, PROFILES[cfg.profile]);
       const win = round.win;
       const rounds = round.spins.map((s) => ({ stops: s.stops, mult: s.mult, win: s.win, free: s.free }));
       const bal = await this.prisma.$transaction(async (tx) => {
@@ -170,9 +171,10 @@ export class SlotsService {
     };
     const [day, week, all] = await Promise.all([agg(since(DAY)), agg(since(7 * DAY)), agg()]);
     const byMachine = await this.prisma.slotSpin.groupBy({ by: ['machine'], _sum: { stake: true, win: true }, _count: { _all: true } });
-    const stats = exactRtp();
+    const stats = exactRtp(PROFILES[config.profile]);
+    const profiles = PROFILE_IDS.map((id) => { const x = exactRtp(PROFILES[id]); return { id, label: PROFILES[id].label, rtp: Math.round(x.rtp * 1000) / 10, houseEdge: Math.round((1 - x.rtp) * 1000) / 10, atLeastStake: Math.round(x.atLeastStake * 1000) / 10, bonusRate: Math.round(x.bonusRate * 1000) / 10 }; });
     return {
-      config, theoretical: { rtp: Math.round(stats.rtp * 1000) / 10, hitRate: Math.round(stats.hitRate * 1000) / 10, houseEdge: Math.round((1 - stats.rtp) * 1000) / 10, maxMultiple: stats.maxMultiple },
+      config, profiles, theoretical: { rtp: Math.round(stats.rtp * 1000) / 10, hitRate: Math.round(stats.hitRate * 1000) / 10, atLeastStake: Math.round(stats.atLeastStake * 1000) / 10, houseEdge: Math.round((1 - stats.rtp) * 1000) / 10, maxMultiple: stats.maxMultiple },
       totals: { day, week, all },
       machines: byMachine.map((m) => ({ machine: m.machine, spins: m._count._all, wagered: m._sum.stake ?? 0, paid: m._sum.win ?? 0 })),
     };
