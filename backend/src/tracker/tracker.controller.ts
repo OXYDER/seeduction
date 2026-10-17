@@ -1,8 +1,9 @@
-import { Controller, Get, Param, Query, Req, Res } from '@nestjs/common';
+import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { TrackerService } from './tracker.service';
 import { bencode } from '../common/utils/bencode';
 import { percentDecodedToHex } from '../common/utils/bittorrent';
+import { failureReasonOf, isInternalError, isTransientError } from '../common/utils/tracker-errors';
 
 /**
  * Endpoints BitTorrent standard — PAS de JSON ici, les clients BitTorrent
@@ -12,7 +13,20 @@ import { percentDecodedToHex } from '../common/utils/bittorrent';
  */
 @Controller('tracker/:passkey')
 export class TrackerController {
+  private readonly logger = new Logger(TrackerController.name);
+
   constructor(private trackerService: TrackerService) {}
+
+  /** Une seule nouvelle tentative, tout de suite, si la base a eu un hoquet passager (redémarrage, réservoir de connexions plein). */
+  private async announceWithRetry(params: Parameters<TrackerService['announce']>[0]) {
+    try {
+      return await this.trackerService.announce(params);
+    } catch (err: any) {
+      if (!isTransientError(err)) throw err;
+      await new Promise((r) => setTimeout(r, 400));
+      return this.trackerService.announce(params);
+    }
+  }
 
   @Get('announce')
   async announce(@Param('passkey') passkey: string, @Query() query: any, @Req() req: Request, @Res() res: Response) {
@@ -20,7 +34,7 @@ export class TrackerController {
       const infoHashRaw = req.url.match(/info_hash=([^&]+)/)?.[1] ?? '';
       const infoHash = percentDecodedToHex(infoHashRaw);
 
-      const result = await this.trackerService.announce({
+      const result = await this.announceWithRetry({
         infoHash,
         peerId: query.peer_id,
         passkey,
@@ -63,8 +77,10 @@ export class TrackerController {
         }),
       );
     } catch (err: any) {
+      // Une erreur interne (base de données...) est journalisée ici et ne part jamais telle quelle chez le client BitTorrent.
+      if (isInternalError(err)) this.logger.error(`Announce en erreur : ${String(err?.message ?? err).slice(0, 600)}`);
       res.set('Content-Type', 'text/plain');
-      res.send(bencode({ 'failure reason': err.message ?? 'Erreur tracker' }));
+      res.send(bencode({ 'failure reason': failureReasonOf(err) }));
     }
   }
 
