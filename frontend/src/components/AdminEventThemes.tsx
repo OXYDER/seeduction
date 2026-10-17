@@ -26,6 +26,7 @@ export default function AdminEventThemes() {
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [hours, setHours] = useState<Record<string, string>>({});
+  const [sound, setSound] = useState<{ name: string; url: string | null } | null>(null);
   const [sports, setSports] = useState<{ enabled: boolean; goalBonus: { enabled: boolean; points: number; dailyMax: number; minAccountDays: number } } | null>(null);
   const decor = useEventDecor();
   const preview = useEventTheme((s) => s.preview);
@@ -36,10 +37,25 @@ export default function AdminEventThemes() {
     try { const r = (await api.get('/event-themes/admin')).data as Data; setData(r); setCfg((c) => (c && dirty ? c : r.config)); } catch (e) { setErr(errorOf(e)); }
   }, [dirty]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { api.get('/sports/admin').then((r) => setSports(r.data)).catch(() => undefined); }, []);
+  useEffect(() => { api.get('/sports/admin').then((r) => { setSports(r.data); setSound(r.data.goalSound ?? null); }).catch(() => undefined); }, []);
 
   async function toggleSports(enabled: boolean) {
     try { setSports((await api.put('/sports/admin', { enabled })).data); setMsg(enabled ? '✓ Score des Canadiens activé.' : '✓ Score des Canadiens désactivé.'); } catch (e) { setErr(errorOf(e)); }
+  }
+
+  async function uploadSound(file: File | undefined) {
+    if (!file) return;
+    setErr(''); setMsg('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const { data } = await api.post('/sports/admin/sound', form);
+      setSound({ name: data.name, url: data.url });
+      setMsg('✓ Son de but enregistré : il sera joué chez les membres au prochain chargement.');
+    } catch (e) { setErr(errorOf(e)); }
+  }
+  async function removeSound() {
+    try { await api.delete('/sports/admin/sound'); setSound(null); setMsg('✓ Son retiré : la sirène synthétisée est de retour.'); } catch (e) { setErr(errorOf(e)); }
   }
 
   async function saveGoal(patch: Partial<NonNullable<typeof sports>['goalBonus']>) {
@@ -99,6 +115,17 @@ export default function AdminEventThemes() {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={sports.goalBonus.enabled} onChange={(e) => saveGoal({ enabled: e.target.checked })} /> 🥅 Points bonus à chaque but du Canadien</label>
             <span style={{ fontSize: 13 }}><input type="number" min={0} max={1000} defaultValue={sports.goalBonus.points} key={`p${sports.goalBonus.points}`} onBlur={(e) => saveGoal({ points: Number(e.target.value) || 0 })} style={{ width: 70 }} aria-label="Points par but" /> points par but, au plus <input type="number" min={0} max={100000} defaultValue={sports.goalBonus.dailyMax} key={`d${sports.goalBonus.dailyMax}`} onBlur={(e) => saveGoal({ dailyMax: Number(e.target.value) || 0 })} style={{ width: 80 }} aria-label="Maximum par 24 heures" /> par membre sur 24 h</span>
+            <div style={{ flexBasis: '100%', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: 13 }}>🔊 Son de but :</strong>
+              <span style={{ fontSize: 13 }}>{sound ? sound.name : 'sirène synthétisée (par défaut)'}</span>
+              {sound?.url && <button type="button" className="secondary" onClick={() => { const a = new Audio(sound.url!); a.volume = 0.85; void a.play(); }}>▶ Écouter</button>}
+              <label className="secondary" style={{ cursor: 'pointer', padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13 }}>
+                {sound ? 'Remplacer…' : 'Téléverser un son…'}
+                <input type="file" accept="audio/mpeg,audio/ogg,audio/wav,.mp3,.ogg,.wav" style={{ display: 'none' }} onChange={(e) => { void uploadSound(e.target.files?.[0]); e.target.value = ''; }} />
+              </label>
+              {sound && <button type="button" className="secondary" onClick={removeSound}>Retirer</button>}
+              <span className="muted" style={{ fontSize: 12 }}>MP3, OGG ou WAV, 800 Ko au plus. Utilise un son dont tu as le droit : un son libre de droits (CC0) ou enregistré par toi ; la corne officielle de la LNH ou du Canadien est protégée.</span>
+            </div>
             <span className="muted" style={{ fontSize: 12.5 }}>Versés aux membres connectés (un compte par personne, compte de plus de {sports.goalBonus.minAccountDays} jours). Tous les membres connectés reçoivent la notification, avec ou sans points.</span>
           </div>
         )}

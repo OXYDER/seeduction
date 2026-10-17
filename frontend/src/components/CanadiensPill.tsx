@@ -1,4 +1,5 @@
-import { playGoalHorn, primeGoalHorn } from '../lib/goalHorn';
+import { Link } from 'react-router-dom';
+import { playGoalHorn, primeGoalHorn, setGoalSoundUrl } from '../lib/goalHorn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useEventTheme } from '../store/eventTheme';
@@ -10,7 +11,7 @@ interface Game {
   id: number; date: string; startUtc: string; state: 'FUT' | 'PRE' | 'LIVE' | 'FINAL' | 'PPD'; kind: string; home: Side; away: Side; venue: string | null; tv: string[];
   period: string | null; clock: { remaining: string; running: boolean; intermission: boolean } | null; outcome: string | null; won: boolean | null; side: 'home' | 'away';
 }
-interface Data { enabled: boolean; available?: boolean; stale?: boolean; live: Game | null; featured: Game | null; last: Game[]; next: Game[]; updatedAt?: string; clockAt?: string; serverNow?: string }
+interface Data { goalSound?: string | null; enabled: boolean; available?: boolean; stale?: boolean; live: Game | null; featured: Game | null; last: Game[]; next: Game[]; updatedAt?: string; clockAt?: string; serverNow?: string }
 
 /** Chrono affiché : le temps restant donné par la LNH, diminué du temps écoulé depuis (les horloges du serveur donnent l'âge exact de la donnée, celle de l'appareil fait avancer les secondes). */
 function clockLeft(g: Game, d: Data, receivedAt: number, now: number, moving: boolean): string {
@@ -84,6 +85,7 @@ export default function CanadiensPill() {
     try {
       const d = (await api.get('/sports/canadiens')).data as Data;
       setData(d);
+      setGoalSoundUrl(d.goalSound ?? null); // vrai son de but choisi par l'administration, s'il y en a un
       setReceivedAt(Date.now());
       // La LNH indique « arrêté » pendant les entractes et parfois en retard : si le chrono a baissé entre deux lectures, c'est qu'il tourne.
       const c = d.live?.clock;
@@ -162,6 +164,7 @@ export default function CanadiensPill() {
           </div>
           {data.last.length > 0 && <><div className="mtl-sub">Derniers résultats</div>{data.last.map((x) => <GameRow key={x.id} g={x} />)}</>}
           {data.next.length > 0 && <><div className="mtl-sub">Prochains matchs</div>{data.next.filter((x) => x.id !== g.id || g.state === 'FINAL').map((x) => <GameRow key={x.id} g={x} />)}</>}
+          <Link to="/jeux/mise-o-jeu" className="mtl-play" onClick={close}>🎲 Parier sur les matchs du Canadien : Mise-O-jeu <span aria-hidden="true">→</span></Link>
           <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Données : LNH. Le chrono avance en direct ; score mis à jour toutes les 5 secondes pendant un match.</div>
         </div>
       </HeaderPopover>

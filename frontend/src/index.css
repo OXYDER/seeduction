@@ -3886,6 +3886,8 @@ html.ev-static .ev-gitems svg, html.ev-static .ev-mascot { animation: none; }
 .mtl-sub { margin: 12px 0 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.65; }
 .mtl-row { display: grid; grid-template-columns: 74px 1fr auto; gap: 8px; padding: 4px 0; font-size: 13px; border-top: 1px solid rgba(255, 255, 255, 0.07); align-items: baseline; }
 .mtl-w { color: #6ee7a0; } .mtl-l { color: #fca5a5; }
+a.mtl-play { display: block; margin-top: 12px; padding: 9px 12px; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; background: linear-gradient(135deg, rgba(175, 30, 45, 0.55), rgba(40, 90, 200, 0.55)); border: 1px solid rgba(255, 255, 255, 0.25); color: #fff; }
+a.mtl-play:hover { filter: brightness(1.15); }
 @media (max-width: 760px) { .mtl-pill, .ev-ny-pill { padding: 4px 9px; font-size: 12px; } }
 .mtl-logo { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 7px; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3); vertical-align: middle; }
 .mtl-logo img { display: block; object-fit: contain; }

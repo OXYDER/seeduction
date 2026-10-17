@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
+import { BadRequestException } from '@nestjs/common';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
+import { MAX_SOUND_BYTES, detectAudio } from '../common/utils/audio-file';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { Game, Summary, inLiveWindow, normalizeGame, summarize } from '../common/utils/nhl';
@@ -15,6 +20,10 @@ const TIMEOUT_MS = 8_000;
 
 export interface SportsConfig { enabled: boolean; team: string; goalBonus: GoalBonusConfig }
 export interface Actor { userId: string; username: string }
+export interface GoalSound { file: string; name: string; mime: string; at: string }
+
+const SOUND_KEY = 'sportsGoalSound';
+const SOUND_DIR = process.env.SOUND_STORAGE_DIR ?? path.join(process.env.COVER_STORAGE_DIR ?? './storage/covers', 'sounds');
 export const TEAMS: Record<string, string> = { MTL: 'Canadiens de Montréal' };
 
 export function normalizeSportsConfig(raw: any, previous?: SportsConfig): SportsConfig {
@@ -45,6 +54,50 @@ export class SportsService {
   constructor(private settings: SettingsService, private audit: AuditService, private goals: GoalBonusService) {}
 
   async config(): Promise<SportsConfig> { return normalizeSportsConfig(await this.settings.get(KEY)); }
+
+  // ------------------------------------------------------------------ son de but (téléversé par un administrateur)
+
+  async goalSound(): Promise<GoalSound | null> {
+    const v = (await this.settings.get(SOUND_KEY)) as GoalSound | null;
+    return v && typeof v.file === 'string' && /^[a-f0-9-]+\.(mp3|ogg|wav)$/i.test(v.file) ? v : null;
+  }
+
+  /** Adresse du son de but personnalisé (null : le navigateur joue la sirène de secours). Le numéro de version évite qu'un ancien son reste en cache. */
+  async goalSoundUrl(): Promise<string | null> {
+    const s = await this.goalSound();
+    return s ? `/api/sports/goal-sound?v=${encodeURIComponent(s.at)}` : null;
+  }
+
+  async readGoalSound(): Promise<{ data: Buffer; mime: string } | null> {
+    const s = await this.goalSound();
+    if (!s) return null;
+    try { return { data: await fs.readFile(path.join(SOUND_DIR, s.file)), mime: s.mime }; } catch { return null; }
+  }
+
+  /** Remplace le son de but : 800 Ko au plus, type vérifié sur le contenu (MP3, OGG ou WAV). */
+  async saveGoalSound(actor: Actor, file: { buffer: Buffer; originalname?: string; size: number } | undefined, ip?: string | null) {
+    if (!file?.buffer?.length) throw new BadRequestException('Aucun fichier reçu');
+    if (file.size > MAX_SOUND_BYTES) throw new BadRequestException('Fichier trop lourd : 800 Ko au maximum (un son de quelques secondes suffit)');
+    const kind = detectAudio(file.buffer);
+    if (!kind) throw new BadRequestException('Format non reconnu : utilise un fichier MP3, OGG ou WAV');
+    await fs.mkdir(SOUND_DIR, { recursive: true });
+    const previous = await this.goalSound();
+    const name = `${randomUUID()}.${kind.ext}`;
+    await fs.writeFile(path.join(SOUND_DIR, name), file.buffer);
+    const value: GoalSound = { file: name, name: String(file.originalname ?? `son.${kind.ext}`).slice(0, 80), mime: kind.mime, at: new Date().toISOString() };
+    await this.settings.set(SOUND_KEY, value);
+    if (previous) await fs.unlink(path.join(SOUND_DIR, previous.file)).catch(() => undefined);
+    await this.audit.log(actor.userId, 'SPORTS_GOAL_SOUND', { name: value.name, bytes: file.size }, ip);
+    return { name: value.name, url: await this.goalSoundUrl() };
+  }
+
+  async removeGoalSound(actor: Actor, ip?: string | null) {
+    const previous = await this.goalSound();
+    await this.settings.set(SOUND_KEY, null);
+    if (previous) await fs.unlink(path.join(SOUND_DIR, previous.file)).catch(() => undefined);
+    await this.audit.log(actor.userId, 'SPORTS_GOAL_SOUND', { removed: true }, ip);
+    return { ok: true };
+  }
 
   async saveConfig(actor: Actor, body: any, ip?: string | null) {
     const before = await this.config();
