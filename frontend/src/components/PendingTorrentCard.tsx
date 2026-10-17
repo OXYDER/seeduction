@@ -4,6 +4,8 @@ import { timeAgo } from '../lib/time';
 import MetaChips from './MetaChips';
 import RejectReason from './RejectReason';
 import FileTree from './FileTree';
+import HoldForm from './HoldForm';
+import { HOLD_SHORT, type HoldInfo, type ResubmitInfo } from '../lib/holdReasons';
 
 export interface PendingTorrent {
   id: string; infoHash: string; name: string; size: number; coverImage: string | null; createdAt: string; year: number | null; resolution: string | null;
@@ -19,6 +21,8 @@ export interface PendingTorrent {
   fileCount: number; files: { path: string; size: number }[]; filesTruncated: boolean;
   duplicates: { id: string; name: string; status: string; why: string; language: string | null; resolution: string | null; source: string | null; season: string | null; episode: string | null; size: number; seeders: number }[];
   sentVia: { via: string; verdict: string | null; learned: boolean } | null;
+  hold?: HoldInfo | null;
+  resubmitted?: ResubmitInfo | null;
 }
 
 const isOld = (iso: string) => Date.now() - new Date(iso).getTime() > 24 * 3600_000;
@@ -39,13 +43,17 @@ interface Props {
   onApprove: () => void;
   onToggleReject: () => void;
   onReject: (reason: string) => void;
+  /** Demande de modification au membre : le torrent est mis en suspens. */
+  onHold?: (hold: { reasons: string[]; note: string }) => void;
+  holding?: boolean;
+  onToggleHold?: () => void;
 }
 
 /**
  * Un torrent à valider avec tout ce qu'il faut pour décider sans ouvrir la fiche : étiquettes de la release, contrôles automatiques (pochette, NFO, langue,
  * fiche, seeders...), envoyeur (ancienneté, ratio, historique), doublons possibles, origine de l'envoi, et en dépliant : description, NFO, fichiers.
  */
-export default function PendingTorrentCard({ t, compact, busy, rejecting, selected, onSelect, onApprove, onToggleReject, onReject }: Props) {
+export default function PendingTorrentCard({ t, compact, busy, rejecting, selected, onSelect, onApprove, onToggleReject, onReject, onHold, holding, onToggleHold }: Props) {
   const u = t.uploader;
   const newcomer = days(u.createdAt) < 7;
   const lowRatio = u.ratio !== null && u.ratio < 0.5 && Number(u.downloaded) > 5 * 1024 ** 3;
@@ -114,10 +122,21 @@ export default function PendingTorrentCard({ t, compact, busy, rejecting, select
             )}
           </div>
         </details>
+        {t.hold && (
+          <div className="mod-hold-note">
+            ⏸ <strong>En attente de correction</strong> — demandé par {t.hold.by ?? 'l\'équipe'} {timeAgo(t.hold.at)} : {t.hold.reasons.map((r) => HOLD_SHORT[r] ?? r).join(', ') || 'voir le message'}
+            {t.hold.note ? <> · « {t.hold.note} »</> : null}
+          </div>
+        )}
+        {t.resubmitted && !t.hold && (
+          <div className="mod-resubmitted">✔ <strong>Corrigé par le membre</strong> {timeAgo(t.resubmitted.at)}{t.resubmitted.note ? <> : « {t.resubmitted.note} »</> : null}</div>
+        )}
         {rejecting && <RejectReason busy={!!busy} onCancel={onToggleReject} onConfirm={onReject} />}
+        {holding && onHold && <HoldForm busy={!!busy} onCancel={() => onToggleHold?.()} onConfirm={onHold} />}
       </div>
       <div className="mod-actions">
         <button type="button" disabled={busy} onClick={onApprove}>✓ Approuver</button>
+        {onHold && !t.hold && <button type="button" className="secondary" disabled={busy} onClick={() => onToggleHold?.()}>⏸ Demander une modification</button>}
         <button type="button" className="danger" disabled={busy} onClick={onToggleReject}>✕ Rejeter</button>
         <Link to={`/torrents/${t.id}?edit=1`} className="mod-link">✏️ Modifier</Link>
       </div>

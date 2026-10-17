@@ -42,6 +42,8 @@ export default function Moderation() {
   const [error, setError] = useState('');
   const [flash, setFlash] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [holding, setHolding] = useState<string | null>(null);
+  const [queueView, setQueueView] = useState<'todo' | 'hold'>('todo');
 
   const load = useCallback(async () => {
     try {
@@ -79,6 +81,18 @@ export default function Moderation() {
     finally { setBusy(null); void refreshQueue(); }
   }
 
+  /** Met un torrent en suspens et demande une correction au membre : il sort de la file à examiner jusqu'à ce que le membre le renvoie. */
+  async function hold(t: PendingTorrent, data: { reasons: string[]; note: string }) {
+    setBusy(t.id); setError('');
+    try {
+      await api.post(`/admin/torrents/${t.id}/hold`, data);
+      setPending((l) => l?.map((x) => (x.id === t.id ? { ...x, hold: { at: new Date().toISOString(), reasons: data.reasons, note: data.note || null, by: null }, resubmitted: null } : x)) ?? l);
+      setHolding(null);
+      say(`⏸ « ${t.name} » mis en suspens : le membre est prévenu`);
+    } catch (err: any) { setError(err.response?.data?.message ?? 'Action impossible'); }
+    finally { setBusy(null); void refreshQueue(); }
+  }
+
   async function approveSelected() {
     if (selected.size === 0) return;
     setBusy('bulk'); setError('');
@@ -113,7 +127,11 @@ export default function Moderation() {
   }
 
   const shownReports = useMemo(() => (reports ?? []).filter((r) => typeFilter === 'all' || r.targetType === typeFilter), [reports, typeFilter]);
-  const allSelected = !!pending?.length && pending.every((t) => selected.has(t.id));
+  // À examiner : les torrents corrigés par leur membre passent en premier ; « en attente de correction » : ceux qu'on a mis en suspens.
+  const todo = useMemo(() => (pending ?? []).filter((t) => !t.hold).sort((a, b) => Number(!!b.resubmitted) - Number(!!a.resubmitted)), [pending]);
+  const onHold = useMemo(() => (pending ?? []).filter((t) => !!t.hold), [pending]);
+  const listed = queueView === 'hold' ? onHold : todo;
+  const allSelected = listed.length > 0 && listed.every((t) => selected.has(t.id));
 
   if (!isStaff) return <div className="panel"><p className="muted">Cette page est réservée à l'équipe de modération.</p></div>;
 
@@ -126,7 +144,7 @@ export default function Moderation() {
 
       <div className="mod-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'torrents'} className={tab === 'torrents' ? 'on' : ''} onClick={() => setTab('torrents')}>
-          Torrents à valider {pending ? <span className={`mod-count${pending.length ? ' hot' : ''}`}>{pending.length}</span> : null}
+          Torrents à valider {pending ? <span className={`mod-count${todo.length ? ' hot' : ''}`}>{todo.length}</span> : null}
         </button>
         <button type="button" role="tab" aria-selected={tab === 'reports'} className={tab === 'reports' ? 'on' : ''} onClick={() => setTab('reports')}>
           Signalements {reports ? <span className={`mod-count${reports.length ? ' hot' : ''}`}>{reports.length}</span> : null}
@@ -155,14 +173,19 @@ export default function Moderation() {
             <div className="panel mod-empty"><div style={{ fontSize: 34 }}>🎉</div><strong>Rien à valider</strong><span className="muted">Tous les torrents envoyés ont été traités.</span></div>
           ) : (
             <>
+              <div className="mod-filters">
+                <button type="button" className={`secondary${queueView === 'todo' ? ' on' : ''}`} onClick={() => setQueueView('todo')}>À examiner ({todo.length})</button>
+                <button type="button" className={`secondary${queueView === 'hold' ? ' on' : ''}`} onClick={() => setQueueView('hold')}>⏸ En attente de correction ({onHold.length})</button>
+              </div>
+              {listed.length === 0 && <div className="panel mod-empty"><strong>{queueView === 'hold' ? 'Aucun torrent en attente de correction' : 'Rien à examiner'}</strong><span className="muted">{queueView === 'hold' ? 'Ceux que tu mets en suspens apparaissent ici jusqu\'à ce que le membre les renvoie.' : 'Les torrents en suspens sont dans l\'autre onglet.'}</span></div>}
               <div className="mod-bulk">
-                <label><input type="checkbox" checked={allSelected} onChange={(e) => setSelected(e.target.checked ? new Set(pending.map((t) => t.id)) : new Set())} /> Tout sélectionner</label>
+                <label><input type="checkbox" checked={allSelected} onChange={(e) => setSelected(e.target.checked ? new Set(listed.map((t) => t.id)) : new Set())} /> Tout sélectionner</label>
                 <button type="button" disabled={selected.size === 0 || busy === 'bulk'} onClick={approveSelected}>✓ Approuver la sélection ({selected.size})</button>
               </div>
               <div className="mod-list">
-                {pending.map((t) => (
+                {listed.map((t) => (
                   <PendingTorrentCard
-                    key={t.id} t={t} busy={busy === t.id} rejecting={rejecting === t.id}
+                    key={t.id} t={t} busy={busy === t.id} rejecting={rejecting === t.id} holding={holding === t.id} onHold={(h) => hold(t, h)} onToggleHold={() => setHolding(holding === t.id ? null : t.id)}
                     selected={selected.has(t.id)} onSelect={(on) => setSelected((sel) => { const n = new Set(sel); if (on) n.add(t.id); else n.delete(t.id); return n; })}
                     onApprove={() => approve(t)} onToggleReject={() => setRejecting(rejecting === t.id ? null : t.id)} onReject={(reason) => reject(t, reason)}
                   />

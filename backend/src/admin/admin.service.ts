@@ -19,6 +19,7 @@ import { normalizeLanguage } from '../common/utils/language';
 import { stripReleaseExtension } from '../common/utils/release-name';
 import { AuthService } from '../auth/auth.service';
 import { UploadCreditService } from '../upload-credit/upload-credit.service';
+import { holdMessage, normalizeHold } from '../common/utils/torrent-hold';
 
 export interface Actor { userId: string; username: string; role: string }
 
@@ -28,7 +29,7 @@ export class AdminService {
 
   async approveTorrent(id: string) {
     const previous = await this.prisma.torrent.findUnique({ where: { id }, select: { approvedAt: true } });
-    const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED', ...(previous?.approvedAt ? {} : { approvedAt: new Date() }) } });
+    const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'APPROVED', holdAt: null, holdReasons: [], holdNote: null, holdByName: null, rejectReason: null, ...(previous?.approvedAt ? {} : { approvedAt: new Date() }) } });
     await this.notifications.notify({
       userId: torrent.uploaderId,
       type: 'TORRENT_APPROVED',
@@ -45,13 +46,32 @@ export class AdminService {
 
   async rejectTorrent(id: string, reason?: string) {
     const why = (reason ?? '').trim().slice(0, 300);
-    const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'REJECTED' } });
+    const torrent = await this.prisma.torrent.update({ where: { id }, data: { status: 'REJECTED', holdAt: null, holdReasons: [], holdNote: null, holdByName: null, rejectReason: why || null } });
     await this.uploadCredit.revoke(id).catch(() => undefined);
     await this.notifications.notify({
       userId: torrent.uploaderId,
       type: 'TORRENT_REJECTED',
       title: 'Ton torrent a été rejeté',
       body: why ? `${torrent.name} — Motif : ${why}` : torrent.name,
+      link: `/torrents/${torrent.id}?edit=1`, // le membre peut corriger : le torrent repart alors en validation
+    });
+    return torrent;
+  }
+
+  /**
+   * Met un torrent en attente en suspens et demande une correction au membre (pas de seed, erreur dans la description, mauvais NFO, mauvaise fiche...).
+   * Le torrent reste « en attente » mais sort de la file à examiner jusqu'à ce que le membre le renvoie corrigé.
+   */
+  async holdTorrent(id: string, actor: Actor, raw: any) {
+    let hold;
+    try { hold = normalizeHold(raw); } catch (e: any) { throw new BadRequestException(e.message); }
+    const t = await this.prisma.torrent.findUnique({ where: { id }, select: { id: true, name: true, status: true, uploaderId: true } });
+    if (!t) throw new NotFoundException('Torrent introuvable');
+    if (t.status !== 'PENDING') throw new BadRequestException('Seul un torrent en attente de validation peut être mis en suspens');
+    const torrent = await this.prisma.torrent.update({ where: { id }, data: { holdAt: new Date(), holdReasons: hold.reasons, holdNote: hold.note || null, holdByName: actor.username.slice(0, 60), resubmittedAt: null, resubmitNote: null } });
+    await this.notifications.notify({
+      userId: t.uploaderId, type: 'SYSTEM', category: 'torrents', title: '✏️ Modification demandée sur ton torrent',
+      body: holdMessage(t.name, hold, actor.username), link: `/torrents/${t.id}?edit=1`,
     });
     return torrent;
   }
@@ -59,7 +79,7 @@ export class AdminService {
   /** Compteurs de la file de modération (pastille du menu « Modération »). */
   async queueCounts() {
     const [pendingTorrents, openReports] = await Promise.all([
-      this.prisma.torrent.count({ where: { status: 'PENDING' } }),
+      this.prisma.torrent.count({ where: { status: 'PENDING', holdAt: null } }), // les torrents en attente de correction ne sont pas à examiner
       this.prisma.report.count({ where: { status: 'OPEN' } }),
     ]);
     return { pendingTorrents, openReports, total: pendingTorrents + openReports };
@@ -76,7 +96,7 @@ export class AdminService {
       take: 200,
       select: {
         id: true, infoHash: true, name: true, size: true, coverImage: true, createdAt: true, year: true, resolution: true, description: true, nfoFile: { select: { content: true } }, fileList: true,
-        seeders: true, leechers: true, anonymousUpload: true, freeleech: true, doubleUpload: true,
+        seeders: true, leechers: true, anonymousUpload: true, freeleech: true, doubleUpload: true, holdAt: true, holdReasons: true, holdNote: true, holdByName: true, resubmittedAt: true, resubmitNote: true,
         language: true, source: true, codec: true, hdr: true, audio: true, subtitles: true, containerFormat: true, season: true, episode: true, releaseDate: true, origin: true,
         releaseGroup: true, genres: true, videoType: true, durationMinutes: true, metaSource: true, metaExternalId: true, metadata: true,
         category: { select: { name: true, adult: true, parent: { select: { name: true, adult: true } } } },
@@ -128,6 +148,8 @@ export class AdminService {
         language: r.language, source: r.source, codec: r.codec, hdr: r.hdr, audio: r.audio, subtitles: r.subtitles, containerFormat: r.containerFormat, season: r.season, episode: r.episode,
         releaseDate: r.releaseDate, origin: r.origin, releaseGroup: r.releaseGroup, videoType: r.videoType, durationMinutes: r.durationMinutes, genres: r.genres,
         seeders: r.seeders, leechers: r.leechers, anonymousUpload: r.anonymousUpload, freeleech: r.freeleech, doubleUpload: r.doubleUpload,
+        hold: r.holdAt ? { at: r.holdAt, reasons: r.holdReasons, note: r.holdNote, by: r.holdByName } : null,
+        resubmitted: r.resubmittedAt ? { at: r.resubmittedAt, note: r.resubmitNote } : null,
         category: r.category ? { name: r.category.name, path: [r.category.parent?.name, r.category.name].filter(Boolean).join(' › '), adult: !!(r.category.adult || r.category.parent?.adult) } : null,
         uploader: {
           id: r.uploader.id, username: r.uploader.username, role: r.uploader.role, uploaded: r.uploader.uploaded, downloaded: r.uploader.downloaded, createdAt: r.uploader.createdAt,

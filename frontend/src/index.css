@@ -3979,3 +3979,26 @@ button.slot-free { padding: 10px 14px; background: rgba(255, 215, 74, 0.18); bor
 .slot-pay-row { display: grid; grid-template-columns: 38px 1fr auto; gap: 8px; align-items: center; font-size: 13.5px; }
 .slot-pay-row .slot-sym { width: 36px; height: 36px; }
 @media (prefers-reduced-motion: reduce) { .slot-tile.win .slot-sym, .slot-banner.mega { animation: none; } .slot-rain { display: none; } }
+
+/* Mes envois et suspension de torrents */
+.owner-banner { display: grid; gap: 6px; border-left: 4px solid var(--gold-bright); }
+.owner-banner.attention { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
+.owner-banner-list { margin: 2px 0 2px 18px; padding: 0; display: grid; gap: 2px; }
+.owner-banner-note { margin: 2px 0; }
+.mod-hold-note { margin-top: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.45); font-size: 13px; }
+.mod-resubmitted { margin-top: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(34, 160, 90, 0.14); border: 1px solid rgba(60, 200, 120, 0.45); font-size: 13px; }
+.hold-box { display: grid; gap: 8px; }
+.hold-reasons { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 14px; }
+.hold-reason { display: flex; gap: 6px; align-items: flex-start; font-size: 13.5px; }
+.mod-card.myup.warn { border-left: 4px solid #f59e0b; }
+.mod-card.myup.bad { border-left: 4px solid var(--danger); }
+.mod-card.myup.ok { border-left: 4px solid var(--success); }
+.myup-state { font-weight: 600; }
+.myup-state.warn { color: #fbbf24; }
+.myup-state.bad { color: #fca5a5; }
+.myup-state.ok { color: var(--green-bright); }
+.myup-note { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: rgba(245, 158, 11, 0.1); font-size: 13.5px; }
+.myup-note ul { margin: 2px 0 2px 18px; padding: 0; }
+.myup-hint { margin-top: 4px; font-size: 13px; color: #fbbf24; }
+.myup-link { display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; flex-wrap: wrap; }
+.myup-link.attention { border-color: #f59e0b; background: rgba(245, 158, 11, 0.08); }

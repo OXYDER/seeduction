@@ -1,10 +1,11 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, NotFoundException, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PrismaService } from '../common/prisma.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { AuditService } from '../audit/audit.service';
 import { accountOf, assertPerm } from '../common/utils/account';
 import { AdminService } from './admin.service';
+import { RESUBMIT_NOTE_MAX } from '../common/utils/torrent-hold';
 
 /**
  * L'envoyeur modifie ses propres torrents en entier (nom, catégorie, langue, fiche, pochette, présentation, NFO, caractéristiques...) pour corriger
@@ -32,6 +33,49 @@ export class OwnerTorrentsController {
     if (!(c.adult || c.parent?.adult)) return;
     const u = await this.prisma.user.findUnique({ where: { id: accountOf(req) }, select: { showAdult: true } });
     if (!u?.showAdult) throw new ForbiddenException('Active l\'affichage du contenu pour adultes dans ton profil pour choisir cette catégorie');
+  }
+
+  /** Mes envois : tous les torrents du compte (profils du compte famille compris), avec leur état et ce que l'équipe a demandé de corriger. */
+  @Get()
+  async mine(@Request() req: any) {
+    const account = accountOf(req);
+    const profiles = await this.prisma.user.findMany({ where: { parentId: account }, select: { id: true } });
+    const ids = [...new Set([account, req.user.userId, ...profiles.map((p) => p.id)])];
+    const rows = await this.prisma.torrent.findMany({
+      where: { uploaderId: { in: ids } }, orderBy: { createdAt: 'desc' }, take: 300,
+      select: {
+        id: true, name: true, size: true, status: true, createdAt: true, coverImage: true, seeders: true, leechers: true, completedCount: true,
+        holdAt: true, holdReasons: true, holdNote: true, holdByName: true, resubmittedAt: true, resubmitNote: true, rejectReason: true,
+        category: { select: { name: true } },
+      },
+    });
+    // Seed actuel de chacun (annonce dans les 45 dernières minutes) : la cause la plus fréquente d'un torrent qui n'avance pas.
+    const seeding = await this.prisma.peer.findMany({
+      where: { torrentId: { in: rows.map((r) => r.id) }, userId: { in: ids }, isSeeder: true, lastAnnounceAt: { gt: new Date(Date.now() - 45 * 60_000) } },
+      select: { torrentId: true },
+    });
+    const seeded = new Set(seeding.map((s) => s.torrentId));
+    return rows.map((r) => ({
+      id: r.id, name: r.name, size: Number(r.size), status: r.status, createdAt: r.createdAt, coverImage: r.coverImage, category: r.category?.name ?? null,
+      seeders: r.seeders, leechers: r.leechers, completed: r.completedCount, seedingNow: seeded.has(r.id),
+      hold: r.holdAt ? { at: r.holdAt, reasons: r.holdReasons, note: r.holdNote, by: r.holdByName } : null,
+      resubmitted: r.resubmittedAt ? { at: r.resubmittedAt, note: r.resubmitNote } : null,
+      rejectReason: r.status === 'REJECTED' ? r.rejectReason : null,
+    }));
+  }
+
+  /** « J'ai corrigé » : un torrent mis en suspens par l'équipe repart en validation (message facultatif pour l'équipe). */
+  @Post(':id/resubmit')
+  async resubmit(@Param('id') id: string, @Body('message') message: string | undefined, @Request() req: any) {
+    await this.own(req, id);
+    const note = typeof message === 'string' ? message.trim().slice(0, RESUBMIT_NOTE_MAX) : '';
+    const done = await this.prisma.torrent.updateMany({
+      where: { id, status: 'PENDING', holdAt: { not: null } },
+      data: { holdAt: null, resubmittedAt: new Date(), resubmitNote: note || null },
+    });
+    if (done.count === 0) throw new BadRequestException('Ce torrent n\'est pas en attente de correction');
+    await this.audit.log(req.user.userId, 'TORRENT_RESUBMIT_OWNER', { torrentId: id, note: note || undefined }, req.ip ?? null);
+    return { ok: true };
   }
 
   @Patch(':id')

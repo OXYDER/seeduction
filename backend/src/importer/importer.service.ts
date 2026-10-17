@@ -27,6 +27,8 @@ interface Chosen { id: string; name: string; how: string; meta?: { kind: string;
 const META_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Nombre de passes de suite où une release peut échouer avant d'être mise dans « À vérifier ». */
+const MAX_REPEATED_FAILURES = 3;
 const str = (v: any, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const num = (v: any, lo: number, hi: number, d: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : d; };
 const regexList = (v: any, what: string): string[] => {
@@ -50,6 +52,8 @@ export class ImporterService {
   private readonly logger = new Logger(ImporterService.name);
   private running: { sourceId: string; dryRun: boolean; startedAt: number } | null = null;
   private warnedNoNfo = new Set<string>();
+  /** Échecs de suite d'une même release (par processus) : au bout de MAX_REPEATED_FAILURES passes, elle passe dans « À vérifier ». */
+  private repeatedFailures = new Map<string, number>();
 
   constructor(private prisma: PrismaService, private torrents: TorrentsService, private admin: AdminService, private metadata: MetadataService, private bot: SupportBotService, private notifications: NotificationsService) {}
 
@@ -509,7 +513,18 @@ export class ImporterService {
           buf = await q.exportTorrent(t.hash);
           if (!buf.length || buf[0] !== 0x64) throw new Error("le fichier exporté n'est pas un .torrent");
           nfo = await nfoFor(cfg, secrets, id, t);
-        } catch (e: any) { await ev('ERROR', `${t.name} — ${e.message}`); continue; } // erreur temporaire : on réessaiera à la prochaine passe
+        } catch (e: any) {
+          await ev('ERROR', `${t.name} — ${e.message}`);
+          // Erreur temporaire : on réessaie à la prochaine passe... mais pas indéfiniment. Si la même release échoue plusieurs passes de suite (format de fichier que
+          // MediaInfo ne lit pas en lecture partielle, torrent introuvable...), elle passe dans « À vérifier » avec le motif, au lieu de refaire la même erreur à chaque passe.
+          const fails = (this.repeatedFailures.get(t.hash) ?? 0) + 1;
+          this.repeatedFailures.set(t.hash, fails);
+          if (fails >= MAX_REPEATED_FAILURES && !dryRun) {
+            this.repeatedFailures.delete(t.hash);
+            await this.queueReview(id, t, found, info, labels.get(t.hash) ?? '', `échec répété à ${fails} passes de suite : ${String(e.message ?? e).slice(0, 200)}`, '', dryRun, ev);
+          }
+          continue;
+        }
         if (!hasNfo(nfo)) {
           if (!this.warnedNoNfo.has(t.hash)) { this.warnedNoNfo.add(t.hash); await ev('WARN', `${t.name} — NFO / MediaInfo introuvable (obligatoire) : ajoute un .nfo dans le dossier de la release ; il sera pris à la prochaine passe`); }
           continue;

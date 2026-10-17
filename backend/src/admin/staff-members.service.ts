@@ -11,7 +11,7 @@ const STAFF_ROLES = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const CLASSES = ['NOUVEAU', 'MEMBRE', 'POWER_USER', 'ELITE', 'VETERAN'];
 /** Actions de modération comptées dans l'activité de l'équipe (journal d'audit), avec leur libellé. */
 const STAFF_ACTIONS: Record<string, string> = {
-  TORRENT_APPROVE: 'torrents approuvés', TORRENT_REJECT: 'torrents refusés', TORRENT_EDIT: 'torrents modifiés', TORRENT_DELETE: 'torrents supprimés', USER_WARN: 'avertissements',
+  TORRENT_APPROVE: 'torrents approuvés', TORRENT_HOLD: 'corrections demandées', TORRENT_REJECT: 'torrents refusés', TORRENT_EDIT: 'torrents modifiés', TORRENT_DELETE: 'torrents supprimés', USER_WARN: 'avertissements',
   USER_BAN: 'bannissements', USER_UNBAN: 'bannissements levés', USER_EDIT: 'membres modifiés', CHAT_BAN: 'bannissements du chat', CHAT_UNBAN: 'bannissements du chat levés', SUGGESTION_STATUS: 'suggestions traitées',
 };
 const SELECT = { id: true, username: true, role: true, status: true, memberClass: true, uploaded: true, downloaded: true, bonusPoints: true, createdAt: true, lastSeenAt: true, avatarUrl: true } as const;

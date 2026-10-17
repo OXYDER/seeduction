@@ -7,6 +7,7 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import TorrentPeers from '../components/TorrentPeers';
 import StaffQueueBanner from '../components/StaffQueueBanner';
+import OwnerReviewBanner from '../components/OwnerReviewBanner';
 import CopyButton from '../components/CopyButton';
 import TorrentComments from '../components/TorrentComments';
 import TorrentSocial from '../components/TorrentSocial';
@@ -171,6 +172,7 @@ export default function TorrentDetail() {
   const staffBanner = isStaff && <StaffQueueBanner key={`q-${torrent.id}`} torrent={torrent} onPatch={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} onEdit={() => setEditSignal((n) => n + 1)} />;
 
   const ownerEdit = !isStaff && !!torrent.isMine;
+  const ownerBanner = ownerEdit && <OwnerReviewBanner key={`o-${torrent.id}`} torrent={torrent} onEdit={() => setEditSignal((n) => n + 1)} onPatch={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} />;
   const staffPanel = (isStaff || ownerEdit) && (
     <StaffTorrentPanel key={`staff-${torrent.id}`} owner={ownerEdit} torrent={torrent} startOpen={searchParams.get('edit') === '1'} openSignal={editSignal} onSaved={(patch) => setTorrent((t: any) => ({ ...t, ...patch }))} />
   );
@@ -215,6 +217,7 @@ export default function TorrentDetail() {
           />
         )}
         {staffBanner}
+        {ownerBanner}
         {uploadedBanner}
         <section className="detail-head">
           <div className="detail-poster">
@@ -313,6 +316,7 @@ export default function TorrentDetail() {
         />
       )}
       {staffBanner}
+      {ownerBanner}
       {uploadedBanner}
       <div className="row" style={{ alignItems: 'flex-start', gap: 16 }}>
         {torrent.coverImage && (

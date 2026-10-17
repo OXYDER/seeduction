@@ -87,6 +87,14 @@ export class AdminController {
     return result;
   }
 
+  /** Met un torrent en attente en suspens et demande une correction au membre (motifs + message). */
+  @Post('torrents/:id/hold')
+  async hold(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    const result = await this.adminService.holdTorrent(id, { userId: req.user.userId, username: req.user.username, role: req.user.role }, body);
+    await this.audit.log(req.user.userId, 'TORRENT_HOLD', { torrentId: id, name: result.name, reasons: result.holdReasons, note: result.holdNote }, this.ip(req));
+    return result;
+  }
+
   @Post('torrents/:id/approve')
   async approve(@Param('id') id: string, @Request() req: any) {
     const result = await this.adminService.approveTorrent(id);

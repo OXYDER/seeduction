@@ -15,6 +15,7 @@ import FacetFields from '../components/FacetFields';
 import GamePlatformPicker, { type GamePlatformInfo } from '../components/GamePlatformPicker';
 import type { FacetDef, FacetValues } from '../lib/facets';
 import UploadCreditPanel from '../components/UploadCreditPanel';
+import MyUploadsLink from '../components/MyUploadsLink';
 import { LANGUAGE_GROUPS, LANGUAGE_LABELS, languageTagFrom } from '../lib/languageTag';
 import { GENRES, VIDEO_TYPES, SEASON_OPTIONS, EPISODE_OPTIONS, parseNfo, detectEpisodeFromRelease, detectVideoType, matchGenres, looksLikeCode, titleFromNfo } from '../lib/uploadMeta';
 
@@ -28,6 +29,7 @@ export default function Upload() {
         <button type="button" className={mode === 'one' ? 'on' : 'secondary'} onClick={() => pick('one')}>📄 Un seul torrent</button>
         <button type="button" className={mode === 'many' ? 'on' : 'secondary'} onClick={() => pick('many')}>📦 Plusieurs torrents (depuis mon client)</button>
       </div>
+      <MyUploadsLink />
       {mode === 'one' ? <UploadOne /> : <><h1 style={{ margin: 0 }}>Envoyer plusieurs torrents</h1><MemberImport /></>}
     </div>
   );

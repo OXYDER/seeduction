@@ -26,7 +26,7 @@ const AUDIT_LABEL: Record<string, string> = {
   RESET_LINK_EMAILED: 'Demande un lien de réinitialisation', RESET_LINK_ISSUED: 'Lien de réinitialisation généré', TWO_FACTOR_ENABLED: 'Active la double authentification',
   TWO_FACTOR_DISABLED: 'Désactive la double authentification', USER_WARN: 'Avertissement', USER_BAN: 'Bannissement', USER_UNBAN: 'Débannissement',
   USER_EDIT: 'Compte modifié par le staff', USER_CLEAR_HNR: 'H&R effacé', USER_WARNING_DELETE: 'Avertissement retiré', USER_PASSKEY_RESET: 'Passkey régénérée',
-  TORRENT_APPROVE: 'Approuve un torrent', TORRENT_REJECT: 'Rejette un torrent', TORRENT_EDIT: 'Modifie un torrent', TORRENT_DELETE: 'Supprime un torrent',
+  TORRENT_APPROVE: 'Approuve un torrent', TORRENT_HOLD: 'Demande une correction sur un torrent', TORRENT_REJECT: 'Rejette un torrent', TORRENT_EDIT: 'Modifie un torrent', TORRENT_DELETE: 'Supprime un torrent',
 };
 
 const RETENTION_DAYS = Math.max(7, Number(process.env.MEMBER_ACTIVITY_DAYS ?? 180) || 180);

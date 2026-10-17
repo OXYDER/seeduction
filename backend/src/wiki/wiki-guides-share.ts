@@ -39,7 +39,11 @@ export const GUIDES_SHARE: WikiSeedCategory = {
         `[b]Étape 8 : le plus important, remettre le torrent en seed[/b]\n` +
         `Après l'envoi, une bannière te l'explique : [b]télécharge le .torrent de Seeduction[/b] (il contient ta passkey) et ajoute-le à ton client en choisissant [b]le même dossier[/b] que tes fichiers. Le client vérifie les fichiers et se met à seeder. Sans seeder, personne ne peut télécharger ton torrent. Pour automatiser tout ça avec plusieurs torrents : [url=/wiki/guide-envoyer-plusieurs]Envoyer plusieurs torrents depuis ton client[/url].\n\n` +
         `[b]Étape 9 : la modération[/b]\n` +
-        `Ton torrent est en attente de validation par le staff. Tu peux le corriger à tout moment depuis sa fiche (bouton « Modifier mon torrent » : nom, catégorie, langue, fiche, présentation, NFO...). Tu es prévenu de l'approbation (ou du rejet, avec le motif). À l'approbation, si ton client seede le torrent, [b]25 % de sa taille est ajouté à ton upload[/b] (crédit d'envoi), même si personne ne l'a encore téléchargé : voir [url=/wiki/guide-ratio-seed]Garder un bon ratio[/url].\n\n` +
+        `Ton torrent est en attente de validation par le staff. Tous tes envois sont dans [url=/mes-envois]Mes envois[/url] (lien aussi en haut de la page Envoyer) : tu y vois leur état et tu peux ouvrir la fiche pour les corriger.\n` +
+        `• [b]Modifier un torrent pas encore approuvé[/b] : ouvre sa fiche (depuis Mes envois, bouton « ✏️ Modifier ») puis « Modifier mon torrent » : nom, catégorie, langue, fiche, présentation, NFO...\n` +
+        `• [b]Si l'équipe te demande une correction[/b] (pas de seed, erreur dans la description, mauvais NFO, mauvaise fiche...), tu reçois une notification avec les motifs et son message ; le torrent est mis en suspens. Corrige-le, puis clique sur [b]« J'ai corrigé : renvoyer en validation »[/b] sur sa fiche (tu peux laisser un petit message à l'équipe). Il revient alors dans la file de modération.\n` +
+        `• [b]Torrent rejeté[/b] : le motif est affiché sur sa fiche et dans Mes envois. Une fois corrigé, il repart automatiquement en validation.\n` +
+        `• Garde le torrent [b]en seed[/b] dans ton client : sans seeder, il ne peut pas être approuvé. Tu es prévenu de l'approbation (ou du rejet, avec le motif).\n\n` +
         `[b]Et après ?[/b]\n` +
         `Chaque membre qui le télécharge te fait gagner de l'upload ; les 👍 Merci te rapportent des points. Garde-le en seed.\n\n` +
         `Référence : [url=/wiki/envoyer-un-torrent]Envoyer un torrent[/url].`,

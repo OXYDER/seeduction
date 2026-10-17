@@ -49,12 +49,13 @@ function TimeRangeRail({ title, sort, allowCount, icon }: { title: string; sort:
     return () => { cancelled = true; };
   }, [sort, period, count]);
 
+  const periodLabel = ({ day: 'dernières 24 h', week: 'cette semaine', month: 'ce mois' } as const)[period];
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' });
 
   return (
     <section className="panel ornate rail-section rail-plex">
       <div className="panel-title" style={{ flexWrap: 'wrap' }}>
-        <span className="title-icon">{icon}</span>{title}{total > 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>({total})</span>}
+        <span className="title-icon">{icon}</span>{title}{total > 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 400 }} title="Nombre de torrents ajoutés sur la période choisie (pas le total du site)">({total} · {periodLabel})</span>}
         <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
           <div className="row" style={{ gap: 4 }}>
             {PERIODS.map((p) => (
@@ -69,7 +70,7 @@ function TimeRangeRail({ title, sort, allowCount, icon }: { title: string; sort:
             </select>
           )}
           <Link to={`/browse?sort=${sort}&period=${period}`} className="rail-all">
-            {total > count ? `Voir les ${total} →` : 'Tout voir →'}
+            {total > count ? `Voir les ${total} (${periodLabel}) →` : 'Tout voir →'}
           </Link>
           <div className="row" style={{ gap: 6 }}>
             <button type="button" className="secondary rail-btn" onClick={() => scroll(-1)} aria-label="Précédent">‹</button>

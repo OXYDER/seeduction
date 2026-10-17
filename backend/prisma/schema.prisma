@@ -303,6 +303,16 @@ model Torrent {
 
   status         TorrentStatus @default(PENDING)
   approvedAt     DateTime? // moment de l'approbation par le staff (sert au crédit d'envoi)
+  // En attente de correction : le staff a mis le torrent en suspens et demande au membre de le corriger (le statut reste PENDING).
+  holdAt         DateTime?
+  holdReasons    String[]  @default([])
+  holdNote       String?   @db.VarChar(600)
+  holdByName     String?   @db.VarChar(60)
+  // Le membre a corrigé et renvoyé le torrent en validation (message facultatif pour l'équipe).
+  resubmittedAt  DateTime?
+  resubmitNote   String?   @db.VarChar(400)
+  // Dernier motif de rejet, affiché au membre dans « Mes envois ».
+  rejectReason   String?   @db.VarChar(300)
   freeleech      Boolean       @default(false)
   doubleUpload   Boolean       @default(false)
 

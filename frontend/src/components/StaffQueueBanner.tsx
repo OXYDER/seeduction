@@ -3,6 +3,8 @@ import { api } from '../api/client';
 import { useQueue } from '../store/queue';
 import { timeAgo } from '../lib/time';
 import RejectReason from './RejectReason';
+import HoldForm from './HoldForm';
+import { HOLD_SHORT } from '../lib/holdReasons';
 
 interface Report { id: string; reason: string; createdAt: string; reporter: { username: string } | null }
 
@@ -14,13 +16,14 @@ const STATUS_LABEL: Record<string, string> = { PENDING: 'En attente', APPROVED: 
  * signalements ouverts avec de quoi les clore. La suppression et l'édition complète sont dans le panneau plus bas.
  */
 export default function StaffQueueBanner({ torrent, onPatch, onEdit }: {
-  torrent: { id: string; status: string; freeleech?: boolean; doubleUpload?: boolean };
+  torrent: { id: string; status: string; freeleech?: boolean; doubleUpload?: boolean; holdAt?: string | null; holdReasons?: string[]; holdNote?: string | null; resubmittedAt?: string | null };
   onPatch: (patch: Record<string, any>) => void;
   onEdit: () => void;
 }) {
   const refreshQueue = useQueue((s) => s.refresh);
   const [reports, setReports] = useState<Report[]>([]);
   const [rejecting, setRejecting] = useState(false);
+  const [holding, setHolding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [flash, setFlash] = useState('');
@@ -41,6 +44,11 @@ export default function StaffQueueBanner({ torrent, onPatch, onEdit }: {
     torrent.status === 'PENDING' ? '✓ Torrent approuvé' : '✓ Torrent de nouveau approuvé');
   const reject = (reason: string) => run(async () => { await api.post(`/admin/torrents/${torrent.id}/reject`, { reason }); onPatch({ status: 'REJECTED' }); setRejecting(false); },
     '✕ Torrent rejeté : il n\'est plus visible des membres');
+  const hold = (h: { reasons: string[]; note: string }) => run(async () => {
+    await api.post(`/admin/torrents/${torrent.id}/hold`, h);
+    onPatch({ holdAt: new Date().toISOString(), holdReasons: h.reasons, holdNote: h.note || null, resubmittedAt: null });
+    setHolding(false);
+  }, '⏸ Torrent mis en suspens : le membre est prévenu et doit le corriger');
   const markDead = () => {
     if (!window.confirm('Marquer ce torrent comme mort ? Il reste visible mais signalé comme sans seeder.')) return;
     void run(async () => { await api.patch(`/admin/torrents/${torrent.id}`, { status: 'DEAD' }); onPatch({ status: 'DEAD' }); }, '☠️ Torrent marqué mort');
@@ -66,6 +74,7 @@ export default function StaffQueueBanner({ torrent, onPatch, onEdit }: {
         </span>
         <span className="staff-banner-actions">
           {(status === 'PENDING' || status === 'REJECTED' || status === 'DEAD') && <button type="button" disabled={busy} onClick={approve}>{status === 'PENDING' ? '✓ Approuver' : '✓ Réapprouver'}</button>}
+          {status === 'PENDING' && !torrent.holdAt && <button type="button" className="secondary" disabled={busy} onClick={() => setHolding((v) => !v)}>⏸ Demander une modification</button>}
           {(status === 'PENDING' || status === 'APPROVED' || status === 'DEAD') && <button type="button" className="danger" disabled={busy} onClick={() => setRejecting((v) => !v)}>{status === 'PENDING' ? '✕ Rejeter' : '✕ Retirer'}</button>}
           {status === 'APPROVED' && <button type="button" className="secondary" disabled={busy} onClick={markDead}>☠️ Marquer mort</button>}
           <button type="button" className={`secondary${torrent.freeleech ? ' on' : ''}`} disabled={busy} aria-pressed={!!torrent.freeleech} onClick={() => toggle('freeleech', 'Freeleech')}>🆓 Freeleech</button>
@@ -73,6 +82,9 @@ export default function StaffQueueBanner({ torrent, onPatch, onEdit }: {
           <button type="button" className="secondary" onClick={onEdit}>✏️ Modifier</button>
         </span>
       </div>
+      {status === 'PENDING' && torrent.holdAt && <div className="mod-hold-note">⏸ <strong>En attente de correction par le membre</strong> : {(torrent.holdReasons ?? []).map((r) => HOLD_SHORT[r] ?? r).join(', ') || 'voir le message'}{torrent.holdNote ? <> · « {torrent.holdNote} »</> : null}</div>}
+      {status === 'PENDING' && torrent.resubmittedAt && !torrent.holdAt && <div className="mod-resubmitted">✔ <strong>Corrigé par le membre</strong> : à réexaminer</div>}
+      {holding && <HoldForm busy={busy} onCancel={() => setHolding(false)} onConfirm={hold} />}
       {rejecting && <RejectReason busy={busy} onCancel={() => setRejecting(false)} onConfirm={reject} />}
       {flash && <div className="mod-flash" role="status">{flash}</div>}
       {reports.length > 0 && (
