@@ -3,7 +3,7 @@ import PosterTags from './PosterTags';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
-import { formatBytes } from '../lib/format';
+import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { useFavorites } from '../lib/favorites';
 import { resolveContentKind } from '../lib/categoryKind';
@@ -50,6 +50,9 @@ export interface TorrentViewProps {
   hideUploader?: boolean;
   /** Cache la ligne « N torrents · taille totale » en tête de liste. */
   hideSummary?: boolean;
+  /** Toutes les pages : nombre et taille totale des torrents qui correspondent aux filtres, et catalogue complet du site. */
+  allResults?: { count: number; size: number } | null;
+  catalog?: { count: number; size: number } | null;
   empty?: ReactNode;
 }
 
@@ -112,6 +115,12 @@ export default function TorrentView(props: TorrentViewProps) {
         <div className="tv-summary" role="status">
           <span><strong>{props.items.length}</strong> torrent{props.items.length > 1 ? 's' : ''} affiché{props.items.length > 1 ? 's' : ''}</span>
           <span>Taille totale : <strong>{formatBytes(total)}</strong></span>
+          {props.allResults && props.allResults.count > props.items.length && props.allResults.count !== props.catalog?.count && (
+            <span title="Tous les torrents qui correspondent à ta recherche et à tes filtres, sur toutes les pages">Tous les résultats : <strong>{formatNumber(props.allResults.count)}</strong> · <strong>{formatBytes(props.allResults.size)}</strong></span>
+          )}
+          {props.catalog && (
+            <span title="Tous les torrents du site que tu peux voir">Catalogue complet : <strong>{formatNumber(props.catalog.count)}</strong> torrent{props.catalog.count > 1 ? 's' : ''} · <strong>{formatBytes(props.catalog.size)}</strong></span>
+          )}
         </div>
       )}
       <TorrentViewBody {...props} />

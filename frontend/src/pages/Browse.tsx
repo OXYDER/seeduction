@@ -69,6 +69,8 @@ export default function Browse() {
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [totalTorrents, setTotalTorrents] = useState(0);
+  const [totalSize, setTotalSize] = useState<number | null>(null);
+  const [catalog, setCatalog] = useState<{ count: number; size: number } | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const theme = useTheme();
   const authUser = useAuthStore((s) => s.user);
@@ -111,6 +113,8 @@ export default function Browse() {
       setItems(r.data.items);
       setTotal(r.data.total);
       setTotalTorrents(r.data.totalTorrents ?? r.data.total);
+      setTotalSize(typeof r.data.totalSize === 'number' ? r.data.totalSize : null);
+      setCatalog(r.data.catalog ?? null);
     });
   }, [view, parsed.name, categoryId, uploaderId, page, pageSize, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period, attrKey]);
 
@@ -508,7 +512,7 @@ export default function Browse() {
       <div className="panel">
         <div className="muted" style={{ marginBottom: 8 }}>{view === 'grouped' ? `${total} contenu(s) · ${totalTorrents} torrent(s)` : `${total} résultat(s)`}</div>
         <div style={{ marginBottom: 10 }}>{pager(false)}</div>
-        <TorrentView items={items} view={view} sort={sort} order={order} onSort={clickColumn} />
+        <TorrentView items={items} view={view} sort={sort} order={order} onSort={clickColumn} allResults={totalSize === null ? null : { count: totalTorrents, size: totalSize }} catalog={catalog} />
         <div style={{ marginTop: 12 }}>{pager(true)}</div>
       </div>
 

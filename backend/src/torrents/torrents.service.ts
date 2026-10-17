@@ -461,7 +461,7 @@ export class TorrentsService implements OnModuleInit {
     const sortDef = SORTS[params.sort ?? 'date'] ?? SORTS.date;
     const orderBy: any = sortDef.build(params.order ?? sortDef.dir);
 
-    const [items, total] = await Promise.all([
+    const [items, total, size, catalog] = await Promise.all([
       this.prisma.torrent.findMany({
         where,
         orderBy,
@@ -470,11 +470,32 @@ export class TorrentsService implements OnModuleInit {
         include: LIST_INCLUDE,
       }),
       this.prisma.torrent.count({ where }),
+      this.prisma.torrent.aggregate({ where, _sum: { size: true } }),
+      this.catalogStats(params.viewerId),
     ]);
 
     const rows = items.map(toListRow);
 
-    return { items: rows, total, page: params.page, pageSize: params.pageSize };
+    return { items: rows, total, totalSize: Number(size._sum.size ?? 0n), catalog, page: params.page, pageSize: params.pageSize };
+  }
+
+  private catalogCache = new Map<string, { at: number; value: { count: number; size: number } }>();
+
+  /**
+   * Le catalogue complet visible par ce membre : tous les torrents approuvés (sauf les catégories adultes qu'il n'a pas activées), avec leur taille totale.
+   * Gardé une minute en mémoire : la liste se recharge à chaque clic, et ce total ne change pas à chaque seconde.
+   */
+  async catalogStats(viewerId?: string): Promise<{ count: number; size: number }> {
+    const hidden = await this.adult.hiddenFor(viewerId);
+    const key = [...hidden].sort().join(',');
+    const hit = this.catalogCache.get(key);
+    if (hit && Date.now() - hit.at < 60_000) return hit.value;
+    const where: any = { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) };
+    const [count, size] = await Promise.all([this.prisma.torrent.count({ where }), this.prisma.torrent.aggregate({ where, _sum: { size: true } })]);
+    const value = { count, size: Number(size._sum.size ?? 0n) };
+    if (this.catalogCache.size > 20) this.catalogCache.clear();
+    this.catalogCache.set(key, { at: Date.now(), value });
+    return value;
   }
 
   /**
@@ -483,13 +504,13 @@ export class TorrentsService implements OnModuleInit {
    */
   async listGrouped(params: TorrentFilters & { page: number; pageSize: number }) {
     const where = await this.buildWhere(params);
-    const rows = await this.prisma.torrent.findMany({
+    const [rows, sizeAgg, catalog] = await Promise.all([this.prisma.torrent.findMany({
       where, take: 20_000,
       select: {
         id: true, name: true, metaSource: true, metaExternalId: true, createdAt: true, updatedAt: true, size: true, seeders: true, leechers: true, completedCount: true,
         category: { select: { slug: true, name: true } }, uploader: { select: { username: true } },
       },
-    });
+    }), this.prisma.torrent.aggregate({ where, _sum: { size: true } }), this.catalogStats(params.viewerId)]);
 
     interface G { key: string; ids: string[]; title: string; created: number; updated: number; size: number; seeders: number; leechers: number; completed: number; category: string; uploader: string }
     const groups = new Map<string, G>();
@@ -527,7 +548,7 @@ export class TorrentsService implements OnModuleInit {
     const keyOf = new Map<string, string>();
     for (const g of pageGroups) for (const id of g.ids) keyOf.set(id, g.key);
     const items = ids.map((id) => byId.get(id)).filter((t): t is NonNullable<typeof t> => !!t).map((t) => ({ ...toListRow(t), groupKey: keyOf.get(t.id) }));
-    return { items, total: groups.size, totalTorrents: rows.length, page: params.page, pageSize: params.pageSize, grouped: true };
+    return { items, total: groups.size, totalTorrents: rows.length, totalSize: Number(sizeAgg._sum.size ?? 0n), catalog, page: params.page, pageSize: params.pageSize, grouped: true };
   }
 
   /**
