@@ -2210,3 +2210,22 @@ model BlackjackGame {
   @@index([userId, createdAt])
   @@index([status, updatedAt])
 }
+
+/// Un lancer de dés : deux dés, un pari sur le total ou sur des doubles. Le tirage, la mise et le gain sont réglés dans une seule étape côté serveur.
+model DiceRoll {
+  id        String   @id @default(uuid())
+  userId    String
+  stake     Int // points débités (0 pour le lancer gratuit quotidien)
+  valued    Int // mise de référence des gains
+  daily     Boolean  @default(false)
+  kind      String   @db.VarChar(8) // UNDER | OVER | EXACT | DOUBLES
+  n         Int // total visé (0 pour les doubles)
+  d1        Int
+  d2        Int
+  mult      Int // cote en centièmes (570 = ×5,70)
+  payout    Int // points rendus (mise comprise), 0 si perdu
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}

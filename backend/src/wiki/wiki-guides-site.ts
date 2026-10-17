@@ -429,6 +429,27 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Voir aussi : [url=/wiki/guide-plus-haut-plus-bas]Jouer à Plus haut ou plus bas[/url], [url=/wiki/guide-machines-a-sous]Jouer aux machines à sous[/url].`,
     },
     {
+      title: 'Jouer aux dés',
+      slug: 'guide-des',
+      keywords: 'dés, des, lancer, doubles, total, cote, jeu, jeux, mise, points, hasard',
+      content:
+        `Les [b]dés[/b] sont un jeu de hasard de la section [url=/jeux]Jeux[/url] : deux dés sont lancés et tu paries sur le résultat. Plus ton pari est rare, plus la cote est grande.\n\n` +
+        `[b]Comment jouer[/b]\n` +
+        `1. Choisis un pari : [b]Moins que[/b] un total, [b]Plus que[/b] un total, [b]Total exact[/b], ou [b]Doubles[/b] (les deux dés montrent le même chiffre). Sous le tapis, les totaux gagnants s'allument en vert.\n` +
+        `2. Chaque pari affiche sa cote (par exemple ×2,28) et ses chances. Les paris rapides (Prudent, Équilibré, Audacieux, Gros lot) te donnent un point de départ.\n` +
+        `3. Choisis ta mise (5 à 100 points) et clique sur [b]Lancer[/b]. Tu peux aussi jouer ton [b]lancer gratuit du jour[/b].\n` +
+        `4. Si ton pari est gagnant, tu reçois ta mise multipliée par la cote ; sinon la mise est perdue.\n\n` +
+        `[b]Les cotes[/b]\n` +
+        `• Il y a 36 combinaisons possibles avec deux dés. Un total de 7 sort le plus souvent (6 combinaisons), un 2 ou un 12 presque jamais (1 combinaison) : la cote d'un total de 2 ou de 12 dépasse ×34.\n` +
+        `• Les paris trop faciles, dont la cote serait sous ×1,10, ne sont pas proposés.\n\n` +
+        `[b]À savoir[/b]\n` +
+        `• Les dés sont lancés par le serveur, jamais par ton navigateur : l'animation ne fait que montrer le résultat. Gagner n'est jamais garanti.\n` +
+        `• Les [b]points reçus par un don ne peuvent pas être misés[/b]. Il y a une limite de pertes par 24 heures et un gain maximal par lancer.\n` +
+        `• La [b]remise de fidélité[/b] te rend chaque matin une part de tes pertes de la veille (tous les jeux contre la maison), avec une notification.\n` +
+        `• Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux. Ce sont des points du site, sans valeur en argent.\n\n` +
+        `Voir aussi : [url=/wiki/guide-blackjack]Jouer au blackjack[/url], [url=/wiki/guide-machines-a-sous]Jouer aux machines à sous[/url].`,
+    },
+    {
       title: 'Faire revivre un torrent mort (Réanimation)',
       slug: 'guide-reanimation',
       keywords: 'réanimation, torrent mort, 0 seeder, reseed, relancer, récompense, demander un reseed, je le relance',

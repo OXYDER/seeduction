@@ -17,6 +17,7 @@ interface Summary {
   quiz: { enabled: boolean; playedToday: boolean; inProgress: boolean; todayCorrect: number | null; questions: number; streak: number; won: number; best: number };
   picks: { enabled: boolean; gamesToday: number; pickedToday: number; toPick: number; streak: number; weekWins: number; weekPicks: number; won: number };
   blackjack: { enabled: boolean; gamesToday: number; myGames: number; myWon: number; active: boolean; dailyFreeAvailable: boolean; biggest: { username: string; payout: number; stake: number } | null };
+  dice: { enabled: boolean; rollsToday: number; myRolls: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; payout: number; stake: number } | null };
   slots: { enabled: boolean; machines: number; spins24h: number; jackpot: number | null; mySpins: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
 }
 
@@ -175,6 +176,25 @@ function BlackjackCard({ d }: { d: Summary['blackjack'] }) {
   );
 }
 
+/** La case des dés : activité, plus gros gain de la semaine et mes gains. */
+function DiceCard({ d }: { d: Summary['dice'] }) {
+  return (
+    <Link to="/jeux/des" className="gh-card gh-dice">
+      <div className="gh-head"><span className="gh-icon">🎲</span><div><h2>Dés</h2><div className="gh-tag">Deux dés, un pari, une cote selon tes chances</div></div></div>
+      <p className="gh-desc">Parie sur le total de deux dés : moins que, plus que, total exact ou doubles. Plus ton pari est rare, plus la cote grimpe, jusqu'à ×34 sur un total de 2 ou de 12. Un lancer gratuit chaque jour.</p>
+      <div className="gh-icons" aria-hidden="true"><span>⚀</span><span>⚂</span><span>⚄</span><span>⚅</span></div>
+      {d.biggest ? <div className="gh-next"><span style={{ fontSize: 22 }}>🏆</span><div><strong>Plus gros gain de la semaine : +{formatNumber(d.biggest.payout)}</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.biggest.username} · mise de {d.biggest.stake}</div></div></div> : <div className="gh-next muted">Aucun gain cette semaine : sois le premier !</div>}
+      <div className="gh-stats">
+        <Stat label="lancers (24 h)" value={formatNumber(d.rollsToday)} />
+        <Stat label="mes lancers" value={formatNumber(d.myRolls)} />
+        {d.myRolls > 0 && d.myWon > 0 && <Stat label="gagné au total" value={`+${formatNumber(d.myWon)} pts`} tone="good" />}
+      </div>
+      {d.dailyFreeAvailable && <span className="gh-badge">🎁 Ton lancer gratuit du jour t'attend</span>}
+      <span className="gh-go">Jouer →</span>
+    </Link>
+  );
+}
+
 /** Page d'accueil des jeux : une case par jeu avec sa description et ses statistiques ; un clic ouvre le jeu. */
 export default function GamesHub() {
   const [data, setData] = useState<Summary | null>(null);
@@ -216,6 +236,7 @@ export default function GamesHub() {
         {data.slots.enabled && <SlotsCard d={data.slots} />}
         {data.hilo?.enabled && <HiLoCard d={data.hilo} />}
         {data.blackjack?.enabled && <BlackjackCard d={data.blackjack} />}
+        {data.dice?.enabled && <DiceCard d={data.dice} />}
         {data.wheel?.enabled && <WheelCard d={data.wheel} />}
         {data.quiz?.enabled && <QuizCard d={data.quiz} />}
         {data.picks?.enabled && <PicksCard d={data.picks} />}

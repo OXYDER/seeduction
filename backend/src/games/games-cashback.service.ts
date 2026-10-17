@@ -35,6 +35,9 @@ export class GamesCashbackService {
     for (const r of slots) add(r.userId, (r._sum.stake ?? 0) - (r._sum.win ?? 0));
     const hilo = await this.prisma.hiLoGame.groupBy({ by: ['userId'], where: { daily: false, status: { in: ['CASHED', 'LOST', 'REFUNDED'] }, createdAt: { gte: from, lt: to } }, _sum: { stake: true, payout: true } });
     for (const r of hilo) add(r.userId, (r._sum.stake ?? 0) - (r._sum.payout ?? 0));
+    // dés : marge de 5 % par défaut, comme Plus haut ou plus bas
+    const dice = await this.prisma.diceRoll.groupBy({ by: ['userId'], where: { daily: false, createdAt: { gte: from, lt: to } }, _sum: { stake: true, payout: true } });
+    for (const r of dice) add(r.userId, (r._sum.stake ?? 0) - (r._sum.payout ?? 0));
     // le blackjack ne compte que si l'administration l'a choisi (son retour est déjà proche de 100 %)
     if ((await this.blackjack.config()).cashback) {
       const bj = await this.prisma.blackjackGame.groupBy({ by: ['userId'], where: { daily: false, status: 'DONE', createdAt: { gte: from, lt: to } }, _sum: { stake: true, payout: true } });
