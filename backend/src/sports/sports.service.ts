@@ -22,6 +22,11 @@ export interface SportsConfig { enabled: boolean; team: string; goalBonus: GoalB
 export interface Actor { userId: string; username: string }
 export interface GoalSound { file: string; name: string; mime: string; at: string }
 
+/** Corne de but fournie avec le site (backend/assets/goal-horn.mp3) : jouée tant que l'administration n'a pas téléversé un autre son ou choisi la sirène synthétisée. */
+const DEFAULT_SOUND_FILE = '__default';
+const DEFAULT_SOUND: GoalSound = { file: DEFAULT_SOUND_FILE, name: 'Corne de but du Canadien (fournie avec le site)', mime: 'audio/mpeg', at: 'defaut-1' };
+const DEFAULT_SOUND_PATH = path.join(process.cwd(), 'assets', 'goal-horn.mp3');
+
 const SOUND_KEY = 'sportsGoalSound';
 const SOUND_DIR = process.env.SOUND_STORAGE_DIR ?? path.join(process.env.COVER_STORAGE_DIR ?? './storage/covers', 'sounds');
 export const TEAMS: Record<string, string> = { MTL: 'Canadiens de Montréal' };
@@ -57,9 +62,24 @@ export class SportsService {
 
   // ------------------------------------------------------------------ son de but (téléversé par un administrateur)
 
+  /** Le son de but en vigueur : celui téléversé par l'administration, sinon la corne fournie ; null si l'administration a choisi la sirène synthétisée. */
   async goalSound(): Promise<GoalSound | null> {
-    const v = (await this.settings.get(SOUND_KEY)) as GoalSound | null;
-    return v && typeof v.file === 'string' && /^[a-f0-9-]+\.(mp3|ogg|wav)$/i.test(v.file) ? v : null;
+    const v = (await this.settings.get(SOUND_KEY)) as (GoalSound & { synth?: boolean }) | null;
+    if (v?.synth === true) return null;
+    if (v && typeof v.file === 'string' && /^[a-f0-9-]+\.(mp3|ogg|wav)$/i.test(v.file)) return v;
+    return DEFAULT_SOUND;
+  }
+
+  /** Le son téléversé par l'administration (null : la corne fournie ou la sirène est utilisée). */
+  private async uploadedSound(): Promise<GoalSound | null> {
+    const s = await this.goalSound();
+    return s && s.file !== DEFAULT_SOUND_FILE ? s : null;
+  }
+
+  async goalSoundInfo(): Promise<{ name: string; url: string | null; custom: boolean; mode: 'custom' | 'default' | 'synth' }> {
+    const s = await this.goalSound();
+    if (!s) return { name: 'Sirène synthétisée', url: null, custom: false, mode: 'synth' };
+    return { name: s.name, url: await this.goalSoundUrl(), custom: s.file !== DEFAULT_SOUND_FILE, mode: s.file === DEFAULT_SOUND_FILE ? 'default' : 'custom' };
   }
 
   /** Adresse du son de but personnalisé (null : le navigateur joue la sirène de secours). Le numéro de version évite qu'un ancien son reste en cache. */
@@ -71,7 +91,7 @@ export class SportsService {
   async readGoalSound(): Promise<{ data: Buffer; mime: string } | null> {
     const s = await this.goalSound();
     if (!s) return null;
-    try { return { data: await fs.readFile(path.join(SOUND_DIR, s.file)), mime: s.mime }; } catch { return null; }
+    try { return { data: await fs.readFile(s.file === DEFAULT_SOUND_FILE ? DEFAULT_SOUND_PATH : path.join(SOUND_DIR, s.file)), mime: s.mime }; } catch { return null; }
   }
 
   /** Remplace le son de but : 800 Ko au plus, type vérifié sur le contenu (MP3, OGG ou WAV). */
@@ -81,22 +101,32 @@ export class SportsService {
     const kind = detectAudio(file.buffer);
     if (!kind) throw new BadRequestException('Format non reconnu : utilise un fichier MP3, OGG ou WAV');
     await fs.mkdir(SOUND_DIR, { recursive: true });
-    const previous = await this.goalSound();
+    const previous = await this.uploadedSound();
     const name = `${randomUUID()}.${kind.ext}`;
     await fs.writeFile(path.join(SOUND_DIR, name), file.buffer);
     const value: GoalSound = { file: name, name: String(file.originalname ?? `son.${kind.ext}`).slice(0, 80), mime: kind.mime, at: new Date().toISOString() };
     await this.settings.set(SOUND_KEY, value);
     if (previous) await fs.unlink(path.join(SOUND_DIR, previous.file)).catch(() => undefined);
     await this.audit.log(actor.userId, 'SPORTS_GOAL_SOUND', { name: value.name, bytes: file.size }, ip);
-    return { name: value.name, url: await this.goalSoundUrl() };
+    return this.goalSoundInfo();
   }
 
+  /** Retire le son téléversé : la corne fournie avec le site revient. */
   async removeGoalSound(actor: Actor, ip?: string | null) {
-    const previous = await this.goalSound();
+    const previous = await this.uploadedSound();
     await this.settings.set(SOUND_KEY, null);
     if (previous) await fs.unlink(path.join(SOUND_DIR, previous.file)).catch(() => undefined);
     await this.audit.log(actor.userId, 'SPORTS_GOAL_SOUND', { removed: true }, ip);
-    return { ok: true };
+    return this.goalSoundInfo();
+  }
+
+  /** Choisit la sirène synthétisée du navigateur plutôt qu'un fichier. */
+  async useSynthSound(actor: Actor, ip?: string | null) {
+    const previous = await this.uploadedSound();
+    await this.settings.set(SOUND_KEY, { synth: true });
+    if (previous) await fs.unlink(path.join(SOUND_DIR, previous.file)).catch(() => undefined);
+    await this.audit.log(actor.userId, 'SPORTS_GOAL_SOUND', { synth: true }, ip);
+    return this.goalSoundInfo();
   }
 
   async saveConfig(actor: Actor, body: any, ip?: string | null) {

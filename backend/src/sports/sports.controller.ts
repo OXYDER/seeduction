@@ -37,6 +37,11 @@ export class SportsController {
   @Delete('admin/sound')
   removeSound(@Request() req: any) { return this.sports.removeGoalSound(actorOf(req), req.ip); }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Post('admin/sound/synth')
+  synthSound(@Request() req: any) { return this.sports.useSynthSound(actorOf(req), req.ip); }
+
   /** Logo d'une équipe (SVG), servi depuis notre serveur et mis en cache par les navigateurs. */
   @Get('logo/:abbrev')
   async logo(@Param('abbrev') abbrev: string, @Res() res: any) {
@@ -50,7 +55,8 @@ export class SportsController {
   @Get('admin')
   async admin() {
     const s = await this.sports.goalSound();
-    return { ...(await this.sports.config()), goalSound: s ? { name: s.name, url: await this.sports.goalSoundUrl() } : null };
+    void s;
+    return { ...(await this.sports.config()), goalSound: await this.sports.goalSoundInfo() };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
