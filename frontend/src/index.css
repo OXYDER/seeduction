@@ -4357,3 +4357,53 @@ div.qz-choice { cursor: default; }
 @media (max-width: 900px) { .pk-layout { grid-template-columns: 1fr; } .pk-grid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .pk-progress.done, .pk-burst { animation: none !important; } }
 .gh-picks { --gh-frame: #6ef09a; --gh-glow: #1ea35a; background: linear-gradient(160deg, #124a35, #07150f 70%); }
+
+/* ---- Blackjack ---- */
+.bj-table { --card-w: clamp(74px, 15vw, 112px); position: relative; overflow: hidden; border-radius: 28px; padding: 16px 18px 22px; color: #fff; display: grid; gap: 14px; background: radial-gradient(ellipse at 50% 35%, #1c8b4f 0%, #0f5a31 55%, #072e19 100%); box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55), inset 0 0 0 6px #5a3412, inset 0 0 0 9px #c28a3a, inset 0 0 60px rgba(0, 0, 0, 0.5); min-height: 520px; }
+.bj-table::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.16; background-image: repeating-radial-gradient(circle at 25% 30%, rgba(255, 255, 255, 0.55) 0 1px, transparent 1px 4px); mix-blend-mode: overlay; }
+.bj-rim { position: absolute; left: 50%; top: 46%; width: min(86%, 560px); aspect-ratio: 3 / 1; transform: translateX(-50%); border-radius: 50%; border: 2px solid rgba(255, 224, 140, 0.28); pointer-events: none; }
+.bj-top { position: relative; z-index: 2; display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.bj-rule { color: #ffe9a8; font-size: 12.5px; letter-spacing: 0.4px; text-align: center; flex: 1 1 200px; }
+.bj-zone { position: relative; z-index: 2; display: grid; gap: 6px; justify-items: center; }
+.bj-label { font-weight: 800; letter-spacing: 1px; text-transform: uppercase; font-size: 12.5px; color: #cdebd9; display: flex; gap: 8px; align-items: center; }
+.bj-cards { display: flex; justify-content: center; min-height: calc(var(--card-w) * 1.4); }
+.bj-cards .bj-card + .bj-card, .bj-cards .pcard + .pcard { margin-left: calc(var(--card-w) * -0.45); }
+.bj-card { animation: bj-deal 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+@keyframes bj-deal { from { transform: translate(120px, -160px) rotate(18deg) scale(0.7); opacity: 0; } to { transform: none; opacity: 1; } }
+.bj-ghost { opacity: 0.25; }
+.bj-hands { display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; }
+.bj-hand { display: grid; gap: 8px; justify-items: center; padding: 10px 12px; border-radius: 18px; border: 2px solid transparent; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
+.bj-hand.current { border-color: #ffd24a; background: rgba(255, 210, 74, 0.1); box-shadow: 0 0 24px rgba(255, 210, 74, 0.35); }
+.bj-hand.o-win, .bj-hand.o-blackjack { border-color: #6ef09a; background: rgba(63, 207, 123, 0.18); box-shadow: 0 0 28px rgba(63, 207, 123, 0.55); }
+.bj-hand.o-blackjack { border-color: #ffd24a; box-shadow: 0 0 40px rgba(255, 210, 74, 0.8); }
+.bj-hand.o-lose, .bj-hand.o-bust { border-color: rgba(255, 138, 128, 0.7); background: rgba(232, 69, 60, 0.15); }
+.bj-hand.o-push { border-color: #9fc6ff; }
+.bj-hand-info { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.bj-total { display: inline-block; padding: 2px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.35); font-weight: 900; font-size: 15px; letter-spacing: 0.3px; }
+.bj-total.full { color: #ffd24a; border-color: #ffd24a; box-shadow: 0 0 12px rgba(255, 210, 74, 0.6); }
+.bj-total.bust { color: #ffb3ac; border-color: #ff8a80; }
+.bj-chip { background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 224, 140, 0.5); border-radius: 999px; padding: 2px 10px; font-size: 13px; font-weight: 700; color: #ffe9a8; }
+.bj-res { font-weight: 900; font-size: 14px; padding: 2px 10px; border-radius: 999px; animation: bj-pop 0.4s ease-out; }
+.bj-res.win, .bj-res.blackjack { background: #1c8b4a; color: #fff; }
+.bj-res.blackjack { background: linear-gradient(180deg, #ffe27a, #d99a1f); color: #3b2400; }
+.bj-res.lose, .bj-res.bust { background: #7a2018; color: #ffd0cb; }
+.bj-res.push { background: #2b4f80; color: #d8e8ff; }
+@keyframes bj-pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.bj-empty { color: #cdebd9; opacity: 0.8; padding: 40px 0; font-size: 16px; }
+.bj-actions { position: relative; z-index: 3; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+button.bj-btn { display: grid; gap: 0; justify-items: center; padding: 12px 8px; border-radius: 14px; font-size: 17px; font-weight: 900; border: 2px solid rgba(255, 255, 255, 0.4); color: #fff; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.45), 0 10px 18px rgba(0, 0, 0, 0.35); }
+button.bj-btn small { font-size: 12px; font-weight: 700; opacity: 0.9; text-transform: none; }
+button.bj-btn.hit { background: linear-gradient(180deg, #3fcf7b, #1c8b4a); }
+button.bj-btn.stand { background: linear-gradient(180deg, #ef6a5e, #a51f17); }
+button.bj-btn.double { background: linear-gradient(180deg, #f6c453, #b57a0c); color: #2c1a00; }
+button.bj-btn.split { background: linear-gradient(180deg, #7aa8ff, #2b57b8); }
+button.bj-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45); }
+button.bj-btn:disabled { opacity: 0.35; filter: grayscale(0.6); cursor: default; }
+.bj-banner { position: relative; z-index: 4; text-align: center; font-size: 24px; font-weight: 900; padding: 12px 16px; border-radius: 16px; animation: bj-pop 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.bj-banner.win { background: linear-gradient(180deg, #5fe39a, #1c8b4a); color: #04260f; }
+.bj-banner.blackjack { background: linear-gradient(180deg, #fff2a8, #f0b323); color: #3b2400; font-size: 30px; box-shadow: 0 0 50px rgba(255, 210, 74, 0.9); }
+.bj-banner.push { background: linear-gradient(180deg, #a9c9ff, #3b6fc9); color: #06173a; }
+.bj-banner.lose, .bj-banner.bust { background: rgba(0, 0, 0, 0.5); color: #ffe0dc; border: 1px solid rgba(255, 138, 128, 0.6); font-size: 20px; }
+@media (max-width: 560px) { .bj-actions { grid-template-columns: repeat(2, 1fr); } .bj-hands { gap: 10px; } .bj-banner { font-size: 19px; } }
+@media (prefers-reduced-motion: reduce) { .bj-card, .bj-res, .bj-banner { animation: none !important; } }
+.gh-blackjack { --gh-frame: #ffd24a; --gh-glow: #1c8b4f; background: linear-gradient(160deg, #0f5a31, #06150d 70%); }

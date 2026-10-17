@@ -2187,3 +2187,26 @@ model NhlWeekPrize {
   @@unique([weekStart, rank])
   @@unique([weekStart, userId])
 }
+
+/// Une partie de blackjack. L'état complet (cartes sorties du sabot, mains, croupier) est gardé côté serveur ; le croupier garde sa carte cachée jusqu'à la fin.
+model BlackjackGame {
+  id        String    @id @default(uuid())
+  userId    String
+  stake     Int // points débités au total (mise, doublements, séparation) ; 0 pour la partie gratuite quotidienne
+  valued    Int // mise de base de la partie
+  daily     Boolean   @default(false)
+  status    String    @default("ACTIVE") @db.VarChar(8) // ACTIVE | DONE
+  active    String?   @db.VarChar(1) // 'A' tant que la partie est active, sinon nul : garantit une seule partie active par membre
+  state     Json
+  version   Int       @default(0) // augmente à chaque coup : empêche deux coups simultanés de s'appliquer
+  payout    Int?
+  outcome   String?   @db.VarChar(10) // blackjack | win | push | lose | bust
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  endedAt   DateTime?
+
+  @@unique([userId, active])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([status, updatedAt])
+}

@@ -24,6 +24,7 @@ import HiLo from './pages/HiLo';
 import Wheel from './pages/Wheel';
 import Quiz from './pages/Quiz';
 import Pronostics from './pages/Pronostics';
+import Blackjack from './pages/Blackjack';
 import MyUploads from './pages/MyUploads';
 import MySeeds from './pages/MySeeds';
 import MyActivity from './pages/MyActivity';
@@ -143,6 +144,7 @@ export default function App() {
           <Route path="/jeux/roue" element={<Wheel />} />
           <Route path="/jeux/quiz" element={<Quiz />} />
           <Route path="/jeux/pronostics" element={<Pronostics />} />
+          <Route path="/jeux/blackjack" element={<Blackjack />} />
           <Route path="/activity" element={<MyActivity />} />
           <Route path="/seeds" element={<MySeeds />} />
           <Route path="/hit-and-run" element={<HitAndRun />} />

@@ -16,6 +16,7 @@ interface Summary {
   wheel: { enabled: boolean; playedToday: boolean; streak: number; won: number; tokens: number };
   quiz: { enabled: boolean; playedToday: boolean; inProgress: boolean; todayCorrect: number | null; questions: number; streak: number; won: number; best: number };
   picks: { enabled: boolean; gamesToday: number; pickedToday: number; toPick: number; streak: number; weekWins: number; weekPicks: number; won: number };
+  blackjack: { enabled: boolean; gamesToday: number; myGames: number; myWon: number; active: boolean; dailyFreeAvailable: boolean; biggest: { username: string; payout: number; stake: number } | null };
   slots: { enabled: boolean; machines: number; spins24h: number; jackpot: number | null; mySpins: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
 }
 
@@ -153,6 +154,27 @@ function PicksCard({ d }: { d: Summary['picks'] }) {
   );
 }
 
+/** La case du blackjack : activité, plus gros gain de la semaine et mes gains. */
+function BlackjackCard({ d }: { d: Summary['blackjack'] }) {
+  return (
+    <Link to="/jeux/blackjack" className="gh-card gh-blackjack">
+      <div className="gh-head"><span className="gh-icon">♠️</span><div><h2>Blackjack</h2><div className="gh-tag">Bats le croupier, rapproche-toi de 21</div></div></div>
+      <p className="gh-desc">Tire des cartes sans dépasser 21 : double ta mise sur une bonne main, sépare tes paires, et touche 3 pour 2 sur un blackjack. Une partie gratuite chaque jour.</p>
+      <div className="gh-icons" aria-hidden="true"><span>🂡</span><span>🂮</span><span>🃁</span><span>🂱</span></div>
+      {d.active ? <div className="gh-next"><span style={{ fontSize: 22 }}>▶️</span><div><strong>Une partie t'attend</strong><div className="muted" style={{ fontSize: 12.5 }}>Reprends là où tu t'étais arrêté</div></div></div>
+        : d.biggest ? <div className="gh-next"><span style={{ fontSize: 22 }}>🏆</span><div><strong>Plus gros gain de la semaine : +{formatNumber(d.biggest.payout)}</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.biggest.username} · mise de {d.biggest.stake}</div></div></div>
+        : <div className="gh-next muted">Aucun gain cette semaine : sois le premier !</div>}
+      <div className="gh-stats">
+        <Stat label="parties (24 h)" value={formatNumber(d.gamesToday)} />
+        <Stat label="mes parties" value={formatNumber(d.myGames)} />
+        {d.myGames > 0 && d.myWon > 0 && <Stat label="gagné au total" value={`+${formatNumber(d.myWon)} pts`} tone="good" />}
+      </div>
+      {d.dailyFreeAvailable && <span className="gh-badge">🎁 Ta partie gratuite du jour t'attend</span>}
+      <span className="gh-go">Jouer →</span>
+    </Link>
+  );
+}
+
 /** Page d'accueil des jeux : une case par jeu avec sa description et ses statistiques ; un clic ouvre le jeu. */
 export default function GamesHub() {
   const [data, setData] = useState<Summary | null>(null);
@@ -193,6 +215,7 @@ export default function GamesHub() {
         {data.moj.enabled && <MojCard d={data.moj} />}
         {data.slots.enabled && <SlotsCard d={data.slots} />}
         {data.hilo?.enabled && <HiLoCard d={data.hilo} />}
+        {data.blackjack?.enabled && <BlackjackCard d={data.blackjack} />}
         {data.wheel?.enabled && <WheelCard d={data.wheel} />}
         {data.quiz?.enabled && <QuizCard d={data.quiz} />}
         {data.picks?.enabled && <PicksCard d={data.picks} />}

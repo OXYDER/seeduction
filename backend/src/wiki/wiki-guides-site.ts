@@ -403,6 +403,32 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Voir aussi : [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url], [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url].`,
     },
     {
+      title: 'Jouer au blackjack',
+      slug: 'guide-blackjack',
+      keywords: 'blackjack, 21, cartes, croupier, doubler, séparer, jeu, jeux, mise, points',
+      content:
+        `Le [b]blackjack[/b] est un jeu de cartes de la section [url=/jeux]Jeux[/url] : bats le croupier en te rapprochant de 21 sans le dépasser.\n\n` +
+        `[b]Comment jouer[/b]\n` +
+        `1. Choisis ta mise (5 à 100 points) et clique sur [b]Distribuer[/b]. Tu peux aussi jouer ta [b]partie gratuite du jour[/b].\n` +
+        `2. Tu reçois deux cartes ; le croupier en montre une et garde l'autre cachée. Les cartes de 2 à 10 valent leur chiffre, les figures valent 10 et l'as vaut 11 ou 1.\n` +
+        `3. Clique sur [b]Carte[/b] pour en tirer une autre, ou sur [b]Rester[/b] quand tu es satisfait. Si tu dépasses 21, tu perds.\n` +
+        `4. Quand tu restes, la carte cachée du croupier se retourne et il tire jusqu'à avoir au moins 17. Si tu es plus proche de 21 que lui (ou s'il dépasse 21), tu gagnes.\n\n` +
+        `[b]Les gains[/b]\n` +
+        `• Une victoire paie [b]le double de ta mise[/b] (ta mise te revient, plus un gain égal).\n` +
+        `• Un [b]blackjack[/b] (un as et une carte de 10 sur les deux premières cartes) paie [b]3 pour 2[/b] : avec une mise de 10, tu reçois 25 points.\n` +
+        `• En cas d'égalité, ta mise t'est rendue. Si le croupier a un blackjack et pas toi, la partie s'arrête tout de suite.\n\n` +
+        `[b]Doubler et séparer[/b]\n` +
+        `• [b]Doubler[/b] : sur tes deux premières cartes, tu mises une deuxième fois la même somme et tu reçois une seule carte de plus.\n` +
+        `• [b]Séparer[/b] : avec deux cartes de même valeur, tu les joues comme deux mains, avec une mise chacune. Une seule séparation par partie ; un as séparé ne reçoit qu'une carte, et un 21 obtenu après séparation n'est pas un blackjack.\n` +
+        `• Doubler et séparer demandent des points misables de plus.\n\n` +
+        `[b]À savoir[/b]\n` +
+        `• Les cartes sont tirées par le serveur dans un sabot de plusieurs jeux, jamais par ton navigateur, et la carte cachée du croupier ne t'est envoyée qu'à la fin.\n` +
+        `• Une seule partie à la fois. Une partie abandonnée est jouée d'office après un moment : tu restes sur tes mains et le croupier joue.\n` +
+        `• Les [b]points reçus par un don ne peuvent pas être misés[/b]. Il y a une limite de pertes par 24 heures et un gain maximal par partie. Gagner n'est jamais garanti.\n` +
+        `• Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux. Ce sont des points du site, sans valeur en argent.\n\n` +
+        `Voir aussi : [url=/wiki/guide-plus-haut-plus-bas]Jouer à Plus haut ou plus bas[/url], [url=/wiki/guide-machines-a-sous]Jouer aux machines à sous[/url].`,
+    },
+    {
       title: 'Faire revivre un torrent mort (Réanimation)',
       slug: 'guide-reanimation',
       keywords: 'réanimation, torrent mort, 0 seeder, reseed, relancer, récompense, demander un reseed, je le relance',

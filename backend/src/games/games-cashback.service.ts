@@ -6,6 +6,7 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CashbackConfig, DEFAULT_CASHBACK, cashbackFor, normalizeCashback } from '../common/utils/games-cashback';
 import { startOfDayToronto } from './slots.service';
+import { BlackjackService } from './blackjack.service';
 
 const KEY = 'gamesCashback';
 const TZ = 'America/Toronto';
@@ -15,7 +16,7 @@ const TZ = 'America/Toronto';
 export class GamesCashbackService {
   private readonly logger = new Logger(GamesCashbackService.name);
 
-  constructor(private prisma: PrismaService, private settings: SettingsService, private audit: AuditService, private notifications: NotificationsService) {}
+  constructor(private prisma: PrismaService, private settings: SettingsService, private audit: AuditService, private notifications: NotificationsService, private blackjack: BlackjackService) {}
 
   async config(): Promise<CashbackConfig> { return normalizeCashback(await this.settings.get(KEY), DEFAULT_CASHBACK); }
 
@@ -34,6 +35,11 @@ export class GamesCashbackService {
     for (const r of slots) add(r.userId, (r._sum.stake ?? 0) - (r._sum.win ?? 0));
     const hilo = await this.prisma.hiLoGame.groupBy({ by: ['userId'], where: { daily: false, status: { in: ['CASHED', 'LOST', 'REFUNDED'] }, createdAt: { gte: from, lt: to } }, _sum: { stake: true, payout: true } });
     for (const r of hilo) add(r.userId, (r._sum.stake ?? 0) - (r._sum.payout ?? 0));
+    // le blackjack ne compte que si l'administration l'a choisi (son retour est déjà proche de 100 %)
+    if ((await this.blackjack.config()).cashback) {
+      const bj = await this.prisma.blackjackGame.groupBy({ by: ['userId'], where: { daily: false, status: 'DONE', createdAt: { gte: from, lt: to } }, _sum: { stake: true, payout: true } });
+      for (const r of bj) add(r.userId, (r._sum.stake ?? 0) - (r._sum.payout ?? 0));
+    }
     return net;
   }
 
