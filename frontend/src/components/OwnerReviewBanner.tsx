@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import { HOLD_REASONS } from '../lib/holdReasons';
+import { useMyUploads } from '../store/myUploads';
 
 interface Props {
   torrent: { id: string; status: string; holdAt?: string | null; holdReasons?: string[]; holdNote?: string | null; holdByName?: string | null; resubmittedAt?: string | null; resubmitNote?: string | null; rejectReason?: string | null };
@@ -24,6 +25,7 @@ export default function OwnerReviewBanner({ torrent, onEdit, onPatch }: Props) {
     try {
       await api.post(`/my-torrents/${torrent.id}/resubmit`, { message });
       onPatch({ holdAt: null, resubmittedAt: new Date().toISOString(), resubmitNote: message.trim() || null });
+      void useMyUploads.getState().refresh();
     } catch (e: any) { setError(e.response?.data?.message ?? 'Envoi impossible'); }
     finally { setBusy(false); }
   }

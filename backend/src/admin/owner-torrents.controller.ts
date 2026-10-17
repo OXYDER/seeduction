@@ -35,6 +35,21 @@ export class OwnerTorrentsController {
     if (!u?.showAdult) throw new ForbiddenException('Active l\'affichage du contenu pour adultes dans ton profil pour choisir cette catégorie');
   }
 
+  /** Les compteurs de « Mes envois » (icône de l'en-tête et pastille du menu) : légers, appelés souvent. */
+  @Get('summary')
+  async summary(@Request() req: any) {
+    const account = accountOf(req);
+    const profiles = await this.prisma.user.findMany({ where: { parentId: account }, select: { id: true } });
+    const ids = [...new Set([account, req.user.userId, ...profiles.map((p) => p.id)])];
+    const [total, hold, rejected, pending] = await Promise.all([
+      this.prisma.torrent.count({ where: { uploaderId: { in: ids } } }),
+      this.prisma.torrent.count({ where: { uploaderId: { in: ids }, status: 'PENDING', holdAt: { not: null } } }),
+      this.prisma.torrent.count({ where: { uploaderId: { in: ids }, status: 'REJECTED' } }),
+      this.prisma.torrent.count({ where: { uploaderId: { in: ids }, status: 'PENDING', holdAt: null } }),
+    ]);
+    return { total, hold, rejected, pending };
+  }
+
   /** Mes envois : tous les torrents du compte (profils du compte famille compris), avec leur état et ce que l'équipe a demandé de corriger. */
   @Get()
   async mine(@Request() req: any) {

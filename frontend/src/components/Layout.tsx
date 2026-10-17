@@ -19,6 +19,8 @@ import NotificationAutoRead from './NotificationAutoRead';
 import { EventIcon, EventRoot, EventStrip } from './EventDecor';
 import NewYearCountdown from './NewYearCountdown';
 import CanadiensPill from './CanadiensPill';
+import MyUploadsIcon from './MyUploadsIcon';
+import { useMyUploads } from '../store/myUploads';
 import FriendsMenu from './FriendsMenu';
 import MessagesMenu from './MessagesMenu';
 import { useDonors } from '../store/donors';
@@ -211,6 +213,16 @@ function LayoutInner() {
   }, [accessToken, refreshNews]);
 
   // Compteur de messages privés non lus (pastille de l'icône ✉️) : rafraîchi à chaque changement de page, toutes les minutes, et dès qu'un message est lu.
+  // « Mes envois » : torrents à corriger (demande de l'équipe). Rafraîchi à chaque changement de page et toutes les 2 minutes.
+  const refreshMyUploads = useMyUploads((s) => s.refresh);
+  const myUploadsHold = useMyUploads((s) => s.hold);
+  useEffect(() => {
+    if (!accessToken) return;
+    void refreshMyUploads();
+    const t = setInterval(() => { if (!document.hidden) void refreshMyUploads(); }, 2 * 60_000);
+    return () => clearInterval(t);
+  }, [accessToken, location.pathname, refreshMyUploads]);
+
   const refreshUnreadMessages = useCallback(() => {
     if (!accessToken) return;
     api.get('/messages/unread-count').then((r) => setUnreadMessages(Number(r.data) || 0)).catch(() => {});
@@ -336,6 +348,7 @@ function LayoutInner() {
         </>
       );
     }
+    if (item.to === '/upload' && myUploadsHold > 0) return <span className="side-badge red" title={`${myUploadsHold} torrent${myUploadsHold > 1 ? 's' : ''} à corriger : l'équipe te demande une modification`}>{fmt(myUploadsHold)}</span>;
     if (item.to === '/dead' && deadMine > 0) return <span className="side-badge red" title={`${deadMine} torrent${deadMine > 1 ? 's' : ''} sans seeder que tu peux relancer`}>{fmt(deadMine)}</span>;
     if (item.to === '/forum' && forumUnread > 0) return <span className="side-badge red" title={`${forumUnread} sujet${forumUnread > 1 ? 's' : ''} non lu${forumUnread > 1 ? 's' : ''} dans le forum`}>{fmt(forumUnread)}</span>;
     if (item.to === '/news' && newsUnseen > 0) return <span className="side-badge red" title={`${newsUnseen} nouvelle${newsUnseen > 1 ? 's' : ''} non lue${newsUnseen > 1 ? 's' : ''}`}>{fmt(newsUnseen)}</span>;
@@ -496,6 +509,7 @@ function LayoutInner() {
               <SeedObligations />
               <TelegramHeaderLink />
               <NotificationsBell />
+              <MyUploadsIcon />
               <MessagesMenu unread={unreadMessages} active={starts('/messages')(location.pathname)} />
               <FriendsMenu pending={pendingFriendRequests} online={friendsOnline} active={starts('/friends')(location.pathname)} />
             </div>
@@ -580,6 +594,7 @@ function LayoutInner() {
           <SeedObligations />
           <TelegramHeaderLink />
           <NotificationsBell />
+          <MyUploadsIcon />
           <Link to="/messages" className={`top-link${starts('/messages')(location.pathname) ? ' active' : ''}`}>Messages</Link>
           <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{pendingFriendRequests > 0 ? ` (${pendingFriendRequests})` : ''}{friendsOnline > 0 && <span className="online-count" title="Amis en ligne"> ● {friendsOnline}</span>}</Link>
           <Link to="/profile" className={`top-link${starts('/profile')(location.pathname) || starts('/users')(location.pathname) ? ' active' : ''}`}>{user?.username}</Link>
