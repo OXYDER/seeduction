@@ -2004,8 +2004,53 @@ model SlotSpin {
   win       Int
   freeSpins Int      @default(0)
   rounds    Json // [{ stops: [a, b, c], mult, win, free }]
+  jackpot   Boolean   @default(false) // gros lot progressif remporté
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([createdAt])
+}
+
+/// « Plus haut ou plus bas » : une partie (série de cartes). Une seule partie active par membre (clé `active`).
+model HiLoGame {
+  id        String    @id @default(uuid())
+  userId    String
+  stake     Int // mise débitée (0 pour la partie gratuite quotidienne)
+  valued    Int // mise de référence des gains
+  daily     Boolean   @default(false)
+  status    String    @default("ACTIVE") @db.VarChar(8) // ACTIVE | CASHED | LOST | REFUNDED
+  active    String?   @db.VarChar(1) // 'A' tant que la partie est active, sinon nul : garantit une seule partie active par membre
+  step      Int       @default(0) // bonnes réponses de la série
+  card      Int // carte visible, de 0 à 51
+  multBp    Int       @default(10000) // multiplicateur cumulé en dix-millièmes (10 000 = ×1)
+  payout    Int?
+  history   Json // cartes vues et réponses : [{ card, guess?, won? }]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  endedAt   DateTime?
+
+  @@unique([userId, active])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([status, updatedAt])
+}
+
+/// Gros lot progressif des machines à sous : une seule ligne (id « main »). Il grossit d'une petite part de chaque mise et repart de sa mise de départ quand il est remporté.
+model SlotJackpot {
+  id        String   @id
+  pool      Float
+  updatedAt DateTime @updatedAt
+}
+
+/// Remise de fidélité des machines à sous : une part des pertes nettes de la veille est rendue au membre (une seule fois par membre et par jour).
+model SlotCashback {
+  id        String   @id @default(uuid())
+  userId    String
+  day       String   @db.VarChar(10) // jour concerné (AAAA-MM-JJ, heure de Montréal)
+  lost      Int // pertes nettes de ce jour
+  amount    Int // points rendus
+  createdAt DateTime @default(now())
+
+  @@unique([userId, day])
+  @@index([userId, createdAt])
 }

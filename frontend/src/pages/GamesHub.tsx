@@ -9,10 +9,11 @@ import { SKINS, MACHINE_ORDER } from '../lib/slotSkins';
 interface Summary {
   me: { points: number; donated: number; stakeable: number; optOut: boolean };
   moj: {
-    enabled: boolean; openMatches: number; openPool: number; playersWeek: number; myActiveBets: number; myBetsSettled: number; myNet: number;
+    enabled: boolean; openMatches: number; openPool: number; playersWeek: number; myActiveBets: number; myBetsSettled: number; myWon: number;
     next: { startUtc: string; side: 'home' | 'away'; kind: string; mine: { abbrev: string; name: string }; other: { abbrev: string; name: string } } | null;
   };
-  slots: { enabled: boolean; machines: number; spins24h: number; rtp: number; mySpins: number; myNet: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
+  hilo: { enabled: boolean; gamesToday: number; bestStreak: { username: string; step: number } | null; myGames: number; myBest: number; myWon: number; activeStep: number | null; dailyFreeAvailable: boolean };
+  slots: { enabled: boolean; machines: number; spins24h: number; jackpot: number | null; mySpins: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
 }
 
 const net = (n: number) => `${n >= 0 ? '+' : ''}${formatNumber(n)}`;
@@ -39,7 +40,7 @@ function MojCard({ d }: { d: Summary['moj'] }) {
         <Stat label="points en jeu" value={formatNumber(d.openPool)} />
         <Stat label="joueurs (7 jours)" value={d.playersWeek} />
         <Stat label="mes paris en cours" value={d.myActiveBets} />
-        {d.myBetsSettled > 0 && <Stat label="mon bilan" value={`${net(d.myNet)} pts`} tone={d.myNet >= 0 ? 'good' : 'bad'} />}
+        {d.myBetsSettled > 0 && d.myWon > 0 && <Stat label="gagné au total" value={`+${formatNumber(d.myWon)} pts`} tone="good" />}
       </div>
       <span className="gh-go">Jouer →</span>
     </Link>
@@ -57,11 +58,33 @@ function SlotsCard({ d }: { d: Summary['slots'] }) {
       <div className="gh-stats">
         <Stat label="machines" value={d.machines} />
         <Stat label="tours (24 h)" value={formatNumber(d.spins24h)} />
-        <Stat label="retour au joueur" value={`${d.rtp} %`} />
+        {d.jackpot !== null && <Stat label="gros lot" value={`${formatNumber(d.jackpot)} pts`} tone="good" />}
         <Stat label="mes tours" value={formatNumber(d.mySpins)} />
-        {d.mySpins > 0 && <Stat label="mon bilan" value={`${net(d.myNet)} pts`} tone={d.myNet >= 0 ? 'good' : 'bad'} />}
+        {d.mySpins > 0 && d.myWon > 0 && <Stat label="gagné au total" value={`+${formatNumber(d.myWon)} pts`} tone="good" />}
       </div>
       {d.dailyFreeAvailable && <span className="gh-badge">🎁 Ton tour gratuit du jour t'attend</span>}
+      <span className="gh-go">Jouer →</span>
+    </Link>
+  );
+}
+
+/** La case de « Plus haut ou plus bas » : meilleure série, activité et mes meilleurs résultats. */
+function HiLoCard({ d }: { d: Summary['hilo'] }) {
+  return (
+    <Link to="/jeux/plus-haut-plus-bas" className="gh-card gh-hilo">
+      <div className="gh-head"><span className="gh-icon">🃏</span><div><h2>Plus haut ou plus bas</h2><div className="gh-tag">Une série de cartes, encaisse quand tu veux</div></div></div>
+      <p className="gh-desc">Devine si la prochaine carte sera plus haute ou plus basse. Chaque bonne réponse multiplie ton gain : continue pour plus gros, ou encaisse avant de tout perdre.</p>
+      <div className="gh-icons" aria-hidden="true"><span>♠️</span><span>♥️</span><span>♦️</span><span>♣️</span></div>
+      {d.activeStep !== null ? <div className="gh-next"><span style={{ fontSize: 22 }}>▶️</span><div><strong>Une partie t'attend</strong><div className="muted" style={{ fontSize: 12.5 }}>Série en cours : {d.activeStep}</div></div></div>
+        : d.bestStreak ? <div className="gh-next"><span style={{ fontSize: 22 }}>🔥</span><div><strong>Meilleure série de la semaine : {d.bestStreak.step}</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.bestStreak.username}</div></div></div>
+        : <div className="gh-next muted">Aucune série cette semaine : sois le premier !</div>}
+      <div className="gh-stats">
+        <Stat label="parties (24 h)" value={formatNumber(d.gamesToday)} />
+        <Stat label="mes parties" value={formatNumber(d.myGames)} />
+        {d.myBest > 0 && <Stat label="ma meilleure série" value={d.myBest} tone="good" />}
+        {d.myWon > 0 && <Stat label="gagné au total" value={`+${formatNumber(d.myWon)} pts`} tone="good" />}
+      </div>
+      {d.dailyFreeAvailable && <span className="gh-badge">🎁 Ta partie gratuite du jour t'attend</span>}
       <span className="gh-go">Jouer →</span>
     </Link>
   );
@@ -106,6 +129,7 @@ export default function GamesHub() {
       <div className="gh-grid">
         {data.moj.enabled && <MojCard d={data.moj} />}
         {data.slots.enabled && <SlotsCard d={data.slots} />}
+        {data.hilo?.enabled && <HiLoCard d={data.hilo} />}
         <div className="gh-card gh-soon"><span className="gh-icon">🎲</span><h2>Bientôt</h2><p className="gh-desc">D'autres jeux arrivent. Dis-nous ceux que tu aimerais voir !</p></div>
       </div>
     </div>

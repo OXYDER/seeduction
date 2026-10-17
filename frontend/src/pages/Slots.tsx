@@ -4,13 +4,14 @@ import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { MACHINE_ORDER, skinFor, type MachineId } from '../lib/slotSkins';
 import { useEventDecor } from '../store/eventTheme';
-import SlotMachine, { type SlotConfig, type SlotGame, type SlotMe } from '../components/SlotMachine';
+import SlotMachine, { type Jackpot, type SlotConfig, type SlotGame, type SlotMe } from '../components/SlotMachine';
 import type { EventId } from '../lib/eventArt';
 
 interface Overview {
   config: SlotConfig & { enabled: boolean; machines: Record<MachineId, boolean> };
   me: SlotMe & { optOut: boolean };
   game: SlotGame;
+  jackpot: Jackpot;
   recent: { id: string; machine: MachineId; stake: number; valued: number; daily: boolean; win: number; freeSpins: number; createdAt: string }[];
   biggest: { username: string; machine: MachineId; stake: number; win: number; at: string }[];
 }
@@ -71,7 +72,7 @@ export default function Slots() {
 
       {current ? (
         <SlotMachine
-          key={`${current}-${event ?? ''}`} skin={skinFor(current, event)} machine={current} game={data.game} config={config} me={me} event={current === 'saison'}
+          key={`${current}-${event ?? ''}`} skin={skinFor(current, event)} machine={current} game={data.game} config={config} me={me} event={current === 'saison'} jackpot={data.jackpot}
           onUpdate={(patch) => setData((d) => (d ? { ...d, me: { ...d.me, ...patch } } : d))} onDone={() => void load()}
         />
       ) : (
@@ -106,8 +107,7 @@ export default function Slots() {
       </div>
 
       <div className="panel muted" style={{ fontSize: 13 }}>
-        Jeu de hasard avec des points du site, sans valeur en argent : le résultat est tiré par le serveur, jamais par ton navigateur. Le retour théorique est de {data.game.rtp} % : à long terme, le site garde une part de ce qui est misé,
-        et gagner n'est jamais garanti. Les points reçus par un don ne peuvent pas être misés. Joue pour le plaisir et fais des pauses : tu peux te retirer des jeux à tout moment depuis la page <Link to="/jeux">Jeux</Link>.
+        Jeu de hasard avec des points du site, sans valeur en argent : le résultat est tiré par le serveur, jamais par ton navigateur, et gagner n'est jamais garanti. Chaque matin, une remise de fidélité te rend une part de tes pertes de la veille. Les points reçus par un don ne peuvent pas être misés. Joue pour le plaisir et fais des pauses : tu peux te retirer des jeux à tout moment depuis la page <Link to="/jeux">Jeux</Link>.
       </div>
     </div>
   );

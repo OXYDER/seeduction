@@ -226,7 +226,7 @@ export class MojService implements OnModuleInit {
     ]);
     return {
       enabled: cfg.enabled, openMatches, openPool: openPool._sum.stake ?? 0, playersWeek: players.length, myActiveBets: active, myBetsSettled: mine._count._all,
-      myNet: (mine._sum.payout ?? 0) - (mine._sum.stake ?? 0),
+      myWon: mine._sum.payout ?? 0,
       next: next ? {
         startUtc: next.startUtc, side: next.mineSide, kind: next.kind,
         mine: next.mineSide === 'home' ? { abbrev: next.homeAbbrev, name: next.homeName } : { abbrev: next.awayAbbrev, name: next.awayName },

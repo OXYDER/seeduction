@@ -9,7 +9,7 @@ export function soundOn(): boolean { try { return localStorage.getItem(KEY) !== 
 export function setSoundOn(on: boolean) { try { localStorage.setItem(KEY, on ? '1' : '0'); } catch { /* ignoré */ } }
 
 /** Contexte audio + chaîne commune : compresseur (pas de saturation) et écho de salle de jeu. */
-function audio(): { c: AudioContext; out: GainNode; verb: GainNode } | null {
+export function audio(): { c: AudioContext; out: GainNode; verb: GainNode } | null {
   try {
     const Ctor = window.AudioContext ?? (window as any).webkitAudioContext;
     if (!Ctor) return null;
@@ -37,14 +37,14 @@ function audio(): { c: AudioContext; out: GainNode; verb: GainNode } | null {
   } catch { return null; }
 }
 
-function noiseBuffer(c: AudioContext, seconds: number): AudioBuffer {
+export function noiseBuffer(c: AudioContext, seconds: number): AudioBuffer {
   const len = Math.floor(c.sampleRate * seconds), b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
   return b;
 }
 
 /** Un « tic » mécanique : petit éclat de bruit filtré. */
-function tick(a: NonNullable<ReturnType<typeof audio>>, t: number, freq = 2400, vol = 0.12, dur = 0.025) {
+export function tick(a: NonNullable<ReturnType<typeof audio>>, t: number, freq = 2400, vol = 0.12, dur = 0.025) {
   const { c, out } = a;
   const src = c.createBufferSource(); src.buffer = noiseBuffer(c, dur + 0.01);
   const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 3;
@@ -54,7 +54,7 @@ function tick(a: NonNullable<ReturnType<typeof audio>>, t: number, freq = 2400, 
 }
 
 /** Note de cloche / pièce : partiels non harmoniques qui s'éteignent vite. */
-function bell(a: NonNullable<ReturnType<typeof audio>>, t: number, freq: number, vol = 0.12, dur = 0.7) {
+export function bell(a: NonNullable<ReturnType<typeof audio>>, t: number, freq: number, vol = 0.12, dur = 0.7) {
   const { c, out, verb } = a;
   for (const [ratio, level, decay] of [[1, 1, 1], [2.76, 0.5, 0.6], [5.4, 0.28, 0.35], [8.9, 0.12, 0.2]] as const) {
     const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq * ratio;

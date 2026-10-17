@@ -45,7 +45,7 @@ export const STAKE_STEP = 5;
 
 export type Grid = number[][]; // grid[rouleau][rangée]
 
-export interface LineWin { line: number; mult: number }
+export interface LineWin { line: number; mult: number; /** trois meilleurs symboles purs (sans joker) : candidats au gros lot progressif */ jackpot?: boolean }
 export interface SpinResult {
   stops: number[];
   grid: Grid;
@@ -53,6 +53,10 @@ export interface SpinResult {
   /** Somme des multiples des lignes gagnantes. */
   mult: number;
   scatters: number;
+  /** Un meilleur symbole pur est aligné trois fois : gros lot progressif (payé au prix fixe habituel si la mise est trop petite pour y avoir droit). */
+  jackpot: boolean;
+  /** Part de `mult` qui vient des lignes du gros lot. */
+  jackpotMult: number;
 }
 
 /** Ce qui est visible pour un arrêt donné d'un rouleau : le symbole d'au-dessus, le symbole de l'arrêt, celui du dessous. */
@@ -82,14 +86,16 @@ export function linePay(syms: number[], profile: Profile = PROFILES[DEFAULT_PROF
   return 0;
 }
 
-export function evaluateGrid(grid: Grid, profile: Profile = PROFILES[DEFAULT_PROFILE]): { lines: LineWin[]; mult: number; scatters: number } {
+export function evaluateGrid(grid: Grid, profile: Profile = PROFILES[DEFAULT_PROFILE]): { lines: LineWin[]; mult: number; scatters: number; jackpot: boolean; jackpotMult: number } {
   const lines: LineWin[] = [];
   PAYLINES.forEach((rows, line) => {
-    const mult = linePay([grid[0][rows[0]], grid[1][rows[1]], grid[2][rows[2]]], profile);
-    if (mult > 0) lines.push({ line, mult });
+    const syms = [grid[0][rows[0]], grid[1][rows[1]], grid[2][rows[2]]];
+    const mult = linePay(syms, profile);
+    if (mult > 0) lines.push(syms.every((x) => x === 0) ? { line, mult, jackpot: true } : { line, mult });
   });
   const scatters = grid.reduce((n, col) => n + col.filter((x) => x === SCATTER).length, 0);
-  return { lines, mult: lines.reduce((sum, l) => sum + l.mult, 0), scatters };
+  const jackpotMult = lines.filter((l) => l.jackpot).reduce((sum, l) => sum + l.mult, 0);
+  return { lines, mult: lines.reduce((sum, l) => sum + l.mult, 0), scatters, jackpot: jackpotMult > 0, jackpotMult };
 }
 
 export function resultAt(stops: number[], profile: Profile = PROFILES[DEFAULT_PROFILE]): SpinResult {
@@ -172,6 +178,8 @@ export interface SlotsConfig {
   machines: Record<MachineId, boolean>;
   /** Réglage de générosité (table des gains) : le retour au joueur reste toujours sous 100 %. */
   profile: ProfileId;
+  /** Gros lot progressif : mise de départ, part de chaque mise qui l'alimente, mise minimale pour y avoir droit. */
+  jackpot: { enabled: boolean; seed: number; rate: number; minStake: number };
 }
 
 export const DEFAULT_SLOTS: SlotsConfig = {
@@ -179,6 +187,7 @@ export const DEFAULT_SLOTS: SlotsConfig = {
   dailyFree: { enabled: true, stake: 10, maxWin: 200 },
   machines: { cinema: true, or: true, hockey: true, erable: true, saison: true, pirate: true },
   profile: DEFAULT_PROFILE,
+  jackpot: { enabled: true, seed: 500, rate: 0.012, minStake: 25 },
 };
 
 const int = (v: unknown, min: number, max: number, fallback: number): number => {
@@ -208,5 +217,15 @@ export function normalizeSlotsConfig(raw: any, previous: SlotsConfig = DEFAULT_S
     },
     machines,
     profile: PROFILE_IDS.includes(r.profile) ? r.profile : previous.profile,
+    jackpot: (() => {
+      const j = r.jackpot && typeof r.jackpot === 'object' ? r.jackpot : {};
+      const rate = Number(j.rate);
+      return {
+        enabled: typeof j.enabled === 'boolean' ? j.enabled : previous.jackpot.enabled,
+        seed: int(j.seed, 0, 1_000_000, previous.jackpot.seed),
+        rate: Number.isFinite(rate) && rate >= 0 && rate <= 0.1 ? Math.round(rate * 10000) / 10000 : previous.jackpot.rate,
+        minStake: step(j.minStake, previous.jackpot.minStake),
+      };
+    })(),
   };
 }

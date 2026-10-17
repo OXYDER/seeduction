@@ -5,11 +5,12 @@ import type { Skin } from '../lib/slotSkins';
 import { playBonus, playLever, playSpin, playStop, playTick, playWin, setSoundOn, soundOn } from '../lib/slotSound';
 import { EventSprite } from './EventDecor';
 
-export interface SlotGame { strips: number[][]; paylines: number[][]; payThree: number[]; payPair: number[]; freeMult: number; step: number; rtp: number; hitRate: number; atLeastStake: number; maxMultiple: number }
+export interface SlotGame { strips: number[][]; paylines: number[][]; payThree: number[]; payPair: number[]; freeMult: number; step: number }
+export interface Jackpot { enabled: boolean; pool: number; minStake: number; last: { username: string; amount: number; at: string } | null }
 export interface SlotConfig { minStake: number; maxStake: number; dailyLossMax: number; maxWin: number; dailyFree: { enabled: boolean; stake: number; maxWin: number } }
 export interface SlotMe { points: number; donated: number; stakeable: number; blocked: string | null; lossToday: number; lossLeft: number | null; dailyFreeAvailable: boolean }
-interface Round { stops: number[]; grid: number[][]; lines: { line: number; mult: number }[]; mult: number; win: number; free: boolean }
-interface Result { win: number; tier: 'none' | 'small' | 'big' | 'mega'; freeSpins: number; rounds: Round[]; points: number; stakeable: number; daily: boolean; stake: number }
+interface Round { stops: number[]; grid: number[][]; lines: { line: number; mult: number; jackpot?: boolean }[]; mult: number; win: number; free: boolean }
+interface Result { win: number; tier: 'none' | 'small' | 'big' | 'mega'; freeSpins: number; rounds: Round[]; points: number; stakeable: number; daily: boolean; stake: number; jackpot: { amount: number } | null; poolAfter: number }
 interface Reel { strip: number[]; y: number; anim: boolean; dur: number }
 
 const STAKES = [5, 10, 25, 50, 100];
@@ -65,8 +66,8 @@ function Bulbs({ w, h }: { w: number; h: number }) {
 }
 
 /** La machine : le serveur tire au sort, cette vue ne fait qu'animer le résultat reçu. */
-export default function SlotMachine({ skin, machine, game, config, me, event, onUpdate, onDone }: {
-  skin: Skin; machine: string; game: SlotGame; config: SlotConfig; me: SlotMe; event: boolean;
+export default function SlotMachine({ skin, machine, game, config, me, event, jackpot, onUpdate, onDone }: {
+  skin: Skin; machine: string; game: SlotGame; config: SlotConfig; me: SlotMe; event: boolean; jackpot?: Jackpot | null;
   onUpdate: (patch: { points: number; stakeable: number; dailyFreeAvailable?: boolean }) => void; onDone: () => void;
 }) {
   const [stake, setStake] = useState(() => (config.minStake <= 10 && config.maxStake >= 10 ? 10 : config.minStake));
@@ -85,6 +86,9 @@ export default function SlotMachine({ skin, machine, game, config, me, event, on
   const [remind, setRemind] = useState(false);
   const [paytable, setPaytable] = useState(false);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [pool, setPool] = useState(jackpot?.pool ?? 0);
+  const [jackpotWin, setJackpotWin] = useState<number | null>(null);
+  useEffect(() => { setPool(jackpot?.pool ?? 0); }, [jackpot?.pool]);
   const bodyRef = useRef<HTMLDivElement>(null);
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -138,7 +142,7 @@ export default function SlotMachine({ skin, machine, game, config, me, event, on
 
   async function spin(daily: boolean) {
     if (busy) return;
-    setError(''); setBanner(null); setShown(null); setWinLines([]); setFx('spin');
+    setError(''); setBanner(null); setShown(null); setWinLines([]); setFx('spin'); setJackpotWin(null);
     setBusy(true);
     setPull(true); playLever(); setTimeout(() => setPull(false), 650);
     let res: Result;
@@ -165,7 +169,15 @@ export default function SlotMachine({ skin, machine, game, config, me, event, on
       if (r.win > 0) { if (i > 0 || res.freeSpins === 0) playWin('small', r.win / res.stake); setShown(running); await sleep(i > 0 ? 900 : 1200); } else await sleep(i > 0 ? 450 : 250);
     }
     if (!alive.current) return;
-    if (res.win > 0) {
+    if (res.jackpot) {
+      // GROS LOT : célébration complète
+      setJackpotWin(res.jackpot.amount); setFx('mega');
+      setBanner({ text: 'GROS LOT !!!', tier: 'jackpot' });
+      playWin('mega'); setTimeout(() => playWin('mega'), 1800); setTimeout(() => playBonus(), 900);
+      setShower((s) => ({ n: s.n + 1, coins: 90, mega: true }));
+      await countUp(res.win);
+      await sleep(2600);
+    } else if (res.win > 0) {
       setFx(res.tier === 'none' ? 'small' : res.tier);
       setBanner({ text: res.tier === 'mega' ? 'MÉGA GAIN !' : res.tier === 'big' ? 'GROS GAIN !' : res.win >= res.stake ? 'Gagné !' : 'Petit retour', tier: res.tier });
       if (res.tier === 'big' || res.tier === 'mega') { playWin(res.tier); setShower((s) => ({ n: s.n + 1, coins: res.tier === 'mega' ? 46 : 24, mega: res.tier === 'mega' })); }
@@ -175,7 +187,7 @@ export default function SlotMachine({ skin, machine, game, config, me, event, on
       setBanner({ text: 'Pas cette fois…', tier: 'none' });
     }
     setSession((s) => ({ ...s, won: s.won + res.win }));
-    setPoints(res.points);
+    setPoints(res.points); setPool(res.poolAfter); setJackpotWin(null);
     onUpdate({ points: res.points, stakeable: res.stakeable, ...(daily ? { dailyFreeAvailable: false } : {}) });
     setBusy(false); setFx('idle');
     onDone();
@@ -198,6 +210,12 @@ export default function SlotMachine({ skin, machine, game, config, me, event, on
           <strong className="slot-title">{skin.icon} {skin.name}</strong>
           <div className="slot-tag">{skin.tagline}</div>
         </div>
+        {jackpot?.enabled && (
+          <div className={`slot-jackpot${jackpotWin ? ' won' : ''}`} title={`Trois meilleurs symboles alignés (sans joker) avec une mise de ${jackpot.minStake} points ou plus`}>
+            <span className="slot-jackpot-l">GROS LOT</span>
+            <strong className="slot-jackpot-v">{formatNumber(pool)}</strong>
+          </div>
+        )}
         <div className="slot-head-r">
           <button type="button" className="slot-mini" onClick={() => { const v = !sound; setSound(v); setSoundOn(v); }} title={sound ? 'Couper le son' : 'Activer le son'} aria-pressed={sound}>{sound ? '🔊' : '🔇'}</button>
           <button type="button" className="slot-mini" onClick={() => setPaytable((v) => !v)} aria-expanded={paytable}>Gains</button>
@@ -254,8 +272,9 @@ export default function SlotMachine({ skin, machine, game, config, me, event, on
       {me.blocked && <div className="slot-error">{me.blocked}</div>}
       {!me.blocked && me.stakeable < stake && !me.dailyFreeAvailable && <div className="slot-note">Points misables insuffisants{me.donated > 0 ? ' (les points de don ne se misent pas)' : ''}.</div>}
       <div className="slot-note">
-        Retour théorique au joueur : {game.rtp} % · environ {Math.round(game.atLeastStake)} % des tours rendent au moins la mise (sans compter le bonus) · le site garde le reste à long terme · gagner n'est jamais garanti.
-        {me.lossLeft !== null && <> Perte maximale aujourd'hui : encore {formatNumber(me.lossLeft)} points.</>}
+        {jackpot?.enabled && <>Gros lot : trois meilleurs symboles alignés avec une mise de {jackpot.minStake} points ou plus. {jackpot.last && <>Dernier gagnant : <strong>{jackpot.last.username}</strong> (+{formatNumber(jackpot.last.amount)}). </>}</>}
+        Jeu de hasard avec des points du site : gagner n'est jamais garanti.
+        {me.lossLeft !== null && <> Limite du jour : encore {formatNumber(me.lossLeft)} points.</>}
       </div>
       {remind && <div className="slot-remind">⏰ Tu joues depuis plus de 20 minutes ({formatNumber(session.wagered)} points misés, {formatNumber(session.won)} gagnés). Une petite pause ? <button type="button" className="slot-mini" onClick={() => setRemind(false)}>OK</button></div>}
 

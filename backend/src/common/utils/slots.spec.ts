@@ -142,6 +142,40 @@ describe('Machines à sous : parties', () => {
   });
 });
 
+describe('Machines à sous : gros lot progressif', () => {
+  it('trois meilleurs symboles purs sur une ligne sont le gros lot', () => {
+    const grid = [[1, 0, 2], [1, 0, 2], [1, 0, 2]];
+    const r = evaluateGrid(grid, P);
+    expect(r.jackpot).toBe(true);
+    expect(r.jackpotMult).toBe(P.pay3[0]);
+    expect(r.lines.find((l) => l.jackpot)?.line).toBe(1);
+  });
+
+  it('un joker dans la ligne ne donne pas droit au gros lot (prix fixe habituel)', () => {
+    const grid = [[1, 0, 2], [1, WILD, 2], [1, 0, 2]];
+    const r = evaluateGrid(grid, P);
+    expect(r.jackpot).toBe(false);
+    expect(r.mult).toBeGreaterThanOrEqual(P.pay3[0]);
+  });
+
+  it('les autres symboles ne déclenchent pas le gros lot', () => {
+    expect(evaluateGrid([[2, 1, 3], [2, 1, 3], [2, 1, 3]], P).jackpot).toBe(false);
+  });
+
+  it('le gros lot est rare : moins de un tour sur 2 000', () => {
+    let hits = 0, total = 0;
+    for (let i = 0; i < 24; i++) for (let j = 0; j < 24; j++) for (let k = 0; k < 24; k++) { total++; if (resultAt([i, j, k], P).jackpot) hits++; }
+    expect(hits / total).toBeLessThan(1 / 2000);
+    expect(hits).toBeGreaterThan(0);
+  });
+
+  it('réglages du gros lot valides', () => {
+    expect(normalizeSlotsConfig({ jackpot: { seed: -5, rate: 9, minStake: 'x' } }).jackpot).toEqual(DEFAULT_SLOTS.jackpot);
+    const c = normalizeSlotsConfig({ jackpot: { seed: 1000, rate: 0.02, minStake: 50, enabled: false } }).jackpot;
+    expect(c).toEqual({ enabled: false, seed: 1000, rate: 0.02, minStake: 50 });
+  });
+});
+
 describe('Machines à sous : réglages', () => {
   it('garde les anciennes valeurs quand une valeur est invalide', () => {
     expect(normalizeSlotsConfig({ minStake: -3, maxStake: 'x', dailyLossMax: 'abc', machines: { cinema: 'oui' }, profile: 'triche' })).toEqual(DEFAULT_SLOTS);

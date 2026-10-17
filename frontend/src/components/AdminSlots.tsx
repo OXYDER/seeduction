@@ -5,6 +5,7 @@ import { MACHINE_ORDER, SKINS, type MachineId } from '../lib/slotSkins';
 
 interface Cfg {
   enabled: boolean; minStake: number; maxStake: number; dailyLossMax: number; maxWin: number; minAccountDays: number;
+  jackpot: { enabled: boolean; seed: number; rate: number; minStake: number };
   dailyFree: { enabled: boolean; stake: number; maxWin: number }; machines: Record<MachineId, boolean>; profile: 'prudent' | 'equilibre' | 'genereux';
 }
 interface Totals { spins: number; wagered: number; paid: number; houseProfit: number; observedRtp: number | null }
@@ -76,6 +77,12 @@ export default function AdminSlots() {
           <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={cfg.dailyFree.enabled} onChange={(e) => setCfg({ ...cfg, dailyFree: { ...cfg.dailyFree, enabled: e.target.checked } })} /> Un tour gratuit par jour</label>
           {num(cfg.dailyFree.stake, (n) => setCfg({ ...cfg, dailyFree: { ...cfg.dailyFree, stake: n } }), 'Valeur du tour gratuit', 'Mise fictive (multiple de 5)')}
           {num(cfg.dailyFree.maxWin, (n) => setCfg({ ...cfg, dailyFree: { ...cfg.dailyFree, maxWin: n } }), 'Gain maximal du tour gratuit', 'Points offerts par le site')}
+        </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={cfg.jackpot.enabled} onChange={(e) => setCfg({ ...cfg, jackpot: { ...cfg.jackpot, enabled: e.target.checked } })} /> 🏆 Gros lot progressif</label>
+          {num(cfg.jackpot.seed, (n) => setCfg({ ...cfg, jackpot: { ...cfg.jackpot, seed: n } }), 'Mise de départ du gros lot', 'Points offerts par le site à chaque remise à zéro')}
+          {num(Math.round(cfg.jackpot.rate * 1000) / 10, (n) => setCfg({ ...cfg, jackpot: { ...cfg.jackpot, rate: n / 100 } }), 'Part de chaque mise (%)', 'Alimente la cagnotte (0 à 10 %)')}
+          {num(cfg.jackpot.minStake, (n) => setCfg({ ...cfg, jackpot: { ...cfg.jackpot, minStake: n } }), 'Mise minimale pour le gagner', 'En dessous : prix fixe habituel')}
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           {MACHINE_ORDER.map((m) => (

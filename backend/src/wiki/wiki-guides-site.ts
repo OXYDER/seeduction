@@ -302,12 +302,34 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Un tour gratuit par jour[/b]\n` +
         `Chaque jour, tu as un tour gratuit (bouton « Tour gratuit du jour ») : rien n'est débité, et ton gain, plafonné, est pour toi.\n\n` +
         `[b]À savoir[/b]\n` +
-        `• C'est un jeu de hasard : le serveur tire le résultat, jamais ton navigateur. [b]Gagner n'est jamais garanti.[/b] Le retour théorique est affiché sur chaque machine (environ 95 % par défaut, 92 à 97 % selon le réglage de l'administration) : à long terme, le site garde le reste de ce qui est misé. Environ un tour sur trois rend au moins la mise. Certains joueurs gagnent gros, d'autres moins, au hasard.\n` +
+        `• C'est un jeu de hasard : le serveur tire le résultat, jamais ton navigateur. [b]Gagner n'est jamais garanti.[/b] Certains joueurs gagnent gros, d'autres moins, au hasard.\n` +
+        `• Le [b]gros lot progressif[/b] 🏆 grossit à chaque mise de tous les membres et s'affiche en haut de la machine : il est remporté en alignant trois fois le meilleur symbole (sans joker) avec une mise de 25 points ou plus. Quand quelqu'un le gagne, tous les membres connectés sont prévenus, et il repart de sa mise de départ.\n` +
+        `• Une [b]remise de fidélité[/b] 💝 te rend chaque matin une part de tes pertes de la veille (tous les jeux contre la maison), avec une notification.\n` +
         `• Les [b]points reçus par un don ne peuvent pas être misés[/b].\n` +
         `• Il y a une [b]limite de pertes par 24 heures[/b] et un [b]gain maximal par partie[/b], affichés sur la page. Un rappel s'affiche après 20 minutes de jeu.\n` +
         `• Le son peut se couper avec le bouton 🔊 de la machine. Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n` +
         `• Ce sont des points du site, sans valeur en argent. Joue pour le plaisir et fais des pauses.\n\n` +
         `Voir aussi : [url=/wiki/guide-mise-o-jeu]Jouer à Mise-O-jeu[/url], [url=/wiki/guide-points-bonus]Gagner et dépenser des points bonus[/url].`,
+    },
+    {
+      title: 'Jouer à Plus haut ou plus bas',
+      slug: 'guide-plus-haut-plus-bas',
+      keywords: 'plus haut ou plus bas, cartes, jeu, série, encaisser, multiplicateur, higher lower, jeux',
+      content:
+        `[b]Plus haut ou plus bas[/b] est un jeu de cartes rapide, dans la section [url=/jeux]Jeux[/url]. Une carte est affichée : devine si la prochaine sera plus haute ou plus basse.\n\n` +
+        `[b]Comment jouer[/b]\n` +
+        `1. Choisis ta mise (5 à 100 points) et clique sur [b]Distribuer[/b]. Tu peux aussi jouer ta [b]partie gratuite du jour[/b].\n` +
+        `2. Clique sur [b]Plus haut[/b] ou [b]Plus bas[/b]. Les chances de chaque choix et le multiplicateur correspondant sont affichés sur les boutons : un choix risqué paie plus.\n\n` +
+        `[b]Encaisser ou continuer[/b]\n` +
+        `• Bonne réponse : ta série continue et ton gain augmente. Tu peux [b]encaisser[/b] à tout moment, dès la première bonne réponse, ou continuer pour viser plus gros.\n` +
+        `• Mauvaise réponse : la partie est perdue. Les [b]égalités font perdre[/b], et l'as est la carte la plus haute.\n\n` +
+        `[b]À savoir[/b]\n` +
+        `• Les cartes sont tirées par le serveur, jamais par ton navigateur. Gagner n'est jamais garanti.\n` +
+        `• Une seule partie à la fois. Une partie abandonnée est réglée d'office : remboursée si tu n'avais pas répondu, encaissée sinon.\n` +
+        `• Les [b]points reçus par un don ne peuvent pas être misés[/b]. Il y a une limite de pertes par 24 heures et un gain maximal par partie.\n` +
+        `• La [b]remise de fidélité[/b] te rend chaque matin une part de tes pertes de la veille.\n` +
+        `• Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux. Ce sont des points du site, sans valeur en argent.\n\n` +
+        `Voir aussi : [url=/wiki/guide-machines-a-sous]Jouer aux machines à sous[/url], [url=/wiki/guide-mise-o-jeu]Jouer à Mise-O-jeu[/url].`,
     },
     {
       title: 'Faire revivre un torrent mort (Réanimation)',

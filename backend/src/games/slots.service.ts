@@ -4,6 +4,9 @@ import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { DEFAULT_SLOTS, FREE_MULT, MACHINES, MachineId, PAYLINES, PROFILES, PROFILE_IDS, SlotsConfig, STAKE_STEP, STRIPS, exactRtp, normalizeSlotsConfig, playRound, winTier } from '../common/utils/slots';
 import { stakeable } from '../common/utils/points';
+import { PresenceService } from '../presence/presence.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { winOf, secureRng, type Rng } from '../common/utils/slots';
 
 const KEY = 'slots';
 const DAY = 86400_000;
@@ -30,8 +33,16 @@ export class SlotsService {
   /** Un seul tour à la fois par membre, et un délai minimal entre deux tours. */
   private busy = new Set<string>();
   private last = new Map<string, number>();
+  /** Générateur du tirage (sécurisé) ; les tests le remplacent pour imposer des rouleaux. */
+  private rng: Rng = secureRng;
 
-  constructor(private prisma: PrismaService, private settings: SettingsService, private audit: AuditService) {}
+  constructor(private prisma: PrismaService, private settings: SettingsService, private audit: AuditService, private presence: PresenceService, private notifications: NotificationsService) {}
+
+  /** Cagnotte actuelle du gros lot (la mise de départ si personne n'a encore joué). */
+  async jackpotPool(): Promise<number> {
+    const rows = await this.prisma.$queryRaw<{ pool: number }[]>`SELECT "pool" FROM "SlotJackpot" WHERE "id" = 'main'`;
+    return rows[0] ? Math.floor(rows[0].pool) : (await this.config()).jackpot.seed;
+  }
 
   async config(): Promise<SlotsConfig> { return normalizeSlotsConfig(await this.settings.get(KEY), DEFAULT_SLOTS); }
 
@@ -70,15 +81,18 @@ export class SlotsService {
     const names = await this.prisma.user.findMany({ where: { id: { in: [...new Set(big.map((b) => b.userId))] } }, select: { id: true, username: true } });
     const name = new Map(names.map((u) => [u.id, u.username]));
     const profile = PROFILES[cfg.profile];
-    const stats = exactRtp(profile);
+    const lastJackpot = await this.prisma.slotSpin.findFirst({ where: { jackpot: true }, orderBy: { createdAt: 'desc' }, select: { userId: true, win: true, createdAt: true } });
+    const jackWho = lastJackpot ? await this.prisma.user.findUnique({ where: { id: lastJackpot.userId }, select: { username: true } }) : null;
+    const pool = await this.jackpotPool();
     return {
+      jackpot: { enabled: cfg.jackpot.enabled, pool, minStake: cfg.jackpot.minStake, last: lastJackpot ? { username: jackWho?.username ?? 'Membre supprimé', amount: lastJackpot.win, at: lastJackpot.createdAt } : null },
       config: { enabled: cfg.enabled, minStake: cfg.minStake, maxStake: cfg.maxStake, dailyLossMax: cfg.dailyLossMax, maxWin: cfg.maxWin, dailyFree: cfg.dailyFree, machines: cfg.machines },
       me: {
         points: Math.floor(account.bonusPoints), donated: Math.floor(Math.min(account.donatedPoints, account.bonusPoints)), stakeable: stakeable(account.bonusPoints, account.donatedPoints),
         blocked: this.blocked(account, cfg), optOut: account.gamesOptOut, lossToday: loss, lossLeft: cfg.dailyLossMax > 0 ? Math.max(0, cfg.dailyLossMax - loss) : null,
         dailyFreeAvailable: cfg.dailyFree.enabled && freeToday === 0,
       },
-      game: { strips: STRIPS, paylines: PAYLINES, payThree: profile.pay3, payPair: profile.pair, freeMult: FREE_MULT, step: STAKE_STEP, rtp: Math.round(stats.rtp * 1000) / 10, hitRate: Math.round(stats.hitRate * 1000) / 10, atLeastStake: Math.round(stats.atLeastStake * 1000) / 10, maxMultiple: stats.maxMultiple },
+      game: { strips: STRIPS, paylines: PAYLINES, payThree: profile.pay3, payPair: profile.pair, freeMult: FREE_MULT, step: STAKE_STEP },
       recent, biggest: big.map((b) => ({ username: name.get(b.userId) ?? 'Membre supprimé', machine: b.machine, stake: b.valued, win: b.win, at: b.createdAt })),
     };
   }
@@ -94,10 +108,10 @@ export class SlotsService {
       this.prisma.slotSpin.count({ where: { userId: accountId, daily: true, createdAt: { gte: startOfDayToronto() } } }),
     ]);
     const who = big ? await this.prisma.user.findUnique({ where: { id: big.userId }, select: { username: true } }) : null;
-    const stats = exactRtp(PROFILES[cfg.profile]);
+    const pool = await this.jackpotPool();
     return {
-      enabled: cfg.enabled, machines: MACHINES.filter((m) => cfg.machines[m]).length, spins24h: all24._count._all, rtp: Math.round(stats.rtp * 1000) / 10,
-      mySpins: mine._count._all, myNet: (mine._sum.win ?? 0) - (mine._sum.stake ?? 0), dailyFreeAvailable: cfg.dailyFree.enabled && freeToday === 0,
+      enabled: cfg.enabled, machines: MACHINES.filter((m) => cfg.machines[m]).length, spins24h: all24._count._all, jackpot: cfg.jackpot.enabled ? pool : null,
+      mySpins: mine._count._all, myWon: mine._sum.win ?? 0, dailyFreeAvailable: cfg.dailyFree.enabled && freeToday === 0,
       biggest: big ? { username: who?.username ?? 'Membre supprimé', win: big.win, stake: big.valued, machine: big.machine } : null,
     };
   }
@@ -133,29 +147,65 @@ export class SlotsService {
 
     this.busy.add(accountId);
     try {
-      const round = playRound(stake, undefined, daily ? Math.min(cfg.dailyFree.maxWin || Infinity, cfg.maxWin || Infinity) : cfg.maxWin, PROFILES[cfg.profile]);
-      const win = round.win;
-      const rounds = round.spins.map((s) => ({ stops: s.stops, mult: s.mult, win: s.win, free: s.free }));
-      const bal = await this.prisma.$transaction(async (tx) => {
+      // Les gains sont calculés SANS plafond ici : le plafond ne s'applique qu'aux gains normaux, jamais au gros lot progressif.
+      const round = playRound(stake, this.rng, 0, PROFILES[cfg.profile]);
+      const normalCap = daily ? Math.min(cfg.dailyFree.maxWin || Infinity, cfg.maxWin || Infinity) : cfg.maxWin || Infinity;
+      const first = round.spins[0];
+      const eligible = !daily && cfg.jackpot.enabled && first.jackpot && stake >= cfg.jackpot.minStake;
+      let jackpotWon = 0;
+      const out = await this.prisma.$transaction(async (tx) => {
         if (!daily) {
           // Seuls les points qui ne viennent pas d'un don sont misables (vérifié par la base, en une seule étape atomique).
           const debited = await tx.$executeRaw`UPDATE "User" SET "bonusPoints" = "bonusPoints" - ${stake} WHERE "id" = ${accountId} AND "bonusPoints" - LEAST("donatedPoints", "bonusPoints") >= ${stake}`;
           if (debited === 0) throw new BadRequestException('Points misables insuffisants (les points reçus par un don ne peuvent pas être misés)');
+          // Une petite part de la mise alimente le gros lot ; s'il est remporté, il repart de sa mise de départ (verrou de ligne : un seul gagnant à la fois).
+          if (cfg.jackpot.enabled) {
+            await tx.$executeRaw`INSERT INTO "SlotJackpot" ("id", "pool", "updatedAt") VALUES ('main', ${cfg.jackpot.seed}, now()) ON CONFLICT ("id") DO NOTHING`;
+            const rows = await tx.$queryRaw<{ pool: number }[]>`SELECT "pool" FROM "SlotJackpot" WHERE "id" = 'main' FOR UPDATE`;
+            const pool = (rows[0]?.pool ?? cfg.jackpot.seed) + stake * cfg.jackpot.rate;
+            if (eligible) { jackpotWon = Math.floor(pool); await tx.$executeRaw`UPDATE "SlotJackpot" SET "pool" = ${cfg.jackpot.seed}, "updatedAt" = now() WHERE "id" = 'main'`; }
+            else await tx.$executeRaw`UPDATE "SlotJackpot" SET "pool" = ${pool}, "updatedAt" = now() WHERE "id" = 'main'`;
+          }
         }
+        // Gain total : gains normaux (le prix fixe des lignes du gros lot est remplacé par la cagnotte quand on y a droit), plafonnés, plus la cagnotte.
+        const fixedJackpotPart = eligible && jackpotWon > 0 ? winOf(first.jackpotMult, stake) : 0;
+        const normal = Math.min(round.spins.reduce((sum, x) => sum + x.win, 0) - fixedJackpotPart, normalCap);
+        const win = Math.max(0, normal) + jackpotWon;
+        const rounds = round.spins.map((x) => ({ stops: x.stops, mult: x.mult, win: x.win, free: x.free }));
         if (win > 0) await tx.user.update({ where: { id: accountId }, data: { bonusPoints: { increment: win } } });
-        await tx.slotSpin.create({ data: { userId: accountId, machine, stake: daily ? 0 : stake, valued: stake, daily, win, freeSpins: round.freeSpins, rounds: rounds as any } });
-        return tx.user.findUniqueOrThrow({ where: { id: accountId }, select: { bonusPoints: true, donatedPoints: true } });
+        await tx.slotSpin.create({ data: { userId: accountId, machine, stake: daily ? 0 : stake, valued: stake, daily, win, freeSpins: round.freeSpins, rounds: rounds as any, jackpot: jackpotWon > 0 } });
+        const bal = await tx.user.findUniqueOrThrow({ where: { id: accountId }, select: { bonusPoints: true, donatedPoints: true, username: true } });
+        return { win, bal };
       });
+      const { win, bal } = out;
       this.last.set(accountId, Date.now());
       if (this.last.size > 5000) this.last.clear();
-      const tier = winTier(win, stake);
-      if (tier === 'mega') this.logger.log(`Machine à sous : gros gain de ${win} points (mise ${stake}, ${machine})`);
+      const tier = jackpotWon > 0 ? 'mega' : winTier(win, stake);
+      if (jackpotWon > 0) {
+        this.logger.log(`GROS LOT : ${bal.username} remporte ${jackpotWon} points (mise ${stake}, ${machine})`);
+        void this.announceJackpot(accountId, bal.username, jackpotWon);
+      } else if (tier === 'mega') this.logger.log(`Machine à sous : gros gain de ${win} points (mise ${stake}, ${machine})`);
       return {
-        machine, stake, daily, win, tier, freeSpins: round.freeSpins,
-        rounds: round.spins.map((s) => ({ stops: s.stops, grid: s.grid, lines: s.lines, mult: s.mult, win: s.win, free: s.free })),
+        machine, stake, daily, win, tier, freeSpins: round.freeSpins, jackpot: jackpotWon > 0 ? { amount: jackpotWon } : null,
+        rounds: round.spins.map((x) => ({ stops: x.stops, grid: x.grid, lines: x.lines, mult: x.mult, win: x.win, free: x.free })),
         points: Math.floor(bal.bonusPoints), stakeable: stakeable(bal.bonusPoints, bal.donatedPoints),
+        poolAfter: await this.jackpotPool(),
       };
     } finally { this.busy.delete(accountId); }
+  }
+
+  /** Annonce le gros lot : le gagnant et tous les membres connectés reçoivent une notification. */
+  private async announceJackpot(winnerId: string, username: string, amount: number) {
+    try {
+      const online = this.presence.listOnlineAll().map((e) => e.id);
+      const rows = online.length ? await this.prisma.user.findMany({ where: { id: { in: online } }, select: { id: true, parentId: true } }) : [];
+      const ids = new Set(rows.map((r) => r.parentId ?? r.id));
+      ids.delete(winnerId);
+      await this.notifications.notify({ userId: winnerId, type: 'SYSTEM', category: 'games', title: `🎰 GROS LOT ! Tu as gagné ${amount.toLocaleString('fr-CA')} points`, body: 'Bravo ! Le gros lot repart de sa mise de départ.', link: '/jeux/machines' });
+      for (const id of ids) {
+        await this.notifications.notify({ userId: id, type: 'SYSTEM', category: 'games', title: `🎰 ${username} vient de remporter le GROS LOT : ${amount.toLocaleString('fr-CA')} points !`, body: 'Les machines à sous attendent ta chance.', link: '/jeux/machines', groupKey: 'slots-jackpot' }).catch(() => undefined);
+      }
+    } catch (e) { this.logger.warn(`Annonce du gros lot : ${(e as Error).message}`); }
   }
 
   // ------------------------------------------------------------------ administration
