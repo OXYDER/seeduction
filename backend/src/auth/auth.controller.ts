@@ -64,6 +64,14 @@ export class AuthController {
 
   // ---- mot de passe
 
+  /** « Se déconnecter partout » : ferme toutes les sessions du compte. */
+  @UseGuards(JwtAuthGuard)
+  @Post('logout-all')
+  logoutAll(@Request() req: any) {
+    assertMaster(req);
+    return this.authService.logoutAll(accountOf(req), ipOf(req));
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   changePassword(@Body() body: { currentPassword: string; newPassword: string; totpToken?: string }, @Request() req: any) {

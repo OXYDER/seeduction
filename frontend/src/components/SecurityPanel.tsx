@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import CodeConfirm from './CodeConfirm';
+import { useAuthStore } from '../store/auth';
 
 /** Sécurité du compte : double authentification (2FA), changement de mot de passe, dernières connexions. */
 export default function SecurityPanel() {
@@ -28,6 +29,13 @@ export default function SecurityPanel() {
     loadStatus();
     api.get('/auth/logins').then((r) => setLogins(r.data)).catch(() => {});
   }, []);
+
+  async function logoutEverywhere() {
+    if (!window.confirm('Fermer toutes tes sessions (ordinateur, téléphone, lecteur...) ? Tu devras te reconnecter partout, y compris ici.')) return;
+    try { await api.post('/auth/logout-all'); } catch (err) { fail(err); return; }
+    useAuthStore.getState().logout();
+    window.location.href = '/login';
+  }
 
   const fail = (err: any) => { setMessage(''); setError(err.response?.data?.message ?? 'Erreur'); };
 
@@ -186,7 +194,9 @@ export default function SecurityPanel() {
               {logins.length === 0 && <tr><td className="muted">Aucun historique pour l'instant.</td></tr>}
             </tbody>
           </table>
-          <p className="muted" style={{ marginTop: 4 }}>Une connexion ou un échec que tu ne reconnais pas ? Change ton mot de passe tout de suite.</p>
+          <p className="muted" style={{ marginTop: 4 }}>Une connexion ou un échec que tu ne reconnais pas ? Change ton mot de passe tout de suite. Tu es aussi prévenu par une notification quand ton compte est ouvert depuis une nouvelle adresse.</p>
+          <button type="button" className="secondary" onClick={logoutEverywhere}>🚪 Se déconnecter partout</button>
+          <span className="muted" style={{ marginLeft: 8, fontSize: 12.5 }}>Ferme toutes les sessions ouvertes de ton compte.</span>
         </div>
       </div>
     </div>

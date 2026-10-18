@@ -17,9 +17,9 @@ const tok = (u, role, iat) => jwt.sign({ sub: u.id, username: u.username, role: 
   const tag = 'se' + Date.now().toString(36).slice(-4);
   const hash = await bcrypt.hash('Mot-de-passe-test-1', 4);
   const old = new Date(Date.now() - 30 * 86400_000);
+  const admin = await E2E.getAdmin(p, bcrypt); // d'abord : sinon un des comptes créés ci-dessous serait pris pour l'administrateur
   const mk = (n, extra = {}) => p.user.create({ data: { username: tag + n, email: tag + n + '@t.local', passwordHash: hash, createdAt: old, ...extra } });
   const member = await mk('m'), banned = await mk('b'), demoted = await mk('d', { role: 'ADMIN' }), changed = await mk('c'), staff = await mk('s', { role: 'ADMIN' });
-  const admin = await E2E.getAdmin(p, bcrypt);
   const TA = tok(admin);
 
   // ---- sessions liées à l'état réel du compte
@@ -79,6 +79,29 @@ const tok = (u, role, iat) => jwt.sign({ sub: u.id, username: u.username, role: 
   check('wiki : la recherche d\'un membre ne remonte aucun guide du staff', srch.s === 200 && !srch.b.some((x) => x.category?.slug === 'guides-staff'));
   const faqM = await call('GET', '/wiki/faq', tok(member));
   check('wiki : la FAQ d\'un membre ne contient rien du staff', faqM.s === 200 && !faqM.b.some((x) => x.category?.slug === 'guides-staff'));
+
+  // ---- politique de mot de passe, alerte de nouvelle adresse, « se déconnecter partout »
+  const loginFrom = (ip) => fetch(BASE + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': ip }, body: JSON.stringify({ usernameOrEmail: member.username, password: 'Mot-de-passe-test-1' }) }).then(async (r) => ({ s: r.status, b: await r.json().catch(() => null) }));
+  const ipA = '203.0.113.' + (60 + Math.floor(Math.random() * 40)), ipB = '198.51.100.' + (60 + Math.floor(Math.random() * 40));
+  const l1 = await loginFrom(ipA);
+  const alerts = () => p.notification.count({ where: { userId: member.id, groupKey: 'new-ip' } });
+  const base0 = await alerts(); // une connexion a déjà eu lieu plus haut depuis une autre adresse : celle-ci est « nouvelle »
+  check('connexion depuis une nouvelle adresse : le membre est prévenu', l1.s === 201 && base0 === 1);
+  await loginFrom(ipA);
+  check('même adresse : pas de nouvelle alerte', (await alerts()) === base0);
+  await loginFrom(ipB);
+  check('autre adresse inconnue : nouvelle alerte', (await alerts()) === 1 && (await p.notification.findFirst({ where: { userId: member.id, groupKey: 'new-ip' } })).count === 2);
+  const TM = l1.b.accessToken;
+  for (const weak of ['azerty123', 'Password1', '12345678', member.username + 'xx']) {
+    const wr = await call('POST', '/auth/change-password', TM, { currentPassword: 'Mot-de-passe-test-1', newPassword: weak });
+    check('mot de passe refusé : ' + weak.slice(0, 12), wr.s === 400, wr.raw.slice(0, 90));
+  }
+  check('session valable avant « se déconnecter partout »', (await call('GET', '/users/me', TM)).s === 200);
+  check('« se déconnecter partout »', (await call('POST', '/auth/logout-all', TM)).s === 201);
+  check('ancienne session refusée ensuite', (await call('GET', '/users/me', TM)).s === 401);
+  await new Promise((r) => setTimeout(r, 1100));
+  const again = await loginFrom(ipA);
+  check('une nouvelle connexion fonctionne', again.s === 201 && (await call('GET', '/users/me', again.b.accessToken)).s === 200);
 
   // ---- nettoyage
   await p.activityLog.deleteMany({ where: { OR: [{ ip: { in: [ipBrute, ipSpray, ipNew, '203.0.113.200'] } }, { userId: { in: [member.id, banned.id, demoted.id, changed.id, staff.id] } }, { action: 'LOGIN_FAILED', meta: { path: ['username'], string_starts_with: tag } }] } });

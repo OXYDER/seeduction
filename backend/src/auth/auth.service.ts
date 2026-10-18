@@ -11,8 +11,9 @@ import { AuditService } from '../audit/audit.service';
 import { MailService } from '../mail/mail.service';
 import { EmailVerificationService, maskEmail } from './email-verification.service';
 import { CLASS_LABELS, ECONOMY, INVITE_QUOTA, SITE } from '../common/utils/economy';
+import { passwordProblem } from '../common/utils/password-policy';
+import { forgetIdentity } from '../common/utils/session-identity';
 
-const MIN_PASSWORD_LENGTH = 8;
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
 /** Limiteur de tentatives de connexion en mémoire : par compte visé et par adresse IP. */
@@ -57,10 +58,9 @@ export class AuthService {
     private verification: EmailVerificationService,
   ) {}
 
-  private assertPassword(password: string) {
-    if (!password || password.length < MIN_PASSWORD_LENGTH) {
-      throw new BadRequestException(`Mot de passe trop court (${MIN_PASSWORD_LENGTH} caractères minimum)`);
-    }
+  private assertPassword(password: string, who: { username?: string | null; email?: string | null } = {}) {
+    const problem = passwordProblem(password, who);
+    if (problem) throw new BadRequestException(problem);
   }
 
   /**
@@ -69,8 +69,8 @@ export class AuthService {
    * automatiquement ADMIN sans invitation, pour amorcer le premier accès.
    */
   async register(inviteCode: string, username: string, email: string, password: string, ip: string | null = null) {
-    this.assertPassword(password);
     email = String(email ?? '').trim();
+    this.assertPassword(password, { username, email });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Courriel invalide');
     // « · » sépare le nom d'un profil famille du pseudo de son compte : un pseudo ordinaire ne peut pas le contenir.
     if (String(username ?? '').includes('·')) throw new BadRequestException("Le caractère « · » n'est pas autorisé dans un pseudo");
@@ -253,6 +253,7 @@ export class AuthService {
       return { needsVerification: true, challengeId, email: maskEmail(user.email) };
     }
     this.accountLimiter.reset(accountKey);
+    await this.alertNewIp(user, ip).catch(() => undefined);
     await this.audit.log(user.id, 'LOGIN', { username: user.username }, ip);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(), lastIp: ip ?? undefined } });
 
@@ -270,6 +271,33 @@ export class AuthService {
       accessToken: this.jwt.sign(payload),
       user: { id: user.id, username: user.username, role: user.role, passkey: user.passkey },
     };
+  }
+
+  /**
+   * Prévient le membre quand son compte est ouvert depuis une adresse qu'il n'avait jamais utilisée (sa première connexion ne déclenche rien). Une notification qu'il ne peut pas désactiver :
+   * c'est ce qui lui permet de repérer un accès qui n'est pas le sien.
+   */
+  private async alertNewIp(user: { id: string }, ip?: string | null) {
+    if (!ip) return;
+    const [known, any] = await Promise.all([
+      this.prisma.activityLog.findFirst({ where: { userId: user.id, action: 'LOGIN', ip }, select: { id: true } }),
+      this.prisma.activityLog.findFirst({ where: { userId: user.id, action: 'LOGIN' }, select: { id: true } }),
+    ]);
+    if (known || !any) return;
+    await this.notifications.notify({
+      userId: user.id, type: 'SYSTEM', category: 'system', groupKey: 'new-ip',
+      title: '🔐 Connexion depuis une nouvelle adresse',
+      body: `Ton compte vient d'être ouvert depuis l'adresse ${ip}. Si ce n'était pas toi, change ton mot de passe et utilise « Se déconnecter partout » dans Profil > Sécurité.`,
+      link: '/profile',
+    });
+  }
+
+  /** Ferme toutes les sessions ouvertes du compte (y compris celle-ci) : il faut se reconnecter partout. */
+  async logoutAll(userId: string, ip?: string | null) {
+    await this.prisma.user.update({ where: { id: userId }, data: { sessionsValidAfter: new Date() } });
+    forgetIdentity(userId);
+    await this.audit.log(userId, 'LOGOUT_ALL', undefined, ip);
+    return { ok: true };
   }
 
   // ------------------------------------------------------------------ 2FA
@@ -351,9 +379,9 @@ export class AuthService {
    * envoyé à l'adresse du compte — le nouveau mot de passe n'est appliqué qu'à ce moment-là.
    */
   async changePassword(userId: string, current: string, next: string, totpToken?: string, ip?: string | null) {
-    this.assertPassword(next);
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
+    this.assertPassword(next, user);
     await this.assertSensitiveChange(user, current, totpToken, ip);
     const passwordHash = await bcrypt.hash(next, 12);
     if (!this.verification.required) {
@@ -482,13 +510,14 @@ export class AuthService {
 
   /** Réinitialisation avec un lien émis par le staff ou reçu par e-mail (usage unique, 1 heure). */
   async resetPassword(token: string, next: string, ip?: string | null) {
-    this.assertPassword(next);
+    if (String(next ?? '').length < 8) this.assertPassword(next);
     this.ipLimiter.assertAllowed(`reset:${ip ?? 'unknown'}`);
     const row = await this.prisma.passwordReset.findUnique({ where: { tokenHash: sha256(String(token ?? '')) } });
     if (!row || row.usedAt || row.expiresAt < new Date()) {
       this.ipLimiter.fail(`reset:${ip ?? 'unknown'}`);
       throw new BadRequestException('Lien invalide ou expiré : demande-en un nouveau au staff');
     }
+    this.assertPassword(next, (await this.prisma.user.findUnique({ where: { id: row.userId }, select: { username: true, email: true } })) ?? {});
     await this.prisma.$transaction([
       this.prisma.user.update({ where: { id: row.userId }, data: { passwordHash: await bcrypt.hash(next, 12), sessionsValidAfter: new Date(), mustResetPassword: false } }),
       this.prisma.passwordReset.update({ where: { id: row.id }, data: { usedAt: new Date() } }),
