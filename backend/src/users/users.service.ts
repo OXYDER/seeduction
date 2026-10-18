@@ -26,7 +26,7 @@ export class UsersService {
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
-        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, tipStyle: true,
+        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, goalSound: true, tipStyle: true,
         parentId: true, profileName: true, profileType: true, profilePerms: true, familyEnabled: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
@@ -55,7 +55,7 @@ export class UsersService {
     if (user.profileType === 'BOT' && !isStaff) Object.assign(user, { uploaded: 0n, downloaded: 0n, bonusPoints: 0 });
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, chatBubbles, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, chatBubbles, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     const onlineStatus = this.presence.publicStatus(user.id);
@@ -73,7 +73,7 @@ export class UsersService {
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus,
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, defaultView, chatBubbles, tipStyle } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, defaultView, chatBubbles, goalSound, tipStyle } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
   }
@@ -90,6 +90,13 @@ export class UsersService {
     if (!VIEW_VALUES.includes(view)) throw new BadRequestException('Affichage inconnu');
     await this.prisma.user.update({ where: { id: userId }, data: { defaultView: view } });
     return { defaultView: view };
+  }
+
+  /** Sirène de but du Canadien : activée ou non pour ce membre (le réglage suit son compte). */
+  async setGoalSound(userId: string, enabled: unknown) {
+    const value = enabled === true || enabled === 'true';
+    await this.prisma.user.update({ where: { id: userId }, data: { goalSound: value } });
+    return { goalSound: value };
   }
 
   /** Bulles de discussion sur le côté gauche du site : activées ou non pour ce membre. */

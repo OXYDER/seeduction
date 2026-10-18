@@ -1,5 +1,6 @@
 import { applyDefaultView } from '../lib/viewMode';
 import { applyTipStyle } from '../lib/tipStyle';
+import { useEventTheme } from '../store/eventTheme';
 import { Suspense, useCallback, useEffect, useState, FormEvent } from 'react';
 import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
@@ -280,7 +281,7 @@ function LayoutInner() {
 
   useEffect(() => {
     if (accessToken) {
-      api.get('/users/me').then((r) => { setProfile(r.data); applyDefaultView(r.data.defaultView); applyTipStyle(r.data.tipStyle); useMessenger.getState().setBubbles(r.data.chatBubbles !== false); }).catch(() => {});
+      api.get('/users/me').then((r) => { setProfile(r.data); applyDefaultView(r.data.defaultView); applyTipStyle(r.data.tipStyle); useEventTheme.getState().applyAccountMtlSound(r.data.goalSound === true); useMessenger.getState().setBubbles(r.data.chatBubbles !== false); }).catch(() => {});
     } else {
       setProfile(null);
     }

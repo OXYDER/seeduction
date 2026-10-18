@@ -29,6 +29,8 @@ interface EventThemeStore {
   setColors: (v: boolean) => void;
   setMtl: (v: boolean) => void;
   setMtlSound: (v: boolean) => void;
+  /** Applique le réglage enregistré sur le compte (lu au chargement de la page) : il remplace celui de l'appareil. */
+  applyAccountMtlSound: (v: boolean) => void;
 }
 
 export const useEventTheme = create<EventThemeStore>((set) => ({
@@ -47,7 +49,13 @@ export const useEventTheme = create<EventThemeStore>((set) => ({
   },
   setMode(mode) { try { localStorage.setItem(MODE_KEY, mode); } catch { /* ignoré */ } set({ mode }); },
   setColors(colors) { try { localStorage.setItem(COLORS_KEY, colors ? '1' : '0'); } catch { /* ignoré */ } set({ colors }); },
-  setMtlSound(mtlSound) { try { localStorage.setItem(MTLSND_KEY, mtlSound ? '1' : '0'); } catch { /* ignoré */ } set({ mtlSound }); },
+  // Le choix est enregistré sur le compte (il suit le membre d'un appareil à l'autre) ; l'appareil n'en garde qu'une copie pour l'affichage immédiat.
+  setMtlSound(mtlSound) {
+    try { localStorage.setItem(MTLSND_KEY, mtlSound ? '1' : '0'); } catch { /* ignoré */ }
+    set({ mtlSound });
+    api.patch('/users/me/goal-sound', { enabled: mtlSound }).catch(() => { /* hors ligne : la copie locale reste, le compte sera mis à jour au prochain choix */ });
+  },
+  applyAccountMtlSound(mtlSound) { try { localStorage.setItem(MTLSND_KEY, mtlSound ? '1' : '0'); } catch { /* ignoré */ } set({ mtlSound }); },
   setMtl(mtl) { try { localStorage.setItem(MTL_KEY, mtl ? '1' : '0'); } catch { /* ignoré */ } set({ mtl }); },
 }));
 

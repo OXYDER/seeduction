@@ -45,6 +45,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/goal-sound')
+  setGoalSound(@Body('enabled') enabled: unknown, @Request() req: any) {
+    return this.usersService.setGoalSound(req.user.userId, enabled);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('me/tip-style')
   setTipStyle(@Body('style') style: string, @Request() req: any) {
     return this.usersService.setTipStyle(req.user.userId, style);
