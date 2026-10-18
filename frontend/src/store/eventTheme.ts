@@ -5,7 +5,8 @@ import { COLORS_KEY, MODE_KEY, readColors, readMode, type EventId, type EventMod
 const PREVIEW_KEY = 'seeduction-event-preview';
 const MTL_KEY = 'seeduction-mtl';
 const readMtl = (): boolean => { try { return localStorage.getItem(MTL_KEY) !== '0'; } catch { return true; } };
-const MTLSND_KEY = 'seeduction-mtl-sound';
+// Clé « v2 » : l'ancien réglage (activé par défaut) est ignoré, pour que la sirène soit désactivée chez tout le monde ; ensuite, le choix d'un membre (activer ou désactiver) est gardé tel quel.
+const MTLSND_KEY = 'seeduction-mtl-sound-v2';
 const readMtlSound = (): boolean => { try { return localStorage.getItem(MTLSND_KEY) === '1'; } catch { return false; } };
 const readPreview = (): EventId | null => { try { return (sessionStorage.getItem(PREVIEW_KEY) as EventId) || null; } catch { return null; } };
 
