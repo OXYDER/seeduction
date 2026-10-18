@@ -41,7 +41,8 @@ async function bootstrap() {
 
   const metrics = app.get(MetricsService);
   app.use((req: any, res: any, next: () => void) => {
-    res.on('finish', () => metrics.record(req.originalUrl ?? req.url, res.statusCode));
+    const t0 = Date.now();
+    res.on('finish', () => { metrics.record(req.originalUrl ?? req.url, res.statusCode); metrics.timing(req.originalUrl ?? req.url, Date.now() - t0); });
     next();
   });
 

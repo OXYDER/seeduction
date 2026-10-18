@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
@@ -52,10 +53,21 @@ export class PointsLedgerService implements OnModuleInit {
   /** Installe (ou remet à jour) le déclencheur. Sans danger si on le refait : il est remplacé, jamais dupliqué. */
   async install(): Promise<boolean> {
     try {
-      for (const sql of TRIGGER_SQL) await this.prisma.$executeRawUnsafe(sql);
+      // Déjà en place et à jour : on n'y touche pas. Remplacer le déclencheur demande un verrou exclusif sur la table des membres : s'il attendait une transaction en cours,
+      // toutes les requêtes qui lisent un membre feraient la file derrière lui (le site entier se figerait quelques secondes à chaque démarrage).
+      const version = createHash('sha1').update(TRIGGER_SQL.join('\n')).digest('hex').slice(0, 16);
+      const rows = await this.prisma.$queryRaw<{ ok: boolean }[]>`SELECT (obj_description(to_regproc('points_ledger_fn')::oid, 'pg_proc') = ${version}) AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'points_ledger_trg' AND NOT tgisinternal) AS ok`;
+      if (rows[0]?.ok === true) { this.installed = true; return true; }
+      // Sinon, en une transaction avec un délai d'attente court : si la table est occupée, on réessaie plus tard au lieu de bloquer.
+      await this.prisma.$transaction([
+        this.prisma.$executeRawUnsafe("SET LOCAL lock_timeout = '4s'"),
+        ...TRIGGER_SQL.map((sql) => this.prisma.$executeRawUnsafe(sql)),
+        this.prisma.$executeRawUnsafe(`COMMENT ON FUNCTION points_ledger_fn() IS '${version}'`),
+      ]);
       this.installed = true;
       this.logger.log('Journal des points : déclencheur installé');
     } catch (e) {
+      if (/lock timeout|lock_timeout|canceling statement/i.test((e as Error).message ?? '')) setTimeout(() => { void this.install(); }, 60_000).unref?.();
       this.installed = false;
       this.logger.warn(`Journal des points : déclencheur non installé (${(e as Error).message}). Lance « prisma db push » pour créer la table PointsLedger, puis redémarre.`);
     }

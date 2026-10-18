@@ -43,6 +43,8 @@ export class MonitoringService {
       database,
       counts: { users, approvedTorrents: approved, pendingTorrents: pending, seeders, leechers, openReports, chatMessages24h },
       series: this.metrics.series(),
+      slowest: this.metrics.slowest(),
+      eventLoop: this.metrics.eventLoop(),
     };
   }
 }

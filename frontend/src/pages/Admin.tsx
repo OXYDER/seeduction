@@ -244,7 +244,7 @@ function MonitoringAdmin() {
   if (error) return <p className="muted">{error}</p>;
   if (!data) return <Loading />;
 
-  const { process: proc, database, counts, series } = data;
+  const { process: proc, database, counts, series, slowest = [], eventLoop } = data;
   const lastHour = series.reduce(
     (acc: any, p: any) => ({ requests: acc.requests + p.requests, errors: acc.errors + p.errors, announces: acc.announces + p.announces }),
     { requests: 0, errors: 0, announces: 0 },
@@ -260,6 +260,7 @@ function MonitoringAdmin() {
         <StatTile label="Mémoire (RSS)" value={`${proc.rssMB} Mo`} />
         <StatTile label="Heap utilisé" value={`${proc.heapUsedMB} / ${proc.heapTotalMB} Mo`} />
         <StatTile label="Node" value={proc.nodeVersion} />
+        {eventLoop && <StatTile label="Blocage du serveur (30 min)" value={`${eventLoop.last30MinMs} ms`} tone={eventLoop.last30MinMs > 1000 ? 'bad' : undefined} />}
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
@@ -269,6 +270,19 @@ function MonitoringAdmin() {
         <StatTile label="Seeders / Leechers" value={`${counts.seeders} / ${counts.leechers}`} />
         <StatTile label="Reports ouverts" value={counts.openReports} tone={counts.openReports > 0 ? 'bad' : undefined} />
         <StatTile label="Messages chat (24 h)" value={counts.chatMessages24h} />
+      </div>
+
+      <div className="panel">
+        <h3>🐌 Routes les plus lentes</h3>
+        <p className="muted" style={{ fontSize: 12 }}>
+          Durée des requêtes depuis le démarrage du backend (95e centile = 19 requêtes sur 20 vont plus vite que ça). « Blocage du serveur » mesure le plus long moment où le serveur n'a pas pu répondre du tout : au-dessus d'une seconde, tout le site a figé à ce moment-là.
+        </p>
+        {slowest.length === 0 ? <p className="muted">Pas encore assez de mesures.</p> : (
+          <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+            <thead><tr style={{ textAlign: 'left' }}><th>Route</th><th>Appels</th><th>Moyenne</th><th>95e centile</th><th>Maximum</th><th>&gt; 1 s</th></tr></thead>
+            <tbody>{slowest.map((r: any) => <tr key={r.route} style={{ borderTop: '1px solid var(--border)' }}><td style={{ wordBreak: 'break-all' }}>{r.route}</td><td>{r.count}</td><td>{r.avgMs} ms</td><td style={{ color: r.p95Ms > 1000 ? 'var(--danger)' : undefined }}>{r.p95Ms} ms</td><td>{r.maxMs} ms</td><td>{r.slow}</td></tr>)}</tbody>
+          </table>
+        )}
       </div>
 
       <div className="panel">

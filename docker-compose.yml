@@ -65,7 +65,7 @@ services:
       # qu'il soit impossible que les deux divergent (source du bug P1000
       # "Authentication failed" : deux fichiers .env différents avaient
       # chacun leur propre mot de passe codé en dur).
-      DATABASE_URL: postgresql://${POSTGRES_USER:-tracker}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-tracker}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tracker}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-tracker}?schema=public&connection_limit=${DB_POOL_SIZE:-15}&pool_timeout=30
       LOCKDOWN_DIR: /app/storage/lockdown
       BACKUPS_DIR: /app/backups
       # Sauvegardes complètes (Admin > Sauvegardes) : le dossier du projet, monté en LECTURE SEULE ci-dessous, sert à y inclure les fichiers .env
