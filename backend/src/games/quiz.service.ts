@@ -10,6 +10,7 @@ import { secureRng } from '../common/utils/slots';
 import { dayBefore } from '../common/utils/wheel';
 import { AnswerRec, DEFAULT_QUIZ, QuizConfig, choicesFor, nextQuizStreak, normalizeQuiz, pickDailyIds, pointsFor, rewardFor, streakMultiplier, validateQuestion } from '../common/utils/quiz';
 import { QUIZ_SEED } from '../common/utils/quiz-seed';
+import { parseImport, questionKey } from '../common/utils/quiz-import';
 import { nextMidnightToronto, torontoDay } from './wheel.service';
 import { CardsService } from './cards.service';
 import { emitChallenge } from '../common/utils/challenge-bus';
@@ -301,6 +302,88 @@ export class QuizService implements OnModuleInit {
         } catch { /* déjà payé */ }
       }
     } catch (e) { jobMonitor.fail('quiz.podium', e); this.logger.warn(`Podium du quiz : ${(e as Error).message}`); }
+  }
+
+  // ------------------------------------------------------------------ questions proposées par les membres
+
+  /** Un membre propose une question : elle attend la validation du staff. Limites : 3 en attente, 5 par 24 heures, pas de doublon avec la banque ni avec une autre proposition. */
+  async suggest(accountId: string, body: any) {
+    const cfg = await this.config();
+    const account = await this.account(accountId);
+    const why = this.blocked(account, cfg);
+    if (why) throw new BadRequestException(why);
+    const v = validateQuestion(body);
+    if (!v.ok) throw new BadRequestException(v.error);
+    const [pending, today, bank, others] = await Promise.all([
+      this.prisma.quizSuggestion.count({ where: { userId: accountId, status: 'PENDING' } }),
+      this.prisma.quizSuggestion.count({ where: { userId: accountId, createdAt: { gt: new Date(Date.now() - 86400_000) } } }),
+      this.prisma.quizQuestion.findMany({ select: { text: true } }),
+      this.prisma.quizSuggestion.findMany({ where: { status: 'PENDING' }, select: { text: true } }),
+    ]);
+    if (pending >= 3) throw new BadRequestException('Tu as déjà 3 questions en attente de validation : attends qu\'elles soient examinées');
+    if (today >= 5) throw new BadRequestException('Tu as déjà proposé 5 questions aujourd\'hui : reviens demain');
+    const key = questionKey(v.value.text);
+    if (bank.some((q) => questionKey(q.text) === key) || others.some((q) => questionKey(q.text) === key)) throw new BadRequestException('Cette question existe déjà (ou a déjà été proposée)');
+    const row = await this.prisma.quizSuggestion.create({ data: { userId: accountId, ...v.value } });
+    return { id: row.id, status: row.status };
+  }
+
+  async mySuggestions(accountId: string) {
+    const rows = await this.prisma.quizSuggestion.findMany({ where: { userId: accountId }, orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, text: true, category: true, status: true, note: true, reward: true, createdAt: true } });
+    const cfg = await this.config();
+    return { reward: cfg.suggestionReward, items: rows };
+  }
+
+  async adminSuggestions() {
+    const rows = await this.prisma.quizSuggestion.findMany({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' }, take: 100 });
+    const names = rows.length ? await this.prisma.user.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.userId))] } }, select: { id: true, username: true } }) : [];
+    const name = new Map(names.map((n) => [n.id, n.username]));
+    return rows.map((r) => ({ id: r.id, username: name.get(r.userId) ?? 'Membre supprimé', category: r.category, text: r.text, choices: r.choices, answer: r.answer, explain: r.explain, createdAt: r.createdAt }));
+  }
+
+  /** Accepte une proposition (en la corrigeant au besoin) : la question entre dans la banque et le membre reçoit sa récompense, une seule fois. */
+  async approveSuggestion(actor: Actor, id: string, body: any, ip?: string | null) {
+    const cfg = await this.config();
+    const sug = await this.prisma.quizSuggestion.findUnique({ where: { id } });
+    if (!sug) throw new NotFoundException('Proposition introuvable');
+    const v = validateQuestion({ category: sug.category, text: sug.text, choices: sug.choices, answer: sug.answer, explain: sug.explain, ...(body && typeof body === 'object' ? body : {}) });
+    if (!v.ok) throw new BadRequestException(v.error);
+    const reward = cfg.suggestionReward;
+    const question = await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'quiz');
+      const claimed = await tx.quizSuggestion.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'APPROVED', reviewedBy: actor.userId, reviewedAt: new Date(), reward } });
+      if (claimed.count === 0) throw new BadRequestException('Cette proposition a déjà été examinée');
+      const q = await tx.quizQuestion.create({ data: { ...v.value, active: true } });
+      await tx.quizSuggestion.update({ where: { id }, data: { questionId: q.id } });
+      if (reward > 0) await tx.user.update({ where: { id: sug.userId }, data: { bonusPoints: { increment: reward } } });
+      return q;
+    });
+    await this.audit.log(actor.userId, 'QUIZ_QUESTION', { action: 'suggestion-approved', id: question.id, text: question.text } as any, ip);
+    await this.notifications.notify({ userId: sug.userId, type: 'SYSTEM', category: 'games', title: '🧠 Ta question de quiz a été acceptée !', body: `Elle entre dans la banque du quiz${reward > 0 ? ` et tu reçois +${reward} points` : ''}. Merci !`, link: '/jeux/quiz' }).catch(() => undefined);
+    return { ok: true, questionId: question.id };
+  }
+
+  async rejectSuggestion(actor: Actor, id: string, note: string | undefined, ip?: string | null) {
+    const clean = typeof note === 'string' && note.trim() ? note.trim().slice(0, 200) : null;
+    const r = await this.prisma.quizSuggestion.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'REJECTED', note: clean, reviewedBy: actor.userId, reviewedAt: new Date() } });
+    if (r.count === 0) throw new BadRequestException('Cette proposition a déjà été examinée ou n\'existe pas');
+    const sug = await this.prisma.quizSuggestion.findUnique({ where: { id }, select: { userId: true } });
+    await this.audit.log(actor.userId, 'QUIZ_QUESTION', { action: 'suggestion-rejected', id } as any, ip);
+    if (sug) await this.notifications.notify({ userId: sug.userId, type: 'SYSTEM', category: 'games', title: '🧠 Ta question de quiz n\'a pas été retenue', body: clean ? `Raison : ${clean}` : 'Merci quand même : tu peux en proposer d\'autres !', link: '/jeux/quiz' }).catch(() => undefined);
+    return { ok: true };
+  }
+
+  /** Import en lot : `dryRun` montre ce qui serait ajouté sans rien écrire. */
+  async importQuestions(actor: Actor, text: string, dryRun: boolean, ip?: string | null) {
+    if (typeof text !== 'string' || !text.trim()) throw new BadRequestException('Colle les questions à importer');
+    if (text.length > 400_000) throw new BadRequestException('Texte trop long');
+    const known = new Set((await this.prisma.quizQuestion.findMany({ select: { text: true } })).map((q) => questionKey(q.text)));
+    const r = parseImport(text, known);
+    if (!dryRun && r.items.length > 0) {
+      await this.prisma.quizQuestion.createMany({ data: r.items.map((q) => ({ category: q.category, text: q.text, choices: q.choices, answer: q.answer, explain: q.explain, active: true })) });
+      await this.audit.log(actor.userId, 'QUIZ_QUESTION', { action: 'import', added: r.items.length, rejected: r.errors.length } as any, ip);
+    }
+    return { dryRun, added: dryRun ? 0 : r.items.length, valid: r.items.length, errors: r.errors.slice(0, 100), errorCount: r.errors.length, preview: r.items.slice(0, 5).map((q) => ({ category: q.category, text: q.text, good: q.choices[q.answer] })) };
   }
 
   // ------------------------------------------------------------------ administration

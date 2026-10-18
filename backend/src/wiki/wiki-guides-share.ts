@@ -304,6 +304,8 @@ export const GUIDES_STAFF: WikiSeedCategory = {
         `Admin > Catégories : crée les sous-catégories (seuls les envois dans une sous-catégorie sont possibles), marque une catégorie « adulte » pour la masquer par défaut, ajoute des filtres propres à la catégorie.\n\n` +
         `[b]Points, pot commun et freeleech[/b]\n` +
         `Les prix de la boutique, la règle des hit & run, le [url=/wiki/pot-commun]pot commun[/url] (montants, paliers, durées) et les freeleech globaux se règlent dans Admin > Paramètres et Admin > Pot.\n\n` +
+        `[b]Quiz quotidien et jeux[/b]\n` +
+        `Admin > Jeux regroupe les réglages de chaque jeu et l'[url=/wiki/guide-staff-sante-economie]économie des points[/url]. Pour le quiz : valide ou refuse les [b]questions proposées par les membres[/b] (une question acceptée entre dans la banque et rapporte des points à son auteur), ajoute des questions en lot en collant des lignes « catégorie ; question ; bonne réponse ; trois mauvaises ; explication » (un bouton « Vérifier » montre le résultat sans rien écrire, les doublons sont écartés) et corrige ou désactive les questions de la banque.\n\n` +
         `[b]Invitations et rôles[/b]\n` +
         `Admin > Invitations crée des codes génériques. Les rôles et leurs droits sont décrits dans [url=/wiki/roles-du-staff]Rôles du staff[/url].\n\n` +
         `[b]Support[/b]\n` +

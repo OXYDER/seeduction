@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { audio, bell, noiseBuffer, playWin, setSoundOn, soundOn, tick } from '../lib/slotSound';
 import { useCountdown } from '../components/FreeleechCalendar';
 import CoinShower from '../components/CoinShower';
+import QuizSuggest from '../components/QuizSuggest';
 
 interface Choice { i: number; text: string }
 interface QuestionV { id: string; category: string; text: string; choices: Choice[] }
@@ -297,6 +298,8 @@ export default function Quiz() {
             )}
             <p className="muted" style={{ margin: '8px 0 0', fontSize: 12.5 }}>Chaque matin, les trois meilleurs de la veille reçoivent {data.rules.podium.join(', ')} points.</p>
           </div>
+
+          <QuizSuggest />
 
           {data.weekly.length > 0 && (
             <div className="panel">

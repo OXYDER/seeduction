@@ -22,6 +22,35 @@ export class QuizController {
   @Post('answer')
   answer(@Body() body: { index?: number; choice?: number | null }, @Request() req: any) { return this.quiz.answer(accountOf(req), body ?? {}); }
 
+  /** Propositions de questions par les membres. */
+  @UseGuards(JwtAuthGuard)
+  @Get('suggestions')
+  mine(@Request() req: any) { return this.quiz.mySuggestions(accountOf(req)); }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('suggest')
+  suggest(@Body() body: any, @Request() req: any) { return this.quiz.suggest(accountOf(req), body); }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Get('admin/suggestions')
+  suggestions() { return this.quiz.adminSuggestions(); }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Post('admin/suggestions/:id/approve')
+  approve(@Param('id') id: string, @Body() body: any, @Request() req: any) { return this.quiz.approveSuggestion({ userId: req.user.userId, username: req.user.username }, id, body, req.ip); }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Post('admin/suggestions/:id/reject')
+  reject(@Param('id') id: string, @Body() body: { note?: string }, @Request() req: any) { return this.quiz.rejectSuggestion({ userId: req.user.userId, username: req.user.username }, id, body?.note, req.ip); }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Post('admin/import')
+  importQuestions(@Body() body: { text?: string; dryRun?: boolean }, @Request() req: any) { return this.quiz.importQuestions({ userId: req.user.userId, username: req.user.username }, String(body?.text ?? ''), body?.dryRun !== false, req.ip); }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'OWNER')
   @Get('admin')

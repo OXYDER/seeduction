@@ -21,6 +21,8 @@ export interface QuizConfig {
   streak: { bonusPerDay: number; maxBonus: number };
   /** Points offerts aux trois meilleurs de la veille (1er, 2e, 3e). */
   podium: [number, number, number];
+  /** Points offerts à un membre dont la question proposée est acceptée par le staff. */
+  suggestionReward: number;
 }
 
 export const DEFAULT_QUIZ: QuizConfig = {
@@ -28,6 +30,7 @@ export const DEFAULT_QUIZ: QuizConfig = {
   pointsPerCorrect: 10, speedBonusMax: 5, perfectBonus: 50, consolation: 10,
   streak: { bonusPerDay: 0.05, maxBonus: 0.5 },
   podium: [50, 30, 20],
+  suggestionReward: 20,
 };
 
 /** Réponse enregistrée : `choice` est l'indice de la réponse choisie dans la liste d'origine (null si le temps est écoulé). */
@@ -57,6 +60,7 @@ export function normalizeQuiz(raw: any, previous: QuizConfig = DEFAULT_QUIZ): Qu
     consolation: int(r.consolation, 0, 1000, previous.consolation),
     streak: { bonusPerDay: num(st.bonusPerDay, 0, 0.5, previous.streak.bonusPerDay), maxBonus: num(st.maxBonus, 0, 5, previous.streak.maxBonus) },
     podium: [0, 1, 2].map((i) => int(pod[i], 0, 100_000, previous.podium[i])) as [number, number, number],
+    suggestionReward: int(r.suggestionReward, 0, 10_000, previous.suggestionReward),
   };
 }
 

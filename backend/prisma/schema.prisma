@@ -2348,3 +2348,24 @@ model PointsLedger {
   @@index([hour])
   @@index([userId, hour])
 }
+
+/// Question de quiz proposée par un membre, en attente de validation par le staff. Une fois acceptée, elle devient une QuizQuestion et le membre reçoit une petite récompense.
+model QuizSuggestion {
+  id         String    @id @default(uuid())
+  userId     String
+  category   String    @db.VarChar(30)
+  text       String    @db.VarChar(300)
+  choices    String[]
+  answer     Int
+  explain    String?   @db.VarChar(300)
+  status     String    @default("PENDING") @db.VarChar(10) // PENDING | APPROVED | REJECTED
+  note       String?   @db.VarChar(200) // raison du refus
+  reward     Int       @default(0) // points versés à l'acceptation
+  questionId String?
+  reviewedBy String?
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}

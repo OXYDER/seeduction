@@ -373,7 +373,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Chaque matin, les [b]trois meilleurs de la veille[/b] reçoivent 50, 30 et 20 points, avec une notification.\n\n` +
         `[b]À savoir[/b]\n` +
         `• Les bonnes réponses restent sur le serveur jusqu'à ce que tu aies répondu, et le chrono est surveillé par le serveur : la page ne fait qu'afficher.\n` +
-        `• Les questions viennent d'une banque (cinéma, séries, musique, hockey, sciences, géographie, technologie…) que l'équipe enrichit. Une erreur dans une question ? Signale-la à l'équipe.\n` +
+        `• Les questions viennent d'une banque (cinéma, séries, musique, hockey, sciences, géographie, technologie…) que l'équipe enrichit avec tes idées : sur la page du quiz, ouvre « Proposer une question » (une bonne réponse et trois mauvaises, 3 propositions en attente au maximum). Le staff la vérifie, et une question acceptée entre dans la banque et te rapporte 20 points. Une erreur dans une question ? Signale-la à l'équipe.\n` +
         `• Ce sont des points du site, sans valeur en argent. Tu peux te retirer des jeux à tout moment avec « Me retirer des jeux » sur la page Jeux.\n\n` +
         `Voir aussi : [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url], [url=/wiki/guide-plus-haut-plus-bas]Jouer à Plus haut ou plus bas[/url], [url=/wiki/guide-pronostics-lnh]Faire ses pronostics sur la LNH[/url].`,
     },

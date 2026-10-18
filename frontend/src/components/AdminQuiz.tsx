@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
+import AdminQuizTools from './AdminQuizTools';
 
 interface Cfg {
   enabled: boolean; minAccountDays: number; questionsPerDay: number; secondsPerQuestion: number; pointsPerCorrect: number; speedBonusMax: number;
-  perfectBonus: number; consolation: number; streak: { bonusPerDay: number; maxBonus: number }; podium: number[];
+  perfectBonus: number; consolation: number; streak: { bonusPerDay: number; maxBonus: number }; podium: number[]; suggestionReward: number;
 }
 interface Q { id: string; category: string; text: string; choices: string[]; answer: number; explain: string | null; active: boolean; asked: number; right: number }
 interface Stats { playsToday: number; playsWeek: number; pointsWeek: number; avgCorrectWeek: number | null; playsAll: number; pointsAll: number }
@@ -80,6 +81,7 @@ export default function AdminQuiz() {
         {num(Math.round(cfg.streak.maxBonus * 100), (n) => setCfg({ ...cfg, streak: { ...cfg.streak, maxBonus: n / 100 } }), 'Bonus maximal de série (%)')}
       </div>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        {num(cfg.suggestionReward, (n) => setCfg({ ...cfg, suggestionReward: n }), 'Question proposée acceptée (points)', 'Offerts au membre')}
         {[0, 1, 2].map((i) => num(cfg.podium[i], (n) => setCfg({ ...cfg, podium: cfg.podium.map((p, k) => (k === i ? n : p)) }), `Podium : ${['1er', '2e', '3e'][i]} (points)`, i === 0 ? 'Versé le matin suivant' : undefined))}
       </div>
       <div className="row" style={{ gap: 10, alignItems: 'center' }}>
@@ -90,6 +92,8 @@ export default function AdminQuiz() {
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
         Quiz joués : {formatNumber(stats.playsToday)} aujourd'hui · {formatNumber(stats.playsWeek)} sur 7 jours ({formatNumber(stats.pointsWeek)} points offerts{stats.avgCorrectWeek !== null ? `, ${String(stats.avgCorrectWeek).replace('.', ',')} bonnes réponses en moyenne` : ''}) · {formatNumber(stats.playsAll)} au total ({formatNumber(stats.pointsAll)} points).
       </p>
+
+      <AdminQuizTools onChange={load} />
 
       <h3 style={{ margin: '6px 0 0' }}>Banque de questions</h3>
       <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
