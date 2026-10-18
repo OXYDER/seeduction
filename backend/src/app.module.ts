@@ -34,6 +34,7 @@ import { PublicApiModule } from './public-api/public-api.module';
 import { TorznabModule } from './torznab/torznab.module';
 import { ChatModule } from './chat/chat.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { LedgerModule } from './ledger/ledger.module';
 import { CoversModule } from './covers/covers.module';
 import { MetadataModule } from './metadata/metadata.module';
 import { EntitiesModule } from './entities/entities.module';
@@ -97,6 +98,7 @@ import { SuggestionsModule } from './suggestions/suggestions.module';
     TorznabModule,
     ChatModule,
     MonitoringModule,
+    LedgerModule,
     CoversModule,
     MetadataModule,
     EntitiesModule,

@@ -4,7 +4,7 @@ import { DiceService } from './dice.service';
 function setup(opts: { dice: [number, number]; cfg?: any; debited?: number; loss?: { stake: number; payout: number }; freeToday?: number; account?: any }) {
   const state = { debit: [] as number[], credited: 0, rolls: [] as any[] };
   const tx: any = {
-    $executeRaw: jest.fn(async (_s: TemplateStringsArray, ...vals: any[]) => { state.debit.push(Number(vals[0])); return opts.debited ?? 1; }),
+    $executeRaw: jest.fn(async (s: TemplateStringsArray, ...vals: any[]) => { if (/set_config/.test(s.join('?'))) return 1; state.debit.push(Number(vals[0])); return opts.debited ?? 1; }),
     user: {
       update: jest.fn(async ({ data }: any) => { state.credited += data.bonusPoints.increment; return {}; }),
       findUniqueOrThrow: jest.fn(async () => ({ bonusPoints: 1000, donatedPoints: 0 })),

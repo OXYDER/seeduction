@@ -6,6 +6,7 @@ function setup(opts: { random: number; last?: { day: string; streak: number } | 
   const state = { credited: 0, tokens: 0, spins: [] as any[] };
   const pending: (() => void)[] = []; // écritures d'une transaction : appliquées seulement si toutes réussissent, comme avec Prisma
   const prisma: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     user: {
       findUnique: jest.fn(async ({ select }: any) => (select?.bonusPoints !== undefined
         ? { bonusPoints: 1000 + state.credited, freeleechTokens: state.tokens }

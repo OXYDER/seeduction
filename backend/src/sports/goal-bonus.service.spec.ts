@@ -14,6 +14,7 @@ function setup(opts: { online?: { id: string }[]; users?: any[]; spent?: any[] }
   const notes: any[] = [];
   const credited: Record<string, number> = {};
   const prisma: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     user: {
       findMany: jest.fn(async ({ where }: any) => (opts.users ?? []).filter((u) => where.id.in.includes(u.id) && (where.parentId === undefined || u.parentId === null))),
       update: jest.fn(({ where, data }: any) => lazy(async () => { credited[where.id] = (credited[where.id] ?? 0) + data.bonusPoints.increment; return {}; })),

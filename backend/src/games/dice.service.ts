@@ -7,6 +7,7 @@ import { Bet, DEFAULT_DICE, DiceConfig, KINDS, Kind, allBets, multH, normalizeDi
 import { stakeable } from '../common/utils/points';
 import { startOfDayToronto } from './slots.service';
 import { emitChallenge } from '../common/utils/challenge-bus';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'dice';
 const DAY = 86400_000;
@@ -111,6 +112,7 @@ export class DiceService {
       const won = wins(bet, d1, d2);
       const payout = won ? payoutOf(stake, mult, Number.isFinite(cap) ? cap : 0) : 0;
       const bal = await this.prisma.$transaction(async (tx) => {
+        await setSource(tx, 'dice');
         if (!daily) {
           // Seuls les points qui ne viennent pas d'un don sont misables (comparaison faite par la base, en une seule étape atomique).
           const debited = await tx.$executeRaw`UPDATE "User" SET "bonusPoints" = "bonusPoints" - ${stake} WHERE "id" = ${accountId} AND "bonusPoints" - LEAST("donatedPoints", "bonusPoints") >= ${stake}`;

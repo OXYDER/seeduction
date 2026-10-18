@@ -9,12 +9,14 @@ function setup(opts: { account?: any; enabled?: boolean; claimTaken?: boolean; b
   const state = { credited: 0, bonuses: 0, activity: [] as string[], packs: [] as string[] };
   const key = (w: any) => `${w.userId_period_cid.userId}|${w.userId_period_cid.period}|${w.userId_period_cid.cid}`;
   const tx: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     challengeProgress: { updateMany: jest.fn(async ({ where, data }: any) => { const r = [...rows.values()].find((x) => x.id === where.id); if (!r || r.done || opts.claimTaken) return { count: 0 }; Object.assign(r, data); return { count: 1 }; }) },
     challengeBonus: { createMany: jest.fn(async () => { if (opts.bonusTaken || state.bonuses > 0) return { count: 0 }; state.bonuses++; return { count: 1 }; }) },
     user: { update: jest.fn(async ({ data }: any) => { state.credited += data.bonusPoints.increment; return {}; }) },
   };
   let seq = 0;
   const prisma: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     user: { findUnique: jest.fn(async () => (opts.account === null ? null : { status: 'ACTIVE', createdAt: new Date(Date.now() - 30 * 86400_000), parentId: null, ...(opts.account ?? {}) })) },
     challengeActivity: { createMany: jest.fn(async ({ data }: any) => { state.activity.push(data[0].game); return { count: 1 }; }), groupBy: jest.fn(async () => [...new Set(state.activity)].map((game) => ({ game }))) },
     challengeProgress: {

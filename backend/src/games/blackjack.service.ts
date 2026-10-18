@@ -10,6 +10,7 @@ import { rankOf, suitOf } from '../common/utils/hilo';
 import { stakeable } from '../common/utils/points';
 import { startOfDayToronto } from './slots.service';
 import { emitChallenge } from '../common/utils/challenge-bus';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'blackjack';
 const DAY = 86400_000;
@@ -152,6 +153,7 @@ export class BlackjackService {
     return this.lock(accountId, async () => {
       try {
         const game = await this.prisma.$transaction(async (tx) => {
+          await setSource(tx, 'blackjack');
           if (!daily) {
             const debited = await tx.$executeRaw`UPDATE "User" SET "bonusPoints" = "bonusPoints" - ${stake} WHERE "id" = ${accountId} AND "bonusPoints" - LEAST("donatedPoints", "bonusPoints") >= ${stake}`;
             if (debited === 0) throw new BadRequestException('Points misables insuffisants (les points reçus par un don ne peuvent pas être misés)');
@@ -199,6 +201,7 @@ export class BlackjackService {
     const done = next.phase === 'DONE';
     const r = done ? settle(next, g.valued, cfg, this.capOf(g, cfg)) : null;
     await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'blackjack');
       const res = await tx.blackjackGame.updateMany({
         where: { id: g.id, version: g.version, status: 'ACTIVE' },
         data: { state: next as any, version: { increment: 1 }, ...(extra > 0 ? { stake: { increment: extra } } : {}), ...(r ? { status: 'DONE', active: null, payout: r.payout, outcome: r.outcome, endedAt: new Date() } : {}) },

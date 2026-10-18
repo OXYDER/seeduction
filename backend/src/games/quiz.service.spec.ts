@@ -6,10 +6,12 @@ function setup(opts: { winners?: any[]; seeded?: boolean; count?: number; enable
   const state = { credited: new Map<string, number>(), podium: new Map<string, number>(), seeded: !!opts.seeded, created: 0, query: null as any };
   const paid = opts.alreadyPaid ?? new Set<string>();
   const tx: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     quizPlay: { updateMany: jest.fn(async ({ where, data }: any) => { if (paid.has(where.id)) return { count: 0 }; paid.add(where.id); state.podium.set(where.id, data.podium); return { count: 1 }; }) },
     user: { update: jest.fn(async ({ where, data }: any) => { state.credited.set(where.id, (state.credited.get(where.id) ?? 0) + data.bonusPoints.increment); return {}; }) },
   };
   const prisma: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     quizPlay: { findMany: jest.fn(async (q: any) => { state.query = q; return opts.winners ?? []; }) },
     quizQuestion: { count: jest.fn(async () => opts.count ?? 0), createMany: jest.fn(async ({ data }: any) => { state.created = data.length; return {}; }) },
     $transaction: jest.fn(async (fn: any) => fn(tx)),

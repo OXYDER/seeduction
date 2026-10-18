@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CATALOG, CRAFT_COST, CardsConfig, DEFAULT_CARDS, ODDS, RARITIES, RARITY_LABEL, SETS, SHARDS, SetId, albumComplete, cardById, cardsOf, completedSets, drawPack, normalizeCards } from '../common/utils/cards';
 import { torontoDay } from './wheel.service';
 import { emitChallenge } from '../common/utils/challenge-bus';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'cards';
 const DAY = 86400_000;
@@ -67,6 +68,7 @@ export class CardsService {
       const account = await this.prisma.user.findUnique({ where: { id: userId }, select: { status: true, createdAt: true, gamesOptOut: true, parentId: true } });
       if (!account || account.parentId || this.blocked(account, cfg)) return false;
       const granted = await this.prisma.$transaction(async (tx) => {
+        await setSource(tx, 'cards');
         const made = await tx.cardPackGrant.createMany({ data: [{ userId, source, key }], skipDuplicates: true });
         if (made.count !== 1) return false;
         await tx.cardWallet.upsert({ where: { userId }, create: { userId, packs: 1 }, update: { packs: { increment: 1 } } });
@@ -126,6 +128,7 @@ export class CardsService {
     this.busy.add(accountId);
     try {
       const result = await this.prisma.$transaction(async (tx) => {
+        await setSource(tx, 'cards');
         const taken = await tx.cardWallet.updateMany({ where: { userId: accountId, packs: { gte: 1 } }, data: { packs: { decrement: 1 }, opened: { increment: 1 } } });
         if (taken.count === 0) throw new BadRequestException('Tu n\'as aucun paquet à ouvrir');
         const wallet = await tx.cardWallet.findUniqueOrThrow({ where: { userId: accountId } });
@@ -163,6 +166,7 @@ export class CardsService {
     try {
       const cost = CRAFT_COST[card.rarity];
       const result = await this.prisma.$transaction(async (tx) => {
+        await setSource(tx, 'cards');
         if (await tx.userCard.findUnique({ where: { userId_cardId: { userId: accountId, cardId: card.id } }, select: { id: true } })) throw new BadRequestException('Tu possèdes déjà cette carte');
         const paid = await tx.cardWallet.updateMany({ where: { userId: accountId, shards: { gte: cost } }, data: { shards: { decrement: cost } } });
         if (paid.count === 0) throw new BadRequestException(`Il te faut ${cost} éclats pour fabriquer cette carte`);

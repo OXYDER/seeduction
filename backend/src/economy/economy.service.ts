@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SettingsService } from '../settings/settings.service';
 import { TrackerService } from '../tracker/tracker.service';
 import { ECONOMY, SHOP_ITEMS } from '../common/utils/economy';
+import { setSource } from '../common/utils/ledger';
 
 const TOKEN_DURATION_MS = 7 * 86400_000;
 
@@ -31,10 +32,10 @@ export class EconomyService {
       WHERE "isSeeder" = true AND "lastAnnounceAt" > now() - interval '45 minutes'
       GROUP BY "userId"`;
     if (seeding.length === 0) return;
-    await this.prisma.$transaction(seeding.map((s) => this.prisma.user.update({
+    await this.prisma.$transaction([setSource(this.prisma, 'seed'), ...seeding.map((s) => this.prisma.user.update({
       where: { id: s.userId },
       data: { bonusPoints: { increment: Math.min(Number(s.n), ECONOMY.bonusMaxTorrents) * ECONOMY.bonusPerTorrentHour } },
-    })));
+    }))]);
     this.logger.log(`Bonus crédité à ${seeding.length} membre(s)`);
   }
 
@@ -361,6 +362,7 @@ export class EconomyService {
     if (!snatch) throw new NotFoundException('Hit & run introuvable (déjà régularisé ?)');
     const { cost } = await this.clearQuote(userId, snatch);
     await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'echange');
       const debited = await tx.user.updateMany({ where: { id: userId, bonusPoints: { gte: cost } }, data: { bonusPoints: { decrement: cost } } });
       if (debited.count === 0) throw new BadRequestException(`Points bonus insuffisants : il t'en faut ${cost}`);
       await spendDonatedFirst(tx, userId, cost);
@@ -395,6 +397,7 @@ export class EconomyService {
     if (amount > left) throw new BadRequestException(left > 0 ? `Limite journalière : tu ne peux plus envoyer que ${left} points aujourd'hui` : 'Limite atteinte : tu as déjà envoyé le maximum de points ces dernières 24 h');
 
     await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'echange');
       const debited = await tx.user.updateMany({ where: { id: fromId, bonusPoints: { gte: amount } }, data: { bonusPoints: { decrement: amount } } });
       if (debited.count === 0) throw new BadRequestException('Points bonus insuffisants');
       await tx.user.update({ where: { id: toId }, data: { bonusPoints: { increment: amount } } });
@@ -433,10 +436,10 @@ export class EconomyService {
     if (!item) throw new BadRequestException('Article inconnu');
 
     // Débit atomique : ne passe que si le solde couvre le prix (deux clics simultanés ne peuvent pas dépenser deux fois).
-    const debited = await this.prisma.user.updateMany({
+    const [, debited] = await this.prisma.$transaction([setSource(this.prisma, 'echange'), this.prisma.user.updateMany({
       where: { id: userId, bonusPoints: { gte: item.cost } },
       data: { bonusPoints: { decrement: item.cost } },
-    });
+    })]);
     if (debited.count === 0) throw new BadRequestException('Points bonus insuffisants');
     await spendDonatedFirst(this.prisma, userId, item.cost);
 
@@ -451,7 +454,7 @@ export class EconomyService {
       }
     } catch (err) {
       // L'effet a échoué : on rembourse.
-      await this.prisma.user.update({ where: { id: userId }, data: { bonusPoints: { increment: item.cost } } });
+      await this.prisma.$transaction([setSource(this.prisma, 'echange'), this.prisma.user.update({ where: { id: userId }, data: { bonusPoints: { increment: item.cost } } })]);
       throw err;
     }
     return { ok: true, item: item.id, inviteCode: code };

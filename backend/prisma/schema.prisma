@@ -2332,3 +2332,19 @@ model ChallengeBonus {
   @@unique([userId, scope, period])
   @@index([userId, scope])
 }
+
+/// Journal central des points : créé et retiré, regroupé par membre, source et heure. Alimenté par un déclencheur PostgreSQL (installé au démarrage par
+/// PointsLedgerService) qui note chaque changement de User.bonusPoints ; la source vient de l'étiquette posée par le jeu, sinon « autre ».
+model PointsLedger {
+  id     String   @id @default(uuid())
+  userId String
+  source String   @db.VarChar(16)
+  hour   DateTime // début de l'heure (UTC)
+  credit Float    @default(0)
+  debit  Float    @default(0)
+  count  Int      @default(0)
+
+  @@unique([userId, source, hour])
+  @@index([hour])
+  @@index([userId, hour])
+}

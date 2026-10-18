@@ -11,7 +11,7 @@ function setup(game: any, opts: { conflict?: boolean } = {}) {
   const tx: any = {
     blackjackGame: { updateMany: jest.fn(async ({ data }: any) => { if (opts.conflict) return { count: 0 }; updates.push(data); return { count: 1 }; }) },
     user: { update: jest.fn(async ({ data }: any) => { credited.push(data.bonusPoints.increment); return {}; }) },
-    $executeRaw: jest.fn(async () => { debits.push(1); return 1; }),
+    $executeRaw: jest.fn(async (s: TemplateStringsArray) => { if (/set_config/.test(s.join('?'))) return 1; debits.push(1); return 1; }),
   };
   const prisma: any = {
     blackjackGame: { findMany: jest.fn(async () => [game]), findUniqueOrThrow: jest.fn(async () => ({ ...game, status: 'DONE' })) },

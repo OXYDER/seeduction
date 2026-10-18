@@ -9,6 +9,7 @@ import { Config, DEFAULT_HILO, DECK, Guess, isWin, nextMultBp, normalizeHiLo, od
 import { stakeable } from '../common/utils/points';
 import { startOfDayToronto } from './slots.service';
 import { emitChallenge } from '../common/utils/challenge-bus';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'hilo';
 const DAY = 86400_000;
@@ -132,6 +133,7 @@ export class HiLoService {
       const card = randomInt(DECK);
       try {
         const game = await this.prisma.$transaction(async (tx) => {
+          await setSource(tx, 'hilo');
           if (!daily) {
             const debited = await tx.$executeRaw`UPDATE "User" SET "bonusPoints" = "bonusPoints" - ${stake} WHERE "id" = ${accountId} AND "bonusPoints" - LEAST("donatedPoints", "bonusPoints") >= ${stake}`;
             if (debited === 0) throw new BadRequestException('Points misables insuffisants (les points reçus par un don ne peuvent pas être misés)');
@@ -189,6 +191,7 @@ export class HiLoService {
     const capped = g.daily ? Math.min(cfg.maxWin || Infinity, cfg.dailyFree.maxWin || Infinity) : cfg.maxWin;
     const payout = payoutOf(g.valued, g.multBp, Number.isFinite(capped) ? capped : 0);
     const done = await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'hilo');
       const claimed = await tx.hiLoGame.updateMany({ where: { id: g.id, status: 'ACTIVE' }, data: { status: 'CASHED', active: null, payout, endedAt: new Date() } });
       if (claimed.count === 0) return false;
       if (payout > 0) await tx.user.update({ where: { id: accountId }, data: { bonusPoints: { increment: payout } } });
@@ -211,6 +214,7 @@ export class HiLoService {
         try {
           if (g.step >= 1) { await this.settle(g.id, g.userId, cfg, 'idle'); continue; }
           await this.prisma.$transaction(async (tx) => {
+            await setSource(tx, 'hilo');
             const claimed = await tx.hiLoGame.updateMany({ where: { id: g.id, status: 'ACTIVE' }, data: { status: 'REFUNDED', active: null, payout: g.stake, endedAt: new Date() } });
             if (claimed.count && g.stake > 0) await tx.user.update({ where: { id: g.userId }, data: { bonusPoints: { increment: g.stake } } });
           });

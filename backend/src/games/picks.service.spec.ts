@@ -13,11 +13,13 @@ function setup(opts: { picks?: { all: any[]; wins: any[] }; openGames?: any[]; e
   const prizes: any[] = [];
   const paid = opts.paidRanks ?? new Set<number>();
   const tx: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     nhlWeekPrize: { createMany: jest.fn(async ({ data }: any) => { if (paid.has(data[0].rank)) return { count: 0 }; paid.add(data[0].rank); prizes.push(data[0]); return { count: 1 }; }) },
     user: { update: jest.fn(async ({ where, data }: any) => { credited.set(where.id, (credited.get(where.id) ?? 0) + data.bonusPoints.increment); return {}; }) },
   };
   let call = 0;
   const prisma: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     nhlPick: { groupBy: jest.fn(async () => (call++ % 2 === 0 ? opts.picks?.all ?? [] : opts.picks?.wins ?? [])) },
     nhlGame: {
       findMany: jest.fn(async (q: any) => (q?.where?.status === 'OPEN' ? opts.openGames ?? [] : opts.existing ?? [])),

@@ -5,6 +5,7 @@ import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AntiCheatService } from '../anticheat/anticheat.service';
 import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY, reseedReward } from '../common/utils/economy';
+import { setSource } from '../common/utils/ledger';
 
 export interface AnnounceParams {
   infoHash: string;   // hex
@@ -48,7 +49,7 @@ export class TrackerService {
       if (!torrent.diedAt) return;
       const points = reseedReward(torrent.size, torrent.diedAt);
       if (points <= 0) return;
-      await this.prisma.user.update({ where: { id: userId }, data: { bonusPoints: { increment: points } } });
+      await this.prisma.$transaction([setSource(this.prisma, 'seed'), this.prisma.user.update({ where: { id: userId }, data: { bonusPoints: { increment: points } } })]);
       // Mémoire des réanimations (page « Réanimation » : héros du mois, torrents ressuscités récemment).
       await this.prisma.torrentRevival.create({ data: { torrentId: torrent.id, userId, points, deadDays: Math.round(((Date.now() - torrent.diedAt.getTime()) / 86400_000) * 10) / 10 } }).catch(() => {});
       await this.notifications.notify({

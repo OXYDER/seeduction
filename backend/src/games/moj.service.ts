@@ -9,6 +9,7 @@ import { SportsService } from '../sports/sports.service';
 import type { Game } from '../common/utils/nhl';
 import { MARKETS, MARKET_LABELS, Market, MojConfig, DEFAULT_MOJ, FinalResult, freePrize, modeOf, normalizeMojConfig, settleMarket, validPick, winningPicks, MODE_LABELS } from '../common/utils/moj';
 import { stakeable } from '../common/utils/points';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'moj';
 const DAY = 86400_000;
@@ -140,6 +141,7 @@ export class MojService implements OnModuleInit {
     const sum = (u: string) => { let s = summary.get(u); if (!s) { s = { won: 0, refunded: 0, lost: 0, wins: [] }; summary.set(u, s); } return s; };
 
     const match = await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'moj');
       const claimed = await tx.mojMatch.updateMany({ where: { id: matchId, status: 'OPEN' }, data: { status: 'SETTLED', result: result as any, settledAt: new Date() } });
       if (claimed.count === 0) return null;
       const bets = await tx.mojBet.findMany({ where: { matchId, status: 'PENDING' } });
@@ -189,6 +191,7 @@ export class MojService implements OnModuleInit {
   async refundMatch(matchId: string, reason: string): Promise<boolean> {
     const touched = new Map<string, number>();
     const match = await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'moj');
       const claimed = await tx.mojMatch.updateMany({ where: { id: matchId, status: 'OPEN' }, data: { status: 'REFUNDED', settledAt: new Date() } });
       if (claimed.count === 0) return null;
       const now = new Date();
@@ -324,6 +327,7 @@ export class MojService implements OnModuleInit {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        await setSource(tx, 'moj');
         if (stake > 0) {
           // Seuls les points qui ne viennent pas d'un don sont misables (comparaison faite par la base, en une seule étape atomique).
           const debited = await tx.$executeRaw`UPDATE "User" SET "bonusPoints" = "bonusPoints" - ${stake} WHERE "id" = ${accountId} AND "bonusPoints" - LEAST("donatedPoints", "bonusPoints") >= ${stake}`;

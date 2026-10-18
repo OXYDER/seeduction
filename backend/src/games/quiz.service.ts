@@ -13,6 +13,7 @@ import { QUIZ_SEED } from '../common/utils/quiz-seed';
 import { nextMidnightToronto, torontoDay } from './wheel.service';
 import { CardsService } from './cards.service';
 import { emitChallenge } from '../common/utils/challenge-bus';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'quiz';
 const SEEDED_KEY = 'quizSeeded';
@@ -103,6 +104,7 @@ export class QuizService implements OnModuleInit {
     } else {
       const reward = rewardFor(answers, play.questionIds.length, play.streak, cfg);
       await this.prisma.$transaction(async (tx) => {
+        await setSource(tx, 'quiz');
         const r = await tx.quizPlay.updateMany({ where: { id: play.id, current: idx, status: 'ACTIVE' }, data: { ...data, current: idx + 1, status: 'DONE', bonus: reward.bonus, finishedAt: new Date() } });
         if (r.count !== 1) throw conflict();
         await tx.user.update({ where: { id: play.userId }, data: { bonusPoints: { increment: reward.total } } });
@@ -290,6 +292,7 @@ export class QuizService implements OnModuleInit {
         if (!prize) continue;
         try {
           await this.prisma.$transaction(async (tx) => {
+            await setSource(tx, 'quiz');
             const r = await tx.quizPlay.updateMany({ where: { id: w.id, podium: 0 }, data: { podium: rank } });
             if (r.count !== 1) throw new Error('déjà payé');
             await tx.user.update({ where: { id: w.userId }, data: { bonusPoints: { increment: prize } } });

@@ -31,6 +31,9 @@ export class HealthService implements OnModuleInit {
   /** Premier contrôle une minute après le démarrage (le temps que tout soit prêt). */
   onModuleInit() { setTimeout(() => { void this.tick(); }, 60_000).unref?.(); }
 
+  /** Oublie les derniers résultats : le prochain affichage refait les mesures (après un changement de réglage). */
+  invalidate() { this.last = null; }
+
   /** Permet à un autre module d'ajouter son propre contrôle (par exemple la surveillance de l'économie des points). */
   register(id: string, fn: ExtraCheck) { this.extra.set(id, fn); }
 

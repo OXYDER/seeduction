@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { PresenceService } from '../presence/presence.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { Game } from '../common/utils/nhl';
+import { setSource } from '../common/utils/ledger';
 
 export interface GoalBonusConfig {
   enabled: boolean;
@@ -102,6 +103,7 @@ export class GoalBonusService {
       if (eligible) {
         try {
           await this.prisma.$transaction([
+            setSource(this.prisma, 'goal'),
             this.prisma.goalReward.create({ data: { userId: m.id, gameId, goal, points: cfg.points } }),
             this.prisma.user.update({ where: { id: m.id }, data: { bonusPoints: { increment: cfg.points } } }),
           ]);

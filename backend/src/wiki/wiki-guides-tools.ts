@@ -41,7 +41,7 @@ export const GUIDES_TOOLS: WikiSeedCategory = {
         `• [url=/wiki/guide-messenger]Messenger[/url] · [url=/wiki/guide-forum-nouvelles]Forum, nouvelles, commentaires[/url] · [url=/wiki/guide-teams]Teams[/url] · [url=/wiki/guide-telegram]Telegram[/url] · [url=/wiki/guide-suggestions]Suggestions[/url] · [url=/wiki/guide-support]Obtenir de l'aide[/url]\n` +
         `• [url=/wiki/guide-compte-securite]Sécuriser ton compte[/url] · [url=/wiki/guide-compte-famille]Compte famille[/url]\n\n` +
         `[b]Pour le staff[/b]\n` +
-        `• [url=/wiki/guide-staff-moderation]Modérer : traiter la file[/url] · [url=/wiki/guide-staff-import]Import automatique (Admin > Import)[/url] · [url=/wiki/guide-staff-telegram]Telegram (Admin > Telegram)[/url] · [url=/wiki/guide-staff-outils]Autres outils du staff[/url]\n\n` +
+        `• [url=/wiki/guide-staff-moderation]Modérer : traiter la file[/url] · [url=/wiki/guide-staff-import]Import automatique (Admin > Import)[/url] · [url=/wiki/guide-staff-telegram]Telegram (Admin > Telegram)[/url] · [url=/wiki/guide-staff-sante-economie]Santé du site et économie des points[/url] · [url=/wiki/guide-staff-outils]Autres outils du staff[/url]\n\n` +
         `Une question qui n'est pas ici ? Cherche dans le [url=/wiki]wiki[/url] (barre de recherche) ou ouvre le [url=/wiki/support-chat-et-billets]Support[/url].`,
     },
     {

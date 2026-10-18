@@ -4,10 +4,12 @@ function setup(opts: { account?: any; existing?: Set<string>; enabled?: boolean 
   const state = { packs: 0, grants: new Set<string>() };
   const existing = opts.existing ?? new Set<string>();
   const tx: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     cardPackGrant: { createMany: jest.fn(async ({ data }: any) => { const k = `${data[0].userId}|${data[0].source}|${data[0].key}`; if (existing.has(k) || state.grants.has(k)) return { count: 0 }; state.grants.add(k); return { count: 1 }; }) },
     cardWallet: { upsert: jest.fn(async ({ update }: any) => { state.packs += update.packs.increment; return {}; }) },
   };
   const prisma: any = {
+    $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     user: { findUnique: jest.fn(async () => (opts.account === null ? null : { status: 'ACTIVE', createdAt: new Date(Date.now() - 30 * 86400_000), gamesOptOut: false, parentId: null, ...(opts.account ?? {}) })) },
     $transaction: jest.fn(async (fn: any) => fn(tx)),
   };

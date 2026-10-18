@@ -9,6 +9,7 @@ import { startOfDayToronto } from './slots.service';
 import { CardsService } from './cards.service';
 import { emitChallenge } from '../common/utils/challenge-bus';
 import { DEFAULT_WHEEL, WheelConfig, dayBefore, expectedValue, nextStreak, normalizeWheel, pickSegment, rewardFor, streakMultiplier } from '../common/utils/wheel';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'wheel';
 const DAY = 86400_000;
@@ -130,6 +131,7 @@ export class WheelService {
 
     try {
       await this.prisma.$transaction([
+        setSource(this.prisma, 'wheel'),
         this.prisma.wheelSpin.create({ data: { userId: accountId, day: today, segment: index, points: reward.points, tokens: reward.tokens, streak, streakBonus: reward.streakBonus } }),
         this.prisma.user.update({ where: { id: accountId }, data: { bonusPoints: { increment: reward.total }, ...(reward.tokens > 0 ? { freeleechTokens: { increment: reward.tokens } } : {}) } }),
       ]);

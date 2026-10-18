@@ -11,6 +11,7 @@ import { DEFAULT_PICKS, PicksConfig, Side, addDays, capped, isPerfectDay, normal
 import { torontoDay } from './wheel.service';
 import { CardsService } from './cards.service';
 import { emitChallenge } from '../common/utils/challenge-bus';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'picks';
 const TZ = 'America/Toronto';
@@ -107,6 +108,7 @@ export class PicksService {
     const paid: { userId: string; points: number; bonus: number; streak: number }[] = [];
 
     const game = await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'picks');
       const claimed = await tx.nhlGame.updateMany({ where: { id: gameId, status: 'OPEN' }, data: { status: 'SETTLED', homeScore: result.home, awayScore: result.away, outcome: result.outcome ?? null, settledAt: new Date() } });
       if (claimed.count === 0) return null;
       const g = await tx.nhlGame.findUniqueOrThrow({ where: { id: gameId } });
@@ -159,6 +161,7 @@ export class PicksService {
   /** Annule un match (reporté, introuvable ou décision de l'administration) : les pronostics ne comptent pas. */
   async voidGame(gameId: number, reason: string): Promise<boolean> {
     const done = await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'picks');
       const claimed = await tx.nhlGame.updateMany({ where: { id: gameId, status: 'OPEN' }, data: { status: 'VOID', settledAt: new Date() } });
       if (claimed.count === 0) return false;
       await tx.nhlPick.updateMany({ where: { gameId, status: 'PENDING' }, data: { status: 'VOID', settledAt: new Date() } });
@@ -345,6 +348,7 @@ export class PicksService {
         const r = ranked[i], prize = cfg.weeklyPrizes[i];
         if (!prize) continue;
         const paid = await this.prisma.$transaction(async (tx) => {
+          await setSource(tx, 'picks');
           const made = await tx.nhlWeekPrize.createMany({ data: [{ weekStart: wk, userId: r.userId, rank: i + 1, points: prize, wins: r.wins, picks: r.picks }], skipDuplicates: true });
           if (made.count !== 1) return false;
           await tx.user.update({ where: { id: r.userId }, data: { bonusPoints: { increment: prize } } });

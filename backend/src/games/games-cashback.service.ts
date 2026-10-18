@@ -8,6 +8,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CashbackConfig, DEFAULT_CASHBACK, cashbackFor, normalizeCashback } from '../common/utils/games-cashback';
 import { startOfDayToronto } from './slots.service';
 import { BlackjackService } from './blackjack.service';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'gamesCashback';
 const TZ = 'America/Toronto';
@@ -62,6 +63,7 @@ export class GamesCashbackService {
         if (amount < 1) continue;
         try {
           await this.prisma.$transaction([
+            setSource(this.prisma, 'cashback'),
             this.prisma.slotCashback.create({ data: { userId, day, lost, amount } }),
             this.prisma.user.update({ where: { id: userId }, data: { bonusPoints: { increment: amount } } }),
           ]);

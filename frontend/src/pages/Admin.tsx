@@ -26,6 +26,7 @@ import AdminDice from '../components/AdminDice';
 import AdminCards from '../components/AdminCards';
 import AdminChallenges from '../components/AdminChallenges';
 import HealthPanel from '../components/HealthPanel';
+import AdminEconomy from '../components/AdminEconomy';
 import AdminCashback from '../components/AdminCashback';
 import AdminUploadCredit from '../components/AdminUploadCredit';
 import { TelegramAdmin } from '../components/AdminTelegram';
@@ -69,7 +70,7 @@ export default function Admin() {
       {tab === 'Monitoring' && <MonitoringAdmin />}
       {tab === 'Import' && <ImportAdmin />}
       {tab === 'Pot commun' && <PotAdmin />}
-      {tab === 'Jeux' && <><AdminJeux /><AdminSlots /><AdminHiLo /><AdminBlackjack /><AdminDice /><AdminCards /><AdminChallenges /><AdminWheel /><AdminQuiz /><AdminPicks /><AdminCashback /></>}
+      {tab === 'Jeux' && <><AdminEconomy /><AdminJeux /><AdminSlots /><AdminHiLo /><AdminBlackjack /><AdminDice /><AdminCards /><AdminChallenges /><AdminWheel /><AdminQuiz /><AdminPicks /><AdminCashback /></>}
       {tab === 'Dons' && <AdminDonations />}
       {tab === 'Telegram' && <TelegramAdmin />}
       {tab === 'Anti-triche' && <AdminAntiCheat />}
@@ -87,7 +88,7 @@ const AUDIT_LABELS: Record<string, string> = {
   FORUM_TOPIC_DELETE: '🗑️ Sujet supprimé', FORUM_TOPIC_LOCK: '🔒 Sujet verrouillé', FORUM_TOPIC_UNLOCK: '🔓 Sujet déverrouillé',
   FORUM_TOPIC_STICKY: '📌 Sujet épinglé', FORUM_TOPIC_UNSTICKY: 'Sujet désépinglé', FORUM_TOPIC_MOVE: '➜ Sujet déplacé',
   FREELEECH_EVENT_CREATE: '🗓️ Événement freeleech programmé', FREELEECH_EVENT_EDIT: '🗓️ Événement freeleech modifié', FREELEECH_EVENT_DELETE: '🗓️ Événement freeleech supprimé',
-  FORUM_STRUCTURE_CREATE: '🗂️ Forum créé', FORUM_STRUCTURE_DELETE: '🗂️ Forum supprimé', FREELEECH_GLOBAL: '🎉 Freeleech global', POT_CONFIG: '🍯 Pot commun : réglages', POT_TRIGGER: '🍯 Pot commun : récompense lancée', POT_TOPUP: '🍯 Pot commun : mise de la maison', MOJ_CONFIG: '🎲 Mise-O-jeu : réglages', TORRENT_HOLD: '⏸ Correction demandée sur un torrent', SLOTS_CONFIG: '🎰 Machines à sous : réglages', HILO_CONFIG: '🃏 Plus haut ou plus bas : réglages', WHEEL_CONFIG: '🎡 Roue de la fortune : réglages', BLACKJACK_CONFIG: '♠️ Blackjack : réglages', DICE_CONFIG: '🎲 Dés : réglages', CARDS_CONFIG: '🎴 Cartes à collectionner : réglages', CHALLENGES_CONFIG: '🎯 Défis : réglages', QUIZ_CONFIG: '🧠 Quiz quotidien : réglages', PICKS_CONFIG: '🎯 Pronostics LNH : réglages', PICKS_SETTLE: '🎯 Pronostics LNH : match réglé', PICKS_VOID: '🎯 Pronostics LNH : match annulé', QUIZ_QUESTION: '🧠 Quiz quotidien : question', GAMES_CASHBACK_CONFIG: '💝 Remise de fidélité : réglages', SPORTS_GOAL_SOUND: '🔊 Son de but modifié', UPLOAD_CREDIT_CONFIG: '🎁 Crédit d\'envoi : réglages', MOJ_REFUND: '🎲 Mise-O-jeu : match remboursé', MOJ_SETTLE: '🎲 Mise-O-jeu : match réglé à la main', SPORTS_CONFIG: '🏒 Score des Canadiens : réglages',
+  FORUM_STRUCTURE_CREATE: '🗂️ Forum créé', FORUM_STRUCTURE_DELETE: '🗂️ Forum supprimé', FREELEECH_GLOBAL: '🎉 Freeleech global', POT_CONFIG: '🍯 Pot commun : réglages', POT_TRIGGER: '🍯 Pot commun : récompense lancée', POT_TOPUP: '🍯 Pot commun : mise de la maison', MOJ_CONFIG: '🎲 Mise-O-jeu : réglages', TORRENT_HOLD: '⏸ Correction demandée sur un torrent', SLOTS_CONFIG: '🎰 Machines à sous : réglages', HILO_CONFIG: '🃏 Plus haut ou plus bas : réglages', WHEEL_CONFIG: '🎡 Roue de la fortune : réglages', BLACKJACK_CONFIG: '♠️ Blackjack : réglages', DICE_CONFIG: '🎲 Dés : réglages', CARDS_CONFIG: '🎴 Cartes à collectionner : réglages', CHALLENGES_CONFIG: '🎯 Défis : réglages', ECONOMY_CONFIG: '💰 Économie des points : seuil d\'alerte', QUIZ_CONFIG: '🧠 Quiz quotidien : réglages', PICKS_CONFIG: '🎯 Pronostics LNH : réglages', PICKS_SETTLE: '🎯 Pronostics LNH : match réglé', PICKS_VOID: '🎯 Pronostics LNH : match annulé', QUIZ_QUESTION: '🧠 Quiz quotidien : question', GAMES_CASHBACK_CONFIG: '💝 Remise de fidélité : réglages', SPORTS_GOAL_SOUND: '🔊 Son de but modifié', UPLOAD_CREDIT_CONFIG: '🎁 Crédit d\'envoi : réglages', MOJ_REFUND: '🎲 Mise-O-jeu : match remboursé', MOJ_SETTLE: '🎲 Mise-O-jeu : match réglé à la main', SPORTS_CONFIG: '🏒 Score des Canadiens : réglages',
   LOGIN: '🔑 Connexion', LOGIN_FAILED: '❌ Connexion échouée', PASSWORD_CHANGE: '🔐 Mot de passe changé', PASSWORD_RESET: '🔐 Mot de passe réinitialisé',
   TWO_FACTOR_ENABLED: '🛡️ 2FA activée', TWO_FACTOR_DISABLED: '🛡️ 2FA désactivée', RESET_LINK_ISSUED: '🔗 Lien de réinitialisation émis',
 };

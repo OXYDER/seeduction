@@ -271,6 +271,26 @@ export const GUIDES_STAFF: WikiSeedCategory = {
         `• Les membres ont leur propre version : [url=/wiki/guide-envoyer-plusieurs]Envoyer plusieurs torrents depuis ton client[/url].`,
     },
     {
+      title: 'Santé du site et économie des points (staff)',
+      slug: 'guide-staff-sante-economie',
+      keywords: 'santé, monitoring, alertes, jwt, secret, économie, points, journal, gains, abus, staff, administration',
+      content:
+        `Deux écrans de l'administration aident à garder le site en bonne santé et l'économie des points sous contrôle.\n\n` +
+        `[b]Santé du site (Admin > Monitoring)[/b]\n` +
+        `• Le panneau du haut liste des contrôles avec une pastille : 🟢 normal, 🟠 à surveiller, 🔴 problème à régler. Il vérifie la base de données, la sécurité du secret des sessions, les tâches planifiées (pronostics, Mise-O-jeu, podium du quiz, remise de fidélité, parties abandonnées), l'API de la LNH, la mémoire, les erreurs serveur et l'envoi de courriels.\n` +
+        `• Toutes les 5 minutes, le site se contrôle seul. Quand un problème apparaît, les administrateurs reçoivent une [b]notification système[/b] (elle ne peut pas être coupée dans les préférences) ; le même problème n'est rappelé qu'après 12 heures, et un message annonce son rétablissement. Tu peux désactiver ces alertes avec la case du panneau.\n` +
+        `• Une tâche en échec affiche son message d'erreur. Si l'API de la LNH ne répond plus, règle ou annule les matchs à la main dans Admin > Jeux > Pronostics LNH.\n\n` +
+        `[b]Le secret des sessions (JWT_SECRET)[/b]\n` +
+        `• Le fichier [b]backend/.env[/b] doit contenir un [b]JWT_SECRET[/b] long et aléatoire (au moins 24 caractères). S'il manque ou garde la valeur d'exemple, le panneau de santé le signale en rouge : n'importe qui pourrait alors fabriquer une session administrateur.\n` +
+        `• Pour le changer : écris le nouveau secret dans backend/.env et redémarre le site. Tous les membres seront déconnectés, et les mots de passe de seedbox enregistrés et le jeton Telegram sont à ressaisir (ils sont chiffrés avec ce secret). Garde une copie du fichier .env : sans lui, une restauration ne pourrait pas relire ces données.\n\n` +
+        `[b]Économie des points (Admin > Jeux)[/b]\n` +
+        `• Chaque changement de points d'un membre est noté dans un journal central, regroupé par membre, source et heure (le journal garde 120 jours). Rien ne peut y échapper, même les points créés par du code non étiqueté : ils apparaissent dans « Autres ».\n` +
+        `• L'écran affiche les [b]points créés[/b] par les sources gratuites (roue, quiz, pronostics, cartes, défis, remise de fidélité, buts du Canadien), le [b]résultat de la maison[/b] aux jeux (positif : le site gagne des points aux membres), le détail par source sur 24 heures, 7 jours et la période choisie, et un graphique par jour.\n` +
+        `• Les [b]plus gros gagnants[/b] (24 heures et 7 jours) servent à repérer un abus possible, par exemple plusieurs comptes d'une même personne. Le partage de torrents, les dons et les échanges sont exclus de ce classement.\n` +
+        `• Fixe un [b]seuil d'alerte[/b] (1 500 points par défaut) : si un membre le dépasse en 24 heures avec les jeux et les récompenses gratuites, la santé du site passe à 🟠 et les administrateurs sont prévenus. Mets 0 pour couper l'alerte.\n\n` +
+        `Voir aussi : [url=/wiki/guide-staff-outils]Autres outils du staff[/url], [url=/wiki/fair-play-anti-triche]Fair-play et anti-triche[/url].`,
+    },
+    {
       title: 'Autres outils du staff',
       slug: 'guide-staff-outils',
       keywords: 'staff, administration, wiki, nouvelles, pot, catégories, invitations, support, réglages, admin',

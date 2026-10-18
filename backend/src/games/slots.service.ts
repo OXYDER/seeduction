@@ -8,6 +8,7 @@ import { PresenceService } from '../presence/presence.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { winOf, secureRng, type Rng } from '../common/utils/slots';
 import { emitChallenge } from '../common/utils/challenge-bus';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'slots';
 const DAY = 86400_000;
@@ -155,6 +156,7 @@ export class SlotsService {
       const eligible = !daily && cfg.jackpot.enabled && first.jackpot && stake >= cfg.jackpot.minStake;
       let jackpotWon = 0;
       const out = await this.prisma.$transaction(async (tx) => {
+        await setSource(tx, 'slots');
         if (!daily) {
           // Seuls les points qui ne viennent pas d'un don sont misables (vérifié par la base, en une seule étape atomique).
           const debited = await tx.$executeRaw`UPDATE "User" SET "bonusPoints" = "bonusPoints" - ${stake} WHERE "id" = ${accountId} AND "bonusPoints" - LEAST("donatedPoints", "bonusPoints") >= ${stake}`;

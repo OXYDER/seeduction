@@ -9,6 +9,7 @@ import { addDays, weekStart } from '../common/utils/picks';
 import { startOfDayToronto } from './slots.service';
 import { nextMidnightToronto, torontoDay } from './wheel.service';
 import { CardsService } from './cards.service';
+import { setSource } from '../common/utils/ledger';
 
 const KEY = 'challenges';
 const DAY = 86400_000;
@@ -99,6 +100,7 @@ export class ChallengesService implements OnModuleInit, OnModuleDestroy {
     // la récompense n'est versée que par la requête qui fait passer le défi à « réussi »
     const points = scaled(def.points, cfg), packs = def.packs ?? 0;
     const won = await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'challenges');
       const claimed = await tx.challengeProgress.updateMany({ where: { id: row.id, done: false }, data: { done: true, doneAt: new Date(), points, packs } });
       if (claimed.count === 0) return false;
       if (points > 0) await tx.user.update({ where: { id: userId }, data: { bonusPoints: { increment: points } } });
@@ -121,6 +123,7 @@ export class ChallengesService implements OnModuleInit, OnModuleDestroy {
     const b = scope === 'daily' ? cfg.dailyBonus : cfg.weeklyBonus;
     const points = scaled(b.points, cfg);
     const made = await this.prisma.$transaction(async (tx) => {
+      await setSource(tx, 'challenges');
       const r = await tx.challengeBonus.createMany({ data: [{ userId, scope, period, points, packs: b.packs }], skipDuplicates: true });
       if (r.count !== 1) return false;
       if (points > 0) await tx.user.update({ where: { id: userId }, data: { bonusPoints: { increment: points } } });
