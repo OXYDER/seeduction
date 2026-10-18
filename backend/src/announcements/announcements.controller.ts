@@ -13,17 +13,20 @@ interface NewsBody { title?: string; content?: string; pinned?: boolean; summary
 export class AnnouncementsController {
   constructor(private announcementsService: AnnouncementsService, private newsImage: NewsImageService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get()
   list(@Query('limit') limit = '5') {
     return this.announcementsService.list(parseInt(limit, 10));
   }
 
   /** Les plus récentes, pour l'accueil. */
+  @UseGuards(JwtAuthGuard)
   @Get('latest')
   latest(@Query('limit') limit = '3') {
     return this.announcementsService.latest(parseInt(limit, 10));
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('feed')
   feed(@Query('page') page = '1', @Query('pageSize') pageSize = '10', @Query('kind') kind?: string, @Query('q') q?: string) {
     return this.announcementsService.feed(parseInt(page, 10), Math.min(30, parseInt(pageSize, 10) || 10), { kind, q });
@@ -63,6 +66,7 @@ export class AnnouncementsController {
     return this.announcementsService.findOne(id, req.user?.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(':id/comments')
   comments(@Param('id') id: string, @Query('page') page = '1') {
     return this.announcementsService.comments(id, parseInt(page, 10));

@@ -54,6 +54,7 @@ export class StatsController {
     return { count: await this.dead.mineCount(req.user.accountId ?? req.user.userId, req.user.userId) };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('top-torrents')
   top(@Query('limit') limit = '10') {
     return this.statsService.topTorrents(parseInt(limit, 10));

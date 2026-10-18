@@ -17,6 +17,7 @@ export class ChatController {
     private covers: CoversService,
   ) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get('messages')
   list(@Query('limit') limit?: string) {
     return this.chatService.list(limit ? Number(limit) : undefined);

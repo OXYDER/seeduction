@@ -63,6 +63,23 @@ const tok = (u, role, iat) => jwt.sign({ sub: u.id, username: u.username, role: 
   check('rapport CSP refusé aux membres', (await call('GET', '/security/csp-report', tok(member))).s === 403);
   await call('DELETE', '/security/csp-report', TA);
 
+  // ---- le site est privé : rien n'est lisible sans session
+  const anon = ['/torrents', '/torrents/' + 'x'.repeat(8), '/users/' + member.id, '/users/leaderboard', '/stats/top-torrents', '/badges/hall-of-fame', '/chat/messages', '/announcements/latest', '/announcements/feed', '/entities', '/forum/latest', '/forum/index', '/requests', '/collections/public', '/wiki', '/wiki/faq', '/wiki/search?q=staff', '/wiki/articles/guide-staff-sante-economie'];
+  const open = [];
+  for (const path of anon) { const r = await fetch(BASE + path); if (r.status !== 401) open.push(path + ' → ' + r.status); }
+  check('visiteur sans session : tout est refusé (401)', open.length === 0, open.join(' ; '));
+  check('les pages publiques nécessaires restent ouvertes (état du site, connexion)', (await fetch(BASE + '/system/status')).status === 200 && (await fetch(BASE + '/auth/features')).status === 200);
+
+  // ---- Wiki : les guides du staff ne sont jamais envoyés aux membres
+  const treeM = await call('GET', '/wiki', tok(member)), treeA = await call('GET', '/wiki', TA);
+  check('wiki : un membre ne voit pas la catégorie du staff', treeM.s === 200 && !treeM.b.some((c) => c.slug === 'guides-staff') && treeM.b.length > 3);
+  check('wiki : l\'équipe la voit', treeA.s === 200 && treeA.b.some((c) => c.slug === 'guides-staff'));
+  check('wiki : article du staff refusé à un membre (404), visible par l\'équipe', (await call('GET', '/wiki/articles/guide-staff-sante-economie', tok(member))).s === 404 && (await call('GET', '/wiki/articles/guide-staff-sante-economie', TA)).s === 200);
+  const srch = await call('GET', '/wiki/search?q=JWT_SECRET', tok(member));
+  check('wiki : la recherche d\'un membre ne remonte aucun guide du staff', srch.s === 200 && !srch.b.some((x) => x.category?.slug === 'guides-staff'));
+  const faqM = await call('GET', '/wiki/faq', tok(member));
+  check('wiki : la FAQ d\'un membre ne contient rien du staff', faqM.s === 200 && !faqM.b.some((x) => x.category?.slug === 'guides-staff'));
+
   // ---- nettoyage
   await p.activityLog.deleteMany({ where: { OR: [{ ip: { in: [ipBrute, ipSpray, ipNew, '203.0.113.200'] } }, { userId: { in: [member.id, banned.id, demoted.id, changed.id, staff.id] } }, { action: 'LOGIN_FAILED', meta: { path: ['username'], string_starts_with: tag } }] } });
   await p.user.deleteMany({ where: { id: { in: [member.id, banned.id, demoted.id, changed.id, staff.id] } } });

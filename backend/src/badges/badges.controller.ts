@@ -11,6 +11,7 @@ export class BadgesController {
     return this.badgesService.catalog();
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('hall-of-fame')
   hallOfFame(@Query('limit') limit?: string) {
     return this.badgesService.hallOfFame(limit ? Number(limit) : undefined);
@@ -22,6 +23,7 @@ export class BadgesController {
     return this.badgesService.listForUser(req.user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('user/:id')
   forUser(@Param('id') id: string) {
     return this.badgesService.listForUser(id);

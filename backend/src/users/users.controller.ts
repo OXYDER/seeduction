@@ -89,6 +89,7 @@ export class UsersController {
     return this.usersService.mentionSearch(q);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('leaderboard')
   leaderboard(@Query('limit') limit = '50') {
     return this.usersService.leaderboard(parseInt(limit, 10));

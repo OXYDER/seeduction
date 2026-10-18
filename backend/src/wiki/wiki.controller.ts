@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { WikiService } from './wiki.service';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { WikiService, isWikiStaff } from './wiki.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -8,24 +8,28 @@ import { Roles } from '../common/decorators/roles.decorator';
 export class WikiController {
   constructor(private wikiService: WikiService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get()
-  tree() {
-    return this.wikiService.tree();
+  tree(@Request() req: any) {
+    return this.wikiService.tree(isWikiStaff(req.user?.role));
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('faq')
-  faq() {
-    return this.wikiService.faq();
+  faq(@Request() req: any) {
+    return this.wikiService.faq(isWikiStaff(req.user?.role));
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('search')
-  search(@Query('q') q: string) {
-    return this.wikiService.search(q);
+  search(@Query('q') q: string, @Request() req: any) {
+    return this.wikiService.search(q, isWikiStaff(req.user?.role));
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('articles/:slug')
-  findOne(@Param('slug') slug: string) {
-    return this.wikiService.findBySlug(slug);
+  findOne(@Param('slug') slug: string, @Request() req: any) {
+    return this.wikiService.findBySlug(slug, isWikiStaff(req.user?.role));
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

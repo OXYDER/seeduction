@@ -16,6 +16,11 @@ function slugify(s: string) {
     .replace(/(^-|-$)/g, '');
 }
 
+/** Catégories du Wiki réservées à l'équipe (procédures, seuils, configuration) : jamais envoyées aux membres, ni à l'assistant du support. */
+export const STAFF_WIKI_CATEGORIES = ['guides-staff'];
+export const isWikiStaff = (role?: string | null): boolean => ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(String(role ?? ''));
+const visible = (staff: boolean) => (staff ? {} : { category: { slug: { notIn: STAFF_WIKI_CATEGORIES } } });
+
 const CATEGORY_SELECT = { id: true, name: true, slug: true, icon: true, order: true };
 const ARTICLE_LIST_SELECT = { id: true, categoryId: true, title: true, slug: true, isFaq: true, order: true, updatedAt: true };
 
@@ -72,7 +77,7 @@ export class WikiService implements OnModuleInit {
 
   private async index(): Promise<WikiIndex> {
     if (this.indexCache && Date.now() - this.indexCache.at < 60_000) return this.indexCache.index;
-    const rows = await this.prisma.wikiArticle.findMany({ select: { id: true, slug: true, title: true, keywords: true, content: true, isFaq: true, category: { select: { name: true } } } });
+    const rows = await this.prisma.wikiArticle.findMany({ where: visible(false), select: { id: true, slug: true, title: true, keywords: true, content: true, isFaq: true, category: { select: { name: true } } } });
     const index = new WikiIndex(rows.map((r) => ({ id: r.id, slug: r.slug, title: r.title, keywords: r.keywords, content: r.content, isFaq: r.isFaq, category: r.category.name })));
     this.indexCache = { at: Date.now(), index };
     return index;
@@ -89,26 +94,28 @@ export class WikiService implements OnModuleInit {
   }
 
   /** Arborescence complète (catégories + leurs articles, sans le contenu) pour la navigation. */
-  async tree() {
+  async tree(staff = false) {
     return this.prisma.wikiCategory.findMany({
+      where: staff ? {} : { slug: { notIn: STAFF_WIKI_CATEGORIES } },
       orderBy: { order: 'asc' },
       select: { ...CATEGORY_SELECT, articles: { orderBy: { order: 'asc' }, select: ARTICLE_LIST_SELECT } },
     });
   }
 
-  faq() {
+  faq(staff = false) {
     return this.prisma.wikiArticle.findMany({
-      where: { isFaq: true },
+      where: { isFaq: true, ...visible(staff) },
       orderBy: [{ category: { order: 'asc' } }, { order: 'asc' }],
       include: { category: { select: CATEGORY_SELECT } },
     });
   }
 
-  async search(q: string) {
+  async search(q: string, staff = false) {
     const term = (q || '').trim();
     if (term.length < 2) return [];
     return this.prisma.wikiArticle.findMany({
       where: {
+        ...visible(staff),
         OR: [
           { title: { contains: term, mode: 'insensitive' } },
           { content: { contains: term, mode: 'insensitive' } },
@@ -121,12 +128,12 @@ export class WikiService implements OnModuleInit {
     });
   }
 
-  async findBySlug(slug: string) {
+  async findBySlug(slug: string, staff = false) {
     const article = await this.prisma.wikiArticle.findUnique({
       where: { slug },
       include: { category: { select: CATEGORY_SELECT } },
     });
-    if (!article) throw new NotFoundException('Article introuvable');
+    if (!article || (!staff && STAFF_WIKI_CATEGORIES.includes(article.category.slug))) throw new NotFoundException('Article introuvable');
     return article;
   }
 
