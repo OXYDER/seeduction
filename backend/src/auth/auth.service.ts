@@ -227,8 +227,12 @@ export class AuthService {
     }
 
     if (user.mustResetPassword) {
-      await this.sendResetMail(user, 24, ip).catch(() => undefined);
-      throw new ForbiddenException("Ton mot de passe doit être réinitialisé avant de pouvoir te reconnecter. Un courriel contenant le lien de réinitialisation vient de t'être envoyé.");
+      // Un seul courriel : tant que le lien reçu est valable (24 h), on n'en renvoie pas ; il n'y a jamais d'envoi automatique, seulement quand le membre essaie de se connecter et que son lien a expiré.
+      const pending = await this.prisma.passwordReset.findFirst({ where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } }, select: { id: true } });
+      if (!pending) await this.sendResetMail(user, 24, ip, true).catch(() => undefined);
+      throw new ForbiddenException(pending
+        ? "Ton mot de passe doit être réinitialisé avant de pouvoir te reconnecter. Un courriel contenant le lien t'a déjà été envoyé : regarde ta boîte de réception (et tes courriels indésirables)."
+        : "Ton mot de passe doit être réinitialisé avant de pouvoir te reconnecter. Un courriel contenant le lien de réinitialisation vient de t'être envoyé.");
     }
 
     if (user.twoFactorEnabled) {
