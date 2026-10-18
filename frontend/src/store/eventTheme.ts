@@ -6,7 +6,7 @@ const PREVIEW_KEY = 'seeduction-event-preview';
 const MTL_KEY = 'seeduction-mtl';
 const readMtl = (): boolean => { try { return localStorage.getItem(MTL_KEY) !== '0'; } catch { return true; } };
 const MTLSND_KEY = 'seeduction-mtl-sound';
-const readMtlSound = (): boolean => { try { return localStorage.getItem(MTLSND_KEY) !== '0'; } catch { return true; } };
+const readMtlSound = (): boolean => { try { return localStorage.getItem(MTLSND_KEY) === '1'; } catch { return false; } };
 const readPreview = (): EventId | null => { try { return (sessionStorage.getItem(PREVIEW_KEY) as EventId) || null; } catch { return null; } };
 
 interface ServerState { id: EventId | null; name: string | null; source: 'forced' | 'schedule' | null; until: string | null; particles: boolean; newYear: { at: string; year: number; daysBefore: number } | null }

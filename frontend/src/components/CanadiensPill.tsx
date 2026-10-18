@@ -66,6 +66,7 @@ function GameRow({ g }: { g: Game }) {
 export default function CanadiensPill() {
   const enabled = useEventTheme((s) => s.mtl);
   const sound = useEventTheme((s) => s.mtlSound);
+  const setSound = useEventTheme((s) => s.setMtlSound);
   const inferredRef = useRef(false);
   const soundRef = useRef(sound);
   soundRef.current = sound;
@@ -162,6 +163,10 @@ export default function CanadiensPill() {
               {g.venue ? ` · ${g.venue}` : ''}{g.tv.length ? ` · ${g.tv.slice(0, 3).join(', ')}` : ''}
             </div>
           </div>
+          <label className="row" style={{ gap: 8, margin: '2px 0 8px', fontSize: 13, cursor: 'pointer', alignItems: 'center' }}>
+            <input type="checkbox" checked={sound} onChange={(e) => { setSound(e.target.checked); if (e.target.checked) { primeGoalHorn(); playGoalHorn(); } }} />
+            🚨 Sirène quand le Canadien marque
+          </label>
           {data.last.length > 0 && <><div className="mtl-sub">Derniers résultats</div>{data.last.map((x) => <GameRow key={x.id} g={x} />)}</>}
           {data.next.length > 0 && <><div className="mtl-sub">Prochains matchs</div>{data.next.filter((x) => x.id !== g.id || g.state === 'FINAL').map((x) => <GameRow key={x.id} g={x} />)}</>}
           <Link to="/jeux/mise-o-jeu" className="mtl-play" onClick={close}>🎲 Parier sur les matchs du Canadien : Mise-O-jeu <span aria-hidden="true">→</span></Link>
