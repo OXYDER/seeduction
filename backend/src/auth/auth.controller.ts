@@ -29,7 +29,7 @@ export class AuthController {
 
   @Post('login')
   login(@Body() body: { usernameOrEmail: string; password: string; totpToken?: string }, @Request() req: any) {
-    return this.authService.login(body.usernameOrEmail, body.password, body.totpToken, ipOf(req));
+    return this.authService.login(body.usernameOrEmail, body.password, body.totpToken, trustedIpOf(req));
   }
 
   // ---- double authentification (2FA)
@@ -91,12 +91,12 @@ export class AuthController {
 
   @Post('forgot-password')
   forgotPassword(@Body('email') email: string, @Request() req: any) {
-    return this.authService.forgotPassword(email, ipOf(req));
+    return this.authService.forgotPassword(email, trustedIpOf(req));
   }
 
   @Post('reset-password')
   resetPassword(@Body() body: { token: string; newPassword: string }, @Request() req: any) {
-    return this.authService.resetPassword(body.token, body.newPassword, ipOf(req));
+    return this.authService.resetPassword(body.token, body.newPassword, trustedIpOf(req));
   }
 
   @UseGuards(JwtAuthGuard)
