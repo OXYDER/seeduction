@@ -23,7 +23,7 @@ export interface HealthInput {
 export const JOB_LABEL: Record<string, string> = {
   'picks.tick': 'Pronostics LNH : synchronisation et règlement', 'picks.weekly': 'Pronostics LNH : prix de la semaine', 'moj.tick': 'Mise-O-jeu : règlement des matchs',
   'hilo.sweep': 'Plus haut ou plus bas : parties abandonnées', 'blackjack.sweep': 'Blackjack : parties abandonnées', 'quiz.podium': 'Quiz : podium de la veille',
-  'games.cashback': 'Remise de fidélité des jeux', 'economy.watch': 'Économie des points : surveillance',
+  'games.cashback': 'Remise de fidélité des jeux', 'economy.watch': 'Économie des points : surveillance', 'security.watch': 'Sécurité : surveillance des connexions suspectes',
 };
 
 const worse = (a: Level, b: Level): Level => (a === 'error' || b === 'error' ? 'error' : a === 'warn' || b === 'warn' ? 'warn' : 'ok');

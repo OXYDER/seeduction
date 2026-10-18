@@ -25,6 +25,7 @@ import AdminBlackjack from '../components/AdminBlackjack';
 import AdminDice from '../components/AdminDice';
 import AdminCards from '../components/AdminCards';
 import AdminChallenges from '../components/AdminChallenges';
+import SecurityWatch from '../components/SecurityWatch';
 import AdminDuels from '../components/AdminDuels';
 import HealthPanel from '../components/HealthPanel';
 import AdminEconomy from '../components/AdminEconomy';
@@ -251,6 +252,7 @@ function MonitoringAdmin() {
   return (
     <div className="grid">
       <HealthPanel />
+      <SecurityWatch />
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <StatTile label="Base de données" value={database.ok ? `OK (${database.latencyMs} ms)` : 'INJOIGNABLE'} tone={database.ok ? 'ok' : 'bad'} />
         <StatTile label="Uptime backend" value={formatUptime(proc.uptimeSeconds)} />
