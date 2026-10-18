@@ -1,6 +1,6 @@
 import { applyDefaultView } from '../lib/viewMode';
 import { applyTipStyle } from '../lib/tipStyle';
-import { useCallback, useEffect, useState, FormEvent } from 'react';
+import { Suspense, useCallback, useEffect, useState, FormEvent } from 'react';
 import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
@@ -519,7 +519,7 @@ function LayoutInner() {
             <EventStrip />
             <Breadcrumbs />
             <div key={location.pathname} className="page-enter">
-              <Outlet context={{ profile, categories } satisfies LayoutContext} />
+              <Suspense fallback={<div className="muted" style={{ padding: 24 }}>Chargement…</div>}><Outlet context={{ profile, categories } satisfies LayoutContext} /></Suspense>
             </div>
           </main>
         </div>
@@ -654,7 +654,7 @@ function LayoutInner() {
       <div className="container">
         <EventStrip />
         <Breadcrumbs />
-        <Outlet context={{ profile, categories } satisfies LayoutContext} />
+        <Suspense fallback={<div className="muted" style={{ padding: 24 }}>Chargement…</div>}><Outlet context={{ profile, categories } satisfies LayoutContext} /></Suspense>
       </div>
 
       <EventRoot />
