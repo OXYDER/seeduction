@@ -27,7 +27,7 @@ const PW = 'Mot-de-passe-test-1';
   const torrent = await p.torrent.create({ data: { infoHash: tag.padEnd(40, 'a'), name: tag + '.Film.2024.1080p-GRP', filePath: '/x', size: 2_000_000_000n, fileList: [], categoryId: cat.id, uploaderId: target.id, status: 'APPROVED' } });
   await p.snatch.create({ data: { torrentId: torrent.id, userId: target.id, hnr: true, seedSeconds: 600 } });
   await p.friendship.create({ data: { requesterId: target.id, addresseeId: friend.id, status: 'ACCEPTED' } });
-  const fcat = await p.forumCategory.create({ data: { name: tag + 'f', slug: tag + 'f' } }).catch(async () => p.forumCategory.findFirst());
+  const fcat = await p.forumCategory.create({ data: { name: tag + 'f' } });
   const topic = await p.forumTopic.create({ data: { title: tag + ' sujet', categoryId: fcat.id, authorId: target.id } });
   await p.forumPost.create({ data: { topicId: topic.id, authorId: target.id, content: 'Premier message du sujet' } });
   await p.forumPost.create({ data: { topicId: topic.id, authorId: target.id, content: 'Une réponse' } });

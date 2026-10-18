@@ -38,7 +38,7 @@ const denied = (r, secret) => ![200, 201, 204].includes(r.s) && !(secret && r.ra
   const comment = await p.torrentComment.create({ data: { torrentId: torrent.id, authorId: victim.id, content: 'Commentaire ' + SECRET } });
   const tk = await call('POST', '/support/tickets', TV, { subject: 'Ticket ' + SECRET, content: 'Détail du problème ' + SECRET, fromChat: false });
   const ticketId = tk.b?.id ?? tk.b?.ticket?.id;
-  const fcat = await p.forumCategory.create({ data: { name: tag + 'f', slug: tag + 'f' } }).catch(() => p.forumCategory.findFirst());
+  const fcat = await p.forumCategory.create({ data: { name: tag + 'f' } });
   const topic = await p.forumTopic.create({ data: { title: tag + 't', categoryId: fcat.id, authorId: victim.id } });
   const post = await p.forumPost.create({ data: { topicId: topic.id, authorId: victim.id, content: 'Post ' + SECRET } });
 
