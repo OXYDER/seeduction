@@ -52,6 +52,14 @@ const tok = (u, role, iat) => jwt.sign({ sub: u.id, username: u.username, role: 
   check('membre de l\'équipe depuis une nouvelle adresse détecté', f.some((x) => x.kind === 'staff-new-ip' && x.subject === staff.username && x.detail.includes(ipNew)));
   check('un membre ordinaire ne peut pas lire le rapport', (await call('GET', '/admin/monitoring/security', tok(member))).s === 403);
 
+  // ---- rapports de la politique de sécurité du navigateur (CSP)
+  const post = await fetch(BASE + '/security/csp-report', { method: 'POST', headers: { 'Content-Type': 'application/csp-report' }, body: JSON.stringify({ 'csp-report': { 'violated-directive': 'img-src', 'blocked-uri': 'https://e2e-test.invalid/x.png?secret=1', 'document-uri': 'https://site.test/p?a=1' } }) });
+  check('rapport CSP reçu sans connexion (204)', post.status === 204, String(post.status));
+  const csp = await call('GET', '/security/csp-report', TA);
+  check("rapport CSP visible par l'administrateur, sans paramètres", csp.s === 200 && csp.b.items.some((i) => i.blocked === 'https://e2e-test.invalid/x.png'));
+  check('rapport CSP refusé aux membres', (await call('GET', '/security/csp-report', tok(member))).s === 403);
+  await call('DELETE', '/security/csp-report', TA);
+
   // ---- nettoyage
   await p.activityLog.deleteMany({ where: { OR: [{ ip: { in: [ipBrute, ipSpray, ipNew, '203.0.113.200'] } }, { userId: { in: [member.id, banned.id, demoted.id, changed.id, staff.id] } }, { action: 'LOGIN_FAILED', meta: { path: ['username'], string_starts_with: tag } }] } });
   await p.user.deleteMany({ where: { id: { in: [member.id, banned.id, demoted.id, changed.id, staff.id] } } });

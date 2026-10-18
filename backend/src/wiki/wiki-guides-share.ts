@@ -285,6 +285,8 @@ export const GUIDES_STAFF: WikiSeedCategory = {
         `• Un membre [b]banni[/b], un compte désactivé ou une personne de l'équipe [b]rétrogradée[/b] perd ses droits en quelques secondes, même si sa session est encore ouverte (le rôle est relu dans la base, pas lu dans le jeton). Un changement de mot de passe [b]coupe toutes les sessions ouvertes avant lui[/b] : il faut se reconnecter.
 ` +
         `• Le contrôle « Sécurité : configuration » du panneau de santé passe à l'orange si le mot de passe de la base (POSTGRES_PASSWORD) est resté à une valeur par défaut, ou si [b]CORS_ORIGIN[/b] n'est pas défini dans backend/.env : mets-y l'adresse de ton site (ex. https://seeduction.org). L'API a aussi un plafond général par adresse IP (1500 requêtes par minute, réglable avec API_RATE_LIMIT), qui ne gêne pas un usage normal.
+` +
+        `• Admin > Monitoring contient aussi « Sécurité : connexions suspectes » : force brute, arrosage de comptes (une adresse qui essaie beaucoup de comptes), compte ciblé depuis plusieurs adresses, et connexion d'un membre de l'équipe depuis une adresse jamais vue. Les administrateurs sont notifiés (une fois par jour par constat). Le blocage d'une adresse se fait dans ton proxy. Dessous, la liste des infractions de la politique de sécurité du navigateur (CSP, en mode test) indique ce qui serait bloqué avant de la rendre obligatoire.
 
 ` +
         `[b]Le secret des sessions (JWT_SECRET)[/b]\n` +

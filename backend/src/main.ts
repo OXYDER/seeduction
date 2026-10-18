@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { json } from 'express';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { MetricsService } from './monitoring/metrics.service';
@@ -21,6 +22,8 @@ async function bootstrap() {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     next();
   });
+  // Les navigateurs envoient les rapports de sécurité (CSP) avec un type de contenu particulier : on l'accepte, avec une taille minuscule.
+  app.use('/api/security/csp-report', json({ type: ['application/csp-report', 'application/reports+json', 'application/json'], limit: '16kb' }));
   app.enableCors({ origin: process.env.CORS_ORIGIN?.split(',') ?? '*' });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix('api', { exclude: ['tracker/(.*)'] }); // le tracker BitTorrent reste hors /api
