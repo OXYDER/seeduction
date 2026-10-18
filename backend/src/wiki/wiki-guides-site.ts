@@ -476,6 +476,47 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Voir aussi : [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url], [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url], [url=/wiki/guide-pronostics-lnh]Faire ses pronostics sur la LNH[/url].`,
     },
     {
+      title: 'Les classements des jeux',
+      slug: 'guide-classements',
+      keywords: 'classements, classement, meilleurs, top, rang, quiz, pronostics, roue, défis, cartes, collectionneurs, jeux, gratuit',
+      content:
+        `La page [url=/jeux/classements]Classements[/url] (bouton « 🏆 Classements » sur la page Jeux) montre les meilleurs membres des jeux [b]gratuits[/b].
+
+` +
+        `[b]Les six classements[/b]
+` +
+        `• [b]Quiz : points de la semaine[/b] — les points gagnés au quiz quotidien, du lundi au dimanche.
+` +
+        `• [b]Quiz : jours de suite[/b] — la plus longue série de jours avec le quiz terminé en cours.
+` +
+        `• [b]Pronostics LNH[/b] — le nombre de bonnes prédictions de la semaine.
+` +
+        `• [b]Roue de la fortune : jours de suite[/b] — la série de jours où tu as tourné la roue.
+` +
+        `• [b]Défis réussis[/b] — les défis quotidiens et hebdomadaires réussis ces 30 derniers jours.
+` +
+        `• [b]Collectionneurs[/b] — le nombre de cartes différentes dans l'album.
+
+` +
+        `[b]Comment grimper[/b]
+` +
+        `• Fais le quiz chaque jour pour les points et la série, tourne la roue sans jamais sauter une journée, et fais tes pronostics avant le début des matchs.
+` +
+        `• Les défis et l'ouverture de paquets de cartes font monter les deux derniers classements.
+
+` +
+        `[b]À savoir[/b]
+` +
+        `• Chaque classement affiche le top 10 ; si tu n'y es pas, ton propre rang s'affiche en dessous. Ta ligne est surlignée quand tu y figures.
+` +
+        `• Une série de jours se garde si tu as joué aujourd'hui ou hier : joue aujourd'hui pour ne pas la perdre.
+` +
+        `• Aucun classement ne dépend de mises : ils ne comptent que les activités gratuites.
+
+` +
+        `Voir aussi : [url=/wiki/guide-defis]Relever les défis[/url], [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url], [url=/wiki/guide-cartes]Collectionner les cartes[/url].`,
+    },
+    {
       title: 'Relever les défis',
       slug: 'guide-defis',
       keywords: 'défis, défi quotidien, défi hebdomadaire, objectifs, bonus, série, récompenses, jeux, gratuit',

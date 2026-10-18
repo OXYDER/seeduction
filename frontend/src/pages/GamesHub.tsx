@@ -264,6 +264,7 @@ export default function GamesHub() {
         </div>
         <div className="row" style={{ gap: 14, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <Link to="/bonus" className="muted">Mes points bonus →</Link>
+          <Link to="/jeux/classements" className="muted">🏆 Classements</Link>
           <Link to="/wiki/guide-mise-o-jeu" className="muted">Comment ça marche ?</Link>
           <button type="button" className="secondary" style={{ marginLeft: 'auto' }} onClick={() => optOut(!me.optOut)}>{me.optOut ? 'Revenir aux jeux' : 'Me retirer des jeux'}</button>
         </div>

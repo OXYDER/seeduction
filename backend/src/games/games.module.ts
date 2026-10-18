@@ -25,6 +25,8 @@ import { CardsController } from './cards.controller';
 import { CardsService } from './cards.service';
 import { ChallengesController } from './challenges.controller';
 import { ChallengesService } from './challenges.service';
+import { BoardsController } from './boards.controller';
+import { BoardsService } from './boards.service';
 
-@Module({ imports: [NotificationsModule, SportsModule, PresenceModule], controllers: [GamesController, SlotsController, GamesHubController, HiLoController, WheelController, QuizController, PicksController, BlackjackController, DiceController, CardsController, ChallengesController], providers: [MojService, SlotsService, GamesHubService, HiLoService, GamesCashbackService, WheelService, QuizService, PicksService, BlackjackService, DiceService, CardsService, ChallengesService], exports: [MojService, SlotsService, HiLoService, GamesCashbackService, WheelService, QuizService, PicksService, BlackjackService, DiceService, CardsService, ChallengesService] })
+@Module({ imports: [NotificationsModule, SportsModule, PresenceModule], controllers: [GamesController, SlotsController, GamesHubController, HiLoController, WheelController, QuizController, PicksController, BlackjackController, DiceController, CardsController, ChallengesController, BoardsController], providers: [MojService, SlotsService, GamesHubService, HiLoService, GamesCashbackService, WheelService, QuizService, PicksService, BlackjackService, DiceService, CardsService, ChallengesService, BoardsService], exports: [MojService, SlotsService, HiLoService, GamesCashbackService, WheelService, QuizService, PicksService, BlackjackService, DiceService, CardsService, ChallengesService] })
 export class GamesModule {}
