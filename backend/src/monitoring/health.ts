@@ -9,6 +9,7 @@ export interface Check { id: string; label: string; level: Level; detail: string
 export interface HealthInput {
   db: { ok: boolean; latencyMs: number | null };
   secretWeakness: string | null;
+  configWeaknesses?: string[];
   jobs: JobState[];
   jobMonitor: JobMonitor;
   nhl: { lastOkAt: number | null; lastErrorAt: number | null; lastError: string | null };
@@ -38,6 +39,10 @@ export function evaluate(i: HealthInput): Check[] {
   out.push(i.secretWeakness
     ? { id: 'secret', label: 'Sécurité : secret des sessions', level: 'error', detail: `${i.secretWeakness}. Définis un JWT_SECRET long et aléatoire dans backend/.env (les sessions seront réinitialisées et les mots de passe de seedbox et le jeton Telegram sont à ressaisir).` }
     : { id: 'secret', label: 'Sécurité : secret des sessions', level: 'ok', detail: 'Secret personnalisé et assez long' });
+  const weak = i.configWeaknesses ?? [];
+  out.push(weak.length > 0
+    ? { id: 'config', label: 'Sécurité : configuration', level: 'warn', detail: weak.join(' ; ') + '.' }
+    : { id: 'config', label: 'Sécurité : configuration', level: 'ok', detail: "Mot de passe de la base personnalisé, accès à l'API limité à ton site" });
   for (const j of i.jobs) {
     const st = i.jobMonitor.statusOf(j, now);
     out.push({ id: `job:${j.name}`, label: `Tâche : ${JOB_LABEL[j.name] ?? j.name}`, level: st.level, detail: st.detail });

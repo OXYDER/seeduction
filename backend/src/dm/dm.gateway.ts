@@ -1,4 +1,5 @@
 import { lockState } from '../lockdown/lockdown-state';
+import { loadIdentity, sessionRefusal } from '../common/utils/session-identity';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect,
@@ -64,6 +65,7 @@ export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect, OnMo
       const payload = this.jwtService.verify(token, { secret: jwtSecret() });
       if (lockState.blocking || lockState.tokenRevoked(payload.iat)) { client.disconnect(); return; } // alerte générale / session révoquée
       if (payload.scope === 'account') { client.disconnect(); return; }
+      if (sessionRefusal(await loadIdentity(this.prisma, payload.sub), payload.iat)) { client.disconnect(); return; } // compte banni, supprimé ou session coupée
       client.data = { userId: payload.sub, username: payload.username };
       client.join(room(client.data.userId));
       await this.presence.connect(client.data.userId, client.id, client.data.username);

@@ -13,6 +13,14 @@ import { lockState } from './lockdown/lockdown-state';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
+  // Adresse IP réelle du visiteur (limites de débit, journaux) : on fait confiance à N proxys devant le backend (2 par défaut : Nginx Proxy Manager + le nginx du site ; 3 avec Cloudflare).
+  (app.getHttpAdapter().getInstance() as any).set('trust proxy', Math.max(1, Number(process.env.TRUSTED_PROXY_HOPS ?? 2) || 2));
+  (app.getHttpAdapter().getInstance() as any).disable('x-powered-by');
+  app.use((_req: any, res: any, next: () => void) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
   app.enableCors({ origin: process.env.CORS_ORIGIN?.split(',') ?? '*' });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix('api', { exclude: ['tracker/(.*)'] }); // le tracker BitTorrent reste hors /api

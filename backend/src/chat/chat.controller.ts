@@ -24,14 +24,14 @@ export class ChatController {
 
   @UseGuards(JwtAuthGuard)
   @Post('files/upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024, files: 1 } }))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     return this.chatFiles.saveUpload(file);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('images/upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     return { url: await this.covers.saveUpload(file) };
   }

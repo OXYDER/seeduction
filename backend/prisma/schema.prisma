@@ -35,6 +35,8 @@ enum UserStatus {
 
 model User {
   id               String     @id @default(uuid())
+  /// Les sessions ouvertes avant cette date ne sont plus valides (posée à chaque changement ou réinitialisation de mot de passe).
+  sessionsValidAfter DateTime?
   username         String     @unique
   email            String     @unique
   passwordHash     String

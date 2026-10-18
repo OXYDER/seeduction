@@ -39,7 +39,7 @@ export class CoversController {
   /** Remplacement manuel d'une pochette (au lieu de celle trouvée automatiquement). */
   @UseGuards(JwtAuthGuard)
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
   async upload(@UploadedFile() file: Express.Multer.File) {
     const url = await this.coversService.saveUpload(file);
     return { url };

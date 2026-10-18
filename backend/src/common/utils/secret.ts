@@ -19,3 +19,12 @@ export function secretWeakness(secret: string | undefined = process.env.JWT_SECR
   if (secret.length < 24) return `JWT_SECRET est trop court (${secret.length} caractères ; il en faut au moins 24)`;
   return null;
 }
+
+/** Autres réglages de sécurité de l'environnement, faciles à oublier : mot de passe de la base resté par défaut, accès à l'API ouvert à tous les sites. Liste vide : rien à signaler. */
+export function configWeaknesses(env: Record<string, string | undefined> = process.env): string[] {
+  const out: string[] = [];
+  const dbPassword = /^postgres(?:ql)?:\/\/[^:@/]+:([^@/]*)@/.exec(env.DATABASE_URL ?? '')?.[1];
+  if (dbPassword !== undefined && ['changeme', 'password', 'postgres', 'tracker', 'admin', '123456'].includes(decodeURIComponent(dbPassword).toLowerCase())) out.push('le mot de passe de la base de données (POSTGRES_PASSWORD) est resté à une valeur par défaut');
+  if (!env.CORS_ORIGIN || env.CORS_ORIGIN.trim() === '*') out.push("CORS_ORIGIN n'est pas défini : l'API répond à n'importe quel site (mets l'adresse de ton site)");
+  return out;
+}

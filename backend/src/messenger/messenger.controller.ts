@@ -263,7 +263,7 @@ export class MessengerController {
 
   /** Pièce jointe : une image (jpeg/png/webp) s'affiche en ligne, tout autre fichier devient un lien de téléchargement. */
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024, files: 1 } }))
   async upload(@UploadedFile() file: Express.Multer.File, @Query('voice') voice?: string) {
     if (!file) throw new BadRequestException('Fichier manquant');
     if (voice === '1') {

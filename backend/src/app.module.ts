@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { ApiThrottlerGuard } from './common/guards/api-throttler.guard';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TorrentsModule } from './torrents/torrents.module';
@@ -61,10 +63,11 @@ import { TelegramModule } from './telegram/telegram.module';
 import { SuggestionsModule } from './suggestions/suggestions.module';
 
 @Module({
+  providers: [{ provide: APP_GUARD, useClass: ApiThrottlerGuard }],
   imports: [
     PrismaModule,
     ScheduleModule.forRoot(), // active les @Cron (snapshots ratio, purge peers)
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]), // rate-limit anti-abus API générale
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: Number(process.env.API_RATE_LIMIT) || 1500 }]), // plafond général par IP (filet anti-abus, voir ApiThrottlerGuard)
     AuthModule,
     UsersModule,
     TorrentsModule,

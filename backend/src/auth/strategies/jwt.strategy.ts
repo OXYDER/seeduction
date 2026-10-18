@@ -5,6 +5,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { ALL_PERMS, permsOf, type Perms } from '../../common/utils/family-perms';
 import { lockState } from '../../lockdown/lockdown-state';
 import { jwtSecret } from '../../common/utils/secret';
+import { loadIdentity, sessionRefusal } from '../../common/utils/session-identity';
 
 export interface JwtPayload {
   sub: string;
@@ -54,6 +55,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return { userId: payload.sub, accountId: payload.sub, username: payload.username, role: payload.role, scope: 'account', isMaster: true, fam: false, perms: ALL_PERMS };
     }
     let perms: Perms = ALL_PERMS;
+    let role = payload.role;
+    if (!payload.acct) {
+      // Le jeton dure 7 jours : le rôle et l'état du compte sont relus (au plus toutes les 15 secondes), pour qu'un membre banni, un compte désactivé ou un membre de l'équipe
+      // rétrogradé perde ses droits tout de suite, et qu'un changement de mot de passe coupe les sessions ouvertes avant lui.
+      const id = await loadIdentity(this.prisma, payload.sub);
+      const refusal = sessionRefusal(id, payload.iat);
+      if (refusal) throw new UnauthorizedException(refusal);
+      role = id!.role;
+    }
     if (payload.acct) {
       // Profil d'un compte famille : bloqué par le profil principal, ou compte principal banni = accès coupé tout de suite ;
       // les droits sont relus à chaque quinzaine de secondes (le profil principal peut les changer à tout moment).
@@ -71,7 +81,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       userId: payload.sub,
       accountId: payload.acct ?? payload.sub,
       username: payload.username,
-      role: payload.role,
+      role,
       scope: 'profile',
       isMaster: !payload.acct,
       fam: !!payload.fam,

@@ -46,6 +46,8 @@ server {
     root /usr/share/nginx/html;
     index index.html;
     client_max_body_size 20m;
+    include /etc/nginx/snippets/security-headers.conf;
+    server_tokens off;
 
     # Résout "backend" via le DNS embarqué de Docker à chaque requête plutôt
     # qu'une seule fois au démarrage — sinon nginx refuse de démarrer (et donc
@@ -129,6 +131,7 @@ server {
     location = /sw.js {
         if ($tracker_only) { return 404; }
         add_header Cache-Control "no-cache";
+        include /etc/nginx/snippets/security-headers.conf;
         try_files $uri =404;
     }
 
@@ -136,6 +139,7 @@ server {
     location /assets/ {
         if ($tracker_only) { return 404; }
         add_header Cache-Control "public, max-age=31536000, immutable";
+        include /etc/nginx/snippets/security-headers.conf;
         try_files $uri =404;
     }
 
@@ -143,12 +147,14 @@ server {
     location = /index.html {
         if ($tracker_only) { return 404; }
         add_header Cache-Control "no-cache";
+        include /etc/nginx/snippets/security-headers.conf;
     }
 
     # Logos et icônes : gardés une semaine.
     location ~* ^/(logo-[a-z-]+\.png|manifest\.webmanifest)$ {
         if ($tracker_only) { return 404; }
         add_header Cache-Control "public, max-age=604800";
+        include /etc/nginx/snippets/security-headers.conf;
         try_files $uri =404;
     }
 

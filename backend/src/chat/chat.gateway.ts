@@ -1,4 +1,6 @@
 import { lockState } from '../lockdown/lockdown-state';
+import { PrismaService } from '../common/prisma.service';
+import { loadIdentity, sessionRefusal } from '../common/utils/session-identity';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   ConnectedSocket,
@@ -34,7 +36,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   // Dernier message vu par chaque membre (en mémoire seulement, remis à zéro si le serveur redémarre — sans conséquence).
   private lastSeen = new Map<string, string>();
 
-  constructor(private jwtService: JwtService, private chatService: ChatService, private presence: PresenceService) { lockState.onLock(() => this.server?.disconnectSockets(true)); }
+  constructor(private jwtService: JwtService, private prisma: PrismaService, private chatService: ChatService, private presence: PresenceService) { lockState.onLock(() => this.server?.disconnectSockets(true)); }
 
   /** La présence (chat public + chat privé + reste du site) est partagée : tout changement met à jour la liste des membres en ligne. */
   onModuleInit() {
@@ -57,6 +59,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       const payload = this.jwtService.verify(token, { secret: jwtSecret() });
       if (lockState.blocking || lockState.tokenRevoked(payload.iat)) { client.disconnect(); return; } // alerte générale / session révoquée
       if (payload.scope === 'account') { client.disconnect(); return; } // jeton de choix de profil : pas de chat
+      const ident = await loadIdentity(this.prisma, payload.sub); // rôle et état réels du compte, pas ceux du jeton
+      if (sessionRefusal(ident, payload.iat)) { client.disconnect(); return; }
+      payload.role = ident!.role;
       client.data = { userId: payload.sub, username: payload.username, role: payload.role };
       await this.presence.connect(payload.sub, client.id, payload.username);
       client.emit('chat:online-users', this.presence.listOnline());

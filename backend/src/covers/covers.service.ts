@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { assertPublicUrl } from '../importer/net-guard';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
@@ -24,6 +25,9 @@ export class CoversService {
   /** Télécharge une image depuis une URL externe et la sauvegarde localement une fois pour toutes. */
   async saveFromUrl(url: string): Promise<string> {
     if (!/^https?:\/\//i.test(url)) throw new BadRequestException("URL d'image invalide");
+
+    // le site ne télécharge jamais depuis une adresse interne (réseau du NAS, autres conteneurs, service de métadonnées d'un cloud)
+    try { url = await assertPublicUrl(url); } catch { throw new BadRequestException("Adresse d'image refusée"); }
 
     let res: Response;
     try {

@@ -348,7 +348,7 @@ export class AuthService {
     await this.assertSensitiveChange(user, current, totpToken, ip);
     const passwordHash = await bcrypt.hash(next, 12);
     if (!this.verification.required) {
-      await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+      await this.prisma.user.update({ where: { id: userId }, data: { passwordHash, sessionsValidAfter: new Date() } });
       await this.audit.log(userId, 'PASSWORD_CHANGE', undefined, ip);
       return { changed: true };
     }
@@ -392,7 +392,7 @@ export class AuthService {
     }
     if (done.purpose === 'PASSWORD_CHANGE') {
       if (typeof done.payload.passwordHash !== 'string') throw new BadRequestException('Demande invalide');
-      await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash: done.payload.passwordHash } });
+      await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash: done.payload.passwordHash, sessionsValidAfter: new Date() } });
       await this.audit.log(user.id, 'PASSWORD_CHANGE', undefined, ip);
       await this.verification.notifyChange(user.email, user.username, "Le mot de passe de ton compte Seeduction vient d'être modifié.");
       return { verified: true, purpose: done.purpose, username: user.username };
@@ -459,7 +459,7 @@ export class AuthService {
       throw new BadRequestException('Lien invalide ou expiré : demande-en un nouveau au staff');
     }
     await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: row.userId }, data: { passwordHash: await bcrypt.hash(next, 12) } }),
+      this.prisma.user.update({ where: { id: row.userId }, data: { passwordHash: await bcrypt.hash(next, 12), sessionsValidAfter: new Date() } }),
       this.prisma.passwordReset.update({ where: { id: row.id }, data: { usedAt: new Date() } }),
     ]);
     await this.audit.log(row.userId, 'PASSWORD_RESET', undefined, ip);

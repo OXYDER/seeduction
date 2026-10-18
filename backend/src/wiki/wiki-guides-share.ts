@@ -280,6 +280,13 @@ export const GUIDES_STAFF: WikiSeedCategory = {
         `• Le panneau du haut liste des contrôles avec une pastille : 🟢 normal, 🟠 à surveiller, 🔴 problème à régler. Il vérifie la base de données, la sécurité du secret des sessions, les tâches planifiées (pronostics, Mise-O-jeu, podium du quiz, remise de fidélité, parties abandonnées), l'API de la LNH, la mémoire, les erreurs serveur et l'envoi de courriels.\n` +
         `• Toutes les 5 minutes, le site se contrôle seul. Quand un problème apparaît, les administrateurs reçoivent une [b]notification système[/b] (elle ne peut pas être coupée dans les préférences) ; le même problème n'est rappelé qu'après 12 heures, et un message annonce son rétablissement. Tu peux désactiver ces alertes avec la case du panneau.\n` +
         `• Une tâche en échec affiche son message d'erreur. Si l'API de la LNH ne répond plus, règle ou annule les matchs à la main dans Admin > Jeux > Pronostics LNH.\n\n` +
+        `[b]Sécurité des comptes et de la configuration[/b]
+` +
+        `• Un membre [b]banni[/b], un compte désactivé ou une personne de l'équipe [b]rétrogradée[/b] perd ses droits en quelques secondes, même si sa session est encore ouverte (le rôle est relu dans la base, pas lu dans le jeton). Un changement de mot de passe [b]coupe toutes les sessions ouvertes avant lui[/b] : il faut se reconnecter.
+` +
+        `• Le contrôle « Sécurité : configuration » du panneau de santé passe à l'orange si le mot de passe de la base (POSTGRES_PASSWORD) est resté à une valeur par défaut, ou si [b]CORS_ORIGIN[/b] n'est pas défini dans backend/.env : mets-y l'adresse de ton site (ex. https://seeduction.org). L'API a aussi un plafond général par adresse IP (1500 requêtes par minute, réglable avec API_RATE_LIMIT), qui ne gêne pas un usage normal.
+
+` +
         `[b]Le secret des sessions (JWT_SECRET)[/b]\n` +
         `• Le fichier [b]backend/.env[/b] doit contenir un [b]JWT_SECRET[/b] long et aléatoire (au moins 24 caractères). S'il manque ou garde la valeur d'exemple, le panneau de santé le signale en rouge : n'importe qui pourrait alors fabriquer une session administrateur.\n` +
         `• Pour le changer : écris le nouveau secret dans backend/.env et redémarre le site. Tous les membres seront déconnectés, et les mots de passe de seedbox enregistrés et le jeton Telegram sont à ressaisir (ils sont chiffrés avec ce secret). Garde une copie du fichier .env : sans lui, une restauration ne pourrait pas relire ces données.\n\n` +

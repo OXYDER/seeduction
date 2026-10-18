@@ -16,4 +16,5 @@ RUN chmod -R a+rX /usr/share/nginx/html
 ENV TRACKER_HOST=tracker.invalid     NGINX_ENVSUBST_FILTER=^TRACKER_
 COPY nginx/site.conf.template /etc/nginx/templates/default.conf.template
 COPY nginx/tracker-location.conf /etc/nginx/snippets/tracker-location.conf
+COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 EXPOSE 80 8081

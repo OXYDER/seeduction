@@ -6,7 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SportsService } from '../sports/sports.service';
 import { MetricsService } from './metrics.service';
 import { jobMonitor } from '../common/utils/job-monitor';
-import { secretWeakness } from '../common/utils/secret';
+import { configWeaknesses, secretWeakness } from '../common/utils/secret';
 import { AlertState, Check, Level, evaluate, overall, planAlerts } from './health';
 
 const KEY = 'healthAlerts';
@@ -46,7 +46,7 @@ export class HealthService implements OnModuleInit {
     try { await this.prisma.$queryRaw`SELECT 1`; db.latencyMs = Date.now() - start; } catch { db = { ok: false, latencyMs: null }; }
     const series = this.metrics.series().slice(-10);
     const checks = evaluate({
-      db, secretWeakness: secretWeakness(), jobs: jobMonitor.snapshot(), jobMonitor, nhl: this.sports.nhl,
+      db, secretWeakness: secretWeakness(), configWeaknesses: configWeaknesses(), jobs: jobMonitor.snapshot(), jobMonitor, nhl: this.sports.nhl,
       rssMB: Math.round(process.memoryUsage().rss / 1048576), errors5xxLast10min: series.reduce((s, p) => s + p.errors, 0), smtpConfigured: !!process.env.SMTP_HOST,
     });
     for (const fn of this.extra.values()) { try { const c = await fn(); if (c) checks.push(c); } catch (e) { this.logger.warn(`Contrôle de santé : ${(e as Error).message}`); } }

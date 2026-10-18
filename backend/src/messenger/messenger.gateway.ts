@@ -1,4 +1,6 @@
 import { lockState } from '../lockdown/lockdown-state';
+import { PrismaService } from '../common/prisma.service';
+import { loadIdentity, sessionRefusal } from '../common/utils/session-identity';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer,
@@ -34,7 +36,7 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
   private sentAt = new Map<string, number[]>();
   private presenceTimer: NodeJS.Timeout | null = null;
 
-  constructor(private jwtService: JwtService, private messenger: MessengerService, private presence: PresenceService, private calls: MessengerCallsService) { lockState.onLock(() => this.server?.disconnectSockets(true)); }
+  constructor(private jwtService: JwtService, private prisma: PrismaService, private messenger: MessengerService, private presence: PresenceService, private calls: MessengerCallsService) { lockState.onLock(() => this.server?.disconnectSockets(true)); }
 
   onModuleInit() {
     this.calls.attach({
@@ -80,6 +82,9 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
       const payload = this.jwtService.verify(token, { secret: jwtSecret() });
       if (lockState.blocking || lockState.tokenRevoked(payload.iat)) { client.disconnect(); return; } // alerte générale / session révoquée
       if (payload.scope === 'account') { client.disconnect(); return; }
+      const ident = await loadIdentity(this.prisma, payload.sub); // rôle et état réels du compte, pas ceux du jeton
+      if (sessionRefusal(ident, payload.iat)) { client.disconnect(); return; }
+      payload.role = ident!.role;
       client.data = { userId: payload.sub, username: payload.username, role: payload.role };
       client.join(userRoom(payload.sub));
       for (const id of await this.messenger.readableChannelIds({ role: payload.role })) client.join(channelRoom(id));

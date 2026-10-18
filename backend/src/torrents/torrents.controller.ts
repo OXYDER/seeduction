@@ -223,7 +223,7 @@ export class TorrentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('upload')
-  @UseInterceptors(FileInterceptor('torrentFile'))
+  @UseInterceptors(FileInterceptor('torrentFile', { limits: { fileSize: 15 * 1024 * 1024, files: 1 } }))
   upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: Record<string, string>,
