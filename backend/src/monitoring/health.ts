@@ -10,6 +10,8 @@ export interface HealthInput {
   db: { ok: boolean; latencyMs: number | null };
   secretWeakness: string | null;
   configWeaknesses?: string[];
+  /** Administrateurs actifs sans double authentification (leurs noms). */
+  staffWithout2fa?: string[];
   jobs: JobState[];
   jobMonitor: JobMonitor;
   nhl: { lastOkAt: number | null; lastErrorAt: number | null; lastError: string | null };
@@ -43,6 +45,10 @@ export function evaluate(i: HealthInput): Check[] {
   out.push(weak.length > 0
     ? { id: 'config', label: 'Sécurité : configuration', level: 'warn', detail: weak.join(' ; ') + '.' }
     : { id: 'config', label: 'Sécurité : configuration', level: 'ok', detail: "Mot de passe de la base personnalisé, accès à l'API limité à ton site" });
+  const no2fa = i.staffWithout2fa ?? [];
+  out.push(no2fa.length > 0
+    ? { id: 'staff2fa', label: 'Sécurité : double authentification des administrateurs', level: 'warn', detail: `${no2fa.length} administrateur${no2fa.length > 1 ? 's' : ''} sans double authentification : ${no2fa.slice(0, 6).join(', ')}${no2fa.length > 6 ? '…' : ''}. Un mot de passe volé suffirait pour prendre le contrôle du site : active la 2FA dans Profil > Sécurité.` }
+    : { id: 'staff2fa', label: 'Sécurité : double authentification des administrateurs', level: 'ok', detail: 'Tous les administrateurs ont activé la double authentification' });
   for (const j of i.jobs) {
     const st = i.jobMonitor.statusOf(j, now);
     out.push({ id: `job:${j.name}`, label: `Tâche : ${JOB_LABEL[j.name] ?? j.name}`, level: st.level, detail: st.detail });

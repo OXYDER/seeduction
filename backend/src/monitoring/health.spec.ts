@@ -90,3 +90,15 @@ describe('Santé du site : alertes', () => {
     expect(planAlerts([ok('x')], prev, 1000).resolve.map((r) => r.id)).toEqual(['gone']);
   });
 });
+
+describe('Santé du site : double authentification des administrateurs', () => {
+  it('signale les administrateurs sans 2FA (en orange) avec leurs noms', () => {
+    const c = by(evaluate(base({ staffWithout2fa: ['alice', 'bob'] })), 'staff2fa');
+    expect(c.level).toBe('warn');
+    expect(c.detail).toMatch(/2 administrateurs/);
+    expect(c.detail).toMatch(/alice, bob/);
+  });
+  it('tout va bien quand tous l\'ont activée', () => {
+    expect(by(evaluate(base({ staffWithout2fa: [] })), 'staff2fa').level).toBe('ok');
+  });
+});

@@ -45,8 +45,9 @@ export class HealthService implements OnModuleInit {
     let db = { ok: true, latencyMs: 0 as number | null };
     try { await this.prisma.$queryRaw`SELECT 1`; db.latencyMs = Date.now() - start; } catch { db = { ok: false, latencyMs: null }; }
     const series = this.metrics.series().slice(-10);
+    const staff = await this.prisma.user.findMany({ where: { role: { in: ['ADMIN', 'OWNER'] }, status: 'ACTIVE', parentId: null, twoFactorEnabled: false }, select: { username: true }, take: 50 }).catch(() => []);
     const checks = evaluate({
-      db, secretWeakness: secretWeakness(), configWeaknesses: configWeaknesses(), jobs: jobMonitor.snapshot(), jobMonitor, nhl: this.sports.nhl,
+      db, secretWeakness: secretWeakness(), configWeaknesses: configWeaknesses(), staffWithout2fa: staff.map((u) => u.username), jobs: jobMonitor.snapshot(), jobMonitor, nhl: this.sports.nhl,
       rssMB: Math.round(process.memoryUsage().rss / 1048576), errors5xxLast10min: series.reduce((s, p) => s + p.errors, 0), smtpConfigured: !!process.env.SMTP_HOST,
     });
     for (const fn of this.extra.values()) { try { const c = await fn(); if (c) checks.push(c); } catch (e) { this.logger.warn(`Contrôle de santé : ${(e as Error).message}`); } }
