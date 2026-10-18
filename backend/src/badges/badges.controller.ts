@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 export class BadgesController {
   constructor(private badgesService: BadgesService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get('catalog')
   catalog() {
     return this.badgesService.catalog();

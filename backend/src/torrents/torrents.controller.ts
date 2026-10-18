@@ -29,6 +29,7 @@ export class TorrentsController {
   constructor(private torrentsService: TorrentsService, private recommendations: RecommendationsService) {}
 
   /** Libellés et valeurs de tous les filtres de catégorie (fiche d'un torrent, édition). */
+  @UseGuards(JwtAuthGuard)
   @Get('facet-schema')
   facetSchema() {
     return FACETS;

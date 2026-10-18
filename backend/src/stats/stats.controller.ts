@@ -8,6 +8,7 @@ import { DeadService } from './dead.service';
 export class StatsController {
   constructor(private statsService: StatsService, private boards: StatsBoardsService, private dead: DeadService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get('global')
   global() {
     return this.statsService.globalStats();

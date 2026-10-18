@@ -9,6 +9,7 @@ export class RoadmapController {
   constructor(private roadmap: RoadmapService) {}
 
   /** Numéro de version et date de la dernière mise à jour (affichés en bas du menu, même avant la connexion). */
+  @UseGuards(JwtAuthGuard)
   @Get('version')
   version() {
     return this.roadmap.version();

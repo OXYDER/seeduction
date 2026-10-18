@@ -12,6 +12,7 @@ export class EconomyController {
   constructor(private economy: EconomyService, private settings: SettingsService, private audit: AuditService) {}
 
   /** Public : sert à afficher le bandeau « freeleech global » à tout le monde. */
+  @UseGuards(JwtAuthGuard)
   @Get('freeleech')
   async freeleech() {
     const state = await this.settings.freeleechState();
@@ -19,6 +20,7 @@ export class EconomyController {
   }
 
   /** Public : tout le calendrier des freeleech (passés, en cours, à venir) sur une période, pour la page « Calendrier freeleech ». */
+  @UseGuards(JwtAuthGuard)
   @Get('freeleech/calendar')
   freeleechCalendar(@Query('from') from?: string, @Query('to') to?: string) {
     return this.settings.freeleechCalendar(from, to);

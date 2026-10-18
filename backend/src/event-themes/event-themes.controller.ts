@@ -12,6 +12,7 @@ const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.u
 export class EventThemesController {
   constructor(private themes: EventThemesService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get('active')
   active() { return this.themes.active(); }
 

@@ -12,6 +12,7 @@ const actorOf = (req: any): Actor => ({ userId: req.user.userId, username: req.u
 export class SportsController {
   constructor(private sports: SportsService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get('canadiens')
   async canadiens() {
     const d = await this.sports.canadiens();

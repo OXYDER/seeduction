@@ -64,7 +64,7 @@ const tok = (u, role, iat) => jwt.sign({ sub: u.id, username: u.username, role: 
   await call('DELETE', '/security/csp-report', TA);
 
   // ---- le site est privé : rien n'est lisible sans session
-  const anon = ['/torrents', '/torrents/' + 'x'.repeat(8), '/users/' + member.id, '/users/leaderboard', '/stats/top-torrents', '/badges/hall-of-fame', '/chat/messages', '/announcements/latest', '/announcements/feed', '/entities', '/forum/latest', '/forum/index', '/requests', '/collections/public', '/wiki', '/wiki/faq', '/wiki/search?q=staff', '/wiki/articles/guide-staff-sante-economie'];
+  const anon = ['/torrents', '/torrents/' + 'x'.repeat(8), '/users/' + member.id, '/users/leaderboard', '/stats/top-torrents', '/badges/hall-of-fame', '/chat/messages', '/announcements/latest', '/announcements/feed', '/entities', '/forum/latest', '/forum/index', '/requests', '/collections/public', '/wiki', '/wiki/faq', '/wiki/search?q=staff', '/wiki/articles/guide-staff-sante-economie', '/stats/global', '/badges/catalog', '/bonus/freeleech', '/bonus/freeleech/calendar', '/event-themes/active', '/roadmap/version', '/sports/canadiens', '/torrents/facet-schema'];
   const open = [];
   for (const path of anon) { const r = await fetch(BASE + path); if (r.status !== 401) open.push(path + ' → ' + r.status); }
   check('visiteur sans session : tout est refusé (401)', open.length === 0, open.join(' ; '));
