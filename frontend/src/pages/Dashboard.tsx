@@ -34,6 +34,8 @@ interface GlobalStats {
   totalLeechers: number;
   totalPeers: number;
   totalTraffic: string;
+  /** Membres en ligne (envoyé par le serveur). */
+  online?: number;
 }
 
 function ClassicDashboard() {

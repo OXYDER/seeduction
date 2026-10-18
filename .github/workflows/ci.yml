@@ -6,6 +6,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   backend:
@@ -50,10 +51,54 @@ jobs:
       - name: Vérifier les types (tsc)
         run: |
           set +e
-          npx tsc --noEmit --jsx react-jsx --target es2020 --lib es2020,dom,dom.iterable --module esnext --moduleResolution bundler --skipLibCheck --allowSyntheticDefaultImports --esModuleInterop --types vite/client src/main.tsx > /tmp/tsc.log 2>&1
+          npx tsc --noEmit -p tsconfig.json > /tmp/tsc.log 2>&1
           status=$?
           cat /tmp/tsc.log
           sed -E -n 's#^(.+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+): (.*)$#::error file=frontend/\1,line=\2::\4 \5#p' /tmp/tsc.log
           exit $status
       - name: Construire (vite)
         run: npm run build
+
+  # Tests de bout en bout : un vrai backend sur une vraie base PostgreSQL de test (voir backend/e2e/README.md). Pour l'instant « non bloquant » : un échec s'affiche
+  # sans faire échouer l'ensemble, le temps de confirmer qu'il est stable sur GitHub.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: backend
+    continue-on-error: true
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_USER: ci
+          POSTGRES_DB: ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      JWT_SECRET: ci-secret-pour-les-tests-de-bout-en-bout-0123456789
+      PORT: '3000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - run: npx prisma generate
+      - run: npx prisma db push --skip-generate
+      - run: npm run build
+      - name: Démarrer le backend
+        run: |
+          nohup node dist/main > /tmp/backend.log 2>&1 &
+          for i in $(seq 1 60); do curl -fs http://localhost:3000/api/lockdown/status > /dev/null && break; sleep 2; done
+          curl -fs http://localhost:3000/api/lockdown/status
+      - name: Tests de bout en bout
+        run: npm run e2e
+      - name: Journal du backend (en cas d'échec)
+        if: failure()
+        run: tail -n 120 /tmp/backend.log
