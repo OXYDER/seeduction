@@ -37,10 +37,13 @@ export default function NotificationsBell() {
 
   useEffect(() => {
     refreshCount();
-    const interval = setInterval(refreshCount, 30_000);
+    // onglet caché : pas de requête (les notifications du navigateur ont leur propre sondage) ; au retour sur l'onglet, la pastille se remet à jour
+    const interval = setInterval(() => { if (!document.hidden) refreshCount(); }, 30_000);
+    const onVisible = () => { if (!document.hidden) refreshCount(); };
+    document.addEventListener('visibilitychange', onVisible);
     // Une notification lue / supprimée ailleurs (page Notifications, ouverture de la page concernée) met la pastille à jour tout de suite.
     const off = onNotificationsChanged(() => { refreshCount(); if (openRef.current) loadItems(); });
-    return () => { clearInterval(interval); off(); };
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); off(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

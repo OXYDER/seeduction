@@ -389,6 +389,10 @@ model Torrent {
   @@index([categoryId])
   @@index([year])
   @@index([resolution])
+  // Les listes (Parcourir, accueil) trient les torrents approuvés par date ou par seeders : sans ces index, la base trie tout le catalogue à chaque affichage.
+  @@index([status, createdAt(sort: Desc)])
+  @@index([status, seeders(sort: Desc)])
+  @@index([uploaderId, createdAt(sort: Desc)])
 }
 
 /// NFO joint à l'upload (stocké à part pour ne pas alourdir les listes de torrents).
@@ -464,6 +468,8 @@ model Peer {
 
   @@unique([torrentId, userId, peerId])
   @@index([torrentId, isSeeder])
+  @@index([userId])
+  @@index([lastAnnounceAt])
 }
 
 // Historique des cycles complets de téléchargement (pour stats + anti-cheat)

@@ -11,7 +11,7 @@ export default function PotWidget() {
   useEffect(() => {
     const load = () => api.get('/pot').then((r) => setPot(r.data)).catch(() => undefined);
     load();
-    const t = setInterval(load, 30000);
+    const t = setInterval(() => { if (!document.hidden) load(); }, 30000);
     return () => clearInterval(t);
   }, []);
   const endsIn = useCountdown(pot?.active?.endsAt ?? null);
