@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import { CATEGORY_ICON, notifyChanged, onNotificationsChanged, type AppNotification } from '../lib/notifications';
+import Loading from '../components/Loading';
 
 interface Category { key: string; label: string; icon: string; hint: string; locked: boolean }
 interface Summary { categories: Category[]; unread: number; total: number; byCategory: Record<string, { unread: number; total: number }> }
@@ -93,7 +94,7 @@ export default function Notifications() {
         <div className="panel">
           <h3 style={{ marginTop: 0 }}>Quelles notifications veux-tu recevoir ?</h3>
           <p className="muted" style={{ marginTop: 0 }}>Une catégorie coupée n'envoie plus rien, ni dans la cloche ni ici. Les sanctions et la sécurité du compte ne se coupent pas.</p>
-          {!prefs ? <p className="muted">Chargement…</p> : (
+          {!prefs ? <Loading /> : (
             <div className="grid" style={{ gap: 8 }}>
               {cats.map((c) => (
                 <label key={c.key} className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
@@ -127,7 +128,7 @@ export default function Notifications() {
         </div>
         {notice && <div style={{ color: 'var(--success)', marginBottom: 8 }}>{notice}</div>}
 
-        {loading && items.length === 0 && <p className="muted">Chargement…</p>}
+        {loading && items.length === 0 && <Loading />}
         {!loading && items.length === 0 && <p className="muted">{unreadOnly ? 'Aucune notification non lue.' : 'Aucune notification ici.'}</p>}
         <div className="np-list">
           {items.map((n) => (

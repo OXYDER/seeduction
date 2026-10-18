@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { durationFr, tierPerks } from '../lib/duration';
 import { useCountdown } from '../components/FreeleechCalendar';
+import Loading from '../components/Loading';
 
 const fmt = (iso: string) => new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
 const MEDAL = ['🥇', '🥈', '🥉'];
@@ -45,7 +46,7 @@ export default function Pot() {
   const endsIn = useCountdown(pot?.active?.endsAt ?? null);
   const startsIn = useCountdown(pot?.pending?.startsAt ?? null);
 
-  if (!pot) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!pot) return <Loading error={error} />;
   if (!pot.enabled) return <div className="panel"><h1>🍯 Pot commun</h1><p className="muted">Le pot commun n'est pas ouvert pour le moment.</p></div>;
 
   const { cycle, rules, reward } = pot;

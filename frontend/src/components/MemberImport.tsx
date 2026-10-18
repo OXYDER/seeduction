@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { LANGUAGE_GROUPS, LANGUAGE_LABELS } from '../lib/languageTag';
+import Loading from './Loading';
 
 interface Job { kind: 'test' | 'scan' | 'publish' | 'seed'; status: 'running' | 'done' | 'error'; done: number; total: number; message: string; error?: string; result?: any }
 type ClientKind = 'qbittorrent' | 'transmission' | 'rutorrent';
@@ -78,7 +79,7 @@ export default function MemberImport() {
     catch (e) { setMsg({ ok: false, text: errText(e) }); }
   }
 
-  if (!status) return <p className="muted">Chargement…</p>;
+  if (!status) return <Loading />;
   const box = status.box;
   const job = status.job;
   const proposed = items.filter((i) => i.status === 'PROPOSED');

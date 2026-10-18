@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
+import Loading from '../components/Loading';
 
 interface Row { rank: number; username: string; value: number; detail: string; mine: boolean }
 interface Board { id: string; title: string; icon: string; unit: string; hint: string; rows: Row[]; me: { rank: number; value: number } | null }
@@ -18,7 +19,7 @@ export default function Classements() {
     const t = setInterval(() => { if (!document.hidden) void load(); }, 60_000);
     return () => clearInterval(t);
   }, []);
-  if (!d) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!d) return <Loading error={error} />;
   const fmt = (s: string) => new Date(`${s}T12:00:00`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long' });
 
   return (

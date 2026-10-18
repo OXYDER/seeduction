@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
+import Loading from './Loading';
 
 interface Step { name: string; ok: boolean; ms: number; info?: string }
 interface Run { id: string; trigger: string; kind: 'full' | 'predeploy'; startedAt: string; finishedAt?: string; ok?: boolean; error?: string; file?: string; bytes?: number; verified?: boolean; steps: Step[]; offsite?: { ok: boolean; info: string } | null }
@@ -77,7 +78,7 @@ export default function AdminBackup() {
     catch (e) { setPhrase((p) => ({ ...p, error: errorOf(e) })); }
   }
 
-  if (!st || !cfg) return <p className="muted">{err || 'Chargement…'}</p>;
+  if (!st || !cfg) return <Loading error={err} />;
   const last = st.lastSuccess;
   const run = st.running;
   const field = (label: string, el: React.ReactNode, hint?: string) => (

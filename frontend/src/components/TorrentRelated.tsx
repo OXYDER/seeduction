@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import MetaChips from './MetaChips';
+import Loading from './Loading';
 
 interface Card {
   id: string;
@@ -233,7 +234,7 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
 
               {isOpen && (
                 <div style={{ margin: '8px 0 4px 16px' }}>
-                  {!eps && <p className="muted">Chargement...</p>}
+                  {!eps && <Loading />}
                   {eps === 'error' && <p className="muted">Liste des épisodes indisponible.</p>}
                   {packs(n, epNums).length > 0 && <PackRow list={packs(n, epNums)} torrentId={torrentId} />}
                   {Array.isArray(eps) && (

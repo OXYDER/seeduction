@@ -7,6 +7,7 @@ import { playDeal, playFlip, playRight, playWrong } from '../lib/cardSound';
 import { playWin, setSoundOn, soundOn } from '../lib/slotSound';
 import PlayingCard, { type Suit } from '../components/PlayingCard';
 import CoinShower from '../components/CoinShower';
+import Loading from '../components/Loading';
 
 interface CardV { code: number; rank: number; suit: Suit }
 interface Odds { p: number; mult: number }
@@ -131,7 +132,7 @@ export default function HiLo() {
     finally { setBusy(false); }
   }
 
-  if (!data || !cfg || !me) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data || !cfg || !me) return <Loading error={error} />;
   if (!cfg.enabled) return <div className="panel"><h1>🃏 Plus haut ou plus bas</h1><p className="muted">Ce jeu est fermé pour le moment.</p></div>;
 
   const stakes = STAKES.filter((s) => s >= cfg.minStake && s <= cfg.maxStake);

@@ -7,6 +7,7 @@ import { TICKET_PRIORITY, TICKET_STATUS, type TicketSummary } from '../store/sup
 import { timeAgo } from '../lib/time';
 import Avatar from './Avatar';
 import { PriorityChip, StatusChip } from './SupportBits';
+import Loading from './Loading';
 
 type Sub = 'Réponses types' | 'Catégories' | 'Assistant et réglages';
 interface Category { id: string; name: string; icon: string | null; description: string | null; order: number; active: boolean }
@@ -127,7 +128,7 @@ export function SupportStats() {
   const [days, setDays] = useState(30);
   const [s, setS] = useState<any>(null);
   useEffect(() => { api.get('/support/staff/stats', { params: { days } }).then((r) => setS(r.data)).catch(() => {}); }, [days]);
-  if (!s) return <p className="muted">Chargement…</p>;
+  if (!s) return <Loading />;
   const a = s.assistant;
   const answered = a.solved + a.notSolved;
   return (
@@ -302,7 +303,7 @@ function SettingsAdmin() {
     api.get('/messenger/admin/channels').then((r) => setChannels(r.data)).catch(() => {});
   }, []);
 
-  if (!cfg) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!cfg) return <Loading error={error} />;
   const up = <K extends keyof Config>(k: K, v: Config[K]) => setCfg({ ...cfg, [k]: v });
   const num = (k: keyof Config) => (e: React.ChangeEvent<HTMLInputElement>) => up(k, Number(e.target.value) as never);
 

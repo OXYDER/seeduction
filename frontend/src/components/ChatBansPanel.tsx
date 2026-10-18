@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import Avatar from './Avatar';
+import Loading from './Loading';
 
 interface BanRow {
   id: string; user: { id: string; username: string; avatarUrl?: string | null }; reason: string; issuedByName: string;
@@ -28,7 +29,7 @@ export default function ChatBansPanel() {
       <h3 style={{ marginTop: 0 }}>🚫 Bannis du chat</h3>
       <p className="muted" style={{ marginTop: 0 }}>Pour bannir un membre, ouvre le menu ⋯ d'un de ses messages dans un canal public et choisis « Bannir du chat ».</p>
       {error && <div style={{ color: 'var(--danger)' }}>{error}</div>}
-      {rows === null && <p className="muted">Chargement…</p>}
+      {rows === null && <Loading />}
       {rows?.length === 0 && <p className="muted">Personne n'est banni du chat en ce moment.</p>}
       <div className="grid" style={{ gap: 10 }}>
         {rows?.map((b) => (

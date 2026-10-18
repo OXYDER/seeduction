@@ -33,6 +33,7 @@ import { formatBytes } from '../lib/format';
 import FileTree from '../components/FileTree';
 import { resolveContentKind } from '../lib/categoryKind';
 import { useCrumbTitle } from '../store/crumbs';
+import Loading from '../components/Loading';
 
 // Types de contenu pour lesquels « Ouvrir dans le lecteur Seeduction » a un sens (vidéo à regarder).
 const VIDEO_KINDS = new Set(['FILM', 'SERIE', 'XXX', 'DOCUMENT']);
@@ -114,7 +115,7 @@ export default function TorrentDetail() {
       </div>
     );
   }
-  if (!torrent) return <p className="muted">Chargement...</p>;
+  if (!torrent) return <Loading />;
 
 
   const synopsis: string | null = torrent.metadata?.overview ?? null;

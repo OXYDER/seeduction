@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/auth';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import UserLink from '../components/UserLink';
+import Loading from '../components/Loading';
 
 interface Member {
   id: string; username: string; role: string; status: string; avatarUrl: string | null; uploaded: number; downloaded: number; ratio: number | null; bonusPoints: number;
@@ -88,7 +89,7 @@ export default function StaffMembers() {
       {view === 'seeders' && data && <p className="muted" style={{ margin: 0 }}>{data.total} membre{data.total > 1 ? 's' : ''} seed{data.total > 1 ? 'ent' : 'e'} en ce moment ({formatNumber(data.totalPeers ?? 0)} pairs seeders au total : un même torrent peut être seedé depuis plusieurs clients).</p>}
       {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
 
-      {!data ? <p className="muted">Chargement…</p> : !filtered || filtered.length === 0 ? <div className="panel mod-empty"><strong>Aucun membre</strong><span className="muted">Rien ne correspond.</span></div> : (
+      {!data ? <Loading /> : !filtered || filtered.length === 0 ? <div className="panel mod-empty"><strong>Aucun membre</strong><span className="muted">Rien ne correspond.</span></div> : (
         <div className="panel" style={{ overflowX: 'auto', padding: 0 }}>
           <table>
             <thead>

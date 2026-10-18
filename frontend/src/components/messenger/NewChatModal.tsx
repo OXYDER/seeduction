@@ -5,6 +5,7 @@ import { useMessenger, statusOf } from '../../store/messenger';
 import { STATUS_COLOR } from '../../lib/presence';
 import Avatar from '../Avatar';
 import SearchBox from '../SearchBox';
+import Loading from '../Loading';
 
 interface Friend { id: string; username: string; avatarUrl?: string | null }
 
@@ -75,7 +76,7 @@ export default function NewChatModal({ onClose, onOpened, initialTab = 'direct' 
             <div className="muted" style={{ fontSize: 12 }}>Ou un de tes amis</div>
             <input placeholder="Filtrer mes amis…" value={filter} onChange={(e) => setFilter(e.target.value)} />
             <div className="msgr-share-list">
-              {!loaded && <p className="muted">Chargement…</p>}
+              {!loaded && <Loading />}
               {loaded && shown.length === 0 && <p className="muted">Aucun ami pour l'instant — ajoute des membres depuis la page Amis, ou cherche un membre ci-dessus.</p>}
               {shown.map((f) => (
                 <button key={f.id} type="button" className="msgr-share-item" disabled={busy} onClick={() => chatWith(f)}>

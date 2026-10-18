@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { useCountdown } from '../components/FreeleechCalendar';
 import TeamLogo from '../components/TeamLogo';
 import { SKINS, MACHINE_ORDER } from '../lib/slotSkins';
+import Loading from '../components/Loading';
 import '../games.css';
 
 interface Summary {
@@ -266,7 +267,7 @@ export default function GamesHub() {
     void load();
   }
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   const { me } = data;
 
   return (

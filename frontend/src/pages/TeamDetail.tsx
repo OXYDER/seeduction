@@ -7,6 +7,7 @@ import { CLASS_LABEL } from '../lib/memberClass';
 import Avatar from '../components/Avatar';
 import UserLink from '../components/UserLink';
 import { useCrumbTitle } from '../store/crumbs';
+import Loading from '../components/Loading';
 
 const ROLE = { LEADER: '👑 Chef', OFFICER: '⭐ Officier', MEMBER: 'Membre' } as Record<string, string>;
 
@@ -38,7 +39,7 @@ export default function TeamDetail() {
     await run(async () => { const { data } = await api.post('/covers/upload', form); await api.patch(`/teams/${id}`, { logoUrl: data.url }); }, '✓ Logo mis à jour');
   }
 
-  if (!team) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!team) return <Loading error={error} />;
 
   return (
     <div className="grid" style={{ gap: 16 }}>

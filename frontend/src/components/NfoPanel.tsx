@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import Loading from './Loading';
 
 /**
  * NFO du torrent, chargé seulement au clic (il peut être volumineux). Avec `alwaysOpen` (onglet « NFO » de la fiche), il
@@ -26,7 +27,7 @@ export default function NfoPanel({ torrentId, alwaysOpen }: { torrentId: string;
     <div className="panel">
       {!alwaysOpen && <button type="button" className="secondary" onClick={toggle}>{open ? 'Masquer le NFO' : '📄 Voir le NFO'}</button>}
       {open && (
-        content === undefined ? <p className="muted">Chargement...</p>
+        content === undefined ? <Loading />
         : content === null ? <p className="muted">Aucun NFO joint à ce torrent.</p>
         : <pre style={{ marginTop: alwaysOpen ? 0 : 12, overflowX: 'auto', fontFamily: 'Consolas, "Courier New", monospace', fontSize: 12, lineHeight: 1.25 }}>{content}</pre>
       )}

@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { audio, bell, setSoundOn, soundOn, tick } from '../lib/slotSound';
 import TeamLogo from '../components/TeamLogo';
 import CoinShower from '../components/CoinShower';
+import Loading from '../components/Loading';
 import '../games.css';
 
 interface Record { wins: number; losses: number; otLosses: number; points: number; gamesPlayed: number; last10: string; streak: string }
@@ -100,7 +101,7 @@ export default function Pronostics() {
     points: games.reduce((s, g) => s + (g.mine?.status === 'WON' ? g.mine.points : 0), 0),
   }), [games]);
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   if (!data.enabled) return <div className="panel"><h1>🎯 Pronostics LNH</h1><p className="muted">Les pronostics sont fermés pour le moment.</p></div>;
   const me = data.me;
   const pctWeek = me.week.total > 0 ? Math.round((me.week.wins / me.week.total) * 100) : null;

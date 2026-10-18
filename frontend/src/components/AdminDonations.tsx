@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import Avatar from './Avatar';
+import Loading from './Loading';
 
 interface Tier { minAmount: number; label: string; days: number; freeleechDays: number; hnrDays: number; bonusPoints: number; invites: number }
 interface Config { enabled: boolean; currency: string; headline: string; text: string; howTo: string; links: { label: string; url: string }[]; goalMonthly: number; tiers: Tier[] }
@@ -41,7 +42,7 @@ export default function AdminDonations() {
     catch (err) { setError(errorOf(err)); } finally { setBusy(false); }
   }
 
-  if (!data || !cfg) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data || !cfg) return <Loading error={error} />;
   const setTier = (i: number, patch: Partial<Tier>) => setCfg({ ...cfg, tiers: cfg.tiers.map((t, j) => (j === i ? { ...t, ...patch } : t)) });
   const numInput = (v: number, on: (n: number) => void, w = 80) => <input type="number" min={0} style={{ width: w }} value={v} onChange={(e) => on(Number(e.target.value) || 0)} />;
 

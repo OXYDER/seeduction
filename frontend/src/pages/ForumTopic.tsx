@@ -11,6 +11,7 @@ import { bbcodeToHtml } from '../lib/bbcode';
 import { displayRank } from '../lib/memberClass';
 import Avatar from '../components/Avatar';
 import { useCrumbTitle } from '../store/crumbs';
+import Loading from '../components/Loading';
 
 const isStaffRole = (role?: string) => ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
 
@@ -115,7 +116,7 @@ export default function ForumTopic() {
   }
 
   if (error) return <div className="panel"><p className="muted">{error}</p><Link to="/forum">← Retour au forum</Link></div>;
-  if (!data) return <p className="muted">Chargement...</p>;
+  if (!data) return <Loading />;
 
   const { topic, posts } = data;
   const pager = <Pagination page={data.page} total={data.total} pageSize={data.pageSize} onPage={(p) => setParams({ page: String(p) })} />;

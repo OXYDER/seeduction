@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { durationFr, tierPerks } from '../lib/duration';
 import { PotGauge } from '../pages/Pot';
+import Loading from './Loading';
 
 const NAMES = ['Le Pot du Plaisir', 'La Cagnotte', 'Le Gros Lot', 'La Marmite', 'Le Chaudron', 'Le Coffre aux Seeds', 'La Tirelire', 'Le Pot de la Communauté', "Le Pot d'Or"];
 const MAX_HOURS = 720;
@@ -39,7 +40,7 @@ export default function PotAdmin() {
     try { await api.post('/pot/topup', { amount: Number(topUp) }); setTopUp(''); ok('✓ Points ajoutés au pot'); await load(); } catch (e) { fail(e); } finally { setBusy(false); }
   }
 
-  if (!cfg) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!cfg) return <Loading error={error} />;
 
   const num = (key: string, label: string, hint?: string, suffix?: string) => (
     <Field label={label} hint={hint}>

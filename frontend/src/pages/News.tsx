@@ -11,6 +11,7 @@ import UserLink from '../components/UserLink';
 import Avatar from '../components/Avatar';
 import NewsEditor from '../components/NewsEditor';
 import { useCrumbTitle } from '../store/crumbs';
+import Loading from '../components/Loading';
 
 const ambient = (url?: string | null) => (url ? ({ '--ambient': `url("${url.replace(/"/g, '%22')}")` } as React.CSSProperties) : undefined);
 const plain = (t: string) => t.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
@@ -91,12 +92,12 @@ export default function News() {
   if (error) return <div className="panel"><p className="muted">{error}</p><Link to="/news">← Toutes les nouvelles</Link></div>;
 
   if (id) {
-    if (!single) return <p className="muted">Chargement...</p>;
+    if (!single) return <Loading />;
     if (editing === single.id) return <NewsEditor item={single} onSaved={saved} onCancel={() => setEditing(null)} />;
     return <NewsArticle n={single} canEdit={canEdit} onEdit={() => setEditing(single.id)} onChanged={() => setRev((r) => r + 1)} />;
   }
 
-  if (!feed) return <p className="muted">Chargement...</p>;
+  if (!feed) return <Loading />;
   const items: any[] = feed.items;
   const setKind = (k: string) => { const p = new URLSearchParams(params); if (k) p.set('kind', k); else p.delete('kind'); p.delete('page'); setParams(p); };
   const filtered = !!(kind || params.get('q'));
@@ -269,7 +270,7 @@ function Comments({ n, canStaff, onToggleLock, onCount }: { n: any; canStaff: bo
         )}
       {error && <div style={{ color: 'var(--danger)', marginBottom: 8 }}>{error}</div>}
 
-      {!data ? <p className="muted">Chargement…</p> : data.items.length === 0 ? <p className="muted">Aucun commentaire pour l'instant.</p> : (
+      {!data ? <Loading /> : data.items.length === 0 ? <p className="muted">Aucun commentaire pour l'instant.</p> : (
         <div className="news-comments">
           {data.items.map((c: any) => (
             <div key={c.id} className="news-comment">

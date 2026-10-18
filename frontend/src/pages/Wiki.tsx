@@ -7,6 +7,7 @@ import { bbcodeToHtml } from '../lib/bbcode';
 const withSite = (s: string) => s.replace(/\{SITE\}/g, window.location.origin);
 import { plainText, readingMinutes, snippet, splitWiki, type WikiSection } from '../lib/wikiSections';
 import { useCrumbTitle } from '../store/crumbs';
+import Loading from '../components/Loading';
 
 interface WikiArticleListItem {
   id: string;
@@ -242,7 +243,7 @@ function WikiArticleView({ slug, flat }: { slug: string; flat: (WikiArticleListI
   }, [article, parts]);
 
   if (error) return <div className="panel"><p className="muted">{error}</p><Link to="/wiki">← Retour au wiki</Link></div>;
-  if (!article) return <p className="muted">Chargement...</p>;
+  if (!article) return <Loading />;
 
   const toggle = (id: string) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const jump = (id: string) => {

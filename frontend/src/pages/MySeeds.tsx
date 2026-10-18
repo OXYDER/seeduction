@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
+import Loading from '../components/Loading';
 
 interface Item {
   torrentId: string; name: string; coverImage: string | null; size: number; seedingNow: boolean; own: boolean; cleared: boolean;
@@ -33,7 +34,7 @@ export default function MySeeds() {
     return () => clearInterval(t);
   }, []);
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   const { rules, counts } = data;
   const shown = data.items.filter((i) => (tab === 'now' ? i.seedingNow : tab === 'todo' ? ['progress', 'idle', 'hnr'].includes(i.state) : tab === 'done' ? i.state === 'done' : true));
   const TABS: [Tab, string][] = [['now', `🌱 En seed maintenant (${counts.seeding})`], ['todo', `⏳ Obligation à terminer (${counts.progress})`], ['done', `✅ Obligation terminée (${counts.done})`], ['all', `Tout (${data.items.length})`]];

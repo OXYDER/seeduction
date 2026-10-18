@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { audio, playWin, setSoundOn, soundOn, tick } from '../lib/slotSound';
 import { playWrong } from '../lib/cardSound';
 import CoinShower from '../components/CoinShower';
+import Loading from '../components/Loading';
 import '../games.css';
 
 type Kind = 'UNDER' | 'OVER' | 'EXACT' | 'DOUBLES';
@@ -125,7 +126,7 @@ export default function Dice() {
     finally { if (alive.current) setBusy(false); }
   }
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   if (!data.config.enabled) return <div className="panel"><h1>🎲 Dés</h1><p className="muted">Les dés sont fermés pour le moment.</p></div>;
 
   const cfg = data.config, me = data.me;

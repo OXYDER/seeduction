@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import { formatBytes, formatNumber } from '../lib/format';
 import { LANGUAGE_GROUPS, LANGUAGE_LABELS } from '../lib/languageTag';
+import Loading from './Loading';
 
 interface Source {
   id: string; name: string; enabled: boolean; config: any; hasQbitPassword: boolean; hasFtpPassword: boolean;
@@ -151,7 +152,7 @@ export function ImportAdmin() {
         </div>
       )}
 
-      {sources === null && <p className="muted">Chargement…</p>}
+      {sources === null && <Loading />}
       {sources?.length === 0 && !editing && <div className="panel"><p className="muted">Aucune source pour l'instant.</p></div>}
 
       {sources?.map((s) => (
@@ -441,7 +442,7 @@ function ReviewPanel({ source, onChanged, ok, fail }: { source: Source; onChange
     <div className="panel ornate" style={{ marginTop: 10 }}>
       <strong>🔍 À vérifier</strong>
       <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>Releases dont la fiche ou la catégorie n'est pas sûre : rien n'est envoyé tant que tu n'as pas validé.</span>
-      {items === null && <div className="muted">Chargement…</div>}
+      {items === null && <Loading />}
       {items && review.length === 0 && ready.length === 0 && <div className="muted" style={{ marginTop: 6 }}>Rien à vérifier.</div>}
       {ready.length > 0 && (
         <div style={{ marginTop: 6, fontSize: 12 }} className="muted">⏳ Envoi en cours : {ready.map((r) => r.name).join(' · ')}</div>

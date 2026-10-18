@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
+import Loading from '../components/Loading';
 
 interface Item {
   id: string; torrentId: string; name: string; coverImage: string | null; size: number; completedAt: string; seedSeconds: number;
@@ -36,7 +37,7 @@ export default function HitAndRun() {
     } catch (e: any) { setError(e.response?.data?.message ?? 'Impossible d\'effacer ce hit & run'); } finally { setBusy(''); }
   }
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   const { rules } = data;
 
   return (

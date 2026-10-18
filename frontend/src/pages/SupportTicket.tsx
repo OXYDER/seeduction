@@ -9,6 +9,7 @@ import Avatar from '../components/Avatar';
 import UserLink from '../components/UserLink';
 import WysiwygEditor from '../components/WysiwygEditor';
 import { AttachmentPicker, Attachments, PriorityChip, StatusChip, TicketText, WikiSuggestions, useWikiSuggestions } from '../components/SupportBits';
+import Loading from '../components/Loading';
 
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const fullDate = (iso: string) => new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -158,7 +159,7 @@ export default function SupportTicket() {
   }
 
   if (error && !ticket) return <div className="panel"><p style={{ color: 'var(--danger)' }}>{error}</p><Link to="/support">← Retour au support</Link></div>;
-  if (!ticket) return <p className="muted">Chargement…</p>;
+  if (!ticket) return <Loading />;
 
   const mine = ticket.requester.id === me?.id;
   const closed = ticket.status === 'CLOSED';

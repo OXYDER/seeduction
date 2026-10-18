@@ -6,6 +6,7 @@ import { audio, bell, noiseBuffer, playWin, setSoundOn, soundOn, tick } from '..
 import { useCountdown } from '../components/FreeleechCalendar';
 import CoinShower from '../components/CoinShower';
 import QuizSuggest from '../components/QuizSuggest';
+import Loading from '../components/Loading';
 import '../games.css';
 
 interface Choice { i: number; text: string }
@@ -168,7 +169,7 @@ export default function Quiz() {
   const total = play?.total ?? data?.rules.questions ?? 5;
   const dots = useMemo(() => Array.from({ length: total }, (_, i) => (i < marks.length ? (marks[i] ? 'ok' : 'ko') : i === (play?.index ?? 0) && play?.status === 'ACTIVE' ? 'now' : 'todo')), [total, marks, play?.index, play?.status]);
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   if (!data.enabled) return <div className="panel"><h1>🧠 Quiz quotidien</h1><p className="muted">Le quiz est fermé pour le moment.</p></div>;
 
   const result = play?.status === 'DONE' ? play.result : undefined;

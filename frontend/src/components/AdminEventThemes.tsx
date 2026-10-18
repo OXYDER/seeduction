@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { ART, type EventId } from '../lib/eventArt';
 import { useEventDecor, useEventTheme } from '../store/eventTheme';
 import { EventSprite } from './EventDecor';
+import Loading from './Loading';
 
 interface Schedule { enabled: boolean; from: string; to: string; easterBefore: number; easterAfter: number }
 interface Config { enabled: boolean; particles: boolean; timezone: string; events: Record<EventId, Schedule>; force: { id: EventId | null; until: string | null }; countdown: { enabled: boolean; daysBefore: number } }
@@ -82,7 +83,7 @@ export default function AdminEventThemes() {
   }
   const edit = (id: EventId, patch: Partial<Schedule>) => { if (!cfg) return; setCfg({ ...cfg, events: { ...cfg.events, [id]: { ...cfg.events[id], ...patch } } }); setDirty(true); };
 
-  if (!data || !cfg) return <p className="muted">{err || 'Chargement…'}</p>;
+  if (!data || !cfg) return <Loading error={err} />;
   const act = data.active;
 
   return (

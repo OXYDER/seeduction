@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { playWin, setSoundOn, soundOn } from '../lib/slotSound';
 import { useCountdown } from '../components/FreeleechCalendar';
 import CoinShower from '../components/CoinShower';
+import Loading from '../components/Loading';
 import '../games.css';
 
 interface ChallengeV { id: string; event: string; tier: 'easy' | 'medium' | 'hard'; tierLabel: string; icon: string; title: string; desc: string; target: number; progress: number; done: boolean; points: number; packs: number }
@@ -74,7 +75,7 @@ export default function Defis() {
   const leftDay = useCountdown(data?.resetsAt ?? null);
   const leftWeek = useCountdown(data?.weekResetsAt ?? null);
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   if (!data.enabled) return <div className="panel"><h1>🎯 Défis</h1><p className="muted">Les défis sont fermés pour le moment.</p></div>;
   const dDone = data.daily.filter((c) => c.done).length, wDone = data.weekly.filter((c) => c.done).length;
 

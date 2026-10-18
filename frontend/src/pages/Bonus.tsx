@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import TransferPoints from '../components/TransferPoints';
 import UploadCreditPanel from '../components/UploadCreditPanel';
 import { timeAgo } from '../lib/time';
+import Loading from '../components/Loading';
 
 /** Points bonus, boutique, jetons freeleech et suivi des « hit & run ». */
 export default function Bonus() {
@@ -35,7 +36,7 @@ export default function Bonus() {
     }
   }
 
-  if (!data) return <p className="muted">{error || 'Chargement...'}</p>;
+  if (!data) return <Loading error={error} />;
 
   const { rules } = data;
 

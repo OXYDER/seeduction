@@ -6,6 +6,7 @@ import { playDeal, playFlip, playWrong } from '../lib/cardSound';
 import { playWin, setSoundOn, soundOn } from '../lib/slotSound';
 import PlayingCard, { type Suit } from '../components/PlayingCard';
 import CoinShower from '../components/CoinShower';
+import Loading from '../components/Loading';
 import '../games.css';
 
 interface CardV { code: number; rank: number; suit: Suit }
@@ -108,7 +109,7 @@ export default function Blackjack() {
     finally { if (alive.current) setBusy(false); }
   }
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   if (!data.config.enabled) return <div className="panel"><h1>♠️ Blackjack</h1><p className="muted">Le blackjack est fermé pour le moment.</p></div>;
 
   const cfg = data.config, me = data.me;

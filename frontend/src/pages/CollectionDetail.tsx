@@ -8,6 +8,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { useCrumbTitle } from '../store/crumbs';
+import Loading from '../components/Loading';
 
 const VISIBILITY_LABEL: Record<string, string> = {
   PRIVATE: '🔒 Privée',
@@ -37,7 +38,7 @@ export default function CollectionDetail() {
   useEffect(() => { refresh(); }, [id]);
 
   if (error) return <p className="muted">{error}</p>;
-  if (!collection) return <p className="muted">Chargement...</p>;
+  if (!collection) return <Loading />;
 
   const rows = collection.items.map((item: any) => ({ ...item.torrent, _item: item }));
   const hasNotes = collection.items.some((item: any) => item.note);

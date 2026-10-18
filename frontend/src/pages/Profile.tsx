@@ -21,6 +21,7 @@ import Avatar from '../components/Avatar';
 import { displayRank } from '../lib/memberClass';
 import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
 import { useCrumbTitle } from '../store/crumbs';
+import Loading from '../components/Loading';
 
 export default function Profile() {
   const { id } = useParams();
@@ -81,7 +82,7 @@ export default function Profile() {
     try { await fn(); setReloadKey((k) => k + 1); } catch (e: any) { setFriendError(e.response?.data?.message ?? 'Action impossible'); } finally { setFriendBusy(false); }
   }
 
-  if (!profile) return <p className="muted">Chargement...</p>;
+  if (!profile) return <Loading />;
 
   // Sur son propre profil, les réglages sont rangés en onglets ; sur celui d'un autre membre, on ne voit que l'aperçu.
   const own = !id;

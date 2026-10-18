@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import Avatar from './Avatar';
 import { isUnseenNews, kindOf } from '../lib/news';
 import { timeAgo } from '../lib/time';
+import Loading from './Loading';
 
 const ambient = (url?: string | null) => (url ? ({ '--ambient': `url("${url.replace(/"/g, '%22')}")` } as React.CSSProperties) : undefined);
 const TILE_MIN = 230, TILE_GAP = 12; // doit rester identique à .news-tiles dans index.css
@@ -44,7 +45,7 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
         <span className="title-icon">📰</span>Dernière nouvelle
         <Link to="/news" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13 }}>Toutes les nouvelles →</Link>
       </div>
-      {items === null && <p className="muted">Chargement...</p>}
+      {items === null && <Loading />}
       {items?.length === 0 && !heroOnly && <p className="muted">Aucune nouvelle pour l'instant.</p>}
 
       {first && k && (

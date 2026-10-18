@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { audio, bell, noiseBuffer, playWin, setSoundOn, soundOn, tick } from '../lib/slotSound';
 import CollectCard, { RARITY_LABEL, type CardDef, type Rarity } from '../components/CollectCard';
 import CoinShower from '../components/CoinShower';
+import Loading from '../components/Loading';
 import '../games.css';
 
 interface SetV { id: string; name: string; icon: string; total: number; reward: number; claimed: boolean }
@@ -157,7 +158,7 @@ export default function Cartes() {
     finally { setBusy(false); }
   }
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   if (!data.enabled) return <div className="panel"><h1>🎴 Cartes à collectionner</h1><p className="muted">Les cartes sont fermées pour le moment.</p></div>;
 
   const w = data.wallet;

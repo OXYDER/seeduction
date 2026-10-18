@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/auth';
 import { formatBytes } from '../lib/format';
 import Avatar from '../components/Avatar';
 import { Pagination } from '../components/ForumBits';
+import Loading from '../components/Loading';
 
 interface TeamCard {
   id: string; name: string; tag: string | null; description: string; logoUrl: string | null; recruiting: boolean; memberCount: number; totalUpload: number;
@@ -40,7 +41,7 @@ export default function Teams() {
     } catch (err: any) { setError(err.response?.data?.message ?? 'Création impossible'); }
   }
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   const FILTERS: [Filter, string][] = [['all', `Toutes (${data.counts.all})`], ['unowned', `Sans propriétaire (${data.counts.unowned})`], ['owned', 'Avec propriétaire'], ['recruiting', 'Qui recrutent'], ['mine', 'Ma team']];
 
   return (

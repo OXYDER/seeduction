@@ -7,6 +7,7 @@ import { TYPE_LABEL } from '../lib/entityLabels';
 import { useViewMode } from '../lib/viewMode';
 import TorrentView, { ViewSwitcher } from '../components/TorrentView';
 import Recommended from '../components/Recommended';
+import Loading from '../components/Loading';
 
 export default function Favorites() {
   const [items, setItems] = useState<any[] | null>(null);
@@ -42,7 +43,7 @@ export default function Favorites() {
           <span className="muted">{items ? `${items.length} torrent${items.length > 1 ? 's' : ''}` : ''}</span>
           <ViewSwitcher value={view} onChange={setView} />
         </div>
-        {items === null && <p className="muted">Chargement...</p>}
+        {items === null && <Loading />}
         {items?.length === 0 && (
           <p className="muted">
             Rien ici pour l'instant. Clique sur l'étoile ☆ à côté d'un torrent (dans <Link to="/browse">Parcourir</Link> ou sur sa fiche) pour le mettre de côté.

@@ -7,6 +7,7 @@ import FollowButton from '../components/FollowButton';
 import { useViewMode } from '../lib/viewMode';
 import TorrentView, { ViewSwitcher } from '../components/TorrentView';
 import { useCrumbTitle } from '../store/crumbs';
+import Loading from '../components/Loading';
 
 const PAGE_SIZE = 24;
 
@@ -35,7 +36,7 @@ export default function EntityPage() {
   }, [id, role, page]);
 
   if (error) return <p className="muted">{error}</p>;
-  if (!entity) return <p className="muted">Chargement...</p>;
+  if (!entity) return <Loading />;
 
   return (
     <div className="grid">

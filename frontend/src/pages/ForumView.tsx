@@ -7,6 +7,7 @@ import WysiwygEditor from '../components/WysiwygEditor';
 import { Pagination, LastPostCell } from '../components/ForumBits';
 import { timeAgo } from '../lib/time';
 import { useCrumbTitle } from '../store/crumbs';
+import Loading from '../components/Loading';
 
 /** Lignes de sujets : utilisées par la vue d'un forum, les derniers messages et la recherche. */
 export function TopicTable({ topics, showForum }: { topics: any[]; showForum?: boolean }) {
@@ -102,7 +103,7 @@ export default function ForumView() {
   }
 
   if (error) return <div className="panel"><p className="muted">{error}</p><Link to="/forum">← Retour au forum</Link></div>;
-  if (!data) return <p className="muted">Chargement...</p>;
+  if (!data) return <Loading />;
 
   const { forum } = data;
 

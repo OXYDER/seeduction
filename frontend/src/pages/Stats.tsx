@@ -7,6 +7,7 @@ import StatsOverview from '../components/stats/StatsOverview';
 import StatsMembers from '../components/stats/StatsMembers';
 import StatsTorrents from '../components/stats/StatsTorrents';
 import { Bars, ChartCard, Donut, Section, Tile, gridStyle, shortDate } from '../components/stats/StatsBits';
+import Loading from '../components/Loading';
 
 const TABS = [
   { id: 'overview', label: '📈 Aperçu' },
@@ -36,7 +37,7 @@ export default function Stats() {
   const go = (patch: Record<string, string>) => { const next = new URLSearchParams(params); Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k))); setParams(next, { replace: true }); };
 
   if (error) return <p className="muted">{error}</p>;
-  if (!data) return <p className="muted">Chargement...</p>;
+  if (!data) return <Loading />;
   const periodPicker = tab === 'overview' || tab === 'community';
 
   return (

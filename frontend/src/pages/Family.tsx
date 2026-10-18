@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/auth';
 import { timeAgo } from '../lib/time';
 import Avatar from '../components/Avatar';
 import { DEFAULT_PERMS, PERM_KEYS, PERM_LABELS, type Perms } from '../store/auth';
+import Loading from '../components/Loading';
 
 interface Card { id: string; name: string; username: string; accountName: string; avatarUrl: string | null; perms: Perms; isMaster: boolean; blocked: boolean; hasPin: boolean }
 interface Activity {
@@ -42,7 +43,7 @@ export default function Family() {
   const say = (t: string) => { setFlash(t); setTimeout(() => setFlash(''), 3500); };
 
   if (!isMaster) return <div className="panel"><p className="muted">Seul le profil principal gère le compte famille.</p></div>;
-  if (!state) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!state) return <Loading error={error} />;
 
   return (
     <div className="grid">
@@ -257,7 +258,7 @@ function ActivityPanel({ profiles }: { profiles: Card[] }) {
         <button type="button" className="secondary" onClick={() => void fetchPage()}>↻ Actualiser</button>
       </div>
       <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Ce journal montre ce qui est fait depuis le site avec chaque profil. Le seed fait par ton client BitTorrent reste au niveau du compte.</p>
-      {items === null ? <p className="muted">Chargement…</p> : items.length === 0 ? <p className="muted">Aucune activité pour ces filtres.</p> : (
+      {items === null ? <Loading /> : items.length === 0 ? <p className="muted">Aucune activité pour ces filtres.</p> : (
         <div className="fam-feed">
           {items.map((a) => (
             <div key={a.id} className="fam-event">
@@ -303,7 +304,7 @@ function ChatsPanel({ profiles }: { profiles: Card[] }) {
       </div>
       <div className="fam-chats">
         <div className="fam-chat-list">
-          {convs === null ? <p className="muted">Chargement…</p> : convs.length === 0 ? <p className="muted">Aucune conversation.</p> : convs.map((c) => (
+          {convs === null ? <Loading /> : convs.length === 0 ? <p className="muted">Aucune conversation.</p> : convs.map((c) => (
             <button key={c.id} type="button" className={`secondary${openId === c.id ? ' on' : ''}`} onClick={() => open(c.id)}>
               <strong>{c.type === 'GROUP' ? '👥 ' : ''}{c.name}</strong>
               <small className="muted">{c.lastMessageAt ? timeAgo(c.lastMessageAt) : ''}</small>
@@ -311,7 +312,7 @@ function ChatsPanel({ profiles }: { profiles: Card[] }) {
           ))}
         </div>
         <div className="fam-chat-view">
-          {!openId ? <p className="muted">Choisis une conversation.</p> : msgs === null ? <p className="muted">Chargement…</p> : msgs.length === 0 ? <p className="muted">Aucun message.</p> : msgs.map((m) => (
+          {!openId ? <p className="muted">Choisis une conversation.</p> : msgs === null ? <Loading /> : msgs.length === 0 ? <p className="muted">Aucun message.</p> : msgs.map((m) => (
             <div key={m.id} className={`fam-msg${m.fromChild ? ' child' : ''}`}>
               <div className="fam-msg-head"><strong>{m.sender.username}</strong> <span className="muted">{new Date(m.at).toLocaleString('fr-CA')}</span></div>
               <div>

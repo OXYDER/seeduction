@@ -13,6 +13,7 @@ import Composer from './Composer';
 import Avatar from '../Avatar';
 import PinBar from './PinBar';
 import MotdBanner from './MotdBanner';
+import Loading from '../Loading';
 
 const TYPING_TTL_MS = 4500;
 const CLUSTER_GAP_MS = 5 * 60_000;
@@ -264,7 +265,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   }, [messages, support?.botUserId, me]);
 
   if (missing) return <div className="msgr-view-empty"><p className="muted">Cette conversation n'est plus disponible.</p>{onClose && <button type="button" onClick={onClose}>Fermer</button>}</div>;
-  if (!conv) return <div className="msgr-view-empty"><p className="muted">Chargement…</p></div>;
+  if (!conv) return <div className="msgr-view-empty"><Loading /></div>;
 
   const isStaff = STAFF.includes(me?.role ?? '');
   const canModerate = conv.type === 'CHANNEL' ? isStaff : conv.type === 'GROUP' ? conv.myRole !== 'MEMBER' : false;

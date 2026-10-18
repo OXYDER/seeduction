@@ -6,6 +6,7 @@ import { timeAgo } from '../lib/time';
 import { bbcodeToHtml } from '../lib/bbcode';
 import WysiwygEditor from '../components/WysiwygEditor';
 import { CategoryChip, Progress, StatusChip, VoteButton, errorOf, useSuggestionMeta } from './Suggestions';
+import Loading from '../components/Loading';
 
 interface Detail {
   id: string; title: string; body: string; category: string; status: string; voteCount: number; commentCount: number; statusNote: string | null; statusAt: string | null;
@@ -35,7 +36,7 @@ export default function SuggestionDetail() {
   useEffect(() => { load(); }, [load]);
 
   if (err && !s) return <div className="panel"><p style={{ color: 'var(--danger)' }}>{err}</p><Link to="/suggestions">← Toutes les suggestions</Link></div>;
-  if (!s) return <p className="muted">Chargement...</p>;
+  if (!s) return <Loading />;
 
   const mine = s.author.id === accountId;
   const canEdit = isStaff || (mine && s.status === 'OPEN');

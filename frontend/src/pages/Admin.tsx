@@ -36,6 +36,7 @@ import AdminAntiCheat from '../components/AdminAntiCheat';
 import AdminBackup from '../components/AdminBackup';
 import AdminForum from '../components/AdminForum';
 import AdminEventThemes from '../components/AdminEventThemes';
+import Loading from '../components/Loading';
 
 const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki', 'Support', 'Telegram', 'Anti-triche'] as const;
 type Tab = typeof BASE_TABS[number] | 'Paramètres' | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal' | 'Sécurité' | 'Import' | 'Pot commun' | 'Dons' | 'Sauvegardes' | 'Événements' | 'Jeux';
@@ -153,7 +154,7 @@ function AuditAdmin() {
   }, [page, filter]);
 
   if (error) return <p className="muted">{error}</p>;
-  if (!data) return <p className="muted">Chargement...</p>;
+  if (!data) return <Loading />;
 
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
   const summary = (meta: any) => {
@@ -241,7 +242,7 @@ function MonitoringAdmin() {
   }, []);
 
   if (error) return <p className="muted">{error}</p>;
-  if (!data) return <p className="muted">Chargement...</p>;
+  if (!data) return <Loading />;
 
   const { process: proc, database, counts, series } = data;
   const lastHour = series.reduce(

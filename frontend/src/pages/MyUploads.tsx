@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { HOLD_REASONS, type HoldInfo, type ResubmitInfo } from '../lib/holdReasons';
+import Loading from '../components/Loading';
 
 interface Row {
   id: string; name: string; size: number; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DEAD'; createdAt: string; coverImage: string | null; category: string | null;
@@ -39,7 +40,7 @@ export default function MyUploads() {
     return active === 'all' || (active === 'todo' && (k === 'hold' || k === 'rejected')) || (active === 'pending' && (k === 'pending' || k === 'hold')) || (active === 'approved' && (k === 'approved' || k === 'dead'));
   });
 
-  if (!rows) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!rows) return <Loading error={error} />;
 
   return (
     <div className="grid" style={{ gap: 16 }}>

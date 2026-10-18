@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import { Pagination } from './ForumBits';
+import Loading from './Loading';
 
 interface Item {
   id: string; at: string; category: string; verb: string; detail: string | null; ip: string | null; profile: string | null;
@@ -80,7 +81,7 @@ export default function MemberActivityPanel({ userId }: { userId: string }) {
               <Pagination page={data.page} total={data.total} pageSize={data.pageSize} onPage={setPage} />
             </>
           )}
-          {!data && !error && <p className="muted">Chargement…</p>}
+          {!data && !error && <Loading />}
         </>
       )}
     </div>

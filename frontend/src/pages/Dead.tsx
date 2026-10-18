@@ -7,6 +7,7 @@ import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import UserLink from '../components/UserLink';
 import { Tile, gridStyle } from '../components/stats/StatsParts';
+import Loading from '../components/Loading';
 
 const SORTS = [
   { id: 'popular', label: 'Les plus téléchargés' },
@@ -63,7 +64,7 @@ export default function Dead() {
   }
 
   if (error && !data) return <p className="muted">{error}</p>;
-  if (!data) return <p className="muted">Chargement…</p>;
+  if (!data) return <Loading />;
   const s = data.summary;
 
   return (

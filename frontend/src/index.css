@@ -4181,3 +4181,22 @@ button.hl-cash:disabled { opacity: 0.45; filter: grayscale(0.5); }
 @media (max-width: 560px) { .hl-top { grid-template-columns: 1fr 1fr; } .hl-mult { grid-column: 1 / -1; grid-row: 2; } .hl-streak-n { font-size: 42px; } .hl-actions { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .hl-deal, .hl-shuffle, .onfire .hl-streak-n, button.hl-cash.hot, .hl-lights i, .slot-jackpot, .slot-jackpot.won { animation: none !important; } }
 .gh-hilo { --gh-frame: #6ef09a; --gh-glow: #23a45a; background: linear-gradient(160deg, #0f5a31, #0a1d12 70%); }
+
+/* ---- Indicateurs de chargement (components/Loading.tsx) ---- */
+.ld { display: flex; align-items: center; gap: 10px; padding: 18px 4px; color: var(--muted, #9aa); font-size: 14px; opacity: 0; animation: ld-in 0.25s ease 0.15s forwards; }
+.ld-spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.14); border-top-color: #f5c542; border-right-color: #a78bfa; animation: ld-rot 0.8s linear infinite; flex: none; }
+.ld-page { display: grid; gap: 16px; opacity: 0; animation: ld-in 0.25s ease 0.12s forwards; }
+.ld-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9999; overflow: hidden; background: rgba(255, 255, 255, 0.06); }
+.ld-bar span { display: block; width: 38%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, transparent, #f5c542, #a78bfa, transparent); animation: ld-slide 1.15s ease-in-out infinite; }
+.ld-skel { display: grid; gap: 14px; }
+.ld-skel i, .ld-cards i { display: block; border-radius: 12px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.05) 75%); background-size: 200% 100%; animation: ld-shimmer 1.4s ease-in-out infinite; }
+.ld-title { height: 30px; width: min(280px, 60%); }
+.ld-line { height: 14px; width: min(520px, 90%); }
+.ld-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-top: 6px; }
+.ld-cards i { height: 130px; }
+.ld-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@keyframes ld-in { to { opacity: 1; } }
+@keyframes ld-rot { to { transform: rotate(360deg); } }
+@keyframes ld-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(360%); } }
+@keyframes ld-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .ld-spin, .ld-bar span, .ld-skel i, .ld-cards i { animation-duration: 3s; } }

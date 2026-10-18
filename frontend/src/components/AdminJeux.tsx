@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
+import Loading from './Loading';
 
 type Market = 'WIN' | 'MODE' | 'SCORE';
 interface Cfg {
@@ -41,7 +42,7 @@ export default function AdminJeux() {
     try { await fn(); setMsg(ok); setManual(null); await load(); } catch (e) { setErr(errorOf(e)); } finally { setBusy(false); }
   }
 
-  if (!cfg) return <p className="muted">{err || 'Chargement…'}</p>;
+  if (!cfg) return <Loading error={err} />;
 
   return (
     <div className="grid" style={{ gap: 16 }}>

@@ -6,6 +6,7 @@ import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import Avatar from './Avatar';
 import UserLink from './UserLink';
+import Loading from './Loading';
 
 type Level = 'NONE' | 'WATCH' | 'SUSPECT' | 'LIKELY' | 'CRITICAL';
 interface Kind { key: string; label: string; family: string; familyLabel: string; hint: string }
@@ -141,7 +142,7 @@ export default function AdminAntiCheat() {
   }
   const close = () => { setDetail(null); setSanction(null); setNote(''); if (params.get('case')) { params.delete('case'); setParams(params, { replace: true }); } };
 
-  if (!ov) return <p className="muted">{err || 'Chargement…'}</p>;
+  if (!ov) return <Loading error={err} />;
   const num = (k: keyof Config, label: string, hint: string, min = 0, max = 100000) => cfg && (
     <label style={{ display: 'grid', gap: 3, fontSize: 13 }}>{label}
       <input type="number" min={min} max={max} value={cfg[k] as number} onChange={(e) => setCfg({ ...cfg, [k]: Number(e.target.value) || 0 })} />

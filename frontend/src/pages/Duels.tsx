@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import CoinShower from '../components/CoinShower';
+import Loading from '../components/Loading';
 import '../games.css';
 
 interface DuelV {
@@ -76,7 +77,7 @@ export default function Duels() {
     setBusy(key); setMsg(''); setError('');
     try { await fn(); setMsg(ok); await load(); } catch (e) { setError(errorOf(e)); } finally { setBusy(''); }
   }
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   const kd = data.kinds.find((k) => k.id === kind);
   const r = data.rules;
 

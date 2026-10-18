@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/auth';
 import { useSupport, type TicketSummary } from '../store/support';
 import { timeAgo } from '../lib/time';
 import { StatusChip, WikiSuggestions, useWikiSuggestions } from '../components/SupportBits';
+import Loading from '../components/Loading';
 
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 
@@ -80,7 +81,7 @@ export default function Support() {
           </div>
         </div>
         {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
-        {tickets === null && !error && <p className="muted">Chargement…</p>}
+        {tickets === null && !error && <Loading />}
         {tickets && tickets.length === 0 && (
           <p className="muted" style={{ margin: '12px 0 0' }}>
             {filter === 'open' ? 'Aucun billet en cours.' : 'Tu n’as encore ouvert aucun billet.'} <Link to="/support/new">Ouvrir un billet</Link>

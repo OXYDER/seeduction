@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import Avatar from '../components/Avatar';
+import Loading from '../components/Loading';
 
 interface Card { id: string; name: string; username: string; accountName: string; avatarUrl: string | null; isMaster: boolean; blocked: boolean; hasPin: boolean }
 
@@ -88,7 +89,7 @@ export default function Profiles() {
       <h1>Qui est-ce ?</h1>
       <p className="muted">Compte <strong>{account}</strong></p>
       {error && <div className="panel" style={{ color: 'var(--danger)' }}>{error}</div>}
-      {cards === null && !error && <p className="muted">Chargement…</p>}
+      {cards === null && !error && <Loading />}
       <div className="profiles-grid">
         {(cards ?? []).map((c) => (
           <button key={c.id} type="button" className={`profile-card${c.blocked ? ' blocked' : ''}`} disabled={c.blocked} onClick={() => setPicked(c)} title={c.blocked ? 'Profil bloqué par le profil principal' : `Ouvrir le profil ${c.name}`}>

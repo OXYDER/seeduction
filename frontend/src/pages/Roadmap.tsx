@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
+import Loading from '../components/Loading';
 
 interface Entry { hash: string; at: string; title: string; details: string[] }
 
@@ -42,7 +43,7 @@ export default function Roadmap() {
   }
 
   if (error) return <p className="muted">{error}</p>;
-  if (!data) return <p className="muted">Chargement…</p>;
+  if (!data) return <Loading />;
 
   return (
     <div className="grid" style={{ gap: 16 }}>

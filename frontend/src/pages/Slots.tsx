@@ -6,6 +6,7 @@ import { MACHINE_ORDER, skinFor, type MachineId } from '../lib/slotSkins';
 import { useEventDecor } from '../store/eventTheme';
 import SlotMachine, { type Jackpot, type SlotConfig, type SlotGame, type SlotMe } from '../components/SlotMachine';
 import type { EventId } from '../lib/eventArt';
+import Loading from '../components/Loading';
 
 interface Overview {
   config: SlotConfig & { enabled: boolean; machines: Record<MachineId, boolean> };
@@ -30,7 +31,7 @@ export default function Slots() {
   const load = useCallback(() => api.get('/games/slots').then((r) => { setData(r.data); setError(''); }).catch(() => setError('Impossible de charger les machines à sous')), []);
   useEffect(() => { void load(); }, [load]);
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   const { config, me } = data;
   if (!config.enabled) return <div className="panel"><h1>🎰 Machines à sous</h1><p className="muted">Les machines à sous sont fermées pour le moment.</p></div>;
 

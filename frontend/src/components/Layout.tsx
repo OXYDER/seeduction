@@ -34,6 +34,7 @@ import { useSupport } from '../store/support';
 import { useNewsUnseen } from '../lib/news';
 import { ProfileName } from './UserLink';
 import Breadcrumbs from './Breadcrumbs';
+import { PageLoading } from './Loading';
 import AccountMenu from './AccountMenu';
 import SeedObligations from './SeedObligations';
 import { useTheme } from '../lib/theme';
@@ -520,7 +521,7 @@ function LayoutInner() {
             <EventStrip />
             <Breadcrumbs />
             <div key={location.pathname} className="page-enter">
-              <Suspense fallback={<div className="muted" style={{ padding: 24 }}>Chargement…</div>}><Outlet context={{ profile, categories } satisfies LayoutContext} /></Suspense>
+              <Suspense fallback={<PageLoading />}><Outlet context={{ profile, categories } satisfies LayoutContext} /></Suspense>
             </div>
           </main>
         </div>
@@ -655,7 +656,7 @@ function LayoutInner() {
       <div className="container">
         <EventStrip />
         <Breadcrumbs />
-        <Suspense fallback={<div className="muted" style={{ padding: 24 }}>Chargement…</div>}><Outlet context={{ profile, categories } satisfies LayoutContext} /></Suspense>
+        <Suspense fallback={<PageLoading />}><Outlet context={{ profile, categories } satisfies LayoutContext} /></Suspense>
       </div>
 
       <EventRoot />

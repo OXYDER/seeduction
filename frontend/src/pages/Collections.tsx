@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import Recommended from '../components/Recommended';
+import Loading from '../components/Loading';
 
 const VISIBILITY_LABEL: Record<string, string> = {
   PRIVATE: '🔒 Privée',
@@ -107,7 +108,7 @@ export default function Collections() {
 
       <section>
         <h2 className="collection-section-title">Mes collections {mine && <span className="collection-count">{mine.length}</span>}</h2>
-        {mine === null && <p className="muted">Chargement...</p>}
+        {mine === null && <Loading />}
         {mine?.length === 0 && (
           <div className="panel collection-empty">
             <span style={{ fontSize: 34 }}>📚</span>
@@ -125,7 +126,7 @@ export default function Collections() {
 
       <section>
         <h2 className="collection-section-title">Collections publiques {publicCols && <span className="collection-count">{others.length}</span>}</h2>
-        {publicCols === null && <p className="muted">Chargement...</p>}
+        {publicCols === null && <Loading />}
         {publicCols && others.length === 0 && <p className="muted">Aucune collection publique pour l'instant.</p>}
         {others.length > 0 && <div className="collection-grid">{others.map((c) => <CollectionCard key={c.id} c={c} />)}</div>}
       </section>

@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import Avatar from '../components/Avatar';
 import UserLink from '../components/UserLink';
 import { useDonors } from '../store/donors';
+import Loading from '../components/Loading';
 
 interface Tier { minAmount: number; label: string; days: number; freeleechDays: number; hnrDays: number; bonusPoints: number; invites: number }
 interface Info {
@@ -38,7 +39,7 @@ export default function Donate() {
   }
 
   if (error) return <div className="panel"><p style={{ color: 'var(--danger)' }}>{error}</p></div>;
-  if (!info) return <p className="muted">Chargement…</p>;
+  if (!info) return <Loading />;
   if (!info.enabled) return <div className="panel"><p className="muted">Les dons ne sont pas ouverts pour le moment. Merci de ton soutien !</p></div>;
 
   return (

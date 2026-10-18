@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import TelegramLogo from './TelegramLogo';
+import Loading from './Loading';
 
 interface Config {
   enabled: boolean; inviteUrl: string; chatId: string; bridge: boolean; bridgeChannelId: string | null;
@@ -32,7 +33,7 @@ export function TelegramAdmin() {
   const load = useCallback(() => api.get('/telegram/admin').then((r) => apply(r.data)).catch((e) => setErr(errorOf(e))), []);
   useEffect(() => { load(); const t = setInterval(load, 10_000); return () => clearInterval(t); }, [load]);
 
-  if (!ov || !cfg) return <p className="muted">{err || 'Chargement...'}</p>;
+  if (!ov || !cfg) return <Loading error={err} />;
   const up = <K extends keyof Config>(k: K, v: Config[K]) => setCfg({ ...cfg, [k]: v });
   const flash = (m: string) => { setMsg(m); setErr(''); setTimeout(() => setMsg(''), 4000); };
 

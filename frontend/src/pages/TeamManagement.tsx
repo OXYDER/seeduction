@@ -6,6 +6,7 @@ import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import Avatar from '../components/Avatar';
 import UserLink from '../components/UserLink';
+import Loading from '../components/Loading';
 
 interface StaffRow {
   id: string; username: string; role: string; status: string; avatarUrl: string | null; createdAt: string | null; lastSeenAt: string | null; online: boolean; presence: string | null;
@@ -70,7 +71,7 @@ export default function TeamManagement() {
 
       {notice && <div className="panel" style={{ borderColor: 'var(--success)', color: 'var(--success)' }}>{notice}</div>}
       {error && <div className="panel" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>{error}</div>}
-      {!data && !error && <p className="muted">Chargement…</p>}
+      {!data && !error && <Loading />}
 
       {data && tab === 'team' && <TeamTab data={data} meId={me.id} myRank={myRank} canEdit={canEdit} assignable={assignable} onRole={setRole} onError={setError} />}
       {data && tab === 'ranks' && <RanksTab data={data} canEdit={me.role === 'ADMIN' || me.role === 'OWNER'} />}
@@ -211,7 +212,7 @@ function RanksTab({ data, canEdit }: { data: TeamData; canEdit: boolean }) {
         {cls && <button type="button" className="secondary" onClick={() => setCls('')}>✕ {data.classes.find((c) => c.id === cls)?.label}</button>}
       </div>
 
-      {!list ? <p className="muted">Chargement…</p> : list.items.length === 0 ? <div className="panel"><span className="muted">Aucun membre actif ne correspond.</span></div> : (
+      {!list ? <Loading /> : list.items.length === 0 ? <div className="panel"><span className="muted">Aucun membre actif ne correspond.</span></div> : (
         <div className="panel" style={{ overflowX: 'auto', padding: 0 }}>
           <table>
             <thead><tr><th>Membre</th><th>Rôle</th><th>Rang</th><th>Ratio</th><th>↑ Envoyé</th><th>Inscrit</th><th>Dernière visite</th></tr></thead>

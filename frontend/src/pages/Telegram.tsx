@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import TelegramLogo from '../components/TelegramLogo';
+import Loading from '../components/Loading';
 
 interface Info {
   enabled: boolean;
@@ -52,7 +53,7 @@ export default function Telegram() {
     await load();
   }
 
-  if (!info) return <p className="muted">Chargement...</p>;
+  if (!info) return <Loading />;
   if (!info.enabled) {
     return (
       <div className="panel">

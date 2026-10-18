@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { timeAgo } from '../lib/time';
+import Loading from '../components/Loading';
 
 export interface SuggestionMeta {
   categories: { id: string; icon: string; label: string }[];
@@ -135,7 +136,7 @@ export default function Suggestions() {
       </div>
 
       {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
-      {!data ? <p className="muted">Chargement...</p> : data.items.length === 0 ? (
+      {!data ? <Loading /> : data.items.length === 0 ? (
         <div className="panel mod-empty"><div style={{ fontSize: 34 }}>💡</div><strong>Aucune suggestion ici</strong><span className="muted">{view === 'active' && !q && !category && !scope ? 'Sois le premier à proposer une idée !' : 'Essaie d\'autres filtres.'}</span></div>
       ) : (
         <div className="sg-list">

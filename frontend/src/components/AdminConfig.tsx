@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
+import Loading from './Loading';
 
 interface Field { key: string; group: string; label: string; help: string | null; min: number; max: number; step: number; value: number; default: number }
 
@@ -46,7 +47,7 @@ export function ConfigAdmin() {
     catch (err: any) { setError(err.response?.data?.message ?? 'Action impossible'); }
   }
 
-  if (!fields) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!fields) return <Loading error={error} />;
 
   return (
     <div className="grid" style={{ gap: 16 }}>

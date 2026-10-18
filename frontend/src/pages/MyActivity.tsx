@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
+import Loading from '../components/Loading';
 
 interface LiveRow { torrentId: string; name: string; coverImage: string | null; size: number; uploaded: number; downloaded: number; ratio: number | null; progress: number; lastAnnounceAt: string; seedSeconds: number; requiredSeconds: number; obligationDone: boolean | null }
 interface DoneRow { torrentId: string; name: string; coverImage: string | null; size: number; completedAt: string; seedSeconds: number; requiredSeconds: number; satisfied: boolean; hnr: boolean; own: boolean; seedingNow: boolean }
@@ -33,7 +34,7 @@ export default function MyActivity() {
     return () => clearInterval(t);
   }, []);
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   const { totals: t } = data;
   const ratio = t.downloadedBytes > 0 ? (t.uploadedBytes / t.downloadedBytes).toFixed(2) : '∞';
   const tile = (label: string, value: string, sub?: string) => (

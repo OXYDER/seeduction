@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { audio, bell, noiseBuffer, playWin, setSoundOn, soundOn, tick } from '../lib/slotSound';
 import { useCountdown } from '../components/FreeleechCalendar';
 import CoinShower from '../components/CoinShower';
+import Loading from '../components/Loading';
 import '../games.css';
 
 interface SegmentV { label: string; points: number; tokens: number; color: string }
@@ -151,7 +152,7 @@ export default function Wheel() {
     });
   }, [data]);
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   if (!data.enabled) return <div className="panel"><h1>🎡 Roue de la fortune</h1><p className="muted">La roue est fermée pour le moment.</p></div>;
 
   const canSpin = !data.playedToday && !data.blocked && phase !== 'spinning';

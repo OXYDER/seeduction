@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { useCountdown } from '../components/FreeleechCalendar';
 import TeamLogo from '../components/TeamLogo';
+import Loading from '../components/Loading';
 
 type Market = 'WIN' | 'MODE' | 'SCORE';
 interface Pool { points: number; players: number }
@@ -167,7 +168,7 @@ export default function Jeux() {
     load();
   }
 
-  if (!data) return <p className="muted">{error || 'Chargement…'}</p>;
+  if (!data) return <Loading error={error} />;
   const { config, me } = data;
   if (!config.enabled) return <div className="panel"><h1>🎲 Jeux</h1><p className="muted">Les jeux ne sont pas ouverts pour le moment.</p></div>;
 

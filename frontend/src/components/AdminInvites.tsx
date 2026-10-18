@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
+import Loading from './Loading';
 
 interface Invite {
   id: string; code: string; label: string | null; generic: boolean; createdAt: string; startsAt: string | null; expiresAt: string | null;
@@ -192,7 +193,7 @@ export function InvitesAdmin() {
           </div>
         </div>
 
-        {invites === null ? <p className="muted">Chargement…</p> : shown.length === 0 ? <p className="muted">Aucun code.</p> : (
+        {invites === null ? <Loading /> : shown.length === 0 ? <p className="muted">Aucun code.</p> : (
           <div className="inv-list">
             {shown.map((i) => (
               <div key={i.id} className={`inv-row ${i.status}`}>

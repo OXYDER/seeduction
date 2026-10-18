@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useMessenger } from '../store/messenger';
 import Avatar from './Avatar';
+import Loading from './Loading';
 
 interface Row { userId: string; username: string; avatarUrl?: string | null; expiresAt: string | null }
 
@@ -21,7 +22,7 @@ export default function ChatMutesPanel() {
       <p className="muted" style={{ marginTop: 0 }}>
         Depuis le menu ⋯ d'un message du chat, tu peux mettre un membre en sourdine pour une durée : tu ne vois plus ses messages (ni notifications, ni non lus). Il n'en est jamais prévenu.
       </p>
-      {rows === null && <p className="muted">Chargement…</p>}
+      {rows === null && <Loading />}
       {rows?.length === 0 && <p className="muted">Personne n'est en sourdine.</p>}
       <div className="grid" style={{ gap: 8 }}>
         {rows?.map((r) => (

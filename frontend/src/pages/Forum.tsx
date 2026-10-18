@@ -7,6 +7,7 @@ import UserLink from '../components/UserLink';
 import SearchBox from '../components/SearchBox';
 import { LastPostCell } from '../components/ForumBits';
 import { EventIcon, useEventActive } from '../components/EventDecor';
+import Loading from '../components/Loading';
 
 function ForumRow({ f }: { f: any }) {
   const evt = useEventActive();
@@ -76,7 +77,7 @@ export default function Forum() {
     load();
   }
 
-  if (!data) return <p className="muted">Chargement...</p>;
+  if (!data) return <Loading />;
 
   // Forums de premier niveau (sans catégorie) regroupés dans un seul tableau ; chaque catégorie a le sien.
   const loose = data.roots.filter((r: any) => !r.isCategory);

@@ -10,6 +10,7 @@ import PendingTorrentCard, { type PendingTorrent } from '../components/PendingTo
 import { SupportQueue, SupportStats } from '../components/AdminSupport';
 import ChatBansPanel from '../components/ChatBansPanel';
 import { useSupport } from '../store/support';
+import Loading from '../components/Loading';
 
 interface ReportRow {
   id: string; targetType: string; targetId: string; reason: string; createdAt: string; label: string; link: string | null;
@@ -169,7 +170,7 @@ export default function Moderation() {
 
       {tab === 'torrents' && (
         <>
-          {pending === null ? <p className="muted">Chargement…</p> : pending.length === 0 ? (
+          {pending === null ? <Loading /> : pending.length === 0 ? (
             <div className="panel mod-empty"><div style={{ fontSize: 34 }}>🎉</div><strong>Rien à valider</strong><span className="muted">Tous les torrents envoyés ont été traités.</span></div>
           ) : (
             <>
@@ -198,7 +199,7 @@ export default function Moderation() {
 
       {tab === 'reports' && (
         <>
-          {reports === null ? <p className="muted">Chargement…</p> : reports.length === 0 ? (
+          {reports === null ? <Loading /> : reports.length === 0 ? (
             <div className="panel mod-empty"><div style={{ fontSize: 34 }}>✅</div><strong>Aucun signalement ouvert</strong><span className="muted">La communauté est calme.</span></div>
           ) : (
             <>

@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import UserLink from './UserLink';
+import Loading from './Loading';
 
 interface PeerRow {
   id: string;
@@ -26,7 +27,7 @@ export default function TorrentPeers({ torrentId }: { torrentId: string }) {
   useEffect(() => { load(); }, [load]);
 
   if (err) return <div className="panel"><p style={{ color: 'var(--danger)' }}>{err}</p></div>;
-  if (!rows) return <div className="panel"><p className="muted">Chargement...</p></div>;
+  if (!rows) return <div className="panel"><Loading /></div>;
   const seeders = rows.filter((r) => r.isSeeder).length;
 
   return (
