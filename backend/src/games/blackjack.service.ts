@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger } from '@ne
 import { Interval } from '@nestjs/schedule';
 import { randomInt } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
+import { jobMonitor } from '../common/utils/job-monitor';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { Action, BjConfig, DEFAULT_BJ, Draw, State, act, drawFromShoe, handValue, legalActions, newGame, normalizeBj, settle, standAll, valueOf } from '../common/utils/blackjack';
@@ -215,6 +216,7 @@ export class BlackjackService {
   /** Parties abandonnées : jouées d'office (le joueur reste sur ses mains, le croupier joue) et réglées. */
   @Interval(300_000)
   async sweep() {
+    jobMonitor.run('blackjack.sweep', 300_000);
     try {
       const cfg = await this.config();
       const idle = (await this.prisma.blackjackGame.findMany({ where: { status: 'ACTIVE', updatedAt: { lt: new Date(Date.now() - cfg.idleMinutes * 60_000) } }, take: 100 })) as GameRow[];
@@ -222,7 +224,7 @@ export class BlackjackService {
         try { await this.commit(g, standAll(g.state as State, this.drawer(cfg), cfg), 0, cfg); }
         catch (e) { this.logger.warn(`Partie ${g.id} non réglée : ${(e as Error).message}`); }
       }
-    } catch (e) { this.logger.warn(`Parties de blackjack abandonnées : ${(e as Error).message}`); }
+    } catch (e) { jobMonitor.fail('blackjack.sweep', e); this.logger.warn(`Parties de blackjack abandonnées : ${(e as Error).message}`); }
   }
 
   /** Statistiques pour la case du jeu sur la page des jeux. */

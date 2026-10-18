@@ -9,6 +9,7 @@ import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../common/prisma.service';
 import { DmService } from './dm.service';
 import { PresenceService } from '../presence/presence.service';
+import { jwtSecret } from '../common/utils/secret';
 
 interface DmSocket extends Socket {
   data: { userId: string; username: string };
@@ -60,7 +61,7 @@ export class DmGateway implements OnGatewayConnection, OnGatewayDisconnect, OnMo
     const token = client.handshake.auth?.token ?? client.handshake.query?.token;
     if (!token || typeof token !== 'string') { client.disconnect(); return; }
     try {
-      const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'change-me-in-.env' });
+      const payload = this.jwtService.verify(token, { secret: jwtSecret() });
       if (lockState.blocking || lockState.tokenRevoked(payload.iat)) { client.disconnect(); return; } // alerte générale / session révoquée
       if (payload.scope === 'account') { client.disconnect(); return; }
       client.data = { userId: payload.sub, username: payload.username };

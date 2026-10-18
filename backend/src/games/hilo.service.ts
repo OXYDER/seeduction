@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger } from '@ne
 import { Interval } from '@nestjs/schedule';
 import { randomInt } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
+import { jobMonitor } from '../common/utils/job-monitor';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { Config, DEFAULT_HILO, DECK, Guess, isWin, nextMultBp, normalizeHiLo, odds, payoutOf, rankOf, stepHundredths, suitOf } from '../common/utils/hilo';
@@ -202,6 +203,7 @@ export class HiLoService {
   /** Parties abandonnées : remboursées si aucune réponse n'a été donnée, encaissées sinon. */
   @Interval(300_000)
   async sweep() {
+    jobMonitor.run('hilo.sweep', 300_000);
     try {
       const cfg = await this.config();
       const idle = (await this.prisma.hiLoGame.findMany({ where: { status: 'ACTIVE', updatedAt: { lt: new Date(Date.now() - cfg.idleMinutes * 60_000) } }, take: 100 })) as GameRow[];
@@ -214,7 +216,7 @@ export class HiLoService {
           });
         } catch (e) { this.logger.warn(`Partie ${g.id} non réglée : ${(e as Error).message}`); }
       }
-    } catch (e) { this.logger.warn(`Parties abandonnées : ${(e as Error).message}`); }
+    } catch (e) { jobMonitor.fail('hilo.sweep', e); this.logger.warn(`Parties abandonnées : ${(e as Error).message}`); }
   }
 
   /** Statistiques pour la case du jeu sur la page des jeux. */

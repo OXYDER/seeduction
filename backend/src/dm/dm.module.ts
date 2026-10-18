@@ -5,13 +5,14 @@ import { DmService } from './dm.service';
 import { DmGateway } from './dm.gateway';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PresenceModule } from '../presence/presence.module';
+import { jwtSecret } from '../common/utils/secret';
 
 @Module({
   imports: [
     NotificationsModule,
     PresenceModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'change-me-in-.env',
+      secret: jwtSecret(),
       signOptions: { expiresIn: '7d' },
     }),
   ],

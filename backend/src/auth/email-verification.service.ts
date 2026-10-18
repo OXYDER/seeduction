@@ -2,11 +2,12 @@ import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nes
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { jwtSecret } from '../common/utils/secret';
 
 export type ChallengePurpose = 'SIGNUP' | 'PASSWORD_CHANGE' | 'EMAIL_CHANGE';
 
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
-const SECRET = () => process.env.JWT_SECRET ?? 'change-me-in-.env';
+const SECRET = () => jwtSecret();
 
 const TTL_MS: Record<ChallengePurpose, number> = {
   SIGNUP: 24 * 3600_000, // le temps de relever ses courriels

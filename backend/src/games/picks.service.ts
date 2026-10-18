@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron, Interval } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
+import { jobMonitor } from '../common/utils/job-monitor';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -43,6 +44,7 @@ export class PicksService {
 
   @Interval(60_000)
   async tick() {
+    jobMonitor.run('picks.tick', 60_000);
     if (this.running) return;
     this.running = true;
     try {
@@ -53,7 +55,7 @@ export class PicksService {
       if (games.length === 0) return;
       await this.sync(cfg, games, today);
       await this.settleDue(cfg, games);
-    } catch (e) { this.logger.warn(`Pronostics LNH : ${(e as Error).message}`); }
+    } catch (e) { jobMonitor.fail('picks.tick', e); this.logger.warn(`Pronostics LNH : ${(e as Error).message}`); }
     finally { this.running = false; }
   }
 
@@ -325,6 +327,7 @@ export class PicksService {
   /** Chaque lundi matin, les trois meilleurs de la semaine précédente reçoivent un prix (le plus de bonnes prédictions, puis le meilleur pourcentage). */
   @Cron('30 5 * * 1', { timeZone: TZ })
   async payWeeklyPrizes(week?: string) {
+    jobMonitor.run('picks.weekly');
     try {
       const cfg = await this.config();
       if (!cfg.enabled) return;
@@ -353,7 +356,7 @@ export class PicksService {
           body: `Tu as terminé ${i === 0 ? 'premier' : i === 1 ? 'deuxième' : 'troisième'} de la semaine avec ${r.wins} bonne${r.wins > 1 ? 's' : ''} prédiction${r.wins > 1 ? 's' : ''} sur ${r.picks}. Bravo !`, link: '/jeux/pronostics',
         }).catch(() => undefined);
       }
-    } catch (e) { this.logger.warn(`Prix hebdomadaires des pronostics : ${(e as Error).message}`); }
+    } catch (e) { jobMonitor.fail('picks.weekly', e); this.logger.warn(`Prix hebdomadaires des pronostics : ${(e as Error).message}`); }
   }
 
   // ------------------------------------------------------------------ administration

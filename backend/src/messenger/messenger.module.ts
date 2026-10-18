@@ -13,6 +13,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { PresenceModule } from '../presence/presence.module';
 import { CoversModule } from '../covers/covers.module';
 import { ChatModule } from '../chat/chat.module';
+import { jwtSecret } from '../common/utils/secret';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { ChatModule } from '../chat/chat.module';
     PresenceModule,
     CoversModule,
     ChatModule, // fournit ChatFilesService (pièces jointes) tant que l'ancien chat existe
-    JwtModule.register({ secret: process.env.JWT_SECRET ?? 'change-me-in-.env', signOptions: { expiresIn: '7d' } }),
+    JwtModule.register({ secret: jwtSecret(), signOptions: { expiresIn: '7d' } }),
   ],
   controllers: [MessengerController, MessengerFilesController],
   providers: [MessengerService, ChatModerationService, LinkPreviewService, MessengerGifsService, MessengerCallsService, MessengerGateway, MessengerMigrationService],

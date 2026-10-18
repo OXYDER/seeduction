@@ -57,6 +57,8 @@ export class SportsService {
   private liveAt = 0;
   private logos = new Map<string, { at: number; svg: string }>();
   private league = new Map<string, { at: number; games: Game[] }>();
+  /** Dernière réponse de la LNH (pour la santé du site). */
+  readonly nhl = { lastOkAt: null as number | null, lastErrorAt: null as number | null, lastError: null as string | null };
   private standingsCache: { at: number; map: Map<string, TeamRecord> } | null = null;
 
   constructor(private settings: SettingsService, private audit: AuditService, private goals: GoalBonusService) {}
@@ -217,9 +219,11 @@ export class SportsService {
       const games: Game[] = (data.gameWeek ?? []).flatMap((d: any) => (d.games ?? []).map((g: any) => normalizeGame({ ...g, gameDate: d.date }, '')));
       if (this.league.size > 12) this.league.clear();
       this.league.set(from, { at: Date.now(), games });
+      this.nhl.lastOkAt = Date.now();
       return games;
     } catch (e) {
       this.logger.warn(`Calendrier de la LNH indisponible : ${(e as Error).message}`);
+      this.nhl.lastErrorAt = Date.now(); this.nhl.lastError = String((e as Error).message).slice(0, 200);
       return hit?.games ?? [];
     }
   }

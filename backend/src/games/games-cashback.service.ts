@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
+import { jobMonitor } from '../common/utils/job-monitor';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -48,6 +49,7 @@ export class GamesCashbackService {
 
   @Cron('15 5 * * *', { timeZone: TZ })
   async payYesterday() {
+    jobMonitor.run('games.cashback');
     try {
       const cfg = await this.config();
       if (!cfg.enabled) return;
@@ -71,6 +73,6 @@ export class GamesCashbackService {
         } catch { /* déjà versée pour ce jour */ }
       }
       if (paid > 0) this.logger.log(`Remise de fidélité des jeux : ${paid} membre(s) (${day})`);
-    } catch (e) { this.logger.warn(`Remise de fidélité : ${(e as Error).message}`); }
+    } catch (e) { jobMonitor.fail('games.cashback', e); this.logger.warn(`Remise de fidélité : ${(e as Error).message}`); }
   }
 }

@@ -7,12 +7,13 @@ import { EmailVerificationService } from './email-verification.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { BadgesModule } from '../badges/badges.module';
+import { jwtSecret } from '../common/utils/secret';
 
 @Module({
   imports: [
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'change-me-in-.env',
+      secret: jwtSecret(),
       signOptions: { expiresIn: '7d' },
     }),
     NotificationsModule,

@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { Cron } from '@nestjs/schedule';
 import { QuizPlay, QuizQuestion } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
+import { jobMonitor } from '../common/utils/job-monitor';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -276,6 +277,7 @@ export class QuizService implements OnModuleInit {
   /** Chaque matin, les trois meilleurs du quiz de la veille reçoivent un prix (le score le plus élevé, puis le temps le plus court). */
   @Cron('20 5 * * *', { timeZone: TZ })
   async payPodium() {
+    jobMonitor.run('quiz.podium');
     try {
       const cfg = await this.config();
       if (!cfg.enabled) return;
@@ -295,7 +297,7 @@ export class QuizService implements OnModuleInit {
           await this.notifications.notify({ userId: w.userId, type: 'SYSTEM', category: 'games', title: `${['🥇', '🥈', '🥉'][rank - 1]} Podium du quiz : +${prize} points`, body: `Tu as terminé ${rank === 1 ? 'premier' : rank === 2 ? 'deuxième' : 'troisième'} au quiz d'hier avec ${w.correct} bonne${w.correct > 1 ? 's' : ''} réponse${w.correct > 1 ? 's' : ''}. Bravo !`, link: '/jeux/quiz' }).catch(() => undefined);
         } catch { /* déjà payé */ }
       }
-    } catch (e) { this.logger.warn(`Podium du quiz : ${(e as Error).message}`); }
+    } catch (e) { jobMonitor.fail('quiz.podium', e); this.logger.warn(`Podium du quiz : ${(e as Error).message}`); }
   }
 
   // ------------------------------------------------------------------ administration

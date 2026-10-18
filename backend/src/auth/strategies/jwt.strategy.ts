@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../common/prisma.service';
 import { ALL_PERMS, permsOf, type Perms } from '../../common/utils/family-perms';
 import { lockState } from '../../lockdown/lockdown-state';
+import { jwtSecret } from '../../common/utils/secret';
 
 export interface JwtPayload {
   sub: string;
@@ -42,7 +43,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET ?? 'change-me-in-.env',
+      secretOrKey: jwtSecret(),
     });
   }
 

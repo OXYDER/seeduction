@@ -12,6 +12,7 @@ import { AuditService } from '../audit/audit.service';
 import { lockState } from '../lockdown/lockdown-state';
 import { ZIP_FOLDER, ZIP_GUIDE_NAME, buildGuide } from './backup-guide';
 import { ZipPlan, crc32File, planZip } from './zip-writer';
+import { jwtSecret } from '../common/utils/secret';
 import {
   BackupConfig, BundleRef, bundleName, formatBytes, generatePassphrase, isDue, isSafeBundleName, maskGitUrl, normalizeBackupConfig, parseBundleName, parseDatabaseUrl, selectKeep,
   signDownload, verifyDownload,
@@ -805,7 +806,7 @@ export class BackupService implements OnModuleInit {
     return { url: `/api/backup/download/${encodeURIComponent(name)}?e=${expires}&s=${signDownload(zip ? `${name}|zip` : name, expires, this.secret())}${zip ? '&f=zip' : ''}` };
   }
 
-  private secret() { return process.env.JWT_SECRET ?? 'change-me-in-.env'; }
+  private secret() { return jwtSecret(); }
 
   resolveDownload(name: string, e: string, s: string, format?: string): string {
     if (!isSafeBundleName(name) || !verifyDownload(format === 'zip' ? `${name}|zip` : name, Number(e), s, this.secret())) throw new NotFoundException();

@@ -13,6 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { PresenceService } from '../presence/presence.service';
+import { jwtSecret } from '../common/utils/secret';
 
 interface ChatSocket extends Socket {
   data: { userId: string; username: string; role: string };
@@ -53,7 +54,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }
 
     try {
-      const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'change-me-in-.env' });
+      const payload = this.jwtService.verify(token, { secret: jwtSecret() });
       if (lockState.blocking || lockState.tokenRevoked(payload.iat)) { client.disconnect(); return; } // alerte générale / session révoquée
       if (payload.scope === 'account') { client.disconnect(); return; } // jeton de choix de profil : pas de chat
       client.data = { userId: payload.sub, username: payload.username, role: payload.role };

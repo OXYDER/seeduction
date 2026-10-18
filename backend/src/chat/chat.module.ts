@@ -6,13 +6,14 @@ import { ChatGateway } from './chat.gateway';
 import { ChatFilesService } from './chat-files.service';
 import { PresenceModule } from '../presence/presence.module';
 import { CoversModule } from '../covers/covers.module';
+import { jwtSecret } from '../common/utils/secret';
 
 @Module({
   imports: [
     PresenceModule,
     CoversModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'change-me-in-.env',
+      secret: jwtSecret(),
       signOptions: { expiresIn: '7d' },
     }),
   ],

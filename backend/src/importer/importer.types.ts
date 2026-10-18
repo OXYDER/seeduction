@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
+import { jwtSecret } from '../common/utils/secret';
 
 /** Réglages d'une source d'import (sans secret). */
 export interface ImportConfig {
@@ -40,7 +41,7 @@ export interface ImportConfig {
 
 export interface ImportSecrets { qbitPassword?: string; ftpPassword?: string }
 
-const key = () => createHash('sha256').update('seeduction-importer:' + (process.env.JWT_SECRET ?? 'change-me-in-.env')).digest();
+const key = () => createHash('sha256').update('seeduction-importer:' + (jwtSecret())).digest();
 
 /** Chiffre les mots de passe (AES-256-GCM) avant de les ranger en base : un export de la base ne les montre pas en clair. */
 export function sealSecrets(s: ImportSecrets): string {

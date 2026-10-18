@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
+import { jobMonitor } from '../common/utils/job-monitor';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -63,6 +64,7 @@ export class MojService implements OnModuleInit {
 
   @Interval(60_000)
   async tick() {
+    jobMonitor.run('moj.tick', 60_000);
     if (this.running) return;
     this.running = true;
     try {
@@ -72,7 +74,7 @@ export class MojService implements OnModuleInit {
       if (games.length === 0) return;
       await this.sync(cfg, games);
       await this.settleDue(cfg, games);
-    } catch (e) { this.logger.warn(`Mise-O-jeu : ${(e as Error).message}`); }
+    } catch (e) { jobMonitor.fail('moj.tick', e); this.logger.warn(`Mise-O-jeu : ${(e as Error).message}`); }
     finally { this.running = false; }
   }
 

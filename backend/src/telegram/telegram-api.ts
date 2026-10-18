@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
+import { jwtSecret } from '../common/utils/secret';
 
 /** Erreur renvoyée par l'API Telegram (ou réseau) : `code` = code HTTP / Telegram, `retryAfter` en secondes quand Telegram demande de ralentir. */
 export class TelegramError extends Error {
@@ -83,7 +84,7 @@ export class TelegramApi {
 }
 
 // ---- jeton du robot : chiffré en base (AES-256-GCM), comme les mots de passe de l'import ----
-const key = () => createHash('sha256').update('seeduction-telegram:' + (process.env.JWT_SECRET ?? 'change-me-in-.env')).digest();
+const key = () => createHash('sha256').update('seeduction-telegram:' + (jwtSecret())).digest();
 
 export function sealToken(token: string): string {
   const iv = randomBytes(12);
