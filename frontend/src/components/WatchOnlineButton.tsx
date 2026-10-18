@@ -10,8 +10,9 @@ import { formatBytes, formatClock } from '../lib/format';
  * format. Affiché uniquement pour du contenu vidéo (voir isVideoKind côté TorrentDetail) ; l'ancien lecteur intégré
  * au navigateur (limité au .mp4/.webm) a été retiré au profit de celui-ci, plus capable.
  */
-export default function WatchOnlineButton({ torrentId, fileList, compact }: { torrentId: string; fileList: { path: string; size: number }[] | null | undefined; compact?: boolean }) {
-  const allFiles = (fileList ?? []).map((f, index) => ({ ...f, index }));
+export default function WatchOnlineButton({ torrentId, fileList, fileCount, compact }: { torrentId: string; fileList: { path: string; size: number }[] | null | undefined; /** Les listes ne transportent pas la liste des fichiers (lourde) : seulement leur nombre ; elle est chargée au clic. */ fileCount?: number; compact?: boolean }) {
+  const [loaded, setLoaded] = useState<{ path: string; size: number }[] | null>(null);
+  const allFiles = (fileList ?? loaded ?? []).map((f, index) => ({ ...f, index }));
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<number | null>(null);
   const [installHint, setInstallHint] = useState(false);
@@ -33,13 +34,23 @@ export default function WatchOnlineButton({ torrentId, fileList, compact }: { to
     return () => { cancelled = true; window.clearInterval(interval); };
   }, [torrentId, compact]);
 
-  if (allFiles.length === 0) return null;
+  if (allFiles.length === 0 && !(fileCount && fileCount > 0)) return null;
 
-  function start() {
+  async function start() {
+    let files = allFiles;
+    if (files.length === 0) {
+      try {
+        const { data } = await api.get(`/torrents/${torrentId}`);
+        const list: { path: string; size: number }[] = data.fileList ?? [];
+        setLoaded(list);
+        files = list.map((f, index) => ({ ...f, index }));
+      } catch { return; }
+      if (files.length === 0) return;
+    }
     setOpen(true);
     setSessionError('');
     setInstallHint(false);
-    if (allFiles.length === 1) play(allFiles[0].index); else setChosen(null);
+    if (files.length === 1) play(files[0].index); else setChosen(null);
   }
 
   async function play(index: number) {

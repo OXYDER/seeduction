@@ -6,6 +6,7 @@ import { audio, bell, noiseBuffer, playWin, setSoundOn, soundOn, tick } from '..
 import { useCountdown } from '../components/FreeleechCalendar';
 import CoinShower from '../components/CoinShower';
 import QuizSuggest from '../components/QuizSuggest';
+import '../games.css';
 
 interface Choice { i: number; text: string }
 interface QuestionV { id: string; category: string; text: string; choices: Choice[] }

@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { audio, bell, noiseBuffer, playWin, setSoundOn, soundOn, tick } from '../lib/slotSound';
 import CollectCard, { RARITY_LABEL, type CardDef, type Rarity } from '../components/CollectCard';
 import CoinShower from '../components/CoinShower';
+import '../games.css';
 
 interface SetV { id: string; name: string; icon: string; total: number; reward: number; claimed: boolean }
 interface Overview {

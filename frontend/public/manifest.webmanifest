@@ -9,7 +9,7 @@
   "theme_color": "#060d09",
   "lang": "fr",
   "icons": [
-    { "src": "/logo-icon.png", "sizes": "497x497", "type": "image/png", "purpose": "any" },
-    { "src": "/logo-icon.png", "sizes": "497x497", "type": "image/png", "purpose": "maskable" }
+    { "src": "/logo-icon-large.png", "sizes": "497x497", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-icon-large.png", "sizes": "497x497", "type": "image/png", "purpose": "maskable" }
   ]
 }

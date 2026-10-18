@@ -139,7 +139,7 @@ function TorrentViewBody(props: TorrentViewProps) {
 
   const actions = (t: any) => (
     <>
-      {VIDEO_KINDS.has(resolveContentKind(t.category, t.category?.parent) ?? '') && t.fileList && <WatchOnlineButton compact torrentId={t.id} fileList={t.fileList} />}
+      {VIDEO_KINDS.has(resolveContentKind(t.category, t.category?.parent) ?? '') && (t.fileList || t.fileCount > 0) && <WatchOnlineButton compact torrentId={t.id} fileList={t.fileList} fileCount={t.fileCount} />}
       <button type="button" className="icon-btn icon-btn-sq" title="Télécharger le .torrent" onClick={() => downloadTorrent(t.id, t.name)}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" />
@@ -169,7 +169,7 @@ function TorrentViewBody(props: TorrentViewProps) {
         star={(t) => <span className="vg-star">{star(t)}</span>}
         actions={(t) => (
           <>
-            {VIDEO_KINDS.has(resolveContentKind(t.category, t.category?.parent) ?? '') && t.fileList && <WatchOnlineButton compact torrentId={t.id} fileList={t.fileList} />}
+            {VIDEO_KINDS.has(resolveContentKind(t.category, t.category?.parent) ?? '') && (t.fileList || t.fileCount > 0) && <WatchOnlineButton compact torrentId={t.id} fileList={t.fileList} fileCount={t.fileCount} />}
             {props.rowActions?.(t)}
           </>
         )}

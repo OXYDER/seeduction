@@ -6,6 +6,7 @@ import { playDeal, playFlip, playWrong } from '../lib/cardSound';
 import { playWin, setSoundOn, soundOn } from '../lib/slotSound';
 import PlayingCard, { type Suit } from '../components/PlayingCard';
 import CoinShower from '../components/CoinShower';
+import '../games.css';
 
 interface CardV { code: number; rank: number; suit: Suit }
 type Outcome = 'blackjack' | 'win' | 'push' | 'lose' | 'bust';

@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { useCountdown } from '../components/FreeleechCalendar';
 import TeamLogo from '../components/TeamLogo';
 import { SKINS, MACHINE_ORDER } from '../lib/slotSkins';
+import '../games.css';
 
 interface Summary {
   me: { points: number; donated: number; stakeable: number; optOut: boolean };

@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
-import { LIST_INCLUDE, toListRow } from '../torrents/torrents.service';
+import { LIST_SELECT, attachListExtras, toListRow } from '../torrents/torrents.service';
 
 @Injectable()
 export class CollectionsService {
@@ -45,7 +45,7 @@ export class CollectionsService {
         items: {
           orderBy: { addedAt: 'desc' },
           include: {
-            torrent: { include: LIST_INCLUDE },
+            torrent: { select: LIST_SELECT },
             addedBy: { select: { id: true, username: true } },
           },
         },
@@ -60,8 +60,9 @@ export class CollectionsService {
     }
     // Les torrents adultes n'apparaissent que pour un membre qui a activé l'option.
     const hidden = await this.adult.hiddenFor(userId);
-    if (hidden.length) collection.items = collection.items.filter((i) => !hidden.includes(i.torrent.categoryId));
-    return { ...collection, items: collection.items.map((i) => ({ ...i, torrent: toListRow(i.torrent) })) };
+    if (hidden.length) collection.items = collection.items.filter((i) => !hidden.includes((i.torrent as any).categoryId));
+    const torrents = await attachListExtras(this.prisma, collection.items.map((i) => i.torrent as any));
+    return { ...collection, items: collection.items.map((i, n) => ({ ...i, torrent: toListRow(torrents[n]) })) };
   }
 
   create(userId: string, name: string, description: string | undefined, visibility: string) {

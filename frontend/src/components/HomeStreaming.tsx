@@ -9,7 +9,7 @@ import { CATEGORY_STYLE, type LayoutContext } from './Layout';
 import { PosterCard, Rail } from './TorrentRail';
 import MetaChips from './MetaChips';
 import PotWidget from './PotWidget';
-import { Board } from './stats/StatsBits';
+import { Board } from './stats/StatsParts';
 import NewsPanel from './NewsPanel';
 import TelegramLogo from './TelegramLogo';
 import ModerationRail from './ModerationRail';

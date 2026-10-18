@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { audio, bell, setSoundOn, soundOn, tick } from '../lib/slotSound';
 import TeamLogo from '../components/TeamLogo';
 import CoinShower from '../components/CoinShower';
+import '../games.css';
 
 interface Record { wins: number; losses: number; otLosses: number; points: number; gamesPlayed: number; last10: string; streak: string }
 interface TeamV { abbrev: string; name: string; score: number | null; record: Record | null }

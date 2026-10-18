@@ -1,4 +1,15 @@
 # ---------------------------------------------------------------------------
+# Compression : sans elle, tout le JavaScript, le CSS et les réponses JSON de l'API partent en clair (3 à 5 fois plus lourds). Les formats déjà compressés
+# (images, vidéo, archives, fichiers .torrent) n'y sont pas inclus. Niveau 5 : bon compromis entre taille et charge du processeur.
+# ---------------------------------------------------------------------------
+gzip on;
+gzip_comp_level 5;
+gzip_min_length 600;
+gzip_vary on;
+gzip_proxied any;
+gzip_types text/css text/javascript application/javascript application/json application/manifest+json application/xml text/xml image/svg+xml;
+
+# ---------------------------------------------------------------------------
 # Serveur « tracker seul » (port 8081, publié sur 9099) : à utiliser pour l'adresse
 # publique du tracker (ex : venus.seeduction.org). Il ne sert QUE /tracker/ ;
 # tout le reste (le site, l'API, le chat) y répond 404, quel que soit le nom de
@@ -118,6 +129,26 @@ server {
     location = /sw.js {
         if ($tracker_only) { return 404; }
         add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    # Fichiers du site dont le nom contient une empreinte (index-AbC123.js) : ils ne changent jamais, le navigateur les garde un an sans même poser la question.
+    location /assets/ {
+        if ($tracker_only) { return 404; }
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # La page d'entrée change à chaque mise à jour : toujours revérifiée (une requête très légère quand rien n'a changé).
+    location = /index.html {
+        if ($tracker_only) { return 404; }
+        add_header Cache-Control "no-cache";
+    }
+
+    # Logos et icônes : gardés une semaine.
+    location ~* ^/(logo-[a-z-]+\.png|manifest\.webmanifest)$ {
+        if ($tracker_only) { return 404; }
+        add_header Cache-Control "public, max-age=604800";
         try_files $uri =404;
     }
 

@@ -51,6 +51,35 @@ export const LIST_INCLUDE = {
   _count: { select: { comments: true } }, // nombre de commentaires affiché dans les listes
 } as const;
 
+/**
+ * Ce que charge une liste de torrents : toutes les colonnes SAUF les plus lourdes (description, NFO, liste complète des fichiers, chemin du .torrent, titres de recherche,
+ * fiche de métadonnées complète), qui peuvent peser des dizaines de ko par torrent et ne servent que sur la fiche. Le nombre de fichiers et les quelques champs de la fiche
+ * utilisés par les listes (synopsis, image de fond, titre, durée) sont lus à part, en une seule petite requête (voir `attachListExtras`).
+ * Les colonnes sont déduites du schéma : un champ ajouté plus tard apparaît tout seul dans les listes.
+ */
+const LIST_SKIP = new Set(['description', 'nfo', 'fileList', 'filePath', 'searchTitles', 'metadata']);
+export const LIST_SELECT: any = {
+  ...Object.fromEntries(Object.values(Prisma.TorrentScalarFieldEnum).filter((k) => !LIST_SKIP.has(k)).map((k) => [k, true])),
+  ...LIST_INCLUDE,
+};
+
+/** Complète des lignes lues avec `LIST_SELECT` : `fileCount` et une version légère de `metadata` (ce que `toListRow` en extrait), sans transférer les JSON complets. */
+export async function attachListExtras<T extends { id: string }>(prisma: PrismaService, rows: T[]): Promise<(T & { metadata: any; fileCount: number })[]> {
+  if (rows.length === 0) return [];
+  const ids = [...new Set(rows.map((r) => r.id))];
+  const extra = await prisma.$queryRaw<{ id: string; fileCount: number; overview: string | null; backdrop: string | null; title: string | null; runtime: string | null; kind: string | null }[]>`
+    SELECT id,
+      CASE WHEN jsonb_typeof("fileList") = 'array' THEN jsonb_array_length("fileList") ELSE 0 END AS "fileCount",
+      left(metadata->>'overview', 1000) AS overview, metadata->>'backdrop' AS backdrop, metadata#>>'{titles,0,title}' AS title, metadata->>'runtime' AS runtime, metadata->>'kind' AS kind
+    FROM "Torrent" WHERE id = ANY(${ids}::text[])`;
+  const byId = new Map(extra.map((e) => [e.id, e]));
+  return rows.map((r) => {
+    const e = byId.get(r.id);
+    const metadata = e ? { overview: e.overview ?? undefined, backdrop: e.backdrop ?? undefined, titles: e.title ? [{ title: e.title }] : undefined, runtime: e.runtime ?? undefined, kind: e.kind ?? undefined } : null;
+    return { ...r, metadata, fileCount: Number(e?.fileCount ?? 0) };
+  });
+}
+
 /** Extrait du synopsis (infobulle, vue « détails ») + grande image de fond ; le JSON complet reste sur la fiche. */
 export function toListRow({ metadata, ...t }: any) {
   const overview = (metadata as any)?.overview;
@@ -467,14 +496,14 @@ export class TorrentsService implements OnModuleInit {
         orderBy,
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
-        include: LIST_INCLUDE,
+        select: LIST_SELECT,
       }),
       this.prisma.torrent.count({ where }),
       this.prisma.torrent.aggregate({ where, _sum: { size: true } }),
       this.catalogStats(params.viewerId),
     ]);
 
-    const rows = items.map(toListRow);
+    const rows = (await attachListExtras(this.prisma, items as any[])).map(toListRow);
 
     return { items: rows, total, totalSize: Number(size._sum.size ?? 0n), catalog, page: params.page, pageSize: params.pageSize };
   }
@@ -543,7 +572,7 @@ export class TorrentsService implements OnModuleInit {
 
     const pageGroups = ordered.slice((params.page - 1) * params.pageSize, params.page * params.pageSize);
     const ids = pageGroups.flatMap((g) => g.ids);
-    const full = ids.length ? await this.prisma.torrent.findMany({ where: { id: { in: ids } }, include: LIST_INCLUDE }) : [];
+    const full = ids.length ? await attachListExtras(this.prisma, (await this.prisma.torrent.findMany({ where: { id: { in: ids } }, select: LIST_SELECT })) as any[]) : [];
     const byId = new Map(full.map((t) => [t.id, t]));
     const keyOf = new Map<string, string>();
     for (const g of pageGroups) for (const id of g.ids) keyOf.set(id, g.key);

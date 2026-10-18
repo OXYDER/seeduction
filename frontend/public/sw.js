@@ -1,7 +1,7 @@
 // Service worker minimal : cache l'app-shell pour permettre l'installation
 // (PWA) et un repli hors-ligne, sans jamais mettre en cache l'API ni les
 // routes d'announce du tracker (le site doit toujours refléter l'état réel).
-const CACHE_NAME = 'seeduction-shell-v1';
+const CACHE_NAME = 'seeduction-shell-v2';
 const SHELL_ASSETS = ['/', '/logo-icon.png', '/logo-full.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -18,8 +18,9 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  const isApiOrTracker = url.pathname.startsWith('/api/') || url.pathname.startsWith('/tracker/');
-  if (event.request.method !== 'GET' || isApiOrTracker) return;
+  const isApiOrTracker = url.pathname.startsWith('/api/') || url.pathname.startsWith('/tracker/') || url.pathname.startsWith('/socket.io/');
+  // /assets/ : fichiers à empreinte déjà gardés par le navigateur (cache HTTP, 1 an) ; les repasser par le service worker ne ferait que les ralentir.
+  if (event.request.method !== 'GET' || isApiOrTracker || url.pathname.startsWith('/assets/') || url.origin !== self.location.origin) return;
 
   event.respondWith(
     fetch(event.request)

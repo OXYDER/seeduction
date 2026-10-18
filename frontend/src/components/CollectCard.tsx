@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import '../games.css';
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 export type CardArt = { kind: 'team'; abbrev: string } | { kind: 'emoji'; emoji: string; hue: number };

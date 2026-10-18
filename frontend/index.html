@@ -25,9 +25,6 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
       /* Écran de chargement (logo Seeduction) : défini ici pour s'afficher avant même que le site soit téléchargé ;
          le composant GlobalLoader (React) reprend exactement le même rendu. */
@@ -37,7 +34,7 @@
       .sd-loader-logo { width: min(280px, 62vw); height: auto; user-select: none; animation: sd-pulse 2.2s ease-in-out infinite; filter: drop-shadow(0 0 22px rgba(245, 197, 66, .35)); }
       .sd-loader-bar { width: min(190px, 46vw); height: 3px; border-radius: 3px; background: rgba(255, 255, 255, .12); overflow: hidden; }
       .sd-loader-bar span { display: block; width: 40%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, transparent, #f5c542, #a78bfa, transparent); animation: sd-slide 1.25s ease-in-out infinite; }
-      .sd-loader-label { font: 600 12px/1 Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
+      .sd-loader-label { font: 600 12px/1 'Inter Variable', Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
       /* Voile léger (connexion / inscription) : le site reste visible derrière, flouté, avec un petit logo. */
       .sd-loader.soft { background: rgba(6, 8, 18, .55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
       .sd-loader.soft .sd-loader-logo { width: min(150px, 40vw); }

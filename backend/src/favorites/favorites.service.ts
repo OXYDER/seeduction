@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
-import { LIST_INCLUDE, toListRow } from '../torrents/torrents.service';
+import { LIST_SELECT, attachListExtras, toListRow } from '../torrents/torrents.service';
 
 @Injectable()
 export class FavoritesService {
@@ -12,9 +12,10 @@ export class FavoritesService {
     const rows = await this.prisma.favorite.findMany({
       where: { userId, torrent: { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
       orderBy: { createdAt: 'desc' },
-      include: { torrent: { include: LIST_INCLUDE } },
+      include: { torrent: { select: LIST_SELECT } },
     });
-    return rows.map(({ torrent, createdAt }) => ({ ...toListRow(torrent), favoritedAt: createdAt }));
+    const torrents = await attachListExtras(this.prisma, rows.map((r) => r.torrent as any));
+    return rows.map(({ createdAt }, i) => ({ ...toListRow(torrents[i]), favoritedAt: createdAt }));
   }
 
   async ids(userId: string) {

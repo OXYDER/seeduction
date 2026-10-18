@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMessenger } from '../store/messenger';
-import ConversationView from './messenger/ConversationView';
+import { lazyPage } from '../lib/lazyPage';
 import ConvAvatar from './messenger/ConvAvatar';
 import MessengerAlerts from './messenger/MessengerAlerts';
 import CallManager from './messenger/CallManager';
+
+// la fenêtre de discussion (la partie lourde du messager) n'est téléchargée que lorsqu'une conversation est réellement ouverte
+const ConversationView = lazyPage(() => import('./messenger/ConversationView'));
 
 const STORE_KEY = 'msgr-window-layout';
 interface Layout { left?: number; bottom?: number; big?: boolean }
@@ -69,6 +72,7 @@ function DockWindow({ id, index, count, railActive, sideW, vw, vh }: { id: strin
 
   return (
     <div className="dm-window msgr-dock-window floating" style={{ position: 'fixed', left, bottom, width, height, zIndex: z }} onPointerDownCapture={bringToFront}>
+      <Suspense fallback={null}>
       <ConversationView
         conversationId={id} variant="dock"
         onClose={() => closeWindow(id)}
@@ -77,6 +81,7 @@ function DockWindow({ id, index, count, railActive, sideW, vw, vh }: { id: strin
         onExpandToPage={() => { closeWindow(id); navigate(`/chat?c=${id}`); }}
         onToggleSize={toggleBig} sizeBig={big}
       />
+      </Suspense>
     </div>
   );
 }
@@ -129,7 +134,7 @@ export default function ChatDock() {
           if (narrow) {
             return (
               <div key={w.conversationId} className="dm-window msgr-dock-window">
-                <ConversationView conversationId={w.conversationId} variant="dock" onClose={() => closeWindow(w.conversationId)} onMinimize={() => toggleMinimize(w.conversationId)} />
+                <Suspense fallback={null}><ConversationView conversationId={w.conversationId} variant="dock" onClose={() => closeWindow(w.conversationId)} onMinimize={() => toggleMinimize(w.conversationId)} /></Suspense>
               </div>
             );
           }

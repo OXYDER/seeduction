@@ -23,13 +23,27 @@ export class RoadmapService {
 
   constructor(private settings: SettingsService, private prisma: PrismaService) {}
 
+  private fileRaw: { mtimeMs: number; value: { count: number; text: string } } | null = null;
+  private gitRaw: { at: number; value: { count: number; text: string } | null } | null = null;
+
+  /** Le journal n'est relu que si le fichier a changé (sans fichier, l'historique git est relu au plus une fois par minute) : cette route est appelée par chaque visiteur toutes les quelques secondes. */
   private raw(): { count: number; text: string } | null {
     const file = path.join(process.cwd(), 'changelog.txt');
     try {
       const stat = fs.statSync(file);
+      if (this.fileRaw?.mtimeMs === stat.mtimeMs) return this.fileRaw.value;
       const text = fs.readFileSync(file, 'utf8');
-      return { count: Number((/^COUNT=(\d+)/.exec(text) ?? [])[1] ?? 0), text: text.replace(/^COUNT=\d+\n/, '') + `\u0000${stat.mtimeMs}` };
+      const value = { count: Number((/^COUNT=(\d+)/.exec(text) ?? [])[1] ?? 0), text: text.replace(/^COUNT=\d+\n/, '') + `\u0000${stat.mtimeMs}` };
+      this.fileRaw = { mtimeMs: stat.mtimeMs, value };
+      return value;
     } catch { /* pas de fichier : développement ou déploiement sans changelog */ }
+    if (this.gitRaw && Date.now() - this.gitRaw.at < 60_000) return this.gitRaw.value;
+    const value = this.fromGit();
+    this.gitRaw = { at: Date.now(), value };
+    return value;
+  }
+
+  private fromGit(): { count: number; text: string } | null {
     try {
       const count = Number(execFileSync('git', ['rev-list', '--count', 'HEAD'], { cwd: process.cwd(), encoding: 'utf8', timeout: 5000 }).trim());
       const text = execFileSync('git', ['log', '-n', '400', '--pretty=format:%H%x1f%aI%x1f%s%x1f%b%x1e'], { cwd: process.cwd(), encoding: 'utf8', timeout: 5000, maxBuffer: 8 * 1024 * 1024 });

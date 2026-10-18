@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { audio, bell, noiseBuffer, playWin, setSoundOn, soundOn, tick } from '../lib/slotSound';
 import { useCountdown } from '../components/FreeleechCalendar';
 import CoinShower from '../components/CoinShower';
+import '../games.css';
 
 interface SegmentV { label: string; points: number; tokens: number; color: string }
 interface Reward { points: number; tokens: number; streakBonus: number; total: number }

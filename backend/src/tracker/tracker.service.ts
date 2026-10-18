@@ -27,6 +27,11 @@ export interface AnnounceParams {
   userAgent?: string;
 }
 
+/** Colonnes du torrent utiles à un announce (les autres, comme la description ou le NFO, pèsent des dizaines de ko et ne servent à rien ici : un announce arrive des milliers de fois par jour). */
+const ANNOUNCE_TORRENT = { id: true, name: true, size: true, freeleech: true, doubleUpload: true, status: true, diedAt: true, revivedByUserId: true, seeders: true, leechers: true, zeroSeedersSince: true, updatedAt: true } as const;
+/** Quand rien n'a changé, la ligne du torrent n'est pas réécrite à chaque announce : au plus une fois par ce délai (elle sert à trier par « activité »). */
+const TOUCH_EVERY_MS = 10 * 60_000;
+
 const EVENT_MAP: Record<string, PeerEvent> = {
   started: PeerEvent.STARTED,
   stopped: PeerEvent.STOPPED,
@@ -128,7 +133,7 @@ export class TrackerService {
     if (!user) throw new ForbiddenException('Passkey invalide');
     if (user.status === 'BANNED') throw new ForbiddenException('Compte banni');
 
-    const torrent = await this.prisma.torrent.findUnique({ where: { infoHash: params.infoHash } });
+    const torrent = await this.prisma.torrent.findUnique({ where: { infoHash: params.infoHash }, select: ANNOUNCE_TORRENT });
     if (!torrent) throw new NotFoundException('Torrent inconnu de ce tracker');
 
     // Freeleech : sur ce torrent, pour tout le site (événement), par jeton personnel sur ce torrent précis, ou par
@@ -272,17 +277,17 @@ export class TrackerService {
     if (params.left === 0) await this.trackSeeding(user.id, torrent, params.uploaded);
 
     // Recalcule seeders/leechers du torrent
-    const [seeders, leechers] = await Promise.all([
-      this.prisma.peer.count({ where: { torrentId: torrent.id, isSeeder: true } }),
-      this.prisma.peer.count({ where: { torrentId: torrent.id, isSeeder: false } }),
-    ]);
+    const counts = await this.prisma.peer.groupBy({ by: ['isSeeder'], where: { torrentId: torrent.id }, _count: { _all: true } });
+    const seeders = counts.find((c) => c.isSeeder)?._count._all ?? 0;
+    const leechers = counts.find((c) => !c.isSeeder)?._count._all ?? 0;
     const wasDead = torrent.status === 'DEAD';
     const revives = wasDead && seeders > 0;
     // Une récompense de reseed n'est posée que si ce membre ne seedait pas déjà avant la mort (voir plus haut) ;
     // `diedAt` reste renseigné tant qu'elle est en attente (confirmReseedReward / EconomyService en ont besoin pour
     // calculer le montant), et n'est remis à null que quand elle est tranchée (confirmée, payée, ou abandonnée).
     const marksPending = revives && !hadRecentSeedBeforeThisAnnounce;
-    await this.prisma.torrent.update({
+    const unchanged = seeders === torrent.seeders && leechers === torrent.leechers && !revives && !(seeders === 0 && torrent.seeders > 0) && !(seeders > 0 && torrent.zeroSeedersSince);
+    if (!(unchanged && Date.now() - torrent.updatedAt.getTime() < TOUCH_EVERY_MS)) await this.prisma.torrent.update({
       where: { id: torrent.id },
       data: {
         seeders, leechers,

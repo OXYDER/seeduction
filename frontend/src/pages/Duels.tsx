@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import CoinShower from '../components/CoinShower';
+import '../games.css';
 
 interface DuelV {
   id: string; kind: string; icon: string; title: string; unit: string; days: number; status: string; startDay: string | null; endDay: string | null; iAmChallenger: boolean; started: boolean;

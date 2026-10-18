@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { playWin, setSoundOn, soundOn } from '../lib/slotSound';
 import { useCountdown } from '../components/FreeleechCalendar';
 import CoinShower from '../components/CoinShower';
+import '../games.css';
 
 interface ChallengeV { id: string; event: string; tier: 'easy' | 'medium' | 'hard'; tierLabel: string; icon: string; title: string; desc: string; target: number; progress: number; done: boolean; points: number; packs: number }
 interface Bonus { done: boolean; points: number; packs: number }

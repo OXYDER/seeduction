@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
-import { LIST_INCLUDE, toListRow } from './torrents.service';
+import { LIST_SELECT, attachListExtras, toListRow } from './torrents.service';
 
 /**
  * Importance d'un lien (acteur, réalisateur, studio...) dans le profil de goûts : un réalisateur ou un artiste dit
@@ -250,7 +250,7 @@ export class RecommendationsService {
 
   private async hydrate(picks: { id: string; reason: string }[]) {
     if (picks.length === 0) return [];
-    const rows = await this.prisma.torrent.findMany({ where: { id: { in: picks.map((p) => p.id) } }, include: LIST_INCLUDE });
+    const rows = await attachListExtras(this.prisma, (await this.prisma.torrent.findMany({ where: { id: { in: picks.map((p) => p.id) } }, select: LIST_SELECT })) as any[]);
     const byId = new Map(rows.map((r) => [r.id, toListRow(r)]));
     return picks.flatMap((p) => { const row = byId.get(p.id); return row ? [{ ...row, reason: p.reason }] : []; });
   }

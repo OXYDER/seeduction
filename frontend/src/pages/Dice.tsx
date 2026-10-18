@@ -5,6 +5,7 @@ import { formatNumber } from '../lib/format';
 import { audio, playWin, setSoundOn, soundOn, tick } from '../lib/slotSound';
 import { playWrong } from '../lib/cardSound';
 import CoinShower from '../components/CoinShower';
+import '../games.css';
 
 type Kind = 'UNDER' | 'OVER' | 'EXACT' | 'DOUBLES';
 interface BetInfo { kind: Kind; n: number; ways: number; p: number; mult: number }

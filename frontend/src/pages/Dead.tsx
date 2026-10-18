@@ -6,7 +6,7 @@ import { downloadTorrent } from '../lib/download';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import UserLink from '../components/UserLink';
-import { Tile, gridStyle } from '../components/stats/StatsBits';
+import { Tile, gridStyle } from '../components/stats/StatsParts';
 
 const SORTS = [
   { id: 'popular', label: 'Les plus téléchargés' },
