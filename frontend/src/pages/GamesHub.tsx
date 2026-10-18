@@ -19,6 +19,7 @@ interface Summary {
   blackjack: { enabled: boolean; gamesToday: number; myGames: number; myWon: number; active: boolean; dailyFreeAvailable: boolean; biggest: { username: string; payout: number; stake: number } | null };
   dice: { enabled: boolean; rollsToday: number; myRolls: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; payout: number; stake: number } | null };
   cards: { enabled: boolean; packs: number; shards: number; owned: number; total: number; dailyAvailable: boolean };
+  duels: { enabled: boolean; incoming: number; active: number; won: number };
   challenges: { enabled: boolean; dailyDone: number; dailyTotal: number; weeklyDone: number; weeklyTotal: number; bonus: boolean; streak: number };
   slots: { enabled: boolean; machines: number; spins24h: number; jackpot: number | null; mySpins: number; myWon: number; dailyFreeAvailable: boolean; biggest: { username: string; win: number; stake: number; machine: string } | null };
 }
@@ -216,6 +217,23 @@ function CardsCard({ d }: { d: Summary['cards'] }) {
   );
 }
 
+/** La case des duels : invitations reçues, duels en cours et victoires. */
+function DuelsCard({ d }: { d: Summary['duels'] }) {
+  return (
+    <Link to="/jeux/duels" className="gh-card gh-duels">
+      <div className="gh-head"><span className="gh-icon">⚔️</span><div><h2>Duels</h2><div className="gh-tag">Défie un autre membre, sans rien miser</div></div></div>
+      <p className="gh-desc">Lance un duel de 3 ou 7 jours à un autre membre sur le quiz, les pronostics ou les défis. Le meilleur gagne des points, et le perdant qui a joué reçoit un lot de consolation.</p>
+      <div className="gh-icons" aria-hidden="true"><span>🧠</span><span>🎯</span><span>🏅</span></div>
+      <div className="gh-stats">
+        <Stat label="duels en cours" value={String(d.active)} tone={d.active > 0 ? 'good' : undefined} />
+        <Stat label="victoires" value={String(d.won)} tone={d.won > 0 ? 'good' : undefined} />
+      </div>
+      {d.incoming > 0 && <span className="gh-badge">⚔️ {d.incoming} invitation{d.incoming > 1 ? 's' : ''} à répondre</span>}
+      <span className="gh-go">Voir les duels →</span>
+    </Link>
+  );
+}
+
 /** La case des défis : avancement des défis du jour et de la semaine, bonus et série. */
 function ChallengesCard({ d }: { d: Summary['challenges'] }) {
   return (
@@ -273,6 +291,7 @@ export default function GamesHub() {
 
       <div className="gh-grid">
         {data.challenges?.enabled && <ChallengesCard d={data.challenges} />}
+        {data.duels?.enabled && <DuelsCard d={data.duels} />}
         {data.moj.enabled && <MojCard d={data.moj} />}
         {data.slots.enabled && <SlotsCard d={data.slots} />}
         {data.hilo?.enabled && <HiLoCard d={data.hilo} />}

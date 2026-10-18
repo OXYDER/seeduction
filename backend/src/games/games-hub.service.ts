@@ -10,22 +10,23 @@ import { BlackjackService } from './blackjack.service';
 import { DiceService } from './dice.service';
 import { CardsService } from './cards.service';
 import { ChallengesService } from './challenges.service';
+import { DuelsService } from './duels.service';
 import { stakeable } from '../common/utils/points';
 
 /** Page d'accueil des jeux : le portefeuille du membre et quelques statistiques de chaque jeu, pour les cases de la page. */
 @Injectable()
 export class GamesHubService {
-  constructor(private prisma: PrismaService, private moj: MojService, private slots: SlotsService, private hilo: HiLoService, private wheel: WheelService, private quiz: QuizService, private picks: PicksService, private blackjack: BlackjackService, private dice: DiceService, private cards: CardsService, private challenges: ChallengesService) {}
+  constructor(private prisma: PrismaService, private moj: MojService, private slots: SlotsService, private hilo: HiLoService, private wheel: WheelService, private quiz: QuizService, private picks: PicksService, private blackjack: BlackjackService, private dice: DiceService, private cards: CardsService, private challenges: ChallengesService, private duels: DuelsService) {}
 
   async summary(accountId: string) {
     const account = await this.prisma.user.findUnique({ where: { id: accountId }, select: { bonusPoints: true, donatedPoints: true, gamesOptOut: true } });
-    const [moj, slots, hilo, wheel, quiz, picks, blackjack, dice, cards, challenges] = await Promise.all([this.moj.summary(accountId), this.slots.summary(accountId), this.hilo.summary(accountId), this.wheel.summary(accountId), this.quiz.summary(accountId), this.picks.summary(accountId), this.blackjack.summary(accountId), this.dice.summary(accountId), this.cards.summary(accountId), this.challenges.summary(accountId)]);
+    const [moj, slots, hilo, wheel, quiz, picks, blackjack, dice, cards, challenges, duels] = await Promise.all([this.moj.summary(accountId), this.slots.summary(accountId), this.hilo.summary(accountId), this.wheel.summary(accountId), this.quiz.summary(accountId), this.picks.summary(accountId), this.blackjack.summary(accountId), this.dice.summary(accountId), this.cards.summary(accountId), this.challenges.summary(accountId), this.duels.summary(accountId)]);
     return {
       me: {
         points: Math.floor(account?.bonusPoints ?? 0), donated: Math.floor(Math.min(account?.donatedPoints ?? 0, account?.bonusPoints ?? 0)),
         stakeable: stakeable(account?.bonusPoints ?? 0, account?.donatedPoints ?? 0), optOut: !!account?.gamesOptOut,
       },
-      moj, slots, hilo, wheel, quiz, picks, blackjack, dice, cards, challenges,
+      moj, slots, hilo, wheel, quiz, picks, blackjack, dice, cards, challenges, duels,
     };
   }
 }

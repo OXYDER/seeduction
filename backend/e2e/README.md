@@ -11,6 +11,7 @@ Ils complètent les tests unitaires (`npm test`), qui ne touchent ni la base ni 
 | `blackjack.e2e.cjs` | blackjack : 66 parties au hasard, solde exact, carte cachée jamais envoyée |
 | `des.e2e.cjs` | dés : 120 lancers, règlement conforme au pari, limite de pertes |
 | `cartes.e2e.cjs` | cartes : ouverture atomique, garantie légendaire, fabrication, récompenses de série |
+| `duels.e2e.cjs` | duels : invitations, acceptation, règlement, récompenses exactes, plafonds et délai par paire |
 | `defis.e2e.cjs` | défis : progression exacte après de vraies actions dans huit jeux |
 | `machines.e2e.cjs`, `plus-haut-plus-bas.e2e.cjs`, `mise-o-jeu.e2e.cjs` | les jeux plus anciens |
 

@@ -18,7 +18,7 @@ const ELIGIBLE_TTL = 60_000;
 export interface Actor { userId: string; username: string }
 
 /** Minuit (heure de Montréal) qui commence le jour `day` (AAAA-MM-JJ). */
-function midnightOf(day: string): Date {
+export function midnightOf(day: string): Date {
   const [y, m, d] = day.split('-').map(Number);
   return startOfDayToronto(new Date(Date.UTC(y, m - 1, d, 12)));
 }

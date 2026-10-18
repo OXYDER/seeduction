@@ -14,7 +14,7 @@ export interface SourceMeta { id: string; label: string; kind: SourceKind }
 export const SOURCES: SourceMeta[] = [
   { id: 'wheel', label: 'Roue de la fortune', kind: 'free' }, { id: 'quiz', label: 'Quiz quotidien', kind: 'free' }, { id: 'picks', label: 'Pronostics LNH', kind: 'free' },
   { id: 'cards', label: 'Cartes à collectionner', kind: 'free' }, { id: 'challenges', label: 'Défis', kind: 'free' }, { id: 'cashback', label: 'Remise de fidélité', kind: 'free' },
-  { id: 'goal', label: 'Buts du Canadien', kind: 'free' },
+  { id: 'goal', label: 'Buts du Canadien', kind: 'free' }, { id: 'duels', label: 'Duels entre membres', kind: 'free' },
   { id: 'slots', label: 'Machines à sous', kind: 'house' }, { id: 'hilo', label: 'Plus haut ou plus bas', kind: 'house' }, { id: 'blackjack', label: 'Blackjack', kind: 'house' },
   { id: 'dice', label: 'Dés', kind: 'house' }, { id: 'moj', label: 'Mise-O-jeu', kind: 'house' },
   { id: 'seed', label: 'Partage de torrents', kind: 'seed' },

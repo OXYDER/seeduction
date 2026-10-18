@@ -25,6 +25,7 @@ import AdminBlackjack from '../components/AdminBlackjack';
 import AdminDice from '../components/AdminDice';
 import AdminCards from '../components/AdminCards';
 import AdminChallenges from '../components/AdminChallenges';
+import AdminDuels from '../components/AdminDuels';
 import HealthPanel from '../components/HealthPanel';
 import AdminEconomy from '../components/AdminEconomy';
 import AdminCashback from '../components/AdminCashback';
@@ -70,7 +71,7 @@ export default function Admin() {
       {tab === 'Monitoring' && <MonitoringAdmin />}
       {tab === 'Import' && <ImportAdmin />}
       {tab === 'Pot commun' && <PotAdmin />}
-      {tab === 'Jeux' && <><AdminEconomy /><AdminJeux /><AdminSlots /><AdminHiLo /><AdminBlackjack /><AdminDice /><AdminCards /><AdminChallenges /><AdminWheel /><AdminQuiz /><AdminPicks /><AdminCashback /></>}
+      {tab === 'Jeux' && <><AdminEconomy /><AdminJeux /><AdminSlots /><AdminHiLo /><AdminBlackjack /><AdminDice /><AdminCards /><AdminChallenges /><AdminDuels /><AdminWheel /><AdminQuiz /><AdminPicks /><AdminCashback /></>}
       {tab === 'Dons' && <AdminDonations />}
       {tab === 'Telegram' && <TelegramAdmin />}
       {tab === 'Anti-triche' && <AdminAntiCheat />}

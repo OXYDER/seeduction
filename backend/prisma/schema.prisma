@@ -2369,3 +2369,29 @@ model QuizSuggestion {
   @@index([status, createdAt])
   @@index([userId, createdAt])
 }
+
+/// Duel entre deux membres sur une activité gratuite (quiz, pronostics, défis). Rien n'est misé : le site offre une petite récompense à la fin.
+model Duel {
+  id           String    @id @default(uuid())
+  challengerId String
+  opponentId   String
+  kind         String    @db.VarChar(12) // quiz | picks | challenges
+  days         Int // durée en jours (3 ou 7)
+  status       String    @default("PENDING") @db.VarChar(10) // PENDING | ACTIVE | DONE | DECLINED | CANCELED | EXPIRED
+  startDay     String?   @db.VarChar(10)
+  endDay       String?   @db.VarChar(10)
+  scoreA       Int       @default(0) // score final du challenger
+  scoreB       Int       @default(0) // score final de l'adversaire
+  winnerId     String?
+  pointsA      Int       @default(0) // points versés au challenger
+  pointsB      Int       @default(0) // points versés à l'adversaire
+  note         String    @default("") @db.VarChar(160)
+  createdAt    DateTime  @default(now())
+  respondedAt  DateTime?
+  settledAt    DateTime?
+
+  @@index([challengerId, status])
+  @@index([opponentId, status])
+  @@index([status, endDay])
+  @@index([settledAt])
+}

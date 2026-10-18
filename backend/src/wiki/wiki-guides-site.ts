@@ -476,6 +476,44 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Voir aussi : [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url], [url=/wiki/guide-roue-de-la-fortune]Tourner la roue de la fortune[/url], [url=/wiki/guide-pronostics-lnh]Faire ses pronostics sur la LNH[/url].`,
     },
     {
+      title: 'Les duels entre membres',
+      slug: 'guide-duels',
+      keywords: 'duels, duel, défier, adversaire, invitation, quiz, pronostics, défis, consolation, récompense, jeux, gratuit',
+      content:
+        `Un [b]duel[/b] est un défi amical entre deux membres sur une activité [b]gratuite[/b] : personne ne mise de points. Rendez-vous sur la page [url=/jeux/duels]Duels[/url] de la section Jeux.
+
+` +
+        `[b]Lancer un duel[/b]
+` +
+        `• Choisis un adversaire (tape son pseudo), une activité et une durée de 3 ou 7 jours, puis envoie l'invitation. Tu peux avoir quelques invitations en attente à la fois, et tu peux en annuler une tant qu'elle n'est pas acceptée.
+` +
+        `• Les activités possibles : le [b]quiz[/b] (qui répond juste au plus de questions), les [b]pronostics LNH[/b] (qui réussit le plus de pronostics) et les [b]défis[/b] (qui en réussit le plus).
+` +
+        `• Ton adversaire reçoit une notification ; il peut accepter ou refuser. Sans réponse, l'invitation expire après 2 jours.
+
+` +
+        `[b]Pendant le duel[/b]
+` +
+        `• Le duel commence [b]le lendemain[/b] de l'acceptation, pour que personne n'ait d'avance. Les scores se mettent à jour tout seuls pendant que vous jouez normalement : il n'y a rien de plus à faire.
+
+` +
+        `[b]À la fin[/b]
+` +
+        `• Le gagnant reçoit [b]20 points[/b]. Le perdant qui a joué reçoit [b]5 points de consolation[/b]. En cas d'égalité parfaite, chacun reçoit 10 points. Si personne n'a joué, il n'y a pas de points.
+` +
+        `• Les duels sont réglés automatiquement après la dernière journée (les pronostics attendent la fin des matchs).
+
+` +
+        `[b]À savoir[/b]
+` +
+        `• Pour éviter les échanges de points entre amis ou avec de faux comptes, un membre reçoit des points pour 3 duels par jour au maximum, et une même paire de membres n'est récompensée qu'une fois tous les 7 jours (le duel compte quand même dans tes victoires).
+` +
+        `• Les points sont ceux du site, sans valeur en argent. Tu peux te retirer des jeux à tout moment depuis la page Jeux.
+
+` +
+        `Voir aussi : [url=/wiki/guide-defis]Relever les défis[/url], [url=/wiki/guide-quiz-quotidien]Jouer au quiz quotidien[/url], [url=/wiki/guide-pronostics-lnh]Faire ses pronostics sur la LNH[/url], [url=/wiki/guide-classements]Les classements des jeux[/url].`,
+    },
+    {
       title: 'Les classements des jeux',
       slug: 'guide-classements',
       keywords: 'classements, classement, meilleurs, top, rang, quiz, pronostics, roue, défis, cartes, collectionneurs, jeux, gratuit',
