@@ -31,7 +31,7 @@ export const DEFAULT_DONATION_CONFIG: DonationConfig = {
   currency: 'CAD',
   headline: 'Soutenir Seeduction',
   text: "Seeduction fonctionne grâce à la communauté : le serveur, le stockage et la bande passante ont un coût chaque mois. Un don, même petit, aide à garder le site rapide, stable et sans publicité. C'est entièrement facultatif : tout le site reste accessible à tous.",
-  howTo: "1. Fais ton don avec un des liens ci-dessous. 2. Écris ton pseudo Seeduction dans le message du don. 3. L'équipe crédite ton don (en général dans la journée) : tes avantages s'activent tout seuls et tu reçois une notification.",
+  howTo: "1. Fais ton don avec un des liens ci-dessous. 2. Écris « @ton-pseudo » dans le message du don (sans pseudo clair, l'équipe devra attribuer le don à la main). 3. Si ton pseudo est reconnu, tes avantages s'activent tout seuls et tu reçois une notification ; sinon l'équipe crédite ton don (en général dans la journée).",
   links: [],
   goalMonthly: 60,
   tiers: [

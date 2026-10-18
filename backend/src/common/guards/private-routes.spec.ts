@@ -15,6 +15,7 @@ const PUBLIC_ROUTES: Record<string, string> = {
   'POST /security/csp-report': 'rapports envoyés par le navigateur', 'GET /system/status': 'bandeau de maintenance (avant la connexion)', 'POST /system/maintenance': 'script de déploiement (local seulement)',
   'GET /sports/logo/:abbrev': 'image de logo (balise img)', 'GET /sports/goal-sound': 'son de but (balise audio)',
   'GET /public/torrents': 'API par clé', 'GET /public/torrents/:id': 'API par clé', 'GET /public/me': 'API par clé', 'GET /public/stats': 'API par clé', 'GET /public/rss/torrents.xml': 'flux RSS par clé',
+  'POST /donations/webhook/kofi': 'Ko-fi (jeton vérifié)', 'POST /donations/webhook/bmc': 'Buy Me a Coffee (signature vérifiée)',
   'GET /stream/session/:token': 'jeton de lecture', 'POST /stream/watching': 'jeton de lecture', 'POST /stream/watching/stop': 'jeton de lecture', 'GET /stream/:torrentId': 'passkey',
   'GET /tracker/:passkey/announce': 'tracker BitTorrent', 'GET /tracker/:passkey/scrape': 'tracker BitTorrent',
 };

@@ -2406,3 +2406,25 @@ model Duel {
   @@index([status, endDay])
   @@index([settledAt])
 }
+
+/// Don reçu automatiquement d'une plateforme (Ko-fi, Buy Me a Coffee) : un message par paiement, jamais traité deux fois (provider + externalId uniques).
+model DonationEvent {
+  id          String   @id @default(uuid())
+  provider    String   @db.VarChar(12)
+  externalId  String   @db.VarChar(80)
+  kind        String   @db.VarChar(16) // donation | subscription | other
+  status      String   @default("PENDING") @db.VarChar(12) // CREDITED | PENDING | IGNORED | REFUNDED
+  amount      Float
+  currency    String   @db.VarChar(6)
+  payerName   String   @default("") @db.VarChar(80)
+  payerEmail  String   @default("") @db.VarChar(120) // masqué (ma***@gmail.com)
+  message     String   @default("") @db.VarChar(400)
+  suggestion  String?  @db.VarChar(40) // pseudo probable, à confirmer par l'équipe
+  userId      String?
+  donationId  String?
+  note        String   @default("") @db.VarChar(200)
+  createdAt   DateTime @default(now())
+
+  @@unique([provider, externalId])
+  @@index([status, createdAt])
+}

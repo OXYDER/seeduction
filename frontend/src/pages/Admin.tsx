@@ -11,6 +11,7 @@ import { InvitesAdmin } from '../components/AdminInvites';
 import { ConfigAdmin } from '../components/AdminConfig';
 import MaintenanceAdmin from '../components/MaintenanceAdmin';
 import AdminDonations from '../components/AdminDonations';
+import AdminDonationsAuto from '../components/AdminDonationsAuto';
 import { SupportAdmin } from '../components/AdminSupport';
 import { LockdownAdmin } from '../components/AdminLockdown';
 import { ImportAdmin } from '../components/AdminImport';
@@ -74,7 +75,7 @@ export default function Admin() {
       {tab === 'Import' && <ImportAdmin />}
       {tab === 'Pot commun' && <PotAdmin />}
       {tab === 'Jeux' && <><AdminEconomy /><AdminJeux /><AdminSlots /><AdminHiLo /><AdminBlackjack /><AdminDice /><AdminCards /><AdminChallenges /><AdminDuels /><AdminWheel /><AdminQuiz /><AdminPicks /><AdminCashback /></>}
-      {tab === 'Dons' && <AdminDonations />}
+      {tab === 'Dons' && <><AdminDonationsAuto /><AdminDonations /></>}
       {tab === 'Telegram' && <TelegramAdmin />}
       {tab === 'Anti-triche' && <AdminAntiCheat />}
       {tab === 'Sauvegardes' && <AdminBackup />}
