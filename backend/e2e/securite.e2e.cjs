@@ -31,6 +31,9 @@ const tok = (u, role, iat) => jwt.sign({ sub: u.id, username: u.username, role: 
   check('jeton émis avant le changement de mot de passe : refusé', (await call('GET', '/users/me', tok(changed, undefined, Math.floor(Date.now() / 1000) - 120))).s === 401);
   check('compte inconnu : refusé', (await call('GET', '/users/me', jwt.sign({ sub: 'inconnu', username: 'x', role: 'USER' }, E2E.SECRET, { expiresIn: '1h' }))).s === 401);
 
+  // ---- le corps JSON des requêtes est bien lu (garde-fou : un analyseur mal installé fait échouer toutes les connexions)
+  const okLogin = await call('POST', '/auth/login', null, { usernameOrEmail: member.username, password: 'Mot-de-passe-test-1' });
+  check('connexion avec le bon mot de passe', okLogin.s === 201 && !!okLogin.b?.accessToken, okLogin.raw.slice(0, 80));
   // ---- un échec de connexion réel est journalisé
   const r = await call('POST', '/auth/login', null, { usernameOrEmail: member.username, password: 'mauvais-mot-de-passe' });
   const logged = await p.activityLog.count({ where: { action: 'LOGIN_FAILED', createdAt: { gt: new Date(Date.now() - 60_000) } } });

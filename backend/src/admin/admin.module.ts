@@ -13,13 +13,15 @@ import { MetadataModule } from '../metadata/metadata.module';
 import { OwnerTorrentsController } from './owner-torrents.controller';
 import { StaffMembersController } from './staff-members.controller';
 import { StaffMembersService } from './staff-members.service';
+import { MemberInspectController } from './member-inspect.controller';
+import { MemberInspectService } from './member-inspect.service';
 import { PresenceModule } from '../presence/presence.module';
 import { UploadCreditModule } from '../upload-credit/upload-credit.module';
 
 @Module({
   imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule, MetadataModule, PresenceModule, UploadCreditModule],
-  controllers: [AdminController, OwnerTorrentsController, StaffMembersController],
-  providers: [AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService, StaffMembersService],
+  controllers: [AdminController, OwnerTorrentsController, StaffMembersController, MemberInspectController],
+  providers: [AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService, StaffMembersService, MemberInspectService],
   exports: [AccountDeletionService, AdminService],
 })
 export class AdminModule {}

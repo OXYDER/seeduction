@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as speakeasy from 'speakeasy';
@@ -226,6 +226,11 @@ export class AuthService {
       throw err;
     }
 
+    if (user.mustResetPassword) {
+      await this.sendResetMail(user, 24, ip).catch(() => undefined);
+      throw new ForbiddenException("Ton mot de passe doit être réinitialisé avant de pouvoir te reconnecter. Un courriel contenant le lien de réinitialisation vient de t'être envoyé.");
+    }
+
     if (user.twoFactorEnabled) {
       if (!totpToken) throw new UnauthorizedException('Code 2FA requis');
       if (!(await this.verifySecondFactor(user, totpToken))) {
@@ -449,6 +454,28 @@ export class AuthService {
     return { sent: true };
   }
 
+  /**
+   * Crée un lien de réinitialisation à usage unique et l'envoie par courriel (au plus un envoi toutes les 5 minutes par compte). Sert à la réinitialisation exigée par l'équipe.
+   * Renvoie le lien (pour que l'équipe puisse le transmettre autrement si le courriel n'est pas configuré) et si le courriel est parti.
+   */
+  async sendResetMail(user: { id: string; username: string; email: string }, validHours = 24, ip?: string | null, force = false) {
+    if (!force) {
+      const recent = await this.prisma.passwordReset.findFirst({ where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 5 * 60_000) } } });
+      if (recent) return { link: null as string | null, sent: false };
+    }
+    await this.prisma.passwordReset.deleteMany({ where: { userId: user.id, usedAt: null } });
+    const token = randomBytes(32).toString('hex');
+    await this.prisma.passwordReset.create({ data: { userId: user.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + validHours * 3600_000) } });
+    const link = `${this.mail.siteUrl()}/reset-password?token=${token}`;
+    let sent = false;
+    if (this.mail.enabled) {
+      await this.mail.send(user.email, 'Réinitialisation obligatoire de ton mot de passe Seeduction', `Bonjour ${user.username},\n\nPar mesure de sécurité, l'équipe de Seeduction te demande de choisir un nouveau mot de passe avant de pouvoir te reconnecter. Ouvre ce lien (valable ${validHours} heures, à usage unique) :\n${link}\n\nSi tu as des questions, contacte l'équipe.`);
+      sent = true;
+      await this.audit.log(user.id, 'RESET_LINK_EMAILED', { forced: true }, ip);
+    }
+    return { link, sent };
+  }
+
   /** Réinitialisation avec un lien émis par le staff ou reçu par e-mail (usage unique, 1 heure). */
   async resetPassword(token: string, next: string, ip?: string | null) {
     this.assertPassword(next);
@@ -459,7 +486,7 @@ export class AuthService {
       throw new BadRequestException('Lien invalide ou expiré : demande-en un nouveau au staff');
     }
     await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: row.userId }, data: { passwordHash: await bcrypt.hash(next, 12), sessionsValidAfter: new Date() } }),
+      this.prisma.user.update({ where: { id: row.userId }, data: { passwordHash: await bcrypt.hash(next, 12), sessionsValidAfter: new Date(), mustResetPassword: false } }),
       this.prisma.passwordReset.update({ where: { id: row.id }, data: { usedAt: new Date() } }),
     ]);
     await this.audit.log(row.userId, 'PASSWORD_RESET', undefined, ip);

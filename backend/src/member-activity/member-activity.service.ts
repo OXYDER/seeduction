@@ -23,7 +23,7 @@ export const CATEGORY_LABEL: Record<string, string> = {
 /** Actions du journal d'audit (connexions, sécurité, modération), en français. */
 const AUDIT_LABEL: Record<string, string> = {
   LOGIN: 'Se connecte', LOGIN_FAILED: 'Échec de connexion', PASSWORD_CHANGE: 'Change son mot de passe', PASSWORD_RESET: 'Réinitialise son mot de passe',
-  RESET_LINK_EMAILED: 'Demande un lien de réinitialisation', RESET_LINK_ISSUED: 'Lien de réinitialisation généré', TWO_FACTOR_ENABLED: 'Active la double authentification',
+  RESET_LINK_EMAILED: 'Demande un lien de réinitialisation', RESET_LINK_ISSUED: 'Lien de réinitialisation généré', PASSWORD_RESET_FORCED: 'Réinitialisation obligatoire du mot de passe exigée', PASSWORD_RESET_FORCE_CANCELED: 'Réinitialisation obligatoire levée', STAFF_UNLOCK_PRIVATE: "Déverrouille la consultation des conversations d'un membre", STAFF_VIEW_PRIVATE: "Consulte les conversations d'un membre", TWO_FACTOR_ENABLED: 'Active la double authentification',
   TWO_FACTOR_DISABLED: 'Désactive la double authentification', USER_WARN: 'Avertissement', USER_BAN: 'Bannissement', USER_UNBAN: 'Débannissement',
   USER_EDIT: 'Compte modifié par le staff', USER_CLEAR_HNR: 'H&R effacé', USER_WARNING_DELETE: 'Avertissement retiré', USER_PASSKEY_RESET: 'Passkey régénérée',
   TORRENT_APPROVE: 'Approuve un torrent', TORRENT_HOLD: 'Demande une correction sur un torrent', TORRENT_REJECT: 'Rejette un torrent', TORRENT_EDIT: 'Modifie un torrent', TORRENT_DELETE: 'Supprime un torrent',

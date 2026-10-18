@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { json } from 'express';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { MetricsService } from './monitoring/metrics.service';
@@ -12,7 +12,7 @@ import { lockState } from './lockdown/lockdown-state';
 };
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
   // Adresse IP réelle du visiteur (limites de débit, journaux) : on fait confiance à N proxys devant le backend (2 par défaut : Nginx Proxy Manager + le nginx du site ; 3 avec Cloudflare).
   (app.getHttpAdapter().getInstance() as any).set('trust proxy', Math.max(1, Number(process.env.TRUSTED_PROXY_HOPS ?? 2) || 2));
@@ -22,8 +22,9 @@ async function bootstrap() {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     next();
   });
-  // Les navigateurs envoient les rapports de sécurité (CSP) avec un type de contenu particulier : on l'accepte, avec une taille minuscule.
-  app.use('/api/security/csp-report', json({ type: ['application/csp-report', 'application/reports+json', 'application/json'], limit: '16kb' }));
+  // Les navigateurs envoient les rapports de sécurité (CSP) avec un type de contenu particulier : on l'accepte en plus du JSON ordinaire.
+  // (Ne pas ajouter un analyseur « json » avec app.use : Nest croirait le sien déjà installé et plus aucune requête JSON ne serait lue.)
+  app.useBodyParser('json', { type: ['application/json', 'application/csp-report', 'application/reports+json'] });
   app.enableCors({ origin: process.env.CORS_ORIGIN?.split(',') ?? '*' });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix('api', { exclude: ['tracker/(.*)'] }); // le tracker BitTorrent reste hors /api

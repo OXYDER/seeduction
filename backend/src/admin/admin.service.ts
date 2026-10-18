@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { forgetIdentity } from '../common/utils/session-identity';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
@@ -381,6 +382,30 @@ export class AdminService {
     const expiresAt = new Date(Date.now() + 3600_000);
     await this.prisma.passwordReset.create({ data: { userId, tokenHash: createHash('sha256').update(token).digest('hex'), expiresAt } });
     return { token, expiresAt };
+  }
+
+  /**
+   * Réinitialisation OBLIGATOIRE du mot de passe (administrateurs) : toutes les sessions du compte sont fermées, il est inutilisable tant que le membre n'a pas choisi un nouveau mot de passe
+   * avec le lien reçu par courriel (valable 24 h). `cancel` lève l'exigence sans changer le mot de passe.
+   */
+  async forceReset(actor: Actor, userId: string, cancel: boolean, ip?: string | null) {
+    const fresh = await this.prisma.user.findUnique({ where: { id: actor.userId }, select: { role: true, status: true } });
+    if (!fresh || fresh.status !== 'ACTIVE' || !['ADMIN', 'OWNER'].includes(fresh.role)) throw new ForbiddenException('Réservé aux administrateurs');
+    actor = { ...actor, role: fresh.role };
+    userId = await this.accountIdOf(userId);
+    const target = await this.loadTarget(userId);
+    this.assertOutranks(actor, target);
+    if (cancel) {
+      await this.prisma.user.update({ where: { id: userId }, data: { mustResetPassword: false } });
+      forgetIdentity(userId);
+      return { mustResetPassword: false };
+    }
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, email: true } });
+    if (!user) throw new NotFoundException('Membre introuvable');
+    await this.prisma.user.update({ where: { id: userId }, data: { mustResetPassword: true, sessionsValidAfter: new Date() } });
+    forgetIdentity(userId);
+    const r = await this.auth.sendResetMail(user, 24, ip, true);
+    return { mustResetPassword: true, emailed: r.sent, link: r.sent ? null : r.link };
   }
 
   async warnUser(actor: Actor, userId: string, reason: string) {

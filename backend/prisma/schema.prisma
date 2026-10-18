@@ -37,6 +37,8 @@ model User {
   id               String     @id @default(uuid())
   /// Les sessions ouvertes avant cette date ne sont plus valides (posée à chaque changement ou réinitialisation de mot de passe).
   sessionsValidAfter DateTime?
+  /// Réinitialisation du mot de passe exigée par l'équipe : le compte reste inutilisable tant que le membre n'a pas choisi un nouveau mot de passe avec le lien reçu par courriel.
+  mustResetPassword Boolean @default(false)
   username         String     @unique
   email            String     @unique
   passwordHash     String

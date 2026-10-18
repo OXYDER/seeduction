@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import StaffUserPanel, { ROLE_LABEL } from '../components/StaffUserPanel';
 import MemberActivityPanel from '../components/MemberActivityPanel';
+import MemberInspectPanel from '../components/MemberInspectPanel';
 import TransferPoints from '../components/TransferPoints';
 import ReportButton from '../components/ReportButton';
 import SecurityPanel from '../components/SecurityPanel';
@@ -263,6 +264,7 @@ export default function Profile() {
         </div>
       )}
       {/* Journal d'activité : tout en bas de la fiche, après les autres informations (équipe Seeduction seulement). */}
+      {id && me && ['ADMIN', 'OWNER'].includes(me.role) && me.id !== id && <MemberInspectPanel userId={id} />}
       {id && me && ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(me.role) && <MemberActivityPanel userId={id} />}
     </div>
   );

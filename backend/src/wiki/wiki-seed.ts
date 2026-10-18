@@ -615,7 +615,16 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Contenu adulte[/b] : masqué par défaut, à activer explicitement pour voir les catégories XXX.\n` +
           `• [b]Chat privé[/b] : ouvert à tout le monde par défaut, restreignable à tes amis.\n` +
           `• [b]Statut « Apparaître hors ligne »[/b] : te fait passer pour déconnecté aux yeux des autres.\n` +
-          `• [b]« En train de regarder »[/b] : désactivable complètement (et de toute façon jamais montré pour du contenu adulte).`,
+          `• [b]« En train de regarder »[/b] : désactivable complètement (et de toute façon jamais montré pour du contenu adulte).
+
+` +
+          `[b]Ce que l'équipe peut voir[/b]
+` +
+          `• Les [b]administrateurs[/b] peuvent consulter le compte d'un membre : ses téléchargements, ses envois, ses seeds, ses hit & run, ses amis, ses messages du forum, et — seulement en cas de besoin de modération (signalement, soupçon de fraude ou de piratage) — le contenu de ses messages privés et du chat.
+` +
+          `• Pour lire des conversations, l'administrateur doit saisir à nouveau son mot de passe, et [b]chaque consultation est inscrite dans un journal d'audit[/b]. Les conversations d'un membre de rang égal ou supérieur ne sont pas consultables.
+` +
+          `• Si un compte semble piraté, l'équipe peut exiger que le mot de passe soit réinitialisé : un courriel contient un lien, et le compte reste inutilisable tant qu'un nouveau mot de passe n'a pas été choisi.`,
       },
       {
         title: 'Compte famille : profils et codes PIN',
