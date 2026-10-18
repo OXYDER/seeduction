@@ -475,7 +475,6 @@ model Peer {
   @@unique([torrentId, userId, peerId])
   @@index([torrentId, isSeeder])
   @@index([userId])
-  @@index([lastAnnounceAt])
 }
 
 // Historique des cycles complets de téléchargement (pour stats + anti-cheat)

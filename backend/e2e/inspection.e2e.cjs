@@ -88,7 +88,7 @@ const PW = 'Mot-de-passe-test-1';
   // annulation
   await call('POST', `/admin/users/${friend.id}/force-reset`, TA, {});
   check('annulation : exigence levée sans changer le mot de passe', (await call('POST', `/admin/users/${friend.id}/force-reset`, TA, { cancel: true })).b.mustResetPassword === false);
-  await new Promise((r) => setTimeout(r, 16_000)); // le cache d'identité (15 s)
+  await new Promise((r) => setTimeout(r, 500)); // l'identité en cache est oubliée par la levée de l'exigence
   check('annulation : le membre peut se reconnecter', (await call('POST', '/auth/login', null, { usernameOrEmail: tag + 'f', password: PW })).s === 201);
 
   // ---- nettoyage
