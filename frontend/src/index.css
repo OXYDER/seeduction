@@ -4601,3 +4601,12 @@ button.cc-gift { animation: cc-pulse 1.8s ease-in-out infinite; }
 .ch-bonus-n { font-size: 22px; font-weight: 900; color: #ffd24a; }
 @media (prefers-reduced-motion: reduce) { .ch-card.done { animation: none; } }
 .gh-challenges { --gh-frame: #ffb347; --gh-glow: #c66a00; background: linear-gradient(160deg, #5a3208, #180d03 70%); }
+
+/* ---- Téléphone : ajustements des jeux (≤ 420 px) ---- */
+@media (max-width: 420px) {
+  .dc-strip { gap: 3px; }
+  .dc-pill { width: 24px; }
+  .dc-presets { display: grid; grid-template-columns: 1fr 1fr; }
+  .dc-presets button { justify-content: center; }
+  .dc-nums .dc-num { min-width: 52px; }
+}
