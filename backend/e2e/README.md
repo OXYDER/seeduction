@@ -18,6 +18,7 @@ Ils complètent les tests unitaires (`npm test`), qui ne touchent ni la base ni 
 | `badges.e2e.cjs` | réalisations : badges d'ancienneté, de seed, d'entraide, progression, attribution et notifications |
 | `parrainage.e2e.cjs` | parrainage : invitations et quota, prime de parrainage (conditions, plafond mensuel, même IP, code générique), réglages |
 | `tableau-equipe.e2e.cjs` | tableau de bord de l'équipe : files, ancienneté, niveaux, délais, visibilité par rôle, activité |
+| `journal-moderation.e2e.cjs` | journal de modération : droits par rôle, filtres, cibles, recherche, dates, export CSV |
 | `equipe-2fa.e2e.cjs` | 2FA obligatoire pour l'équipe : outils fermés sans 2FA, bandeau, désactivation refusée, audit |
 | `securite.e2e.cjs`, `inspection.e2e.cjs` | sécurité : sessions liées à l'état du compte, rapports suspects, CSP ; compte complet d'un membre, conversations déverrouillées et tracées, réinitialisation obligatoire du mot de passe |
 | `dons-auto.e2e.cjs` | dons automatiques : Ko-fi et Buy Me a Coffee, reconnaissance du pseudo, jamais de double crédit |

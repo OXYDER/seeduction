@@ -34,7 +34,7 @@ export default function StaffBoard() {
   const clear = data.queues.filter((q) => q.count === 0);
   return (
     <div className="grid">
-      <h1 style={{ marginBottom: 0 }}>📋 Tableau de bord de l'équipe</h1>
+      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}><h1 style={{ margin: 0 }}>📋 Tableau de bord de l'équipe</h1><Link to="/moderation-log" className="button secondary">🧾 Journal de modération</Link></div>
       <div className="panel row" style={{ gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
         <div><div style={{ fontSize: 30, fontWeight: 800 }}>{data.total}</div><div className="muted" style={{ fontSize: 13 }}>élément{data.total > 1 ? 's' : ''} en attente</div></div>
         <div><div style={{ fontSize: 30, fontWeight: 800, color: data.late ? LEVEL.late.color : LEVEL.ok.color }}>{data.late}</div><div className="muted" style={{ fontSize: 13 }}>file{data.late > 1 ? 's' : ''} en retard</div></div>

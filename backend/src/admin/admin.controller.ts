@@ -293,7 +293,9 @@ export class AdminController {
   }
 
   @Post('reports/:id/resolve')
-  resolve(@Param('id') id: string, @Body('status') status: 'RESOLVED' | 'DISMISSED') {
-    return this.adminService.resolveReport(id, status);
+  async resolve(@Param('id') id: string, @Body('status') status: 'RESOLVED' | 'DISMISSED', @Request() req: any) {
+    const result: any = await this.adminService.resolveReport(id, status);
+    await this.audit.log(req.user.userId, status === 'RESOLVED' ? 'REPORT_RESOLVE' : 'REPORT_DISMISS', { reportId: id, targetType: result?.targetType, ...(result?.targetType === 'torrent' ? { torrentId: result.targetId } : result?.targetType === 'user' ? { targetId: result.targetId } : {}) }, this.ip(req));
+    return result;
   }
 }

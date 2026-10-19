@@ -16,6 +16,8 @@ import { StaffMembersService } from './staff-members.service';
 import { MemberInspectController } from './member-inspect.controller';
 import { MemberInspectService } from './member-inspect.service';
 import { PresenceModule } from '../presence/presence.module';
+import { StaffLogController } from './staff-log.controller';
+import { StaffLogService } from './staff-log.service';
 import { StaffBoardController } from './staff-board.controller';
 import { StaffBoardService } from './staff-board.service';
 import { StaffSecurityController } from './staff-security.controller';
@@ -24,8 +26,8 @@ import { UploadCreditModule } from '../upload-credit/upload-credit.module';
 
 @Module({
   imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule, MetadataModule, PresenceModule, UploadCreditModule],
-  controllers: [AdminController, OwnerTorrentsController, StaffMembersController, MemberInspectController, StaffSecurityController, StaffBoardController],
-  providers: [AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService, StaffMembersService, MemberInspectService, StaffSecurityService, StaffBoardService],
+  controllers: [AdminController, OwnerTorrentsController, StaffMembersController, MemberInspectController, StaffSecurityController, StaffBoardController, StaffLogController],
+  providers: [AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService, StaffMembersService, MemberInspectService, StaffSecurityService, StaffBoardService, StaffLogService],
   exports: [AccountDeletionService, AdminService],
 })
 export class AdminModule {}

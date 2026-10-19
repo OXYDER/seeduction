@@ -4238,3 +4238,7 @@ button.hl-cash:disabled { opacity: 0.45; filter: grayscale(0.5); }
 .sb-icon { font-size: 30px; }
 .sb-count { font-size: 28px; font-weight: 800; line-height: 1; }
 .sb-dot { position: absolute; top: 10px; right: 10px; width: 10px; height: 10px; border-radius: 50%; }
+
+/* Bouton d'apparence « lien » (journal de modération) */
+button.link { background: none; border: 0; box-shadow: none; padding: 0; font: inherit; color: var(--acc-light, #f4d06a); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
+button.link:hover { filter: none; transform: none; text-decoration-style: solid; }
