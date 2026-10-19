@@ -6,6 +6,7 @@ import { useCountdown } from '../components/FreeleechCalendar';
 import TeamLogo from '../components/TeamLogo';
 import { SKINS, MACHINE_ORDER } from '../lib/slotSkins';
 import Loading from '../components/Loading';
+import { timeLeft, type TournamentData } from './Tournament';
 import '../games.css';
 
 interface Summary {
@@ -96,6 +97,26 @@ function HiLoCard({ d }: { d: Summary['hilo'] }) {
       </div>
       {d.dailyFreeAvailable && <span className="gh-badge">🎁 Ta partie gratuite du jour t'attend</span>}
       <span className="gh-go">Jouer →</span>
+    </Link>
+  );
+}
+
+/** La case du tournoi de la semaine : mes points, mon rang, le gros lot et le temps qui reste. */
+function TournamentCard() {
+  const [d, setD] = useState<TournamentData | null>(null);
+  useEffect(() => { api.get('/games/tournament').then((r) => setD(r.data)).catch(() => undefined); }, []);
+  if (!d || !d.enabled) return null;
+  return (
+    <Link to="/jeux/tournoi" className="gh-card gh-tournoi">
+      <div className="gh-head"><span className="gh-icon">🏆</span><div><h2>Tournoi de la semaine</h2><div className="gh-tag">Gratuit · marque des points avec tes jeux gratuits</div></div></div>
+      <p className="gh-desc">Roue, quiz, pronostics, cartes : chaque jeu gratuit te rapporte des points au classement. Prix pour les meilleurs, petit prix pour tous ceux qui participent, et un gros lot qui grossit chaque semaine.</p>
+      <div className="gh-stats">
+        <Stat label="mes points" value={formatNumber(d.me.points)} tone="good" />
+        {d.me.rank ? <Stat label="mon rang" value={`${d.me.rank}e / ${d.me.participants}`} tone="good" /> : <Stat label="participants" value={d.me.participants} />}
+        <Stat label="gros lot" value={`${formatNumber(d.jackpot)} pts`} tone="good" />
+      </div>
+      <span className="gh-badge">⏱️ Fin dans {timeLeft(d.endsAt)}</span>
+      <span className="gh-go">Voir le classement →</span>
     </Link>
   );
 }
@@ -293,6 +314,7 @@ export default function GamesHub() {
 
       <div className="gh-grid">
         {data.challenges?.enabled && <ChallengesCard d={data.challenges} />}
+        <TournamentCard />
         {data.duels?.enabled && <DuelsCard d={data.duels} />}
         {data.moj.enabled && <MojCard d={data.moj} />}
         {data.slots.enabled && <SlotsCard d={data.slots} />}

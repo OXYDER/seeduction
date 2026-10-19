@@ -23,6 +23,7 @@ const GamesHub = lazyPage(() => import('./pages/GamesHub'));
 const Slots = lazyPage(() => import('./pages/Slots'));
 const HiLo = lazyPage(() => import('./pages/HiLo'));
 const Wheel = lazyPage(() => import('./pages/Wheel'));
+const Tournament = lazyPage(() => import('./pages/Tournament'));
 const Quiz = lazyPage(() => import('./pages/Quiz'));
 const Pronostics = lazyPage(() => import('./pages/Pronostics'));
 const Blackjack = lazyPage(() => import('./pages/Blackjack'));
@@ -160,6 +161,7 @@ export default function App() {
           <Route path="/jeux/machines" element={<Slots />} />
           <Route path="/jeux/plus-haut-plus-bas" element={<HiLo />} />
           <Route path="/jeux/roue" element={<Wheel />} />
+          <Route path="/jeux/tournoi" element={<Tournament />} />
           <Route path="/jeux/quiz" element={<Quiz />} />
           <Route path="/jeux/pronostics" element={<Pronostics />} />
           <Route path="/jeux/blackjack" element={<Blackjack />} />

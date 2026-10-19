@@ -44,6 +44,7 @@ export const ACTIONS: Record<string, Info> = {
   STAFF_2FA_REQUIRED_ON: A('a rendu la 2FA obligatoire pour l\'équipe', 'securite', 'important'), STAFF_2FA_REQUIRED_OFF: A('a levé l\'obligation de la 2FA', 'securite', 'important'),
   LOCKDOWN_START: A('a lancé l\'alerte générale', 'securite', 'grave'), LOCKDOWN_UNLOCK: A('a levé l\'alerte générale', 'securite', 'grave'),
   BACKUP_RUN: A('a lancé une sauvegarde', 'securite'), BACKUP_DELETE: A('a supprimé une sauvegarde', 'securite', 'important'), BACKUP_DOWNLOAD: A('a téléchargé une sauvegarde', 'securite', 'important'), BACKUP_CONFIG: A('a réglé les sauvegardes', 'securite'),
+  TOURNAMENT_CONFIG: A('a réglé le tournoi de la semaine', 'config'), TOURNAMENT_JACKPOT: A('a fixé le gros lot du tournoi', 'config'), TOURNAMENT_SETTLE: A('a réglé une semaine de tournoi', 'config'),
   MOD_LOG_EXPORT: A('a exporté le journal de modération', 'securite', 'important'),
   MAIL_MAILBOX_CONFIG: A('a réglé une boîte courriel', 'securite', 'important'), MAIL_SEND: A('a envoyé un courriel depuis le site', 'securite'),
 };

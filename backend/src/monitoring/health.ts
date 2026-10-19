@@ -23,7 +23,7 @@ export interface HealthInput {
 
 /** Libellés lisibles des tâches suivies. */
 export const JOB_LABEL: Record<string, string> = {
-  'picks.tick': 'Pronostics LNH : synchronisation et règlement', 'picks.weekly': 'Pronostics LNH : prix de la semaine', 'moj.tick': 'Mise-O-jeu : règlement des matchs',
+  'picks.tick': 'Pronostics LNH : synchronisation et règlement', 'picks.weekly': 'Pronostics LNH : prix de la semaine', 'tournament.weekly': 'Tournoi de la semaine : règlement du lundi', 'moj.tick': 'Mise-O-jeu : règlement des matchs',
   'hilo.sweep': 'Plus haut ou plus bas : parties abandonnées', 'blackjack.sweep': 'Blackjack : parties abandonnées', 'quiz.podium': 'Quiz : podium de la veille',
   'games.cashback': 'Remise de fidélité des jeux', 'economy.watch': 'Économie des points : surveillance', 'security.watch': 'Sécurité : surveillance des connexions suspectes',
 };

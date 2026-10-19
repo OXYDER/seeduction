@@ -802,6 +802,30 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Chaque profil d'un compte famille a ses propres appareils abonnés.`,
     },
     {
+      title: 'Tournoi de la semaine : classement gratuit, prix et gros lot',
+      slug: 'guide-tournoi',
+      keywords: 'tournoi, semaine, classement, gros lot, jackpot, prix, points, jeux gratuits, champion, participation, jetons freeleech',
+      isFaq: true,
+      content:
+        `Un classement par semaine, gratuit, où chaque jeu gratuit que tu joues te rapporte des points. Le site offre les prix.\n` +
+        `\n` +
+        `[b]Comment ça marche[/b]\n` +
+        `• La semaine va du [b]lundi au dimanche[/b] (heure de Montréal). Tu marques des points en jouant aux jeux [b]gratuits[/b] : la [url=/wiki/guide-roue-de-la-fortune]roue[/url], le [url=/wiki/guide-quiz-quotidien]quiz[/url] (par bonne réponse, plus un bonus sans faute), les [url=/wiki/guide-pronostics-lnh]pronostics[/url], les [url=/wiki/guide-cartes]cartes[/url] et les parties gratuites du jour. Le tableau « Comment marquer des points ? » de la page donne la valeur de chaque action.\n` +
+        `• [b]Rien à miser, rien à payer[/b] : miser des points dans un jeu ne rapporte aucun point au tournoi, et il n'y a pas de droit d'entrée.\n` +
+        `• Il faut un compte d'au moins quelques jours, avoir atteint le minimum de points pour être classé, et on ne compte pas plus que le plafond de la semaine. À égalité, celui qui a atteint son total en premier passe devant.\n` +
+        `\n` +
+        `[b]Les prix[/b]\n` +
+        `• Le lundi matin, la semaine terminée est réglée : prix pour les premiers rangs (points, [b]jetons freeleech[/b], paquets de cartes), et un [b]petit prix de participation[/b] pour toute personne qui a joué assez de points, même sans podium.\n` +
+        `• Le [b]🎰 gros lot[/b] grossit chaque semaine : le 1er l'emporte s'il atteint le minimum de points affiché, sinon il est reporté et grossit encore. Il peut donc devenir très gros.\n` +
+        `• Tu reçois une notification (et un message push si tu l'as activé) avec ton rang et tes prix ; le champion est annoncé à tout le monde.\n` +
+        `\n` +
+        `[b]Où voir tout ça ?[/b]\n` +
+        `La case [b]🏆 Tournoi de la semaine[/b] de la page [url=/jeux]Jeux[/url] (ou [url=/jeux/tournoi]directement[/url]) : tes points et ton rang, le classement, les prix, le gros lot, le temps qui reste, les résultats de la semaine passée et la liste des champions.\n` +
+        `\n` +
+        `[b]Règles de fair-play[/b]\n` +
+        `Un seul compte par personne. Les membres retirés des jeux n'apparaissent pas au classement. Les points d'un compte banni ne sont pas comptés au règlement.`,
+    },
+    {
       title: 'Lire tes statistiques et les classements',
       slug: 'guide-stats',
       keywords: 'statistiques, stats, classement, mon activité, mes seeds, top, records, ratio, graphique',

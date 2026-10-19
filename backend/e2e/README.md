@@ -21,6 +21,7 @@ Ils complètent les tests unitaires (`npm test`), qui ne touchent ni la base ni 
 | `journal-moderation.e2e.cjs` | journal de modération : droits par rôle, filtres, cibles, recherche, dates, export CSV |
 | `sante-site.e2e.cjs` | historique du site (24 h / 7 j / 30 j), incidents de santé, réglage des alertes Telegram |
 | `push.e2e.cjs` | notifications push : clé publique chiffrée, abonnement, validation (services des navigateurs seulement), appareils, limites |
+| `tournoi.e2e.cjs` | tournoi de la semaine : points des jeux gratuits, règlement, gros lot, jetons, notifications, droits |
 | `equipe-2fa.e2e.cjs` | 2FA obligatoire pour l'équipe : outils fermés sans 2FA, bandeau, désactivation refusée, audit |
 | `securite.e2e.cjs`, `inspection.e2e.cjs` | sécurité : sessions liées à l'état du compte, rapports suspects, CSP ; compte complet d'un membre, conversations déverrouillées et tracées, réinitialisation obligatoire du mot de passe |
 | `dons-auto.e2e.cjs` | dons automatiques : Ko-fi et Buy Me a Coffee, reconnaissance du pseudo, jamais de double crédit |

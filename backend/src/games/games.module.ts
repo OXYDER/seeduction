@@ -29,6 +29,8 @@ import { BoardsController } from './boards.controller';
 import { DuelsController } from './duels.controller';
 import { DuelsService } from './duels.service';
 import { BoardsService } from './boards.service';
+import { TournamentController } from './tournament.controller';
+import { TournamentService } from './tournament.service';
 
-@Module({ imports: [NotificationsModule, SportsModule, PresenceModule], controllers: [GamesController, SlotsController, GamesHubController, HiLoController, WheelController, QuizController, PicksController, BlackjackController, DiceController, CardsController, ChallengesController, BoardsController, DuelsController], providers: [MojService, SlotsService, GamesHubService, HiLoService, GamesCashbackService, WheelService, QuizService, PicksService, BlackjackService, DiceService, CardsService, ChallengesService, BoardsService, DuelsService], exports: [MojService, SlotsService, HiLoService, GamesCashbackService, WheelService, QuizService, PicksService, BlackjackService, DiceService, CardsService, ChallengesService] })
+@Module({ imports: [NotificationsModule, SportsModule, PresenceModule], controllers: [TournamentController, GamesController, SlotsController, GamesHubController, HiLoController, WheelController, QuizController, PicksController, BlackjackController, DiceController, CardsController, ChallengesController, BoardsController, DuelsController], providers: [TournamentService, MojService, SlotsService, GamesHubService, HiLoService, GamesCashbackService, WheelService, QuizService, PicksService, BlackjackService, DiceService, CardsService, ChallengesService, BoardsService, DuelsService], exports: [MojService, SlotsService, HiLoService, GamesCashbackService, WheelService, QuizService, PicksService, BlackjackService, DiceService, CardsService, ChallengesService] })
 export class GamesModule {}

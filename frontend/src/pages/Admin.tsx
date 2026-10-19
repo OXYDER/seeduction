@@ -17,6 +17,7 @@ import { SupportAdmin } from '../components/AdminSupport';
 import { LockdownAdmin } from '../components/AdminLockdown';
 import { AdminStaff2fa } from '../components/AdminStaff2fa';
 import { AdminReferral } from '../components/AdminReferral';
+import AdminTournament from '../components/AdminTournament';
 import { ImportAdmin } from '../components/AdminImport';
 import PotAdmin from '../components/AdminPot';
 import AdminJeux from '../components/AdminJeux';
@@ -78,7 +79,7 @@ export default function Admin() {
       {tab === 'Monitoring' && <MonitoringAdmin />}
       {tab === 'Import' && <ImportAdmin />}
       {tab === 'Pot commun' && <PotAdmin />}
-      {tab === 'Jeux' && <><AdminEconomy /><AdminJeux /><AdminSlots /><AdminHiLo /><AdminBlackjack /><AdminDice /><AdminCards /><AdminChallenges /><AdminDuels /><AdminWheel /><AdminQuiz /><AdminPicks /><AdminCashback /></>}
+      {tab === 'Jeux' && <><AdminEconomy /><AdminJeux /><AdminSlots /><AdminHiLo /><AdminBlackjack /><AdminDice /><AdminCards /><AdminChallenges /><AdminDuels /><AdminTournament /><AdminWheel /><AdminQuiz /><AdminPicks /><AdminCashback /></>}
       {tab === 'Dons' && <><AdminDonationsAuto /><AdminDonations /></>}
       {tab === 'Courriel' && <AdminMailboxes />}
       {tab === 'Telegram' && <TelegramAdmin />}

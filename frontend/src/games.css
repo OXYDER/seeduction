@@ -449,3 +449,11 @@ button.cc-gift { animation: cc-pulse 1.8s ease-in-out infinite; }
 .du-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; align-items: end; }
 .du-form label { display: grid; gap: 3px; font-size: 13px; }
 @media (max-width: 420px) { .du-stats { grid-template-columns: repeat(2, 1fr); } }
+
+/* Tournoi de la semaine */
+.gh-tournoi { --gh-frame: #ffd24a; --gh-glow: #d4a017; background: linear-gradient(160deg, #5c4208, #1a1305 70%); }
+.tn-hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; padding: 16px; border-radius: 14px; border: 1px solid #ffd24a66; background: linear-gradient(160deg, #3b2c06, #120d03 75%); }
+.tn-big { font-size: 30px; font-weight: 800; color: #ffd24a; line-height: 1.1; }
+.tn-big small { font-size: 15px; }
+.tn-cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; }
+@media (max-width: 860px) { .tn-cols { grid-template-columns: 1fr; } }

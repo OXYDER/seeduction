@@ -2553,3 +2553,26 @@ model PushSubscription {
 
   @@index([userId])
 }
+
+/// Points d'un membre au tournoi de la semaine (gratuit), par source : roue, quiz, pronostics, cartes, parties gratuites. La semaine va du lundi au dimanche (heure de Montréal) ; sa clé est le lundi.
+model TournamentPoint {
+  id        String   @id @default(uuid())
+  weekKey   String   @db.VarChar(10)
+  userId    String
+  source    String   @db.VarChar(16)
+  points    Int      @default(0)
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([weekKey, userId, source])
+  @@index([weekKey, userId])
+}
+
+/// Semaine de tournoi réglée (une seule fois) : prix versés et gros lot.
+model TournamentWeek {
+  weekKey      String   @id @db.VarChar(10)
+  settledAt    DateTime @default(now())
+  participants Int      @default(0)
+  jackpot      Int      @default(0)
+  results      Json
+}

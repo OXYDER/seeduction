@@ -13,8 +13,8 @@ const KEY = 'cards';
 const DAY = 86400_000;
 
 export interface Actor { userId: string; username: string }
-export type PackSource = 'quiz' | 'wheel' | 'picks' | 'challenge';
-const SOURCE_TEXT: Record<PackSource, string> = { quiz: 'un quiz sans faute', wheel: 'sept jours de suite à la roue de la fortune', picks: 'une journée parfaite aux pronostics', challenge: 'tes défis' };
+export type PackSource = 'quiz' | 'wheel' | 'picks' | 'challenge' | 'tournoi';
+const SOURCE_TEXT: Record<PackSource, string> = { tournoi: 'un prix du tournoi de la semaine', quiz: 'un quiz sans faute', wheel: 'sept jours de suite à la roue de la fortune', picks: 'une journée parfaite aux pronostics', challenge: 'tes défis' };
 
 /**
  * Cartes à collectionner. Les paquets se gagnent (un par jour, plus des récompenses des autres jeux) et ne s'achètent jamais avec des points. Le tirage est fait par le
