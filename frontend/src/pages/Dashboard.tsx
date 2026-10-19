@@ -8,6 +8,7 @@ import NewsPanel from '../components/NewsPanel';
 import TelegramCard from '../components/TelegramCard';
 import ModerationRail from '../components/ModerationRail';
 import HomeStreaming from '../components/HomeStreaming';
+import ContinueWatching from '../components/ContinueWatching';
 import { useTheme } from '../lib/theme';
 import TorrentLink from '../components/TorrentLink';
 import { getRankInfo } from '../lib/rank';
@@ -59,6 +60,7 @@ function ClassicDashboard() {
   return (
     <div className="grid">
       <ModerationRail />
+      <ContinueWatching />
       <div className="hero ornate-frame">
         <div className="hero-top">
           <div className="hero-content">

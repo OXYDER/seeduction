@@ -89,7 +89,7 @@ export default function WatchOnlineButton({ torrentId, fileList, fileCount, comp
       {open && createPortal(
         <div className="trailer-modal" onClick={close}>
           <button type="button" className="secondary trailer-close" onClick={close}>✕ Fermer</button>
-          <div className="trailer-modal-inner" onClick={(e) => e.stopPropagation()} style={{ aspectRatio: 'auto', width: 'min(480px, 100%)', padding: 24 }}>
+          <div className="trailer-modal-inner" onClick={(e) => e.stopPropagation()} style={{ aspectRatio: 'auto', width: 'min(560px, 100%)', padding: 24, maxHeight: '94vh', overflow: 'auto' }}>
             <div className="panel" style={{ background: 'var(--bg-panel)', margin: 0 }}>
               {chosen == null ? (
                 <FilePicker files={allFiles} onPick={play} resume={resume} />
@@ -126,6 +126,9 @@ export default function WatchOnlineButton({ torrentId, fileList, fileCount, comp
   );
 }
 
+const VIDEO_EXT = /\.(mkv|mp4|m4v|avi|mov|wmv|ts|m2ts|webm|mpg|mpeg|flv|ogv|divx|vob)$/i;
+
+/** Choix du fichier d'un pack : défilante (un pack de saison peut compter des dizaines d'épisodes), avec un filtre et, par défaut, seulement les vidéos. */
 function FilePicker({
   files, onPick, resume,
 }: {
@@ -133,16 +136,25 @@ function FilePicker({
   onPick: (index: number) => void;
   resume: { fileIndex: number; positionSeconds: number; playingNow: boolean } | null;
 }) {
+  const [filter, setFilter] = useState('');
+  const [all, setAll] = useState(false);
+  const videos = files.filter((f) => VIDEO_EXT.test(f.path));
+  const base = all || videos.length === 0 ? files : videos;
+  const q = filter.trim().toLowerCase();
+  const shown = q ? base.filter((f) => f.path.toLowerCase().includes(q)) : base;
+  const hidden = files.length - base.length;
   return (
-    <div>
-      <h3 style={{ marginTop: 0 }}>Quel fichier regarder ?</h3>
-      <div className="grid" style={{ gap: 8 }}>
-        {files.map((f) => {
+    <div style={{ display: 'grid', gap: 10 }}>
+      <h3 style={{ margin: 0 }}>Quel fichier regarder ? <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>({shown.length}{shown.length !== base.length ? ` sur ${base.length}` : ''})</span></h3>
+      {base.length > 8 && <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filtrer (ex : S01E05, 1080p…)" autoFocus aria-label="Filtrer les fichiers" />}
+      <div className="grid" style={{ gap: 8, maxHeight: 'min(60vh, 560px)', overflowY: 'auto', paddingRight: 4 }}>
+        {shown.length === 0 && <p className="muted" style={{ margin: 0 }}>Aucun fichier ne correspond.</p>}
+        {shown.map((f) => {
           // Position sauvegardée propre à CE fichier du pack (voir PlaybackPosition.fileIndex) : un film et un autre
           // du même torrent ne doivent jamais se faire passer l'un pour l'autre.
           const fileResume = resume && resume.fileIndex === f.index ? resume : null;
           return (
-            <button key={f.index} type="button" className="secondary" style={{ textAlign: 'left' }} onClick={() => onPick(f.index)}>
+            <button key={f.index} type="button" className="secondary" style={{ textAlign: 'left', overflowWrap: 'anywhere' }} onClick={() => onPick(f.index)}>
               {f.path} <span className="muted">({formatBytes(f.size)})</span>
               {fileResume && (
                 <span style={{ marginLeft: 8, color: 'var(--acc-link)' }}>
@@ -153,6 +165,11 @@ function FilePicker({
           );
         })}
       </div>
+      {(hidden > 0 || all) && videos.length > 0 && videos.length < files.length && (
+        <button type="button" className="secondary" style={{ justifySelf: 'start', fontSize: 12 }} onClick={() => setAll((v) => !v)}>
+          {all ? 'Seulement les vidéos' : `Afficher aussi les ${hidden} autre${hidden > 1 ? 's' : ''} fichier${hidden > 1 ? 's' : ''} (images, sous-titres…)`}
+        </button>
+      )}
     </div>
   );
 }

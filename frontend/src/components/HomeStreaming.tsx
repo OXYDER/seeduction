@@ -16,6 +16,7 @@ import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
 import HomeShortcuts from './HomeShortcuts';
 import HomeSection, { HomeSectionsControls } from './HomeSection';
+import ContinueWatching from './ContinueWatching';
 import UserLink from './UserLink';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
@@ -182,6 +183,7 @@ export default function HomeStreaming() {
   return (
     <div className="home-plex">
       <HomeSectionsControls />
+      <ContinueWatching />
       <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
       <HomeSection id="freeleech" label="Calendrier freeleech" icon="🗓️"><FreeleechCalendar compact /></HomeSection>
       <HomeSection id="pot" label="Pot commun" icon="🍯"><PotWidget /></HomeSection>

@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { TorrentsService } from '../torrents/torrents.service';
 import { PrismaService } from '../common/prisma.service';
+import { isFinished, isResumable, nextEpisodes, numOf, numVariants, pickRelease, seriesTitleOf } from '../common/utils/watch-progress';
 
 // webtorrent 3.x est en ESM pur (Node 22 et plus) : on le charge à la demande avec un import() dynamique, que TypeScript ne transforme pas en require().
 // eslint-disable-next-line @typescript-eslint/no-implied-eval
@@ -135,6 +136,70 @@ export class StreamService {
     const resumable = row.positionSeconds > 120 && !finished;
     if (!playingNow && !resumable) return null;
     return { fileIndex: row.fileIndex, positionSeconds: row.positionSeconds, durationSeconds: row.durationSeconds, playingNow, resumable };
+  }
+
+  /**
+   * « Continuer à regarder » de l'accueil : ce que le membre a commencé sans finir (le plus récent d'abord, un seul épisode par série), et pour les séries dont le dernier épisode vu est terminé,
+   * l'épisode suivant s'il est déjà sur Seeduction (même résolution et même langue de préférence). Le contenu adulte n'y figure jamais.
+   */
+  async continueWatching(accountId: string) {
+    const rows = await this.prisma.playbackPosition.findMany({
+      where: { userId: accountId, updatedAt: { gt: new Date(Date.now() - 90 * 86_400_000) } },
+      orderBy: { updatedAt: 'desc' },
+      take: 150,
+      select: {
+        torrentId: true, fileIndex: true, positionSeconds: true, durationSeconds: true, updatedAt: true,
+        torrent: { select: { id: true, name: true, coverImage: true, status: true, season: true, episode: true, metaSource: true, metaExternalId: true, resolution: true, language: true, category: { select: { name: true, adult: true, parent: { select: { adult: true } } } } } },
+      },
+    });
+    const usable = rows.filter((r) => r.torrent.status === 'APPROVED' && !r.torrent.category?.adult && !r.torrent.category?.parent?.adult);
+    const seenTorrent = new Set<string>();
+    const seenSeries = new Set<string>();
+    const resume: any[] = [];
+    const finishedSeries: typeof usable = [];
+    for (const r of usable) {
+      const t = r.torrent;
+      const seriesKey = t.metaSource && t.metaExternalId && numOf(t.season) !== null && numOf(t.episode) !== null ? `${t.metaSource}:${t.metaExternalId}` : null;
+      if (seenTorrent.has(t.id)) continue;
+      seenTorrent.add(t.id);
+      if (seriesKey) { if (seenSeries.has(seriesKey)) continue; seenSeries.add(seriesKey); } // seul le dernier épisode vu de chaque série compte
+      if (isResumable(r)) {
+        resume.push({
+          torrentId: t.id, name: t.name, title: seriesKey ? seriesTitleOf(t.name) : t.name, cover: t.coverImage, category: t.category?.name ?? null, fileIndex: r.fileIndex,
+          season: numOf(t.season), episode: numOf(t.episode), positionSeconds: r.positionSeconds, durationSeconds: r.durationSeconds,
+          percent: r.durationSeconds ? Math.min(99, Math.round((r.positionSeconds / r.durationSeconds) * 100)) : null, updatedAt: r.updatedAt,
+        });
+      } else if (seriesKey && isFinished(r)) finishedSeries.push(r);
+    }
+
+    const next: any[] = [];
+    for (const r of finishedSeries.slice(0, 12)) {
+      const t = r.torrent;
+      const s = numOf(t.season)!, e = numOf(t.episode)!;
+      for (const cand of nextEpisodes(s, e)) {
+        const options = await this.prisma.torrent.findMany({
+          where: {
+            status: 'APPROVED', metaSource: t.metaSource, metaExternalId: t.metaExternalId, season: { in: numVariants(cand.season) }, episode: { in: numVariants(cand.episode) },
+            category: { adult: false, OR: [{ parentId: null }, { parent: { adult: false } }] },
+          },
+          take: 12, select: { id: true, name: true, coverImage: true, resolution: true, language: true, seeders: true },
+        });
+        const best = pickRelease(options, t);
+        if (!best) continue;
+        // déjà commencé ? alors il apparaît (ou apparaîtra) dans « reprendre »
+        if (seenTorrent.has(best.id) || (await this.prisma.playbackPosition.count({ where: { userId: accountId, torrentId: best.id } })) > 0) break;
+        next.push({ torrentId: best.id, name: best.name, title: seriesTitleOf(best.name), cover: best.coverImage ?? t.coverImage, season: cand.season, episode: cand.episode, afterEpisode: e, updatedAt: r.updatedAt });
+        break;
+      }
+      if (next.length >= 8) break;
+    }
+    return { resume: resume.slice(0, 12), next };
+  }
+
+  /** « Retirer » une ligne de « Continuer à regarder » : efface la position mémorisée de ce torrent. */
+  async forgetPosition(accountId: string, torrentId: string) {
+    await this.prisma.playbackPosition.deleteMany({ where: { userId: accountId, torrentId } });
+    return { ok: true };
   }
 
   /** Appelé une fois à la fermeture du lecteur pour revenir au statut immédiatement (sinon, jusqu'à 30s d'attente). */

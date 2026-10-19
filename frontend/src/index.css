@@ -4202,3 +4202,19 @@ button.hl-cash:disabled { opacity: 0.45; filter: grayscale(0.5); }
 @keyframes ld-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(360%); } }
 @keyframes ld-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .ld-spin, .ld-bar span, .ld-skel i, .ld-cards i { animation-duration: 3s; } }
+
+/* Accueil : Continuer à regarder */
+.cw-rail { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+.cw-card { position: relative; flex: 0 0 132px; display: grid; gap: 6px; align-content: start; }
+.cw-poster { position: relative; display: block; width: 132px; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden; background: rgba(8, 10, 22, 0.7); border: 1px solid var(--border, rgba(255,255,255,.15)); padding: 0; cursor: pointer; }
+.cw-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cw-noimg { display: grid; place-items: center; height: 100%; font-size: 34px; }
+.cw-play { position: absolute; inset: 0; display: grid; place-items: center; font-size: 30px; color: #fff; background: rgba(0, 0, 0, 0.35); opacity: 0; transition: opacity .15s; }
+.cw-poster:hover .cw-play, .cw-poster:focus-visible .cw-play { opacity: 1; }
+.cw-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255, 255, 255, 0.25); }
+.cw-bar > span { display: block; height: 100%; background: var(--gold, #e0b84a); }
+.cw-badge { position: absolute; left: 6px; bottom: 6px; right: 6px; text-align: center; font-size: 11px; font-weight: 800; padding: 3px 4px; border-radius: 6px; background: var(--gold, #e0b84a); color: #14110a; }
+.cw-info { display: grid; gap: 1px; min-width: 0; }
+.cw-title { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; border-radius: 50%; display: none; place-items: center; font-size: 11px; background: rgba(8, 10, 22, 0.85); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); cursor: pointer; z-index: 2; }
+.cw-card:hover .cw-x, .cw-x:focus-visible { display: grid; }

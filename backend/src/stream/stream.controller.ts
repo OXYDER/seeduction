@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { assertPerm } from '../common/utils/account';
 import { Request, Response } from 'express';
 import { PrismaService } from '../common/prisma.service';
@@ -63,6 +63,20 @@ export class StreamController {
   @Get('position/:torrentId')
   getPosition(@Param('torrentId') torrentId: string, @Req() req: any) {
     return this.streamService.getPosition(req.user.accountId ?? req.user.userId, torrentId);
+  }
+
+  /** « Continuer à regarder » (accueil) : ce qui est en cours et les épisodes suivants disponibles. */
+  @UseGuards(JwtAuthGuard)
+  @Get('continue')
+  continueWatching(@Req() req: any) {
+    return this.streamService.continueWatching(req.user.accountId ?? req.user.userId);
+  }
+
+  /** Retire un titre de « Continuer à regarder ». */
+  @UseGuards(JwtAuthGuard)
+  @Delete('continue/:torrentId')
+  forget(@Param('torrentId') torrentId: string, @Req() req: any) {
+    return this.streamService.forgetPosition(req.user.accountId ?? req.user.userId, torrentId);
   }
 
   @Get(':torrentId')
