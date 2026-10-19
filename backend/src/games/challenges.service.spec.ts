@@ -6,12 +6,13 @@ import { torontoDay } from './wheel.service';
 /** Un service avec une base simulée : une ligne de progression par défi, et des gardes « done » comme en base. */
 function setup(opts: { account?: any; enabled?: boolean; claimTaken?: boolean; bonusTaken?: boolean } = {}) {
   const rows = new Map<string, any>();
+  const bonusKeys = new Set<string>(); // un bonus par période (jour ou semaine), comme la contrainte d'unicité en base
   const state = { credited: 0, bonuses: 0, activity: [] as string[], packs: [] as string[] };
   const key = (w: any) => `${w.userId_period_cid.userId}|${w.userId_period_cid.period}|${w.userId_period_cid.cid}`;
   const tx: any = {
     $executeRaw: jest.fn(async () => 1), // étiquette de source du journal des points
     challengeProgress: { updateMany: jest.fn(async ({ where, data }: any) => { const r = [...rows.values()].find((x) => x.id === where.id); if (!r || r.done || opts.claimTaken) return { count: 0 }; Object.assign(r, data); return { count: 1 }; }) },
-    challengeBonus: { createMany: jest.fn(async () => { if (opts.bonusTaken || state.bonuses > 0) return { count: 0 }; state.bonuses++; return { count: 1 }; }) },
+    challengeBonus: { createMany: jest.fn(async (args: any) => { const d = args?.data?.[0] ?? {}; const key = `${d.scope}:${d.period}`; if (opts.bonusTaken || bonusKeys.has(key)) return { count: 0 }; bonusKeys.add(key); if (d.scope === 'daily') state.bonuses++; return { count: 1 }; }) },
     user: { update: jest.fn(async ({ data }: any) => { state.credited += data.bonusPoints.increment; return {}; }) },
   };
   let seq = 0;
