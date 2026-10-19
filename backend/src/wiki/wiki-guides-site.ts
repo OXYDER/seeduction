@@ -774,6 +774,34 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Recruteur (3 parrainés), Patriarche (10) et [b]Mentor[/b] (3 parrainés devenus de vrais membres) : voir [url=/wiki/guide-badges]Badges et réalisations[/url].`,
     },
     {
+      title: 'Application installable et notifications push',
+      slug: 'guide-notifications-push',
+      keywords: 'application, installer, pwa, notifications, push, téléphone, android, iphone, ios, écran d\'accueil, cloche, alertes, appareil',
+      isFaq: true,
+      content:
+        `Seeduction s'installe comme une application (téléphone, tablette, ordinateur) et peut te prévenir même quand le site est fermé.\n` +
+        `\n` +
+        `[b]Installer l'application[/b]\n` +
+        `• [b]Android et ordinateur (Chrome, Edge)[/b] : va dans la cloche → Notifications → ⚙️ Préférences, puis clique sur [b]⬇ Installer l'application[/b] (ou utilise « Installer Seeduction » dans le menu du navigateur / l'icône dans la barre d'adresse).\n` +
+        `• [b]iPhone et iPad (Safari)[/b] : touche [b]Partager[/b] puis [b]« Sur l'écran d'accueil »[/b]. C'est obligatoire pour recevoir des notifications sur iOS (version 16.4 ou plus).\n` +
+        `• L'application s'ouvre sans barre d'adresse, avec raccourcis (Parcourir, Messages, Notifications) par un appui long sur l'icône.\n` +
+        `\n` +
+        `[b]Activer les notifications sur un appareil[/b]\n` +
+        `1. Ouvre [b]Notifications → ⚙️ Préférences[/b], section [b]📲 Application et notifications push[/b].\n` +
+        `2. Clique sur [b]🔔 Activer les notifications sur cet appareil[/b] et accepte la demande du navigateur.\n` +
+        `3. [b]Envoyer un essai[/b] vérifie que tout fonctionne. Tu peux abonner jusqu'à 5 appareils (téléphone, ordinateur…) et les retirer un à un.\n` +
+        `\n` +
+        `[b]Qu'est-ce qui est envoyé ?[/b]\n` +
+        `• Les mêmes notifications que la cloche, selon les catégories que tu as gardées : messages privés et mentions quand tu es hors ligne, buts du Canadien, torrents approuvés, [url=/wiki/guide-alertes]alertes de recherche[/url], réponses du support, nouvelles du site…\n` +
+        `• Si le site est déjà ouvert devant toi, rien n'est affiché en double. Un clic sur la notification ouvre directement la bonne page.\n` +
+        `• Les messages passent chiffrés par le service de notification de ton navigateur (Google, Mozilla, Apple ou Microsoft) ; le contenu reste court.\n` +
+        `\n` +
+        `[b]Si ça ne marche pas[/b]\n` +
+        `• Notifications [b]bloquées[/b] : clique sur le cadenas à gauche de l'adresse, autorise les notifications pour Seeduction, puis réactive-les ici.\n` +
+        `• Plus rien depuis un moment : coupe puis réactive les notifications sur l'appareil (le navigateur peut avoir renouvelé son abonnement).\n` +
+        `• Chaque profil d'un compte famille a ses propres appareils abonnés.`,
+    },
+    {
       title: 'Lire tes statistiques et les classements',
       slug: 'guide-stats',
       keywords: 'statistiques, stats, classement, mon activité, mes seeds, top, records, ratio, graphique',

@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import { CATEGORY_ICON, notifyChanged, onNotificationsChanged, type AppNotification } from '../lib/notifications';
 import Loading from '../components/Loading';
+import PushSettings from '../components/PushSettings';
 
 interface Category { key: string; label: string; icon: string; hint: string; locked: boolean }
 interface Summary { categories: Category[]; unread: number; total: number; byCategory: Record<string, { unread: number; total: number }> }
@@ -90,7 +91,7 @@ export default function Notifications() {
         <button type="button" className="secondary" onClick={openPrefs}>⚙️ Préférences</button>
       </div>
 
-      {showPrefs && (
+      {showPrefs && (<>
         <div className="panel">
           <h3 style={{ marginTop: 0 }}>Quelles notifications veux-tu recevoir ?</h3>
           <p className="muted" style={{ marginTop: 0 }}>Une catégorie coupée n'envoie plus rien, ni dans la cloche ni ici. Les sanctions et la sécurité du compte ne se coupent pas.</p>
@@ -105,7 +106,8 @@ export default function Notifications() {
             </div>
           )}
         </div>
-      )}
+        <PushSettings />
+      </>)}
 
       <div className="np-tabs" role="tablist">
         {tabBtn('all', 'Toutes', '🔔', summary?.unread ?? 0)}

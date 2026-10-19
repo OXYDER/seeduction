@@ -1,4 +1,6 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
+import { PushService } from '../push/push.service';
+import { buildPayload } from '../common/utils/push';
 import { Cron } from '@nestjs/schedule';
 import { NotificationType, Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
@@ -69,7 +71,7 @@ export function extractMentions(text: string): string[] {
 @Injectable()
 export class NotificationsService implements OnModuleInit {
   private readonly logger = new Logger(NotificationsService.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, @Optional() private push?: PushService) {}
 
   /** Les notifications créées avant les catégories reçoivent celle de leur type (sans effet une fois faite). */
   async onModuleInit() {
@@ -116,13 +118,22 @@ export class NotificationsService implements OnModuleInit {
       const existing = await this.prisma.notification.findFirst({ where: { userId: input.userId, groupKey, read: false }, select: { id: true, count: true } });
       if (existing) {
         const count = existing.count + 1;
-        return this.prisma.notification.update({
+        const updated = await this.prisma.notification.update({
           where: { id: existing.id },
           data: { count, title: (titleMany ?? input.title).replace('{n}', String(count)), body: input.body ?? null, link: input.link ?? null, createdAt: new Date() },
         });
+        this.pushOut(updated);
+        return updated;
       }
     }
-    return this.prisma.notification.create({ data: { ...rest, category, groupKey: groupKey ?? null } });
+    const created = await this.prisma.notification.create({ data: { ...rest, category, groupKey: groupKey ?? null } });
+    this.pushOut(created);
+    return created;
+  }
+
+  /** Envoie aussi la notification aux appareils abonnés (application installée) ; ne bloque ni ne fait jamais échouer la création. */
+  private pushOut(n: { id: string; userId: string; title: string; body: string | null; link: string | null; groupKey: string | null; category: string }) {
+    void this.push?.fromNotification(n).catch(() => undefined);
   }
 
   /**
@@ -158,7 +169,9 @@ export class NotificationsService implements OnModuleInit {
     const users = await this.prisma.user.findMany({ select: { id: true, notifPrefs: true } });
     const targets = LOCKED.has(category) ? users : users.filter((u) => ((u.notifPrefs ?? {}) as Record<string, unknown>)[category] !== false);
     const { groupKey, titleMany, ...rest } = input;
-    return this.prisma.notification.createMany({ data: targets.map((u) => ({ ...rest, userId: u.id, category, groupKey: null })) });
+    const created = await this.prisma.notification.createMany({ data: targets.map((u) => ({ ...rest, userId: u.id, category, groupKey: null })) });
+    void this.push?.sendToMany(targets.map((u) => u.id), buildPayload({ title: rest.title, body: rest.body, link: rest.link, id: 'all', category })).catch(() => undefined);
+    return created;
   }
 
   // ------------------------------------------------------------------ lecture

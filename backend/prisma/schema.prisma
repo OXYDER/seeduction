@@ -157,6 +157,7 @@ model User {
   @@index([parentId])
   telegramLink     TelegramLink?
   savedSearches    SavedSearch[]
+  pushSubscriptions PushSubscription[]
   chatBans         ChatBan[]  @relation("ChatBanned")
   requestsFound    TorrentRequest[] @relation("RequestFinder")
   // Préférences de notifications : { catégorie: false } coupe cette catégorie (tout est actif par défaut).
@@ -2535,4 +2536,20 @@ model HealthIncident {
 
   @@index([startedAt])
   @@index([checkId, resolvedAt])
+}
+
+/// Appareil abonné aux notifications push (application installable) : une ligne par navigateur et par profil. Les messages sont chiffrés de bout en bout vers le navigateur (clés p256dh / auth).
+model PushSubscription {
+  id         String    @id @default(uuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  endpoint   String    @unique @db.Text
+  p256dh     String    @db.VarChar(160)
+  auth       String    @db.VarChar(64)
+  userAgent  String    @default("") @db.VarChar(200)
+  createdAt  DateTime  @default(now())
+  lastPushAt DateTime?
+  failures   Int       @default(0)
+
+  @@index([userId])
 }

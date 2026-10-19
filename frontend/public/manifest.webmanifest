@@ -1,15 +1,23 @@
 {
+  "id": "/",
   "name": "Seeduction Tracker",
   "short_name": "Seeduction",
   "description": "Tracker BitTorrent privé Seeduction",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#060d09",
   "theme_color": "#060d09",
-  "lang": "fr",
+  "lang": "fr-CA",
+  "categories": ["entertainment", "social"],
   "icons": [
     { "src": "/logo-icon-large.png", "sizes": "497x497", "type": "image/png", "purpose": "any" },
     { "src": "/logo-icon-large.png", "sizes": "497x497", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Parcourir", "short_name": "Parcourir", "url": "/browse", "icons": [{ "src": "/logo-icon.png", "sizes": "256x256" }] },
+    { "name": "Messages", "short_name": "Messages", "url": "/chat", "icons": [{ "src": "/logo-icon.png", "sizes": "256x256" }] },
+    { "name": "Notifications", "short_name": "Notifications", "url": "/notifications", "icons": [{ "src": "/logo-icon.png", "sizes": "256x256" }] }
   ]
 }
