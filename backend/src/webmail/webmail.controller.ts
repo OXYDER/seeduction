@@ -9,7 +9,7 @@ const viewerOf = (req: any) => ({ userId: req.user.userId, username: req.user.us
 const num = (v: unknown) => Math.floor(Number(v));
 const uidList = (v: unknown): number[] => (Array.isArray(v) ? v : []).map(num);
 
-/** Interface Courriel : administrateurs seulement (le propriétaire règle les boîtes, chaque administrateur n'a accès qu'à celles qu'on lui donne). */
+/** Interface Courriel : administrateurs seulement. Chacun règle les boîtes qu'il a ajoutées (et choisit qui d'autre y a accès) ; le rôle propriétaire du site règle toutes les boîtes. */
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'OWNER')
 @Controller('webmail')
@@ -64,25 +64,20 @@ export class WebmailController {
     return this.mail.send(viewerOf(req), id, input, (files ?? []).map((f) => ({ originalname: f.originalname, buffer: f.buffer, mimetype: f.mimetype, size: f.size })), req.ip);
   }
 
-  // ---- propriétaire : réglages des boîtes
+  // ---- réglages des boîtes (le service vérifie que la boîte appartient bien à celui qui la règle)
 
-  @Roles('OWNER')
   @Get('admin')
-  adminList() { return this.mail.adminList(); }
+  adminList(@Request() req: any) { return this.mail.adminList(viewerOf(req)); }
 
-  @Roles('OWNER')
   @Post('admin/test')
-  test(@Body() b: any) { return this.mail.test(b, b?.id); }
+  test(@Body() b: any, @Request() req: any) { return this.mail.test(viewerOf(req), b, b?.id); }
 
-  @Roles('OWNER')
   @Post('admin/mailboxes')
   create(@Body() b: any, @Request() req: any) { return this.mail.create(viewerOf(req), b, req.ip); }
 
-  @Roles('OWNER')
   @Put('admin/mailboxes/:id')
   update(@Param('id') id: string, @Body() b: any, @Request() req: any) { return this.mail.update(viewerOf(req), id, b, req.ip); }
 
-  @Roles('OWNER')
   @Delete('admin/mailboxes/:id')
   del(@Param('id') id: string, @Request() req: any) { return this.mail.remove(viewerOf(req), id, req.ip); }
 }

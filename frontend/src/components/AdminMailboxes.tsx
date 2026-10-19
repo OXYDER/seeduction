@@ -13,7 +13,7 @@ interface Admin { id: string; username: string; role: string }
 const errorOf = (e: any) => { const m = e?.response?.data?.message; return Array.isArray(m) ? m.join(', ') : m ?? 'Erreur'; };
 const EMPTY: Box = { label: '', imapHost: 'imap.purelymail.com', imapPort: 993, imapSecure: true, smtpHost: 'smtp.purelymail.com', smtpPort: 465, smtpSecure: true, username: '', password: '', aliases: [], signature: '', allowedUserIds: [] };
 
-/** Admin > Courriel : les boîtes courriel (Purelymail, etc.), leurs alias, et quels administrateurs y ont accès. Propriétaire seulement. */
+/** Admin > Courriel : les boîtes courriel (Purelymail, etc.), leurs alias, et quels administrateurs y ont accès. Chaque administrateur règle les boîtes qu'il a ajoutées. */
 export default function AdminMailboxes() {
   const role = useAuthStore((s) => s.user?.role);
   const [boxes, setBoxes] = useState<Box[] | null>(null);
@@ -23,9 +23,10 @@ export default function AdminMailboxes() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const load = useCallback(() => api.get('/webmail/admin').then((r) => { setBoxes(r.data.mailboxes.map((b: any) => ({ ...b, password: '' }))); setAdmins(r.data.admins); }).catch((e) => setError(errorOf(e))), []);
-  useEffect(() => { if (role === 'OWNER') void load(); }, [load, role]);
+  const allowed = role === 'OWNER' || role === 'ADMIN';
+  useEffect(() => { if (allowed) void load(); }, [load, allowed]);
 
-  if (role !== 'OWNER') return <div className="panel"><h2 style={{ marginTop: 0 }}>✉️ Courriel</h2><p className="muted">Seul le propriétaire règle les boîtes courriel. <Link to="/courriel">Ouvrir le courriel →</Link></p></div>;
+  if (!allowed) return <div className="panel"><h2 style={{ marginTop: 0 }}>✉️ Courriel</h2><p className="muted">Réservé aux administrateurs. <Link to="/courriel">Ouvrir le courriel →</Link></p></div>;
   if (!boxes) return error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : <Loading />;
 
   async function run(fn: () => Promise<unknown>, ok: string) {
@@ -45,12 +46,12 @@ export default function AdminMailboxes() {
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
         Le site lit et envoie les courriels directement chez ton hébergeur (IMAP pour lire, SMTP pour envoyer) : rien n'est copié sur le site. Le mot de passe est chiffré et n'est jamais réaffiché. Les alias que tu ajoutes ici
-        peuvent être choisis comme expéditeur. Chaque administrateur n'a accès qu'aux boîtes que tu lui donnes ; tu les vois toutes. Chaque envoi est inscrit au journal d'audit.
+        peuvent être choisis comme expéditeur. Tu règles les boîtes que tu as ajoutées, et tu choisis quels autres administrateurs y ont accès. Chaque envoi est inscrit au journal d'audit.
       </p>
       {msg && <p style={{ margin: 0, color: 'var(--success)' }}>{msg}</p>}
       {error && <p style={{ margin: 0, color: 'var(--danger)' }}>{error}</p>}
 
-      {!edit && boxes.length === 0 && <p className="muted" style={{ margin: 0 }}>Aucune boîte pour l'instant. Clique sur « Ajouter une boîte » (les valeurs de Purelymail sont déjà remplies : tu n'as qu'à saisir l'adresse et le mot de passe).</p>}
+      {!edit && boxes.length === 0 && <p className="muted" style={{ margin: 0 }}>Aucune boîte pour l'instant. Clique sur « Ajouter une boîte » (les valeurs de Purelymail sont déjà remplies : tu n'as qu'à saisir l'adresse et le mot de passe). Les boîtes ajoutées par un autre administrateur n'apparaissent pas ici : seul lui peut les régler.</p>}
       {!edit && boxes.map((b) => (
         <div key={b.id} className="row" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)' }}>
           <div><strong>{b.label}</strong> <span className="muted">· {b.username} · {b.aliases.length} alias · {b.allowedUserIds.length} administrateur{b.allowedUserIds.length > 1 ? 's' : ''} autorisé{b.allowedUserIds.length > 1 ? 's' : ''}</span>{!b.passwordSet && <span style={{ color: 'var(--danger)' }}> · mot de passe à ressaisir</span>}</div>

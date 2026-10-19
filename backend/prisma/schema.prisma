@@ -2446,6 +2446,8 @@ model Mailbox {
   signature      String   @default("") @db.VarChar(600)
   /// Administrateurs autorisés (le propriétaire a toujours accès à toutes les boîtes).
   allowedUserIds String[] @default([])
+  /// L'administrateur qui a ajouté la boîte : il y a toujours accès et peut la régler (le rôle « propriétaire » du site peut tout régler).
+  createdById    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

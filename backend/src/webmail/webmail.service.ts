@@ -13,7 +13,7 @@ const MailComposer = require('nodemailer/lib/mail-composer');
 
 export interface Viewer { userId: string; username: string; role: string }
 export interface Alias { address: string; name: string }
-interface Row { id: string; label: string; imapHost: string; imapPort: number; imapSecure: boolean; smtpHost: string; smtpPort: number; smtpSecure: boolean; username: string; passwordSealed: string; aliases: any; signature: string; allowedUserIds: string[] }
+interface Row { createdById?: string | null; id: string; label: string; imapHost: string; imapPort: number; imapSecure: boolean; smtpHost: string; smtpPort: number; smtpSecure: boolean; username: string; passwordSealed: string; aliases: any; signature: string; allowedUserIds: string[] }
 
 const PURPOSE = 'webmail';
 const PAGE = 30;
@@ -49,21 +49,27 @@ export class WebmailService {
     return { id: row.id, label: row.label, address: row.username, aliases: this.aliasesOf(row), signature: row.signature };
   }
 
+  /** Peut lire et écrire : le rôle propriétaire, l'administrateur qui a ajouté la boîte, ou un administrateur autorisé. */
+  private canUse(viewer: Viewer, r: Row): boolean { return viewer.role === 'OWNER' || (viewer.role === 'ADMIN' && (r.createdById === viewer.userId || r.allowedUserIds.includes(viewer.userId))); }
+
+  /** Peut régler la boîte (serveurs, alias, accès) : le rôle propriétaire ou l'administrateur qui l'a ajoutée. */
+  private canManage(viewer: Viewer, r: Row): boolean { return viewer.role === 'OWNER' || (viewer.role === 'ADMIN' && r.createdById === viewer.userId); }
+
   private async row(viewer: Viewer, id: string): Promise<Row> {
     const row = (await this.prisma.mailbox.findUnique({ where: { id } })) as Row | null;
     if (!row) throw new NotFoundException('Boîte introuvable');
-    if (viewer.role !== 'OWNER' && !(viewer.role === 'ADMIN' && row.allowedUserIds.includes(viewer.userId))) throw new NotFoundException('Boîte introuvable');
+    if (!this.canUse(viewer, row)) throw new NotFoundException('Boîte introuvable');
     return row;
   }
 
   async mailboxes(viewer: Viewer) {
     const rows = (await this.prisma.mailbox.findMany({ orderBy: { createdAt: 'asc' } })) as Row[];
-    return rows.filter((r) => viewer.role === 'OWNER' || (viewer.role === 'ADMIN' && r.allowedUserIds.includes(viewer.userId))).map((r) => this.view(r));
+    return rows.filter((r) => this.canUse(viewer, r)).map((r) => this.view(r));
   }
 
   /** Réglages complets pour le propriétaire (sans le mot de passe). */
-  async adminList() {
-    const rows = (await this.prisma.mailbox.findMany({ orderBy: { createdAt: 'asc' } })) as Row[];
+  async adminList(viewer: Viewer) {
+    const rows = ((await this.prisma.mailbox.findMany({ orderBy: { createdAt: 'asc' } })) as Row[]).filter((r) => this.canManage(viewer, r));
     const admins = await this.prisma.user.findMany({ where: { role: { in: ['ADMIN', 'OWNER'] }, status: 'ACTIVE', parentId: null }, select: { id: true, username: true, role: true }, orderBy: { username: 'asc' } });
     return {
       admins,
@@ -96,14 +102,15 @@ export class WebmailService {
 
   async create(actor: Viewer, body: any, ip?: string | null) {
     const data = await this.clean(body);
-    const row = await this.prisma.mailbox.create({ data });
+    const row = await this.prisma.mailbox.create({ data: { ...data, createdById: actor.userId } });
     await this.audit.log(actor.userId, 'MAIL_MAILBOX_CONFIG', { action: 'create', label: row.label, aliases: this.aliasesOf(row as Row).length }, ip);
     return this.view(row as Row);
   }
 
   async update(actor: Viewer, id: string, body: any, ip?: string | null) {
     const prev = (await this.prisma.mailbox.findUnique({ where: { id } })) as Row | null;
-    if (!prev) throw new NotFoundException('Boîte introuvable');
+    if (!prev || !this.canUse(actor, prev)) throw new NotFoundException('Boîte introuvable');
+    if (!this.canManage(actor, prev)) throw new ForbiddenException("Seul l'administrateur qui a ajouté cette boîte (ou le propriétaire du site) peut la régler");
     const data = await this.clean(body, prev);
     const row = await this.prisma.mailbox.update({ where: { id }, data });
     await this.audit.log(actor.userId, 'MAIL_MAILBOX_CONFIG', { action: 'update', label: row.label }, ip);
@@ -111,16 +118,18 @@ export class WebmailService {
   }
 
   async remove(actor: Viewer, id: string, ip?: string | null) {
-    const prev = await this.prisma.mailbox.findUnique({ where: { id } });
-    if (!prev) throw new NotFoundException('Boîte introuvable');
+    const prev = (await this.prisma.mailbox.findUnique({ where: { id } })) as Row | null;
+    if (!prev || !this.canUse(actor, prev)) throw new NotFoundException('Boîte introuvable');
+    if (!this.canManage(actor, prev)) throw new ForbiddenException("Seul l'administrateur qui a ajouté cette boîte (ou le propriétaire du site) peut la retirer");
     await this.prisma.mailbox.delete({ where: { id } });
     await this.audit.log(actor.userId, 'MAIL_MAILBOX_CONFIG', { action: 'delete', label: prev.label }, ip);
     return { ok: true };
   }
 
   /** Essaie la connexion IMAP et SMTP avec les réglages donnés (ou ceux d'une boîte existante). */
-  async test(body: any, id?: string) {
+  async test(viewer: Viewer, body: any, id?: string) {
     const prev = id ? ((await this.prisma.mailbox.findUnique({ where: { id } })) as Row | null) : undefined;
+    if (id && (!prev || !this.canManage(viewer, prev))) throw new NotFoundException('Boîte introuvable');
     const data = await this.clean(body, prev ?? undefined);
     const row = { id: 'test', ...data } as unknown as Row;
     const out: { imap: string; smtp: string; folders?: number } = { imap: '', smtp: '' };
@@ -178,7 +187,7 @@ export class WebmailService {
   async unread(viewer: Viewer) {
     const boxes = (await this.prisma.mailbox.findMany()) as Row[];
     let total = 0;
-    for (const row of boxes.filter((r) => viewer.role === 'OWNER' || (viewer.role === 'ADMIN' && r.allowedUserIds.includes(viewer.userId)))) {
+    for (const row of boxes.filter((r) => this.canUse(viewer, r))) {
       const hit = this.unreadCache.get(row.id);
       if (hit && Date.now() - hit.at < 90_000) { total += hit.n; continue; }
       let n = 0;

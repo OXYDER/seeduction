@@ -39,7 +39,6 @@ const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E
 
   // ---- réglages (propriétaire seulement)
   check('un membre ne peut rien', (await call('GET', '/webmail/mailboxes', TM)).s === 403);
-  check('un administrateur ne peut pas régler les boîtes', (await call('POST', '/webmail/admin/mailboxes', TA, cfg)).s === 403);
   const bad = await call('POST', '/webmail/admin/test', TO, { ...cfg, password: 'faux' });
   check('essai avec un mauvais mot de passe : échec clair', bad.s === 201 && bad.b.imap !== 'ok', bad.raw.slice(0, 100));
   const good = await call('POST', '/webmail/admin/test', TO, cfg);
@@ -119,11 +118,16 @@ const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E
   check('journal d\'audit de l\'envoi', (await p.activityLog.count({ where: { userId: adminA.id, action: 'MAIL_SEND' } })) === 1);
 
   // ---- suppression de la boîte
-  check('un administrateur ne peut pas supprimer la boîte', (await call('DELETE', `/webmail/admin/mailboxes/${id}`, TA)).s === 403);
+  check('un administrateur autorisé peut lire mais pas régler ni retirer la boîte d\'un autre', (await call('DELETE', `/webmail/admin/mailboxes/${id}`, TA)).s === 403 && (await call('PUT', `/webmail/admin/mailboxes/${id}`, TA, cfg)).s === 403 && (await call('GET', '/webmail/admin', TA)).b.mailboxes.length === 0);
+  const own = await call('POST', '/webmail/admin/mailboxes', TB, { ...cfg, label: 'Boîte de B ' + tag });
+  check('un administrateur ajoute sa propre boîte, y a accès et la règle', own.s === 201 && (await call('GET', `/webmail/mailboxes/${own.b.id}/folders`, TB)).s === 200 && (await call('PUT', `/webmail/admin/mailboxes/${own.b.id}`, TB, { ...cfg, password: '', label: 'Boîte de B ' + tag })).s === 200);
+  check('...mais les autres administrateurs ne la voient pas', (await call('GET', `/webmail/mailboxes/${own.b.id}/folders`, TA)).s === 404 && (await call('GET', '/webmail/mailboxes', TA)).b.every((b) => b.id !== own.b.id));
+  check('le propriétaire du site voit et règle toutes les boîtes', (await call('GET', '/webmail/admin', TO)).b.mailboxes.length === 2);
+  await call('DELETE', `/webmail/admin/mailboxes/${own.b.id}`, TB);
   check('le propriétaire supprime la boîte', (await call('DELETE', `/webmail/admin/mailboxes/${id}`, TO)).s === 200 && (await call('GET', `/webmail/mailboxes/${id}/folders`, TO)).s === 404);
 
   const ids = [owner.id, adminA.id, adminB.id, member.id];
-  await p.mailbox.deleteMany({ where: { label: 'Boîte ' + tag } });
+  await p.mailbox.deleteMany({ where: { label: { in: ['Boîte ' + tag, 'Boîte de B ' + tag] } } });
   await p.activityLog.deleteMany({ where: { userId: { in: ids } } });
   await p.user.deleteMany({ where: { id: { in: ids } } });
   console.log(fails ? `\n${fails} ÉCHEC(S)` : '\nTout est bon');
