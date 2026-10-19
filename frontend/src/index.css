@@ -4218,3 +4218,13 @@ button.hl-cash:disabled { opacity: 0.45; filter: grayscale(0.5); }
 .cw-title { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cw-x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; border-radius: 50%; display: none; place-items: center; font-size: 11px; background: rgba(8, 10, 22, 0.85); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); cursor: pointer; z-index: 2; }
 .cw-card:hover .cw-x, .cw-x:focus-visible { display: grid; }
+
+/* Réalisations (badges) */
+.ach-bar { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.ach-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold, #e0b84a), #f5d67a); border-radius: 999px; }
+.ach-bar.small { height: 5px; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.ach-card { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 10px; border: 1px solid var(--border, rgba(255,255,255,.15)); background: rgba(255, 255, 255, 0.03); opacity: 0.85; }
+.ach-card.earned { opacity: 1; border-color: var(--gold, #e0b84a); background: rgba(224, 184, 74, 0.08); }
+.ach-icon { font-size: 28px; line-height: 1; filter: grayscale(1) opacity(0.6); }
+.ach-card.earned .ach-icon { filter: none; }

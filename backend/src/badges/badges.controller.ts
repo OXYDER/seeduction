@@ -19,6 +19,12 @@ export class BadgesController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('progress')
+  progress(@Request() req: any) {
+    return this.badgesService.progressFor(req.user.accountId ?? req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('mine')
   mine(@Request() req: any) {
     return this.badgesService.listForUser(req.user.userId);

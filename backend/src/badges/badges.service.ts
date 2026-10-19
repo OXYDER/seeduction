@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { BADGES, BadgeStats, evaluateBadges } from '../common/utils/badges';
+import { BADGES, BADGE_CATEGORIES, BadgeStats, evaluateBadges } from '../common/utils/badges';
 
 @Injectable()
 export class BadgesService {
   constructor(private prisma: PrismaService, private notifications: NotificationsService) {}
 
   async statsFor(userId: string): Promise<BadgeStats> {
-    const [user, uploadsApproved, forumPosts, requestFills] = await Promise.all([
+    const [user, uploadsApproved, forumPosts, requestFills, seed, seedOk, hnrOpen, subtitles, comments, mentored] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: { uploaded: true, downloaded: true, bonusPoints: true, createdAt: true, _count: { select: { invitees: true } } },
@@ -16,6 +16,12 @@ export class BadgesService {
       this.prisma.torrent.count({ where: { uploaderId: userId, status: 'APPROVED' } }),
       this.prisma.forumPost.count({ where: { authorId: userId } }),
       this.prisma.torrentRequest.count({ where: { filledById: userId } }),
+      this.prisma.snatch.aggregate({ where: { userId }, _sum: { seedSeconds: true }, _count: { _all: true } }),
+      this.prisma.snatch.count({ where: { userId, satisfied: true } }),
+      this.prisma.snatch.count({ where: { userId, hnr: true, satisfied: false, hnrClearedAt: null } }),
+      this.prisma.subtitleFile.count({ where: { uploaderId: userId } }),
+      this.prisma.torrentComment.count({ where: { authorId: userId } }),
+      this.prisma.user.count({ where: { invitedById: userId, memberClass: { not: 'NOUVEAU' }, status: 'ACTIVE' } }),
     ]);
     if (!user) throw new NotFoundException('Utilisateur introuvable');
 
@@ -28,6 +34,13 @@ export class BadgesService {
       forumPosts,
       accountAgeDays: Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000),
       requestFills,
+      seedHours: (seed._sum.seedSeconds ?? 0) / 3600,
+      seedOk,
+      snatches: seed._count._all,
+      hnrOpen,
+      subtitles,
+      comments,
+      mentored,
     };
   }
 
@@ -69,7 +82,30 @@ export class BadgesService {
   }
 
   catalog() {
-    return BADGES.map(({ check, ...def }) => def);
+    return BADGES.map(({ check, progress, ...def }) => def);
+  }
+
+  /**
+   * Page « Réalisations » : tous les badges avec, pour le membre connecté, ce qui est obtenu (et quand), où il en est pour les autres, et la rareté (part des membres qui l'ont).
+   */
+  async progressFor(userId: string) {
+    const [stats, earned, holders, members] = await Promise.all([
+      this.statsFor(userId),
+      this.prisma.userBadge.findMany({ where: { userId }, select: { code: true, awardedAt: true } }),
+      this.prisma.userBadge.groupBy({ by: ['code'], _count: { _all: true } }),
+      this.prisma.user.count({ where: { parentId: null, status: 'ACTIVE' } }),
+    ]);
+    const when = new Map(earned.map((e) => [e.code, e.awardedAt]));
+    const count = new Map(holders.map((h) => [h.code, h._count._all]));
+    const items = BADGES.map((b) => {
+      const p = b.progress(stats);
+      return {
+        code: b.code, name: b.name, icon: b.icon, description: b.description, category: b.category,
+        earned: when.has(b.code) || b.check(stats), awardedAt: when.get(b.code) ?? null, value: p.value, target: p.target, unit: p.unit ?? null,
+        percentOfMembers: members > 0 ? Math.min(100, Math.round(((count.get(b.code) ?? 0) / members) * 1000) / 10) : 0,
+      };
+    });
+    return { categories: Object.entries(BADGE_CATEGORIES).map(([key, v]) => ({ key, ...v })), total: items.length, earnedCount: items.filter((i) => i.earned).length, items };
   }
 
   async listForUser(userId: string) {

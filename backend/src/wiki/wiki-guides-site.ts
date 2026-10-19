@@ -725,6 +725,32 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Une série : crée l'alerte avec son titre seulement, tu seras prévenu de chaque nouvel épisode.`,
     },
     {
+      title: 'Badges et réalisations : tout ce qui se gagne',
+      slug: 'guide-badges',
+      keywords: 'badge, badges, réalisations, succès, progression, ancienneté, mentor, gardien, irréprochable, sous-titreur, hall of fame, rareté',
+      isFaq: true,
+      content:
+        `Les badges récompensent ce que tu fais pour la communauté. Ils se gagnent tout seuls : rien à demander.\n` +
+        `\n` +
+        `[b]Où les voir[/b]\n` +
+        `• [b]Mes réalisations[/b] (menu de ton compte) : tous les badges, ceux que tu as (avec la date), ta progression vers les autres (une barre et « 320 / 500 h »), et leur rareté (« 12 % des membres l'ont »). Les trois plus proches de l'obtention sont mis en avant.\n` +
+        `• Sur un profil, la section Badges montre ceux d'un membre. Le [url=/hall-of-fame]Hall of Fame[/url] classe les membres les plus décorés.\n` +
+        `\n` +
+        `[b]Les familles de badges[/b]\n` +
+        `• [b]📦 Envoi[/b] : premiers torrents approuvés (1, 10, 50).\n` +
+        `• [b]🌾 Partage et seed[/b] : volume envoyé (500 Go, 2 To), ratio d'or (5,0), [b]heures de seed cumulées[/b] (Gardien : 500 h, Sentinelle : 5000 h), torrents dont le partage obligatoire est rempli (Bon élève : 25, Exemplaire : 100), et [b]Irréprochable[/b] (50 torrents terminés et aucun hit & run en cours).\n` +
+        `• [b]🤝 Entraide[/b] : parrainer (3, 10 membres), [b]Mentor[/b] (3 parrainés devenus de vrais membres, au-delà du rang « Nouveau »), demandes comblées, [b]sous-titres partagés[/b] (5, 30).\n` +
+        `• [b]💬 Communauté[/b] : messages du forum, commentaires sur des torrents, points bonus accumulés.\n` +
+        `• [b]⏳ Ancienneté[/b] : 3 mois, 1 an, 2 ans, 3 ans.\n` +
+        `\n` +
+        `[b]Quand sont-ils attribués ?[/b]\n` +
+        `Tout de suite après une action qui compte (torrent approuvé, sous-titres envoyés, message posté, parrainage…), et chaque nuit pour ce qui évolue seul (heures de seed, ancienneté, ratio). Tu reçois une notification pour chaque nouveau badge.\n` +
+        `\n` +
+        `[b]Astuces[/b]\n` +
+        `• Les heures de seed comptent sur tous tes torrents terminés : garde-les en partage, c'est aussi bon pour ton ratio ([url=/wiki/guide-ratio-seed]Ratio et seed[/url]).\n` +
+        `• Un hit & run en cours bloque « Irréprochable » ; il revient dès que tu l'as régularisé ([url=/wiki/guide-hit-and-run-reparer]Réparer un hit & run[/url]).`,
+    },
+    {
       title: 'Lire tes statistiques et les classements',
       slug: 'guide-stats',
       keywords: 'statistiques, stats, classement, mon activité, mes seeds, top, records, ratio, graphique',

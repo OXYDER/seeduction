@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
+import { BadgesService } from '../badges/badges.service';
 import { MAX_SUBTITLE_BYTES, SUBTITLE_LANGS, clampOffset, normalizeLang, parseSubtitle, prepareSubtitle, toSrt } from '../common/utils/subtitle-file';
 
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
@@ -14,7 +15,7 @@ const MAX_PER_DAY = 30;
  */
 @Injectable()
 export class SubtitlesService {
-  constructor(private prisma: PrismaService, private adult: AdultService) {}
+  constructor(private prisma: PrismaService, private adult: AdultService, private badges: BadgesService) {}
 
   private async visibleTorrent(torrentId: string, viewerId: string, role: string) {
     const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { id: true, status: true, categoryId: true, fileList: true } });
@@ -64,6 +65,7 @@ export class SubtitlesService {
       data: { torrentId, fileIndex, language, label: String(body.label ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 80), content: prepared.srt, cues: prepared.cues, uploaderId: viewerId },
       select: { id: true, fileIndex: true, language: true, label: true, cues: true, offsetMs: true, downloads: true, uploaderId: true, createdAt: true, uploader: { select: { username: true } } },
     });
+    await this.badges.checkAndAward(viewerId).catch(() => undefined);
     return this.view(row, viewerId, user.role);
   }
 

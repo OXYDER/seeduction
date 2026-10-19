@@ -1,6 +1,6 @@
 import { WIKI_SEED } from './wiki-seed';
 
-const ROUTES = new Set(['/browse', '/upload', '/profile', '/player', '/pot', '/jeux', '/mes-envois', '/integrations', '/wiki', '/bonus', '/hit-and-run', '/seeds', '/activity', '/dead', '/stats', '/support', '/news', '/teams', '/forum', '/requests', '/friends', '/chat', '/messages', '/favorites', '/collections', '/family', '/roadmap', '/leaderboard', '/freeleech', '/notifications', '/soutenir']);
+const ROUTES = new Set(['/browse', '/upload', '/profile', '/player', '/pot', '/jeux', '/mes-envois', '/integrations', '/wiki', '/bonus', '/hit-and-run', '/seeds', '/activity', '/dead', '/stats', '/support', '/news', '/teams', '/forum', '/requests', '/friends', '/chat', '/messages', '/favorites', '/collections', '/family', '/roadmap', '/leaderboard', '/freeleech', '/notifications', '/soutenir', '/hall-of-fame', '/achievements', '/alerts']);
 const all = WIKI_SEED.flatMap((c) => c.articles.map((a) => ({ ...a, category: c.slug })));
 
 describe('contenu du wiki et des guides', () => {

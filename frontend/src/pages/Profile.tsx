@@ -171,7 +171,7 @@ export default function Profile() {
         </div>
       )}
       <div className="panel">
-        <h3>Badges {badges.length > 0 && `(${badges.length})`}</h3>
+        <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}><h3 style={{ margin: 0 }}>Badges {badges.length > 0 && `(${badges.length})`}</h3>{(!id || id === me?.id) && <Link to="/achievements" className="muted" style={{ fontSize: 13 }}>🏅 Voir ma progression →</Link>}</div>
         {badges.length === 0 && <p className="muted">Aucun badge obtenu pour l'instant.</p>}
         <div className="row" style={{ flexWrap: 'wrap', gap: 14 }}>
           {badges.map((b) => (

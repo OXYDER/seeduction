@@ -45,6 +45,7 @@ export default function HallOfFame() {
         </div>
         <div className="panel">
           <h3>Catalogue des badges</h3>
+          <p className="muted" style={{ marginTop: 0, fontSize: 13 }}><Link to="/achievements">🏅 Voir ma progression vers chaque badge →</Link></p>
           <div className="grid" style={{ gap: 10 }}>
             {catalog.map((b) => (
               <div key={b.code} className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
