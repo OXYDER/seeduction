@@ -346,7 +346,7 @@ export class TorrentsService implements OnModuleInit {
     return out;
   }
 
-  private async buildWhere(params: TorrentFilters) {
+  async buildWhere(params: TorrentFilters) {
     const where: any = { status: params.state === 'dead' ? 'DEAD' : 'APPROVED' };
     if (params.state === 'noseeders') where.seeders = 0;
     // Catégories adultes : invisibles tant que le membre n'a pas activé l'option dans son compte.

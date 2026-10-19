@@ -689,6 +689,31 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Référence : [url=/wiki/favoris-et-collections]Favoris et collections[/url].`,
     },
     {
+      title: 'Alertes de recherche : être prévenu des nouveautés',
+      slug: 'guide-alertes',
+      keywords: 'alerte, alertes, recherche enregistrée, notification, nouveau torrent, prévenir, telegram, veille, série, épisode',
+      isFaq: true,
+      content:
+        `Ne cherche plus chaque jour : laisse Seeduction te prévenir quand ce que tu attends arrive.\n` +
+        `\n` +
+        `[b]Créer une alerte[/b]\n` +
+        `1. Dans [b]Parcourir[/b], fais ta recherche : des mots (« Dune 2024 »), une catégorie, une qualité, une langue, la taille… tous les filtres comptent.\n` +
+        `2. Clique sur [b]🔔 Alerte[/b] (à côté des vues Liste / Grille). Le panneau te dit combien de torrents correspondent déjà ; tu seras prévenu des [i]prochains[/i].\n` +
+        `3. Donne un nom si tu veux, choisis [b]la cloche du site[/b] et/ou [b]Telegram[/b], puis [b]Créer l'alerte[/b].\n` +
+        `\n` +
+        `[b]Comment tu es prévenu[/b]\n` +
+        `• Toutes les 5 minutes, le site cherche les torrents apparus (ou approuvés) depuis la dernière vérification. Si un torrent correspond, une notification arrive dans la cloche, avec le lien du torrent. Plusieurs nouveautés de la même alerte sont regroupées.\n` +
+        `• Par Telegram : relie d'abord ton compte sur la page [url=/wiki/guide-telegram]Telegram[/url] ; le robot t'envoie alors un message privé avec les liens.\n` +
+        `• Le contenu adulte n'est signalé que si tu as activé cette option dans ton compte, comme dans Parcourir.\n` +
+        `\n` +
+        `[b]Gérer tes alertes[/b]\n` +
+        `La page [b]Mes alertes[/b] (menu de ton compte) liste tes alertes : couper la cloche ou Telegram, [b]Voir les résultats[/b], [b]Vérifier maintenant[/b], mettre en pause ou supprimer. Tu peux en avoir 20. Les notifications d'alertes se règlent aussi dans la page Notifications (catégorie « Alertes de recherche »).\n` +
+        `\n` +
+        `[b]Astuces[/b]\n` +
+        `• Plus l'alerte est précise (titre + qualité + langue), moins tu reçois de bruit.\n` +
+        `• Une série : crée l'alerte avec son titre seulement, tu seras prévenu de chaque nouvel épisode.`,
+    },
+    {
       title: 'Lire tes statistiques et les classements',
       slug: 'guide-stats',
       keywords: 'statistiques, stats, classement, mon activité, mes seeds, top, records, ratio, graphique',

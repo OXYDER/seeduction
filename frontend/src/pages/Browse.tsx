@@ -3,6 +3,7 @@ import { facetsFromParams } from '../lib/facets';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SearchBox from '../components/SearchBox';
 import { Link, useSearchParams } from 'react-router-dom';
+import SaveSearchButton from '../components/SaveSearchButton';
 import { api } from '../api/client';
 import { CATEGORY_STYLE } from '../components/Layout';
 import { useAuthStore } from '../store/auth';
@@ -361,6 +362,9 @@ export default function Browse() {
             />
           </div>
           <ViewSwitcher value={view} onChange={setView} />
+          {!uploaderId && !state && (
+            <SaveSearchButton query={{ search: parsed.name, categoryId, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr: hdr ? 'true' : '', minSize: minSizeGo, maxSize: maxSizeGo, ...attrParams }} />
+          )}
           <button
             type="button"
             className={`icon-btn${state === 'dead' ? ' active' : ''}`}

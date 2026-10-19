@@ -302,6 +302,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** Message privé à un membre dont le compte est relié à Telegram (alertes de recherche). Faux si le compte n'est pas relié ou si Telegram est coupé. */
+  async dm(userId: string, html: string): Promise<boolean> {
+    const link = await this.prisma.telegramLink.findUnique({ where: { userId }, select: { tgUserId: true } });
+    if (!link) return false;
+    const cfg = await this.config();
+    if (!this.active(cfg)) return false;
+    this.enqueue(link.tgUserId, cfg, async (api) => { await api.sendMessage(link.tgUserId, html); });
+    return true;
+  }
+
   /** File d'envoi par groupe : un message à la fois, en respectant la cadence permise par Telegram ; nouvel essai si Telegram demande d'attendre. */
   private enqueue(chatId: string, cfg: TelegramConfig, job: Job) {
     let q = this.queues.get(chatId);

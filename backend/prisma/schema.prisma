@@ -156,6 +156,7 @@ model User {
   @@index([status])
   @@index([parentId])
   telegramLink     TelegramLink?
+  savedSearches    SavedSearch[]
   chatBans         ChatBan[]  @relation("ChatBanned")
   requestsFound    TorrentRequest[] @relation("RequestFinder")
   // Préférences de notifications : { catégorie: false } coupe cette catégorie (tout est actif par défaut).
@@ -2466,4 +2467,22 @@ model MailTemplate {
   updatedAt   DateTime @updatedAt
 
   @@index([mailboxId])
+}
+
+/// Alerte de recherche : les filtres de la page Parcourir (mêmes paramètres que l'adresse), vérifiés toutes les 5 minutes ; une alerte (cloche et/ou Telegram) part quand un nouveau torrent y correspond.
+model SavedSearch {
+  id            String    @id @default(uuid())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  name          String    @db.VarChar(80)
+  query         Json
+  inApp         Boolean   @default(true)
+  telegram      Boolean   @default(false)
+  active        Boolean   @default(true)
+  lastCheckedAt DateTime  @default(now())
+  lastMatchAt   DateTime?
+  matchCount    Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
 }

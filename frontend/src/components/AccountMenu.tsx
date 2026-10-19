@@ -51,6 +51,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
     ['/friends', '👫', 'Amis'],
     ['/integrations', '🔌', 'API & flux RSS'],
     ['/telegram', <TelegramLogo size={16} />, 'Telegram'],
+    ['/alerts', '🔔', 'Mes alertes'],
     ['/wiki', '📖', 'Wiki'],
   ];
   const mailLink: [string, ReactNode, string] = ['/courriel', '📬', 'Courriel'];

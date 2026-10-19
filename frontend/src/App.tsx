@@ -68,6 +68,7 @@ const Requests = lazyPage(() => import('./pages/Requests'));
 const Friends = lazyPage(() => import('./pages/Friends'));
 const PlayerDownload = lazyPage(() => import('./pages/PlayerDownload'));
 const Wiki = lazyPage(() => import('./pages/Wiki'));
+const Alerts = lazyPage(() => import('./pages/Alerts'));
 const Integrations = lazyPage(() => import('./pages/Integrations'));
 const Telegram = lazyPage(() => import('./pages/Telegram'));
 const Suggestions = lazyPage(() => import('./pages/Suggestions'));
@@ -130,6 +131,7 @@ export default function App() {
           <Route path="/collections" element={<Collections />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/wiki" element={<Wiki />} />
+          <Route path="/alerts" element={<Alerts />} />
           <Route path="/integrations" element={<Integrations />} />
           <Route path="/telegram" element={<Telegram />} />
           <Route path="/suggestions" element={<Suggestions />} />
