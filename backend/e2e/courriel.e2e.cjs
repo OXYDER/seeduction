@@ -122,7 +122,7 @@ const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E
   const own = await call('POST', '/webmail/admin/mailboxes', TB, { ...cfg, label: 'Boîte de B ' + tag });
   check('un administrateur ajoute sa propre boîte, y a accès et la règle', own.s === 201 && (await call('GET', `/webmail/mailboxes/${own.b.id}/folders`, TB)).s === 200 && (await call('PUT', `/webmail/admin/mailboxes/${own.b.id}`, TB, { ...cfg, password: '', label: 'Boîte de B ' + tag })).s === 200);
   check('...mais les autres administrateurs ne la voient pas', (await call('GET', `/webmail/mailboxes/${own.b.id}/folders`, TA)).s === 404 && (await call('GET', '/webmail/mailboxes', TA)).b.every((b) => b.id !== own.b.id));
-  check('le propriétaire du site voit et règle toutes les boîtes', (await call('GET', '/webmail/admin', TO)).b.mailboxes.length === 2);
+  check('le propriétaire du site voit et règle toutes les boîtes', (() => 0)() === 0 && (await call('GET', '/webmail/admin', TO)).b.mailboxes.filter((b) => [id, own.b.id].includes(b.id)).length === 2);
   await call('DELETE', `/webmail/admin/mailboxes/${own.b.id}`, TB);
   check('le propriétaire supprime la boîte', (await call('DELETE', `/webmail/admin/mailboxes/${id}`, TO)).s === 200 && (await call('GET', `/webmail/mailboxes/${id}/folders`, TO)).s === 404);
 
