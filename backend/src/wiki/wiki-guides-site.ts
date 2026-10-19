@@ -751,6 +751,29 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Un hit & run en cours bloque « Irréprochable » ; il revient dès que tu l'as régularisé ([url=/wiki/guide-hit-and-run-reparer]Réparer un hit & run[/url]).`,
     },
     {
+      title: 'Parrainage : inviter et être récompensé',
+      slug: 'guide-parrainage',
+      keywords: 'parrainage, invitation, inviter, code, lien, prime, points, invité, recruteur, mentor, quota',
+      isFaq: true,
+      content:
+        `Inviter, c'est faire grandir Seeduction avec des gens de confiance, et être remercié quand ils s'installent.\n` +
+        `\n` +
+        `[b]Inviter quelqu'un[/b]\n` +
+        `1. Ouvre [b]Parrainage[/b] (menu de ton compte) et clique sur [b]＋ Créer une invitation[/b] : le lien est copié, envoie-le à ton invité. Il est valable 7 jours et ne sert qu'une fois.\n` +
+        `2. Le nombre d'invitations ouvertes en même temps dépend de ton rang (Power User : 2, Élite : 5, Vétéran : 10, plus celles des dons). Tu peux aussi en acheter dans la [url=/bonus]boutique bonus[/url]. Tu retires une invitation non utilisée avec 🗑️.\n` +
+        `\n` +
+        `[b]La prime de parrainage[/b]\n` +
+        `• Quand ton invité devient un vrai membre (par défaut : [b]14 jours[/b] d'ancienneté et le rang [b]Membre[/b]), tu reçois des [b]points bonus[/b] (500 par défaut), une seule fois par invité. Tu es prévenu dans la cloche.\n` +
+        `• Les conditions exactes sont affichées en haut de la page Parrainage. Tu peux recevoir au plus quelques primes par mois (5 par défaut) : les suivantes attendent le mois d'après.\n` +
+        `• Pas de prime si l'invité utilise la même adresse IP que toi (comptes multiples), ni pour un code distribué par l'équipe.\n` +
+        `\n` +
+        `[b]Suivre tes invités[/b]\n` +
+        `Le tableau montre pour chacun : date d'inscription, rang, ratio, volume envoyé, dernière visite, et où il en est (« encore 6 jours », « rang Membre à atteindre », « 🎁 prime reçue »). Tu restes responsable de la conduite de tes invités : [url=/wiki/guide-premiers-pas]aide-les à bien démarrer[/url] et partage-leur le [url=/wiki]Wiki[/url].\n` +
+        `\n` +
+        `[b]Badges liés[/b]\n` +
+        `Recruteur (3 parrainés), Patriarche (10) et [b]Mentor[/b] (3 parrainés devenus de vrais membres) : voir [url=/wiki/guide-badges]Badges et réalisations[/url].`,
+    },
+    {
       title: 'Lire tes statistiques et les classements',
       slug: 'guide-stats',
       keywords: 'statistiques, stats, classement, mon activité, mes seeds, top, records, ratio, graphique',

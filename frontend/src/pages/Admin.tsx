@@ -16,6 +16,7 @@ import AdminMailboxes from '../components/AdminMailboxes';
 import { SupportAdmin } from '../components/AdminSupport';
 import { LockdownAdmin } from '../components/AdminLockdown';
 import { AdminStaff2fa } from '../components/AdminStaff2fa';
+import { AdminReferral } from '../components/AdminReferral';
 import { ImportAdmin } from '../components/AdminImport';
 import PotAdmin from '../components/AdminPot';
 import AdminJeux from '../components/AdminJeux';
@@ -70,7 +71,7 @@ export default function Admin() {
       {tab === 'Wiki' && <WikiAdmin />}
       {tab === 'Support' && <SupportAdmin />}
       {tab === 'Paramètres' && <><MaintenanceAdmin /><ConfigAdmin /><AdminUploadCredit /></>}
-      {tab === 'Invitations' && <InvitesAdmin />}
+      {tab === 'Invitations' && <><AdminReferral /><InvitesAdmin /></>}
       {tab === 'Canaux' && <ChannelsAdmin />}
       {tab === 'Journal' && <AuditAdmin />}
       {tab === 'Monitoring' && <MonitoringAdmin />}

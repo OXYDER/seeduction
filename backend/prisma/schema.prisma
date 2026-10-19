@@ -166,6 +166,9 @@ model User {
   donorUntil       DateTime?
   donorTotal       Float      @default(0)
   donorInvites     Int        @default(0)
+  /// Parrainage : moment où celui qui a invité ce membre a reçu sa prime (et son montant ; 0 = aucune prime : code générique, même IP...).
+  referralRewardedAt DateTime?
+  referralReward   Int        @default(0)
   hnrExemptUntil   DateTime?
   donorWall        Boolean    @default(false) // apparaître sur le mur des donateurs (opt-in)
   donations        Donation[]

@@ -156,7 +156,7 @@ function ClassicDashboard() {
               <Link to="/hall-of-fame"><span className="icon">🎖️</span><span className="label">Hall of Fame</span></Link>
               <Link to="/profile"><span className="icon">👤</span><span className="label">Mon profil</span></Link>
               {user && <Link to={`/browse?uploaderId=${user.id}`}><span className="icon">⬆️</span><span className="label">Mes uploads</span></Link>}
-              <Link to="/profile">
+              <Link to="/referrals">
                 <span className="icon">✉️</span>
                 <span className="label">Invitations</span>
                 {profile && <span className="pill">{profile._count.invitees}</span>}
