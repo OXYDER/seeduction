@@ -48,3 +48,25 @@
   .mail-back { display: inline-block; }
   .mail-list ul { max-height: none; }
 }
+
+/* v2 : sélection, actions groupées, raccourcis, notification, suggestions d'adresses */
+.mail-list li { grid-template-columns: auto 1fr; align-items: start; column-gap: 8px; }
+.mail-main { display: grid; gap: 2px; min-width: 0; }
+.mail-chk { margin-top: 3px; opacity: 0.35; }
+.mail-list li:hover .mail-chk, .mail-list li.chk .mail-chk { opacity: 1; }
+.mail-list li.chk { background: rgba(255, 210, 74, 0.1); }
+.mail-list li.cur { box-shadow: inset 3px 0 0 var(--accent, #ffd24a); }
+.mail-bulk { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); background: rgba(255, 210, 74, 0.08); }
+.mail-bulk select { max-width: 130px; }
+.mail-help-btn { justify-self: start; font-size: 12.5px; }
+.mail-help { margin: 0; display: grid; gap: 3px; font-size: 12.5px; }
+.mail-help div { display: flex; gap: 8px; align-items: baseline; }
+.mail-help dt { min-width: 62px; } .mail-help dd { margin: 0; opacity: 0.85; }
+.mail-wrap kbd, .mail-help kbd { background: rgba(255, 255, 255, 0.1); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; font: 12px ui-monospace, monospace; }
+.mail-toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 9500; background: #1f2937; color: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: flex; gap: 10px; align-items: center; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45); max-width: calc(100vw - 24px); flex-wrap: wrap; }
+.mail-compose.drop { outline: 2px dashed var(--accent, #ffd24a); outline-offset: -4px; }
+.mail-addr { position: relative; }
+.mail-suggest { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 4px; list-style: none; background: #1f2937; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+.mail-suggest li { padding: 6px 8px; border-radius: 6px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-suggest li.on { background: rgba(255, 210, 74, 0.18); }
+.mail-compose .wysiwyg-area { max-height: 46vh; overflow: auto; }

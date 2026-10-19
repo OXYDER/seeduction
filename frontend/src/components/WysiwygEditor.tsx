@@ -11,6 +11,11 @@ interface WysiwygEditorProps {
   onChange: (bbcode: string) => void;
   placeholder?: string;
   minHeight?: number;
+  /** Autocomplétion des @pseudo (désactivée pour un courriel). */
+  mentions?: boolean;
+  /** Envoie sur le site les images collées ou glissées dans la zone (courriel). */
+  dropImages?: boolean;
+  autoFocus?: boolean;
 }
 
 const SIZES = [1, 2, 3, 4, 5, 6, 7]; // même échelle que le BBCode : n*4+8 px
@@ -27,7 +32,7 @@ function Btn({ title, onClick, children, disabled }: { title: string; onClick: (
   );
 }
 
-export default function WysiwygEditor({ value, onChange, placeholder, minHeight = 280 }: WysiwygEditorProps) {
+export default function WysiwygEditor({ value, onChange, placeholder, minHeight = 280, mentions = true, dropImages = false, autoFocus = false }: WysiwygEditorProps) {
   const ref = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const lastValue = useRef<string>('');
@@ -50,6 +55,8 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
 
   // Charge le BBCode dans la zone éditable uniquement quand la valeur change de
   // l'extérieur (nouvelle génération...) — pas à chaque frappe, sinon le curseur saute.
+  useEffect(() => { if (autoFocus) ref.current?.focus(); }, [autoFocus]);
+
   useEffect(() => {
     if (!ref.current || value === lastValue.current) return;
     ref.current.innerHTML = bbcodeToHtml(value, { mentions: false });
@@ -84,6 +91,7 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
   const mentionRange = useRef<{ node: Text; start: number; end: number } | null>(null);
 
   function detectMention() {
+    if (!mentions) return;
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount || !sel.isCollapsed || !ref.current?.contains(sel.anchorNode) || sel.anchorNode?.nodeType !== Node.TEXT_NODE) { mentionRange.current = null; setMention(null); return; }
     const node = sel.anchorNode as Text;
@@ -184,7 +192,10 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
   async function uploadImage(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     e.target.value = '';
-    if (!f) return;
+    if (f) await uploadFile(f);
+  }
+
+  async function uploadFile(f: File) {
     setUploading(true);
     try {
       const form = new FormData();
@@ -309,9 +320,12 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
         }}
         onClick={detectMention}
         data-placeholder={placeholder ?? 'Écris ta description ici...'}
+        onDrop={dropImages ? (e) => { const img = Array.from(e.dataTransfer.files).find((f) => /^image\/(png|jpeg|webp)$/.test(f.type)); if (img) { e.preventDefault(); e.stopPropagation(); void uploadFile(img); } } : undefined}
         onInput={sync}
         onBlur={sync}
         onPaste={(e) => {
+          const img = dropImages ? Array.from(e.clipboardData.files).find((f) => /^image\/(png|jpeg|webp)$/.test(f.type)) : undefined;
+          if (img) { e.preventDefault(); void uploadFile(img); return; }
           e.preventDefault();
           document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
         }}
