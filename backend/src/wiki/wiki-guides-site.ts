@@ -644,6 +644,11 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Seul ce qui a été regardé dans le lecteur Seeduction compte ; le contenu adulte n'y apparaît jamais.\n\n` +
         `[b]Un pack avec beaucoup de fichiers[/b]\n` +
         `• La fenêtre « Quel fichier regarder ? » défile et ne montre que les vidéos (un bouton affiche aussi les images et sous-titres) ; au-delà de 8 fichiers, un champ [b]Filtrer[/b] (ex : S01E05) retrouve vite le bon épisode.\n\n` +
+        `[b]Sous-titres partagés[/b]\n` +
+        `• Sur la fiche d'un torrent vidéo (onglet Fichiers), le cadre [b]💬 Sous-titres[/b] liste les sous-titres envoyés par les membres, par langue : [b]⬇ .srt[/b] pour les télécharger, [b]＋ Ajouter des sous-titres[/b] pour partager les tiens (fichier .srt ou .vtt, 600 Ko au plus ; l'encodage est corrigé tout seul).\n` +
+        `• Le [b]lecteur Seeduction[/b] les charge automatiquement quand tu regardes ce torrent : ils sont dans le menu Sous-titres de VLC (touche [b]V[/b] pour passer de l'un à l'autre, le français est préféré).\n` +
+        `• Pour un pack de saison, choisis l'épisode (le fichier) auquel les sous-titres vont. [b]Synchronisation[/b] : si les sous-titres arrivent trop tôt ou trop tard, l'auteur (ou l'équipe) les décale de 0,5 s avec les boutons −0,5 s / +0,5 s, et tout le monde en profite, y compris dans le lecteur. Dans VLC, [b]G[/b] et [b]H[/b] règlent aussi le décalage pour toi seulement.\n` +
+        `• Tu peux supprimer les tiens ; l'équipe peut retirer un sous-titre mauvais ou déplacé. Limites : 30 envois par jour, 8 sous-titres par langue et par fichier.\n\n` +
         `[b]Quand utiliser le lecteur ?[/b]\n` +
         `Pour regarder vite, sur un ordinateur de bureau. Pour des téléchargements en masse ou une seedbox, préfère un client classique ([url=/wiki/guide-telecharger]Télécharger un torrent[/url]).\n\n` +
         `Références : [url=/wiki/installer-le-lecteur]Installer le lecteur[/url], [url=/wiki/fonctionnement-du-lecteur]Comment fonctionne le lecteur[/url].`,

@@ -747,6 +747,40 @@ function stopWatching(session) {
   }).catch(() => { /* pas grave */ });
 }
 
+/**
+ * Sous-titres partagés par les membres sur la fiche du torrent (voir le panneau « Sous-titres » du site) : on récupère ceux du fichier lu (identifié par la passkey, comme le suivi de lecture)
+ * et on les donne à VLC avec --input-slave, pour qu'ils soient disponibles tout de suite dans son menu Sous-titres. Jamais bloquant : sans réseau ou sans sous-titres, la lecture démarre quand même.
+ */
+async function fetchSharedSubtitles(session) {
+  try {
+    const passkey = extractPasskey(session.torrent);
+    if (!passkey || !session.torrentId) return { files: [], languages: [] };
+    const base = `${SITE_BASE_URL}/api/subtitles`;
+    const listRes = await fetch(`${base}/player?passkey=${encodeURIComponent(passkey)}&torrentId=${encodeURIComponent(session.torrentId)}&fileIndex=${session.fileIndex || 0}`, { signal: AbortSignal.timeout(6000) });
+    if (!listRes.ok) return { files: [], languages: [] };
+    const list = (await listRes.json()).slice(0, 8);
+    if (!Array.isArray(list) || list.length === 0) return { files: [], languages: [] };
+    const dir = path.join(app.getPath('temp'), 'seeduction-subs', String(session.id || 'session'));
+    fs.mkdirSync(dir, { recursive: true });
+    const files = [];
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i];
+      const res = await fetch(`${base}/${encodeURIComponent(s.id)}/play?passkey=${encodeURIComponent(passkey)}`, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const file = path.join(dir, `${String(s.iso3 || 'und').replace(/[^a-z]/gi, '').slice(0, 3) || 'und'}-${i + 1}.srt`);
+      fs.writeFileSync(file, await res.text(), 'utf8');
+      files.push(file);
+    }
+    // Langues préférées : le français d'abord, puis l'ordre du site.
+    const languages = [...new Set(list.map((s) => s.iso3).filter(Boolean))].sort((a, b) => (a === 'fra' ? -1 : b === 'fra' ? 1 : 0));
+    log(`Sous-titres partagés : ${files.length} fichier(s) chargé(s)`);
+    return { files, languages };
+  } catch (err) {
+    log('Sous-titres partagés indisponibles :', err && err.message);
+    return { files: [], languages: [] };
+  }
+}
+
 /** Lance Seeduction VLC avec son interface HTTP activée (mot de passe aléatoire par lecture, jamais exposé) pour
  * suivre la position de lecture, et reprend automatiquement 5 s avant le dernier point connu — ou depuis le début si
  * le membre avait fini de regarder (moins de 30 s restantes la dernière fois). Repli sur le lecteur par défaut du
@@ -765,6 +799,11 @@ async function launchPlayerForSession(session, streamUrl) {
         '--extraintf', 'http', '--http-host', '127.0.0.1', '--http-port', String(controlPort), '--http-password', controlPassword,
       ];
       if (resumeFrom > 0) args.push(`--start-time=${resumeFrom}`);
+      const subs = await fetchSharedSubtitles(session);
+      if (subs.files.length > 0) {
+        args.push(`--input-slave=${subs.files.map((f) => require('url').pathToFileURL(f).href).join('#')}`, '--subsdec-encoding=UTF-8');
+        if (subs.languages.length > 0) args.push(`--sub-language=${subs.languages.join(',')}`);
+      }
       const child = spawn(vlcPath, args, { detached: true, stdio: 'ignore' });
       child.unref();
       session.playing = true;

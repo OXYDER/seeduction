@@ -24,6 +24,7 @@ import { CommentsModule } from './comments/comments.module';
 import { SettingsModule } from './settings/settings.service';
 import { AuditModule } from './audit/audit.service';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module';
+import { SubtitlesModule } from './subtitles/subtitles.module';
 import { EconomyModule } from './economy/economy.module';
 import { PotModule } from './pot/pot.module';
 import { SocialModule } from './social/social.module';
@@ -91,6 +92,7 @@ import { WebmailModule } from './webmail/webmail.module';
     SettingsModule,
     AuditModule,
     SavedSearchesModule,
+    SubtitlesModule,
     EconomyModule,
     PotModule,
     SocialModule,

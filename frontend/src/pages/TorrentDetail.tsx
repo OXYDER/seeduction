@@ -20,6 +20,7 @@ import NfoPanel from '../components/NfoPanel';
 import InstallNotes from '../components/InstallNotes';
 import StickyDownloadBar from '../components/StickyDownloadBar';
 import WatchOnlineButton from '../components/WatchOnlineButton';
+import SubtitlesPanel from '../components/SubtitlesPanel';
 import { CATEGORY_STYLE } from '../components/Layout';
 import { applyCategoryAccent } from '../lib/theme';
 import TorrentHero from '../components/TorrentHero';
@@ -185,10 +186,13 @@ export default function TorrentDetail() {
   );
 
   const filesPanel = (
-    <div className="panel">
-      <h3>Fichiers</h3>
-      <FileTree files={torrent.fileList ?? []} />
-    </div>
+    <>
+      <div className="panel">
+        <h3>Fichiers</h3>
+        <FileTree files={torrent.fileList ?? []} />
+      </div>
+      {isVideoKind && user && <SubtitlesPanel torrentId={torrent.id} />}
+    </>
   );
 
   const tokenError = tokenMsg && <div className="muted" style={{ color: 'var(--danger)' }}>{tokenMsg} — <a href="/bonus">boutique bonus</a></div>;

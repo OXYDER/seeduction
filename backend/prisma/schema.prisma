@@ -180,6 +180,7 @@ model User {
   cheatCase        CheatCase?
   userIps          UserIp[]
   torrentFlows     UserTorrentFlow[]
+  subtitleFiles    SubtitleFile[]
 }
 
 // Journal « qui a fait quoi » des profils d'un compte famille, lu par le profil principal.
@@ -400,6 +401,7 @@ model Torrent {
   @@index([status, createdAt(sort: Desc)])
   @@index([status, seeders(sort: Desc)])
   @@index([uploaderId, createdAt(sort: Desc)])
+  subtitleFiles   SubtitleFile[]
 }
 
 /// NFO joint à l'upload (stocké à part pour ne pas alourdir les listes de torrents).
@@ -2485,4 +2487,24 @@ model SavedSearch {
   createdAt     DateTime  @default(now())
 
   @@index([userId])
+}
+
+/// Sous-titres (.srt) partagés par les membres pour un torrent (ou un fichier précis d'un pack). Stockés en SRT UTF-8 ; le décalage de synchronisation est appliqué à la lecture.
+model SubtitleFile {
+  id         String   @id @default(uuid())
+  torrent    Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId  String
+  /// Numéro du fichier dans le torrent ; vide = valable pour tout le torrent (film, épisode seul).
+  fileIndex  Int?
+  language   String   @db.VarChar(8)
+  label      String   @default("") @db.VarChar(80)
+  content    String   @db.Text
+  cues       Int      @default(0)
+  offsetMs   Int      @default(0)
+  downloads  Int      @default(0)
+  uploader   User?    @relation(fields: [uploaderId], references: [id], onDelete: SetNull)
+  uploaderId String?
+  createdAt  DateTime @default(now())
+
+  @@index([torrentId])
 }
