@@ -6,16 +6,24 @@ import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { assertPublicHost } from '../importer/net-guard';
 import { openText, sealText } from '../common/utils/seal';
-import { headerSafe, htmlToText, parseAddress, parseAddressList, prefixSubject, sanitizeMailHtml, textToHtml } from '../common/utils/mail-html';
+import { extractInlineImages, headerSafe, htmlToText, parseAddress, parseAddressList, prefixSubject, sanitizeMailHtml, sanitizeOutgoingHtml, textToHtml } from '../common/utils/mail-html';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const MailComposer = require('nodemailer/lib/mail-composer');
 
+export interface UploadedFile { originalname: string; buffer: Buffer; mimetype: string; size: number }
+export interface SendInput {
+  from?: string; to?: string; cc?: string; bcc?: string; subject?: string; text?: string; html?: string; inReplyTo?: string; references?: string[]; replyFolder?: string; replyUid?: number;
+  /** Brouillon d'où vient ce courriel : supprimé après l'envoi, et ses pièces jointes (numéros dans `keepAttachments`) sont conservées. */
+  draftFolder?: string; draftUid?: number; keepAttachments?: number[];
+}
 export interface Viewer { userId: string; username: string; role: string }
 export interface Alias { address: string; name: string }
 interface Row { createdById?: string | null; id: string; label: string; imapHost: string; imapPort: number; imapSecure: boolean; smtpHost: string; smtpPort: number; smtpSecure: boolean; username: string; passwordSealed: string; aliases: any; signature: string; allowedUserIds: string[] }
 
 const PURPOSE = 'webmail';
+export const STAFF_ROLES = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
+const isStaff = (role: string) => STAFF_ROLES.includes(role);
 const PAGE = 30;
 const MAX_SOURCE = 30 * 1024 * 1024;
 const MAX_SEND_BYTES = 20 * 1024 * 1024;
@@ -50,7 +58,7 @@ export class WebmailService {
   }
 
   /** Peut lire et écrire : le rôle propriétaire, l'administrateur qui a ajouté la boîte, ou un administrateur autorisé. */
-  private canUse(viewer: Viewer, r: Row): boolean { return viewer.role === 'OWNER' || (viewer.role === 'ADMIN' && (r.createdById === viewer.userId || r.allowedUserIds.includes(viewer.userId))); }
+  private canUse(viewer: Viewer, r: Row): boolean { return viewer.role === 'OWNER' || (isStaff(viewer.role) && (r.createdById === viewer.userId || r.allowedUserIds.includes(viewer.userId))); }
 
   /** Peut régler la boîte (serveurs, alias, accès) : le rôle propriétaire ou l'administrateur qui l'a ajoutée. */
   private canManage(viewer: Viewer, r: Row): boolean { return viewer.role === 'OWNER' || (viewer.role === 'ADMIN' && r.createdById === viewer.userId); }
@@ -70,7 +78,7 @@ export class WebmailService {
   /** Réglages complets pour le propriétaire (sans le mot de passe). */
   async adminList(viewer: Viewer) {
     const rows = ((await this.prisma.mailbox.findMany({ orderBy: { createdAt: 'asc' } })) as Row[]).filter((r) => this.canManage(viewer, r));
-    const admins = await this.prisma.user.findMany({ where: { role: { in: ['ADMIN', 'OWNER'] }, status: 'ACTIVE', parentId: null }, select: { id: true, username: true, role: true }, orderBy: { username: 'asc' } });
+    const admins = await this.prisma.user.findMany({ where: { role: { in: STAFF_ROLES as any }, status: 'ACTIVE', parentId: null }, select: { id: true, username: true, role: true }, orderBy: { username: 'asc' } });
     return {
       admins,
       mailboxes: rows.map((r) => ({ ...this.view(r), imapHost: r.imapHost, imapPort: r.imapPort, imapSecure: r.imapSecure, smtpHost: r.smtpHost, smtpPort: r.smtpPort, smtpSecure: r.smtpSecure, username: r.username, passwordSet: !!openText(r.passwordSealed, PURPOSE), allowedUserIds: r.allowedUserIds })),
@@ -90,7 +98,7 @@ export class WebmailService {
       if (!aliases.some((x) => x.address === p.address)) aliases.push({ address: p.address, name: headerSafe(a?.name ?? p.name, 80) });
     }
     const allowed: string[] = Array.isArray(body?.allowedUserIds) ? body.allowedUserIds.map(String).slice(0, 50) : [];
-    const valid = allowed.length ? (await this.prisma.user.findMany({ where: { id: { in: allowed }, role: { in: ['ADMIN', 'OWNER'] } }, select: { id: true } })).map((u) => u.id) : [];
+    const valid = allowed.length ? (await this.prisma.user.findMany({ where: { id: { in: allowed }, role: { in: STAFF_ROLES as any }, status: 'ACTIVE' }, select: { id: true } })).map((u) => u.id) : [];
     const pass = String(body?.password ?? '');
     const passwordSealed = pass ? sealText(pass, PURPOSE) : previous?.passwordSealed ?? '';
     if (!passwordSealed) throw new BadRequestException('Mot de passe de la boîte requis');
@@ -363,8 +371,8 @@ export class WebmailService {
     this.sends.set(userId, recent);
   }
 
-  async send(viewer: Viewer, id: string, input: { from?: string; to?: string; cc?: string; bcc?: string; subject?: string; text?: string; inReplyTo?: string; references?: string[]; replyFolder?: string; replyUid?: number }, files: { originalname: string; buffer: Buffer; mimetype: string; size: number }[], ip?: string | null) {
-    const row = await this.row(viewer, id);
+  /** Ce que contient un envoi ou un brouillon, après vérification. */
+  private async compose(row: Row, input: SendInput, files: UploadedFile[], opts: { draft?: boolean }) {
     const aliases = this.aliasesOf(row);
     const login = parseAddress(row.username);
     const allowed: Alias[] = [...aliases, ...(login && !aliases.some((a) => a.address === login.address) ? [{ address: login.address, name: '' }] : [])];
@@ -375,36 +383,140 @@ export class WebmailService {
     const bad = [...to.bad, ...cc.bad, ...bcc.bad];
     if (bad.length) throw new BadRequestException(`Adresse invalide : ${bad[0]}`);
     const recipients = [...to.ok, ...cc.ok, ...bcc.ok];
-    if (to.ok.length === 0) throw new BadRequestException('Indique au moins un destinataire');
+    if (!opts.draft && to.ok.length === 0) throw new BadRequestException('Indique au moins un destinataire');
     if (recipients.length > MAX_RECIPIENTS) throw new BadRequestException(`Trop de destinataires (${MAX_RECIPIENTS} au plus)`);
     const subject = headerSafe(input.subject ?? '', 300);
-    const text = String(input.text ?? '').slice(0, 200_000);
-    if (!subject && !text.trim()) throw new BadRequestException('Le courriel est vide');
-    const total = files.reduce((s, f) => s + f.size, 0);
+    let html: string | undefined;
+    let inline: { filename: string; content: Buffer; contentType: string; cid: string }[] = [];
+    if (input.html && String(input.html).trim()) {
+      const clean = sanitizeOutgoingHtml(String(input.html).slice(0, 600_000));
+      const ex = extractInlineImages(clean);
+      html = ex.html; inline = ex.attachments;
+    }
+    const text = String(input.text ?? '').trim() ? String(input.text).slice(0, 200_000) : html ? htmlToText(html).slice(0, 200_000) : '';
+    if (!opts.draft && !subject && !text.trim()) throw new BadRequestException('Le courriel est vide');
+    const kept = input.draftUid && input.draftFolder ? await this.imap(row, (c) => this.draftFiles(c, String(input.draftFolder), Number(input.draftUid), input.keepAttachments ?? [])) : [];
+    const all: UploadedFile[] = [...kept, ...files.slice(0, 10)];
+    const total = all.reduce((sum, f) => sum + f.size, 0) + inline.reduce((sum, f) => sum + f.content.length, 0);
     if (total > MAX_SEND_BYTES) throw new BadRequestException('Pièces jointes trop lourdes (20 Mo au total)');
-    const msgId = (v: unknown) => { const s = String(v ?? '').trim(); return /^<[^<>\s]{3,200}>$/.test(s) ? s : undefined; };
+    const msgId = (v: unknown) => { const m = String(v ?? '').trim(); return /^<[^<>\s]{3,200}>$/.test(m) ? m : undefined; };
     const refs = (Array.isArray(input.references) ? input.references : []).map(msgId).filter((x): x is string => !!x).slice(-20);
-    this.checkRate(viewer.userId);
-
     const raw: Buffer = await new MailComposer({
       from: { name: headerSafe(from.name, 80), address: from.address }, to: to.ok.map((a) => ({ name: a.name, address: a.address })), cc: cc.ok.map((a) => ({ name: a.name, address: a.address })),
-      subject, text, inReplyTo: msgId(input.inReplyTo), references: refs.length ? refs : undefined, headers: { 'X-Mailer': 'Seeduction' },
-      attachments: files.slice(0, 10).map((f) => ({ filename: String(f.originalname).replace(/[\r\n"\\/]+/g, '_').slice(0, 150), content: f.buffer, contentType: UNSAFE_TYPE.test(f.mimetype) ? 'application/octet-stream' : f.mimetype })),
+      ...(opts.draft && bcc.ok.length ? { bcc: bcc.ok.map((a) => ({ name: a.name, address: a.address })), keepBcc: true } : {}),
+      subject, text, html, inReplyTo: msgId(input.inReplyTo), references: refs.length ? refs : undefined, headers: { 'X-Mailer': 'Seeduction' },
+      attachments: [
+        ...all.map((f) => ({ filename: String(f.originalname).replace(/[\r\n"\\/]+/g, '_').slice(0, 150), content: f.buffer, contentType: UNSAFE_TYPE.test(f.mimetype) ? 'application/octet-stream' : f.mimetype })),
+        ...inline,
+      ],
     }).compile().build();
+    return { raw, from, recipients, subject, attachments: all.length + inline.length };
+  }
+
+  async send(viewer: Viewer, id: string, input: SendInput, files: UploadedFile[], ip?: string | null) {
+    const row = await this.row(viewer, id);
+    const m = await this.compose(row, input, files, {});
+    this.checkRate(viewer.userId);
     try {
-      await this.smtp(row).sendMail({ envelope: { from: from.address, to: recipients.map((r) => r.address) }, raw });
+      await this.smtp(row).sendMail({ envelope: { from: m.from.address, to: m.recipients.map((r) => r.address) }, raw: m.raw });
     } catch (e: any) { throw new BadRequestException(`Envoi refusé par le serveur : ${errText(e)}`); }
 
-    // copie dans « Envoyés » et marque la réponse
+    // copie dans « Envoyés », réponse marquée, brouillon supprimé
     await this.imap(row, async (c) => {
-      const sent = (await c.list()).find((f) => f.specialUse === '\\Sent')?.path ?? 'Sent';
-      try { await c.append(sent, raw, ['\\Seen']); } catch (e) { this.logger.warn(`Copie dans « Envoyés » impossible : ${errText(e)}`); }
+      const list = await c.list();
+      const sent = list.find((f) => f.specialUse === '\\Sent')?.path ?? 'Sent';
+      try { await c.append(sent, m.raw, ['\\Seen']); } catch (e) { this.logger.warn(`Copie dans « Envoyés » impossible : ${errText(e)}`); }
       if (input.replyFolder && Number.isInteger(input.replyUid) && (input.replyUid as number) > 0) {
         try { const lock = await c.getMailboxLock(String(input.replyFolder)); try { await c.messageFlagsAdd(String(input.replyUid), ['\\Answered'], { uid: true }); } finally { lock.release(); } } catch { /* sans conséquence */ }
       }
+      if (input.draftUid && input.draftFolder) {
+        try { const lock = await c.getMailboxLock(String(input.draftFolder)); try { await c.messageDelete(String(input.draftUid), { uid: true }); } finally { lock.release(); } } catch { /* déjà supprimé */ }
+      }
     }).catch((e) => this.logger.warn(`Après envoi : ${errText(e)}`));
-    await this.audit.log(viewer.userId, 'MAIL_SEND', { mailbox: row.label, from: from.address, recipients: recipients.length, subject: subject.slice(0, 80), attachments: files.length }, ip);
+    await this.audit.log(viewer.userId, 'MAIL_SEND', { mailbox: row.label, from: m.from.address, recipients: m.recipients.length, subject: m.subject.slice(0, 80), attachments: m.attachments, html: !!input.html }, ip);
     return { ok: true };
+  }
+
+  /** Les pièces jointes d'un brouillon à conserver (par numéro), pour les remettre dans le courriel qu'on en tire. */
+  private async draftFiles(c: ImapFlow, folder: string, uid: number, keep: number[]): Promise<UploadedFile[]> {
+    if (!Array.isArray(keep) || keep.length === 0) return [];
+    const { parsed } = await this.load(c, folder, uid);
+    return parsed.attachments.map((a: any, i: number) => ({ a, i })).filter(({ i }) => keep.includes(i)).map(({ a }: any) => ({ originalname: a.filename ?? 'pièce', buffer: a.content as Buffer, mimetype: String(a.contentType ?? 'application/octet-stream'), size: a.size as number }));
+  }
+
+  /** Enregistre (ou met à jour) un brouillon dans le dossier Brouillons de la boîte ; renvoie son nouveau numéro. */
+  async saveDraft(viewer: Viewer, id: string, input: SendInput, files: UploadedFile[]) {
+    const row = await this.row(viewer, id);
+    const m = await this.compose(row, input, files, { draft: true });
+    return this.imap(row, async (c) => {
+      const list = await c.list();
+      let path = list.find((f) => f.specialUse === '\\Drafts')?.path ?? 'Drafts';
+      let res: any;
+      try { res = await c.append(path, m.raw, ['\\Draft', '\\Seen']); } catch {
+        try { await c.mailboxCreate(path); res = await c.append(path, m.raw, ['\\Draft', '\\Seen']); } catch (e) { throw new BadRequestException(`Impossible d'enregistrer le brouillon : ${errText(e)}`); }
+      }
+      if (input.draftUid && input.draftFolder) {
+        try { const lock = await c.getMailboxLock(String(input.draftFolder)); try { await c.messageDelete(String(input.draftUid), { uid: true }); } finally { lock.release(); } } catch { /* ancien brouillon déjà supprimé */ }
+      }
+      return { uid: res?.uid ?? null, folder: path };
+    });
+  }
+
+  /** Reprise d'un brouillon : son contenu, prêt à remettre dans l'éditeur. */
+  async openDraft(viewer: Viewer, id: string, folder: string, uid: number) {
+    const row = await this.row(viewer, id);
+    return this.imap(row, async (c) => {
+      const { parsed } = await this.load(c, folder, uid);
+      const list = (v: any) => (v ? (Array.isArray(v) ? v : [v]).flatMap((x: any) => x.value ?? []).map((a: any) => (a.name ? `${a.name} <${a.address}>` : a.address)).join(', ') : '');
+      const fromAddr = (Array.isArray(parsed.from) ? (parsed.from as any)[0] : (parsed.from as any))?.value?.[0]?.address ?? '';
+      const html = parsed.html ? sanitizeOutgoingHtml(String(parsed.html)) : '';
+      return {
+        from: String(fromAddr).toLowerCase(), to: list(parsed.to), cc: list(parsed.cc), bcc: list(parsed.bcc), subject: parsed.subject ?? '', html, text: html ? '' : String(parsed.text ?? ''),
+        inReplyTo: parsed.inReplyTo ?? undefined, references: Array.isArray(parsed.references) ? parsed.references : parsed.references ? [parsed.references] : [],
+        attachments: parsed.attachments.filter((a: any) => !a.cid).map((a: any, index: number) => ({ index: parsed.attachments.indexOf(a), filename: a.filename ?? `pièce-${index + 1}`, size: a.size })),
+      };
+    });
+  }
+
+  private contactCache = new Map<string, { at: number; list: { name: string; address: string; n: number }[] }>();
+  /** Suggestions d'adresses : les gens à qui on écrit le plus et ceux qui écrivent le plus (lues dans Envoyés et Réception, gardées 10 minutes). */
+  async contacts(viewer: Viewer, id: string, q: string) {
+    const row = await this.row(viewer, id);
+    let hit = this.contactCache.get(row.id);
+    if (!hit || Date.now() - hit.at > 600_000) {
+      const map = new Map<string, { name: string; address: string; n: number }>();
+      const own = new Set(this.aliasesOf(row).map((a) => a.address));
+      const add = (a: any, w: number) => { const address = String(a?.address ?? '').toLowerCase(); if (!address || own.has(address)) return; const e = map.get(address) ?? { name: '', address, n: 0 }; e.n += w; if (!e.name && a?.name) e.name = String(a.name); map.set(address, e); };
+      await this.imap(row, async (c) => {
+        const list = await c.list();
+        for (const [path, weight, field] of [[list.find((f) => f.specialUse === '\\Sent')?.path ?? 'Sent', 3, 'to'], ['INBOX', 1, 'from']] as [string, number, 'to' | 'from'][]) {
+          let lock; try { lock = await c.getMailboxLock(path, { readOnly: true }); } catch { continue; }
+          try {
+            const total = (c.mailbox as any).exists ?? 0;
+            if (total > 0) for await (const m of c.fetch(`${Math.max(1, total - 199)}:${total}`, { envelope: true } as any)) for (const a of ((m.envelope as any)?.[field] ?? [])) add(a, weight);
+          } finally { lock.release(); }
+        }
+      }).catch(() => undefined);
+      hit = { at: Date.now(), list: [...map.values()].sort((a, b) => b.n - a.n).slice(0, 300) };
+      this.contactCache.set(row.id, hit);
+    }
+    const t = String(q ?? '').trim().toLowerCase().slice(0, 60);
+    if (t.length < 1) return hit.list.slice(0, 8);
+    return hit.list.filter((c) => c.address.includes(t) || c.name.toLowerCase().includes(t)).slice(0, 8);
+  }
+
+  /** Le courriel complet (.eml), pour le garder ou l'ouvrir dans un autre logiciel. */
+  async source(viewer: Viewer, id: string, folder: string, uid: number) {
+    const row = await this.row(viewer, id);
+    return this.imap(row, async (c) => {
+      const lock = await c.getMailboxLock(folder, { readOnly: true });
+      try {
+        const msg: any = await c.fetchOne(String(uid), { uid: true, source: true, size: true }, { uid: true });
+        if (!msg?.source) throw new NotFoundException('Courriel introuvable');
+        if ((msg.size ?? msg.source.length) > MAX_SOURCE) throw new BadRequestException('Courriel trop gros');
+        return msg.source as Buffer;
+      } finally { lock.release(); }
+    });
   }
 
   /** Brouillon de réponse : destinataires, sujet et citation prêts (le navigateur les place dans le formulaire). */
@@ -424,6 +536,7 @@ export class WebmailService {
       cc: mode === 'all' ? [...m.to, ...m.cc].map((a: any) => a.address).filter((a: string) => a && !own.has(a) && a !== who?.address).join(', ') : '',
       subject: mode === 'forward' ? prefixSubject(m.subject, 'Fwd') : prefixSubject(m.subject, 'Re'),
       text: `\n\n${mode === 'forward' ? fwdHead + '\n' + String(m.text ?? '') : head + '\n' + quoted}`,
+      head: mode === 'forward' ? fwdHead : head, quote: String(m.text ?? ''),
       inReplyTo: mode === 'forward' ? undefined : m.messageId ?? undefined,
       references: mode === 'forward' ? [] : [...m.references, ...(m.messageId ? [m.messageId] : [])].slice(-20),
     };

@@ -54,7 +54,7 @@ export default function AdminMailboxes() {
       {!edit && boxes.length === 0 && <p className="muted" style={{ margin: 0 }}>Aucune boîte pour l'instant. Clique sur « Ajouter une boîte » (les valeurs de Purelymail sont déjà remplies : tu n'as qu'à saisir l'adresse et le mot de passe). Les boîtes ajoutées par un autre administrateur n'apparaissent pas ici : seul lui peut les régler.</p>}
       {!edit && boxes.map((b) => (
         <div key={b.id} className="row" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)' }}>
-          <div><strong>{b.label}</strong> <span className="muted">· {b.username} · {b.aliases.length} alias · {b.allowedUserIds.length} administrateur{b.allowedUserIds.length > 1 ? 's' : ''} autorisé{b.allowedUserIds.length > 1 ? 's' : ''}</span>{!b.passwordSet && <span style={{ color: 'var(--danger)' }}> · mot de passe à ressaisir</span>}</div>
+          <div><strong>{b.label}</strong> <span className="muted">· {b.username} · {b.aliases.length} alias · {b.allowedUserIds.length} membre{b.allowedUserIds.length > 1 ? 's' : ''} de l'équipe autorisé{b.allowedUserIds.length > 1 ? 's' : ''}</span>{!b.passwordSet && <span style={{ color: 'var(--danger)' }}> · mot de passe à ressaisir</span>}</div>
           <div className="row" style={{ gap: 6 }}><button type="button" className="secondary" onClick={() => setEdit({ ...b })}>Modifier</button><button type="button" className="secondary" disabled={busy} onClick={() => del(b)}>Retirer</button></div>
         </div>
       ))}
@@ -92,12 +92,12 @@ export default function AdminMailboxes() {
           </div>
           <label style={{ display: 'grid', gap: 3 }}>Signature (ajoutée à chaque nouveau message)<textarea rows={2} value={edit.signature} onChange={(e) => set({ signature: e.target.value })} maxLength={600} /></label>
           <div>
-            <strong>Administrateurs autorisés</strong>
+            <strong>Membres de l'équipe autorisés</strong>
             <div className="row" style={{ gap: 12, flexWrap: 'wrap', marginTop: 6 }}>
-              {admins.filter((a) => a.role === 'ADMIN').map((a) => (
-                <label key={a.id} className="row" style={{ gap: 6, alignItems: 'center' }}><input type="checkbox" checked={edit.allowedUserIds.includes(a.id)} onChange={(e) => set({ allowedUserIds: e.target.checked ? [...edit.allowedUserIds, a.id] : edit.allowedUserIds.filter((x) => x !== a.id) })} /> {a.username}</label>
+              {admins.map((a) => (
+                <label key={a.id} className="row" style={{ gap: 6, alignItems: 'center' }}><input type="checkbox" checked={edit.allowedUserIds.includes(a.id)} onChange={(e) => set({ allowedUserIds: e.target.checked ? [...edit.allowedUserIds, a.id] : edit.allowedUserIds.filter((x) => x !== a.id) })} /> {a.username} <span className="muted" style={{ fontSize: 11 }}>{a.role === 'ADMIN' ? 'admin' : a.role === 'OWNER' ? 'propriétaire' : a.role === 'SUPER_MODERATOR' ? 'super-modérateur' : 'modérateur'}</span></label>
               ))}
-              {admins.filter((a) => a.role === 'ADMIN').length === 0 && <span className="muted">Aucun autre administrateur.</span>}
+              {admins.length === 0 && <span className="muted">Aucun membre de l'équipe.</span>}
             </div>
           </div>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

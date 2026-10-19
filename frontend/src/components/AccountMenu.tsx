@@ -12,10 +12,12 @@ interface Props {
   onStatus: () => void;
   /** Le sélecteur de profil est affiché ailleurs ; ici seulement les liens du compte. */
   canUpload?: boolean;
+  /** Boîte courriel configurée pour ce membre de l'équipe (null : aucune, le lien n'est pas affiché). */
+  mail?: { unread: number } | null;
 }
 
 /** Menu du compte : ouvert en cliquant sur son nom en haut du menu. Chiffres du compte et liens vers tout ce qui est à soi. */
-export default function AccountMenu({ userId, profile, open, onClose, onStatus, canUpload = true }: Props) {
+export default function AccountMenu({ userId, profile, open, onClose, onStatus, canUpload = true, mail = null }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   // Le menu du côté s'ouvre en dehors de la colonne (qui peut défiler) : on le place sous le nom, en position fixe.
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -51,6 +53,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
     ['/telegram', <TelegramLogo size={16} />, 'Telegram'],
     ['/wiki', '📖', 'Wiki'],
   ];
+  const mailLink: [string, ReactNode, string] = ['/courriel', '📬', 'Courriel'];
 
   // Dans <body> : la colonne du menu coupe tout ce qui dépasse (et un parent transformé casse la position fixe).
   return createPortal(
@@ -64,6 +67,9 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
         </div>
       )}
       <div className="account-links">
+        {mail && (
+          <Link to={mailLink[0]} role="menuitem" onClick={onClose}><span aria-hidden>{mailLink[1]}</span>{mailLink[2]}{mail.unread > 0 && <span className="side-badge red" style={{ marginLeft: 'auto' }} title={`${mail.unread} courriel${mail.unread > 1 ? 's' : ''} non lu${mail.unread > 1 ? 's' : ''}`}>{mail.unread > 99 ? '99+' : mail.unread}</span>}</Link>
+        )}
         {links.map(([to, icon, label]) => (
           <Link key={to} to={to} role="menuitem" onClick={onClose}><span aria-hidden>{icon}</span>{label}</Link>
         ))}

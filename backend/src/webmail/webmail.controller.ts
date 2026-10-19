@@ -9,9 +9,9 @@ const viewerOf = (req: any) => ({ userId: req.user.userId, username: req.user.us
 const num = (v: unknown) => Math.floor(Number(v));
 const uidList = (v: unknown): number[] => (Array.isArray(v) ? v : []).map(num);
 
-/** Interface Courriel : administrateurs seulement. Chacun règle les boîtes qu'il a ajoutées (et choisit qui d'autre y a accès) ; le rôle propriétaire du site règle toutes les boîtes. */
+/** Interface Courriel : toute l'équipe peut utiliser les boîtes auxquelles elle a accès ; seuls les administrateurs règlent des boîtes. Chacun règle les boîtes qu'il a ajoutées (et choisit qui d'autre y a accès) ; le rôle propriétaire du site règle toutes les boîtes. */
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'OWNER')
+@Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
 @Controller('webmail')
 export class WebmailController {
   constructor(private mail: WebmailService) {}
@@ -56,6 +56,27 @@ export class WebmailController {
   remove(@Param('id') id: string, @Body() b: any, @Request() req: any) { return this.mail.remove_(viewerOf(req), id, String(b?.folder || 'INBOX'), uidList(b?.uids)); }
 
   /** Envoi : formulaire multipart (champ `payload` en JSON + pièces jointes). */
+  @Get('mailboxes/:id/contacts')
+  contacts(@Param('id') id: string, @Query('q') q: string, @Request() req: any) { return this.mail.contacts(viewerOf(req), id, q); }
+
+  @Get('mailboxes/:id/draft')
+  draft(@Param('id') id: string, @Query() q: any, @Request() req: any) { return this.mail.openDraft(viewerOf(req), id, String(q.folder || 'Drafts'), num(q.uid)); }
+
+  @Get('mailboxes/:id/eml')
+  async eml(@Param('id') id: string, @Query() q: any, @Request() req: any, @Res() res: any) {
+    const buf = await this.mail.source(viewerOf(req), id, String(q.folder || 'INBOX'), num(q.uid));
+    res.set({ 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="courriel-${num(q.uid)}.eml"`, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store' }).send(buf);
+  }
+
+  /** Brouillon : même formulaire que l'envoi, sans rien envoyer. */
+  @Post('mailboxes/:id/draft')
+  @UseInterceptors(AnyFilesInterceptor({ limits: { fileSize: 20 * 1024 * 1024, files: 10, fields: 20 } }))
+  saveDraft(@Param('id') id: string, @Body('payload') payload: string, @UploadedFiles() files: any[], @Request() req: any) {
+    let input: any = {};
+    try { input = JSON.parse(String(payload ?? '{}')); } catch { /* corps invalide */ }
+    return this.mail.saveDraft(viewerOf(req), id, input, (files ?? []).map((f) => ({ originalname: f.originalname, buffer: f.buffer, mimetype: f.mimetype, size: f.size })));
+  }
+
   @Post('mailboxes/:id/send')
   @UseInterceptors(AnyFilesInterceptor({ limits: { fileSize: 20 * 1024 * 1024, files: 10, fields: 20 } }))
   send(@Param('id') id: string, @Body('payload') payload: string, @UploadedFiles() files: any[], @Request() req: any) {
@@ -66,18 +87,23 @@ export class WebmailController {
 
   // ---- réglages des boîtes (le service vérifie que la boîte appartient bien à celui qui la règle)
 
+  @Roles('ADMIN', 'OWNER')
   @Get('admin')
   adminList(@Request() req: any) { return this.mail.adminList(viewerOf(req)); }
 
+  @Roles('ADMIN', 'OWNER')
   @Post('admin/test')
   test(@Body() b: any, @Request() req: any) { return this.mail.test(viewerOf(req), b, b?.id); }
 
+  @Roles('ADMIN', 'OWNER')
   @Post('admin/mailboxes')
   create(@Body() b: any, @Request() req: any) { return this.mail.create(viewerOf(req), b, req.ip); }
 
+  @Roles('ADMIN', 'OWNER')
   @Put('admin/mailboxes/:id')
   update(@Param('id') id: string, @Body() b: any, @Request() req: any) { return this.mail.update(viewerOf(req), id, b, req.ip); }
 
+  @Roles('ADMIN', 'OWNER')
   @Delete('admin/mailboxes/:id')
   del(@Param('id') id: string, @Request() req: any) { return this.mail.remove(viewerOf(req), id, req.ip); }
 }

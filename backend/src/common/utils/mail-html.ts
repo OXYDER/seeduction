@@ -98,3 +98,38 @@ export function prefixSubject(subject: string, prefix: 'Re' | 'Fwd'): string {
   const s = headerSafe(subject);
   return new RegExp(`^${prefix}\\s*:`, 'i').test(s) ? s : `${prefix}: ${s}`;
 }
+
+/**
+ * HTML d'un courriel qu'on ENVOIE (rédigé dans l'éditeur du site) : mêmes limites que pour la lecture (pas de script, liens http/https/mailto), mais on garde les couleurs, tailles et alignements
+ * (styles en ligne, les seuls que les logiciels de courriel respectent) et les images https ou intégrées.
+ */
+export function sanitizeOutgoingHtml(html: string): string {
+  return sanitizeHtml(String(html ?? ''), {
+    allowedTags: [...ALLOWED_TAGS, 'u'],
+    allowedAttributes: { a: ['href', 'title'], img: ['src', 'alt', 'width', 'height'], td: ['colspan', 'rowspan', 'align', 'width'], th: ['colspan', 'rowspan', 'align', 'width'], table: ['width', 'border', 'cellpadding', 'cellspacing'], font: ['color', 'size'], '*': ['style', 'align'] },
+    allowedStyles: {
+      '*': {
+        color: [/^#[0-9a-f]{3,8}$/i, /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/i, /^[a-z]{3,20}$/i],
+        'background-color': [/^#[0-9a-f]{3,8}$/i, /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/i, /^[a-z]{3,20}$/i],
+        'font-size': [/^\d{1,3}(\.\d+)?(px|pt|em|rem|%)$/i], 'font-weight': [/^(bold|normal|[1-9]00)$/i], 'font-style': [/^(italic|normal)$/i],
+        'text-decoration': [/^(underline|line-through|none)$/i], 'text-align': [/^(left|right|center|justify)$/i],
+      },
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    allowedSchemesByTag: { img: ['http', 'https', 'data'] },
+    allowProtocolRelative: false,
+  });
+}
+
+/** Les images collées dans l'éditeur (data:image/...) deviennent des pièces jointes intégrées (cid:) : la plupart des logiciels de courriel n'affichent pas les images « data: ». */
+export function extractInlineImages(html: string): { html: string; attachments: { filename: string; content: Buffer; contentType: string; cid: string }[] } {
+  const attachments: { filename: string; content: Buffer; contentType: string; cid: string }[] = [];
+  const out = String(html ?? '').replace(/src="data:image\/(png|jpeg|jpg|gif|webp);base64,([A-Za-z0-9+/=]+)"/gi, (_m, type: string, b64: string) => {
+    if (attachments.length >= 10) return 'src=""';
+    const cid = `img${attachments.length + 1}.${Date.now().toString(36)}@seeduction`;
+    const ext = type.toLowerCase() === 'jpeg' ? 'jpg' : type.toLowerCase();
+    attachments.push({ filename: `image${attachments.length + 1}.${ext}`, content: Buffer.from(b64, 'base64'), contentType: `image/${type.toLowerCase() === 'jpg' ? 'jpeg' : type.toLowerCase()}`, cid });
+    return `src="cid:${cid}"`;
+  });
+  return { html: out, attachments };
+}

@@ -120,7 +120,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/support', icon: '🛟', cls: 'c-livechat', label: 'Support', match: starts('/support') },
   { to: '/moderation', icon: '🛡️', cls: 'c-staff', label: 'Modération', match: starts('/moderation'), staffOnly: true },
   { to: '/equipe', icon: '🏅', cls: 'c-staff', label: 'Équipe et rangs', match: starts('/equipe'), staffOnly: true },
-  { to: '/courriel', icon: '✉️', cls: 'c-staff', label: 'Courriel', match: starts('/courriel'), staffOnly: true, adminOnly: true },
   { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true },
 ];
 
@@ -303,15 +302,20 @@ function LayoutInner() {
   const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
   const isAdmin = ['ADMIN', 'OWNER'].includes(user?.role ?? '');
 
-  // Courriel (administrateurs) : nombre de courriels non lus dans les boîtes accessibles, pour la pastille du menu.
+  // Courriel (équipe) : le lien apparaît dans le menu du compte seulement si une boîte a été configurée pour ce membre ; pastille = courriels non lus.
+  const [hasMail, setHasMail] = useState(false);
   const [mailUnread, setMailUnread] = useState(0);
   useEffect(() => {
-    if (!accessToken || !isAdmin) { setMailUnread(0); return; }
+    if (!accessToken || !isStaff) { setHasMail(false); setMailUnread(0); return; }
+    api.get('/webmail/mailboxes').then((r) => setHasMail((r.data?.length ?? 0) > 0)).catch(() => setHasMail(false));
+  }, [accessToken, isStaff]);
+  useEffect(() => {
+    if (!accessToken || !hasMail) { setMailUnread(0); return; }
     const load = () => api.get('/webmail/unread').then((r) => setMailUnread(r.data.unread ?? 0)).catch(() => undefined);
     void load();
     const t = setInterval(() => { if (!document.hidden) void load(); }, 120_000);
     return () => clearInterval(t);
-  }, [accessToken, isAdmin, location.pathname === '/courriel']);
+  }, [accessToken, hasMail, location.pathname === '/courriel']);
 
   // File de modération (staff) : pastille du menu, recomptée à chaque changement de page et toutes les minutes.
   useEffect(() => {
@@ -363,7 +367,6 @@ function LayoutInner() {
       );
     }
     if (item.to === '/upload' && myUploadsHold > 0) return <span className="side-badge red" title={`${myUploadsHold} torrent${myUploadsHold > 1 ? 's' : ''} à corriger : l'équipe te demande une modification`}>{fmt(myUploadsHold)}</span>;
-    if (item.to === '/courriel' && mailUnread > 0) return <span className="side-badge red" title={`${mailUnread} courriel${mailUnread > 1 ? 's' : ''} non lu${mailUnread > 1 ? 's' : ''}`}>{fmt(mailUnread)}</span>;
     if (item.to === '/dead' && deadMine > 0) return <span className="side-badge red" title={`${deadMine} torrent${deadMine > 1 ? 's' : ''} sans seeder que tu peux relancer`}>{fmt(deadMine)}</span>;
     if (item.to === '/forum' && forumUnread > 0) return <span className="side-badge red" title={`${forumUnread} sujet${forumUnread > 1 ? 's' : ''} non lu${forumUnread > 1 ? 's' : ''} dans le forum`}>{fmt(forumUnread)}</span>;
     if (item.to === '/news' && newsUnseen > 0) return <span className="side-badge red" title={`${newsUnseen} nouvelle${newsUnseen > 1 ? 's' : ''} non lue${newsUnseen > 1 ? 's' : ''}`}>{fmt(newsUnseen)}</span>;
@@ -468,6 +471,7 @@ function LayoutInner() {
               onClose={() => setAccountOpen(false)}
               onStatus={() => { setAccountOpen(false); setStatusOpen(true); }}
               canUpload={!user?.profile || user.profile.perms?.upload !== false}
+              mail={hasMail ? { unread: mailUnread } : null}
             />
             <button className="secondary side-logout" onClick={() => { logout(); window.location.assign('/login'); }} title="Se déconnecter">⎋</button>
           </div>

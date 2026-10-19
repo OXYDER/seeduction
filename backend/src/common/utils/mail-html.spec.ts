@@ -72,3 +72,24 @@ describe('htmlToText', () => {
   });
   it('texte vide', () => { expect(htmlToText('')).toBe(''); });
 });
+
+describe('envoi : HTML sortant', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { sanitizeOutgoingHtml, extractInlineImages } = require('./mail-html');
+  it('garde couleurs, tailles et alignement, retire scripts, événements et styles dangereux', () => {
+    const h = sanitizeOutgoingHtml('<p style="color:#ff0000;text-align:center;position:fixed;background:url(javascript:x)" onclick="x()">Salut <span style="font-size:18px">gros</span></p><script>x()</script><a href="javascript:x()">m</a><a href="https://ok.com">ok</a>');
+    expect(h).toContain('color:#ff0000');
+    expect(h).toContain('text-align:center');
+    expect(h).toContain('font-size:18px');
+    expect(h).not.toMatch(/position|javascript|onclick|script|background/i);
+    expect(h).toContain('href="https://ok.com"');
+  });
+  it('les images collées deviennent des pièces jointes intégrées', () => {
+    const r = extractInlineImages('<p><img src="data:image/png;base64,QUJD"><img src="https://x.com/a.png"></p>');
+    expect(r.attachments).toHaveLength(1);
+    expect(r.attachments[0]).toMatchObject({ contentType: 'image/png', filename: 'image1.png' });
+    expect(r.attachments[0].content.toString()).toBe('ABC');
+    expect(r.html).toContain(`src="cid:${r.attachments[0].cid}"`);
+    expect(r.html).toContain('https://x.com/a.png');
+  });
+});

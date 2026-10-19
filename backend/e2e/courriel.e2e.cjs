@@ -24,8 +24,8 @@ const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E
   const hash = await bcrypt.hash('Mot-de-passe-test-1', 4);
   const old = new Date(Date.now() - 30 * 86400_000);
   const mk = (n, role) => p.user.create({ data: { username: tag + n, email: tag + n + '@t.local', passwordHash: hash, createdAt: old, role } });
-  const owner = await mk('o', 'OWNER'), adminA = await mk('a', 'ADMIN'), adminB = await mk('b', 'ADMIN'), member = await mk('m', 'USER');
-  const TO = tok(owner), TA = tok(adminA), TB = tok(adminB), TM = tok(member);
+  const owner = await mk('o', 'OWNER'), adminA = await mk('a', 'ADMIN'), adminB = await mk('b', 'ADMIN'), member = await mk('m', 'USER'), mod = await mk('d', 'MODERATOR');
+  const TO = tok(owner), TA = tok(adminA), TB = tok(adminB), TM = tok(member), TD = tok(mod);
 
   // ---- boîte de test : propre et vide
   const imap = new ImapFlow({ ...IMAP, secure: false, auth: { user: 'boite', pass: 'secret' }, logger: false }); imap.on('error', () => undefined);
@@ -55,8 +55,9 @@ const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E
   // ---- accès par administrateur
   check('administrateur sans autorisation : ne voit aucune boîte', (await call('GET', '/webmail/mailboxes', TA)).b.length === 0);
   check('administrateur sans autorisation : accès refusé (404)', (await call('GET', `/webmail/mailboxes/${id}/folders`, TA)).s === 404);
-  await call('PUT', `/webmail/admin/mailboxes/${id}`, TO, { ...cfg, password: '', allowedUserIds: [adminA.id, member.id] });
-  check('administrateur autorisé : voit la boîte (le membre ordinaire n\'est jamais accepté)', (await call('GET', '/webmail/mailboxes', TA)).b.length === 1 && (await p.mailbox.findUnique({ where: { id } })).allowedUserIds.join() === adminA.id);
+  await call('PUT', `/webmail/admin/mailboxes/${id}`, TO, { ...cfg, password: '', allowedUserIds: [adminA.id, member.id, mod.id] });
+  check('administrateur autorisé : voit la boîte ; un modérateur autorisé aussi ; un membre ordinaire jamais', (await call('GET', '/webmail/mailboxes', TA)).b.length === 1 && (await call('GET', '/webmail/mailboxes', TD)).b.length === 1 && (await p.mailbox.findUnique({ where: { id } })).allowedUserIds.sort().join() === [adminA.id, mod.id].sort().join());
+  check('le modérateur lit mais ne règle rien', (await call('GET', `/webmail/mailboxes/${id}/folders`, TD)).s === 200 && (await call('POST', '/webmail/admin/mailboxes', TD, cfg)).s === 403 && (await call('PUT', `/webmail/admin/mailboxes/${id}`, TD, cfg)).s === 403);
   check('l\'autre administrateur : toujours rien', (await call('GET', `/webmail/mailboxes/${id}/messages`, TB)).s === 404);
 
   // ---- réception de courriels
@@ -117,6 +118,44 @@ const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E
   check('une copie est rangée dans Envoyés', sent.b.total >= 1);
   check('journal d\'audit de l\'envoi', (await p.activityLog.count({ where: { userId: adminA.id, action: 'MAIL_SEND' } })) === 1);
 
+  // ---- envoi enrichi (HTML), brouillons, contacts, .eml
+  const sendJson = (payload, files = [], token = TA) => { const fd = new FormData(); fd.append('payload', JSON.stringify(payload)); for (const f of files) fd.append('files', new Blob([f.content]), f.name); return fetch(BASE + `/webmail/mailboxes/${id}/send`, { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: fd }).then(async (r) => ({ s: r.status, raw: await r.text() })); };
+  const draftJson = (payload, files = [], token = TA) => { const fd = new FormData(); fd.append('payload', JSON.stringify(payload)); for (const f of files) fd.append('files', new Blob([f.content]), f.name); return fetch(BASE + `/webmail/mailboxes/${id}/draft`, { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: fd }).then(async (r) => ({ s: r.status, b: await r.json().catch(() => null) })); };
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  r = await sendJson({ from: 'contact@seeduction.test', to: 'boite@seeduction.test', subject: 'Riche ' + tag, html: '<p style="color:#ff0000">Salut <b>gras</b></p><script>alert(1)</script><img src="data:image/png;base64,' + PNG + '"><a href="javascript:x()">piège</a>' });
+  check('envoi en HTML (couleurs, image collée) accepté', r.s === 201, r.raw.slice(0, 100));
+  await new Promise((r2) => setTimeout(r2, 1000));
+  const rich = (await call('GET', `/webmail/mailboxes/${id}/messages?folder=INBOX&q=${encodeURIComponent('Riche ' + tag)}`, TA)).b.items[0];
+  const richMsg = rich && (await call('GET', `/webmail/mailboxes/${id}/message?folder=INBOX&uid=${rich.uid}`, TA)).b;
+  check('courriel HTML reçu : mise en forme gardée, script et lien piégé retirés, texte alternatif présent', !!richMsg && /<b>gras<\/b>/.test(richMsg.html) && !/script|javascript:|alert/i.test(richMsg.html) && /Salut gras/.test(richMsg.text), richMsg?.html?.slice(0, 200));
+  check('l\'image collée est devenue une image intégrée au courriel (affichée sans bloquer)', !!richMsg && /<img[^>]+src="data:image\/png/.test(richMsg.html) && richMsg.remoteImages === 0, richMsg?.html?.slice(0, 260));
+
+  const d1 = await draftJson({ from: 'contact@seeduction.test', to: 'boite@seeduction.test', subject: 'Brouillon ' + tag, html: '<p>Début de <i>texte</i></p>' });
+  check('brouillon enregistré dans Brouillons', d1.s === 201 && d1.b.uid > 0, JSON.stringify(d1.b));
+  const dl = await call('GET', `/webmail/mailboxes/${id}/messages?folder=Drafts`, TA);
+  check('le brouillon apparaît dans le dossier Brouillons', dl.b.items.some((m) => m.subject === 'Brouillon ' + tag));
+  const dOpen = await call('GET', `/webmail/mailboxes/${id}/draft?folder=Drafts&uid=${d1.b.uid}`, TA);
+  check('reprise du brouillon : expéditeur, destinataire, sujet et texte retrouvés', dOpen.s === 200 && dOpen.b.from === 'contact@seeduction.test' && dOpen.b.to.includes('boite@seeduction.test') && dOpen.b.subject === 'Brouillon ' + tag && /Début de <i>texte<\/i>/.test(dOpen.b.html), dOpen.raw.slice(0, 160));
+  const d2 = await draftJson({ from: 'contact@seeduction.test', to: 'boite@seeduction.test', subject: 'Brouillon ' + tag, html: '<p>Version 2</p>', draftFolder: 'Drafts', draftUid: d1.b.uid }, [{ name: 'brouillon.txt', content: 'joint au brouillon' }]);
+  const dl2 = await call('GET', `/webmail/mailboxes/${id}/messages?folder=Drafts`, TA);
+  check('nouvel enregistrement : remplace l\'ancien brouillon (un seul)', d2.s === 201 && dl2.b.items.filter((m) => m.subject === 'Brouillon ' + tag).length === 1 && dl2.b.items[0].attachments === true);
+  const dOpen2 = await call('GET', `/webmail/mailboxes/${id}/draft?folder=Drafts&uid=${d2.b.uid}`, TA);
+  r = await sendJson({ from: 'contact@seeduction.test', to: 'boite@seeduction.test', subject: 'Brouillon ' + tag, html: '<p>Version finale</p>', draftFolder: 'Drafts', draftUid: d2.b.uid, keepAttachments: dOpen2.b.attachments.map((a) => a.index) });
+  await new Promise((r2) => setTimeout(r2, 1000));
+  const dl3 = await call('GET', `/webmail/mailboxes/${id}/messages?folder=Drafts`, TA);
+  const fin = (await call('GET', `/webmail/mailboxes/${id}/messages?folder=INBOX&q=${encodeURIComponent('Brouillon ' + tag)}`, TA)).b.items[0];
+  check('envoi depuis le brouillon : le brouillon disparaît et sa pièce jointe est conservée', r.s === 201 && !dl3.b.items.some((m) => m.subject === 'Brouillon ' + tag) && fin?.attachments === true, JSON.stringify(dl3.b.items.map((m) => m.subject)));
+
+  const ct = await call('GET', `/webmail/mailboxes/${id}/contacts?q=marie`, TA);
+  check('suggestions d\'adresses (gens déjà croisés)', ct.s === 200 && Array.isArray(ct.b), ct.raw.slice(0, 120));
+  const ctAll = await call('GET', `/webmail/mailboxes/${id}/contacts?q=`, TA);
+  check('suggestions : l\'adresse de la boîte n\'est pas proposée', ctAll.b.every((c) => c.address !== 'contact@seeduction.test'));
+  const eml = await fetch(BASE + `/webmail/mailboxes/${id}/eml?folder=INBOX&uid=${fin.uid}`, { headers: { Authorization: 'Bearer ' + TA } });
+  const emlText = await eml.text();
+  check('courriel complet (.eml) téléchargeable', eml.status === 200 && /attachment; filename="courriel-/.test(eml.headers.get('content-disposition')) && /Subject: Brouillon/i.test(emlText));
+  check('le modérateur peut écrire depuis la boîte (pas de droit de réglage)', (await sendJson({ from: 'notifications@seeduction.test', to: 'boite@seeduction.test', subject: 'Modérateur ' + tag, text: 'ok' }, [], TD)).s === 201);
+  check('un membre ordinaire ne peut pas écrire', (await sendJson({ from: 'contact@seeduction.test', to: 'boite@seeduction.test', subject: 'x', text: 'x' }, [], TM)).s === 403);
+
   // ---- suppression de la boîte
   check('un administrateur autorisé peut lire mais pas régler ni retirer la boîte d\'un autre', (await call('DELETE', `/webmail/admin/mailboxes/${id}`, TA)).s === 403 && (await call('PUT', `/webmail/admin/mailboxes/${id}`, TA, cfg)).s === 403 && (await call('GET', '/webmail/admin', TA)).b.mailboxes.length === 0);
   const own = await call('POST', '/webmail/admin/mailboxes', TB, { ...cfg, label: 'Boîte de B ' + tag });
@@ -126,7 +165,7 @@ const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E
   await call('DELETE', `/webmail/admin/mailboxes/${own.b.id}`, TB);
   check('le propriétaire supprime la boîte', (await call('DELETE', `/webmail/admin/mailboxes/${id}`, TO)).s === 200 && (await call('GET', `/webmail/mailboxes/${id}/folders`, TO)).s === 404);
 
-  const ids = [owner.id, adminA.id, adminB.id, member.id];
+  const ids = [owner.id, adminA.id, adminB.id, member.id, mod.id];
   await p.mailbox.deleteMany({ where: { label: { in: ['Boîte ' + tag, 'Boîte de B ' + tag] } } });
   await p.activityLog.deleteMany({ where: { userId: { in: ids } } });
   await p.user.deleteMany({ where: { id: { in: ids } } });
