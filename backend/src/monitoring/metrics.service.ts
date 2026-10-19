@@ -80,6 +80,14 @@ export class MetricsService {
     }
   }
 
+  /** Totaux d'une heure (début en ms), d'après les minutes encore en mémoire ; les minutes d'avant un redémarrage n'y sont plus. */
+  hourTotals(hourStartMs: number): { requests: number; errors: number; announces: number } {
+    const first = Math.floor(hourStartMs / 60_000);
+    const out = { requests: 0, errors: 0, announces: 0 };
+    for (let m = first; m < first + 60; m++) { const b = this.buckets.get(m); if (b) { out.requests += b.requests; out.errors += b.errors; out.announces += b.announces; } }
+    return out;
+  }
+
   /** Une entrée par minute sur la dernière heure (zéros inclus), de la plus ancienne à la plus récente. */
   series() {
     const nowMinute = Math.floor(Date.now() / 60_000);

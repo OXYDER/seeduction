@@ -2511,3 +2511,28 @@ model SubtitleFile {
 
   @@index([torrentId])
 }
+
+/// Historique du site : une ligne par heure (requêtes, erreurs 5xx, annonces du tracker, pic de membres en ligne, mémoire, retard maximal), conservée 120 jours. Sert aux graphiques d'Admin > Monitoring.
+model SiteSample {
+  hour       DateTime @id
+  requests   Int      @default(0)
+  errors     Int      @default(0)
+  announces  Int      @default(0)
+  onlinePeak Int      @default(0)
+  rssMB      Int      @default(0)
+  lagMs      Int      @default(0)
+}
+
+/// Incident de santé du site : de l'apparition d'un problème (contrôle en avertissement ou en erreur) à son rétablissement.
+model HealthIncident {
+  id         String    @id @default(uuid())
+  checkId    String    @db.VarChar(40)
+  label      String    @db.VarChar(120)
+  level      String    @db.VarChar(8)
+  detail     String    @default("") @db.VarChar(500)
+  startedAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([startedAt])
+  @@index([checkId, resolvedAt])
+}

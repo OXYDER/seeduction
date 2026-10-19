@@ -3,6 +3,7 @@ import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { SportsService } from '../sports/sports.service';
 import { MetricsService } from './metrics.service';
 import { jobMonitor } from '../common/utils/job-monitor';
@@ -26,7 +27,7 @@ export class HealthService implements OnModuleInit {
   private last: { at: number; checks: Check[] } | null = null;
   private running = false;
 
-  constructor(private prisma: PrismaService, private settings: SettingsService, private notifications: NotificationsService, private sports: SportsService, private metrics: MetricsService) {}
+  constructor(private prisma: PrismaService, private settings: SettingsService, private notifications: NotificationsService, private sports: SportsService, private metrics: MetricsService, private telegram: TelegramService) {}
 
   /** Premier contrôle une minute après le démarrage (le temps que tout soit prêt). */
   onModuleInit() { setTimeout(() => { void this.tick(); }, 60_000).unref?.(); }
@@ -38,7 +39,28 @@ export class HealthService implements OnModuleInit {
   register(id: string, fn: ExtraCheck) { this.extra.set(id, fn); }
 
   async alertsEnabled(): Promise<boolean> { return ((await this.settings.get(KEY)) as { enabled?: boolean } | null)?.enabled !== false; }
-  async setAlerts(enabled: boolean) { await this.settings.set(KEY, { enabled }); return { enabled }; }
+  /** Les problèmes graves (rouges) sont aussi envoyés par Telegram aux administrateurs qui ont relié leur compte (activé par défaut). */
+  async telegramAlerts(): Promise<boolean> { return ((await this.settings.get(KEY)) as { telegram?: boolean } | null)?.telegram !== false; }
+  async setAlerts(enabled: boolean) { const cur = ((await this.settings.get(KEY)) as object | null) ?? {}; await this.settings.set(KEY, { ...cur, enabled }); return { enabled }; }
+  async setTelegramAlerts(telegram: boolean) { const cur = ((await this.settings.get(KEY)) as object | null) ?? {}; await this.settings.set(KEY, { ...cur, telegram }); return { telegram }; }
+
+  /** Ouvre un incident (sauf s'il y en a déjà un d'ouvert pour ce contrôle : un rappel n'en crée pas un second). */
+  private async openIncident(c: Check) {
+    try {
+      const open = await this.prisma.healthIncident.findFirst({ where: { checkId: c.id, resolvedAt: null } });
+      if (!open) await this.prisma.healthIncident.create({ data: { checkId: c.id, label: c.label.slice(0, 120), level: c.level, detail: c.detail.slice(0, 500) } });
+      else if (open.level !== c.level) await this.prisma.healthIncident.update({ where: { id: open.id }, data: { level: c.level, detail: c.detail.slice(0, 500) } });
+    } catch (e) { this.logger.warn(`Incident de santé : ${(e as Error).message}`); }
+  }
+  private async closeIncident(id: string) {
+    try {
+      const open = await this.prisma.healthIncident.findFirst({ where: { checkId: id, resolvedAt: null }, orderBy: { startedAt: 'desc' } });
+      if (!open) return null;
+      await this.prisma.healthIncident.updateMany({ where: { checkId: id, resolvedAt: null }, data: { resolvedAt: new Date() } });
+      return open;
+    } catch { return null; }
+  }
+  private esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   async check(): Promise<{ at: string; level: Level; checks: Check[]; alerts: boolean }> {
     const start = Date.now();
@@ -70,6 +92,10 @@ export class HealthService implements OnModuleInit {
       if (!(await this.alertsEnabled())) return;
       const plan = planAlerts(checks, this.alerted, Date.now());
       this.alerted = plan.next;
+      // Historique des incidents (Admin > Monitoring) : ouverts à l'apparition d'un problème, fermés à son rétablissement.
+      for (const c of plan.raise) await this.openIncident(c);
+      const closed: { checkId: string; label: string; level: string }[] = [];
+      for (const r of plan.resolve) { const inc = await this.closeIncident(r.id); if (inc) closed.push({ checkId: r.id, label: r.label, level: inc.level }); }
       if (plan.raise.length === 0 && plan.resolve.length === 0) return;
       const admins = await this.prisma.user.findMany({ where: { role: { in: ['ADMIN', 'OWNER'] }, status: 'ACTIVE', parentId: null }, select: { id: true } });
       for (const a of admins) {
@@ -78,6 +104,14 @@ export class HealthService implements OnModuleInit {
         }
         for (const r of plan.resolve) {
           await this.notifications.notify({ userId: a.id, type: 'SYSTEM', category: 'system', groupKey: `health-${r.id}`, title: `🟢 Rétabli : ${r.label}`, body: 'Le problème signalé a disparu.', link: '/admin' }).catch(() => undefined);
+        }
+      }
+      // Telegram : seulement ce qui est grave (rouge) et son rétablissement, pour ne pas noyer les administrateurs.
+      if (await this.telegramAlerts()) {
+        const site = (process.env.SITE_URL ?? '').replace(/\/$/, '');
+        for (const a of admins) {
+          for (const c of plan.raise.filter((x) => x.level === 'error')) await this.telegram.dm(a.id, `🔴 <b>Seeduction : ${this.esc(c.label)}</b>\n${this.esc(c.detail.slice(0, 300))}${site ? `\n\n<a href="${site}/admin?tab=Monitoring">Ouvrir le monitoring</a>` : ''}`).catch(() => false);
+          for (const r of closed.filter((x) => x.level === 'error')) await this.telegram.dm(a.id, `🟢 <b>Rétabli : ${this.esc(r.label)}</b>`).catch(() => false);
         }
       }
       if (plan.raise.length) this.logger.warn(`Santé du site : ${plan.raise.map((c) => `${c.label} (${c.level})`).join(', ')}`);

@@ -32,6 +32,7 @@ import AdminChallenges from '../components/AdminChallenges';
 import SecurityWatch from '../components/SecurityWatch';
 import AdminDuels from '../components/AdminDuels';
 import HealthPanel from '../components/HealthPanel';
+import SiteHistoryPanel from '../components/SiteHistoryPanel';
 import AdminEconomy from '../components/AdminEconomy';
 import AdminCashback from '../components/AdminCashback';
 import AdminUploadCredit from '../components/AdminUploadCredit';
@@ -258,6 +259,7 @@ function MonitoringAdmin() {
   return (
     <div className="grid">
       <HealthPanel />
+      <SiteHistoryPanel />
       <SecurityWatch />
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <StatTile label="Base de données" value={database.ok ? `OK (${database.latencyMs} ms)` : 'INJOIGNABLE'} tone={database.ok ? 'ok' : 'bad'} />

@@ -8,11 +8,14 @@ import { CspReportService } from './csp-report.service';
 import { CspReportController } from './csp-report.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SportsModule } from '../sports/sports.module';
+import { TelegramModule } from '../telegram/telegram.module';
+import { PresenceModule } from '../presence/presence.module';
+import { SiteHistoryService } from './site-history.service';
 
 @Module({
-  imports: [NotificationsModule, SportsModule],
+  imports: [NotificationsModule, SportsModule, TelegramModule, PresenceModule],
   controllers: [MonitoringController, CspReportController],
-  providers: [MonitoringService, MetricsService, HealthService, SecurityWatchService, CspReportService],
+  providers: [MonitoringService, MetricsService, HealthService, SecurityWatchService, CspReportService, SiteHistoryService],
   exports: [MetricsService, HealthService],
 })
 export class MonitoringModule {}

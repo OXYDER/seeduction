@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 
 interface Check { id: string; label: string; level: 'ok' | 'warn' | 'error'; detail: string }
-interface Health { at: string; level: 'ok' | 'warn' | 'error'; checks: Check[]; alerts: boolean }
+interface Health { at: string; level: 'ok' | 'warn' | 'error'; checks: Check[]; alerts: boolean; telegram?: boolean; telegramLinked?: boolean }
 
 const ICON = { ok: '🟢', warn: '🟠', error: '🔴' } as const;
 const TEXT = { ok: 'Tout va bien', warn: 'À surveiller', error: 'Problème à régler' } as const;
@@ -16,6 +16,9 @@ export default function HealthPanel() {
   async function toggle(enabled: boolean) {
     try { await api.put('/admin/monitoring/health/alerts', { enabled }); await load(); } catch (e: any) { setErr(e.response?.data?.message ?? 'Erreur'); }
   }
+  async function toggleTelegram(enabled: boolean) {
+    try { await api.put('/admin/monitoring/health/telegram', { enabled }); await load(); } catch (e: any) { setErr(e.response?.data?.message ?? 'Erreur'); }
+  }
   if (err && !h) return <div className="panel" style={{ color: 'var(--danger)' }}>{err}</div>;
   if (!h) return null;
   const problems = h.checks.filter((c) => c.level !== 'ok');
@@ -28,6 +31,10 @@ export default function HealthPanel() {
           <input type="checkbox" checked={h.alerts} onChange={(e) => toggle(e.target.checked)} /> M'alerter par notification quand un problème apparaît
         </label>
       </div>
+      <label className="muted" style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, flexWrap: 'wrap' }}>
+        <input type="checkbox" checked={h.telegram !== false} onChange={(e) => toggleTelegram(e.target.checked)} /> Envoyer aussi les problèmes graves (🔴) par Telegram
+        {h.telegram !== false && !h.telegramLinked && <span style={{ color: '#ff9f2d' }}>· ton compte n'est pas relié à Telegram : <a href="/telegram">relie-le ici</a></span>}
+      </label>
       <div style={{ display: 'grid', gap: 6 }}>
         {shown.map((c) => (
           <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '22px 1fr', gap: 8, alignItems: 'start', opacity: c.level === 'ok' ? 0.75 : 1 }}>
