@@ -3491,6 +3491,8 @@ a.community-tile { cursor: pointer; }
 .cr-av { position: relative; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: rgba(8, 10, 22, 0.82); border: 2px solid rgba(255, 255, 255, 0.2); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45); transition: transform .15s ease, border-color .15s ease; }
 .cr-bubble:hover .cr-av { transform: translateY(-2px) scale(1.04); }
 .cr-bubble.open .cr-av { border: 3px solid #fff; box-shadow: 0 0 0 3px var(--gold, #e0b84a), 0 0 14px 4px rgba(var(--acc-rgb, 224, 184, 74), 0.85), 0 6px 16px rgba(0, 0, 0, 0.45); }
+/* L'avatar d'une conversation privée (44 px) recouvre la bordure de la bulle (46 px) : l'anneau blanc est redessiné par-dessus pour que la bulle ouverte soit identique à celle d'un canal public. */
+.cr-bubble.open .cr-av::after { content: ''; position: absolute; inset: -3px; border: 3px solid #fff; border-radius: 50%; pointer-events: none; z-index: 2; }
 .cr-bubble.open .cr-name { background: var(--gold, #e0b84a); color: #14110a; font-weight: 700; }
 .cr-bubble.unread .cr-av { border-color: #fff; }
 .cr-bubble.muted { opacity: 0.6; }
