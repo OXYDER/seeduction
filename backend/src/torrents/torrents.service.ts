@@ -67,15 +67,15 @@ export const LIST_SELECT: any = {
 export async function attachListExtras<T extends { id: string }>(prisma: PrismaService, rows: T[]): Promise<(T & { metadata: any; fileCount: number })[]> {
   if (rows.length === 0) return [];
   const ids = [...new Set(rows.map((r) => r.id))];
-  const extra = await prisma.$queryRaw<{ id: string; fileCount: number; overview: string | null; backdrop: string | null; title: string | null; runtime: string | null; kind: string | null }[]>`
+  const extra = await prisma.$queryRaw<{ id: string; fileCount: number; overview: string | null; backdrop: string | null; title: string | null; runtime: string | null; kind: string | null; rating: string | null }[]>`
     SELECT id,
       CASE WHEN jsonb_typeof("fileList") = 'array' THEN jsonb_array_length("fileList") ELSE 0 END AS "fileCount",
-      left(metadata->>'overview', 1000) AS overview, metadata->>'backdrop' AS backdrop, metadata#>>'{titles,0,title}' AS title, metadata->>'runtime' AS runtime, metadata->>'kind' AS kind
+      left(metadata->>'overview', 1000) AS overview, metadata->>'backdrop' AS backdrop, metadata#>>'{titles,0,title}' AS title, metadata->>'runtime' AS runtime, metadata->>'kind' AS kind, metadata->>'rating' AS rating
     FROM "Torrent" WHERE id = ANY(${ids}::text[])`;
   const byId = new Map(extra.map((e) => [e.id, e]));
   return rows.map((r) => {
     const e = byId.get(r.id);
-    const metadata = e ? { overview: e.overview ?? undefined, backdrop: e.backdrop ?? undefined, titles: e.title ? [{ title: e.title }] : undefined, runtime: e.runtime ?? undefined, kind: e.kind ?? undefined } : null;
+    const metadata = e ? { overview: e.overview ?? undefined, backdrop: e.backdrop ?? undefined, titles: e.title ? [{ title: e.title }] : undefined, runtime: e.runtime ?? undefined, kind: e.kind ?? undefined, rating: e.rating ?? undefined } : null;
     return { ...r, metadata, fileCount: Number(e?.fileCount ?? 0) };
   });
 }
@@ -87,7 +87,10 @@ export function toListRow({ metadata, ...t }: any) {
   const backdrop = (metadata as any)?.backdrop;
   const mainTitle = (metadata as any)?.titles?.[0]?.title;
   const runtime = Number((metadata as any)?.runtime) || t.durationMinutes || null;
-  return { ...t, metaKind: (metadata as any)?.kind ?? null, runtime, displayTitle: typeof mainTitle === 'string' && mainTitle.trim() ? mainTitle.trim() : null, backdrop: typeof backdrop === 'string' ? backdrop : null, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
+  const rawRating = Number((metadata as any)?.rating);
+  // Note de la fiche (TMDB : sur 10 ; jeux et autres bases : sur 5), pour la vue « Confortable »
+  const rating = Number.isFinite(rawRating) && rawRating > 0 ? rawRating : null;
+  return { ...t, metaKind: (metadata as any)?.kind ?? null, runtime, rating, ratingMax: rating !== null ? (t.metaSource === 'tmdb' ? 10 : 5) : null, displayTitle: typeof mainTitle === 'string' && mainTitle.trim() ? mainTitle.trim() : null, backdrop: typeof backdrop === 'string' ? backdrop : null, synopsis: synopsis && synopsis.length > 320 ? `${synopsis.slice(0, 317).trimEnd()}…` : synopsis };
 }
 
 @Injectable()

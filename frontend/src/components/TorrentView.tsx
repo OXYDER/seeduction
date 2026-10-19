@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
+import { episodeCode, seasonEpisodeOf } from '../lib/frText';
 import { useFavorites } from '../lib/favorites';
 import { resolveContentKind } from '../lib/categoryKind';
 import { downloadTorrent } from '../lib/download';
@@ -240,6 +241,51 @@ function TorrentViewBody(props: TorrentViewProps) {
             })}
           </tbody>
         </table>
+      </div>
+    );
+  }
+
+  // ------------------------------------------------------------------ confortable (lignes aérées : titre, saison / épisode, note, qualité, santé, téléchargement)
+  if (view === 'comfortable') {
+    return (
+      <div className="tv-comfy">
+        {items.map((t) => {
+          const se = seasonEpisodeOf(t);
+          const ep = episodeCode(se.season, se.episode);
+          const title: string | null = t.displayTitle ?? null;
+          const seeders = t.seeders ?? 0, leechers = t.leechers ?? 0;
+          const total = seeders + leechers;
+          const seedPct = total > 0 ? Math.round((seeders / total) * 100) : 0;
+          return (
+            <article key={t.id} className="tv-comfy-row">
+              <Link to={`/torrents/${t.id}`} className="tv-comfy-poster" tabIndex={-1} aria-hidden="true"><Cover t={t} /></Link>
+              <div className="tv-comfy-main">
+                <div className="tv-comfy-line1">
+                  {star(t)}
+                  <CategoryTag category={t.category} />
+                  {title ? <TorrentHover id={t.id}><Link to={`/torrents/${t.id}`} className="tv-comfy-title">{title}</Link></TorrentHover> : <span className="tv-comfy-title">{titleLink(t)}</span>}
+                  {ep && <span className="tv-chip tv-chip-ep" title="Saison / épisode">{ep}</span>}
+                  {t.year && <span className="tv-comfy-year">{t.year}</span>}
+                  {t.rating && <span className="tv-chip tv-chip-star" title="Note de la fiche">★ {Number(t.rating).toFixed(1).replace('.', ',')}<small>/{t.ratingMax ?? 10}</small></span>}
+                  {isStaff && <Link to={`/torrents/${t.id}?edit=1`} title="Modifier / supprimer (staff)">✏️</Link>}
+                </div>
+                {title && <div className="tv-comfy-release"><TorrentHover id={t.id}><Link to={`/torrents/${t.id}`}>{t.name}</Link></TorrentHover><CopyButton text={t.name} title="Copier le nom de la release" /></div>}
+                <div className="tv-comfy-tags"><MetaChips t={t} className="tv-meta-chips" omit={title ? ['ep', 'ep2', 'yr'] : []} /> <Badges t={t} quality={false} /></div>
+                {t.reason && <div className="tv-reason">✨ {t.reason}</div>}
+                {props.extraColumns && props.extraColumns.length > 0 && <div className="muted tv-detail-foot">{extras(t)}</div>}
+              </div>
+              <div className="tv-comfy-stats">
+                <div className="tv-comfy-size">{formatBytes(t.size)}</div>
+                <div className="muted tv-comfy-age">{t.createdAt ? timeAgo(t.createdAt) : ''}</div>
+                <div className="tv-comfy-sl" title="Seeders · leechers"><span className="up">↑ {seeders}</span> <span className="down">↓ {leechers}</span></div>
+                <div className="muted tv-comfy-done" title="Téléchargements complétés">{t.completedCount ?? 0} compl.</div>
+                <div className="tv-bar" role="img" aria-label={`${seeders} seeders, ${leechers} leechers`} title={`${seeders} seeders · ${leechers} leechers`}><span className="seed" style={{ width: `${seedPct}%` }} /><span className="leech" style={{ width: `${total > 0 ? 100 - seedPct : 0}%` }} /></div>
+                <div className="muted tv-comfy-foot"><span title="Commentaires">💬 {t._count?.comments ?? 0}</span>{!props.hideUploader && <> · par {t.anonymousUpload ? 'Anonyme' : t.uploader ? <UserLink user={t.uploader} /> : '—'}</>}</div>
+              </div>
+              <div className="tv-comfy-actions">{actions(t)}</div>
+            </article>
+          );
+        })}
       </div>
     );
   }

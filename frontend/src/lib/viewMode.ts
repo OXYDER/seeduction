@@ -5,10 +5,11 @@ import { useCallback, useSyncExternalStore } from 'react';
  * Chaque membre choisit un affichage par défaut dans son compte (stocké côté serveur, voir User.defaultView) ; sur
  * chaque page il peut ensuite changer ponctuellement — ce choix-là est retenu par page, dans ce navigateur seulement.
  */
-export type ViewMode = 'list' | 'details' | 'grid' | 'posters' | 'compact' | 'grouped';
+export type ViewMode = 'list' | 'comfortable' | 'details' | 'grid' | 'posters' | 'compact' | 'grouped';
 
 export const VIEW_MODES: { id: ViewMode; icon: string; label: string; hint: string }[] = [
   { id: 'list', icon: '☰', label: 'Liste', hint: 'Tableau complet, colonnes triables' },
+  { id: 'comfortable', icon: '☷', label: 'Confortable', hint: 'Lignes aérées : affiche, titre, saison / épisode, note, qualité, santé du torrent et téléchargement' },
   { id: 'details', icon: '▤', label: 'Détails', hint: 'Une grande ligne par torrent : affiche, synopsis et infos' },
   { id: 'grid', icon: '▦', label: 'Grille', hint: 'Cartes avec titre, qualité et statistiques' },
   { id: 'posters', icon: '▩', label: 'Affiches', hint: 'Grandes affiches seules, infos au survol' },

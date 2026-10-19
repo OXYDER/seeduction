@@ -4242,3 +4242,39 @@ button.hl-cash:disabled { opacity: 0.45; filter: grayscale(0.5); }
 /* Bouton d'apparence « lien » (journal de modération) */
 button.link { background: none; border: 0; box-shadow: none; padding: 0; font: inherit; color: var(--acc-light, #f4d06a); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
 button.link:hover { filter: none; transform: none; text-decoration-style: solid; }
+
+/* Vue « Confortable » des listes de torrents : lignes aérées (affiche, titre, saison / épisode, note, qualité, santé du torrent, téléchargement) */
+.tv-comfy { display: grid; gap: 10px; }
+.tv-comfy-row { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto auto; gap: 16px; align-items: center; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border, rgba(255,255,255,.12)); background: rgba(255,255,255,0.035); transition: border-color .15s, background .15s; }
+.tv-comfy-row:hover { border-color: rgba(var(--acc-rgb, 224,184,74), 0.55); background: rgba(255,255,255,0.06); }
+.tv-comfy-poster { display: block; }
+.tv-comfy-poster .poster, .tv-comfy-poster .poster-fallback { width: 64px; height: 92px; object-fit: cover; border-radius: 6px; display: block; background: #12182e; }
+.tv-comfy-poster .poster-fallback { display: flex; align-items: center; justify-content: center; font-size: 26px; }
+.tv-comfy-main { display: grid; gap: 6px; min-width: 0; }
+.tv-comfy-line1 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.tv-comfy-title { font-weight: 800; font-size: 16px; line-height: 1.25; color: var(--text, #fff); overflow-wrap: anywhere; }
+.tv-comfy-title a { color: inherit; }
+.tv-comfy-year { color: var(--text-muted, rgba(255,255,255,.7)); font-size: 14px; }
+.tv-chip { display: inline-flex; align-items: baseline; gap: 2px; padding: 1px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; line-height: 1.6; border: 1px solid transparent; }
+.tv-chip small { font-weight: 500; opacity: .65; }
+.tv-chip-ep { color: #7ab8ff; background: rgba(90, 150, 255, 0.14); border-color: rgba(90, 150, 255, 0.4); }
+.tv-chip-star { color: #ffd24a; background: rgba(255, 210, 74, 0.1); border-color: rgba(255, 210, 74, 0.3); }
+.tv-comfy-release { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; color: var(--acc-link, #6ee7b7); overflow-wrap: anywhere; }
+.tv-comfy-release a { color: inherit; }
+.tv-comfy-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.tv-comfy-stats { display: grid; gap: 3px; justify-items: end; text-align: right; min-width: 150px; font-size: 13px; }
+.tv-comfy-size { font-weight: 800; font-size: 14px; }
+.tv-comfy-sl { font-weight: 800; }
+.tv-comfy-sl .up { color: var(--success, #4caf50); }
+.tv-comfy-sl .down { color: var(--danger, #e5384f); margin-left: 6px; }
+.tv-bar { display: flex; width: 150px; height: 5px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.12); }
+.tv-bar .seed { background: var(--success, #4caf50); }
+.tv-bar .leech { background: var(--danger, #e5384f); }
+.tv-comfy-foot { font-size: 12px; }
+.tv-comfy-actions { display: flex; gap: 6px; align-items: center; }
+@media (max-width: 900px) {
+  .tv-comfy-row { grid-template-columns: 56px minmax(0, 1fr); gap: 10px 12px; }
+  .tv-comfy-poster .poster, .tv-comfy-poster .poster-fallback { width: 52px; height: 76px; }
+  .tv-comfy-stats { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(90px, auto)); justify-items: start; text-align: left; min-width: 0; }
+  .tv-comfy-actions { grid-column: 1 / -1; }
+}

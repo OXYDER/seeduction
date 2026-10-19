@@ -7,7 +7,7 @@ import { ALL_PERMS, permsOf, type Perms } from '../common/utils/family-perms';
 
 const PRESENCE_VALUES: PresenceStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'INVISIBLE'];
 const DM_PRIVACY_VALUES: DmPrivacy[] = ['EVERYONE', 'FRIENDS_ONLY'];
-const VIEW_VALUES = ['list', 'details', 'grid', 'posters', 'compact', 'grouped'];
+const VIEW_VALUES = ['list', 'comfortable', 'details', 'grid', 'posters', 'compact', 'grouped'];
 const TIP_STYLES = ['poster', 'classic', 'cinema', 'minimal', 'off'];
 
 @Injectable()

@@ -669,7 +669,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Thèmes et couleur d'accent[/b]\n` +
         `Choisis le thème (clair ou sombre, selon ceux proposés) et une couleur d'accent : elle colore les boutons et les éléments actifs. Voir [url=/wiki/themes-et-accents]Thèmes et couleurs d'accent[/url].\n\n` +
         `[b]Affichage des listes de torrents[/b]\n` +
-        `Six façons de voir les torrents : [b]Liste[/b] (tableau complet), [b]Détails[/b] (grandes lignes avec affiche et synopsis), [b]Grille[/b] (cartes), [b]Affiches[/b] (grandes images), [b]Compact[/b] (une ligne fine) et [b]Groupé[/b] (une ligne par film ou série).\n` +
+        `Sept façons de voir les torrents : [b]Liste[/b] (tableau complet), [b]Confortable[/b] (lignes aérées : affiche, titre, saison / épisode, note, qualité, santé du torrent et téléchargement), [b]Détails[/b] (grandes lignes avec affiche et synopsis), [b]Grille[/b] (cartes), [b]Affiches[/b] (grandes images), [b]Compact[/b] (une ligne fine) et [b]Groupé[/b] (une ligne par film ou série).\n` +
         `• Ton affichage par défaut se règle dans Profil > Compte (« Affichage des listes de torrents »).\n` +
         `• Les boutons en haut d'une liste changent l'affichage de cette page, dans ce navigateur.\n\n` +
         `[b]Icônes du haut de l'écran[/b]\n` +

@@ -12,7 +12,7 @@ const DROP_FIRST = ['org', 'fmt', 'yr', 'cod', 'aud', 'sub', 'src', 'res', 'ep2'
  * Infos d'une release en pastilles de couleur : date de SORTIE (film, épisode, saison, jeu : jamais la date de mise en ligne), langue, épisode, année, résolution, source, codec vidéo, format, codec audio.
  * `limit` : nombre maximum de pastilles (cartes, rangées étroites) ; les autres sont résumées par « +N » (leur détail est dans l'infobulle).
  */
-export default function MetaChips({ t, className = '', limit, inline, explicitEpisode }: { t: any; className?: string; limit?: number; /** Sans conteneur : les pastilles s'insèrent dans une ligne existante (lignes groupées). */ inline?: boolean; /** « Saison 17 » et « Épisode 3 » en toutes lettres (vedette de l'accueil) au lieu de « S17E03 ». */ explicitEpisode?: boolean }) {
+export default function MetaChips({ t, className = '', limit, inline, explicitEpisode, omit }: { t: any; className?: string; limit?: number; /** Sans conteneur : les pastilles s'insèrent dans une ligne existante (lignes groupées). */ inline?: boolean; /** « Saison 17 » et « Épisode 3 » en toutes lettres (vedette de l'accueil) au lieu de « S17E03 ». */ explicitEpisode?: boolean; /** Pastilles à ne pas afficher (ex. épisode et année déjà dans le titre de la vue « Confortable »). */ omit?: string[] }) {
   const navigate = useNavigate();
   // Le nom de la release garde la casse d'origine (« -CHiLL ») ; la team enregistrée sert quand le nom ne la donne pas.
   const team: string | null = releaseGroup(String(t.name ?? '')) || t.releaseGroup || null;
@@ -36,7 +36,7 @@ export default function MetaChips({ t, className = '', limit, inline, explicitEp
     aud: [t.audio || audioFromName(t.name), 'Codec audio'],
     sub: [subtitleChip(t.subtitles), t.subtitles?.length ? `Sous-titres : ${subtitleNames(t.subtitles)}` : 'Sous-titres'],
   };
-  const present = ORDER.filter((k) => all[k][0]);
+  const present = ORDER.filter((k) => all[k][0] && !omit?.includes(k));
   if (present.length === 0) return null;
   let shown = [...present];
   const hidden: (typeof ORDER)[number][] = [];
