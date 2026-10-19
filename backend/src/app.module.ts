@@ -61,6 +61,7 @@ import { TeamsModule } from './teams/teams.module';
 import { SupportModule } from './support/support.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { SuggestionsModule } from './suggestions/suggestions.module';
+import { WebmailModule } from './webmail/webmail.module';
 
 @Module({
   providers: [{ provide: APP_GUARD, useClass: ApiThrottlerGuard }],
@@ -125,6 +126,7 @@ import { SuggestionsModule } from './suggestions/suggestions.module';
     SupportModule,
     TelegramModule,
     SuggestionsModule,
+    WebmailModule,
   ],
 })
 export class AppModule {}

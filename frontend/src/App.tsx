@@ -31,6 +31,7 @@ const Cartes = lazyPage(() => import('./pages/Cartes'));
 const Defis = lazyPage(() => import('./pages/Defis'));
 const Classements = lazyPage(() => import('./pages/Classements'));
 const Duels = lazyPage(() => import('./pages/Duels'));
+const Courriel = lazyPage(() => import('./pages/Courriel'));
 const MyUploads = lazyPage(() => import('./pages/MyUploads'));
 const MySeeds = lazyPage(() => import('./pages/MySeeds'));
 const MyActivity = lazyPage(() => import('./pages/MyActivity'));
@@ -157,6 +158,7 @@ export default function App() {
           <Route path="/jeux/defis" element={<Defis />} />
           <Route path="/jeux/classements" element={<Classements />} />
           <Route path="/jeux/duels" element={<Duels />} />
+          <Route path="/courriel" element={<Courriel />} />
           <Route path="/activity" element={<MyActivity />} />
           <Route path="/seeds" element={<MySeeds />} />
           <Route path="/hit-and-run" element={<HitAndRun />} />

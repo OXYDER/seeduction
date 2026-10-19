@@ -2428,3 +2428,24 @@ model DonationEvent {
   @@unique([provider, externalId])
   @@index([status, createdAt])
 }
+
+/// Boîte courriel gérée dans l'interface Courriel du site (Purelymail, etc.) : accès IMAP pour lire, SMTP pour envoyer ; le mot de passe est chiffré (jamais renvoyé au navigateur).
+model Mailbox {
+  id             String   @id @default(uuid())
+  label          String   @db.VarChar(60)
+  imapHost       String   @db.VarChar(120)
+  imapPort       Int      @default(993)
+  imapSecure     Boolean  @default(true)
+  smtpHost       String   @db.VarChar(120)
+  smtpPort       Int      @default(465)
+  smtpSecure     Boolean  @default(true)
+  username       String   @db.VarChar(160)
+  passwordSealed String   @db.Text
+  /// Adresses (alias) qu'on peut choisir comme expéditeur : [{ address, name }]
+  aliases        Json     @default("[]")
+  signature      String   @default("") @db.VarChar(600)
+  /// Administrateurs autorisés (le propriétaire a toujours accès à toutes les boîtes).
+  allowedUserIds String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

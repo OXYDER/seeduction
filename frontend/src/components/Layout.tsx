@@ -94,7 +94,7 @@ export const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
   'imprimante-3d': { icon: '🧊', color: '#fb7185' },
 };
 
-interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; staffOnly?: boolean }
+interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; staffOnly?: boolean; adminOnly?: boolean }
 
 const starts = (prefix: string) => (p: string) => p === prefix || p.startsWith(`${prefix}/`);
 
@@ -120,6 +120,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/support', icon: '🛟', cls: 'c-livechat', label: 'Support', match: starts('/support') },
   { to: '/moderation', icon: '🛡️', cls: 'c-staff', label: 'Modération', match: starts('/moderation'), staffOnly: true },
   { to: '/equipe', icon: '🏅', cls: 'c-staff', label: 'Équipe et rangs', match: starts('/equipe'), staffOnly: true },
+  { to: '/courriel', icon: '✉️', cls: 'c-staff', label: 'Courriel', match: starts('/courriel'), staffOnly: true, adminOnly: true },
   { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true },
 ];
 
@@ -300,6 +301,17 @@ function LayoutInner() {
   }
 
   const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
+  const isAdmin = ['ADMIN', 'OWNER'].includes(user?.role ?? '');
+
+  // Courriel (administrateurs) : nombre de courriels non lus dans les boîtes accessibles, pour la pastille du menu.
+  const [mailUnread, setMailUnread] = useState(0);
+  useEffect(() => {
+    if (!accessToken || !isAdmin) { setMailUnread(0); return; }
+    const load = () => api.get('/webmail/unread').then((r) => setMailUnread(r.data.unread ?? 0)).catch(() => undefined);
+    void load();
+    const t = setInterval(() => { if (!document.hidden) void load(); }, 120_000);
+    return () => clearInterval(t);
+  }, [accessToken, isAdmin, location.pathname === '/courriel']);
 
   // File de modération (staff) : pastille du menu, recomptée à chaque changement de page et toutes les minutes.
   useEffect(() => {
@@ -351,6 +363,7 @@ function LayoutInner() {
       );
     }
     if (item.to === '/upload' && myUploadsHold > 0) return <span className="side-badge red" title={`${myUploadsHold} torrent${myUploadsHold > 1 ? 's' : ''} à corriger : l'équipe te demande une modification`}>{fmt(myUploadsHold)}</span>;
+    if (item.to === '/courriel' && mailUnread > 0) return <span className="side-badge red" title={`${mailUnread} courriel${mailUnread > 1 ? 's' : ''} non lu${mailUnread > 1 ? 's' : ''}`}>{fmt(mailUnread)}</span>;
     if (item.to === '/dead' && deadMine > 0) return <span className="side-badge red" title={`${deadMine} torrent${deadMine > 1 ? 's' : ''} sans seeder que tu peux relancer`}>{fmt(deadMine)}</span>;
     if (item.to === '/forum' && forumUnread > 0) return <span className="side-badge red" title={`${forumUnread} sujet${forumUnread > 1 ? 's' : ''} non lu${forumUnread > 1 ? 's' : ''} dans le forum`}>{fmt(forumUnread)}</span>;
     if (item.to === '/news' && newsUnseen > 0) return <span className="side-badge red" title={`${newsUnseen} nouvelle${newsUnseen > 1 ? 's' : ''} non lue${newsUnseen > 1 ? 's' : ''}`}>{fmt(newsUnseen)}</span>;
@@ -385,7 +398,7 @@ function LayoutInner() {
 
   // ---- Thème Prestige : barre latérale (ordinateur) / barre d'onglets (mobile) ----
   if (theme === 'prestige') {
-    const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && !(item.to === '/upload' && user?.profile && !user.profile.perms?.upload)); // sans le droit d'envoi accordé par le profil principal
+    const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && !(item.to === '/upload' && user?.profile && !user.profile.perms?.upload)); // sans le droit d'envoi accordé par le profil principal
     const tabs = ['/', '/browse', '/upload', '/forum'].map((to) => NAV_ITEMS.find((i) => i.to === to)!);
 
     return (
@@ -608,7 +621,7 @@ function LayoutInner() {
 
       <div className="mainnav">
         <div className="nav-links">
-          {NAV_ITEMS.filter((item) => !item.staffOnly || isStaff).map((item) => {
+          {NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin)).map((item) => {
             const active = item.match(location.pathname);
             return (
               <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
