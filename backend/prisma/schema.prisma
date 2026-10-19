@@ -2450,4 +2450,20 @@ model Mailbox {
   createdById    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  templates      MailTemplate[]
+}
+
+/// Modèles de réponses du courriel : partagés par toutes les personnes qui ont accès à la boîte. Le corps est écrit en BBCode (comme l'éditeur du site) ; {{nom}} est remplacé par le nom du destinataire.
+model MailTemplate {
+  id          String   @id @default(uuid())
+  mailboxId   String
+  mailbox     Mailbox  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  name        String   @db.VarChar(80)
+  subject     String   @default("") @db.VarChar(200)
+  body        String   @db.Text
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([mailboxId])
 }

@@ -3,6 +3,8 @@ import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import { htmlToBbcode } from '../lib/htmlToBbcode';
 import { useCrumbTitle } from '../store/crumbs';
+import { normalizeSubject } from '../lib/mailSubject';
+import { useSearchParams } from 'react-router-dom';
 import Loading from '../components/Loading';
 import MailCompose, { postMail, type MailBoxInfo, type MailDraft, type SendJob } from '../components/MailCompose';
 import '../mail.css';
@@ -41,6 +43,9 @@ function MailFrame({ html, images, frameRef }: { html: string; images: boolean; 
   return <iframe ref={frameRef} title="Courriel" className="mail-frame" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-modals" srcDoc={doc} onLoad={fit} />;
 }
 
+interface ThreadItem { folder: string; special: string; uid: number; subject: string; from: { name: string; address: string }; to: { name: string; address: string }[]; date: string | null; seen: boolean }
+const THREAD_ICON: Record<string, string> = { '\\Inbox': '📥', '\\Sent': '📤', '\\Archive': '🗄️' };
+
 const SHORTCUTS: [string, string][] = [
   ['j / k', 'courriel suivant / précédent'], ['Entrée', 'ouvrir'], ['x', 'cocher'], ['c', 'nouveau message'], ['r', 'répondre'], ['a', 'répondre à tous'], ['f', 'transférer'],
   ['e', 'archiver'], ['#', 'supprimer'], ['!', 'indésirable'], ['u', 'marquer non lu'], ['s', 'suivi ⭐'], ['/', 'rechercher'], ['Échap', 'fermer'],
@@ -69,6 +74,9 @@ export default function Courriel() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [help, setHelp] = useState(false);
+  const [thread, setThread] = useState<ThreadItem[]>([]);
+  const [grouped, setGrouped] = useState(() => { try { return localStorage.getItem('mail-grouped') !== 'off'; } catch { return true; } });
+  const [params, setParams] = useSearchParams();
   const searchRef = useRef<HTMLInputElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -129,8 +137,17 @@ export default function Courriel() {
   async function open(item: Item) {
     setCursor(item.uid);
     if (special === '\\Drafts') { await editDraft(item.uid); return; }
-    setUid(item.uid); setMsg(null); setImages(false); setError('');
-    try { const r = await api.get(`${base}/message`, { params: { folder, uid: item.uid } }); setMsg(r.data); setList((l) => l && { ...l, items: l.items.map((x) => (x.uid === item.uid ? { ...x, seen: true } : x)) }); if (!item.seen) loadFolders(); } catch (e) { setError(errorOf(e)); }
+    await openAt(folder, item.uid, item.seen);
+  }
+  /** Ouvre un courriel d'un dossier donné (celui de la liste, ou un autre quand on suit une conversation). */
+  async function openAt(inFolder: string, mailUid: number, wasSeen = true) {
+    setUid(mailUid); setMsg(null); setImages(false); setError('');
+    try {
+      const r = await api.get(`${base}/message`, { params: { folder: inFolder, uid: mailUid } });
+      setMsg(r.data);
+      if (inFolder === folder) setList((l) => l && { ...l, items: l.items.map((x) => (x.uid === mailUid ? { ...x, seen: true } : x)) });
+      if (!wasSeen) loadFolders();
+    } catch (e) { setError(errorOf(e)); }
   }
   async function editDraft(draftUid: number) {
     try {
@@ -140,20 +157,22 @@ export default function Courriel() {
   }
   async function showImages() {
     if (!msg) return;
-    try { const r = await api.get(`${base}/message`, { params: { folder, uid: msg.uid, images: '1' } }); setMsg(r.data); setImages(true); } catch (e) { setError(errorOf(e)); }
+    try { const r = await api.get(`${base}/message`, { params: { folder: msg.folder, uid: msg.uid, images: '1' } }); setMsg(r.data); setImages(true); } catch (e) { setError(errorOf(e)); }
   }
   function closeReader() { setUid(null); setMsg(null); }
 
   type Kind = 'read' | 'unread' | 'flag' | 'unflag' | 'archive' | 'spam' | 'delete' | 'move';
-  async function actOn(uids: number[], kind: Kind, target?: string) {
+  /** `inFolder` : dossier des courriels (celui de la liste, ou celui du courriel ouvert quand il vient d'une conversation). */
+  async function actOn(uids: number[], kind: Kind, target?: string, inFolder: string = folder) {
     if (uids.length === 0) return;
-    if (kind === 'delete' && special === '\\Trash' && !window.confirm(`Supprimer définitivement ${uids.length > 1 ? `ces ${uids.length} courriels` : 'ce courriel'} ?`)) return;
+    const inTrash = (inFolder === folder ? special : folders.find((f) => f.path === inFolder)?.special) === '\\Trash';
+    if (kind === 'delete' && inTrash && !window.confirm(`Supprimer définitivement ${uids.length > 1 ? `ces ${uids.length} courriels` : 'ce courriel'} ?`)) return;
     setBusy(true); setNote(''); setError('');
     try {
-      if (kind === 'read' || kind === 'unread') await api.post(`${base}/flags`, { folder, uids, seen: kind === 'read' });
-      else if (kind === 'flag' || kind === 'unflag') await api.post(`${base}/flags`, { folder, uids, flagged: kind === 'flag' });
-      else if (kind === 'delete') await api.post(`${base}/delete`, { folder, uids });
-      else await api.post(`${base}/move`, { folder, uids, target: kind === 'spam' ? pathOf('\\Junk', 'Junk') : kind === 'archive' ? pathOf('\\Archive', 'Archive') : target });
+      if (kind === 'read' || kind === 'unread') await api.post(`${base}/flags`, { folder: inFolder, uids, seen: kind === 'read' });
+      else if (kind === 'flag' || kind === 'unflag') await api.post(`${base}/flags`, { folder: inFolder, uids, flagged: kind === 'flag' });
+      else if (kind === 'delete') await api.post(`${base}/delete`, { folder: inFolder, uids });
+      else await api.post(`${base}/move`, { folder: inFolder, uids, target: kind === 'spam' ? pathOf('\\Junk', 'Junk') : kind === 'archive' ? pathOf('\\Archive', 'Archive') : target });
       if (kind === 'flag' || kind === 'unflag') setMsg((m) => (m && uids.includes(m.uid) ? { ...m, flagged: kind === 'flag' } : m));
       else if (msg && uids.includes(msg.uid) && kind !== 'read') closeReader();
       setSel([]);
@@ -169,24 +188,53 @@ export default function Courriel() {
   async function reply(mode: 'reply' | 'all' | 'forward') {
     if (!msg || !box) return;
     try {
-      const { data } = await api.get(`${base}/reply`, { params: { folder, uid: msg.uid, mode } });
+      const { data } = await api.get(`${base}/reply`, { params: { folder: msg.folder, uid: msg.uid, mode } });
       setCompose({ key: Date.now(), draft: {
         from: data.from || box.aliases[0]?.address || box.address || '', to: data.to, cc: data.cc, bcc: '', subject: data.subject,
         body: `\n\n${box.signature ? `${plain(box.signature)}\n\n` : ''}${quoteBlock(data.head, data.quote)}`,
-        inReplyTo: data.inReplyTo, references: data.references, replyFolder: mode === 'forward' ? undefined : folder, replyUid: mode === 'forward' ? undefined : msg.uid,
+        inReplyTo: data.inReplyTo, references: data.references, replyFolder: mode === 'forward' ? undefined : msg.folder, replyUid: mode === 'forward' ? undefined : msg.uid,
       } });
     } catch (e) { setError(errorOf(e)); }
   }
   async function download(index: number, filename: string) {
-    try { saveBlob((await api.get(`${base}/attachment`, { params: { folder, uid: msg!.uid, index }, responseType: 'blob' })).data, filename); } catch (e) { setError(errorOf(e)); }
+    try { saveBlob((await api.get(`${base}/attachment`, { params: { folder: msg!.folder, uid: msg!.uid, index }, responseType: 'blob' })).data, filename); } catch (e) { setError(errorOf(e)); }
   }
   async function downloadEml() {
     if (!msg) return;
-    try { saveBlob((await api.get(`${base}/eml`, { params: { folder, uid: msg.uid }, responseType: 'blob' })).data, `courriel-${msg.uid}.eml`); } catch (e) { setError(errorOf(e)); }
+    try { saveBlob((await api.get(`${base}/eml`, { params: { folder: msg.folder, uid: msg.uid }, responseType: 'blob' })).data, `courriel-${msg.uid}.eml`); } catch (e) { setError(errorOf(e)); }
   }
 
   // ---------------------------------------------------------------- navigation clavier
   const items = list?.items ?? [];
+  /** Une ligne par conversation (le courriel le plus récent de chaque sujet, parmi ceux de la page) ; sans regroupement, une ligne par courriel. */
+  const groups = useMemo(() => {
+    if (!grouped || special === '\\Drafts') return items.map((it) => ({ head: it, all: [it] }));
+    const out: { head: Item; all: Item[] }[] = [];
+    const at = new Map<string, number>();
+    for (const it of items) {
+      const key = normalizeSubject(it.subject);
+      const idx = key ? at.get(key) : undefined;
+      if (idx === undefined) { if (key) at.set(key, out.length); out.push({ head: it, all: [it] }); } else out[idx].all.push(it);
+    }
+    return out;
+  }, [items, grouped, special]);
+
+  // Conversation du courriel ouvert : réception, envoyés et archives (le serveur cherche le même sujet).
+  useEffect(() => {
+    setThread([]);
+    if (!msg || !boxId) return;
+    let off = false;
+    api.get(`${base}/thread`, { params: { subject: msg.subject } }).then((r) => { if (!off) setThread(r.data.items ?? []); }).catch(() => undefined);
+    return () => { off = true; };
+  }, [msg?.uid, msg?.folder, boxId, base]);
+
+  // Ouverture depuis un profil de membre (?to=…&subject=…) : le message est déjà adressé.
+  useEffect(() => {
+    const to = params.get('to');
+    if (!to || !box) return;
+    newMessage({ to, subject: params.get('subject') ?? '', body: `\n\n${box.signature ? plain(box.signature) : ''}` });
+    setParams({}, { replace: true });
+  }, [box, params]);
   function move(delta: number) {
     if (items.length === 0) return;
     const at = items.findIndex((i) => i.uid === (cursor ?? uid));
@@ -201,6 +249,7 @@ export default function Courriel() {
     const t = e.target as HTMLElement | null;
     if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
     const target = msg ? [msg.uid] : sel.length ? sel : cursor ? [cursor] : [];
+    const tf = msg ? msg.folder : folder;
     const k = e.key;
     const go = (fn: () => void) => { e.preventDefault(); fn(); };
     if (k === 'j' || k === 'ArrowDown') go(() => move(1));
@@ -211,11 +260,11 @@ export default function Courriel() {
     else if (k === 'r' && msg) go(() => void reply('reply'));
     else if (k === 'a' && msg) go(() => void reply('all'));
     else if (k === 'f' && msg) go(() => void reply('forward'));
-    else if (k === 'e') go(() => void actOn(target, 'archive'));
-    else if (k === '#' || k === 'Delete') go(() => void actOn(target, 'delete'));
-    else if (k === '!') go(() => void actOn(target, 'spam'));
-    else if (k === 'u') go(() => void actOn(target, 'unread'));
-    else if (k === 's') go(() => void actOn(target, msg ? (msg.flagged ? 'unflag' : 'flag') : (items.find((i) => i.uid === target[0])?.flagged ? 'unflag' : 'flag')));
+    else if (k === 'e') go(() => void actOn(target, 'archive', undefined, tf));
+    else if (k === '#' || k === 'Delete') go(() => void actOn(target, 'delete', undefined, tf));
+    else if (k === '!') go(() => void actOn(target, 'spam', undefined, tf));
+    else if (k === 'u') go(() => void actOn(target, 'unread', undefined, tf));
+    else if (k === 's') go(() => void actOn(target, msg ? (msg.flagged ? 'unflag' : 'flag') : (items.find((i) => i.uid === target[0])?.flagged ? 'unflag' : 'flag'), undefined, tf));
     else if (k === '/') go(() => searchRef.current?.focus());
     else if (k === '?') go(() => setHelp((h) => !h));
     else if (k === 'Escape') { if (help) setHelp(false); else if (sel.length) setSel([]); else if (uid !== null) closeReader(); }
@@ -260,6 +309,7 @@ export default function Courriel() {
           <input type="checkbox" checked={allChecked} onChange={(e) => setSel(e.target.checked ? items.map((i) => i.uid) : [])} aria-label="Tout sélectionner" title="Tout sélectionner" style={{ flex: 'none' }} />
           <input ref={searchRef} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Rechercher (sujet, expéditeur, texte)…  /" />
           <button type="submit" className="secondary">🔎</button>
+          <label title="Regrouper les courriels d'une même conversation"><input type="checkbox" checked={grouped} onChange={(e) => { setGrouped(e.target.checked); try { localStorage.setItem('mail-grouped', e.target.checked ? 'on' : 'off'); } catch { /* navigation privée */ } }} /> 💬</label>
           <label title="Seulement les non lus"><input type="checkbox" checked={unseen} onChange={(e) => { setUnseen(e.target.checked); setPage(1); }} /> non lus</label>
         </form>
         {sel.length > 0 && (
@@ -278,15 +328,20 @@ export default function Courriel() {
         {error && <p style={{ color: 'var(--danger)', margin: '6px 8px' }}>{error}</p>}
         {!list ? <Loading /> : list.items.length === 0 ? <p className="muted" style={{ padding: 12 }}>{query || alias || unseen ? 'Aucun résultat.' : 'Ce dossier est vide.'}</p> : (
           <ul ref={listRef}>
-            {list.items.map((it) => (
-              <li key={it.uid} data-uid={it.uid} className={`${it.seen ? '' : 'unread'}${uid === it.uid ? ' sel' : ''}${cursor === it.uid ? ' cur' : ''}${sel.includes(it.uid) ? ' chk' : ''}`} onClick={() => open(it)}>
-                <input type="checkbox" className="mail-chk" checked={sel.includes(it.uid)} onClick={(e) => e.stopPropagation()} onChange={(e) => setSel(e.target.checked ? [...sel, it.uid] : sel.filter((u) => u !== it.uid))} aria-label="Sélectionner" />
-                <div className="mail-main">
-                  <div className="mail-row1"><span className="mail-from">{special === '\\Drafts' ? <em>Brouillon</em> : isSent ? `À ${who(it.to[0])}` : who(it.from)}</span><span className="mail-date">{shortDate(it.date)}</span></div>
-                  <div className="mail-row2"><span className="mail-subject">{it.flagged ? '⭐ ' : ''}{it.answered ? '↩ ' : ''}{it.subject || '(sans sujet)'}</span>{it.attachments && <span title="Pièce jointe">📎</span>}</div>
-                </div>
-              </li>
-            ))}
+            {groups.map(({ head: it, all }) => {
+              const uids = all.map((x) => x.uid);
+              const checked = uids.every((u) => sel.includes(u));
+              const unreadCount = all.filter((x) => !x.seen).length;
+              return (
+                <li key={it.uid} data-uid={it.uid} className={`${unreadCount ? 'unread' : ''}${uids.includes(uid ?? -1) ? ' sel' : ''}${cursor === it.uid ? ' cur' : ''}${checked ? ' chk' : ''}`} onClick={() => open(it)}>
+                  <input type="checkbox" className="mail-chk" checked={checked} onClick={(e) => e.stopPropagation()} onChange={(e) => setSel(e.target.checked ? [...new Set([...sel, ...uids])] : sel.filter((u) => !uids.includes(u)))} aria-label="Sélectionner" />
+                  <div className="mail-main">
+                    <div className="mail-row1"><span className="mail-from">{special === '\\Drafts' ? <em>Brouillon</em> : isSent ? `À ${who(it.to[0])}` : who(it.from)}{all.length > 1 && <span className="mail-n" title={`${all.length} courriels dans cette conversation`}>{all.length}</span>}</span><span className="mail-date">{shortDate(it.date)}</span></div>
+                    <div className="mail-row2"><span className="mail-subject">{all.some((x) => x.flagged) ? '⭐ ' : ''}{it.answered ? '↩ ' : ''}{it.subject || '(sans sujet)'}</span>{all.some((x) => x.attachments) && <span title="Pièce jointe">📎</span>}</div>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
         {list && pages > 1 && (
@@ -302,12 +357,12 @@ export default function Courriel() {
               <button type="button" onClick={() => reply('reply')} title="r">↩ Répondre</button>
               <button type="button" className="secondary" onClick={() => reply('all')} title="a">↩↩ À tous</button>
               <button type="button" className="secondary" onClick={() => reply('forward')} title="f">➡ Transférer</button>
-              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], msg.flagged ? 'unflag' : 'flag')} title="Suivi (s)">{msg.flagged ? '⭐' : '☆'}</button>
-              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], 'unread')} title="u">Non lu</button>
-              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], 'archive')} title="e">🗄️ Archiver</button>
-              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], 'spam')} title="!">🚫</button>
-              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], 'delete')} title="#">🗑️ Supprimer</button>
-              {moveTargets.length > 0 && <select value="" onChange={(e) => e.target.value && actOn([msg.uid], 'move', e.target.value)} aria-label="Déplacer vers"><option value="">Déplacer vers…</option>{moveTargets.map((f) => <option key={f.path} value={f.path}>{FOLDER_NAME[f.special ?? ''] ?? f.name}</option>)}</select>}
+              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], msg.flagged ? 'unflag' : 'flag', undefined, msg.folder)} title="Suivi (s)">{msg.flagged ? '⭐' : '☆'}</button>
+              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], 'unread', undefined, msg.folder)} title="u">Non lu</button>
+              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], 'archive', undefined, msg.folder)} title="e">🗄️ Archiver</button>
+              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], 'spam', undefined, msg.folder)} title="!">🚫</button>
+              <button type="button" className="secondary" disabled={busy} onClick={() => actOn([msg.uid], 'delete', undefined, msg.folder)} title="#">🗑️ Supprimer</button>
+              {moveTargets.length > 0 && <select value="" onChange={(e) => e.target.value && actOn([msg.uid], 'move', e.target.value, msg.folder)} aria-label="Déplacer vers"><option value="">Déplacer vers…</option>{moveTargets.map((f) => <option key={f.path} value={f.path}>{FOLDER_NAME[f.special ?? ''] ?? f.name}</option>)}</select>}
               <button type="button" className="secondary" onClick={() => frameRef.current?.contentWindow?.print()} title="Imprimer">🖨️</button>
               <button type="button" className="secondary" onClick={downloadEml} title="Télécharger le courriel complet (.eml)">⬇ .eml</button>
             </div>
@@ -316,6 +371,21 @@ export default function Courriel() {
               <div><strong>{who(msg.from)}</strong> <span className="muted">&lt;{msg.from?.address}&gt;</span> {msg.via && <span className="badge" title="Adresse (alias) qui a reçu ce courriel">via {msg.via}</span>}</div>
               <div className="muted" style={{ fontSize: 13 }}>À : {msg.to.map((t) => t.address).join(', ')}{msg.cc.length > 0 && ` · Cc : ${msg.cc.map((t) => t.address).join(', ')}`} · {msg.date ? `${new Date(msg.date).toLocaleString('fr-CA')} (${timeAgo(msg.date)})` : ''}</div>
             </header>
+            {thread.length > 1 && (
+              <div className="mail-thread" aria-label="Conversation">
+                <strong>💬 Conversation · {thread.length} courriels</strong>
+                {thread.map((t) => {
+                  const mine = t.special === '\\Sent';
+                  const current = t.folder === msg.folder && t.uid === msg.uid;
+                  return (
+                    <button key={`${t.folder}:${t.uid}`} type="button" className={`${current ? 'on' : ''}${!t.seen && !mine ? ' unread' : ''}`} onClick={() => !current && void openAt(t.folder, t.uid)} aria-current={current}>
+                      <span>{THREAD_ICON[t.special] ?? '📁'} {mine ? `Moi → ${who(t.to[0])}` : who(t.from)}</span>
+                      <small className="muted">{shortDate(t.date)}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {msg.remoteImages > 0 && !images && <div className="mail-warn">🖼️ {msg.remoteImages} image{msg.remoteImages > 1 ? 's' : ''} bloquée{msg.remoteImages > 1 ? 's' : ''} (elles peuvent révéler que tu as ouvert le message). <button type="button" className="secondary" onClick={showImages}>Afficher les images</button></div>}
             <MailFrame html={msg.html} images={images} frameRef={frameRef} />
             {msg.attachments.length > 0 && (

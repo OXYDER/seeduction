@@ -156,6 +156,29 @@ const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E
   check('le modérateur peut écrire depuis la boîte (pas de droit de réglage)', (await sendJson({ from: 'notifications@seeduction.test', to: 'boite@seeduction.test', subject: 'Modérateur ' + tag, text: 'ok' }, [], TD)).s === 201);
   check('un membre ordinaire ne peut pas écrire', (await sendJson({ from: 'contact@seeduction.test', to: 'boite@seeduction.test', subject: 'x', text: 'x' }, [], TM)).s === 403);
 
+  // ---- conversations (réception + envoyés) et modèles de réponses
+  const convSubject = 'Conv ' + tag;
+  await sendJson({ from: 'contact@seeduction.test', to: 'boite@seeduction.test', subject: convSubject, text: 'premier message' });
+  await new Promise((r2) => setTimeout(r2, 800));
+  await sendJson({ from: 'contact@seeduction.test', to: 'boite@seeduction.test', subject: 'Re: ' + convSubject, text: 'réponse' });
+  await new Promise((r2) => setTimeout(r2, 1200));
+  const th = await call('GET', `/webmail/mailboxes/${id}/thread?subject=${encodeURIComponent('RE: Re: ' + convSubject)}`, TA);
+  check('conversation : retrouve les courriels de la réception ET des envoyés, du plus ancien au plus récent', th.s === 200 && th.b.items.length >= 3 && th.b.items.some((m) => m.special === '\\Sent') && th.b.items.some((m) => m.special === '\\Inbox') && th.b.items.every((m, i, a) => i === 0 || new Date(a[i - 1].date) <= new Date(m.date)), JSON.stringify((th.b?.items ?? []).map((m) => [m.folder, m.special, m.date])));
+  check('conversation : un autre sujet ne ressort pas', (await call('GET', `/webmail/mailboxes/${id}/thread?subject=${encodeURIComponent('Sujet inconnu ' + tag)}`, TA)).b.items.length === 0);
+  check('conversation : refusée sans accès à la boîte', (await call('GET', `/webmail/mailboxes/${id}/thread?subject=x`, TB)).s === 404);
+
+  const tpl = await call('POST', `/webmail/mailboxes/${id}/templates`, TA, { name: 'Accueil', subject: 'Bienvenue', body: 'Bonjour {{nom}}, [b]merci[/b] !' });
+  check('modèle de réponse créé', tpl.s === 201 && tpl.b.id, tpl.raw.slice(0, 100));
+  const tplList = await call('GET', `/webmail/mailboxes/${id}/templates`, TD);
+  check('un modérateur autorisé voit les modèles de la boîte', tplList.s === 200 && tplList.b.length === 1 && tplList.b[0].mine === false);
+  check('modèle vide refusé', (await call('POST', `/webmail/mailboxes/${id}/templates`, TA, { name: 'Vide', body: '  ' })).s === 400);
+  check('un modérateur ne modifie pas le modèle d’un autre', (await call('POST', `/webmail/mailboxes/${id}/templates`, TD, { id: tpl.b.id, name: 'Piraté', body: 'x' })).s === 403);
+  check('ni ne le supprime', (await call('DELETE', `/webmail/mailboxes/${id}/templates/${tpl.b.id}`, TD)).s === 403);
+  check('un administrateur sans accès à la boîte ne voit rien', (await call('GET', `/webmail/mailboxes/${id}/templates`, TB)).s === 404);
+  const tpl2 = await call('POST', `/webmail/mailboxes/${id}/templates`, TD, { name: 'Le sien', body: 'ok' });
+  check('le modérateur crée le sien et le supprime', tpl2.s === 201 && (await call('DELETE', `/webmail/mailboxes/${id}/templates/${tpl2.b.id}`, TD)).s === 200);
+  check('modèle supprimé par son auteur', (await call('DELETE', `/webmail/mailboxes/${id}/templates/${tpl.b.id}`, TA)).s === 200);
+
   // ---- suppression de la boîte
   check('un administrateur autorisé peut lire mais pas régler ni retirer la boîte d\'un autre', (await call('DELETE', `/webmail/admin/mailboxes/${id}`, TA)).s === 403 && (await call('PUT', `/webmail/admin/mailboxes/${id}`, TA, cfg)).s === 403 && (await call('GET', '/webmail/admin', TA)).b.mailboxes.length === 0);
   const own = await call('POST', '/webmail/admin/mailboxes', TB, { ...cfg, label: 'Boîte de B ' + tag });

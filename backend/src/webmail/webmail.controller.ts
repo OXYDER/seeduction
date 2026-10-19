@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { WebmailService } from './webmail.service';
+import { WebmailExtrasService } from './webmail-extras.service';
 
 const viewerOf = (req: any) => ({ userId: req.user.userId, username: req.user.username, role: req.user.role });
 const num = (v: unknown) => Math.floor(Number(v));
@@ -14,7 +15,7 @@ const uidList = (v: unknown): number[] => (Array.isArray(v) ? v : []).map(num);
 @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
 @Controller('webmail')
 export class WebmailController {
-  constructor(private mail: WebmailService) {}
+  constructor(private mail: WebmailService, private extras: WebmailExtrasService) {}
 
   @Get('mailboxes')
   mailboxes(@Request() req: any) { return this.mail.mailboxes(viewerOf(req)); }
@@ -34,6 +35,19 @@ export class WebmailController {
   message(@Param('id') id: string, @Query() q: any, @Request() req: any) {
     return this.mail.message(viewerOf(req), id, String(q.folder || 'INBOX'), num(q.uid), { images: q.images === '1' });
   }
+
+  /** Les courriels de la même conversation (réception, envoyés, archives). */
+  @Get('mailboxes/:id/thread')
+  thread(@Param('id') id: string, @Query('subject') subject: string, @Request() req: any) { return this.mail.thread(viewerOf(req), id, String(subject ?? '')); }
+
+  @Get('mailboxes/:id/templates')
+  templates(@Param('id') id: string, @Request() req: any) { return this.extras.templates(viewerOf(req), id); }
+
+  @Post('mailboxes/:id/templates')
+  saveTemplate(@Param('id') id: string, @Body() b: any, @Request() req: any) { return this.extras.saveTemplate(viewerOf(req), id, b ?? {}); }
+
+  @Delete('mailboxes/:id/templates/:tid')
+  removeTemplate(@Param('id') id: string, @Param('tid') tid: string, @Request() req: any) { return this.extras.removeTemplate(viewerOf(req), id, tid); }
 
   @Get('mailboxes/:id/reply')
   reply(@Param('id') id: string, @Query() q: any, @Request() req: any) {

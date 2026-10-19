@@ -75,6 +75,17 @@ function AddrInput({ label, value, onChange, base, required, autoFocus }: { labe
   );
 }
 
+export interface MailTemplate { id: string; name: string; subject: string; body: string; mine: boolean }
+
+/** Prénom ou nom du premier destinataire (« Marie Tremblay <marie@…> » → « Marie Tremblay » ; sans nom : la partie avant l'@, en capitale). */
+export function recipientName(to: string): string {
+  const first = to.split(/[,;]/)[0]?.trim() ?? '';
+  const named = /^"?([^"<]+?)"?\s*</.exec(first)?.[1]?.trim();
+  if (named) return named;
+  const local = /^([^@\s<]+)@/.exec(first.replace(/^.*</, ''))?.[1] ?? '';
+  return local ? local.replace(/[._-]+/g, ' ').replace(/\b\p{L}/gu, (c) => c.toUpperCase()) : '';
+}
+
 interface Props {
   box: MailBoxInfo; base: string; draft: MailDraft; initialFiles?: File[];
   onClose: (note?: string) => void;
@@ -90,6 +101,8 @@ export default function MailCompose({ box, base, draft, initialFiles, onClose, o
   const [error, setError] = useState('');
   const [saved, setSaved] = useState<'' | 'saving' | 'saved'>('');
   const [over, setOver] = useState(false);
+  const [tpls, setTpls] = useState<MailTemplate[] | null>(null);
+  const [tplOpen, setTplOpen] = useState(false);
   const dRef = useRef(d); dRef.current = d;
   const filesRef = useRef(files); filesRef.current = files;
   const lastSaved = useRef(JSON.stringify([draft.from, draft.to, draft.cc, draft.bcc, draft.subject, draft.body]));
@@ -146,6 +159,33 @@ export default function MailCompose({ box, base, draft, initialFiles, onClose, o
     setError('');
     onSend({ draft: d, files });
   }
+  async function loadTemplates() {
+    setTplOpen((o) => !o);
+    if (tpls === null) { try { setTpls((await api.get(`${base}/templates`)).data); } catch (e) { setError(errorOf(e)); setTpls([]); } }
+  }
+  /** Le modèle s'ajoute au début du message (avant la signature et le texte cité) ; {{nom}} devient le nom du destinataire. */
+  function useTemplate(t: MailTemplate) {
+    const name = recipientName(d.to);
+    const text = t.body.replace(/\s*\{\{nom\}\}/g, name ? ` ${name}` : '').replace(/\{\{moi\}\}/g, box.aliases.find((a) => a.address === d.from)?.name || box.label);
+    setD((x) => ({ ...x, subject: x.subject.trim() ? x.subject : t.subject, body: text + (x.body.startsWith('\n') ? '' : '\n\n') + x.body }));
+    setTplOpen(false);
+  }
+  async function saveAsTemplate() {
+    const sig = box.signature ? box.signature.replace(/\[/g, '[​') : '';
+    const body = d.body.replace(/\[quote[^\]]*\][\s\S]*?\[\/quote\]/gi, '').replace(sig, '').trim();
+    if (!body) { setError('Écris d’abord le texte du modèle'); return; }
+    const name = window.prompt('Nom du modèle (visible par toute l’équipe qui a accès à cette boîte) :', d.subject.replace(/^(re|fwd?)\s*:\s*/i, '').slice(0, 60));
+    if (!name?.trim()) return;
+    try {
+      const { data } = await api.post(`${base}/templates`, { name: name.trim(), subject: d.subject.replace(/^(re|fwd?)\s*:\s*/i, ''), body });
+      setTpls((cur) => [...(cur ?? []).filter((x) => x.id !== data.id), { id: data.id, name: data.name, subject: data.subject, body: data.body, mine: true }].sort((a, b) => a.name.localeCompare(b.name)));
+      setError('');
+    } catch (e) { setError(errorOf(e)); }
+  }
+  async function deleteTemplate(t: MailTemplate) {
+    if (!window.confirm(`Supprimer le modèle « ${t.name} » pour toute l'équipe ?`)) return;
+    try { await api.delete(`${base}/templates/${t.id}`); setTpls((cur) => (cur ?? []).filter((x) => x.id !== t.id)); } catch (e) { setError(errorOf(e)); }
+  }
   const addFiles = (list: File[]) => setFiles((cur) => [...cur, ...list].slice(0, 10));
   const submitRef = useRef(submit); submitRef.current = submit;
 
@@ -184,6 +224,18 @@ export default function MailCompose({ box, base, draft, initialFiles, onClose, o
         {error && <p style={{ color: 'var(--danger)', margin: 0 }}>{error}</p>}
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           <button type="submit" title="Ctrl + Entrée">Envoyer</button>
+          <span className="mail-tpl">
+            <button type="button" className="secondary" onClick={loadTemplates} aria-expanded={tplOpen}>📋 Modèles ▾</button>
+            {tplOpen && (
+              <div className="mail-tpl-pop" role="menu">
+                {tpls === null ? <small className="muted">Chargement…</small> : tpls.length === 0 ? <small className="muted">Aucun modèle pour l’instant.</small> : tpls.map((t) => (
+                  <div key={t.id} className="mail-tpl-row"><button type="button" role="menuitem" onClick={() => useTemplate(t)} title={t.body.slice(0, 160)}>{t.name}</button>{t.mine && <button type="button" className="mail-x" onClick={() => void deleteTemplate(t)} aria-label="Supprimer le modèle" title="Supprimer">🗑</button>}</div>
+                ))}
+                <button type="button" className="secondary" onClick={() => void saveAsTemplate()}>＋ Enregistrer ce message comme modèle</button>
+                <small className="muted">{'{{nom}}'} = nom du destinataire, {'{{moi}}'} = ton nom d’expéditeur</small>
+              </div>
+            )}
+          </span>
           <button type="button" className="secondary" onClick={() => void save(true)} title="Ctrl + S">💾 Enregistrer</button>
           <button type="button" className="secondary" onClick={discard}>🗑️ Abandonner</button>
         </div>

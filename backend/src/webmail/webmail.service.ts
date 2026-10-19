@@ -6,7 +6,7 @@ import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { assertPublicHost } from '../importer/net-guard';
 import { openText, sealText } from '../common/utils/seal';
-import { extractInlineImages, headerSafe, htmlToText, parseAddress, parseAddressList, prefixSubject, sanitizeMailHtml, sanitizeOutgoingHtml, textToHtml } from '../common/utils/mail-html';
+import { extractInlineImages, headerSafe, htmlToText, parseAddress, normalizeSubject, parseAddressList, prefixSubject, sanitizeMailHtml, sanitizeOutgoingHtml, textToHtml } from '../common/utils/mail-html';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const MailComposer = require('nodemailer/lib/mail-composer');
@@ -63,7 +63,7 @@ export class WebmailService {
   /** Peut régler la boîte (serveurs, alias, accès) : le rôle propriétaire ou l'administrateur qui l'a ajoutée. */
   private canManage(viewer: Viewer, r: Row): boolean { return viewer.role === 'OWNER' || (viewer.role === 'ADMIN' && r.createdById === viewer.userId); }
 
-  private async row(viewer: Viewer, id: string): Promise<Row> {
+  async row(viewer: Viewer, id: string): Promise<Row> {
     const row = (await this.prisma.mailbox.findUnique({ where: { id } })) as Row | null;
     if (!row) throw new NotFoundException('Boîte introuvable');
     if (!this.canUse(viewer, row)) throw new NotFoundException('Boîte introuvable');
@@ -154,7 +154,7 @@ export class WebmailService {
     return p;
   }
 
-  private async imap<T>(row: Row, fn: (c: ImapFlow) => Promise<T>): Promise<T> {
+  async imap<T>(row: Row, fn: (c: ImapFlow) => Promise<T>): Promise<T> {
     const n = this.busy.get(row.id) ?? 0;
     if (n >= 4) throw new BadRequestException('Trop de demandes en même temps vers cette boîte : réessaie dans un instant');
     this.busy.set(row.id, n + 1);
@@ -204,6 +204,34 @@ export class WebmailService {
       total += n;
     }
     return { unread: total };
+  }
+
+  /** La conversation d'un courriel : tous les courriels de même sujet (sans « Re: ») dans la réception, les envoyés et les archives, du plus ancien au plus récent. */
+  async thread(viewer: Viewer, id: string, subject: string) {
+    const row = await this.row(viewer, id);
+    const base = normalizeSubject(subject);
+    if (base.length < 2) return { items: [] };
+    return this.imap(row, async (c) => {
+      const list = await c.list();
+      const paths: { path: string; special: string }[] = [{ path: 'INBOX', special: '\\Inbox' }];
+      for (const sp of ['\\Sent', '\\Archive']) { const f = list.find((x) => x.specialUse === sp); if (f) paths.push({ path: f.path, special: sp }); }
+      const items: any[] = [];
+      for (const { path, special } of paths) {
+        let lock; try { lock = await c.getMailboxLock(path, { readOnly: true }); } catch { continue; }
+        try {
+          const found = (await c.search({ subject: base.slice(0, 80) }, { uid: true }).catch(() => false)) as number[] | false;
+          if (!found || found.length === 0) continue;
+          const addr = (a: any) => ({ name: String(a?.name ?? ''), address: String(a?.address ?? '') });
+          for await (const m of c.fetch(found.slice(-60).join(','), { uid: true, envelope: true, flags: true, internalDate: true } as any, { uid: true })) {
+            const env: any = m.envelope ?? {};
+            if (normalizeSubject(String(env.subject ?? '')) !== base) continue;
+            items.push({ folder: path, special, uid: m.uid, subject: String(env.subject ?? ''), from: addr(env.from?.[0]), to: (env.to ?? []).slice(0, 3).map(addr), date: env.date ?? m.internalDate ?? null, seen: m.flags?.has('\\Seen') ?? false });
+          }
+        } finally { lock.release(); }
+      }
+      items.sort((a, b) => new Date(a.date ?? 0).getTime() - new Date(b.date ?? 0).getTime());
+      return { items: items.slice(-40) };
+    });
   }
 
   private hasAttachment(node: any): boolean {

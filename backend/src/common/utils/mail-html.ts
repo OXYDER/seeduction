@@ -133,3 +133,14 @@ export function extractInlineImages(html: string): { html: string; attachments: 
   });
   return { html: out, attachments };
 }
+
+/** Sujet sans les « Re: », « Fwd: », « TR: »… répétés au début, en minuscules : sert à regrouper les courriels d'une même conversation. */
+export function normalizeSubject(subject: string): string {
+  let s = String(subject ?? '').trim();
+  for (let i = 0; i < 10; i++) {
+    const next = s.replace(/^\s*(re|fwd?|tr|rép|rep|aw|wg)\s*(\[\d+\])?\s*:\s*/i, '');
+    if (next === s) break;
+    s = next;
+  }
+  return s.replace(/\s+/g, ' ').trim().toLowerCase();
+}

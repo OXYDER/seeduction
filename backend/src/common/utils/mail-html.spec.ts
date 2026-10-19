@@ -93,3 +93,15 @@ describe('envoi : HTML sortant', () => {
     expect(r.html).toContain('https://x.com/a.png');
   });
 });
+
+import { normalizeSubject } from './mail-html';
+describe('normalizeSubject', () => {
+  it('retire les préfixes de réponse et de transfert, quelle que soit la langue ou la casse', () => {
+    expect(normalizeSubject('Re: Question sur mon compte')).toBe('question sur mon compte');
+    expect(normalizeSubject('RE: Re: FWD: Question  sur mon compte ')).toBe('question sur mon compte');
+    expect(normalizeSubject('TR : Facture')).toBe('facture');
+    expect(normalizeSubject('Re[2]: Facture')).toBe('facture');
+    expect(normalizeSubject('Réponse: x')).toBe('réponse: x');
+    expect(normalizeSubject('')).toBe('');
+  });
+});

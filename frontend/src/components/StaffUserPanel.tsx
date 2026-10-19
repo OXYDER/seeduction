@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import { useMailStore } from '../store/mail';
 
 import { CLASS_LABEL } from '../lib/memberClass';
 
@@ -12,6 +14,7 @@ const toGo = (bytes: string | number) => (Number(bytes) / 1e9).toFixed(2);
 /** Gestion d'un membre depuis son profil : rôle, pseudo, stats (admins) ; avertissements et bannissements (modérateurs et plus). */
 export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { targetId: string; myRole: string; myId: string; onChanged: () => void }) {
   const [detail, setDetail] = useState<any>(null);
+  const hasMail = useMailStore((st) => st.hasMail);
   const [username, setUsername] = useState('');
   const [role, setRole] = useState('USER');
   const [uploaded, setUploaded] = useState('');
@@ -93,7 +96,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
     <div className="panel ornate">
       <div className="panel-title"><span className="title-icon">🛡️</span>Modération du membre</div>
       <div className="muted" style={{ marginBottom: 10 }}>
-        {detail.email} · {ROLE_LABEL[detail.role]} · {detail.status === 'BANNED' ? '🚫 Banni' : detail.status === 'PENDING_EMAIL' ? '📧 Courriel non confirmé' : 'Actif'}
+        {detail.email}{hasMail && !isSelf && detail.email && !/@(localhost|seeduction.local)$/i.test(detail.email) && <> <Link to={`/courriel?to=${encodeURIComponent(`${detail.username} <${detail.email}>`)}&subject=${encodeURIComponent('Seeduction – ')}`} title="Écrire à ce membre depuis le courriel de l'équipe">✉️ Écrire</Link></>} · {ROLE_LABEL[detail.role]} · {detail.status === 'BANNED' ? '🚫 Banni' : detail.status === 'PENDING_EMAIL' ? '📧 Courriel non confirmé' : 'Actif'}
       </div>
 
       {!isSelf && !outranks && (

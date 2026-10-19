@@ -35,6 +35,7 @@ import { useNewsUnseen } from '../lib/news';
 import { ProfileName } from './UserLink';
 import Breadcrumbs from './Breadcrumbs';
 import Staff2faBanner from './Staff2faBanner';
+import { useMailStore } from '../store/mail';
 import { PageLoading } from './Loading';
 import AccountMenu from './AccountMenu';
 import SeedObligations from './SeedObligations';
@@ -305,6 +306,8 @@ function LayoutInner() {
 
   // Courriel (équipe) : le lien apparaît dans le menu du compte seulement si une boîte a été configurée pour ce membre ; pastille = courriels non lus.
   const [hasMail, setHasMail] = useState(false);
+  const publishMail = useMailStore((st) => st.setHasMail);
+  useEffect(() => { publishMail(hasMail); }, [hasMail, publishMail]);
   const [mailUnread, setMailUnread] = useState(0);
   useEffect(() => {
     if (!accessToken || !isStaff) { setHasMail(false); setMailUnread(0); return; }
