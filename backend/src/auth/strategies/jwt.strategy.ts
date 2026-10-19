@@ -31,6 +31,8 @@ export interface AuthUser {
   fam: boolean;
   /** Droits accordés par le profil principal (tout est permis au profil principal et aux comptes sans profils). */
   perms: Perms;
+  /** La 2FA est activée sur ce compte (inconnu pour un profil famille : `undefined`). */
+  twoFactor?: boolean;
 }
 
 const CHECK_TTL_MS = 15_000;
@@ -56,6 +58,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
     let perms: Perms = ALL_PERMS;
     let role = payload.role;
+    let twoFactor: boolean | undefined;
     if (!payload.acct) {
       // Le jeton dure 7 jours : le rôle et l'état du compte sont relus (au plus toutes les 15 secondes), pour qu'un membre banni, un compte désactivé ou un membre de l'équipe
       // rétrogradé perde ses droits tout de suite, et qu'un changement de mot de passe coupe les sessions ouvertes avant lui.
@@ -63,6 +66,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       const refusal = sessionRefusal(id, payload.iat);
       if (refusal) throw new UnauthorizedException(refusal);
       role = id!.role;
+      twoFactor = id!.twoFactor;
     }
     if (payload.acct) {
       // Profil d'un compte famille : bloqué par le profil principal, ou compte principal banni = accès coupé tout de suite ;
@@ -86,6 +90,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       isMaster: !payload.acct,
       fam: !!payload.fam,
       perms,
+      twoFactor,
     };
   }
 }

@@ -15,6 +15,7 @@ import AdminDonationsAuto from '../components/AdminDonationsAuto';
 import AdminMailboxes from '../components/AdminMailboxes';
 import { SupportAdmin } from '../components/AdminSupport';
 import { LockdownAdmin } from '../components/AdminLockdown';
+import { AdminStaff2fa } from '../components/AdminStaff2fa';
 import { ImportAdmin } from '../components/AdminImport';
 import PotAdmin from '../components/AdminPot';
 import AdminJeux from '../components/AdminJeux';
@@ -82,7 +83,7 @@ export default function Admin() {
       {tab === 'Anti-triche' && <AdminAntiCheat />}
       {tab === 'Sauvegardes' && <AdminBackup />}
       {tab === 'Événements' && <AdminEventThemes />}
-      {tab === 'Sécurité' && <LockdownAdmin />}
+      {tab === 'Sécurité' && <><AdminStaff2fa /><LockdownAdmin /></>}
     </div>
   );
 }

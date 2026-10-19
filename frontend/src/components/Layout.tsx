@@ -34,6 +34,7 @@ import { useSupport } from '../store/support';
 import { useNewsUnseen } from '../lib/news';
 import { ProfileName } from './UserLink';
 import Breadcrumbs from './Breadcrumbs';
+import Staff2faBanner from './Staff2faBanner';
 import { PageLoading } from './Loading';
 import AccountMenu from './AccountMenu';
 import SeedObligations from './SeedObligations';
@@ -536,6 +537,7 @@ function LayoutInner() {
 
           <main className="container">
             <EventStrip />
+            <Staff2faBanner />
             <Breadcrumbs />
             <div key={location.pathname} className="page-enter">
               <Suspense fallback={<PageLoading />}><Outlet context={{ profile, categories } satisfies LayoutContext} /></Suspense>
@@ -672,6 +674,7 @@ function LayoutInner() {
 
       <div className="container">
         <EventStrip />
+        <Staff2faBanner />
         <Breadcrumbs />
         <Suspense fallback={<PageLoading />}><Outlet context={{ profile, categories } satisfies LayoutContext} /></Suspense>
       </div>

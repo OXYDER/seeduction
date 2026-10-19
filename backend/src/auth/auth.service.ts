@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
+import { isStaffRole, staff2faRequired } from '../common/utils/staff-2fa';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as speakeasy from 'speakeasy';
@@ -336,6 +337,7 @@ export class AuthService {
   async disable2FA(userId: string, password: string, token: string, ip?: string | null) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.twoFactorEnabled) throw new BadRequestException("La double authentification n'est pas activée");
+    if (isStaffRole(user.role) && (await staff2faRequired(this.prisma))) throw new BadRequestException("La double authentification est obligatoire pour l'équipe : tu ne peux pas la désactiver.");
     if (!(await bcrypt.compare(password ?? '', user.passwordHash))) throw new UnauthorizedException('Mot de passe incorrect');
     if (!(await this.verifySecondFactor(user, token ?? ''))) throw new UnauthorizedException('Code 2FA invalide');
     await this.prisma.user.update({ where: { id: userId }, data: { twoFactorEnabled: false, twoFactorSecret: null, twoFactorRecovery: [] } });
