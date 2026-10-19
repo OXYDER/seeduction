@@ -5,6 +5,7 @@ import { MessengerService } from '../messenger/messenger.service';
 import { PresenceService } from '../presence/presence.service';
 import { SupportAiError, SupportAiService } from './support-ai.service';
 import { SupportConfig } from './support-config';
+import { DELETED_USER_ID } from '../admin/account-deletion.service';
 import { Actor, SupportService, isStaffRole } from './support.service';
 
 interface SentEvent { conv: { id: string; type: string; slug: string | null }; message: any; actor: Actor }
@@ -59,7 +60,8 @@ export class SupportBotService implements OnModuleInit {
   async ensureBot(): Promise<{ id: string; username: string }> {
     const cfg = await this.support.config();
     if (this.bot && this.bot.username === cfg.botName) return this.bot;
-    let row = await this.prisma.user.findFirst({ where: { profileType: 'BOT' }, select: { id: true, username: true } });
+    // Le compte « [compte supprimé] » est lui aussi de type BOT : il ne doit JAMAIS être pris pour le robot (sinon les torrents importés et les messages de l'assistant lui sont attribués).
+    let row = await this.prisma.user.findFirst({ where: { profileType: 'BOT', id: { not: DELETED_USER_ID } }, orderBy: { createdAt: 'asc' }, select: { id: true, username: true } });
     if (!row) {
       const id = randomUUID();
       let username = cfg.botName;
@@ -76,7 +78,19 @@ export class SupportBotService implements OnModuleInit {
       if (!taken) row = await this.prisma.user.update({ where: { id: row.id }, data: { username: cfg.botName }, select: { id: true, username: true } });
     }
     this.bot = row;
+    await this.repairMisattributed(row.id);
     return row;
+  }
+
+  /**
+   * Réparation : avant ce correctif, le robot pouvait être confondu avec le compte « [compte supprimé] » et lui avoir fait publier des torrents. Tout torrent issu de l'import automatique
+   * (il est toujours publié par le robot) qui apparaît au nom du compte supprimé est remis au robot.
+   */
+  private async repairMisattributed(botId: string) {
+    try {
+      const n = await this.prisma.$executeRawUnsafe('UPDATE "Torrent" SET "uploaderId" = $1 WHERE "uploaderId" = $2 AND id IN (SELECT "torrentId" FROM "ImportItem" WHERE "torrentId" IS NOT NULL)', botId, DELETED_USER_ID);
+      if (n) this.log.warn(`${n} torrent(s) importé(s) attribué(s) à tort au compte supprimé : remis au robot`);
+    } catch (err: any) { this.log.warn(`Réparation des torrents du robot impossible : ${err?.message ?? err}`); }
   }
 
   async channelId(cfg?: SupportConfig): Promise<string | null> {
