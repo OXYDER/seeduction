@@ -3,9 +3,9 @@ import { randomUUID } from 'crypto';
 import { TorrentsService } from '../torrents/torrents.service';
 import { PrismaService } from '../common/prisma.service';
 
-// webtorrent 1.x (dernière ligne CommonJS, la 2.x étant en ESM pur, incompatible avec ce backend en require()).
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const WebTorrent = require('webtorrent');
+// webtorrent 3.x est en ESM pur (Node 22 et plus) : on le charge à la demande avec un import() dynamique, que TypeScript ne transforme pas en require().
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const importEsm = new Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<any>;
 
 const STREAM_STORAGE_DIR = process.env.STREAM_STORAGE_DIR ?? './storage/stream-cache';
 // Extensions lisibles nativement par un <video> de navigateur, sans transcodage côté serveur (voir STREAMING.md).
@@ -145,8 +145,11 @@ export class StreamService {
     return { ok: true };
   }
 
-  private getClient() {
-    if (!this.client) this.client = new WebTorrent({ path: STREAM_STORAGE_DIR });
+  private async getClient() {
+    if (!this.client) {
+      const { default: WebTorrent } = await importEsm('webtorrent');
+      this.client ??= new WebTorrent({ path: STREAM_STORAGE_DIR });
+    }
     return this.client;
   }
 
@@ -171,9 +174,10 @@ export class StreamService {
     // Le même .torrent personnalisé (announce Seeduction + passkey du spectateur) qu'un téléchargement classique,
     // avec le marqueur `viaStream` : le ratio compte normalement, mais aucune obligation « hit & run » n'en naît.
     const buffer = await this.torrents.getDownloadFile(torrentId, userId, { viaStream: true });
+    const client = await this.getClient();
     const torrent: any = await new Promise((resolve, reject) => {
       let settled = false;
-      const t = this.getClient().add(buffer, { deselect: true });
+      const t = client.add(buffer, { path: STREAM_STORAGE_DIR, deselect: true });
       t.on('ready', () => { settled = true; resolve(t); });
       t.on('error', (err: any) => { if (!settled) reject(err); });
     });
@@ -191,6 +195,6 @@ export class StreamService {
     file.select();
     const session = this.sessions.get(torrentId);
     if (session) session.lastAccess = Date.now();
-    return file as { name: string; length: number; createReadStream: (opts?: { start: number; end: number }) => NodeJS.ReadableStream };
+    return file as { name: string; length: number; createReadStream: (opts?: { start: number; end: number }) => import('stream').Readable };
   }
 }

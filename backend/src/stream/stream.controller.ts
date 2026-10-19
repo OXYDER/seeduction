@@ -83,7 +83,7 @@ export class StreamController {
 
     if (!range) {
       res.writeHead(200, { 'Content-Length': file.length, 'Content-Type': mime, 'Accept-Ranges': 'bytes' });
-      file.createReadStream().pipe(res);
+      const whole = file.createReadStream(); whole.pipe(res); res.on('close', () => whole.destroy());
       return;
     }
 
@@ -96,6 +96,6 @@ export class StreamController {
       'Content-Length': end - start + 1,
       'Content-Type': mime,
     });
-    file.createReadStream({ start, end }).pipe(res);
+    const part = file.createReadStream({ start, end }); part.pipe(res); res.on('close', () => part.destroy());
   }
 }

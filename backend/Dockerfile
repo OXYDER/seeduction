@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 RUN apk add --no-cache openssl
 WORKDIR /app
 COPY package.json ./
@@ -7,7 +7,7 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:22-alpine
 # Outils des sauvegardes complètes (voir src/backup) : pg_dump / pg_restore / psql (client PostgreSQL 16, comme le serveur), GNU tar, rclone (copie vers un nuage ou un serveur SFTP).
 RUN apk add --no-cache openssl mediainfo postgresql16-client tar rclone
 WORKDIR /app

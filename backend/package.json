@@ -24,7 +24,7 @@
     "@nestjs/websockets": "^10.4.0",
     "@prisma/client": "^5.20.0",
     "basic-ftp": "^6.2.2",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "imapflow": "^1.7.8",
@@ -40,7 +40,7 @@
     "sharp": "^0.35.5",
     "socket.io": "^4.7.5",
     "speakeasy": "^2.0.0",
-    "webtorrent": "^1.2.18"
+    "webtorrent": "^3.0.21"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.5",
@@ -74,6 +74,7 @@
     "testEnvironment": "node"
   },
   "overrides": {
-    "multer": "$multer"
+    "multer": "$multer",
+    "qs": "^6.15.4"
   }
 }
