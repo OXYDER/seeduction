@@ -71,6 +71,7 @@ const Wiki = lazyPage(() => import('./pages/Wiki'));
 const Alerts = lazyPage(() => import('./pages/Alerts'));
 const Achievements = lazyPage(() => import('./pages/Achievements'));
 const Referrals = lazyPage(() => import('./pages/Referrals'));
+const StaffBoard = lazyPage(() => import('./pages/StaffBoard'));
 const Integrations = lazyPage(() => import('./pages/Integrations'));
 const Telegram = lazyPage(() => import('./pages/Telegram'));
 const Suggestions = lazyPage(() => import('./pages/Suggestions'));
@@ -136,6 +137,7 @@ export default function App() {
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/referrals" element={<Referrals />} />
+          <Route path="/staff-board" element={<StaffBoard />} />
           <Route path="/integrations" element={<Integrations />} />
           <Route path="/telegram" element={<Telegram />} />
           <Route path="/suggestions" element={<Suggestions />} />

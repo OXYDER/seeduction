@@ -4228,3 +4228,13 @@ button.hl-cash:disabled { opacity: 0.45; filter: grayscale(0.5); }
 .ach-card.earned { opacity: 1; border-color: var(--gold, #e0b84a); background: rgba(224, 184, 74, 0.08); }
 .ach-icon { font-size: 28px; line-height: 1; filter: grayscale(1) opacity(0.6); }
 .ach-card.earned .ach-icon { filter: none; }
+
+/* Tableau de bord de l'équipe */
+.sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.sb-card { position: relative; display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: 12px; border: 1px solid var(--border, rgba(255,255,255,.15)); background: rgba(255, 255, 255, 0.04); color: inherit; text-decoration: none; }
+.sb-card:hover { background: rgba(255, 255, 255, 0.08); text-decoration: none; }
+.sb-card.warn { border-color: #ff9f2d; }
+.sb-card.late { border-color: var(--danger, #e5384f); box-shadow: 0 0 0 1px var(--danger, #e5384f) inset; }
+.sb-icon { font-size: 30px; }
+.sb-count { font-size: 28px; font-weight: 800; line-height: 1; }
+.sb-dot { position: absolute; top: 10px; right: 10px; width: 10px; height: 10px; border-radius: 50%; }

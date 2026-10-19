@@ -54,6 +54,7 @@ const NODES: Node[] = [
   { path: '/player', label: 'Lecteur Seeduction' },
   { path: '/roadmap', label: 'Roadmap' },
   { path: '/moderation', label: 'Modération' },
+  { path: '/staff-board', label: 'Tableau de bord', parent: '/admin' },
   { path: '/admin', label: 'Staff' },
 ];
 

@@ -120,6 +120,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/soutenir', icon: '❤️', cls: 'c-rules', label: 'Soutenir', match: starts('/soutenir') },
   { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p) },
   { to: '/support', icon: '🛟', cls: 'c-livechat', label: 'Support', match: starts('/support') },
+  { to: '/staff-board', icon: '📋', cls: 'c-staff', label: 'Tableau de bord', match: starts('/staff-board'), staffOnly: true },
   { to: '/moderation', icon: '🛡️', cls: 'c-staff', label: 'Modération', match: starts('/moderation'), staffOnly: true },
   { to: '/equipe', icon: '🏅', cls: 'c-staff', label: 'Équipe et rangs', match: starts('/equipe'), staffOnly: true },
   { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true },
