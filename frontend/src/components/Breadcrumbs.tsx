@@ -17,6 +17,7 @@ const NODES: Node[] = [
   { path: '/collections/:id', label: 'Collection', parent: '/collections' },
   { path: '/friends', label: 'Amis' },
   { path: '/messages', label: 'Messages' },
+  { path: '/courriel', label: 'Courriel' },
   { path: '/teams', label: 'Teams' },
   { path: '/teams/:id', label: 'Team', parent: '/teams' },
   { path: '/team/:slug', label: 'Team', parent: '/teams' },

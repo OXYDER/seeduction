@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import { htmlToBbcode } from '../lib/htmlToBbcode';
+import { useCrumbTitle } from '../store/crumbs';
 import Loading from '../components/Loading';
 import MailCompose, { postMail, type MailBoxInfo, type MailDraft, type SendJob } from '../components/MailCompose';
 import '../mail.css';
@@ -75,6 +76,13 @@ export default function Courriel() {
   const box = boxes?.find((b) => b.id === boxId) ?? null;
   const base = `/webmail/mailboxes/${boxId}`;
   const special = folders.find((f) => f.path === folder)?.special ?? (folder === 'INBOX' ? '\\Inbox' : null);
+  // Fil d'Ariane : Accueil › Courriel › [boîte, s'il y en a plusieurs] › dossier (› courriel ouvert)
+  const folderLabel = FOLDER_NAME[special ?? ''] ?? folders.find((f) => f.path === folder)?.name ?? 'Réception';
+  useCrumbTitle(msg ? (msg.subject || '(sans sujet)') : folderLabel, [
+    { label: 'Courriel', to: '/courriel' },
+    ...(boxes && boxes.length > 1 && box ? [{ label: box.label }] : []),
+    ...(msg ? [{ label: folderLabel }] : []),
+  ]);
   const pathOf = (sp: string, fallback: string) => folders.find((f) => f.special === sp)?.path ?? fallback;
 
   useEffect(() => { api.get('/webmail/mailboxes').then((r) => { setBoxes(r.data); if (r.data[0]) setBoxId(r.data[0].id); }).catch((e) => setError(errorOf(e))); }, []);
