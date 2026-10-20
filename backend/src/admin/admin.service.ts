@@ -285,6 +285,15 @@ export class AdminService {
     }
   }
 
+  /** Passkey d'un membre, pour l'équipe (super-modérateurs et plus) : seulement pour un membre de rang strictement inférieur (le propriétaire peut tout), jamais pour son propre compte ni pour un profil robot. */
+  async passkeyOf(actor: Actor, targetId: string) {
+    const target = await this.prisma.user.findUnique({ where: { id: targetId }, select: { id: true, username: true, role: true, passkey: true, profileType: true } });
+    if (!target) throw new NotFoundException('Utilisateur introuvable');
+    if (target.profileType === 'BOT' && !['ADMIN', 'OWNER'].includes(actor.role)) throw new ForbiddenException('La passkey d\'un robot du site n\'est visible que par les administrateurs');
+    if (actor.userId !== target.id) this.assertOutranks(actor, target); // sur son propre compte, la passkey est déjà visible dans Profil
+    return { passkey: target.passkey, username: target.username };
+  }
+
   async userDetail(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

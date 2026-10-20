@@ -280,6 +280,15 @@ export class AdminController {
     return result;
   }
 
+  /** Afficher la passkey d'un membre (super-modérateurs et plus). Chaque affichage est inscrit au journal de modération. */
+  @Roles('SUPER_MODERATOR', 'ADMIN', 'OWNER')
+  @Get('users/:id/passkey')
+  async viewPasskey(@Param('id') id: string, @Request() req: any) {
+    const result = await this.adminService.passkeyOf(this.actor(req), id);
+    await this.audit.log(req.user.userId, 'USER_PASSKEY_VIEW', { targetId: id, target: result.username }, this.ip(req));
+    return result;
+  }
+
   @Post('users/:id/passkey')
   async regenPasskey(@Param('id') id: string, @Request() req: any) {
     const result = await this.adminService.regeneratePasskey(this.actor(req), id);

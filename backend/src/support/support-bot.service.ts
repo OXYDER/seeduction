@@ -90,6 +90,17 @@ export class SupportBotService implements OnModuleInit {
     try {
       const n = await this.prisma.$executeRawUnsafe('UPDATE "Torrent" SET "uploaderId" = $1 WHERE "uploaderId" = $2 AND id IN (SELECT "torrentId" FROM "ImportItem" WHERE "torrentId" IS NOT NULL)', botId, DELETED_USER_ID);
       if (n) this.log.warn(`${n} torrent(s) importé(s) attribué(s) à tort au compte supprimé : remis au robot`);
+      // Les envois, points et badges que le compte supprimé a accumulés en seedant à la place du robot reviennent au robot (le compte supprimé n'est jamais censé en avoir).
+      const ghost = await this.prisma.user.findUnique({ where: { id: DELETED_USER_ID }, select: { uploaded: true, downloaded: true, bonusPoints: true } });
+      if (ghost && (ghost.uploaded > 0n || ghost.downloaded > 0n || ghost.bonusPoints > 0)) {
+        await this.prisma.$transaction([
+          this.prisma.user.update({ where: { id: botId }, data: { uploaded: { increment: ghost.uploaded }, downloaded: { increment: ghost.downloaded }, bonusPoints: { increment: ghost.bonusPoints } } }),
+          this.prisma.user.update({ where: { id: DELETED_USER_ID }, data: { uploaded: 0n, downloaded: 0n, bonusPoints: 0 } }),
+        ]);
+        this.log.warn('Envois et points du compte supprimé remis au robot');
+      }
+      await this.prisma.userBadge.deleteMany({ where: { userId: DELETED_USER_ID } });
+      await this.prisma.peer.deleteMany({ where: { userId: DELETED_USER_ID } });
     } catch (err: any) { this.log.warn(`Réparation des torrents du robot impossible : ${err?.message ?? err}`); }
   }
 

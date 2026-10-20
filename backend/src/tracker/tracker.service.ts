@@ -6,6 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { AntiCheatService } from '../anticheat/anticheat.service';
 import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY, reseedReward } from '../common/utils/economy';
 import { setSource } from '../common/utils/ledger';
+import { DELETED_USER_ID } from '../admin/account-deletion.service';
 
 export interface AnnounceParams {
   infoHash: string;   // hex
@@ -128,8 +129,23 @@ export class TrackerService {
     await this.prisma.snatch.update({ where: { id: snatch.id }, data: { seedSeconds, lastSeedAt: now, satisfied } });
   }
 
+  private robotCache: { at: number; id: string | null } | null = null;
+  /** Le robot « Seeduction » (compte qui publie et seede les torrents importés), distinct du compte « [compte supprimé] ». */
+  private async robotId(): Promise<string | null> {
+    if (this.robotCache && Date.now() - this.robotCache.at < 60_000) return this.robotCache.id;
+    const row = await this.prisma.user.findFirst({ where: { profileType: 'BOT', id: { not: DELETED_USER_ID } }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+    this.robotCache = { at: Date.now(), id: row?.id ?? null };
+    return this.robotCache.id;
+  }
+
   async announce(params: AnnounceParams) {
-    const user = await this.prisma.user.findUnique({ where: { passkey: params.passkey } });
+    let user = await this.prisma.user.findUnique({ where: { passkey: params.passkey } });
+    // Avant un correctif, le robot pouvait être confondu avec le compte « [compte supprimé] » : des torrents ont été ajoutés dans qBittorrent avec SA passkey. Ces seeds sont ceux du robot :
+    // on les compte pour le robot (la passkey du compte supprimé n'a jamais été donnée à personne d'autre, ce compte n'ayant aucune session).
+    if (user?.id === DELETED_USER_ID) {
+      const robot = await this.robotId();
+      if (robot) user = await this.prisma.user.findUnique({ where: { id: robot } });
+    }
     if (!user) throw new ForbiddenException('Passkey invalide');
     if (user.status === 'BANNED') throw new ForbiddenException('Compte banni');
 

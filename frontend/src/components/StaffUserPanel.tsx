@@ -15,6 +15,12 @@ const toGo = (bytes: string | number) => (Number(bytes) / 1e9).toFixed(2);
 export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { targetId: string; myRole: string; myId: string; onChanged: () => void }) {
   const [detail, setDetail] = useState<any>(null);
   const hasMail = useMailStore((st) => st.hasMail);
+  const [passkey, setPasskey] = useState<string | null>(null);
+  const [pkError, setPkError] = useState('');
+  async function showPasskey() {
+    setPkError('');
+    try { setPasskey((await api.get(`/admin/users/${targetId}/passkey`)).data.passkey); } catch (e: any) { setPkError(e.response?.data?.message ?? 'Impossible'); }
+  }
   const [username, setUsername] = useState('');
   const [role, setRole] = useState('USER');
   const [uploaded, setUploaded] = useState('');
@@ -165,6 +171,16 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
             </div>
           ))}
           {(detail.hnr?.length ?? 0) === 0 && <div className="muted" style={{ fontSize: 12 }}>Aucun hit &amp; run en cours.</div>}
+          <div className="row" style={{ marginTop: 8, gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {passkey === null ? <button type="button" className="secondary" onClick={showPasskey} title="Chaque affichage est inscrit au journal de modération">🔑 Afficher la passkey</button> : (
+              <>
+                <code style={{ userSelect: "all", overflowWrap: "anywhere" }}>{passkey}</code>
+                <button type="button" className="secondary" onClick={() => navigator.clipboard?.writeText(passkey)}>📋 Copier</button>
+                <button type="button" className="secondary" onClick={() => setPasskey(null)}>Masquer</button>
+              </>
+            )}
+            {pkError && <span style={{ color: "var(--danger)", fontSize: 12 }}>{pkError}</span>}
+          </div>
           <div style={{ marginTop: 8 }}>
             <button type="button" className="secondary" onClick={() => window.confirm("Générer une nouvelle passkey ? L'ancienne cesse de fonctionner : le membre devra retélécharger ses .torrent.") && run(() => api.post(`/admin/users/${targetId}/passkey`), 'Nouvelle passkey générée')}>🔑 Régénérer la passkey</button>
           </div>

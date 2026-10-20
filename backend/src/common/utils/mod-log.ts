@@ -26,7 +26,7 @@ export const ACTIONS: Record<string, Info> = {
   REPORT_RESOLVE: A('a traité un signalement', 'membres'), REPORT_DISMISS: A('a classé un signalement sans suite', 'membres'),
   USER_WARN: A('a averti un membre', 'membres', 'important'), USER_BAN: A('a banni un membre', 'membres', 'grave'), USER_UNBAN: A('a levé un bannissement', 'membres', 'important'),
   USER_EDIT: A('a modifié un membre', 'membres'), USER_DELETE: A('a supprimé un compte', 'membres', 'grave'), USER_ACTIVATE: A('a activé un compte', 'membres'),
-  USER_CLEAR_HNR: A('a effacé un hit & run', 'membres'), USER_WARNING_DELETE: A('a retiré un avertissement', 'membres'), USER_PASSKEY_RESET: A('a réinitialisé la passkey d\'un membre', 'membres', 'important'),
+  USER_CLEAR_HNR: A('a effacé un hit & run', 'membres'), USER_WARNING_DELETE: A('a retiré un avertissement', 'membres'), USER_PASSKEY_VIEW: A('a affiché la passkey d\'un membre', 'membres', 'grave'), USER_PASSKEY_RESET: A('a réinitialisé la passkey d\'un membre', 'membres', 'important'),
   PASSWORD_RESET_FORCED: A('a exigé la réinitialisation du mot de passe', 'membres', 'important'), PASSWORD_RESET_FORCE_CANCELED: A('a levé l\'exigence de réinitialisation', 'membres'), RESET_LINK_ISSUED: A('a émis un lien de réinitialisation', 'membres', 'important'),
   STAFF_VIEW_PRIVATE: A('a consulté des conversations privées', 'membres', 'grave'), STAFF_UNLOCK_PRIVATE: A('a déverrouillé l\'accès aux conversations privées', 'membres', 'grave'),
   CHAT_BAN: A('a banni du chat', 'chat', 'important'), CHAT_UNBAN: A('a levé un bannissement du chat', 'chat'), CHANNEL_PURGE: A('a purgé un canal', 'chat', 'important'),
