@@ -4216,6 +4216,21 @@ button.hl-cash:disabled { opacity: 0.45; filter: grayscale(0.5); }
 .cw-badge { position: absolute; left: 6px; bottom: 6px; right: 6px; text-align: center; font-size: 11px; font-weight: 800; padding: 3px 4px; border-radius: 6px; background: var(--gold, #e0b84a); color: #14110a; }
 .cw-info { display: grid; gap: 1px; min-width: 0; }
 .cw-title { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-card.playing .cw-poster { border-color: var(--gold, #e0b84a); box-shadow: 0 0 0 1px var(--gold, #e0b84a), 0 0 18px rgba(224, 184, 74, 0.35); }
+/* Vagues : deux bandes translucides qui ondulent au bas de l'affiche pendant la lecture. */
+.cw-wave { position: absolute; left: 0; right: 0; bottom: 5px; height: 46%; overflow: hidden; pointer-events: none; }
+.cw-wave i { position: absolute; left: -50%; width: 200%; height: 200%; bottom: -150%; border-radius: 42%; background: rgba(224, 184, 74, 0.3); animation: cw-wave 4.5s linear infinite; }
+.cw-wave i + i { background: rgba(120, 170, 255, 0.24); border-radius: 38%; animation-duration: 7s; animation-direction: reverse; }
+@keyframes cw-wave { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.cw-live { position: absolute; left: 6px; right: 6px; top: 6px; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 3px 4px; border-radius: 6px; font-size: 10.5px; font-weight: 800; background: rgba(8, 10, 22, 0.82); color: var(--gold-bright, #f3d47a); }
+.cw-eq { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; }
+.cw-eq b { width: 2px; background: currentColor; border-radius: 1px; animation: cw-eq 0.9s ease-in-out infinite; height: 40%; }
+.cw-eq b:nth-child(2) { animation-delay: 0.2s; }
+.cw-eq b:nth-child(3) { animation-delay: 0.4s; }
+.cw-eq b:nth-child(4) { animation-delay: 0.1s; }
+@keyframes cw-eq { 0%, 100% { height: 25%; } 50% { height: 100%; } }
+.cw-now { color: var(--gold-bright, #f3d47a); font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .cw-wave i, .cw-eq b { animation: none; } }
 .cw-x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; border-radius: 50%; display: none; place-items: center; font-size: 11px; background: rgba(8, 10, 22, 0.85); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); cursor: pointer; z-index: 2; }
 .cw-card:hover .cw-x, .cw-x:focus-visible { display: grid; }
 

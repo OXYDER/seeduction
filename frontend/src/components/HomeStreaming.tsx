@@ -183,7 +183,6 @@ export default function HomeStreaming() {
   return (
     <div className="home-plex">
       <HomeSectionsControls />
-      <ContinueWatching />
       <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
       <HomeSection id="freeleech" label="Calendrier freeleech" icon="🗓️"><FreeleechCalendar compact /></HomeSection>
       <HomeSection id="pot" label="Pot commun" icon="🍯"><PotWidget /></HomeSection>
@@ -276,6 +275,8 @@ export default function HomeStreaming() {
             </section>
           )}
           </HomeSection>
+
+          <ContinueWatching />
 
           <HomeSection id="activity" label="Mon activité" icon="⏯️">
           {active.length > 0 && (

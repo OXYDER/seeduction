@@ -640,6 +640,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Le bouton [b]▶ Reprendre[/b] repart quelques secondes avant ta dernière position. Pendant que tu regardes, ton statut affiche « 🎬 Regarde … » (jamais pour du contenu adulte). Voir [url=/wiki/reprise-et-statut-en-train-de-regarder]Reprise et statut[/url].\n\n` +
         `[b]Continuer à regarder (accueil)[/b]\n` +
         `• Sur l'accueil, la rangée [b]▶️ Continuer à regarder[/b] montre ce que tu as commencé sans finir : l'affiche (avec une barre de progression), le titre, l'épisode et où tu t'es arrêté. Clique sur l'affiche pour [b]reprendre[/b] directement dans le lecteur Seeduction ; clique sur le titre pour ouvrir la fiche ; le ✕ (au survol) retire le titre de la liste.\n` +
+        `• La rangée se place [b]sous « À la une »[/b], avant « Mon activité », et n'apparaît que si tu as déjà utilisé le lecteur Seeduction. Pendant une lecture, la carte affiche [b]« En cours de lecture »[/b] avec un petit effet de vagues sur l'affiche, et le temps avance en direct (la page se met à jour toute seule, sans la recharger).\n` +
         `• Pour une série, une seule ligne : le dernier épisode vu. Quand tu as [b]fini[/b] un épisode (ou presque), la carte [b]Épisode suivant[/b] te propose le suivant s'il est déjà sur Seeduction (ou le premier de la saison suivante), dans la même qualité et la même langue si possible.\n` +
         `• Seul ce qui a été regardé dans le lecteur Seeduction compte ; le contenu adulte n'y apparaît jamais.\n\n` +
         `[b]Un pack avec beaucoup de fichiers[/b]\n` +

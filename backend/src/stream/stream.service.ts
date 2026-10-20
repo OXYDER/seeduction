@@ -163,8 +163,10 @@ export class StreamService {
       if (seenTorrent.has(t.id)) continue;
       seenTorrent.add(t.id);
       if (seriesKey) { if (seenSeries.has(seriesKey)) continue; seenSeries.add(seriesKey); } // seul le dernier épisode vu de chaque série compte
-      if (isResumable(r)) {
-        resume.push({
+      // Lecture active à l'instant même (le lecteur ping toutes les 3 s) : toujours montrée, même avant 2 minutes de lecture, avec la mention « en cours de lecture ».
+      const playingNow = Date.now() - r.updatedAt.getTime() < 10_000;
+      if (playingNow || isResumable(r)) {
+        resume.push({ playingNow,
           torrentId: t.id, name: t.name, title: seriesKey ? seriesTitleOf(t.name) : t.name, cover: t.coverImage, category: t.category?.name ?? null, fileIndex: r.fileIndex,
           season: numOf(t.season), episode: numOf(t.episode), positionSeconds: r.positionSeconds, durationSeconds: r.durationSeconds,
           percent: r.durationSeconds ? Math.min(99, Math.round((r.positionSeconds / r.durationSeconds) * 100)) : null, updatedAt: r.updatedAt,
@@ -193,6 +195,7 @@ export class StreamService {
       }
       if (next.length >= 8) break;
     }
+    resume.sort((a, b) => Number(b.playingNow) - Number(a.playingNow)); // ce qui joue en ce moment passe en premier (l'ordre reste par récence sinon)
     return { resume: resume.slice(0, 12), next };
   }
 
