@@ -26,6 +26,7 @@ import { AuditModule } from './audit/audit.service';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 import { SubtitlesModule } from './subtitles/subtitles.module';
 import { ReferralsModule } from './referrals/referrals.module';
+import { RecapModule } from './recap/recap.module';
 import { PushModule } from './push/push.module';
 import { EconomyModule } from './economy/economy.module';
 import { PotModule } from './pot/pot.module';
@@ -96,6 +97,7 @@ import { WebmailModule } from './webmail/webmail.module';
     SavedSearchesModule,
     SubtitlesModule,
     ReferralsModule,
+    RecapModule,
     PushModule,
     EconomyModule,
     PotModule,

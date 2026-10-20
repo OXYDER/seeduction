@@ -778,6 +778,32 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Les règles d'envoi ([url=/wiki/guide-envoyer-premier-torrent]Envoyer un torrent[/url]) restent les mêmes : NFO ou MediaInfo obligatoire, bon nom, bonne catégorie.`,
     },
     {
+      title: 'Mon récap du mois',
+      slug: 'guide-recap',
+      keywords: 'récap, récapitulatif, mois, statistiques personnelles, meilleur jour, séries regardées, comparaison, classement, points par source',
+      isFaq: true,
+      content:
+        `Chaque mois, le site te prépare un [b]récapitulatif personnel[/b] : ce que tu as partagé, regardé et gagné.\n` +
+        `\n` +
+        `[b]Où le trouver ?[/b]\n` +
+        `Menu de ton compte > [b]📅 Mon récap du mois[/b]. Le 1er de chaque mois, une notification t'annonce celui du mois écoulé (tu peux la couper dans « Nouvelles et événements » : [url=/wiki/guide-notifications-push]Notifications[/url]). Le sélecteur en haut permet de revoir les 12 derniers mois.\n` +
+        `\n` +
+        `[b]Ce qu'il contient[/b]\n` +
+        `• [b]Partage[/b] : volume envoyé et reçu, nombre de jours de partage et ton [b]meilleur jour[/b] (avec un graphique par jour). Le relevé se fait chaque nuit ; l'upload comprend le double upload.\n` +
+        `• [b]Ce que tu as regardé[/b] : les séries (avec le nombre d'épisodes) et les films lus dans le [url=/wiki/guide-lecteur]lecteur Seeduction[/url], et le temps approximatif. Le contenu pour adultes n'y apparaît jamais.\n` +
+        `• [b]Points[/b] : combien tu en as gagné et dépensé, [b]par source[/b] (partage, jeux, badges, parrainage...).\n` +
+        `• [b]Badges[/b] obtenus dans le mois ([url=/wiki/guide-badges]Badges et réalisations[/url]) et un résumé de ton activité (torrents terminés et approuvés, commentaires, forum).\n` +
+        `• [b]Ta place parmi les membres[/b] : « tu dépasses X % des membres actifs », avec la médiane et la moyenne. La comparaison est [b]anonyme[/b] : personne n'est nommé, et seuls les membres actifs du mois sont comptés (le robot du site et les comptes supprimés ne le sont pas). Ce n'est pas un classement, juste de quoi te situer.\n` +
+        `\n` +
+        `[b]Bon à savoir[/b]
+` +
+        `• Les comptes famille partagent le récap du compte principal.
+` +
+        `• Un mois sans activité donne un récap presque vide : il se remplit dès que tu seedes, regardes ou joues.
+` +
+        `• Les chiffres du mois en cours se mettent à jour chaque nuit.`,
+    },
+    {
       title: 'État du site : le site fonctionne-t-il ?',
       slug: 'guide-etat-du-site',
       keywords: 'état, statut, panne, mise à jour, déploiement, maintenance, disponibilité, le site fonctionne, injoignable, redémarre',

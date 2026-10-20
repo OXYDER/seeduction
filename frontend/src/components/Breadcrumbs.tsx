@@ -46,6 +46,7 @@ const NODES: Node[] = [
   { path: '/wiki/:slug', label: 'Article', parent: '/wiki' },
   { path: '/bonus', label: 'Points bonus' },
   { path: '/activity', label: 'Mon activité' },
+  { path: '/recap', label: 'Mon récap du mois' },
   { path: '/seeds', label: 'Mes seeds' },
   { path: '/hit-and-run', label: 'Hit & run' },
   { path: '/profile', label: 'Mon profil' },
