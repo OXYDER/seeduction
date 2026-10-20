@@ -210,6 +210,13 @@ export class TorrentsController {
   /** Peers détaillés d'un torrent : réservé à l'équipe. */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
+  @Get(':id/completion')
+  completion(@Param('id') id: string) {
+    return this.torrentsService.completion(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER')
   @Get(':id/peers')
   peers(@Param('id') id: string) {
     return this.torrentsService.peers(id);

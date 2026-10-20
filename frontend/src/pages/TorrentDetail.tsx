@@ -6,6 +6,7 @@ import UserLink from '../components/UserLink';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import TorrentPeers from '../components/TorrentPeers';
+import TorrentCompletion from '../components/TorrentCompletion';
 import StaffQueueBanner from '../components/StaffQueueBanner';
 import OwnerReviewBanner from '../components/OwnerReviewBanner';
 import CopyButton from '../components/CopyButton';
@@ -45,7 +46,7 @@ export default function TorrentDetail() {
   const [torrent, setTorrent] = useState<any>(null);
   const [loadError, setLoadError] = useState('');
   const theme = useTheme();
-  const [tab, setTab] = useState<'overview' | 'files' | 'comments' | 'related' | 'nfo' | 'peers'>('overview');
+  const [tab, setTab] = useState<'overview' | 'files' | 'comments' | 'related' | 'nfo' | 'peers' | 'completion'>('overview');
   const [trailerOpen, setTrailerOpen] = useState(false);
   const downloadAnchorRef = useRef<HTMLDivElement>(null);
   usePageBackdrop(torrent ? (torrent.metadata?.backdrop ?? torrent.coverImage ?? null) : null);
@@ -206,7 +207,7 @@ export default function TorrentDetail() {
       { id: 'comments', label: 'Commentaires' },
       ...(hasRelated ? [{ id: 'related', label: 'Saga & épisodes' }] : []),
       { id: 'nfo', label: 'NFO' },
-      ...(isStaff ? [{ id: 'peers', label: `Peers (${(torrent.seeders ?? 0) + (torrent.leechers ?? 0)})` }] : []),
+      ...(isStaff ? [{ id: 'peers', label: `Peers (${(torrent.seeders ?? 0) + (torrent.leechers ?? 0)})` }, { id: 'completion', label: `Complétés / non complétés (${torrent.completedCount ?? 0})` }] : []),
     ] as { id: typeof tab; label: string }[];
 
     return (
@@ -300,6 +301,7 @@ export default function TorrentDetail() {
         {tab === 'files' && filesPanel}
         {tab === 'nfo' && <NfoPanel key={`nfo-${torrent.id}`} torrentId={torrent.id} alwaysOpen />}
         {tab === 'peers' && isStaff && <TorrentPeers key={`peers-${torrent.id}`} torrentId={torrent.id} />}
+        {tab === 'completion' && isStaff && <TorrentCompletion key={`completion-${torrent.id}`} torrentId={torrent.id} />}
         {tab === 'comments' && <TorrentComments torrentId={torrent.id} />}
         {tab === 'related' && hasRelated && <TorrentRelated torrentId={torrent.id} seriesTitle={torrent.metadata?.originalTitle ?? torrent.name} />}
 

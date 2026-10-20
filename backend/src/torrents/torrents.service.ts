@@ -828,6 +828,41 @@ export class TorrentsService implements OnModuleInit {
    * Liste détaillée des peers d'un torrent (équipe seulement) : membre, adresse, client BitTorrent reconnu d'après le peer_id,
    * volumes cumulés sur CE torrent, progression et dernier contact. `sameIpUsers` signale une même adresse utilisée par plusieurs membres.
    */
+  /**
+   * Équipe : qui a terminé ce torrent et qui ne l'a pas terminé. « Terminé » : téléchargement complété (Snatch), avec le temps de seed et l'état hit & run.
+   * « Non terminé » : un membre qui a téléchargé des morceaux (suivi quotidien des annonces) ou qui télécharge en ce moment, sans l'avoir terminé ; l'envoyeur n'en fait pas partie.
+   */
+  async completion(id: string) {
+    const torrent = await this.prisma.torrent.findUnique({ where: { id }, select: { id: true, size: true, uploaderId: true } });
+    if (!torrent) throw new NotFoundException('Torrent introuvable');
+    const size = Number(torrent.size);
+    const [snatches, peers, flows] = await Promise.all([
+      this.prisma.snatch.findMany({ where: { torrentId: id }, orderBy: { completedAt: 'desc' }, take: 1000 }),
+      this.prisma.peer.findMany({ where: { torrentId: id }, select: { userId: true, isSeeder: true, left: true, downloaded: true, lastAnnounceAt: true } }),
+      this.prisma.userTorrentFlow.groupBy({ by: ['userId'], where: { torrentId: id }, _sum: { got: true, down: true, up: true }, _max: { day: true }, orderBy: { _max: { day: 'desc' } }, take: 1000 }),
+    ]);
+    const done = new Set(snatches.map((s) => s.userId));
+    const ids = [...new Set([...snatches.map((s) => s.userId), ...peers.map((p) => p.userId), ...flows.map((f) => f.userId)])];
+    const users = await this.prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, role: true, deletedAt: true } });
+    const who = new Map(users.map((u) => [u.id, { id: u.id, username: u.username, role: u.role }]));
+    const seedingNow = new Set(peers.filter((p) => p.isSeeder).map((p) => p.userId));
+
+    const completed = [...new Map(snatches.map((s) => [s.userId, s])).values()].filter((s) => who.has(s.userId)).map((s) => ({
+      user: who.get(s.userId)!, completedAt: s.completedAt, seedHours: Math.round((s.seedSeconds / 3600) * 10) / 10, satisfied: s.satisfied, hnr: s.hnr && !s.hnrClearedAt, seedingNow: seedingNow.has(s.userId),
+    }));
+
+    const leech = new Map(peers.filter((p) => !p.isSeeder).map((p) => [p.userId, p]));
+    const flowBy = new Map(flows.map((f) => [f.userId, f]));
+    const unfinished = ids.filter((uid) => !done.has(uid) && uid !== torrent.uploaderId && !seedingNow.has(uid) && who.has(uid) && (leech.has(uid) || Number(flowBy.get(uid)?._sum.got ?? 0) > 0 || Number(flowBy.get(uid)?._sum.down ?? 0) > 0)).map((uid) => {
+      const p = leech.get(uid), f = flowBy.get(uid);
+      const got = Number(f?._sum.got ?? 0) || Number(f?._sum.down ?? 0);
+      const progress = p && size > 0 ? Math.max(0, Math.min(100, Math.round(((size - Number(p.left)) / size) * 1000) / 10)) : size > 0 ? Math.min(100, Math.round((got / size) * 1000) / 10) : 0;
+      const last = p?.lastAnnounceAt ?? (f?._max.day ?? null);
+      return { user: who.get(uid)!, downloadingNow: !!p && Date.now() - p.lastAnnounceAt.getTime() < 3_600_000, progress, received: got, lastSeenAt: last };
+    }).sort((a, b) => Number(b.downloadingNow) - Number(a.downloadingNow) || (b.lastSeenAt ? new Date(b.lastSeenAt).getTime() : 0) - (a.lastSeenAt ? new Date(a.lastSeenAt).getTime() : 0));
+    return { completed, unfinished };
+  }
+
   async peers(id: string) {
     const torrent = await this.prisma.torrent.findUnique({ where: { id }, select: { id: true, size: true } });
     if (!torrent) throw new NotFoundException('Torrent introuvable');

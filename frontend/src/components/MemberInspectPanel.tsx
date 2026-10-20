@@ -13,7 +13,7 @@ interface Overview {
 interface Page { items: Item[]; total: number; page: number; pageSize: number }
 
 const TABS: { id: string; label: string; icon: string; priv?: boolean }[] = [
-  { id: 'downloads', label: 'Téléchargements', icon: '⬇️' }, { id: 'uploads', label: 'Envois', icon: '⬆️' }, { id: 'seeds', label: 'Seeds et peers', icon: '🌱' },
+  { id: 'downloads', label: 'Téléchargements', icon: '⬇️' }, { id: 'unfinished', label: 'Non terminés', icon: '⏸️' }, { id: 'uploads', label: 'Envois', icon: '⬆️' }, { id: 'seeds', label: 'Seeds et peers', icon: '🌱' },
   { id: 'hnr', label: 'Hit & run', icon: '⚠️' }, { id: 'friends', label: 'Amis', icon: '🤝' }, { id: 'forum', label: 'Forum', icon: '🗨️' },
   { id: 'pm', label: 'Messagerie (courrier)', icon: '✉️', priv: true }, { id: 'dm', label: 'Messages privés', icon: '🔒', priv: true }, { id: 'chat', label: 'Chat (groupes et canaux)', icon: '💬', priv: true },
 ];

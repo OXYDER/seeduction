@@ -3,7 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthService } from '../auth/auth.service';
 
-export const SECTIONS = ['downloads', 'uploads', 'seeds', 'hnr', 'friends', 'forum', 'pm', 'dm', 'chat'] as const;
+export const SECTIONS = ['downloads', 'unfinished', 'uploads', 'seeds', 'hnr', 'friends', 'forum', 'pm', 'dm', 'chat'] as const;
 export type Section = (typeof SECTIONS)[number];
 /** Sections qui montrent le contenu de conversations : déverrouillage par mot de passe (+ code 2FA) et chaque consultation est inscrite au journal d'audit. */
 export const PRIVATE_SECTIONS: Section[] = ['pm', 'dm', 'chat'];
@@ -99,6 +99,24 @@ export class MemberInspectService {
         id: s.id, at: s.completedAt.toISOString(), primary: s.torrent?.name ?? '(torrent supprimé)', secondary: `${s.torrent ? gb(s.torrent.size) : ''} · seedé ${hours(s.seedSeconds)}`,
         tags: [s.satisfied ? 'Régularisé' : 'À seeder', ...(s.hnr ? [s.hnrClearedAt ? 'Hit & run effacé' : 'Hit & run'] : [])], link: s.torrent ? `/torrents/${s.torrent.id}` : undefined,
       })), total);
+    }
+    if (sec === 'unfinished') {
+      // Torrents dont le membre a reçu des morceaux (suivi quotidien des annonces) sans jamais les terminer ; ses propres envois n'en font pas partie.
+      const flows = await this.prisma.userTorrentFlow.groupBy({ by: ['torrentId'], where: { userId: { in: ids } }, _sum: { got: true, down: true }, _max: { day: true }, orderBy: { _max: { day: 'desc' } }, take: 600 });
+      const tids = flows.map((f) => f.torrentId);
+      const [snatched, torrents] = await Promise.all([
+        this.prisma.snatch.findMany({ where: { userId: { in: ids }, torrentId: { in: tids } }, select: { torrentId: true } }),
+        this.prisma.torrent.findMany({ where: { id: { in: tids }, uploaderId: { notIn: ids } }, select: { id: true, name: true, size: true } }),
+      ]);
+      const finished = new Set(snatched.map((x) => x.torrentId));
+      const byId = new Map(torrents.map((t) => [t.id, t]));
+      const rest = flows.filter((f) => !finished.has(f.torrentId) && byId.has(f.torrentId) && (Number(f._sum.got ?? 0) > 0 || Number(f._sum.down ?? 0) > 0));
+      return done(rest.slice(skip, skip + PAGE).map((f) => {
+        const t = byId.get(f.torrentId)!;
+        const got = Number(f._sum.got ?? 0) || Number(f._sum.down ?? 0), size = Number(t.size);
+        const pct = size > 0 ? Math.min(100, Math.round((got / size) * 100)) : 0;
+        return { id: f.torrentId, at: (f._max.day ?? new Date()).toISOString(), primary: t.name, secondary: `reçu ${gb(got)} sur ${gb(t.size)} (${pct} %)`, tags: [pct >= 95 ? 'Presque fini' : 'Non terminé'], link: `/torrents/${t.id}` };
+      }), rest.length);
     }
     if (sec === 'uploads') {
       const where = { uploaderId: { in: ids } };
