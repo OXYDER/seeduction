@@ -11,6 +11,8 @@ import { bbcodeToHtml } from '../lib/bbcode';
 import { dayLabel, isSameDay } from '../lib/chatFormat';
 import { timeAgo } from '../lib/time';
 import { notifyMessagesChanged } from '../components/MessagesMenu';
+import MessageRequestsPanel from '../components/MessageRequestsPanel';
+import { useMsgRequest } from '../store/msgRequest';
 
 type Filter = 'all' | 'unread' | 'sent';
 interface Person { id?: string; username: string; avatarUrl?: string | null }
@@ -112,7 +114,11 @@ export default function Messages() {
       setTo(null); setToText(''); setSubject(''); setContent(''); setFormKey((k) => k + 1); writeDraft('new', null);
       setComposing(false);
       setParams({ thread: data.threadId });
-    } catch (err: any) { setError(err.response?.data?.message ?? 'Envoi impossible'); }
+    } catch (err: any) {
+      // Pas encore autorisé à écrire à ce membre : la fenêtre de demande de message s'ouvre.
+      if (err.response?.data?.code === 'MESSAGE_REQUEST_REQUIRED') { useMsgRequest.getState().open({ id: err.response.data.toId, username: err.response.data.toUsername ?? recipient }); setError(''); }
+      else setError(err.response?.data?.message ?? 'Envoi impossible');
+    }
     finally { setBusy(false); }
   }
 
@@ -152,6 +158,7 @@ export default function Messages() {
 
   return (
     <div className="pm-page">
+      <MessageRequestsPanel forceOpen={params.get('demandes') === '1'} />
       <div className="pm-head">
         <h1 style={{ margin: 0 }}>✉️ Messages {unreadTotal > 0 && <span className="badge new">{unreadTotal} non lu{unreadTotal > 1 ? 's' : ''}</span>}</h1>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

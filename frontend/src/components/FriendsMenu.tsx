@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Nick from './Nick';
 import { api } from '../api/client';
 import { useMessenger } from '../store/messenger';
 import { STATUS_COLOR, STATUS_LABEL, type PublicStatus } from '../lib/presence';
@@ -48,7 +49,7 @@ export default function FriendsMenu({ pending, online, active }: { pending: numb
             <div key={f.id} className="hp-friend">
               <Link to={`/users/${f.id}`} className="hp-friend-main" onClick={close}>
                 <span className="hp-av"><Avatar user={f} size={32} /><i style={{ background: STATUS_COLOR[f.status] }} title={STATUS_LABEL[f.status]} /></span>
-                <span className="hp-friend-name">{f.username}<small className="muted">{STATUS_LABEL[f.status]}</small></span>
+                <span className="hp-friend-name"><Nick id={f.id} name={f.username} /><small className="muted">{STATUS_LABEL[f.status]}</small></span>
               </Link>
               <button type="button" className="hp-msg" title={`Écrire à ${f.username}`} aria-label={`Écrire à ${f.username}`} onClick={() => { void openDirect({ id: f.id, username: f.username, avatarUrl: f.avatarUrl }); close(); }}>💬</button>
             </div>

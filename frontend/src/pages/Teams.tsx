@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import UserLink from '../components/UserLink';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { formatBytes } from '../lib/format';
@@ -101,7 +102,7 @@ export default function Teams() {
                 <span>📦 {t.releaseCount} release{t.releaseCount > 1 ? 's' : ''}</span>
                 {t.memberCount > 0 && <span>👥 {t.memberCount}</span>}
                 {t.totalUpload > 0 && <span>⬆ {formatBytes(t.totalUpload)}</span>}
-                {t.leader && <span className="row" style={{ gap: 4 }}><Avatar user={t.leader} size={18} /> {t.leader.username}</span>}
+                {t.leader && <span className="row" style={{ gap: 4 }}><Avatar user={t.leader} size={18} /> <UserLink user={t.leader} /></span>}
                 {t.auto && <span title="Ajoutée par le système d'après le nom des releases">🤖 auto</span>}
                 {t.hasOwner && <span className={t.recruiting ? 'team-rec on' : 'team-rec'}>{t.recruiting ? '🟢 Recrute' : '⚪ Complète'}</span>}
               </div>

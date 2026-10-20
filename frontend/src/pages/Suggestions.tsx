@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import UserLink from '../components/UserLink';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { timeAgo } from '../lib/time';
@@ -149,7 +150,7 @@ export default function Suggestions() {
                 <p className="sg-excerpt">{s.excerpt}</p>
                 {s.statusNote && s.status !== 'OPEN' && <p className="sg-note">💬 Équipe : {s.statusNote}</p>}
                 <Progress votes={s.voteCount} threshold={s.threshold} status={s.status} />
-                <div className="muted sg-meta">{s.author.username} · {timeAgo(s.createdAt)} · <Link to={`/suggestions/${s.id}`}>💬 {s.commentCount} commentaire{s.commentCount > 1 ? 's' : ''}</Link></div>
+                <div className="muted sg-meta"><UserLink user={s.author} /> · {timeAgo(s.createdAt)} · <Link to={`/suggestions/${s.id}`}>💬 {s.commentCount} commentaire{s.commentCount > 1 ? 's' : ''}</Link></div>
               </div>
             </article>
           ))}

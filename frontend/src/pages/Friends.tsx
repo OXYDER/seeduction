@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Nick from '../components/Nick';
 import { api } from '../api/client';
 import Avatar from '../components/Avatar';
 import { Link } from 'react-router-dom';
@@ -87,7 +88,7 @@ export default function Friends() {
                       <span style={{ position: 'absolute', right: -1, bottom: -1, width: 10, height: 10, borderRadius: '50%', border: '2px solid var(--bg-panel)', background: STATUS_COLOR[status as keyof typeof STATUS_COLOR] }} />
                     </span>
                     <div>
-                      <strong>{f.username}</strong>
+                      <strong><Nick id={f.id} name={f.username} /></strong>
                       <div className="muted" style={{ fontSize: 12 }}>{STATUS_LABEL[status as keyof typeof STATUS_LABEL]}</div>
                     </div>
                   </Link>
@@ -107,7 +108,7 @@ export default function Friends() {
             {data.incoming.map((f) => (
               <div key={f.friendshipId} className="row" style={{ justifyContent: 'space-between', padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
                 <Link to={`/users/${f.id}`} className="row" style={{ gap: 10, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}>
-                  <Avatar user={f} size={40} /><strong>{f.username}</strong>
+                  <Avatar user={f} size={40} /><strong><Nick id={f.id} name={f.username} /></strong>
                 </Link>
                 <div className="row" style={{ gap: 6 }}>
                   <button type="button" onClick={() => accept(f.friendshipId)}>✔️ Accepter</button>
@@ -124,7 +125,7 @@ export default function Friends() {
             {data.outgoing.map((f) => (
               <div key={f.friendshipId} className="row" style={{ justifyContent: 'space-between', padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
                 <Link to={`/users/${f.id}`} className="row" style={{ gap: 10, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}>
-                  <Avatar user={f} size={40} /><strong>{f.username}</strong>
+                  <Avatar user={f} size={40} /><strong><Nick id={f.id} name={f.username} /></strong>
                 </Link>
                 <button type="button" className="secondary" onClick={() => remove(f.friendshipId)}>Annuler la demande</button>
               </div>

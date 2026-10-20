@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Nick from '../components/Nick';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { audio, bell, setSoundOn, soundOn, tick } from '../lib/slotSound';
@@ -193,7 +194,7 @@ export default function Pronostics() {
           <div className="panel ornate">
             <h2 style={{ marginTop: 0 }}>🏅 Classement de la semaine</h2>
             {data.leaderboard.rows.length === 0 ? <p className="muted" style={{ margin: 0 }}>Aucune prédiction réglée cette semaine : sois le premier !</p> : (
-              <ol className="pk-board">{data.leaderboard.rows.map((r) => <li key={r.rank} className={r.mine ? 'mine' : ''}><span>{['🥇', '🥈', '🥉'][r.rank - 1] ?? `${r.rank}.`} {r.username}</span><strong>{r.wins}/{r.picks}</strong></li>)}</ol>
+              <ol className="pk-board">{data.leaderboard.rows.map((r) => <li key={r.rank} className={r.mine ? 'mine' : ''}><span>{['🥇', '🥈', '🥉'][r.rank - 1] ?? `${r.rank}.`} <Nick name={r.username} /></span><strong>{r.wins}/{r.picks}</strong></li>)}</ol>
             )}
             {data.leaderboard.myRank !== null && data.leaderboard.myRank > 10 && <p className="muted" style={{ margin: '6px 0 0' }}>Ton rang : {data.leaderboard.myRank}</p>}
             <p className="muted" style={{ margin: '8px 0 0', fontSize: 12.5 }}>Chaque lundi matin, les trois meilleurs (au moins {data.rules.weeklyMin} prédictions) reçoivent {data.rules.prizes.join(', ')} points.</p>
@@ -201,7 +202,7 @@ export default function Pronostics() {
           {data.lastWeek.length > 0 && (
             <div className="panel">
               <h2 style={{ marginTop: 0 }}>🏆 Podium de la semaine dernière</h2>
-              <ol className="pk-board">{data.lastWeek.map((r) => <li key={r.rank}><span>{['🥇', '🥈', '🥉'][r.rank - 1]} {r.username}</span><strong>{r.wins}/{r.picks}</strong><span className="muted">+{r.points}</span></li>)}</ol>
+              <ol className="pk-board">{data.lastWeek.map((r) => <li key={r.rank}><span>{['🥇', '🥈', '🥉'][r.rank - 1]} <Nick name={r.username} /></span><strong>{r.wins}/{r.picks}</strong><span className="muted">+{r.points}</span></li>)}</ol>
             </div>
           )}
           <div className="panel">

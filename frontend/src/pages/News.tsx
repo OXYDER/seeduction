@@ -36,7 +36,7 @@ function Card({ n, big, canEdit, onEdit }: { n: any; big?: boolean; canEdit: boo
         <p>{text}{text.length >= (big ? 280 : 160) && '…'}</p>
         <div className="news-card-meta">
           {n.author && <Avatar user={n.author} size={22} />}
-          <span>{n.author?.username} · {timeAgo(n.createdAt)}</span>
+          <span>{n.author ? <UserLink user={n.author} /> : null} · {timeAgo(n.createdAt)}</span>
           <span className="news-counts" title="Réactions · commentaires · lecteurs">
             {n._count?.reactions > 0 && <span>❤️ {n._count.reactions}</span>}
             <span>💬 {n._count?.comments ?? 0}</span>

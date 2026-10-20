@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Nick from '../components/Nick';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { useCountdown } from '../components/FreeleechCalendar';
@@ -236,7 +237,7 @@ export default function Jeux() {
             <table className="moj-board">
               <tbody>
                 {data.leaderboard.map((r) => (
-                  <tr key={r.username}><td>{MEDAL[r.rank - 1] ?? r.rank}</td><td>{r.username}</td><td className="muted">{r.wins} pari{r.wins > 1 ? 's' : ''} gagné{r.wins > 1 ? 's' : ''}</td><td style={{ textAlign: 'right', color: r.net >= 0 ? 'var(--green-bright)' : 'var(--danger)' }}><strong>{r.net >= 0 ? '+' : ''}{formatNumber(r.net)}</strong></td></tr>
+                  <tr key={r.username}><td>{MEDAL[r.rank - 1] ?? r.rank}</td><td><Nick name={r.username} /></td><td className="muted">{r.wins} pari{r.wins > 1 ? 's' : ''} gagné{r.wins > 1 ? 's' : ''}</td><td style={{ textAlign: 'right', color: r.net >= 0 ? 'var(--green-bright)' : 'var(--danger)' }}><strong>{r.net >= 0 ? '+' : ''}{formatNumber(r.net)}</strong></td></tr>
                 ))}
               </tbody>
             </table>

@@ -20,11 +20,26 @@ interface Props {
 export default function AccountMenu({ userId, profile, open, onClose, onStatus, canUpload = true, mail = null }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   // Le menu du côté s'ouvre en dehors de la colonne (qui peut défiler) : on le place sous le nom, en position fixe.
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  // Selon la résolution : la hauteur disponible sous le nom décide si le menu tient sur une colonne ; sinon il passe sur deux colonnes (et défile au besoin), sans jamais sortir de l'écran.
+  const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number; compact: boolean } | null>(null);
   useEffect(() => {
     if (!open) return;
-    const r = document.querySelector('.side-user-card')?.getBoundingClientRect();
-    if (r) setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - 308)), top: r.bottom + 6 });
+    const place = () => {
+      const r = document.querySelector('.side-user-card')?.getBoundingClientRect();
+      if (!r) return;
+      const available = window.innerHeight - (r.bottom + 6) - 10;
+      // Une colonne demande ~ 760 px ; en dessous, deux colonnes (si la largeur le permet).
+      const compact = available < 760 && window.innerWidth >= 520;
+      const width = compact ? 460 : 300;
+      let top = r.bottom + 6;
+      let maxHeight = available;
+      // Écran vraiment court : on remonte le menu pour lui donner plus de place plutôt que de le laisser minuscule.
+      if (maxHeight < 320) { top = Math.max(8, window.innerHeight - 330 - 10); maxHeight = window.innerHeight - top - 10; }
+      setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), top, maxHeight, compact });
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
   }, [open]);
 
   useEffect(() => {
@@ -62,7 +77,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
 
   // Dans <body> : la colonne du menu coupe tout ce qui dépasse (et un parent transformé casse la position fixe).
   return createPortal(
-    <div className="account-menu" ref={ref} role="menu" aria-label="Menu du compte" style={pos ? { left: pos.left, top: pos.top } : { visibility: 'hidden' }}>
+    <div className={`account-menu${pos?.compact ? ' compact' : ''}`} ref={ref} role="menu" aria-label="Menu du compte" style={pos ? { left: pos.left, top: pos.top, maxHeight: pos.maxHeight } : { visibility: 'hidden' }}>
       {profile && (
         <div className="account-stats">
           <Link to="/profile" onClick={onClose}><span className="muted">Ratio</span><strong style={{ color: profile.ratio != null && profile.ratio < 1 ? 'var(--danger)' : 'var(--success)' }}>{profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong></Link>

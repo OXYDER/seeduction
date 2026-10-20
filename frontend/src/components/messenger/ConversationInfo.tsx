@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/auth';
 import { statusOf, useMessenger } from '../../store/messenger';
 import { STATUS_COLOR, STATUS_LABEL } from '../../lib/presence';
 import { formatBytes } from '../../lib/format';
+import Nick from '../Nick';
 import Avatar from '../Avatar';
 import ConvAvatar from './ConvAvatar';
 import PurgeChannelModal from '../PurgeChannelModal';
@@ -116,7 +117,7 @@ export default function ConversationInfo({ conversationId, onClose, onLeft }: { 
               {candidates.map((f) => (
                 <label key={f.id} className="msgr-share-item">
                   <input type="checkbox" style={{ width: 'auto' }} checked={picked.has(f.id)} onChange={() => setPicked((p) => { const n = new Set(p); if (n.has(f.id)) n.delete(f.id); else n.add(f.id); return n; })} />
-                  <Avatar user={f} size={26} /> {f.username}
+                  <Avatar user={f} size={26} /> <Nick id={f.id} name={f.username} />
                 </label>
               ))}
               {picked.size > 0 && <button type="button" disabled={busy} onClick={addMembers}>Ajouter {picked.size} membre{picked.size > 1 ? 's' : ''}</button>}
@@ -124,7 +125,7 @@ export default function ConversationInfo({ conversationId, onClose, onLeft }: { 
           )}
           {members.map((m) => (
             <div key={m.id} className="msgr-member">
-              <Link to={`/users/${m.id}`} className="msgr-member-main"><Avatar user={m} size={30} /><span>{m.username}{m.id === me?.id ? ' (toi)' : ''}</span></Link>
+              <Link to={`/users/${m.id}`} className="msgr-member-main"><Avatar user={m} size={30} /><span><Nick id={m.id} name={m.username} />{m.id === me?.id ? ' (toi)' : ''}</span></Link>
               {ROLE_LABEL[m.role] && <span className="badge new">{ROLE_LABEL[m.role]}</span>}
             {(isOwner || isAdmin) && m.id !== me?.id && m.role !== 'OWNER' && (
               <div className="msgr-member-actions">
@@ -160,7 +161,7 @@ export default function ConversationInfo({ conversationId, onClose, onLeft }: { 
                       <Avatar user={{ username: u.username }} size={28} />
                       <span className="msgr-status-dot" style={{ background: STATUS_COLOR[u.status], width: 11, height: 11 }} />
                     </span>
-                    <span>{u.username}</span>
+                    <span><Nick id={u.id} name={u.username} /></span>
                   </button>
                 ))}
               </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import UserLink from '../components/UserLink';
 import { api } from '../api/client';
 import Loading from '../components/Loading';
 
@@ -70,7 +71,7 @@ export default function StaffBoard() {
             <tbody>
               {data.activity.map((a) => (
                 <tr key={a.id}>
-                  <td><Link to={`/users/${a.id}`}>{a.username}</Link> <small className="muted">{ROLE[a.role] ?? a.role}{data.onlineHint.includes(a.username) ? ' · 🟢 en ligne' : ''}</small></td>
+                  <td><UserLink user={a} /> <small className="muted">{ROLE[a.role] ?? a.role}{data.onlineHint.includes(a.username) ? ' · 🟢 en ligne' : ''}</small></td>
                   <td><strong>{a.total}</strong></td>
                   <td className="muted" style={{ fontSize: 13 }}>{a.detail.map((d) => `${d.count} ${d.label}`).join(' · ')}</td>
                 </tr>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import UserLink from './UserLink';
 import { api } from '../api/client';
 import Avatar from './Avatar';
 import { isUnseenNews, kindOf } from '../lib/news';
@@ -61,7 +62,7 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
             <p>{text}{text.length >= 240 && '…'}</p>
             <span className="news-hero-meta">
               {first.author && <Avatar user={first.author} size={22} />}
-              <span>{first.author?.username} · {timeAgo(first.createdAt)}</span>
+              <span>{first.author ? <UserLink user={first.author} /> : null} · {timeAgo(first.createdAt)}</span>
               <span className="news-readmore">Lire la nouvelle →</span>
               <span className="news-counts">
                 {first._count?.reactions > 0 && <span>❤️ {first._count.reactions}</span>}

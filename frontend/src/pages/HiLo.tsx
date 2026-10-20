@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Nick from '../components/Nick';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { labelOf, rankName } from '../lib/cards';
@@ -260,7 +261,7 @@ export default function HiLo() {
           {data.bestStreaks.length === 0 ? <p className="muted">Aucune série pour l'instant.</p> : (
             <table className="moj-board"><tbody>
               {data.bestStreaks.map((b, i) => (
-                <tr key={i}><td>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td><td>{b.username}</td><td className="muted">série de {b.step}</td><td style={{ textAlign: 'right' }}><strong>{b.status === 'LOST' ? '—' : `+${formatNumber(b.payout)}`}</strong></td></tr>
+                <tr key={i}><td>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td><td><Nick name={b.username} /></td><td className="muted">série de {b.step}</td><td style={{ textAlign: 'right' }}><strong>{b.status === 'LOST' ? '—' : `+${formatNumber(b.payout)}`}</strong></td></tr>
               ))}
             </tbody></table>
           )}

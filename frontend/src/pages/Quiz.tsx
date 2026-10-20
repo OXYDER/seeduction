@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Nick from '../components/Nick';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { audio, bell, noiseBuffer, playWin, setSoundOn, soundOn, tick } from '../lib/slotSound';
@@ -296,7 +297,7 @@ export default function Quiz() {
           <div className="panel">
             <h2 style={{ marginTop: 0 }}>🏅 Classement du jour</h2>
             {data.today.length === 0 ? <p className="muted" style={{ margin: 0 }}>Personne n'a encore terminé le quiz : sois le premier !</p> : (
-              <ol className="qz-board">{data.today.map((t, i) => <li key={i} className={t.mine ? 'mine' : ''}><span>{['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`} {t.username}</span><strong>{t.correct}/{data.rules.questions}</strong><span className="muted">{t.seconds.toFixed(1).replace('.', ',')} s</span></li>)}</ol>
+              <ol className="qz-board">{data.today.map((t, i) => <li key={i} className={t.mine ? 'mine' : ''}><span>{['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`} <Nick name={t.username} /></span><strong>{t.correct}/{data.rules.questions}</strong><span className="muted">{t.seconds.toFixed(1).replace('.', ',')} s</span></li>)}</ol>
             )}
             <p className="muted" style={{ margin: '8px 0 0', fontSize: 12.5 }}>Chaque matin, les trois meilleurs de la veille reçoivent {data.rules.podium.join(', ')} points.</p>
           </div>
@@ -306,7 +307,7 @@ export default function Quiz() {
           {data.weekly.length > 0 && (
             <div className="panel">
               <h2 style={{ marginTop: 0 }}>📅 Les meilleurs de la semaine</h2>
-              <ol className="qz-board">{data.weekly.map((w, i) => <li key={i} className={w.mine ? 'mine' : ''}><span>{['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`} {w.username}</span><strong>+{formatNumber(w.points)}</strong><span className="muted">{w.plays} quiz</span></li>)}</ol>
+              <ol className="qz-board">{data.weekly.map((w, i) => <li key={i} className={w.mine ? 'mine' : ''}><span>{['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`} <Nick name={w.username} /></span><strong>+{formatNumber(w.points)}</strong><span className="muted">{w.plays} quiz</span></li>)}</ol>
             </div>
           )}
         </div>

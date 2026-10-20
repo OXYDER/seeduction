@@ -3,6 +3,7 @@ import { loadPerms } from '../common/utils/family-perms';
 import { EventEmitter } from 'events';
 import { Prisma } from '@prisma/client';
 import { KLIPY_MEDIA } from './messenger-gifs.service';
+import { MessageRequestsService } from '../message-requests/message-requests.service';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from '../presence/presence.service';
@@ -117,7 +118,7 @@ export interface RealtimeEvent {
 export class MessengerService extends EventEmitter {
   private readonly logger = new Logger(MessengerService.name);
 
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private presence: PresenceService, private moderation: ChatModerationService) {
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private presence: PresenceService, private moderation: ChatModerationService, private requests: MessageRequestsService) {
     super();
     this.setMaxListeners(20);
   }
@@ -152,20 +153,9 @@ export class MessengerService extends EventEmitter {
     }));
   }
 
-  /** Un 1 à 1 est permis selon la préférence du destinataire (tout le monde, ou ses amis seulement) ; jamais avec un blocage. */
+  /** Un 1 à 1 demande, sauf pour l'équipe, une amitié ou une discussion déjà commencée, que le destinataire ait accepté une demande de message (voir MessageRequestsService). */
   private async assertCanDirect(fromId: string, toId: string) {
-    const [target, blocked] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: toId }, select: { dmPrivacy: true } }),
-      this.prisma.friendship.findFirst({
-        where: { status: 'BLOCKED', OR: [{ requesterId: fromId, addresseeId: toId }, { requesterId: toId, addresseeId: fromId }] },
-        select: { id: true },
-      }),
-    ]);
-    if (!target) throw new NotFoundException('Membre introuvable');
-    if (blocked) throw new ForbiddenException("Tu ne peux pas écrire à ce membre");
-    if (target.dmPrivacy === 'FRIENDS_ONLY' && !(await this.areFriends(fromId, toId))) {
-      throw new ForbiddenException("Ce membre n'accepte les messages privés que de ses amis");
-    }
+    await this.requests.assertCanContact(fromId, toId);
   }
 
   private async memberIds(conversationId: string) {

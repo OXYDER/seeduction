@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Nick from '../components/Nick';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import Loading from '../components/Loading';
@@ -81,7 +82,7 @@ export default function Tournament() {
               <tbody>
                 {d.board.map((r) => (
                   <tr key={r.rank} style={r.mine ? { background: 'rgba(224,184,74,.14)', fontWeight: 700 } : undefined}>
-                    <td style={{ width: 44 }}>{rankLabel(r.rank)}</td><td>{r.username}{r.mine && ' (toi)'}</td><td style={{ textAlign: 'right' }}>{formatNumber(r.points)} pts</td><td className="muted" style={{ fontSize: 12 }}>{r.prize ? prizeText(r.prize) : ''}</td>
+                    <td style={{ width: 44 }}>{rankLabel(r.rank)}</td><td><Nick name={r.username} />{r.mine && ' (toi)'}</td><td style={{ textAlign: 'right' }}>{formatNumber(r.points)} pts</td><td className="muted" style={{ fontSize: 12 }}>{r.prize ? prizeText(r.prize) : ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -110,7 +111,7 @@ export default function Tournament() {
         <div className="panel" style={{ display: 'grid', gap: 6 }}>
           <h3 style={{ margin: 0 }}>Semaine du {weekLabel(d.lastWeek.weekKey)} : résultats</h3>
           <div className="row" style={{ gap: 14, flexWrap: 'wrap' }}>
-            {d.lastWeek.top.map((t) => <span key={t.rank}>{rankLabel(t.rank)} <strong>{t.username}</strong> · {formatNumber(t.points)} pts{t.prize > 0 ? ` · +${formatNumber(t.prize)}` : ''}</span>)}
+            {d.lastWeek.top.map((t) => <span key={t.rank}>{rankLabel(t.rank)} <strong><Nick name={t.username} /></strong> · {formatNumber(t.points)} pts{t.prize > 0 ? ` · +${formatNumber(t.prize)}` : ''}</span>)}
           </div>
           {d.lastWeek.mine && <p style={{ margin: 0 }}>{d.lastWeek.mine.rank ? `Tu as terminé ${d.lastWeek.mine.rank === 1 ? '1er' : d.lastWeek.mine.rank + 'e'}` : 'Merci d\'avoir participé'} avec {formatNumber(d.lastWeek.mine.points)} points : <strong>+{formatNumber(d.lastWeek.mine.prizePoints + d.lastWeek.mine.jackpot)} pts</strong>{d.lastWeek.mine.tokens > 0 ? ` et ${d.lastWeek.mine.tokens} jeton${d.lastWeek.mine.tokens > 1 ? 's' : ''} freeleech` : ''}.</p>}
         </div>

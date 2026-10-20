@@ -8,6 +8,7 @@ import { useSupport } from '../../store/support';
 import { STATUS_LABEL } from '../../lib/presence';
 import { clock, dayLabel, isSameDay } from '../../lib/chatFormat';
 import ConvAvatar from './ConvAvatar';
+import Nick from '../Nick';
 import MessageItem, { type Reader } from './MessageItem';
 import Composer from './Composer';
 import Avatar from '../Avatar';
@@ -332,7 +333,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
               {results.length === 0 && <p className="muted" style={{ padding: 8 }}>Aucun message trouvé.</p>}
               {results.map((m) => (
                 <button key={m.id} type="button" onClick={() => jumpTo(m.id)}>
-                  <strong>{m.sender.username}</strong> <span className="muted">{dayLabel(m.createdAt)} {clock(m.createdAt)}</span>
+                  <strong><Nick id={m.sender.id} name={m.sender.username} /></strong> <span className="muted">{dayLabel(m.createdAt)} {clock(m.createdAt)}</span>
                   <span className="msgr-search-text">{m.content}</span>
                 </button>
               ))}

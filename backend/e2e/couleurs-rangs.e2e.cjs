@@ -14,12 +14,14 @@ let fails = 0; const check = (l, c, x = '') => { console.log((c ? 'OK  ' : 'FAIL
   const token = jwt.sign({ sub: plain.id, username: plain.username, role: 'USER' }, E2E.SECRET, { expiresIn: '1h' });
   check('sans connexion : refusé', (await call('GET', '/users/rank-colors')).s === 401);
   const r = await call('GET', '/users/rank-colors', token);
-  const rankOf = (id) => Object.entries(r.b ?? {}).find(([, ids]) => ids.includes(id))?.[0];
+  const rankOf = (id) => Object.entries(r.b?.byId ?? {}).find(([, ids]) => ids.includes(id))?.[0];
+  const rankOfName = (name) => Object.entries(r.b?.byName ?? {}).find(([, names]) => names.includes(name.toLowerCase()))?.[0];
   check('modérateur : couleur de modérateur', rankOf(mod.id) === 'MODERATOR');
   check('Uploadeur passe avant la classe Vétéran', rankOf(up.id) === 'UPLOADER');
   check('membre Vétéran : couleur Vétéran', rankOf(vet.id) === 'VETERAN');
   check('membre ordinaire : aucune couleur', rankOf(plain.id) === undefined);
   check('compte supprimé : absent de la liste', rankOf(gone.id) === undefined);
+  check('aussi par pseudo (classements qui ne donnent que le pseudo)', rankOfName(mod.username) === 'MODERATOR' && rankOfName(vet.username) === 'VETERAN' && rankOfName(plain.username) === undefined);
   const ids = [mod.id, up.id, vet.id, plain.id, gone.id];
   await p.user.deleteMany({ where: { id: { in: ids } } });
   console.log(fails ? `\n${fails} ÉCHEC(S)` : '\nTout est bon');

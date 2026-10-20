@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import UserLink from '../components/UserLink';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { timeAgo } from '../lib/time';
@@ -79,7 +80,7 @@ export default function SuggestionDetail() {
               <h1 style={{ margin: 0, fontSize: 22 }}>{s.title}</h1>
               <div className="sg-chips"><StatusChip meta={meta} id={s.status} /><CategoryChip meta={meta} id={s.category} /></div>
               <p className="sg-body">{s.body}</p>
-              <div className="muted sg-meta">Proposée par {s.author.username} · {timeAgo(s.createdAt)}</div>
+              <div className="muted sg-meta">Proposée par <UserLink user={s.author} /> · {timeAgo(s.createdAt)}</div>
               <Progress votes={s.voteCount} threshold={s.threshold} status={s.status} />
               {(canEdit || canDelete) && (
                 <div className="row" style={{ gap: 8 }}>
@@ -107,7 +108,7 @@ export default function SuggestionDetail() {
         {s.comments.length === 0 && <p className="muted" style={{ margin: 0 }}>Pas encore de commentaire.</p>}
         {s.comments.map((c) => (
           <div key={c.id} className="sg-comment">
-            <div className="muted sg-meta"><strong>{c.user.username}</strong>{c.staff && <span className="badge" style={{ marginLeft: 6 }}>Équipe</span>} · {timeAgo(c.createdAt)}
+            <div className="muted sg-meta"><strong><UserLink user={c.user} /></strong>{c.staff && <span className="badge" style={{ marginLeft: 6 }}>Équipe</span>} · {timeAgo(c.createdAt)}
               {(c.user.id === accountId || isStaff) && <button type="button" className="secondary" style={{ marginLeft: 8, padding: '0 8px', fontSize: 11 }} onClick={() => removeComment(c.id)}>Supprimer</button>}
             </div>
             <p style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap' }}>{c.content}</p>

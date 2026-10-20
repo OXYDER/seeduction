@@ -9,6 +9,7 @@ import { ChatModerationService } from './chat-moderation.service';
 import { LinkPreviewService } from './link-preview.service';
 import { MessengerGateway } from './messenger.gateway';
 import { MessengerMigrationService } from './messenger-migration.service';
+import { MessageRequestsModule } from '../message-requests/message-requests.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PresenceModule } from '../presence/presence.module';
 import { CoversModule } from '../covers/covers.module';
@@ -18,6 +19,7 @@ import { jwtSecret } from '../common/utils/secret';
 @Module({
   imports: [
     NotificationsModule,
+    MessageRequestsModule,
     PresenceModule,
     CoversModule,
     ChatModule, // fournit ChatFilesService (pièces jointes) tant que l'ancien chat existe

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import Nick from '../components/Nick';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { MACHINE_ORDER, skinFor, type MachineId } from '../lib/slotSkins';
@@ -100,7 +101,7 @@ export default function Slots() {
           {data.biggest.length === 0 ? <p className="muted">Aucun gain pour l'instant.</p> : (
             <table className="moj-board"><tbody>
               {data.biggest.map((b, i) => (
-                <tr key={i}><td>{i + 1}</td><td>{b.username}</td><td className="muted">{skinFor(b.machine, event).icon} mise {b.stake}</td><td style={{ textAlign: 'right', color: 'var(--green-bright)' }}><strong>+{formatNumber(b.win)}</strong></td></tr>
+                <tr key={i}><td>{i + 1}</td><td><Nick name={b.username} /></td><td className="muted">{skinFor(b.machine, event).icon} mise {b.stake}</td><td style={{ textAlign: 'right', color: 'var(--green-bright)' }}><strong>+{formatNumber(b.win)}</strong></td></tr>
               ))}
             </tbody></table>
           )}

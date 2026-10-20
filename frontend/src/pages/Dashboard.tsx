@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { api } from '../api/client';
+import Nick from '../components/Nick';
+import UserLink from '../components/UserLink';
 import { useAuthStore } from '../store/auth';
 import { formatBytes, formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
@@ -98,7 +100,7 @@ function ClassicDashboard() {
                   </div>
                 </div>
                 <div>
-                  <strong>{profile.username}</strong>{' '}
+                  <strong><Nick id={profile.id} name={profile.username} /></strong>{' '}
                   {['ADMIN', 'OWNER', 'MODERATOR', 'SUPER_MODERATOR'].includes(profile.role) && '👑'}
                   <div className="muted">{rank.title}</div>
                 </div>
@@ -218,7 +220,7 @@ function ClassicDashboard() {
               <div key={u.id} className="row" style={{ justifyContent: 'space-between', padding: '6px 0' }}>
                 <span className="row" style={{ gap: 8 }}>
                   <span className={`rank-badge ${i === 0 ? 'gold' : ''}`}>{i + 1}</span>
-                  <Link to={`/users/${u.id}`}>{u.username}</Link>
+                  <UserLink user={u} />
                 </span>
                 <span className="muted">{formatBytes(u.uploaded)}</span>
               </div>

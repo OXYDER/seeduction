@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
 import { formatBytes, formatNumber } from '../lib/format';
 import HeaderStats, { type EconInfo } from './HeaderStats';
+import MessageRequestDialog from './MessageRequestDialog';
 import NotificationsBell from './NotificationsBell';
 import TelegramHeaderLink from './TelegramHeaderLink';
 import InstallPrompt from './InstallPrompt';
@@ -569,6 +570,7 @@ function LayoutInner() {
         <InstallPrompt />
         <ChatRail />
         <ChatDock />
+        <MessageRequestDialog />
         <BrowserNotifications />
         <IdleWatcher />
         <NotificationAutoRead />

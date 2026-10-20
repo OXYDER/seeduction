@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import UserLink from '../components/UserLink';
 import { api } from '../api/client';
 
 export default function Leaderboard() {
@@ -19,7 +20,7 @@ export default function Leaderboard() {
             {users.map((u, i) => (
               <tr key={u.id}>
                 <td>{i + 1}</td>
-                <td><Link to={`/users/${u.id}`}>{u.username}</Link></td>
+                <td><UserLink user={u} /></td>
                 <td>{(Number(u.uploaded) / 1e9).toFixed(2)} Go</td>
                 <td>{u.ratio ? u.ratio.toFixed(2) : '∞'}</td>
                 <td>{u.bonusPoints?.toFixed(0)}</td>

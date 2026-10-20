@@ -188,18 +188,21 @@ export class UsersService {
     });
   }
 
-  private rankCache: { at: number; value: Record<string, string[]> } | null = null;
+  private rankCache: { at: number; value: { byId: Record<string, string[]>; byName: Record<string, string[]> } } | null = null;
   /** Rang coloré → identifiants des membres (staff, Uploadeur, Power User, Élite, Vétéran) : sert à colorer les pseudos partout, sans alourdir chaque réponse. Mis en cache une minute. */
-  async rankColors(): Promise<Record<string, string[]>> {
+  async rankColors(): Promise<{ byId: Record<string, string[]>; byName: Record<string, string[]> }> {
     if (this.rankCache && Date.now() - this.rankCache.at < 60_000) return this.rankCache.value;
     const rows = await this.prisma.user.findMany({
       where: { deletedAt: null, status: { not: 'DISABLED' }, OR: [{ role: { in: COLORED_ROLES as any } }, { memberClass: { in: COLORED_CLASSES as any } }] },
-      select: { id: true, role: true, memberClass: true },
+      select: { id: true, username: true, role: true, memberClass: true },
     });
-    const value: Record<string, string[]> = {};
+    // Par identifiant (partout où on a le membre) et par pseudo en minuscules (classements et listes qui ne donnent que le pseudo).
+    const value = { byId: {} as Record<string, string[]>, byName: {} as Record<string, string[]> };
     for (const u of rows) {
       const key = rankKeyOf(u.role, u.memberClass);
-      if (key) (value[key] ??= []).push(u.id);
+      if (!key) continue;
+      (value.byId[key] ??= []).push(u.id);
+      (value.byName[key] ??= []).push(u.username.toLowerCase());
     }
     this.rankCache = { at: Date.now(), value };
     return value;

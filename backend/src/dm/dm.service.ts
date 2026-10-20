@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { MessageRequestsService } from '../message-requests/message-requests.service';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from '../presence/presence.service';
@@ -13,7 +14,7 @@ const userSelect = { id: true, username: true, avatarUrl: true };
  */
 @Injectable()
 export class DmService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private presence: PresenceService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private presence: PresenceService, private requests: MessageRequestsService) {}
 
   /** Identifiant de fil stable et déterministe pour une paire de membres, indépendant de qui écrit le premier. */
   threadKey(a: string, b: string) {
@@ -26,18 +27,9 @@ export class DmService {
     }));
   }
 
-  /** true si `fromId` a le droit d'écrire à `toId`, selon la préférence de `toId` (tout le monde, ou ses amis seulement). */
-  private async canMessage(fromId: string, toId: string) {
-    const target = await this.prisma.user.findUnique({ where: { id: toId }, select: { dmPrivacy: true } });
-    if (!target) return false;
-    if (target.dmPrivacy === 'EVERYONE') return true;
-    return this.areFriends(fromId, toId);
-  }
-
+  /** L'équipe, les amis, les discussions déjà commencées et les demandes acceptées peuvent écrire ; les autres doivent d'abord envoyer une demande de message. */
   private async assertCanMessage(fromId: string, toId: string) {
-    if (!(await this.canMessage(fromId, toId))) {
-      throw new ForbiddenException("Ce membre n'accepte les messages privés que de ses amis");
-    }
+    await this.requests.assertCanContact(fromId, toId);
   }
 
   /** Amis et discussions déjà entamées, avec le dernier message (s'il y en a un) et le nombre de non lus, triés par activité récente. */

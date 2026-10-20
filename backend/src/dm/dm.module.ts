@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { DmController } from './dm.controller';
 import { DmService } from './dm.service';
 import { DmGateway } from './dm.gateway';
+import { MessageRequestsModule } from '../message-requests/message-requests.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PresenceModule } from '../presence/presence.module';
 import { jwtSecret } from '../common/utils/secret';
@@ -10,6 +11,7 @@ import { jwtSecret } from '../common/utils/secret';
 @Module({
   imports: [
     NotificationsModule,
+    MessageRequestsModule,
     PresenceModule,
     JwtModule.register({
       secret: jwtSecret(),

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api/client';
 import type { PublicStatus } from '../lib/presence';
+import { useMsgRequest } from './msgRequest';
 
 export interface MsgUser { id: string; username: string; avatarUrl?: string | null; role?: string }
 export interface Reaction { emoji: string; userIds: string[] }
@@ -541,6 +542,8 @@ export const useMessenger = create<MsgrState>((set, get) => {
         if (opts?.window !== false) get().openWindow(data.id);
         return data as ConvSummary;
       } catch (err: any) {
+        // Pas encore autorisé à écrire à ce membre : la fenêtre « Envoyer un message » (demande) s'ouvre.
+        if (err.response?.data?.code === 'MESSAGE_REQUEST_REQUIRED') { useMsgRequest.getState().open({ id: err.response.data.toId ?? user.id, username: err.response.data.toUsername ?? user.username }); return null; }
         // Le message d'erreur (ex. « n'accepte les messages que de ses amis ») s'affiche là où l'action a été faite.
         window.alert(err.response?.data?.message ?? "Impossible d'ouvrir la discussion");
         return null;

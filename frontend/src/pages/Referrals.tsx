@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import UserLink from '../components/UserLink';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import Loading from '../components/Loading';
@@ -96,7 +97,7 @@ export default function Referrals() {
                   const s = status(i, cfg);
                   return (
                     <tr key={i.id}>
-                      <td><Link to={`/users/${i.id}`}>{i.username}</Link></td>
+                      <td><UserLink user={i} /></td>
                       <td>{timeAgo(i.joinedAt)}</td>
                       <td>{i.classLabel}</td>
                       <td>{i.ratio === null ? '—' : i.ratio.toFixed(2)}</td>

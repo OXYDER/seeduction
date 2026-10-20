@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Nick from '../components/Nick';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
@@ -167,14 +168,14 @@ export default function Pot() {
           <h3 style={{ marginTop: 0 }}>🏆 Meilleurs donateurs de ce pot</h3>
           {pot.top.length === 0 && <p className="muted">Personne encore : sois le premier !</p>}
           {pot.top.map((t: any, i: number) => (
-            <div key={t.username} className="row" style={{ justifyContent: 'space-between', padding: '3px 0' }}><span>{MEDAL[i] ?? `${i + 1}.`} {t.username}</span><strong>{formatNumber(t.amount)}</strong></div>
+            <div key={t.username} className="row" style={{ justifyContent: 'space-between', padding: '3px 0' }}><span>{MEDAL[i] ?? `${i + 1}.`} <Nick name={t.username} /></span><strong>{formatNumber(t.amount)}</strong></div>
           ))}
         </div>
         <div className="panel">
           <h3 style={{ marginTop: 0 }}>👑 Mécènes de tous les temps</h3>
           {pot.topAllTime.length === 0 && <p className="muted">—</p>}
           {pot.topAllTime.map((t: any, i: number) => (
-            <div key={t.username} className="row" style={{ justifyContent: 'space-between', padding: '3px 0' }}><span>{MEDAL[i] ?? `${i + 1}.`} {t.username}</span><strong>{formatNumber(t.amount)}</strong></div>
+            <div key={t.username} className="row" style={{ justifyContent: 'space-between', padding: '3px 0' }}><span>{MEDAL[i] ?? `${i + 1}.`} <Nick name={t.username} /></span><strong>{formatNumber(t.amount)}</strong></div>
           ))}
         </div>
         <div className="panel">
@@ -182,7 +183,7 @@ export default function Pot() {
           {pot.recent.length === 0 && <p className="muted">Aucun don pour l'instant.</p>}
           {pot.recent.map((r: any, i: number) => (
             <div key={i} className="row" style={{ justifyContent: 'space-between', padding: '3px 0', fontSize: 13 }}>
-              <span>{r.houseTopUp ? '🏠' : '🍯'} {r.username} <span className="muted">· {timeAgo(r.createdAt)}</span></span><strong>+{formatNumber(r.amount)}</strong>
+              <span>{r.houseTopUp ? '🏠' : '🍯'} <Nick name={r.username} /> <span className="muted">· {timeAgo(r.createdAt)}</span></span><strong>+{formatNumber(r.amount)}</strong>
             </div>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Nick from '../components/Nick';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
 import { audio, bell, noiseBuffer, playWin, setSoundOn, soundOn, tick } from '../lib/slotSound';
@@ -270,7 +271,7 @@ export default function Wheel() {
           {data.biggest.length > 0 && (
             <div className="panel">
               <h2 style={{ marginTop: 0 }}>🏆 Gros lots de la semaine</h2>
-              <ul className="wh-recent">{data.biggest.map((b, i) => <li key={i}><span>{b.username}</span><strong>+{formatNumber(b.points)}</strong></li>)}</ul>
+              <ul className="wh-recent">{data.biggest.map((b, i) => <li key={i}><span><Nick name={b.username} /></span><strong>+{formatNumber(b.points)}</strong></li>)}</ul>
             </div>
           )}
         </div>

@@ -2632,3 +2632,18 @@ model SeriesFollow {
   @@index([metaSource, metaExternalId])
   @@index([userId])
 }
+
+/// Demande de message : avant d'écrire à quelqu'un qui n'est pas son ami, on lui envoie une demande (avec un message d'introduction facultatif) ; la discussion commence s'il l'accepte. L'équipe n'en a pas besoin.
+model MessageRequest {
+  id          String    @id @default(uuid())
+  fromId      String
+  toId        String
+  intro       String?   @db.VarChar(1000)
+  status      String    @default("PENDING") @db.VarChar(10) // PENDING | ACCEPTED | DECLINED
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@unique([fromId, toId])
+  @@index([toId, status])
+  @@index([fromId, createdAt])
+}
