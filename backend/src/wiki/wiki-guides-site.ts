@@ -627,6 +627,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `1. Ouvre la page [url=/player]Le lecteur Seeduction[/url] et télécharge l'installateur pour ton système.\n` +
         `2. Lance-le. Windows peut afficher un avertissement SmartScreen (logiciel récent) : clique sur « Informations complémentaires » puis « Exécuter quand même ».\n` +
         `3. L'installation inclut tout (VLC compris). Le logiciel se lance aussi avec Windows et reste dans la zone de notification.\n\n` +
+        `[b]Sur Android[/b]\n` +
+        `Il existe aussi une application pour [b]Android[/b] (page [url=/player]Le lecteur Seeduction[/url], bouton « Télécharger l'application (.apk) »). Autorise l'installation depuis ton navigateur (« Sources inconnues ») puis, sur la fiche d'un film, touche « Ouvrir dans le lecteur Seeduction » : l'application télécharge ce qu'il faut, lance la vidéo (tous les formats, pistes audio, sous-titres) et signale « en train de regarder » comme sur PC. Une notification discrète indique le partage en cours : c'est elle qui permet de continuer à seeder écran éteint. Le partage se met en pause sur données mobiles (réglage « Partager seulement en Wi-Fi »). Ta position de lecture te suit d'un appareil à l'autre. Double-tape à gauche ou à droite de l'écran : retour ou avance de 10 secondes.\n\n` +
         `[b]Regarder quelque chose[/b]\n` +
         `1. Ouvre la fiche d'un film ou d'une série.\n` +
         `2. Clique sur [b]🖥️ « Ouvrir dans le lecteur Seeduction »[/b].\n` +

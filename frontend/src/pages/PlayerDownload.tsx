@@ -2,6 +2,9 @@
 // VLC intégré dépasse largement la limite de 100 Mo par fichier de Git). À mettre à jour après chaque nouvelle
 // release publiée depuis desktop-player/ (voir desktop-player/README.md).
 const DOWNLOAD_URL = 'https://github.com/OXYDER/seeduction/releases/latest/download/Seeduction.Player.Setup.exe';
+// Même principe pour Android : l'APK (environ 57 Mo) est ajouté à la release GitHub, sous ce nom (voir android-player/README.md).
+const ANDROID_URL = 'https://github.com/OXYDER/seeduction/releases/latest/download/Seeduction.Player.apk';
+const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
 const RELEASES_URL = 'https://github.com/OXYDER/seeduction/releases';
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
@@ -45,8 +48,27 @@ export default function PlayerDownload() {
         </p>
       </div>
 
+      <div className="panel ornate" style={{ textAlign: 'center', ...(isAndroid ? { order: -1 } : {}) }}>
+        <img src="/logo-icon.png" alt="" width={72} height={72} style={{ marginBottom: 10 }} />
+        <h3 style={{ margin: '0 0 4px' }}>Lecteur Seeduction pour Android{isAndroid ? ' — pour ton téléphone' : ''}</h3>
+        <p className="muted" style={{ margin: '0 0 16px' }}>
+          Même principe que sur PC : touche « Ouvrir dans le lecteur Seeduction » sur le site, le téléphone télécharge ce qu'il faut et lance la vidéo (tous les formats, pistes audio et sous-titres).
+        </p>
+        <a href={ANDROID_URL} className="download-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
+          ⬇ Télécharger l'application (.apk)
+        </a>
+        <div className="muted" style={{ fontSize: 13, marginTop: 12, textAlign: 'left', lineHeight: 1.7 }}>
+          <strong>Installer (une seule fois) :</strong><br />
+          1. Télécharge le fichier, puis ouvre-le depuis les notifications ou le dossier Téléchargements.<br />
+          2. Android demande d'autoriser l'installation depuis ce navigateur (« Sources inconnues ») : accepte, c'est normal, l'application n'est pas sur le Play Store.<br />
+          3. Si Play Protect avertit, choisis « Installer quand même ».<br />
+          4. Reviens sur Seeduction, ouvre la fiche d'un film et touche « Ouvrir dans le lecteur Seeduction ».<br />
+          Pendant la lecture, une notification indique le partage en cours : laisse-la, c'est ce qui permet de continuer à seeder (72 h ou ratio 1, comme sur PC). Le partage se met en pause sur données mobiles (réglage modifiable dans l'application).
+        </div>
+      </div>
+
       <div className="panel grid" style={{ gap: 18 }}>
-        <h2 style={{ margin: 0 }}>Installation, étape par étape</h2>
+        <h2 style={{ margin: 0 }}>Installation sur Windows, étape par étape</h2>
 
         <Step n={1} title="Télécharge et lance l'installateur">
           Clique sur le bouton ci-dessus, puis ouvre le fichier téléchargé (<code>Seeduction Player Setup....exe</code>).

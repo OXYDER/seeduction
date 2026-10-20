@@ -52,6 +52,12 @@ export class StreamController {
     return this.streamService.pingWatching(body?.passkey, body?.torrentId, body?.positionSeconds, body?.durationSeconds, body?.fileIndex);
   }
 
+  /** Dernière position connue pour ce fichier, identifiée par la passkey (lecteur Android) : la reprise suit le membre d'un appareil à l'autre. */
+  @Get('resume')
+  resume(@Query('passkey') passkey: string, @Query('torrentId') torrentId: string, @Query('fileIndex') fileIndex: string) {
+    return this.streamService.resumeByPasskey(passkey, String(torrentId ?? ''), Math.max(0, Math.floor(Number(fileIndex) || 0)));
+  }
+
   /** Appelé une fois à la fermeture du lecteur : revient au statut immédiatement plutôt que d'attendre l'expiration. */
   @Post('watching/stop')
   stopWatching(@Body() body: { passkey: string }) {

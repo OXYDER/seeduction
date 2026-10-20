@@ -119,6 +119,16 @@ export class StreamService {
     return { ok: true };
   }
 
+  /** Position de lecture d'un fichier pour le membre de cette passkey (0 si inconnue ou si le fichier est presque terminé : on repart du début). */
+  async resumeByPasskey(passkey: string, torrentId: string, fileIndex: number) {
+    const user = passkey ? await this.prisma.user.findUnique({ where: { passkey }, select: { id: true, parentId: true } }) : null;
+    if (!user || !torrentId) return { positionSeconds: 0, durationSeconds: 0 };
+    const row = await this.prisma.playbackPosition.findUnique({ where: { userId_torrentId_fileIndex: { userId: user.id, torrentId, fileIndex } } });
+    if (!row) return { positionSeconds: 0, durationSeconds: 0 };
+    const finished = row.durationSeconds != null && row.positionSeconds >= row.durationSeconds - 30;
+    return { positionSeconds: finished ? 0 : row.positionSeconds, durationSeconds: row.durationSeconds ?? 0 };
+  }
+
   /**
    * Position de lecture sauvegardée pour ce membre sur ce torrent (voir PlaybackPosition, alimentée par le ping du
    * lecteur desktop toutes les 3 s pendant la lecture) : `playingNow` indique une lecture active à l'instant même
