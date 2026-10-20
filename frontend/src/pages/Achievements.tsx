@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import Loading from '../components/Loading';
 
-interface Item { code: string; name: string; icon: string; description: string; category: string; earned: boolean; awardedAt: string | null; value: number; target: number; unit: string | null; percentOfMembers: number }
-interface Data { categories: { key: string; label: string; icon: string }[]; total: number; earnedCount: number; items: Item[] }
+interface Item { code: string; name: string; icon: string; description: string; category: string; earned: boolean; awardedAt: string | null; value: number; target: number; unit: string | null; percentOfMembers: number; points: number }
+interface Data { categories: { key: string; label: string; icon: string }[]; total: number; earnedCount: number; items: Item[]; pointsToWin: number }
 
 const fmt = (n: number) => n.toLocaleString('fr-CA');
 const day = (iso: string) => new Date(iso).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -26,6 +26,7 @@ export default function Achievements() {
       <div className="panel" style={{ display: 'grid', gap: 8 }}>
         <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <strong>{data.earnedCount} / {data.total} badges obtenus</strong>
+          <span className="muted" title="Chaque badge rapporte des points bonus, une seule fois, à son obtention">🪙 {fmt(data.pointsToWin)} points bonus encore à gagner</span>
           <span className="muted">Les badges d'un membre sont visibles sur son profil. Le <Link to="/hall-of-fame">Hall of Fame</Link> classe les plus décorés.</span>
         </div>
         <div className="ach-bar" aria-label={`${pct} % des badges obtenus`}><span style={{ width: `${pct}%` }} /></div>
@@ -53,6 +54,7 @@ export default function Achievements() {
                   <span className="ach-icon" aria-hidden>{i.icon}</span>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700 }}>{i.name} {i.earned && <span title="Obtenu" aria-label="Obtenu">✅</span>}</div>
+                    {i.points > 0 && <div style={{ fontSize: 12, color: 'var(--gold-bright)' }}>🪙 {i.earned ? '' : '+'}{fmt(i.points)} points</div>}
                     <div className="muted" style={{ fontSize: 12 }}>{i.description}</div>
                     {i.earned ? (
                       <div style={{ fontSize: 12, marginTop: 4 }}>{i.awardedAt ? `Obtenu le ${day(i.awardedAt)}` : 'Obtenu'}</div>

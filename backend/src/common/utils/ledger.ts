@@ -18,7 +18,7 @@ export const SOURCES: SourceMeta[] = [
   { id: 'slots', label: 'Machines à sous', kind: 'house' }, { id: 'hilo', label: 'Plus haut ou plus bas', kind: 'house' }, { id: 'blackjack', label: 'Blackjack', kind: 'house' },
   { id: 'dice', label: 'Dés', kind: 'house' }, { id: 'moj', label: 'Mise-O-jeu', kind: 'house' },
   { id: 'seed', label: 'Partage de torrents', kind: 'seed' },
-  { id: 'echange', label: 'Échanges et boutique', kind: 'other' }, { id: 'referral', label: 'Primes de parrainage', kind: 'other' }, { id: 'autre', label: 'Autres (dons, requêtes, équipe...)', kind: 'other' },
+  { id: 'echange', label: 'Échanges et boutique', kind: 'other' }, { id: 'referral', label: 'Primes de parrainage', kind: 'other' }, { id: 'badges', label: 'Badges', kind: 'other' }, { id: 'autre', label: 'Autres (dons, requêtes, équipe...)', kind: 'other' },
 ];
 const BY_ID = new Map(SOURCES.map((s) => [s.id, s]));
 export const sourceMeta = (id: string): SourceMeta => BY_ID.get(id) ?? { id, label: id, kind: 'other' };

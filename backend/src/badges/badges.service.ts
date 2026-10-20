@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { setSource } from '../common/utils/ledger';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BADGES, BADGE_CATEGORIES, BadgeStats, evaluateBadges } from '../common/utils/badges';
 
@@ -8,7 +9,7 @@ export class BadgesService {
   constructor(private prisma: PrismaService, private notifications: NotificationsService) {}
 
   async statsFor(userId: string): Promise<BadgeStats> {
-    const [user, uploadsApproved, forumPosts, requestFills, seed, seedOk, hnrOpen, subtitles, comments, mentored] = await Promise.all([
+    const [user, uploadsApproved, forumPosts, requestFills, seed, seedOk, hnrOpen, subtitles, comments, mentored, ratings, watched, quizzes, wheelSpins, picksWon, badgesEarned] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: { uploaded: true, downloaded: true, bonusPoints: true, createdAt: true, _count: { select: { invitees: true } } },
@@ -22,6 +23,12 @@ export class BadgesService {
       this.prisma.subtitleFile.count({ where: { uploaderId: userId } }),
       this.prisma.torrentComment.count({ where: { authorId: userId } }),
       this.prisma.user.count({ where: { invitedById: userId, memberClass: { not: 'NOUVEAU' }, status: 'ACTIVE' } }),
+      this.prisma.torrentRating.count({ where: { userId } }),
+      this.prisma.playbackPosition.count({ where: { userId } }),
+      this.prisma.quizPlay.count({ where: { userId, status: 'DONE' } }),
+      this.prisma.wheelSpin.count({ where: { userId } }),
+      this.prisma.nhlPick.count({ where: { userId, status: 'WON' } }),
+      this.prisma.userBadge.count({ where: { userId } }),
     ]);
     if (!user) throw new NotFoundException('Utilisateur introuvable');
 
@@ -41,6 +48,12 @@ export class BadgesService {
       subtitles,
       comments,
       mentored,
+      ratings,
+      watched,
+      quizzes,
+      wheelSpins,
+      picksWon,
+      badgesEarned,
     };
   }
 
@@ -55,27 +68,38 @@ export class BadgesService {
     const newCodes = earnedCodes.filter((c) => !existingCodes.has(c));
     if (newCodes.length === 0) return [];
 
-    await this.prisma.userBadge.createMany({
-      data: newCodes.map((code) => ({ userId, code })),
-      skipDuplicates: true,
-    });
+    // Les points ne sont versés qu'aux comptes principaux ordinaires (pas aux profils famille, dont les points sont ceux du compte, ni aux robots ou comptes supprimés).
+    const owner = await this.prisma.user.findUnique({ where: { id: userId }, select: { parentId: true, profileType: true, deletedAt: true } });
+    const paid = !!owner && owner.parentId === null && owner.profileType !== 'BOT' && !owner.deletedAt;
 
+    const awarded: string[] = [];
     for (const code of newCodes) {
       const def = BADGES.find((b) => b.code === code)!;
+      // Un seul versement par badge, même si deux balayages se croisent : le badge et les points sont écrits ensemble, et le badge déjà présent (clé unique) annule tout.
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          await tx.userBadge.create({ data: { userId, code } });
+          if (paid && def.points > 0) {
+            await setSource(tx, 'badges');
+            await tx.user.update({ where: { id: userId }, data: { bonusPoints: { increment: def.points } } });
+          }
+        });
+      } catch { continue; }
+      awarded.push(code);
       await this.notifications.notify({
         userId,
         type: 'BADGE_EARNED',
         title: `Nouveau badge : ${def.icon} ${def.name}`,
-        body: def.description,
+        body: paid && def.points > 0 ? `${def.description} · +${def.points} points bonus` : def.description,
         link: '/profile',
       });
     }
-    return newCodes;
+    return awarded;
   }
 
   /** Balayage périodique (cron) pour les badges liés à des stats qui évoluent sans action ponctuelle (ratio, ancienneté...). */
   async checkAndAwardAll() {
-    const users = await this.prisma.user.findMany({ select: { id: true } });
+    const users = await this.prisma.user.findMany({ where: { deletedAt: null, profileType: { not: 'BOT' } }, select: { id: true } });
     for (const u of users) {
       await this.checkAndAward(u.id).catch(() => {});
     }
@@ -100,12 +124,15 @@ export class BadgesService {
     const items = BADGES.map((b) => {
       const p = b.progress(stats);
       return {
-        code: b.code, name: b.name, icon: b.icon, description: b.description, category: b.category,
+        code: b.code, name: b.name, icon: b.icon, description: b.description, category: b.category, points: b.points,
         earned: when.has(b.code) || b.check(stats), awardedAt: when.get(b.code) ?? null, value: p.value, target: p.target, unit: p.unit ?? null,
         percentOfMembers: members > 0 ? Math.min(100, Math.round(((count.get(b.code) ?? 0) / members) * 1000) / 10) : 0,
       };
     });
-    return { categories: Object.entries(BADGE_CATEGORIES).map(([key, v]) => ({ key, ...v })), total: items.length, earnedCount: items.filter((i) => i.earned).length, items };
+    return {
+      categories: Object.entries(BADGE_CATEGORIES).map(([key, v]) => ({ key, ...v })), total: items.length, earnedCount: items.filter((i) => i.earned).length, items,
+      pointsToWin: items.filter((i) => !i.earned).reduce((n, i) => n + i.points, 0),
+    };
   }
 
   async listForUser(userId: string) {

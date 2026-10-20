@@ -738,11 +738,14 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Sur un profil, la section Badges montre ceux d'un membre. Le [url=/hall-of-fame]Hall of Fame[/url] classe les membres les plus décorés.\n` +
         `\n` +
         `[b]Les familles de badges[/b]\n` +
-        `• [b]📦 Envoi[/b] : premiers torrents approuvés (1, 10, 50).\n` +
-        `• [b]🌾 Partage et seed[/b] : volume envoyé (500 Go, 2 To), ratio d'or (5,0), [b]heures de seed cumulées[/b] (Gardien : 500 h, Sentinelle : 5000 h), torrents dont le partage obligatoire est rempli (Bon élève : 25, Exemplaire : 100), et [b]Irréprochable[/b] (50 torrents terminés et aucun hit & run en cours).\n` +
-        `• [b]🤝 Entraide[/b] : parrainer (3, 10 membres), [b]Mentor[/b] (3 parrainés devenus de vrais membres, au-delà du rang « Nouveau »), demandes comblées, [b]sous-titres partagés[/b] (5, 30).\n` +
-        `• [b]💬 Communauté[/b] : messages du forum, commentaires sur des torrents, points bonus accumulés.\n` +
-        `• [b]⏳ Ancienneté[/b] : 3 mois, 1 an, 2 ans, 3 ans.\n` +
+        `• [b]📦 Envoi[/b] : torrents approuvés (1, 5, 10, 25, 50, 100, 250).\n` +
+        `• [b]🌾 Partage et seed[/b] : volume envoyé (100 Go, 500 Go, 2 To, 10 To, 50 To), ratio (2,0 ; ratio d'or 5,0 ; ratio de légende 10,0), [b]heures de seed cumulées[/b] (Gardien : 500 h, Phare : 2000 h, Sentinelle : 5000 h, Éternel : 20 000 h), torrents dont le partage obligatoire est rempli (Bon élève : 25, Exemplaire : 100, Parole tenue : 250), torrents terminés (100, 500), et [b]Irréprochable[/b] (50 torrents terminés et aucun hit & run en cours).\n` +
+        `• [b]🤝 Entraide[/b] : parrainer (3, 10, 25 membres), [b]Mentor[/b] (3 puis 10 parrainés devenus de vrais membres, au-delà du rang « Nouveau »), demandes comblées (5, 25), [b]sous-titres partagés[/b] (5, 30, 100).\n` +
+        `• [b]💬 Communauté[/b] : messages du forum (20, 100, 500), commentaires sur des torrents (25, 100, 500), points bonus accumulés, torrents notés, fichiers regardés dans le lecteur Seeduction, quiz quotidiens terminés, tours de roue, pronostics LNH gagnés, et des badges de [b]collection[/b] (10 puis 30 badges).\n` +
+        `• [b]⏳ Ancienneté[/b] : 3 mois, 1 an, 2, 3, 4 et 5 ans.\n` +
+        `\n` +
+        `[b]Des points bonus à chaque badge[/b]\n` +
+        `Chaque badge te verse des [b]points bonus une seule fois[/b], au moment où tu l'obtiens : de 25 points pour un premier pas jusqu'à plus de 1 000 pour les plus rares. La notification du badge indique les points reçus, la page Mes réalisations montre ce que rapporte chaque badge et le total encore à gagner, et ces points apparaissent sous « Badges » dans ton historique de points. Les badges obtenus avant l'arrivée de cette récompense ne sont pas payés après coup. Les profils famille gagnent les badges mais pas les points (ceux du compte principal comptent).\n` +
         `\n` +
         `[b]Quand sont-ils attribués ?[/b]\n` +
         `Tout de suite après une action qui compte (torrent approuvé, sous-titres envoyés, message posté, parrainage…), et chaque nuit pour ce qui évolue seul (heures de seed, ancienneté, ratio). Tu reçois une notification pour chaque nouveau badge.\n` +
