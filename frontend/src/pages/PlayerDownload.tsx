@@ -3,7 +3,7 @@
 // release publiée depuis desktop-player/ (voir desktop-player/README.md).
 const DOWNLOAD_URL = 'https://github.com/OXYDER/seeduction/releases/latest/download/Seeduction.Player.Setup.exe';
 // Même principe pour Android : l'APK (environ 57 Mo) est ajouté à la release GitHub, sous ce nom (voir android-player/README.md).
-const ANDROID_URL = 'https://github.com/OXYDER/seeduction/releases/latest/download/Seeduction.Player.apk';
+const ANDROID_URL = 'https://github.com/OXYDER/seeduction/releases/download/android-player-v0.1.0/Seeduction.Player.apk';
 const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
 const RELEASES_URL = 'https://github.com/OXYDER/seeduction/releases';
 

@@ -20,7 +20,7 @@ export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 ```
 
 L'APK signé est `app/build/outputs/apk/release/app-release.apk` (environ 57 Mo). À renommer `Seeduction.Player.apk` et à joindre à la release GitHub (le site pointe vers
-`releases/latest/download/Seeduction.Player.apk`, voir `frontend/src/pages/PlayerDownload.tsx`).
+`releases/download/android-player-v0.1.0/Seeduction.Player.apk`, voir `frontend/src/pages/PlayerDownload.tsx`).
 
 ## Signature
 
