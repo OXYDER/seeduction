@@ -211,11 +211,23 @@ class PlayerActivity : AppCompatActivity() {
             setLoading(
                 if (peers == 0 && waited > 8) "Recherche de pairs…" else "Mise en mémoire tampon… $percent %",
                 (if (peers > 0) "$peers pair(s) · ↓ ${formatSpeed(st?.downRate ?: 0)}" else "Connexion au swarm") +
-                    (if (peers == 0 && waited > 15) "\n" + svc.engine.recentEvents(3).joinToString("\n") { it.take(160) } else "") +
+                    (if (peers == 0 && waited > 8) "\n" + diagnostic(svc, info) else "") +
                     (if (waited > 60 && peers == 0) "\nAucun pair pour l'instant. S'il y a des seeders sur le site, ils sont peut-être injoignables depuis ce réseau (essaie en Wi-Fi). Touche « Partager le journal » dans l'application pour me l'envoyer." else ""),
             )
             delay(500)
         }
+    }
+
+    /** Ce que fait le moteur quand aucun pair n'arrive : état du torrent, tracker contacté ou non (et sa réponse), pairs connus. Aussi écrit dans le journal. */
+    private fun diagnostic(svc: TorrentService, info: SessionInfo): String {
+        val h = svc.entry(info.id)?.handle ?: return ""
+        val st = try { h.status() } catch (_: Exception) { null }
+        val lines = mutableListOf<String>()
+        if (st != null) lines.add("État : " + st.state().name + " · pairs connus : " + st.listPeers() + " · seeders vus : " + st.listSeeds())
+        lines.addAll(svc.engine.trackerLines(h))
+        lines.addAll(svc.engine.recentEvents(2))
+        Journal.log("diagnostic : " + lines.joinToString(" | "))
+        return lines.joinToString("\n") { it.take(170) }
     }
 
     private suspend fun startPosition(info: SessionInfo): Int {

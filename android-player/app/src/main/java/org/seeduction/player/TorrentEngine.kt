@@ -84,6 +84,19 @@ class TorrentEngine(private val saveDir: File) {
         Journal.log("libtorrent démarré, dossier : " + saveDir.absolutePath)
     }
 
+    /** État de chaque tracker du torrent (adresse sans la passkey) : fonctionne, en cours, ou échec avec le message du serveur. Sert au diagnostic quand aucun pair n'arrive. */
+    fun trackerLines(h: TorrentHandle): List<String> = try {
+        h.trackers().map { t ->
+            val url = t.url().replace(Regex("/[^/?]+/announce"), "/…/announce")
+            val eps = t.endpoints()
+            val state = if (eps.isEmpty()) "pas encore contacté" else eps.joinToString(" ; ") { e ->
+                val v = e.infohashV1()
+                (if (v.isWorking) "OK" else if (v.updating()) "contact en cours…" else "échec ×" + v.fails()) + (v.message().takeIf { it.isNotBlank() }?.let { " : $it" } ?: "")
+            }
+            "$url → $state"
+        }
+    } catch (_: Exception) { emptyList() }
+
     fun stop() { try { sm.stop() } catch (_: Exception) { /* déjà arrêté */ } }
 
     /** Ajoute le torrent (ou retrouve celui déjà présent) et ne télécharge que le fichier choisi, dans l'ordre. */
