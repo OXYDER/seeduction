@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 interface Status { maintenance: { message: string; startedAt: string; endsAt: string } | null; version: string; build: number }
 
@@ -66,6 +67,7 @@ export default function MaintenanceBanner() {
     <div className={`maint-bar ${kind}`} role="status" aria-live="polite">
       <span className="maint-icon" aria-hidden>{kind === 'down' ? '🔌' : kind === 'maintenance' ? '🔧' : ''}</span>
       <span className="maint-text">{text}</span>
+      {(kind === 'down' || kind === 'maintenance') && <Link to="/status" className="maint-btn" style={{ textDecoration: 'none' }}>État du site</Link>}
       {kind === 'update' && <button type="button" className="maint-btn" onClick={() => window.location.reload()}>Recharger</button>}
       {(kind === 'maintenance' || kind === 'update' || kind === 'back') && (
         <button type="button" className="maint-x" aria-label="Masquer" title="Masquer" onClick={() => setHidden(kind === 'update' ? `u:${status?.version}` : kind === 'maintenance' ? noticeKey : String(key))}>✕</button>

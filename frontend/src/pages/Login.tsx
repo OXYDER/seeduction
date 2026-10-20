@@ -82,6 +82,7 @@ export default function Login() {
             <strong style={{ color: 'var(--gold-bright)', display: 'block', marginBottom: 4 }}>CONSEIL</strong>
             Maintiens un bon ratio pour aider la communauté à seed.
           </div>
+          <div className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 8 }}><Link to="/status">📡 Le site fonctionne-t-il ? État du site</Link></div>
         </div>
       </div>
     </div>

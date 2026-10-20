@@ -4,17 +4,24 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuditService } from '../audit/audit.service';
 import { SystemService } from './system.service';
+import { PublicStatusService } from './public-status.service';
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 @Controller('system')
 export class SystemController {
-  constructor(private system: SystemService, private audit: AuditService) {}
+  constructor(private system: SystemService, private audit: AuditService, private publicStatus: PublicStatusService) {}
 
   /** Public (même sans connexion) : message de maintenance en cours et version du site. Interrogé toutes les 30 secondes par chaque page ouverte. */
   @Get('status')
   status() {
     return this.system.status();
+  }
+
+  /** Public (même sans connexion) : page d'état « le site fonctionne » — services, 90 jours de disponibilité, incidents récents (aucun détail technique). */
+  @Get('public-status')
+  publicStatusPage() {
+    return this.publicStatus.status();
   }
 
   /**

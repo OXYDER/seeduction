@@ -52,6 +52,7 @@ export default function Stats() {
           )}
           <Link to="/dead" className="secondary st-link">☠️ Réanimation</Link>
           <Link to="/roadmap" className="secondary st-link">🗺️ Roadmap</Link>
+          <Link to="/status" className="secondary st-link">📡 État du site</Link>
         </div>
       </div>
 

@@ -778,6 +778,30 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Les règles d'envoi ([url=/wiki/guide-envoyer-premier-torrent]Envoyer un torrent[/url]) restent les mêmes : NFO ou MediaInfo obligatoire, bon nom, bonne catégorie.`,
     },
     {
+      title: 'État du site : le site fonctionne-t-il ?',
+      slug: 'guide-etat-du-site',
+      keywords: 'état, statut, panne, mise à jour, déploiement, maintenance, disponibilité, le site fonctionne, injoignable, redémarre',
+      isFaq: true,
+      content:
+        `Quand le site semble lent ou ne répond plus, regarde la page [b]État du site[/b] avant de t'inquiéter ou d'écrire à l'équipe.\n` +
+        `\n` +
+        `[b]Où la trouver ?[/b]\n` +
+        `• Dans [url=/stats]Statistiques[/url], le bouton [b]📡 État du site[/b].\n` +
+        `• Sur la page de connexion, le lien « Le site fonctionne-t-il ? ». Elle est [b]visible sans te connecter[/b], à l'adresse /status.\n` +
+        `• Le bandeau qui apparaît pendant une mise à jour a aussi un bouton « État du site ».\n` +
+        `\n` +
+        `[b]Ce qu'elle montre[/b]\n` +
+        `• Un grand message : [b]fonctionne normalement[/b], [b]ralentissements[/b], [b]panne[/b] ou [b]mise à jour en cours[/b].\n` +
+        `• L'état de chaque service : site web et API, tracker BitTorrent, base de données, données sportives, courriels.\n` +
+        `• La [b]disponibilité sur 90 jours[/b] : une case par jour (verte, jaune, rouge) et le pourcentage des 30 et 90 derniers jours.\n` +
+        `• Les incidents des 30 derniers jours, avec leur durée. Aucun détail technique n'est publié.\n` +
+        `\n` +
+        `[b]Pendant une mise à jour[/b]\n` +
+        `Une mise à jour dure en général 5 à 10 minutes. Pendant ce temps le site peut redémarrer : la page d'état (et le bandeau en haut du site) l'annoncent [b]sans erreur[/b], se reconnectent toutes seules et te préviennent quand une nouvelle version est disponible. Rien n'est perdu : tes téléchargements en cours continuent, ton seed aussi. Inutile de recharger la page ou d'écrire au support.\n` +
+        `\n` +
+        `Si la page d'état dit que tout va bien alors que tu as un problème, c'est probablement de ton côté (connexion, client BitTorrent) : voir [url=/wiki/guide-support]Obtenir de l'aide[/url].`,
+    },
+    {
       title: 'Parrainage : inviter et être récompensé',
       slug: 'guide-parrainage',
       keywords: 'parrainage, invitation, inviter, code, lien, prime, points, invité, recruteur, mentor, quota',

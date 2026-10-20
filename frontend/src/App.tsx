@@ -84,6 +84,7 @@ const CollectionDetail = lazyPage(() => import('./pages/CollectionDetail'));
 const HallOfFame = lazyPage(() => import('./pages/HallOfFame'));
 const Chat = lazyPage(() => import('./pages/Chat'));
 const EntityPage = lazyPage(() => import('./pages/EntityPage'));
+const Status = lazyPage(() => import('./pages/Status'));
 
 export default function App() {
   const locked = useLockdownStore((s) => s.locked);
@@ -103,6 +104,7 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verify" element={<VerifyLink />} />
+        <Route path="/status" element={<Status />} />
         {/* Layout redirige vers /login si aucune session valide : le site
             entier est privé, rien n'est visible aux non-membres. */}
         <Route element={<Layout />}>
