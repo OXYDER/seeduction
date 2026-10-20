@@ -407,7 +407,7 @@ export class ForumService implements OnModuleInit {
       this.tree(viewer),
       this.prisma.forumTopic.count(),
       this.prisma.forumPost.count(),
-      this.prisma.user.count({ where: { profileType: { not: 'BOT' } } }),
+      this.prisma.user.count({ where: { profileType: { not: 'BOT' }, deletedAt: null } }),
       this.prisma.user.findFirst({ orderBy: { createdAt: 'desc' }, select: { id: true, username: true } }),
     ]);
     return { roots, stats: { topics, posts, members, newestMember: newest } };

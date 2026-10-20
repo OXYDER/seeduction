@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { randomUUID } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 
 /** Compte « fantôme » qui reprend le contenu public (torrents, messages du forum...) d'un membre supprimé. */
@@ -45,6 +47,13 @@ const ERASE: [table: string, column: string][] = [
   ['PrivateMessage', 'recipientId'], // les messages reçus n'avaient de sens que pour lui
 ];
 
+/** Données privées effacées à la suppression d'un compte (en plus de la liste ci-dessus) : tout ce qui est personnel, rien de ce qui est public. */
+const PERSONAL: [table: string, column: string][] = [
+  ['ApiKey', 'userId'], ['Notification', 'userId'], ['PushSubscription', 'userId'], ['SavedSearch', 'userId'], ['TelegramLink', 'userId'], ['UserIp', 'userId'], ['UserTorrentFlow', 'userId'],
+  ['Favorite', 'userId'], ['EntityFollow', 'userId'], ['ForumTopicFollow', 'userId'], ['ForumTopicRead', 'userId'], ['Friendship', 'requesterId'], ['DescriptionTemplate', 'ownerId'],
+  ['MemberSeedbox', 'userId'],
+];
+
 /**
  * Suppression définitive d'un compte (et de ses profils famille). Tout ce qui est personnel disparaît ; ce que les autres
  * membres voient (torrents, commentaires, forum, messages de groupe...) reste, attribué au compte « [compte supprimé] ».
@@ -76,8 +85,8 @@ export class AccountDeletionService {
     });
   }
 
-  /** Efface le compte `userId` (et ses profils). Renvoie un résumé de ce qui a été déplacé / effacé. */
-  async deleteAccount(userId: string) {
+  /** Purge complète (efface la ligne du compte) : seulement pour une inscription jamais confirmée, qui n'a rien publié et dont le pseudo doit redevenir libre. */
+  async purgeAccount(userId: string) {
     if (userId === DELETED_USER_ID) throw new Error('Le compte « supprimé » ne peut pas être supprimé');
     await this.ensureTombstone();
     const kids = await this.prisma.user.findMany({ where: { parentId: userId }, select: { id: true } });
@@ -102,6 +111,43 @@ export class AccountDeletionService {
   }
 
   /**
+   * Suppression d'un compte par un administrateur : le compte RESTE, anonymisé. Son pseudo, ses statistiques, ses torrents, ses messages publics, son historique de sanctions et ses badges
+   * restent (avec une petite icône « supprimé » à côté du nom) ; son pseudo ne pourra plus jamais être pris. Tout ce qui peut compromettre la personne disparaît : courriel, mot de passe,
+   * passkey, double authentification, adresses IP, sessions, notifications, clés d'API, liens Telegram, appareils push, seedbox et ses secrets, amis, favoris, suivis, messages reçus.
+   */
+  async deleteAccount(userId: string) {
+    if (userId === DELETED_USER_ID) throw new Error('Le compte « supprimé » historique ne peut pas être supprimé');
+    const kids = await this.prisma.user.findMany({ where: { parentId: userId }, select: { id: true } });
+    const ids = [userId, ...kids.map((k) => k.id)];
+    const summary = { reassigned: {} as Record<string, number>, erased: {} as Record<string, number>, anonymized: ids.length };
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`DELETE FROM "InviteCode" WHERE "createdById" = ANY($1::text[]) AND "useCount" = 0`, ids);
+      for (const [table, column] of [...ERASE, ...PERSONAL]) {
+        const n = await tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE "${column}" = ANY($1::text[])`, ids);
+        if (n) summary.erased[`${table}.${column}`] = n;
+      }
+      // les amitiés se défont des deux côtés
+      await tx.$executeRawUnsafe(`DELETE FROM "Friendship" WHERE "addresseeId" = ANY($1::text[])`, ids);
+      // adresses IP du journal d'audit : effacées (le reste du journal, lui, est conservé)
+      await tx.$executeRawUnsafe(`UPDATE "ActivityLog" SET "ip" = NULL WHERE "userId" = ANY($1::text[])`, ids);
+      for (const id of ids) {
+        await tx.user.update({
+          where: { id },
+          data: {
+            deletedAt: now, status: 'DISABLED', role: 'USER', email: `deleted+${id}@seeduction.invalid`, passwordHash: '!', passkey: randomUUID(),
+            twoFactorSecret: null, twoFactorEnabled: false, twoFactorRecovery: [], sessionsValidAfter: now, mustResetPassword: false, pinHash: null, pinFailures: 0, pinLockedUntil: null,
+            avatarUrl: null, signature: null, statusText: null, lastIp: null, watchingTitle: null, watchingUntil: null, notifPrefs: Prisma.DbNull, freeleechTokens: 0, freeleechUntil: null,
+            donorUntil: null, donorWall: false, profileBlocked: true, familyEnabled: false, hnrExemptUntil: null,
+          },
+        });
+      }
+    }, { timeout: 60_000, maxWait: 10_000 });
+    return summary;
+  }
+
+  /**
    * Comptes jamais confirmés par courriel après 48 h : supprimés, et leur invitation redevient utilisable
    * (sinon un code resterait « brûlé » par une inscription abandonnée).
    */
@@ -115,7 +161,7 @@ export class AccountDeletionService {
       });
       for (const u of stale) {
         const uses = await this.prisma.inviteUse.findMany({ where: { userId: u.id }, select: { inviteId: true } });
-        await this.deleteAccount(u.id);
+        await this.purgeAccount(u.id);
         for (const use of uses) {
           await this.prisma.inviteCode.updateMany({ where: { id: use.inviteId, useCount: { gt: 0 } }, data: { useCount: { decrement: 1 }, used: false, usedByEmail: null } });
         }

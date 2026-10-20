@@ -75,6 +75,10 @@ export class AuthService {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Courriel invalide');
     // « · » sépare le nom d'un profil famille du pseudo de son compte : un pseudo ordinaire ne peut pas le contenir.
     if (String(username ?? '').includes('·')) throw new BadRequestException("Le caractère « · » n'est pas autorisé dans un pseudo");
+    // Un pseudo ne se réutilise jamais, même celui d'un compte supprimé (la casse ne change rien).
+    if (String(username ?? '').trim() && (await this.prisma.user.findFirst({ where: { username: { equals: String(username).trim(), mode: 'insensitive' } }, select: { id: true } }))) {
+      throw new BadRequestException("Ce nom d'utilisateur est déjà pris (ou réservé : le pseudo d'un compte supprimé ne se réutilise pas)");
+    }
     const isFirstUser = (await this.prisma.user.count()) === 0;
     const passwordHash = await bcrypt.hash(password, 12);
     // Cadeau de bienvenue : un peu d'upload de départ (pour ne pas commencer à 0/∞) et un freeleech personnel

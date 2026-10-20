@@ -23,6 +23,7 @@ Ils complètent les tests unitaires (`npm test`), qui ne touchent ni la base ni 
 | `push.e2e.cjs` | notifications push : clé publique chiffrée, abonnement, validation (services des navigateurs seulement), appareils, limites |
 | `tournoi.e2e.cjs` | tournoi de la semaine : points des jeux gratuits, règlement, gros lot, jetons, notifications, droits |
 | `passkey-equipe.e2e.cjs` | passkey visible par l'équipe (rangs, journal) et compte « [compte supprimé] » distinct du robot |
+| `compte-supprime.e2e.cjs` | suppression d'un compte : anonymisé (pseudo réservé pour toujours, statistiques et torrents conservés, courriel / mot de passe / passkey / IP effacés), icône « supprimé » |
 | `equipe-2fa.e2e.cjs` | 2FA obligatoire pour l'équipe : outils fermés sans 2FA, bandeau, désactivation refusée, audit |
 | `securite.e2e.cjs`, `inspection.e2e.cjs` | sécurité : sessions liées à l'état du compte, rapports suspects, CSP ; compte complet d'un membre, conversations déverrouillées et tracées, réinitialisation obligatoire du mot de passe |
 | `dons-auto.e2e.cjs` | dons automatiques : Ko-fi et Buy Me a Coffee, reconnaissance du pseudo, jamais de double crédit |

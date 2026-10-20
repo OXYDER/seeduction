@@ -25,6 +25,7 @@ import { useMyUploads } from '../store/myUploads';
 import FriendsMenu from './FriendsMenu';
 import MessagesMenu from './MessagesMenu';
 import { useDonors } from '../store/donors';
+import { useDeleted } from '../store/deleted';
 import ChatRail from './ChatRail';
 import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
@@ -160,6 +161,7 @@ function LayoutInner() {
   useEffect(() => {
     if (!profile) return;
     void useDonors.getState().load();
+    void useDeleted.getState().load();
     const t = window.setInterval(() => void useDonors.getState().load(), 10 * 60_000);
     return () => window.clearInterval(t);
   }, [profile?.id]);

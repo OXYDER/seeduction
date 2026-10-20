@@ -89,6 +89,13 @@ export class UsersController {
     return this.usersService.mentionSearch(q);
   }
 
+  /** Identifiants des comptes supprimés (petite icône à côté de leur pseudo) : aucune donnée personnelle. */
+  @UseGuards(JwtAuthGuard)
+  @Get('deleted-ids')
+  deletedIds() {
+    return this.usersService.deletedIds();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('leaderboard')
   leaderboard(@Query('limit') limit = '50') {

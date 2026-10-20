@@ -29,7 +29,7 @@ export class StaffMembersService {
   /** Les trois nombres affichés à côté des onglets : tous les membres, en ligne (invisibles compris), qui seedent. */
   async counts() {
     const [all, seeders] = await Promise.all([
-      this.prisma.user.count({ where: { parentId: null } }),
+      this.prisma.user.count({ where: { parentId: null, deletedAt: null } }),
       this.prisma.peer.groupBy({ by: ['userId'], where: { isSeeder: true } }),
     ]);
     return { all, online: this.presence.listOnlineAll().length, seeders: seeders.length };

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import HoverCard from './HoverCard';
 import DonorMark from './DonorMark';
+import DeletedMark from './DeletedMark';
 import Avatar from './Avatar';
 import { formatBytes } from '../lib/format';
 import { displayRank } from '../lib/memberClass';
@@ -106,6 +107,7 @@ export default function UserLink({ user, fallback = '' }: { user?: { id?: string
         <Link to={`/users/${id}`} onClick={(e) => e.stopPropagation()} className="user-link">
           <ProfileName username={user.username} />
         </Link>
+        <DeletedMark id={id} />
         <DonorMark id={id} />
       </span>
     </HoverCard>

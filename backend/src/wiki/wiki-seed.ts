@@ -88,7 +88,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `Si tu reçois une alerte pour un changement que tu n'as pas fait, contacte le staff tout de suite.
 
 ` +
-          `[b]Supprimer mon compte[/b] : demande-le au staff (les torrents, commentaires et messages que tu as publiés restent, attribués à « [compte supprimé] »).`,
+          `[b]Supprimer mon compte[/b] : demande-le au staff. Ton compte reste alors, anonymisé : ton pseudo, tes statistiques, tes torrents et tes messages publics restent affichés avec une petite icône 🗑️ (personne ne pourra reprendre ton pseudo), mais ton courriel, ton mot de passe, ta passkey, tes adresses IP, tes amis, tes favoris et tes messages privés sont effacés.`,
       },
     ],
   },

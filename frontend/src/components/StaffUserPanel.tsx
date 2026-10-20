@@ -257,7 +257,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
             >
               <strong style={{ color: 'var(--danger)' }}>Suppression définitive — irréversible</strong>
               <div className="muted" style={{ fontSize: 12 }}>
-                Son profil, ses favoris, amis, messages reçus, notifications, clés et historique disparaissent. Ses torrents, commentaires, messages du forum et du chat restent, attribués à « [compte supprimé] ».
+                Le compte reste, anonymisé : son pseudo (réservé pour toujours, personne ne pourra le reprendre), ses statistiques, ses torrents, ses commentaires, ses messages publics et son historique de sanctions restent, avec une icône 🗑️ à côté du nom. Courriel, mot de passe, passkey, double authentification, adresses IP, sessions, amis, favoris, notifications, clés et messages reçus sont effacés.
                 Si c'est pour sanctionner, préfère le <strong>bannissement</strong> (réversible).
               </div>
               <input placeholder={`Tape le pseudo « ${detail.username} » pour confirmer`} value={delUsername} onChange={(e) => setDelUsername(e.target.value)} required />

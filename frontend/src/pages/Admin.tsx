@@ -106,7 +106,7 @@ const AUDIT_LABELS: Record<string, string> = {
 const META_LABELS: Record<string, string> = {
   targetId: 'Identifiant du compte', target: 'Pseudo', email: 'Courriel', role: 'Rôle', status: 'Statut', memberClass: 'Classe', createdAt: 'Inscrit le', lastSeenAt: 'Dernière visite',
   uploaded: 'Envoyé', downloaded: 'Reçu', ratio: 'Ratio', bonusPoints: 'Points bonus', profiles: 'Profils famille', team: 'Team', counts: 'Activité', torrents: 'Torrents du compte',
-  reassigned: 'Contenu conservé (réattribué à « [compte supprimé] »)', erased: 'Données effacées', reason: 'Motif', torrentId: 'Torrent', name: 'Nom', fields: 'Champs', username: 'Pseudo',
+  reassigned: 'Contenu conservé', erased: 'Données effacées', reason: 'Motif', torrentId: 'Torrent', name: 'Nom', fields: 'Champs', username: 'Pseudo',
 };
 const COUNT_LABELS: Record<string, string> = { torrents: 'torrents envoyés', torrentsApproved: 'torrents approuvés', torrentComments: 'commentaires de torrents', forumPosts: 'messages du forum', warnings: 'avertissements', bans: 'bannissements' };
 const TABLE_LABELS: Record<string, string> = {

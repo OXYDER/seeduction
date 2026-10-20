@@ -27,7 +27,7 @@ export class UsersService {
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
         watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, goalSound: true, tipStyle: true,
-        parentId: true, profileName: true, profileType: true, profilePerms: true, familyEnabled: true,
+        parentId: true, profileName: true, profileType: true, profilePerms: true, familyEnabled: true, deletedAt: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
     });
@@ -69,6 +69,7 @@ export class UsersService {
       ...(profile ? { profile } : {}),
       ratio,
       watching,
+      deleted: !!user.deletedAt,
       // « onlineStatus » est ce que voient les autres (ONLINE/AWAY/BUSY/OFFLINE, jamais INVISIBLE tel quel) ;
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus,
@@ -184,6 +185,11 @@ export class UsersService {
       where: { userId, takenAt: { gte: since } },
       orderBy: { takenAt: 'asc' },
     });
+  }
+
+  /** Identifiants des comptes supprimés (le pseudo reste affiché avec une petite icône) : liste courte, sans aucune donnée personnelle. */
+  async deletedIds(): Promise<string[]> {
+    return (await this.prisma.user.findMany({ where: { deletedAt: { not: null } }, select: { id: true }, take: 5000 })).map((u) => u.id);
   }
 
   async leaderboard(limit = 50) {

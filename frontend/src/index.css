@@ -4293,3 +4293,4 @@ button.link:hover { filter: none; transform: none; text-decoration-style: solid;
   .tv-comfy-stats { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(90px, auto)); justify-items: start; text-align: left; min-width: 0; }
   .tv-comfy-actions { grid-column: 1 / -1; }
 }
+.deleted-mark { margin-left: 4px; font-size: 0.85em; opacity: 0.7; cursor: help; }

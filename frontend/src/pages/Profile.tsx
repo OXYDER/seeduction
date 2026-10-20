@@ -107,6 +107,7 @@ export default function Profile() {
           )}
         </span>
         <h1 style={{ margin: 0 }}>{profile.username}</h1>
+        {profile.deleted && <span className="badge" title="Le pseudo, les statistiques et les actions restent, mais les données personnelles ont été effacées" style={{ background: 'rgba(150,150,150,0.2)' }}>🗑️ Compte supprimé</span>}
         {profile.onlineStatus && <span className="muted" style={{ fontSize: 13 }}>{STATUS_LABEL[profile.onlineStatus as keyof typeof STATUS_LABEL]}</span>}
         {profile.role && <span className="badge double">{displayRank(profile, ROLE_LABEL)}</span>}
         {profile.team && <Link to={`/teams/${profile.team.id}`} className="badge new" title={`Team ${profile.team.name}`}>🏴 {profile.team.tag ? `[${profile.team.tag}] ` : ''}{profile.team.name}</Link>}
@@ -119,26 +120,26 @@ export default function Profile() {
         {id && (
           <Link to={`/browse?uploaderId=${profile.id}`} className="muted">Voir ses torrents →</Link>
         )}
-        {id && me && id !== me.id && <Link to={`/messages?to=${encodeURIComponent(profile.username)}`} className="icon-btn">✉️ Message</Link>}
-        {id && me && id !== me.id && profile.friendStatus === 'NONE' && (
+        {id && me && id !== me.id && !profile.deleted && <Link to={`/messages?to=${encodeURIComponent(profile.username)}`} className="icon-btn">✉️ Message</Link>}
+        {id && me && id !== me.id && !profile.deleted && profile.friendStatus === 'NONE' && (
           <button type="button" className="icon-btn" disabled={friendBusy} onClick={() => friendAction(() => api.post('/friends/request', { username: profile.username }))}>➕ Ajouter en ami</button>
         )}
-        {id && me && id !== me.id && profile.friendStatus === 'PENDING_OUT' && (
+        {id && me && id !== me.id && !profile.deleted && profile.friendStatus === 'PENDING_OUT' && (
           <button type="button" className="icon-btn" disabled={friendBusy} title="Annuler ta demande d'ami" onClick={() => friendAction(() => api.delete(`/friends/${profile.friendshipId}`))}>⏳ Demande envoyée · Annuler</button>
         )}
-        {id && me && id !== me.id && profile.friendStatus === 'PENDING_IN' && (
+        {id && me && id !== me.id && !profile.deleted && profile.friendStatus === 'PENDING_IN' && (
           <>
             <button type="button" className="icon-btn" disabled={friendBusy} onClick={() => friendAction(() => api.post(`/friends/${profile.friendshipId}/accept`))}>✅ Accepter sa demande d'ami</button>
             <button type="button" className="icon-btn" disabled={friendBusy} onClick={() => friendAction(() => api.delete(`/friends/${profile.friendshipId}`))}>Refuser</button>
           </>
         )}
-        {id && me && id !== me.id && profile.friendStatus === 'FRIENDS' && (
+        {id && me && id !== me.id && !profile.deleted && profile.friendStatus === 'FRIENDS' && (
           <button type="button" className="icon-btn" disabled={friendBusy} title="Retirer de mes amis" onClick={() => { if (window.confirm(`Retirer ${profile.username} de tes amis ?`)) void friendAction(() => api.delete(`/friends/${profile.friendshipId}`)); }}>✓ Ami · Retirer</button>
         )}
-        {id && me && id !== me.id && (
+        {id && me && id !== me.id && !profile.deleted && (
           <button type="button" className="icon-btn" onClick={() => setShowTransfer((v) => !v)}>🎁 Transférer des points</button>
         )}
-        {id && me && id !== me.id && <ReportButton targetType="user" targetId={id} compact />}
+        {id && me && id !== me.id && !profile.deleted && <ReportButton targetType="user" targetId={id} compact />}
       </div>
       {friendError && <div style={{ color: 'var(--danger)' }}>{friendError}</div>}
       {showTransfer && id && me && id !== me.id && (
