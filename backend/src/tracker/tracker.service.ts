@@ -29,7 +29,7 @@ export interface AnnounceParams {
 }
 
 /** Colonnes du torrent utiles à un announce (les autres, comme la description ou le NFO, pèsent des dizaines de ko et ne servent à rien ici : un announce arrive des milliers de fois par jour). */
-const ANNOUNCE_TORRENT = { id: true, name: true, size: true, freeleech: true, doubleUpload: true, status: true, diedAt: true, revivedByUserId: true, seeders: true, leechers: true, zeroSeedersSince: true, updatedAt: true } as const;
+const ANNOUNCE_TORRENT = { id: true, name: true, size: true, createdAt: true, uploaderId: true, freeleech: true, doubleUpload: true, status: true, diedAt: true, revivedByUserId: true, seeders: true, leechers: true, zeroSeedersSince: true, updatedAt: true } as const;
 /** Quand rien n'a changé, la ligne du torrent n'est pas réécrite à chaque announce : au plus une fois par ce délai (elle sert à trier par « activité »). */
 const TOUCH_EVERY_MS = 10 * 60_000;
 
@@ -270,7 +270,8 @@ export class TrackerService {
 
     // Anti-triche : examine ce que le client déclare (sans attendre, sans jamais faire échouer l'announce).
     void this.anticheat.onAnnounce({
-      userId: user.id, role: user.role, torrentId: torrent.id, size: Number(torrent.size), peerId: params.peerId, userAgent: params.userAgent, event: params.event, viaStream: params.viaStream,
+      userId: user.id, role: user.role, profileType: user.profileType, torrentId: torrent.id, size: Number(torrent.size), peerId: params.peerId,
+      ctx: { free: isFree, doubleUp: multiplier === 2, ownTorrent: torrent.uploaderId === user.id, hotTorrent: Date.now() - torrent.createdAt.getTime() < 3 * 86_400_000 }, userAgent: params.userAgent, event: params.event, viaStream: params.viaStream,
       ip: params.ip, uploaded: params.uploaded, downloaded: params.downloaded, left: params.left,
       prev: existingPeer ? { uploaded: Number(existingPeer.uploaded), downloaded: Number(existingPeer.downloaded), left: Number(existingPeer.left), lastAnnounceAt: existingPeer.lastAnnounceAt } : null,
     });

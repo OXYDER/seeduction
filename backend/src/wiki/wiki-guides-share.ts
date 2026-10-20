@@ -274,7 +274,7 @@ export const GUIDES_STAFF: WikiSeedCategory = {
     {
       title: 'Santé du site et économie des points (staff)',
       slug: 'guide-staff-sante-economie',
-      keywords: 'santé, monitoring, alertes, jwt, secret, économie, points, journal, gains, abus, staff, administration',
+      keywords: 'anti-triche, faux positifs, privilèges, freeleech, apprentissage, santé, monitoring, alertes, jwt, secret, économie, points, journal, gains, abus, staff, administration',
       content:
         `Deux écrans de l'administration aident à garder le site en bonne santé et l'économie des points sous contrôle.\n\n` +
         `[b]Santé du site (Admin > Monitoring)[/b]\n` +
@@ -335,7 +335,7 @@ export const GUIDES_STAFF: WikiSeedCategory = {
         `• L'écran affiche les [b]points créés[/b] par les sources gratuites (roue, quiz, pronostics, cartes, défis, remise de fidélité, buts du Canadien), le [b]résultat de la maison[/b] aux jeux (positif : le site gagne des points aux membres), le détail par source sur 24 heures, 7 jours et la période choisie, et un graphique par jour.\n` +
         `• Les [b]plus gros gagnants[/b] (24 heures et 7 jours) servent à repérer un abus possible, par exemple plusieurs comptes d'une même personne. Le partage de torrents, les dons et les échanges sont exclus de ce classement.\n` +
         `• Fixe un [b]seuil d'alerte[/b] (1 500 points par défaut) : si un membre le dépasse en 24 heures avec les jeux et les récompenses gratuites, la santé du site passe à 🟠 et les administrateurs sont prévenus. Mets 0 pour couper l'alerte.\n\n` +
-        `Voir aussi : [url=/wiki/guide-staff-outils]Autres outils du staff[/url], [url=/wiki/fair-play-anti-triche]Fair-play et anti-triche[/url].`,
+        `[b]Anti-triche intelligent (Admin > Anti-triche)[/b]\nLe dossier d'un membre affiche un encadré [b]Privilèges et ratio réel[/b] : les chiffres crédités (qui comprennent le cadeau de bienvenue, le double upload, les freeleech et le crédit d'envoi) face à ce que le membre a réellement échangé sur 35 jours, avec ses privilèges en cours. Les règles automatiques en tiennent compte : l'upload confirmé par des receveurs n'est pas suspect, un échange entre proches (parrain / filleul, famille) ou réciproque et sans ratio fabriqué non plus, plusieurs réseaux successifs (mobile, VPN) pèsent peu, une seedbox déclarée et le robot du site sont tolérés, et une revérification de données déjà présentes n'est pas une sous-déclaration. L'équipe n'est alertée que sur des indices solides : une preuve directe (valeur forgée, outil connu, vitesse impossible), des indices de plusieurs familles qui concordent, ou le niveau le plus élevé. Chaque nuit, le système [b]apprend[/b] de vos verdicts : un type d'indice qui produit surtout des dossiers innocentés pèse moins (jusqu'à moitié), un type fiable un peu plus. Innocenter un dossier fait donc reculer les faux positifs.\n\nVoir aussi : [url=/wiki/guide-staff-outils]Autres outils du staff[/url], [url=/wiki/fair-play-anti-triche]Fair-play et anti-triche[/url].`,
     },
     {
       title: 'Autres outils du staff',

@@ -92,6 +92,30 @@ export interface CheatSignal {
   details: Record<string, any>;
 }
 
+/** Une preuve directe : valeur forgée, outil de triche connu, vitesse physiquement hors de portée. Seule elle peut alerter l'équipe sans qu'une deuxième famille d'indices ne la confirme. */
+export const isHard = (d: Record<string, any> | null | undefined) => d?.hard === true;
+
+/**
+ * Ce qui explique légitimement un chiffre élevé : privilèges du membre et nature du torrent. Les règles d'announce en tiennent compte au lieu de tout reprocher
+ * (une ligne rapide connue, le premier seed de son propre torrent, une sortie très demandée ne sont pas de la triche).
+ */
+export interface AnnounceCtx {
+  /** Téléchargement sans impact sur le ratio (freeleech du torrent, du site, personnel ou du compte, cadeau de bienvenue). */
+  free?: boolean;
+  /** Double upload (torrent ou site). */
+  doubleUp?: boolean;
+  /** Le membre est l'envoyeur de ce torrent : son premier seed est naturellement très actif. */
+  ownTorrent?: boolean;
+  /** Torrent publié depuis moins de 3 jours : forte demande, gros volumes normaux. */
+  hotTorrent?: boolean;
+  /** Ligne rapide connue (seedbox déclarée, robot du site) : les vitesses élevées sont normales. */
+  fastLine?: boolean;
+}
+
+export const ctxLabels = (c?: AnnounceCtx): string[] => [
+  ...(c?.free ? ['freeleech'] : []), ...(c?.doubleUp ? ['double upload'] : []), ...(c?.ownTorrent ? ['son propre torrent'] : []), ...(c?.hotTorrent ? ['sortie récente'] : []), ...(c?.fastLine ? ['ligne rapide connue'] : []),
+];
+
 export interface AnnounceInput {
   peerId: string;
   userAgent?: string | null;
@@ -103,6 +127,8 @@ export interface AnnounceInput {
   left: number;
   /** Taille du torrent (octets). */
   size: number;
+  /** Privilèges et contexte du torrent qui expliquent des chiffres élevés. */
+  ctx?: AnnounceCtx;
   /** État du même peer (même peer_id) à l'announce précédent, s'il y en a un. */
   prev?: { uploaded: number; downloaded: number; left: number; lastAnnounceAt: Date } | null;
   now: Date;
@@ -119,7 +145,7 @@ const CHEAT_UA = /ratio\s*-?master|ratiomaster|torrent\s*-?faker|bt\s*-?faker|fa
 export function analyseClient(peerId: string, userAgent: string | null | undefined, viaStream?: boolean): CheatSignal[] {
   const out: CheatSignal[] = [];
   const ua = String(userAgent ?? '').trim();
-  if (ua && CHEAT_UA.test(ua)) out.push({ kind: 'FAKE_CLIENT', points: 50, torrentScoped: false, details: { reason: 'Outil de triche connu dans le User-Agent', userAgent: ua.slice(0, 120) } });
+  if (ua && CHEAT_UA.test(ua)) out.push({ kind: 'FAKE_CLIENT', points: 50, torrentScoped: false, details: { reason: 'Outil de triche connu dans le User-Agent', userAgent: ua.slice(0, 120), hard: true } });
   const m = /^-([A-Za-z]{2})[0-9A-Za-z]{4}-/.exec(peerId ?? '');
   if (m && !viaStream) {
     const expect = UA_EXPECT[m[1]];
@@ -142,7 +168,7 @@ export function analyseAnnounce(input: AnnounceInput, cfg: Pick<AntiCheatConfig,
 
   // « left » ne peut pas dépasser la taille du torrent (tolérance d'une pièce arrondie).
   if (size > 0 && left > size * 1.001 + 64 * 1024) {
-    out.push({ kind: 'LEFT_TAMPER', points: 40, torrentScoped: true, details: { left, size } });
+    out.push({ kind: 'LEFT_TAMPER', points: 40, torrentScoped: true, details: { left, size, hard: true } });
   }
   if (!prev) return out;
 
@@ -163,20 +189,26 @@ export function analyseAnnounce(input: AnnounceInput, cfg: Pick<AntiCheatConfig,
   // Vitesse moyenne d'upload entre deux announces (au moins 1 Go déclaré, pour ne pas s'exciter sur de petites fenêtres).
   if (dUp >= 1 * GB && elapsed >= 30) {
     const mbps = dUp / elapsed / MB;
-    const warn = Math.max(10, cfg.speedWarnMBps);
+    // Une ligne rapide connue (seedbox) ou le premier seed d'un torrent très demandé tolèrent des vitesses plus élevées.
+    const lenient = (input.ctx?.fastLine ? 4 : 1) * (input.ctx?.ownTorrent || input.ctx?.hotTorrent ? 1.5 : 1);
+    const warn = Math.max(10, cfg.speedWarnMBps) * lenient;
     let points = 0;
     if (mbps >= warn * 10) points = 60; // ≥ 10× le seuil : physiquement hors de portée
     else if (mbps >= warn * 5) points = 35;
     else if (mbps >= warn * 2) points = 20;
     else if (mbps >= warn) points = 8;
-    if (points) out.push({ kind: 'SPEED_IMPOSSIBLE', points, torrentScoped: true, details: { mbps: Math.round(mbps), gb: Math.round((dUp / GB) * 10) / 10, seconds: Math.round(elapsed), thresholdMBps: warn } });
+    if (points) out.push({ kind: 'SPEED_IMPOSSIBLE', points, torrentScoped: true, details: { mbps: Math.round(mbps), gb: Math.round((dUp / GB) * 10) / 10, seconds: Math.round(elapsed), thresholdMBps: Math.round(warn), ...(ctxLabels(input.ctx).length ? { context: ctxLabels(input.ctx) } : {}), ...(points >= 60 ? { hard: true } : {}) } });
   }
 
   // Le torrent avance (left baisse) mais le client déclare nettement moins de téléchargé : ratio protégé.
   const got = input.event === 'started' ? 0 : Math.max(0, prev.left - left);
-  if (got >= 512 * MB && dDown < got * 0.5) {
+  if (!input.viaStream && got >= 512 * MB && dDown < got * 0.5) {
     const fraction = 1 - Math.max(0, dDown) / got;
-    out.push({ kind: 'DOWNLOAD_UNDERREPORT', points: Math.round(8 + 14 * fraction), torrentScoped: true, details: { acquiredGb: Math.round((got / GB) * 100) / 100, reportedGb: Math.round((Math.max(0, dDown) / GB) * 100) / 100, hiddenPercent: Math.round(fraction * 100) } });
+    // Données déjà présentes sur le disque (torrent ajouté après coup, copie d'un autre client, « revérifier ») : tout le « left » tombe d'un coup sans rien télécharger.
+    // Un honnête le fait de temps en temps, un tricheur à chaque torrent : cette première avancée ne compte presque pas, les suivantes comptent normalement.
+    const preexisting = size > 0 && prev.left >= size * 0.95 && dDown <= got * 0.02;
+    out.push({ kind: 'DOWNLOAD_UNDERREPORT', points: preexisting ? 3 : Math.round(8 + 14 * fraction), torrentScoped: true, details: {
+      ...(preexisting ? { note: 'Données probablement déjà présentes (revérification ou torrent ajouté après coup)' } : {}), acquiredGb: Math.round((got / GB) * 100) / 100, reportedGb: Math.round((Math.max(0, dDown) / GB) * 100) / 100, hiddenPercent: Math.round(fraction * 100) } });
   }
   return out;
 }
@@ -207,12 +239,14 @@ export function passkeySharingPoints(networks: number, threshold: number): numbe
 
 // ------------------------------------------------------------------ score
 
-export interface ScoredEvent { kind: string; points: number; lastAt: Date; count?: number }
+export interface ScoredEvent { kind: string; points: number; lastAt: Date; count?: number; hard?: boolean }
 
 export interface ScoreContext {
   now?: Date;
   accountCreatedAt?: Date | null;
   sensitivity?: number;
+  /** Poids par type de signal, appris des dossiers classés (voir learnKindWeights) : un type qui a souvent fait de faux positifs pèse moins. */
+  weights?: Record<string, number>;
 }
 
 export interface ScoreResult {
@@ -220,6 +254,8 @@ export interface ScoreResult {
   level: CheatLevel;
   confidence: number;
   families: CheatFamily[];
+  /** Au moins une preuve directe récente (valeur forgée, outil connu, vitesse impossible). */
+  hard: boolean;
   breakdown: Record<string, { points: number; events: number; lastAt: string }>;
 }
 
@@ -263,18 +299,21 @@ export function scoreEvents(events: ScoredEvent[], ctx: ScoreContext = {}): Scor
   }
   let raw = 0;
   const families = new Set<CheatFamily>();
+  let hard = false;
+  for (const e of events) if (e.hard && (now.getTime() - e.lastAt.getTime()) / 86400_000 <= 30) hard = true;
   for (const b of perBucket.values()) {
     const info = CHEAT_KINDS[b.kind];
     const capped = Math.min(b.points, info?.dailyCap ?? 40);
     const decay = Math.pow(0.5, Math.max(0, (now.getTime() - b.day.getTime()) / 86400_000) / HALF_LIFE_DAYS);
-    const pts = capped * decay;
+    const pts = capped * decay * Math.min(1.3, Math.max(0.3, ctx.weights?.[b.kind] ?? 1));
     raw += pts;
     if (info && pts >= 1) families.add(info.family);
     if (stats[b.kind]) stats[b.kind].points += pts;
   }
   const corroboration = families.size >= 3 ? 1.5 : families.size === 2 ? 1.25 : 1;
   const ageDays = ctx.accountCreatedAt ? (now.getTime() - ctx.accountCreatedAt.getTime()) / 86400_000 : 90;
-  const tenure = ageDays < 14 ? 1.25 : ageDays > 365 ? 0.9 : 1;
+  // Un compte récent n'est pas examiné plus durement : ses chiffres sont gonflés par les cadeaux de départ (freeleech, upload offert), pas par la triche. Un compte ancien a plus de crédit.
+  const tenure = ageDays > 365 ? 0.9 : 1;
   const score = Math.round(raw * corroboration * tenure * 10) / 10;
   const level = levelOf(score, ctx.sensitivity);
   // Confiance : monte avec le score, plafonnée tant que les indices viennent d'une seule famille.
@@ -282,7 +321,61 @@ export function scoreEvents(events: ScoredEvent[], ctx: ScoreContext = {}): Scor
   const confidence = Math.round(100 * Math.min(base, families.size <= 1 ? 0.7 : 0.97));
   const breakdown: ScoreResult['breakdown'] = {};
   for (const [k, v] of Object.entries(stats)) if (v.points >= 0.5) breakdown[k] = { points: Math.round(v.points * 10) / 10, events: v.events, lastAt: v.lastAt.toISOString() };
-  return { score, level, confidence, families: [...families], breakdown };
+  return { score, level, confidence, families: [...families], hard, breakdown };
+}
+
+/**
+ * Une alerte à l'équipe n'est envoyée que si elle est solide : une preuve directe (valeur forgée, outil de triche), des indices de plusieurs familles indépendantes
+ * (ratio + réseau + client...), ou — pour une seule famille d'indices — le niveau le plus élevé. Un signal isolé reste dans le dossier, sans réveiller personne.
+ */
+export function mayAlert(res: Pick<ScoreResult, 'level' | 'families' | 'hard'>): boolean {
+  if (res.hard) return levelIndex(res.level) >= 2;
+  if (res.families.length >= 2) return levelIndex(res.level) >= 2;
+  return res.level === 'CRITICAL';
+}
+
+/**
+ * Poids appris : pour chaque type de signal, la part des dossiers classés où il figurait qui ont finalement été sanctionnés plutôt qu'innocentés. Un type de signal qui produit surtout
+ * des innocentés pèse moins (jusqu'à la moitié), un type fiable un peu plus. Sous 5 dossiers, pas assez de recul : poids normal.
+ */
+export function learnKindWeights(cases: { status: string; breakdown: Record<string, { points: number }> | null }[]): Record<string, number> {
+  const tally: Record<string, { cleared: number; actioned: number }> = {};
+  for (const c of cases) {
+    if (c.status !== 'CLEARED' && c.status !== 'ACTIONED') continue;
+    const bd = c.breakdown ?? {};
+    const total = Object.values(bd).reduce((n, v) => n + Math.max(0, v?.points ?? 0), 0);
+    if (total <= 0) continue;
+    for (const [kind, v] of Object.entries(bd)) {
+      const share = Math.max(0, v?.points ?? 0) / total; // un type qui a fait l'essentiel du dossier pèse plus dans le verdict
+      const t = (tally[kind] ??= { cleared: 0, actioned: 0 });
+      if (c.status === 'ACTIONED') t.actioned += share; else t.cleared += share;
+    }
+  }
+  const out: Record<string, number> = {};
+  for (const [kind, t] of Object.entries(tally)) {
+    const n = t.cleared + t.actioned;
+    if (n < 5) continue;
+    const precision = (t.actioned + 1) / (n + 2);
+    out[kind] = Math.round(Math.min(1.15, Math.max(0.5, 0.4 + 1.2 * precision)) * 100) / 100;
+  }
+  return out;
+}
+
+/**
+ * Part de l'upload d'un envoyeur qu'on peut raisonnablement attribuer à un destinataire : son envoi se répartit entre tous les receveurs du torrent au prorata de ce que chacun a reçu
+ * (et ne dépasse jamais ce que ce destinataire a reçu). Évite de croire que tout ce que A a envoyé est allé à B parce que B a téléchargé le même torrent.
+ */
+export function expectedTransfer(fromUp: number, toDown: number, swarmDown: number): number {
+  if (fromUp <= 0 || toDown <= 0) return 0;
+  const total = Math.max(swarmDown, toDown);
+  return Math.min(toDown, fromUp * (toDown / total));
+}
+
+/** Points pour des transferts entre deux comptes liés : ce qui est « boosté » (freeleech, double upload) crée du ratio à partir de rien et compte plein ; le reste n'est qu'un échange de ratio entre proches. */
+export function collusionPoints(boostedBytes: number, plainBytes: number): number {
+  const eff = boostedBytes + 0.3 * plainBytes;
+  if (eff < 5 * GB || (boostedBytes < 3 * GB && plainBytes < 25 * GB)) return 0;
+  return Math.min(60, Math.round(30 + 8 * Math.log2(eff / (5 * GB) + 1)));
 }
 
 /** Points d'une envolée du ratio : `factor` = multiple de l'habitude du compte (null si pas d'historique). */

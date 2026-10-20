@@ -27,7 +27,8 @@ interface Detail {
   ips: { ip: string; firstSeenAt: string; lastSeenAt: string; announces: number; shared: number }[];
   linked: { id: string; username: string; status: string; createdAt: string; ips: string[]; lastSeenAt: string }[];
   clients: { client: string; version: string | null; userAgent: string | null; ip: string; torrent: { id: string; name: string }; isSeeder: boolean; lastAnnounceAt: string }[];
-  flow: { torrent: { id: string; name: string }; up: number; down: number; got: number }[];
+  flow: { torrent: { id: string; name: string }; up: number; down: number; got: number; freeleech?: boolean; doubleUpload?: boolean }[];
+  privileges?: { credited: { uploaded: number; downloaded: number }; organic35d: { uploaded: number; downloaded: number; acquired: number }; accountFreeleechUntil: string | null; siteFreeleech: boolean; siteDoubleUpload: boolean; fastLine: boolean; welcomeUploadGb: number; accountDays: number };
 }
 
 const LEVELS: Record<Level, { label: string; color: string; icon: string }> = {
@@ -47,15 +48,15 @@ const dur = (s: number) => (s >= 3600 ? `${Math.round(s / 360) / 10} h` : s >= 6
 function describe(kind: string, d: any): string {
   if (!d) return '';
   switch (kind) {
-    case 'SPEED_IMPOSSIBLE': return `${d.mbps} Mo/s en moyenne (${gb(d.gb)} déclarés en ${dur(d.seconds)}) — seuil réglé à ${d.thresholdMBps} Mo/s`;
+    case 'SPEED_IMPOSSIBLE': return `${d.mbps} Mo/s en moyenne (${gb(d.gb)} déclarés en ${dur(d.seconds)}) — seuil à ${d.thresholdMBps} Mo/s${d.context?.length ? ` (tolérance : ${d.context.join(', ')})` : ''}`;
     case 'LEFT_TAMPER': return `« left » = ${formatBytes(d.left)} alors que le torrent fait ${formatBytes(d.size)}`;
-    case 'DOWNLOAD_UNDERREPORT': return `Le torrent a avancé de ${gb(d.acquiredGb)} mais seulement ${gb(d.reportedGb)} déclarés (${d.hiddenPercent} % masqués)`;
+    case 'DOWNLOAD_UNDERREPORT': return `Le torrent a avancé de ${gb(d.acquiredGb)} mais seulement ${gb(d.reportedGb)} déclarés (${d.hiddenPercent} % masqués)${d.note ? ` — ${d.note}` : ''}`;
     case 'COUNTER_ROLLBACK': return `Upload ${formatBytes(d.uploadedBefore)} → ${formatBytes(d.uploadedNow)}, download ${formatBytes(d.downloadedBefore)} → ${formatBytes(d.downloadedNow)} avec le même peer_id`;
     case 'ANNOUNCE_FLOOD': return `Announce ${d.seconds} s après le précédent, sans événement`;
     case 'FAKE_CLIENT': return `${d.reason}${d.userAgent ? ` — User-Agent « ${d.userAgent} »` : ''}${d.peerId ? ` (peer_id ${d.peerId}…)` : ''}`;
     case 'SWARM_IMBALANCE': return `${gb(d.upGb)} envoyés déclarés ; le swarm déclare ${gb(d.swarmUpGb)} envoyés pour seulement ${gb(d.swarmReceivedGb)} reçus → ${gb(d.attributableGb)} sans destinataire`;
-    case 'RATIO_SURGE': return `${gb(d.upGb2d)} envoyés en 2 jours${d.baselineGbPerDay != null ? ` (habitude : ${gb(d.baselineGbPerDay)}/jour, ×${d.factor})` : ' (aucun historique)'} — compte de ${d.accountDays} jours`;
-    case 'PASSKEY_SHARING': return `${d.networks} réseaux différents en ${d.windowHours} h : ${(d.ips ?? []).join(', ')}`;
+    case 'RATIO_SURGE': return `${gb(d.upGb2d)} envoyés en 2 jours, dont ${gb(d.unconfirmedGb ?? d.upGb2d)} que personne n'a déclaré avoir reçus${d.confirmedGb ? ` (${gb(d.confirmedGb)} confirmés par des receveurs, non comptés)` : ''}${d.baselineGbPerDay != null ? ` — habitude : ${gb(d.baselineGbPerDay)}/jour, ×${d.factor}` : ' — aucun historique'} — compte de ${d.accountDays} jours`;
+    case 'PASSKEY_SHARING': return `${d.networks} réseaux différents en ${d.windowHours} h (${d.simultaneousNetworks ?? 0} actifs en même temps) : ${(d.ips ?? []).join(', ')}${d.note ? ` — ${d.note}` : ''}`;
     case 'SHARED_IP': return `Adresse ${d.ip} aussi utilisée par ${(d.others ?? []).join(', ')}`;
     case 'ACCOUNT_COLLUSION': return `${d.role === 'envoyeur' ? 'A envoyé' : 'A reçu'} ${gb(d.gb)} ${d.role === 'envoyeur' ? 'à' : 'de'} ${d.partner} (même adresse) sur ${d.windowDays} j — ${d.boostedPercent} % sur freeleech / double upload`;
     case 'POINT_LAUNDERING': return `${d.role === 'envoyeur' ? `Points envoyés vers ${d.partner ?? 'un compte lié'}` : 'Points reçus'} : ${d.receivedPoints} pts en ${d.windowDays} j, dont ${d.fromLinkedAccounts} de comptes liés et ${d.fromNewAccounts} de comptes récents (${d.senders} envoyeur(s))`;
@@ -266,6 +267,21 @@ export default function AdminAntiCheat() {
               <button type="button" className="secondary" onClick={close} aria-label="Fermer">✕</button>
             </div>
 
+            {detail.privileges && (
+              <div style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, background: 'rgba(125,211,252,0.07)', borderLeft: '3px solid #7dd3fc' }}>
+                <strong>Privilèges et ratio réel</strong>
+                <div className="muted" style={{ marginTop: 4, lineHeight: 1.6 }}>
+                  Chiffres crédités : ↑ {formatBytes(detail.privileges.credited.uploaded)} · ↓ {formatBytes(detail.privileges.credited.downloaded)} (comprennent le cadeau de bienvenue de {detail.privileges.welcomeUploadGb} Go, le double upload, les freeleech et le crédit d'envoi).<br />
+                  Réellement échangé sur 35 jours d'après ses annonces : ↑ {formatBytes(detail.privileges.organic35d.uploaded)} · ↓ {formatBytes(detail.privileges.organic35d.downloaded)}{detail.privileges.organic35d.acquired ? ` · ${formatBytes(detail.privileges.organic35d.acquired)} réellement acquis` : ''}.<br />
+                  {detail.privileges.accountFreeleechUntil ? <>🆓 Freeleech du compte jusqu'au {new Date(detail.privileges.accountFreeleechUntil).toLocaleDateString('fr-CA')} · </> : null}
+                  {detail.privileges.siteFreeleech ? <>🆓 Freeleech du site en cours · </> : null}
+                  {detail.privileges.siteDoubleUpload ? <>✖️2 Double upload du site en cours · </> : null}
+                  {detail.privileges.fastLine ? <>🚀 Ligne rapide connue (seedbox) : vitesses élevées tolérées · </> : null}
+                  compte de {detail.privileges.accountDays} jours. Les règles automatiques en tiennent compte ; un ratio élevé dû à ces privilèges n'est pas un indice.
+                </div>
+              </div>
+            )}
+
             {detail.case?.breakdown && Object.keys(detail.case.breakdown).length > 0 && (
               <div>
                 <strong>Pourquoi ce score</strong>
@@ -360,7 +376,7 @@ export default function AdminAntiCheat() {
               <div>
                 <strong>Flux déclaré ces 7 derniers jours (top torrents)</strong>
                 <div style={{ display: 'grid', gap: 3, marginTop: 6, fontSize: 12.5 }}>
-                  {detail.flow.map((f) => <div key={f.torrent.id}><Link to={`/torrents/${f.torrent.id}`}>{f.torrent.name.slice(0, 70)}</Link> <span className="muted">· ↑ {formatBytes(f.up)} · ↓ {formatBytes(f.down)} · avancée réelle {formatBytes(f.got)}</span></div>)}
+                  {detail.flow.map((f) => <div key={f.torrent.id}><Link to={`/torrents/${f.torrent.id}`}>{f.torrent.name.slice(0, 70)}</Link> {f.freeleech && <span title="Freeleech : le téléchargement ne compte pas dans le ratio">🆓</span>}{f.doubleUpload && <span title="Double upload">✖️2</span>} <span className="muted">· ↑ {formatBytes(f.up)} · ↓ {formatBytes(f.down)} · avancée réelle {formatBytes(f.got)}</span></div>)}
                 </div>
               </div>
             )}

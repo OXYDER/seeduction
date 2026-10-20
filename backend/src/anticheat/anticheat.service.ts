@@ -5,8 +5,9 @@ import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
 import { parsePeerClient } from '../common/utils/peer-client';
+import { ECONOMY } from '../common/utils/economy';
 import {
-  AntiCheatConfig, CHEAT_FAMILY_LABELS, CHEAT_KINDS, CheatLevel, CheatSignal, LEVEL_ORDER, analyseAnnounce, kindLabel, levelIndex, normalizeAntiCheatConfig,
+  AnnounceCtx, AntiCheatConfig, CHEAT_FAMILY_LABELS, CHEAT_KINDS, CheatLevel, CheatSignal, LEVEL_ORDER, analyseAnnounce, ctxLabels, kindLabel, learnKindWeights, levelIndex, mayAlert, normalizeAntiCheatConfig,
   normalizeIp, scoreEvents, WINDOW_DAYS,
 } from '../common/utils/anticheat';
 
@@ -23,6 +24,10 @@ export interface Actor { userId: string; username: string; role?: string }
 export interface AnnounceContext {
   userId: string;
   role: string;
+  /** Profil robot du site : jamais examiné (il seede depuis une seedbox, à très haut débit). */
+  profileType?: string;
+  /** Privilèges et contexte du torrent qui expliquent des chiffres élevés (freeleech, double upload, son propre torrent, sortie récente). */
+  ctx?: AnnounceCtx;
   torrentId: string;
   size: number;
   peerId: string;
@@ -44,6 +49,7 @@ export interface RecordOptions {
   bump?: boolean;
 }
 
+const WEIGHTS_KEY = 'anticheatWeights';
 const dayStart = (d = new Date()) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 
 @Injectable()
@@ -51,6 +57,8 @@ export class AntiCheatService {
   private readonly logger = new Logger(AntiCheatService.name);
   private ipSeen = new Map<string, number>();
   private timers = new Map<string, NodeJS.Timeout>();
+  private lineCache = new Map<string, { at: number; fast: boolean }>();
+  private exemptCache = new Map<string, { at: number; exempt: boolean }>();
 
   constructor(private prisma: PrismaService, private settings: SettingsService, private notifications: NotificationsService, private audit: AuditService) {}
 
@@ -67,6 +75,45 @@ export class AntiCheatService {
     return cfg;
   }
 
+  /** Ligne rapide connue : le membre a déclaré une seedbox (envois depuis son propre serveur) ou c'est le robot du site. Mis en cache 10 minutes. */
+  async hasFastLine(userId: string): Promise<boolean> {
+    const hit = this.lineCache.get(userId);
+    if (hit && Date.now() - hit.at < IP_CACHE_MS) return hit.fast;
+    const [box, u] = await Promise.all([this.prisma.memberSeedbox.findUnique({ where: { userId }, select: { id: true } }), this.prisma.user.findUnique({ where: { id: userId }, select: { profileType: true } })]);
+    const fast = !!box || u?.profileType === 'BOT';
+    this.lineCache.set(userId, { at: Date.now(), fast });
+    if (this.lineCache.size > 5000) this.lineCache.clear();
+    return fast;
+  }
+
+  /** Comptes jamais examinés : le robot du site (profil BOT). */
+  async isExempt(userId: string): Promise<boolean> {
+    const hit = this.exemptCache.get(userId);
+    if (hit && Date.now() - hit.at < IP_CACHE_MS) return hit.exempt;
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { profileType: true } });
+    const exempt = u?.profileType === 'BOT';
+    this.exemptCache.set(userId, { at: Date.now(), exempt });
+    if (this.exemptCache.size > 5000) this.exemptCache.clear();
+    return exempt;
+  }
+
+  /** Poids par type de signal appris des dossiers classés (voir learnWeights). */
+  async weights(): Promise<Record<string, number>> {
+    const raw = await this.settings.get<{ weights?: Record<string, number> }>(WEIGHTS_KEY);
+    return raw?.weights ?? {};
+  }
+
+  /**
+   * Apprentissage : chaque dossier innocenté ou sanctionné par l'équipe apprend au système quels types de signaux sont fiables. Un type qui produit surtout des innocentés
+   * pèse moins dans les scores (jusqu'à la moitié) ; un type fiable pèse un peu plus. Recalculé chaque nuit.
+   */
+  async learnWeights() {
+    const closed = await this.prisma.cheatCase.findMany({ where: { status: { in: ['CLEARED', 'ACTIONED'] } }, select: { status: true, breakdown: true }, take: 2000 });
+    const weights = learnKindWeights(closed.map((c) => ({ status: c.status, breakdown: (c.breakdown ?? {}) as any })));
+    await this.settings.set(WEIGHTS_KEY, { weights, samples: closed.length, computedAt: new Date().toISOString() });
+    return { weights, samples: closed.length };
+  }
+
   // ------------------------------------------------------------------ collecte (announce)
 
   /**
@@ -78,10 +125,12 @@ export class AntiCheatService {
       const cfg = await this.config();
       if (!cfg.enabled) return;
       if (cfg.exemptStaff && STAFF.includes(c.role)) return;
+      if (c.profileType === 'BOT') return;
       const now = new Date();
 
+      const ctx: AnnounceCtx = { ...(c.ctx ?? {}), fastLine: await this.hasFastLine(c.userId) };
       const signals = analyseAnnounce({
-        peerId: c.peerId, userAgent: c.userAgent, event: c.event, viaStream: c.viaStream, uploaded: c.uploaded, downloaded: c.downloaded, left: c.left, size: c.size, prev: c.prev, now,
+        peerId: c.peerId, userAgent: c.userAgent, event: c.event, viaStream: c.viaStream, uploaded: c.uploaded, downloaded: c.downloaded, left: c.left, size: c.size, prev: c.prev, now, ctx,
       }, cfg);
       if (signals.length) await this.record(c.userId, signals, { torrentId: c.torrentId, dedupeHours: 6 });
 
@@ -125,6 +174,7 @@ export class AntiCheatService {
   /** Enregistre des signaux pour un membre (en fusionnant les doublons proches) et planifie le recalcul de son score. */
   async record(userId: string, signals: CheatSignal[], opts: RecordOptions = {}) {
     if (signals.length === 0) return 0;
+    if (await this.isExempt(userId)) return 0;
     const now = new Date();
     const since = new Date(now.getTime() - (opts.dedupeHours ?? 6) * 3600_000);
     let changed = 0;
@@ -164,8 +214,8 @@ export class AntiCheatService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, createdAt: true, status: true } });
     if (!user) return null;
     const now = new Date();
-    const events = await this.prisma.cheatEvent.findMany({ where: { userId, lastAt: { gte: new Date(now.getTime() - WINDOW_DAYS * 86400_000) } }, select: { kind: true, points: true, lastAt: true, count: true } });
-    const res = scoreEvents(events, { now, accountCreatedAt: user.createdAt, sensitivity: cfg.sensitivity });
+    const events = await this.prisma.cheatEvent.findMany({ where: { userId, lastAt: { gte: new Date(now.getTime() - WINDOW_DAYS * 86400_000) } }, select: { kind: true, points: true, lastAt: true, count: true, details: true } });
+    const res = scoreEvents(events.map((e) => ({ kind: e.kind, points: e.points, lastAt: e.lastAt, count: e.count, hard: (e.details as any)?.hard === true })), { now, accountCreatedAt: user.createdAt, sensitivity: cfg.sensitivity, weights: await this.weights() });
     const existing = await this.prisma.cheatCase.findUnique({ where: { userId } });
     if (!existing && res.level === 'NONE') return null;
 
@@ -196,7 +246,7 @@ export class AntiCheatService {
 
     // Alerte : seulement quand le niveau MONTE au-dessus du dernier signalé, au-dessus du seuil choisi, sur un dossier actif.
     const active = status === 'OPEN' || status === 'REVIEWING';
-    if (cfg.enabled && !cfg.observeOnly && active && user.status !== 'BANNED' && lvl > alertedLevel && lvl >= levelIndex(cfg.alertLevel)) {
+    if (cfg.enabled && !cfg.observeOnly && active && user.status !== 'BANNED' && lvl > alertedLevel && lvl >= levelIndex(cfg.alertLevel) && mayAlert(res)) {
       await this.alertStaff(saved.id, user, res.level, res.score, res.confidence, res.breakdown, cfg);
       await this.prisma.cheatCase.update({ where: { id: saved.id }, data: { alertedLevel: lvl, alertedAt: now } });
       await this.prisma.cheatCaseNote.create({ data: { caseId: saved.id, authorName: 'Système', kind: 'ALERT', body: `Équipe prévenue : niveau ${res.level} (score ${res.score}, confiance ${res.confidence} %).` } });
@@ -291,12 +341,12 @@ export class AntiCheatService {
     const userId = c?.userId ?? idOrUser;
     const user = await this.prisma.user.findFirst({
       where: { OR: [{ id: userId }, { username: { equals: userId, mode: 'insensitive' } }] },
-      select: { id: true, username: true, role: true, status: true, avatarUrl: true, createdAt: true, lastSeenAt: true, uploaded: true, downloaded: true, bonusPoints: true, memberClass: true, donorSince: true },
+      select: { id: true, username: true, role: true, status: true, avatarUrl: true, createdAt: true, lastSeenAt: true, uploaded: true, downloaded: true, bonusPoints: true, memberClass: true, donorSince: true, freeleechUntil: true, profileType: true },
     });
     if (!user) throw new NotFoundException('Membre introuvable');
     const theCase = c && c.userId === user.id ? c : await this.prisma.cheatCase.findUnique({ where: { userId: user.id }, include: { notes: { orderBy: { createdAt: 'desc' }, take: 100 } } });
 
-    const [events, ips, peers, flow, warnings, bans] = await Promise.all([
+    const [events, ips, peers, flow, warnings, bans, organic, fast, freeUntil, doubleOn] = await Promise.all([
       this.prisma.cheatEvent.findMany({ where: { userId: user.id }, orderBy: { lastAt: 'desc' }, take: 150 }),
       this.prisma.userIp.findMany({ where: { userId: user.id }, orderBy: { lastSeenAt: 'desc' }, take: 40 }),
       this.prisma.peer.findMany({ where: { userId: user.id }, orderBy: { lastAnnounceAt: 'desc' }, take: 30, include: { torrent: { select: { id: true, name: true } } } }),
@@ -305,6 +355,11 @@ export class AntiCheatService {
         WHERE "userId" = ${user.id} AND day >= current_date - 7 GROUP BY "torrentId" ORDER BY SUM(up) DESC LIMIT 8`,
       this.prisma.warning.count({ where: { userId: user.id } }),
       this.prisma.ban.count({ where: { userId: user.id } }),
+      this.prisma.$queryRaw<{ up: number; down: number; got: number }[]>`
+        SELECT COALESCE(SUM(up), 0)::float8 AS up, COALESCE(SUM(down), 0)::float8 AS down, COALESCE(SUM(got), 0)::float8 AS got FROM "UserTorrentFlow" WHERE "userId" = ${user.id}`,
+      this.hasFastLine(user.id),
+      this.settings.freeleechUntil(),
+      this.settings.doubleUploadActive(),
     ]);
 
     // Comptes qui ont utilisé les mêmes adresses.
@@ -321,7 +376,7 @@ export class AntiCheatService {
     }
 
     const torrentIds = [...new Set([...events.map((e) => e.torrentId), ...flow.map((f) => f.torrentId)].filter((x): x is string => !!x))];
-    const torrents = torrentIds.length ? await this.prisma.torrent.findMany({ where: { id: { in: torrentIds } }, select: { id: true, name: true, freeleech: true } }) : [];
+    const torrents = torrentIds.length ? await this.prisma.torrent.findMany({ where: { id: { in: torrentIds } }, select: { id: true, name: true, freeleech: true, doubleUpload: true } }) : [];
     const tname = new Map(torrents.map((t) => [t.id, t]));
     const up = Number(user.uploaded), down = Number(user.downloaded);
 
@@ -332,7 +387,18 @@ export class AntiCheatService {
       ips: ips.map((i) => ({ ip: i.ip, firstSeenAt: i.firstSeenAt, lastSeenAt: i.lastSeenAt, announces: i.announces, shared: sharing.filter((s) => s.ip === i.ip).length })),
       linked: [...linked.values()].sort((a, b) => b.ips.length - a.ips.length),
       clients: peers.map((p) => { const pc = parsePeerClient(p.peerId); return { client: pc.client, version: pc.version, userAgent: p.userAgent, ip: p.ip, torrent: p.torrent, isSeeder: p.isSeeder, lastAnnounceAt: p.lastAnnounceAt }; }),
-      flow: flow.map((f) => ({ torrent: tname.get(f.torrentId) ?? { id: f.torrentId, name: '(torrent supprimé)' }, up: f.up, down: f.down, got: f.got })),
+      flow: flow.map((f) => ({ torrent: tname.get(f.torrentId) ?? { id: f.torrentId, name: '(torrent supprimé)' }, up: f.up, down: f.down, got: f.got, freeleech: !!tname.get(f.torrentId)?.freeleech, doubleUpload: !!tname.get(f.torrentId)?.doubleUpload })),
+      // Ce qui explique légitimement un ratio élevé : ce que le membre a réellement échangé (annonces des 35 derniers jours) face aux chiffres crédités, avec ses privilèges.
+      privileges: {
+        credited: { uploaded: up, downloaded: down },
+        organic35d: { uploaded: organic[0]?.up ?? 0, downloaded: organic[0]?.down ?? 0, acquired: organic[0]?.got ?? 0 },
+        accountFreeleechUntil: user.freeleechUntil && user.freeleechUntil > new Date() ? user.freeleechUntil : null,
+        siteFreeleech: !!freeUntil,
+        siteDoubleUpload: doubleOn,
+        fastLine: fast,
+        welcomeUploadGb: ECONOMY.welcomeUploadGb,
+        accountDays: Math.floor((Date.now() - user.createdAt.getTime()) / 86400_000),
+      },
     };
   }
 

@@ -1,4 +1,4 @@
-import { analyseAnnounce, analyseClient, imbalancePoints, ipNetwork, levelOf, normalizeAntiCheatConfig, passkeySharingPoints, scoreEvents, surgePoints, DEFAULT_ANTICHEAT } from './anticheat';
+import { analyseAnnounce, analyseClient, collusionPoints, expectedTransfer, imbalancePoints, ipNetwork, learnKindWeights, levelOf, mayAlert, normalizeAntiCheatConfig, passkeySharingPoints, scoreEvents, surgePoints, DEFAULT_ANTICHEAT } from './anticheat';
 
 const GB = 1024 ** 3;
 const MB = 1024 ** 2;
@@ -163,5 +163,99 @@ describe('normalizeAntiCheatConfig', () => {
     expect(c.alertLevel).toBe('SUSPECT');
     expect(c.notifyScope).toBe('ADMINS');
     expect(c.observeOnly).toBe(true);
+  });
+});
+
+describe('anti-triche : faux positifs évités', () => {
+  const fastAnn = { ...base, uploaded: 400 * GB, downloaded: 0, left: 0, prev: { uploaded: 100 * GB, downloaded: 0, left: 0, lastAnnounceAt: ago(30) } }; // ~170 Mo/s
+
+  it('une ligne rapide connue (seedbox) tolère des vitesses qui seraient suspectes', () => {
+    expect(kinds(analyseAnnounce(fastAnn))).toContain('SPEED_IMPOSSIBLE');
+    expect(kinds(analyseAnnounce({ ...fastAnn, ctx: { fastLine: true } }))).not.toContain('SPEED_IMPOSSIBLE');
+  });
+  it('le premier seed de son propre torrent, ou d\'une sortie récente, est un peu plus tolérant', () => {
+    const edge = { ...fastAnn, uploaded: 250 * GB, prev: { ...fastAnn.prev, uploaded: 100 * GB } }; // ~85 Mo/s sous le seuil
+    const high = { ...base, uploaded: 380 * GB, downloaded: 0, left: 0, prev: { uploaded: 100 * GB, downloaded: 0, left: 0, lastAnnounceAt: ago(30) } }; // ~160 Mo/s
+    expect(kinds(analyseAnnounce(edge))).not.toContain('SPEED_IMPOSSIBLE');
+    const plain = analyseAnnounce(high).find((x) => x.kind === 'SPEED_IMPOSSIBLE')!;
+    const own = analyseAnnounce({ ...high, ctx: { ownTorrent: true } }).find((x) => x.kind === 'SPEED_IMPOSSIBLE');
+    expect(plain.points).toBeGreaterThan(own?.points ?? 0);
+    expect(own).toBeUndefined();
+  });
+  it('une vitesse physiquement impossible est une preuve directe, sauf sur une ligne rapide connue', () => {
+    const crazy = { ...base, uploaded: 6000 * GB, downloaded: 0, left: 0, prev: { uploaded: 100 * GB, downloaded: 0, left: 0, lastAnnounceAt: ago(30) } };
+    expect(analyseAnnounce(crazy).find((x) => x.kind === 'SPEED_IMPOSSIBLE')!.details.hard).toBe(true);
+    expect(analyseAnnounce({ ...crazy, ctx: { fastLine: true } }).find((x) => x.kind === 'SPEED_IMPOSSIBLE')?.details.hard).toBeUndefined();
+  });
+  it('données déjà présentes (revérification, torrent ajouté après coup) : presque aucun point, pas une sous-déclaration', () => {
+    const recheck = analyseAnnounce({ ...base, uploaded: 0, downloaded: 0, left: 0, prev: { uploaded: 0, downloaded: 0, left: 10 * GB, lastAnnounceAt: ago(30) } });
+    const under = recheck.find((x) => x.kind === 'DOWNLOAD_UNDERREPORT');
+    expect(under?.points ?? 0).toBeLessThanOrEqual(3);
+    const real = analyseAnnounce({ ...base, uploaded: 0, downloaded: 100 * MB, left: 4 * GB, prev: { uploaded: 0, downloaded: 0, left: 8 * GB, lastAnnounceAt: ago(30) } });
+    expect(real.find((x) => x.kind === 'DOWNLOAD_UNDERREPORT')!.points).toBeGreaterThan(10);
+  });
+  it('le lecteur Seeduction (streaming) n\'est jamais accusé de sous-déclarer', () => {
+    const s = analyseAnnounce({ ...base, viaStream: true, uploaded: 0, downloaded: 100 * MB, left: 4 * GB, prev: { uploaded: 0, downloaded: 0, left: 8 * GB, lastAnnounceAt: ago(30) } });
+    expect(kinds(s)).not.toContain('DOWNLOAD_UNDERREPORT');
+  });
+});
+
+describe('alerte solide', () => {
+  it('un indice isolé d\'une seule famille ne réveille l\'équipe qu\'au niveau le plus élevé', () => {
+    expect(mayAlert({ level: 'SUSPECT', families: ['ratio'], hard: false })).toBe(false);
+    expect(mayAlert({ level: 'LIKELY', families: ['ratio'], hard: false })).toBe(false);
+    expect(mayAlert({ level: 'CRITICAL', families: ['ratio'], hard: false })).toBe(true);
+  });
+  it('des indices de plusieurs familles, ou une preuve directe, alertent dès « suspect »', () => {
+    expect(mayAlert({ level: 'SUSPECT', families: ['ratio', 'network'], hard: false })).toBe(true);
+    expect(mayAlert({ level: 'SUSPECT', families: ['client'], hard: true })).toBe(true);
+    expect(mayAlert({ level: 'WATCH', families: ['ratio', 'network'], hard: true })).toBe(false);
+  });
+  it('scoreEvents repère la preuve directe récente, et applique les poids appris', () => {
+    const e = [{ kind: 'LEFT_TAMPER', points: 40, lastAt: now, hard: true }];
+    expect(scoreEvents(e, { now }).hard).toBe(true);
+    expect(scoreEvents([{ ...e[0], hard: false }], { now }).hard).toBe(false);
+    const plain = scoreEvents([{ kind: 'RATIO_SURGE', points: 40, lastAt: now }], { now }).score;
+    const damped = scoreEvents([{ kind: 'RATIO_SURGE', points: 40, lastAt: now }], { now, weights: { RATIO_SURGE: 0.5 } }).score;
+    expect(damped).toBeCloseTo(plain / 2, 0);
+  });
+  it('un compte récent n\'est pas examiné plus durement (ses chiffres viennent des cadeaux de départ)', () => {
+    const e = [{ kind: 'RATIO_SURGE', points: 40, lastAt: now }];
+    expect(scoreEvents(e, { now, accountCreatedAt: new Date(now.getTime() - 3 * 86400_000) }).score).toBeLessThanOrEqual(scoreEvents(e, { now, accountCreatedAt: new Date(now.getTime() - 100 * 86400_000) }).score);
+  });
+});
+
+describe('apprentissage des poids', () => {
+  const mk = (status: string, kind: string, n = 1) => Array.from({ length: n }, () => ({ status, breakdown: { [kind]: { points: 50 } } }));
+  it('un type de signal qui produit surtout des innocentés pèse moins', () => {
+    const w = learnKindWeights([...mk('CLEARED', 'SHARED_IP', 9), ...mk('ACTIONED', 'SHARED_IP', 1)]);
+    expect(w.SHARED_IP).toBeLessThan(0.8);
+    expect(w.SHARED_IP).toBeGreaterThanOrEqual(0.5);
+  });
+  it('un type fiable (surtout sanctionné) pèse un peu plus, mais bien moins que le double', () => {
+    const w = learnKindWeights([...mk('ACTIONED', 'LEFT_TAMPER', 9), ...mk('CLEARED', 'LEFT_TAMPER', 1)]);
+    expect(w.LEFT_TAMPER).toBeGreaterThan(1);
+    expect(w.LEFT_TAMPER).toBeLessThanOrEqual(1.15);
+  });
+  it('pas assez de recul (moins de 5 dossiers) : poids normal ; les dossiers non classés ne comptent pas', () => {
+    expect(learnKindWeights(mk('CLEARED', 'SHARED_IP', 3)).SHARED_IP).toBeUndefined();
+    expect(learnKindWeights(mk('OPEN', 'SHARED_IP', 20)).SHARED_IP).toBeUndefined();
+  });
+});
+
+describe('transferts entre comptes liés', () => {
+  it('l\'envoi se répartit entre tous les receveurs du torrent', () => {
+    expect(expectedTransfer(10 * GB, 10 * GB, 10 * GB)).toBeCloseTo(10 * GB); // seul receveur : tout lui est allé
+    expect(expectedTransfer(10 * GB, 2 * GB, 20 * GB)).toBeCloseTo(1 * GB); // 10 % des receveurs : environ 10 % de l'envoi
+    expect(expectedTransfer(100 * GB, 2 * GB, 2 * GB)).toBeLessThanOrEqual(2 * GB); // jamais plus que ce qu'il a reçu
+    expect(expectedTransfer(0, 5 * GB, 5 * GB)).toBe(0);
+  });
+  it('le ratio fabriqué (freeleech, double upload) compte plein, un échange ordinaire presque pas', () => {
+    expect(collusionPoints(0, 10 * GB)).toBe(0); // un foyer qui se partage un film
+    expect(collusionPoints(0, 30 * GB)).toBeGreaterThan(0);
+    expect(collusionPoints(0, 20 * GB)).toBe(0);
+    expect(collusionPoints(6 * GB, 0)).toBeGreaterThan(0);
+    expect(collusionPoints(50 * GB, 0)).toBeGreaterThan(collusionPoints(6 * GB, 0));
+    expect(collusionPoints(2 * GB, 0)).toBe(0);
   });
 });
