@@ -222,6 +222,9 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• [b]Power User[/b] — 4 semaines, 50 Go d'upload, ratio ≥ 1,05.\n` +
           `• [b]Membre[/b] — 1 semaine, ratio ≥ 0,5.\n` +
           `• [b]Nouveau[/b] — tout le monde au départ.\n\n` +
+          `[b]Couleur du pseudo[/b] : partout sur le site, ton pseudo prend la couleur de ton rang — [b]Propriétaire[/b] doré, [b]Administrateur[/b] rouge, [b]Super modérateur[/b] violet, [b]Modérateur[/b] vert, [b]Uploadeur[/b] turquoise, [b]Vétéran[/b] orange, [b]Élite[/b] bleu, [b]Power User[/b] bleu pâle. Les Nouveaux et les Membres gardent la couleur ordinaire. Un rôle de l'équipe ou Uploadeur passe avant la classe automatique.
+
+` +
           `Ton rang détermine notamment ton quota d'invitations (voir [url=/wiki/creer-un-compte]Créer un compte[/url]).`,
       },
     ],

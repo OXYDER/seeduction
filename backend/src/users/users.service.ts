@@ -4,6 +4,7 @@ import { PrismaService } from '../common/prisma.service';
 import { FriendsService } from '../friends/friends.service';
 import { PresenceService } from '../presence/presence.service';
 import { ALL_PERMS, permsOf, type Perms } from '../common/utils/family-perms';
+import { COLORED_CLASSES, COLORED_ROLES, rankKeyOf } from '../common/utils/rank';
 
 const PRESENCE_VALUES: PresenceStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'INVISIBLE'];
 const DM_PRIVACY_VALUES: DmPrivacy[] = ['EVERYONE', 'FRIENDS_ONLY'];
@@ -185,6 +186,23 @@ export class UsersService {
       where: { userId, takenAt: { gte: since } },
       orderBy: { takenAt: 'asc' },
     });
+  }
+
+  private rankCache: { at: number; value: Record<string, string[]> } | null = null;
+  /** Rang coloré → identifiants des membres (staff, Uploadeur, Power User, Élite, Vétéran) : sert à colorer les pseudos partout, sans alourdir chaque réponse. Mis en cache une minute. */
+  async rankColors(): Promise<Record<string, string[]>> {
+    if (this.rankCache && Date.now() - this.rankCache.at < 60_000) return this.rankCache.value;
+    const rows = await this.prisma.user.findMany({
+      where: { deletedAt: null, status: { not: 'DISABLED' }, OR: [{ role: { in: COLORED_ROLES as any } }, { memberClass: { in: COLORED_CLASSES as any } }] },
+      select: { id: true, role: true, memberClass: true },
+    });
+    const value: Record<string, string[]> = {};
+    for (const u of rows) {
+      const key = rankKeyOf(u.role, u.memberClass);
+      if (key) (value[key] ??= []).push(u.id);
+    }
+    this.rankCache = { at: Date.now(), value };
+    return value;
   }
 
   /** Identifiants des comptes supprimés (le pseudo reste affiché avec une petite icône) : liste courte, sans aucune donnée personnelle. */

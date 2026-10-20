@@ -89,6 +89,13 @@ export class UsersController {
     return this.usersService.mentionSearch(q);
   }
 
+  /** Couleurs de pseudo par rang (identifiants regroupés par rang). */
+  @UseGuards(JwtAuthGuard)
+  @Get('rank-colors')
+  rankColors() {
+    return this.usersService.rankColors();
+  }
+
   /** Identifiants des comptes supprimés (petite icône à côté de leur pseudo) : aucune donnée personnelle. */
   @UseGuards(JwtAuthGuard)
   @Get('deleted-ids')

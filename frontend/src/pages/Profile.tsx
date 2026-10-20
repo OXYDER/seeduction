@@ -23,6 +23,7 @@ import { displayRank } from '../lib/memberClass';
 import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
 import { useCrumbTitle } from '../store/crumbs';
 import Loading from '../components/Loading';
+import { rankClass, rankKeyOf } from '../store/ranks';
 
 export default function Profile() {
   const { id } = useParams();
@@ -106,7 +107,7 @@ export default function Profile() {
             />
           )}
         </span>
-        <h1 style={{ margin: 0 }}>{profile.username}</h1>
+        <h1 className={`user-link${rankClass(rankKeyOf(profile))}`} style={{ margin: 0 }}>{profile.username}</h1>
         {profile.deleted && <span className="badge" title="Le pseudo, les statistiques et les actions restent, mais les données personnelles ont été effacées" style={{ background: 'rgba(150,150,150,0.2)' }}>🗑️ Compte supprimé</span>}
         {profile.onlineStatus && <span className="muted" style={{ fontSize: 13 }}>{STATUS_LABEL[profile.onlineStatus as keyof typeof STATUS_LABEL]}</span>}
         {profile.role && <span className="badge double">{displayRank(profile, ROLE_LABEL)}</span>}

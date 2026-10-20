@@ -4294,3 +4294,13 @@ button.link:hover { filter: none; transform: none; text-decoration-style: solid;
   .tv-comfy-actions { grid-column: 1 / -1; }
 }
 .deleted-mark { margin-left: 4px; font-size: 0.85em; opacity: 0.7; cursor: help; }
+
+/* Couleur des pseudos selon le rang (staff, Uploadeur, Power User, Élite, Vétéran ; Nouveau et Membre gardent la couleur ordinaire). */
+.user-link.rank-OWNER { color: #fbbf24; font-weight: 700; }
+.user-link.rank-ADMIN { color: #f87171; font-weight: 700; }
+.user-link.rank-SUPER_MODERATOR { color: #c084fc; font-weight: 700; }
+.user-link.rank-MODERATOR { color: #4ade80; font-weight: 700; }
+.user-link.rank-UPLOADER { color: #2dd4bf; font-weight: 600; }
+.user-link.rank-VETERAN { color: #fb923c; font-weight: 600; }
+.user-link.rank-ELITE { color: #60a5fa; font-weight: 600; }
+.user-link.rank-POWER_USER { color: #a5b4fc; }

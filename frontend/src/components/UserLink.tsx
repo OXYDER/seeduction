@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import HoverCard from './HoverCard';
 import DonorMark from './DonorMark';
 import DeletedMark from './DeletedMark';
+import { useRanks, rankClass } from '../store/ranks';
 import Avatar from './Avatar';
 import { formatBytes } from '../lib/format';
 import { displayRank } from '../lib/memberClass';
@@ -98,13 +99,14 @@ function UserCard({ u }: { u: any }) {
 
 /** Pseudo cliquable vers le profil ; au survol, une infobulle résume le membre (texte simple si on n'a pas son identifiant). */
 export default function UserLink({ user, fallback = '' }: { user?: { id?: string; username?: string } | null; fallback?: string }) {
+  const rank = useRanks((st) => (user?.id ? st.ranks[user.id] : undefined));
   if (!user?.username) return <>{fallback}</>;
   if (!user.id) return <ProfileName username={user.username} />;
   const id = user.id;
   return (
     <HoverCard cacheKey={`user:${id}`} load={() => api.get(`/users/${id}`).then((r) => r.data)} render={(u: any) => <UserCard u={u} />}>
       <span style={{ whiteSpace: 'nowrap' }}>
-        <Link to={`/users/${id}`} onClick={(e) => e.stopPropagation()} className="user-link">
+        <Link to={`/users/${id}`} onClick={(e) => e.stopPropagation()} className={`user-link${rankClass(rank)}`}>
           <ProfileName username={user.username} />
         </Link>
         <DeletedMark id={id} />

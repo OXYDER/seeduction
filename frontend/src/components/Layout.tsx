@@ -26,6 +26,7 @@ import FriendsMenu from './FriendsMenu';
 import MessagesMenu from './MessagesMenu';
 import { useDonors } from '../store/donors';
 import { useDeleted } from '../store/deleted';
+import { useRanks } from '../store/ranks';
 import ChatRail from './ChatRail';
 import StatusSwitcher from './StatusSwitcher';
 import { useDmStore } from '../store/dm';
@@ -162,7 +163,8 @@ function LayoutInner() {
     if (!profile) return;
     void useDonors.getState().load();
     void useDeleted.getState().load();
-    const t = window.setInterval(() => void useDonors.getState().load(), 10 * 60_000);
+    void useRanks.getState().load();
+    const t = window.setInterval(() => { void useDonors.getState().load(); void useDeleted.getState().load(); void useRanks.getState().load(); }, 10 * 60_000);
     return () => window.clearInterval(t);
   }, [profile?.id]);
   // Les @pseudo écrits dans du texte formaté (forum, commentaires...) sont des liens simples : on les ouvre sans recharger le site.
