@@ -124,3 +124,13 @@ fun extractPasskey(announce: String?): String? {
     if (announce == null) return null
     return Regex("/([^/?]+)/announce(?:\\?|$)", RegexOption.IGNORE_CASE).find(announce)?.groupValues?.get(1)
 }
+
+/** Adresse d'annonce (« announce ») lue directement dans le .torrent bencodé, sans dépendre de libtorrent : sert à retrouver la passkey et à ajouter le tracker si le moteur ne l'a pas retenu. */
+fun announceOf(torrent: ByteArray): String? {
+    val text = String(torrent, Charsets.ISO_8859_1)
+    val m = Regex("8:announce([0-9]+):").find(text) ?: return null
+    val len = m.groupValues[1].toIntOrNull() ?: return null
+    val start = m.range.last + 1
+    if (len <= 0 || start + len > text.length) return null
+    return String(torrent, start, len, Charsets.UTF_8)
+}

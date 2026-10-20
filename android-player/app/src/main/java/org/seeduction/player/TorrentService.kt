@@ -99,7 +99,9 @@ class TorrentService : Service(), StreamSource {
             try {
                 val f = torrentCopy(s.id)
                 if (!f.exists()) continue
-                val h = engine.add(f.readBytes(), s.fileIndex)
+                val bytes = f.readBytes()
+                val h = engine.add(bytes, s.fileIndex)
+                engine.ensureTracker(h, announceOf(bytes))
                 entries[s.id] = Entry(s, h, FileMap(h.torrentFile(), s.fileIndex))
                 Journal.log("partage repris : " + s.name)
             } catch (e: Exception) { Journal.log("reprise impossible : " + e.message) }
@@ -112,7 +114,10 @@ class TorrentService : Service(), StreamSource {
         val hash = handle.infoHash().toHex()
         val ti = handle.torrentFile()
         val existing = entries.values.firstOrNull { it.info.infoHash == hash }
-        val passkey = handle.trackers().firstNotNullOfOrNull { extractPasskey(it.url()) }
+        val announce = announceOf(play.torrent)
+        val passkey = extractPasskey(announce) ?: try { handle.trackers().firstNotNullOfOrNull { extractPasskey(it.url()) } } catch (_: Throwable) { null }
+        engine.ensureTracker(handle, announce)
+        Journal.log("annonce du torrent : " + (announce?.replace(Regex("/[^/?]+/announce"), "/…/announce") ?: "introuvable"))
         val id = existing?.info?.id ?: UUID.randomUUID().toString()
         val info = SessionInfo(
             id = id, infoHash = hash, name = play.torrentName ?: ti.name(), torrentId = play.torrentId ?: existing?.info?.torrentId, fileIndex = play.fileIndex,

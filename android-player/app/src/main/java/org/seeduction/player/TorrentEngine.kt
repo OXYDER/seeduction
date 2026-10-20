@@ -85,17 +85,34 @@ class TorrentEngine(private val saveDir: File) {
     }
 
     /** État de chaque tracker du torrent (adresse sans la passkey) : fonctionne, en cours, ou échec avec le message du serveur. Sert au diagnostic quand aucun pair n'arrive. */
-    fun trackerLines(h: TorrentHandle): List<String> = try {
-        h.trackers().map { t ->
-            val url = t.url().replace(Regex("/[^/?]+/announce"), "/…/announce")
-            val eps = t.endpoints()
-            val state = if (eps.isEmpty()) "pas encore contacté" else eps.joinToString(" ; ") { e ->
-                val v = e.infohashV1()
-                (if (v.isWorking) "OK" else if (v.updating()) "contact en cours…" else "échec ×" + v.fails()) + (v.message().takeIf { it.isNotBlank() }?.let { " : $it" } ?: "")
-            }
+    fun trackerLines(h: TorrentHandle): List<String> {
+        val list = try { h.trackers() } catch (e: Throwable) { return listOf("trackers illisibles : " + e.javaClass.simpleName + " " + (e.message ?: "")) }
+        if (list.isEmpty()) return listOf("aucun tracker dans le torrent")
+        return list.map { t ->
+            val url = try { t.url().replace(Regex("/[^/?]+/announce"), "/…/announce") } catch (_: Throwable) { "?" }
+            val state = try {
+                val eps = t.endpoints()
+                if (eps.isEmpty()) "pas encore contacté" else eps.joinToString(" ; ") { e ->
+                    val v = e.infohashV1()
+                    (if (v.isWorking) "OK" else if (v.updating()) "contact en cours…" else "échec ×" + v.fails()) + (v.message().takeIf { it.isNotBlank() }?.let { " : $it" } ?: "")
+                }
+            } catch (e: Throwable) { "état illisible : " + e.javaClass.simpleName }
             "$url → $state"
         }
-    } catch (_: Exception) { emptyList() }
+    }
+
+    /** Si libtorrent n'a retenu aucun tracker (ou ne le contacte pas), on l'ajoute nous-mêmes depuis le .torrent et on force l'annonce. */
+    fun ensureTracker(h: TorrentHandle, announce: String?) {
+        if (announce == null) return
+        try {
+            val known = try { h.trackers() } catch (_: Throwable) { emptyList() }
+            if (known.none { it.url() == announce }) {
+                h.addTracker(org.libtorrent4j.AnnounceEntry(announce))
+                Journal.log("tracker ajouté à la main")
+            }
+            h.forceReannounce()
+        } catch (e: Throwable) { Journal.log("ajout du tracker impossible : " + e.message) }
+    }
 
     fun stop() { try { sm.stop() } catch (_: Exception) { /* déjà arrêté */ } }
 
