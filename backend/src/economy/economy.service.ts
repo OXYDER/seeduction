@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SettingsService } from '../settings/settings.service';
 import { TrackerService } from '../tracker/tracker.service';
 import { downloadMarginBytes } from '../common/utils/download-margin';
+import { SeededTorrent, memberHourly } from '../common/utils/bonus-rate';
 import { ECONOMY, SHOP_ITEMS } from '../common/utils/economy';
 import { setSource } from '../common/utils/ledger';
 
@@ -25,19 +26,29 @@ export class EconomyService {
 
   // ------------------------------------------------------------------ tâches planifiées
 
-  /** Chaque heure : points bonus pour chaque torrent activement seedé. */
+  /** Les torrents approuvés que chaque membre seede en ce moment (une ligne par torrent), avec leur taille et leur nombre de seeders. */
+  private async seededTorrents(userId?: string): Promise<Map<string, SeededTorrent[]>> {
+    const rows = userId
+      ? await this.prisma.$queryRaw<{ userId: string; size: bigint; seeders: number }[]>`
+          SELECT DISTINCT ON (p."userId", p."torrentId") p."userId", t."size", t."seeders" FROM "Peer" p JOIN "Torrent" t ON t."id" = p."torrentId"
+          WHERE p."userId" = ${userId} AND p."isSeeder" = true AND p."lastAnnounceAt" > now() - interval '45 minutes' AND t."status" = 'APPROVED'`
+      : await this.prisma.$queryRaw<{ userId: string; size: bigint; seeders: number }[]>`
+          SELECT DISTINCT ON (p."userId", p."torrentId") p."userId", t."size", t."seeders" FROM "Peer" p JOIN "Torrent" t ON t."id" = p."torrentId"
+          WHERE p."isSeeder" = true AND p."lastAnnounceAt" > now() - interval '45 minutes' AND t."status" = 'APPROVED'`;
+    const out = new Map<string, SeededTorrent[]>();
+    for (const r of rows) out.set(r.userId, [...(out.get(r.userId) ?? []), { size: Number(r.size), seeders: r.seeders }]);
+    return out;
+  }
+
+  /** Chaque heure : points bonus pour chaque torrent activement seedé. Un gros torrent et un torrent rare rapportent plus (voir common/utils/bonus-rate.ts). */
   @Cron(CronExpression.EVERY_HOUR)
   async accrueBonus() {
-    const seeding = await this.prisma.$queryRaw<{ userId: string; n: bigint }[]>`
-      SELECT "userId", COUNT(DISTINCT "torrentId") AS n FROM "Peer"
-      WHERE "isSeeder" = true AND "lastAnnounceAt" > now() - interval '45 minutes'
-      GROUP BY "userId"`;
-    if (seeding.length === 0) return;
-    await this.prisma.$transaction([setSource(this.prisma, 'seed'), ...seeding.map((s) => this.prisma.user.update({
-      where: { id: s.userId },
-      data: { bonusPoints: { increment: Math.min(Number(s.n), ECONOMY.bonusMaxTorrents) * ECONOMY.bonusPerTorrentHour } },
-    }))]);
-    this.logger.log(`Bonus crédité à ${seeding.length} membre(s)`);
+    const seeding = await this.seededTorrents();
+    if (seeding.size === 0) return;
+    const pays = [...seeding].map(([userId, list]) => ({ userId, points: memberHourly(list, ECONOMY.bonusPerTorrentHour, ECONOMY.bonusMaxTorrents) })).filter((p) => p.points > 0);
+    if (pays.length === 0) return;
+    await this.prisma.$transaction([setSource(this.prisma, 'seed'), ...pays.map((p) => this.prisma.user.update({ where: { id: p.userId }, data: { bonusPoints: { increment: p.points } } }))]);
+    this.logger.log(`Bonus crédité à ${pays.length} membre(s)`);
   }
 
   /**
@@ -143,7 +154,7 @@ export class EconomyService {
       points: user.bonusPoints,
       tokens: user.freeleechTokens,
       seedingCount,
-      perHour: Math.min(seedingCount, ECONOMY.bonusMaxTorrents) * ECONOMY.bonusPerTorrentHour,
+      perHour: memberHourly((await this.seededTorrents(userId)).get(userId) ?? [], ECONOMY.bonusPerTorrentHour, ECONOMY.bonusMaxTorrents),
       freeleechUntil,
       rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours, hnrLimit: ECONOMY.hnrLimit, ratioGraceGb: ECONOMY.ratioGraceGb, welcomeUploadGb: ECONOMY.welcomeUploadGb, bonusMaxTorrents: ECONOMY.bonusMaxTorrents },
       // Ratio minimum du membre (celui du site, 0,5 par défaut) et marge de téléchargement qui en découle : c'est lui, et non un ratio de 1, que le tracker applique.

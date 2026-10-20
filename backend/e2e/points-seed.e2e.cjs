@@ -1,0 +1,32 @@
+// Test de bout en bout : points bonus du seed pondérés par la taille et la rareté du torrent. Voir README.md.
+const E2E = require('./lib.cjs'); E2E.guard();
+const B = E2E.NODE_MODULES;
+const { PrismaClient } = require(B + '@prisma/client');
+let fails = 0; const check = (l, c, x = '') => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + l + (x ? ' — ' + x : '')); if (!c) fails++; };
+(async () => {
+  const p = new PrismaClient();
+  const { EconomyService } = require(E2E.DIST + 'economy/economy.service.js');
+  const svc = new EconomyService(p, { notify: async () => undefined }, { freeleechUntil: async () => null }, {});
+  const tag = 'ps' + Date.now().toString(36).slice(-5);
+  const mk = (n) => p.user.create({ data: { username: tag + n, email: tag + n + '@t.local', passwordHash: 'x', bonusPoints: 0 } });
+  const rare = await mk('r'), common = await mk('c'), tiny = await mk('t');
+  const owner = await mk('o');
+  const cat = (await p.category.findFirst({ where: { adult: false, parentId: null } })) ?? (await p.category.create({ data: { name: 'Test ' + tag, slug: 'test-' + tag } }));
+  const tor = (n, size, seeders) => p.torrent.create({ data: { infoHash: require('crypto').randomBytes(20).toString('hex'), name: 'T' + n + tag, filePath: '/x', size, fileList: [], categoryId: cat.id, uploaderId: owner.id, status: 'APPROVED', seeders } });
+  const big = await tor('big', 8_000_000_000n, 2), crowded = await tor('crowd', 4_000_000_000n, 120), small = await tor('small', 50_000_000n, 120);
+  const peer = (userId, torrentId, i) => p.peer.create({ data: { userId, torrentId, peerId: '-qB4650-' + tag.padEnd(12, '0').slice(0, 11) + i, ip: '203.0.113.5', port: 5000 + i, isSeeder: true, left: 0n } });
+  await peer(rare.id, big.id, 1); await peer(common.id, crowded.id, 2); await peer(tiny.id, small.id, 3);
+  await svc.accrueBonus();
+  const pts = async (id) => Math.round((await p.user.findUnique({ where: { id } })).bonusPoints * 100) / 100;
+  check('gros torrent rare (8 Go, 2 seeders) : 2,2 points par heure', (await pts(rare.id)) === 2.2, String(await pts(rare.id)));
+  check('torrent de 4 Go très seedé : 1 point par heure', (await pts(common.id)) === 1, String(await pts(common.id)));
+  check('petit fichier de 50 Mo très seedé : presque rien', (await pts(tiny.id)) > 0 && (await pts(tiny.id)) < 0.1, String(await pts(tiny.id)));
+  const ov = await svc.overview(rare.id);
+  check('le gain affiché en haut du site suit la même règle', ov.perHour === 2.2, String(ov.perHour));
+  await p.peer.deleteMany({ where: { userId: { in: [rare.id, common.id, tiny.id] } } });
+  await p.pointsLedger.deleteMany({ where: { userId: { in: [rare.id, common.id, tiny.id] } } });
+  await p.torrent.deleteMany({ where: { id: { in: [big.id, crowded.id, small.id] } } });
+  await p.user.deleteMany({ where: { id: { in: [rare.id, common.id, tiny.id, owner.id] } } });
+  console.log(fails ? `\n${fails} ÉCHEC(S)` : '\nTout est bon');
+  await p.$disconnect(); process.exit(fails ? 1 : 0);
+})().catch((e) => { console.error('ERREUR', e); process.exit(2); });

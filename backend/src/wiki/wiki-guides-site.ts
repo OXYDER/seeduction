@@ -126,11 +126,11 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `6. [b]Ne télécharge pas trop d'un coup[/b], surtout avec Sonarr / Radarr ou le RSS : fixe un nombre maximum de torrents actifs et des filtres serrés.\n` +
         `7. [b]Envoie du contenu[/b] : un bon torrent partagé qui est téléchargé par beaucoup de membres fait monter ton upload très vite ([url=/wiki/guide-envoyer-premier-torrent]Envoyer ton premier torrent[/url]).\n\n` +
         `[b]Tes points bonus travaillent pour toi[/b]\n` +
-        `Chaque torrent que tu seedes rapporte [b]1 point par heure[/b]. Tu peux les échanger contre de l'upload, des jetons freeleech ou des invitations : [url=/wiki/guide-points-bonus]Gagner et dépenser des points bonus[/url].\n\n` +
+        `Chaque torrent que tu seedes rapporte [b]des points chaque heure[/b] (environ 1 point pour un torrent de 4 Go ; plus s'il est gros ou rare). Tu peux les échanger contre de l'upload, des jetons freeleech ou des invitations : [url=/wiki/guide-points-bonus]Gagner et dépenser des points bonus[/url].\n\n` +
         `[b]J'ai envoyé des torrents mais mon upload ne bouge pas : normal ?[/b]\n` +
         `L'upload mesure ce que ton client envoie réellement : tant que personne ne télécharge ta release, rien ne circule. Trois choses jouent pour toi pendant ce temps :\n` +
         `• [b]Le crédit d'envoi[/b] : quand le staff approuve ton torrent, [b]25 % de sa taille[/b] est ajouté à ton upload, même si personne ne l'a encore téléchargé (jusqu'à 25 Go par torrent et 100 Go par jour). Il faut que ton client [b]seede[/b] le torrent à ce moment-là ; sinon le crédit est versé dès que tu le seedes. Il est repris si le torrent est supprimé ou rejeté. Tu le vois dans [url=/bonus]Points bonus[/url].\n` +
-        `• [b]Les points bonus[/b] : chaque torrent seedé rapporte 1 point par heure, que quelqu'un le télécharge ou non. 50 torrents en seed, c'est 1 200 points par jour, à échanger contre de l'upload dans la boutique.\n` +
+        `• [b]Les points bonus[/b] : chaque torrent seedé rapporte des points chaque heure, que quelqu'un le télécharge ou non. Un torrent d'environ 4 Go à 50 seeders ou plus rapporte 1 point par heure : 50 torrents comme ça, c'est environ 1 200 points par jour, à échanger contre de l'upload dans la boutique.\n` +
         `• [b]Le vrai upload[/b] arrive ensuite, dès que des membres téléchargent : c'est ce qui fait monter ton ratio durablement.\n\n` +
         `[b]Où suivre ta situation[/b]\n` +
         `• L'en-tête de l'écran : ratio, upload, téléchargé, points, seeds (🌱) et hit & run.\n` +
@@ -176,7 +176,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
       content:
         `Les points bonus sont la monnaie du site. Ils ne touchent pas ton ratio : ils servent à acheter des avantages. Ce guide montre comment en gagner beaucoup et bien les dépenser.\n\n` +
         `[b]Comment en gagner[/b]\n` +
-        `• [b]Seeder[/b] : 1 point par heure et par torrent seedé (jusqu'à 200 torrents comptés par heure). Plus tu seedes de torrents longtemps, plus tu gagnes.\n` +
+        `• [b]Seeder[/b] : chaque torrent seedé rapporte des points par heure (jusqu'à 200 torrents comptés par heure). Deux choses le font valoir plus : [b]sa taille[/b] (un gros fichier coûte plus de place à garder : environ 1 point pour 4 Go, presque rien pour un fichier de quelques Mo) et [b]sa rareté[/b] (le torrent que très peu de membres partagent : ×2 jusqu'à 3 seeders, ×1,5 jusqu'à 10, ×1,2 jusqu'à 50). Autrement dit : le plus utile à la communauté, c'est de garder en vie ce que personne d'autre ne seede. Passe la souris sur ✦ en haut du site pour voir ce que tu gagnes en ce moment.\n` +
         `• [b]Être remercié[/b] : 1 point à chaque 👍 Merci reçu sur un de tes torrents.\n` +
         `• [b]Relancer un torrent mort[/b] : récompense proportionnelle à sa taille et au temps passé sans seeder ([url=/wiki/guide-reanimation]Faire revivre un torrent[/url]).\n` +
         `• Des récompenses ponctuelles : pluie de points du [url=/wiki/guide-pot-commun]pot commun[/url], primes de demandes ([url=/wiki/guide-demandes]Demandes[/url]).\n\n` +

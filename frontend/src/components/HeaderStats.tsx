@@ -54,7 +54,7 @@ export default function HeaderStats({ profile, econ }: { profile: P; econ: EconI
           { label: 'Tes points', value: formatNumber(Math.round(profile.bonusPoints)), tone: 'gold' },
           ...(econ ? [{ label: 'Gain en ce moment', value: `+${formatNumber(Math.round(econ.perHour))} pts/h`, sub: `${econ.seeding} torrent${econ.seeding > 1 ? 's' : ''} en seed` }] : []),
         ]}
-        note={econ ? `Chaque torrent seedé rapporte des points chaque heure (jusqu'à ${econ.maxTorrents} torrents).` : undefined}
+        note={econ ? `Chaque torrent seedé rapporte des points chaque heure, plus s'il est gros ou rare (jusqu'à ${econ.maxTorrents} torrents).` : undefined}
         link={{ to: '/bonus', label: 'Boutique et règle du seed →' }} />}>
         <Link to="/bonus" className="pill gold">✦ {formatNumber(Math.round(profile.bonusPoints))}</Link>
       </StatTip>
