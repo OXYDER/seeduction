@@ -23,11 +23,12 @@ import { StaffBoardService } from './staff-board.service';
 import { StaffSecurityController } from './staff-security.controller';
 import { StaffSecurityService } from './staff-security.service';
 import { UploadCreditModule } from '../upload-credit/upload-credit.module';
+import { SeriesFollowModule } from '../series-follow/series-follow.module';
 import { TrustedUploadersService } from './trusted-uploaders.service';
 import { TrustedUploadersController } from './trusted-uploaders.controller';
 
 @Module({
-  imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule, MetadataModule, PresenceModule, UploadCreditModule],
+  imports: [NotificationsModule, BadgesModule, ReportsModule, SocialModule, AuthModule, MetadataModule, PresenceModule, UploadCreditModule, SeriesFollowModule],
   controllers: [AdminController, OwnerTorrentsController, StaffMembersController, MemberInspectController, StaffSecurityController, StaffBoardController, StaffLogController, TrustedUploadersController],
   providers: [TrustedUploadersService, AdminService, AdminInvitesService, SiteConfigService, AccountDeletionService, StaffMembersService, MemberInspectService, StaffSecurityService, StaffBoardService, StaffLogService],
   exports: [AccountDeletionService, AdminService, TrustedUploadersService],

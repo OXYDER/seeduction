@@ -778,6 +778,31 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Les règles d'envoi ([url=/wiki/guide-envoyer-premier-torrent]Envoyer un torrent[/url]) restent les mêmes : NFO ou MediaInfo obligatoire, bon nom, bonne catégorie.`,
     },
     {
+      title: 'Séries suivies : prévenu dès que le prochain épisode sort',
+      slug: 'guide-series-suivies',
+      keywords: 'série, séries suivies, suivre, prochain épisode, compte à rebours, sortie, épisode, alerte, notification, TMDB',
+      isFaq: true,
+      content:
+        `Plutôt que de surveiller toi-même la sortie des épisodes, [b]suis la série[/b] : le site te prévient au bon moment.\n` +
+        `\n` +
+        `[b]Suivre une série[/b]\n` +
+        `Ouvre la fiche d'un torrent de la série (un épisode ou une saison) et clique [b]🔔 Suivre cette série[/b]. Le bouton n'apparaît que si le torrent a une fiche de série (TMDB). Tu peux en suivre jusqu'à 100.\n` +
+        `\n` +
+        `[b]Quand es-tu prévenu ?[/b]\n` +
+        `• [b]La veille[/b] de la sortie du prochain épisode (« 📺 Demain : Série S02E05 »).\n` +
+        `• [b]Le jour de la sortie[/b] (« S02E05 vient de sortir »), en précisant s'il est déjà sur Seeduction.\n` +
+        `• [b]Dès qu'un torrent de cet épisode est approuvé[/b] sur Seeduction (« S02E05 est disponible »). Plusieurs versions du même épisode se regroupent dans une seule notification.\n` +
+        `Les dates viennent de TMDB et sont vérifiées chaque matin. Seuls les épisodes à partir de celui du jour où tu as commencé à suivre comptent : tu n'es pas inondé par tout l'ancien catalogue.\n` +
+        `\n` +
+        `[b]Mes séries suivies[/b]\n` +
+        `Menu de ton compte > [b]🔔 Mes séries suivies[/b] : pour chaque série, un [b]compte à rebours[/b] (« demain », « dans 5 jours »), le numéro et le titre du prochain épisode, la date, un lien vers le dernier épisode déjà sur Seeduction, et un bouton pour ne plus suivre. Les séries se trient par sortie la plus proche.\n` +
+        `\n` +
+        `[b]Bon à savoir[/b]\n` +
+        `• Les notifications suivent tes réglages ([url=/wiki/guide-notifications-push]Notifications[/url]) : elles arrivent dans la cloche et, si tu as installé l'application, sur ton appareil. Elles sont rangées avec les « Alertes de recherche ».\n` +
+        `• Pour être prévenu d'une qualité ou d'une langue précise, crée plutôt une [url=/wiki/guide-alertes]alerte de recherche[/url].\n` +
+        `• Si la date du prochain épisode n'est pas encore connue de TMDB, la série affiche « aucun épisode annoncé » et tu seras prévenu dès qu'elle l'est.`,
+    },
+    {
       title: 'Mon récap du mois',
       slug: 'guide-recap',
       keywords: 'récap, récapitulatif, mois, statistiques personnelles, meilleur jour, séries regardées, comparaison, classement, points par source',

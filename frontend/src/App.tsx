@@ -86,6 +86,7 @@ const Chat = lazyPage(() => import('./pages/Chat'));
 const EntityPage = lazyPage(() => import('./pages/EntityPage'));
 const Status = lazyPage(() => import('./pages/Status'));
 const Recap = lazyPage(() => import('./pages/Recap'));
+const Series = lazyPage(() => import('./pages/Series'));
 
 export default function App() {
   const locked = useLockdownStore((s) => s.locked);
@@ -176,6 +177,7 @@ export default function App() {
           <Route path="/courriel" element={<Courriel />} />
           <Route path="/activity" element={<MyActivity />} />
           <Route path="/recap" element={<Recap />} />
+          <Route path="/series" element={<Series />} />
           <Route path="/seeds" element={<MySeeds />} />
           <Route path="/hit-and-run" element={<HitAndRun />} />
           <Route path="/stats" element={<Stats />} />

@@ -2602,3 +2602,33 @@ model TorrentFix {
   @@index([torrentId, status])
   @@index([authorId, createdAt])
 }
+
+/// Série suivie par un membre (compte principal) : « prévenez-moi dès que le prochain épisode sort ». L'état (prochain épisode, dernier sorti) est rafraîchi chaque jour depuis TMDB.
+model SeriesFollow {
+  id             String    @id @default(uuid())
+  userId         String
+  metaSource     String    @db.VarChar(16)
+  metaExternalId String    @db.VarChar(40)
+  title          String    @db.VarChar(200)
+  cover          String?
+  /// État TMDB : Returning Series, Ended, Canceled...
+  status         String?   @db.VarChar(40)
+  nextAirDate    String?   @db.VarChar(10)
+  nextSeason     Int?
+  nextEpisode    Int?
+  nextName       String?   @db.VarChar(160)
+  lastAirDate    String?   @db.VarChar(10)
+  lastSeason     Int?
+  lastEpisode    Int?
+  /// Dernier épisode sorti au moment où on a commencé à suivre : seuls les épisodes à partir de celui-là déclenchent « disponible sur Seeduction ».
+  baseSeason     Int?
+  baseEpisode    Int?
+  notifiedSoon   String?   @db.VarChar(12)
+  notifiedAired  String?   @db.VarChar(12)
+  checkedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@unique([userId, metaSource, metaExternalId])
+  @@index([metaSource, metaExternalId])
+  @@index([userId])
+}

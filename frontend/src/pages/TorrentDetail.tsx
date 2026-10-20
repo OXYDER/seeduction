@@ -8,6 +8,7 @@ import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import TorrentPeers from '../components/TorrentPeers';
 import TorrentCompletion from '../components/TorrentCompletion';
 import TorrentFixes from '../components/TorrentFixes';
+import SeriesFollowButton from '../components/SeriesFollowButton';
 import StaffQueueBanner from '../components/StaffQueueBanner';
 import OwnerReviewBanner from '../components/OwnerReviewBanner';
 import CopyButton from '../components/CopyButton';
@@ -153,6 +154,7 @@ export default function TorrentDetail() {
         ? <span className="badge freeleech" title="Jeton freeleech actif">🎟️ Freeleech pour toi jusqu'au {new Date(tokenUntil).toLocaleDateString('fr-FR')}</span>
         : <button className="secondary" onClick={spendToken} title="Son téléchargement ne compte pas dans ton ratio pendant 7 jours">🎟️ Utiliser un jeton</button>)}
       <button className="secondary" onClick={() => setAddOpen((v) => !v)}>📚 Collection</button>
+      <SeriesFollowButton torrentId={torrent.id} />
       {torrent.uploader?.id !== user.id && <ReportButton targetType="torrent" targetId={torrent.id} />}
       {addOpen && (
         <div className="panel ornate" style={{ position: 'absolute', left: 0, top: '110%', width: 260, zIndex: 30, padding: 10, background: 'var(--bg-panel-raised)' }}>

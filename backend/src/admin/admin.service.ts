@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { forgetIdentity } from '../common/utils/session-identity';
+import { SeriesFollowService } from '../series-follow/series-follow.service';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
@@ -26,7 +27,7 @@ export interface Actor { userId: string; username: string; role: string }
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService, private social: SocialService, private deletion: AccountDeletionService, private auth: AuthService, private uploadCredit: UploadCreditService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService, private social: SocialService, private deletion: AccountDeletionService, private auth: AuthService, private uploadCredit: UploadCreditService, private seriesFollow: SeriesFollowService) {}
 
   async approveTorrent(id: string) {
     const previous = await this.prisma.torrent.findUnique({ where: { id }, select: { approvedAt: true } });
@@ -42,6 +43,7 @@ export class AdminService {
     await this.uploadCredit.onApproved(torrent.id); // crédit d'envoi (versé tout de suite si l'uploader seede, sinon rattrapé plus tard)
     // Les abonnés à un acteur, studio, genre... de ce torrent sont prévenus (sans jamais bloquer l'approbation).
     await this.social.notifyFollowers(torrent.id).catch(() => undefined);
+    await this.seriesFollow.onTorrentApproved(torrent.id).catch(() => undefined); // les membres qui suivent cette série sont prévenus de l'épisode
     return torrent;
   }
 

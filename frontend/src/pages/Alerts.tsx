@@ -7,7 +7,7 @@ import Loading from '../components/Loading';
 interface Alert { id: string; name: string; query: Record<string, string>; summary: string; inApp: boolean; telegram: boolean; active: boolean; lastMatchAt: string | null; matchCount: number }
 const errorOf = (e: any) => { const m = e?.response?.data?.message; return Array.isArray(m) ? m.join(', ') : m ?? 'Erreur'; };
 
-/** Mes alertes de recherche : les recherches enregistrées depuis Parcourir, avec leur mode d'alerte. */
+/** Mes alertes de recherche (les séries suivies, avec leur compte à rebours, sont sur la page « Mes séries suivies ») : les recherches enregistrées depuis Parcourir, avec leur mode d'alerte. */
 export default function Alerts() {
   const [data, setData] = useState<{ max: number; telegramLinked: boolean; items: Alert[] } | null>(null);
   const [error, setError] = useState('');

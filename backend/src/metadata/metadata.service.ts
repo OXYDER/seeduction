@@ -535,6 +535,22 @@ export class MetadataService {
     };
   }
 
+  /**
+   * Prochain épisode et dernier épisode sorti d'une série TMDB, pour le suivi de séries (« prévenez-moi quand le prochain épisode sort »).
+   * Renvoie null si TMDB n'est pas configuré ; lève une erreur si TMDB ne répond pas.
+   */
+  async seriesAirInfo(tmdbId: string): Promise<{ title: string; cover: string | null; status: string | null; next: { airDate: string | null; season: number; episode: number; name: string | null } | null; last: { airDate: string | null; season: number; episode: number } | null } | null> {
+    if (!this.tmdbKey) return null;
+    const r = await this.fetchJson(`${TMDB_API}/tv/${encodeURIComponent(tmdbId)}?language=fr-FR&api_key=${this.tmdbKey}`, 'TMDB');
+    if (!r || r.success === false) throw new NotFoundException('Série introuvable sur TMDB');
+    const ep = (e: any) => (e && Number.isInteger(e.season_number) && Number.isInteger(e.episode_number) ? { airDate: e.air_date || null, season: e.season_number as number, episode: e.episode_number as number } : null);
+    const next = ep(r.next_episode_to_air), last = ep(r.last_episode_to_air);
+    return {
+      title: r.name ?? '', cover: r.poster_path ? `${TMDB_IMG}/w342${r.poster_path}` : null, status: r.status ?? null,
+      next: next ? { ...next, name: r.next_episode_to_air?.name || null } : null, last,
+    };
+  }
+
   /** Une ligne par titre, plus une variante sans accents (« Amélie » et « Amelie »), pour la recherche. */
   private buildSearchTitles(titles: string[]): string {
     const lines = unique(titles.flatMap((t) => [t, deaccent(t)]), (t) => t.toLowerCase());
