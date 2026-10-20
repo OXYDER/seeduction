@@ -1,3 +1,4 @@
+import Nick from '../components/Nick';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import UserLink from '../components/UserLink';
@@ -238,7 +239,7 @@ export default function Requests() {
                   {!r.filledById && r.proposedTorrent && (
                     <div className="panel" style={{ marginTop: 8, borderColor: '#fbbf24', padding: 10 }}>
                       💡 <UserLink user={r.proposedBy} /> propose : <Link to={`/torrents/${r.proposedTorrent.id}`}>{r.proposedTorrent.name}</Link>
-                      {r.proposedTorrent.uploader && <> <span className="muted">(envoyé par {r.proposedTorrent.uploader.username})</span></>}
+                      {r.proposedTorrent.uploader && <> <span className="muted">(envoyé par <UserLink user={r.proposedTorrent.uploader} />)</span></>}
                       {user && (r.requestedBy?.id === user.id || isStaff) ? (
                         <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                           <button type="button" style={{ padding: '4px 12px' }} onClick={() => act(async () => { await api.post(`/requests/${r.id}/confirm`); }, '✓ Demande comblée, les points ont été versés.')}>✓ C'est bien ça</button>
@@ -289,7 +290,7 @@ export default function Requests() {
                         {siteResults?.map((t) => (
                           <button key={t.id} type="button" className={sitePick?.id === t.id ? '' : 'secondary'} style={{ textAlign: 'left', padding: '6px 10px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }} onClick={() => setSitePick(t)}>
                             <span style={{ flex: 1, minWidth: 220, overflowWrap: 'anywhere' }}>{t.name}</span>
-                            <span className="muted" style={{ fontSize: 12 }}>{t.uploader?.username ?? ''}</span>
+                            <span className="muted" style={{ fontSize: 12 }}>{t.uploader ? <Nick id={t.uploader.id} name={t.uploader.username} /> : ''}</span>
                           </button>
                         ))}
                       </div>

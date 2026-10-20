@@ -1,3 +1,4 @@
+import Nick from './Nick';
 import { applyDefaultView } from '../lib/viewMode';
 import { applyTipStyle } from '../lib/tipStyle';
 import { useEventTheme } from '../store/eventTheme';
@@ -624,7 +625,7 @@ function LayoutInner() {
           <MyUploadsIcon />
           <Link to="/messages" className={`top-link${starts('/messages')(location.pathname) ? ' active' : ''}`}>Messages</Link>
           <Link to="/friends" className={`top-link${starts('/friends')(location.pathname) ? ' active' : ''}`}>Amis{pendingFriendRequests > 0 ? ` (${pendingFriendRequests})` : ''}{friendsOnline > 0 && <span className="online-count" title="Amis en ligne"> ● {friendsOnline}</span>}</Link>
-          <Link to="/profile" className={`top-link${starts('/profile')(location.pathname) || starts('/users')(location.pathname) ? ' active' : ''}`}>{user?.username}</Link>
+          <Link to="/profile" className={`top-link${starts('/profile')(location.pathname) || starts('/users')(location.pathname) ? ' active' : ''}`}><Nick id={user?.id} name={user?.username ?? ''} /></Link>
           <button className="secondary" onClick={() => { logout(); window.location.assign('/login'); }}>
             Déconnexion
           </button>

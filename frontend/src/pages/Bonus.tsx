@@ -1,3 +1,4 @@
+import UserLink from '../components/UserLink';
 import { useEffect, useState } from 'react';
 import FreeleechCalendar from '../components/FreeleechCalendar';
 import { Link } from 'react-router-dom';
@@ -88,7 +89,7 @@ export default function Bonus() {
               {transfers.items.map((t: any) => (
                 <tr key={t.id}>
                   <td className="muted">{timeAgo(t.createdAt)}</td>
-                  <td>{t.direction === 'out' ? '→ ' : '← '}<Link to={`/users/${t.other.id}`}>{t.other.username}</Link></td>
+                  <td>{t.direction === 'out' ? '→ ' : '← '}<UserLink user={t.other} /></td>
                   <td style={{ textAlign: 'right', color: t.direction === 'out' ? 'var(--danger)' : 'var(--success)' }}>{t.direction === 'out' ? '−' : '+'}{t.amount}</td>
                   <td className="muted">{t.message}</td>
                 </tr>

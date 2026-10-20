@@ -53,6 +53,8 @@ class SessionStats(
 /** Le client BitTorrent (libtorrent) : ajoute un torrent, télécharge dans l'ordre et en priorité la zone qu'on lit, dit quels morceaux sont arrivés. */
 class TorrentEngine(private val saveDir: File) {
     val sm = SessionManager()
+    private val tracker = TrackerClient(this)
+    private val announces = java.util.concurrent.ConcurrentHashMap<String, String>()
     private val events = java.util.ArrayDeque<String>()
 
     /** Les derniers événements utiles au diagnostic (réponses et erreurs du tracker, connexions de pairs), les plus récents en dernier. */
@@ -86,6 +88,8 @@ class TorrentEngine(private val saveDir: File) {
 
     /** État de chaque tracker du torrent (adresse sans la passkey) : fonctionne, en cours, ou échec avec le message du serveur. Sert au diagnostic quand aucun pair n'arrive. */
     fun trackerLines(h: TorrentHandle): List<String> {
+        val own = try { tracker.statusOf(h.infoHash().toHex()) } catch (_: Throwable) { null }
+        if (own != null) return listOf("tracker (annonce par l'application) : $own")
         val list = try { h.trackers() } catch (e: Throwable) { return listOf("trackers illisibles : " + e.javaClass.simpleName + " " + (e.message ?: "")) }
         if (list.isEmpty()) return listOf("aucun tracker dans le torrent")
         return list.map { t ->
@@ -101,17 +105,23 @@ class TorrentEngine(private val saveDir: File) {
         }
     }
 
-    /** Si libtorrent n'a retenu aucun tracker (ou ne le contacte pas), on l'ajoute nous-mêmes depuis le .torrent et on force l'annonce. */
+    /** Port sur lequel le moteur écoute (annoncé au tracker pour que les autres membres puissent nous joindre). */
+    fun listenPort(): Int = try { sm.swig().listen_port().takeIf { it > 0 } ?: 6881 } catch (_: Throwable) { 6881 }
+
+    /** Donne une adresse de pair (reçue du tracker) au moteur, qui s'y connecte. */
+    fun connectPeer(h: TorrentHandle, ip: String, port: Int): Boolean = try { h.swig().connect_peer(org.libtorrent4j.TcpEndpoint(ip, port).swig()); true } catch (_: Throwable) { false }
+
+    /**
+     * Les annonces au tracker sont faites par l'application (voir TrackerClient) : la connexion HTTPS du moteur échoue sur certains appareils (« BIO routines » sur BlueStacks).
+     * On retire donc l'adresse du moteur pour qu'il n'annonce pas en double.
+     */
     fun ensureTracker(h: TorrentHandle, announce: String?) {
         if (announce == null) return
         try {
-            val known = try { h.trackers() } catch (_: Throwable) { emptyList() }
-            if (known.none { it.url() == announce }) {
-                h.addTracker(org.libtorrent4j.AnnounceEntry(announce))
-                Journal.log("tracker ajouté à la main")
-            }
-            h.forceReannounce()
-        } catch (e: Throwable) { Journal.log("ajout du tracker impossible : " + e.message) }
+            announces[h.infoHash().toHex()] = announce
+            try { h.replaceTrackers(emptyList()) } catch (_: Throwable) { /* pas bloquant */ }
+            tracker.start(h, announce)
+        } catch (e: Throwable) { Journal.log("annonce au tracker impossible : " + e.message) }
     }
 
     fun stop() { try { sm.stop() } catch (_: Exception) { /* déjà arrêté */ } }
@@ -144,6 +154,7 @@ class TorrentEngine(private val saveDir: File) {
     } catch (_: Exception) { null }
 
     fun remove(handle: TorrentHandle, deleteFiles: Boolean) {
+        try { tracker.stop(handle, announces.remove(handle.infoHash().toHex())) } catch (_: Throwable) { /* déjà parti */ }
         try {
             if (deleteFiles) sm.remove(handle, org.libtorrent4j.SessionHandle.DELETE_FILES) else sm.remove(handle)
         } catch (e: Exception) { Journal.log("retrait : " + e.message) }

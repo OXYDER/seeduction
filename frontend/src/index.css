@@ -4302,13 +4302,21 @@ button.link:hover { filter: none; transform: none; text-decoration-style: solid;
 
 /* Couleur des pseudos selon le rang (staff, Uploadeur, Power User, Élite, Vétéran ; Nouveau et Membre gardent la couleur ordinaire). */
 .user-link.rank-OWNER, .nick.rank-OWNER { color: #fbbf24; font-weight: 700; }
+html a.user-link.rank-OWNER, html a .nick.rank-OWNER { color: #fbbf24; font-weight: 700; }
 .user-link.rank-ADMIN, .nick.rank-ADMIN { color: #f87171; font-weight: 700; }
+html a.user-link.rank-ADMIN, html a .nick.rank-ADMIN { color: #f87171; font-weight: 700; }
 .user-link.rank-SUPER_MODERATOR, .nick.rank-SUPER_MODERATOR { color: #c084fc; font-weight: 700; }
+html a.user-link.rank-SUPER_MODERATOR, html a .nick.rank-SUPER_MODERATOR { color: #c084fc; font-weight: 700; }
 .user-link.rank-MODERATOR, .nick.rank-MODERATOR { color: #4ade80; font-weight: 700; }
+html a.user-link.rank-MODERATOR, html a .nick.rank-MODERATOR { color: #4ade80; font-weight: 700; }
 .user-link.rank-UPLOADER, .nick.rank-UPLOADER { color: #2dd4bf; font-weight: 600; }
+html a.user-link.rank-UPLOADER, html a .nick.rank-UPLOADER { color: #2dd4bf; font-weight: 600; }
 .user-link.rank-VETERAN, .nick.rank-VETERAN { color: #fb923c; font-weight: 600; }
+html a.user-link.rank-VETERAN, html a .nick.rank-VETERAN { color: #fb923c; font-weight: 600; }
 .user-link.rank-ELITE, .nick.rank-ELITE { color: #60a5fa; font-weight: 600; }
+html a.user-link.rank-ELITE, html a .nick.rank-ELITE { color: #60a5fa; font-weight: 600; }
 .user-link.rank-POWER_USER, .nick.rank-POWER_USER { color: #a5b4fc; }
+html a.user-link.rank-POWER_USER, html a .nick.rank-POWER_USER { color: #a5b4fc; }
 
 /* Infobulles riches des statistiques du haut (ratio, upload, marge de téléchargement...) */
 .stat-tip-anchor { display: inline-flex; }

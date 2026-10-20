@@ -1,3 +1,4 @@
+import Nick from './Nick';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { formatNumber } from '../lib/format';
@@ -272,7 +273,7 @@ export default function SlotMachine({ skin, machine, game, config, me, event, ja
       {me.blocked && <div className="slot-error">{me.blocked}</div>}
       {!me.blocked && me.stakeable < stake && !me.dailyFreeAvailable && <div className="slot-note">Points misables insuffisants{me.donated > 0 ? ' (les points de don ne se misent pas)' : ''}.</div>}
       <div className="slot-note">
-        {jackpot?.enabled && <>Gros lot : trois meilleurs symboles alignés avec une mise de {jackpot.minStake} points ou plus. {jackpot.last && <>Dernier gagnant : <strong>{jackpot.last.username}</strong> (+{formatNumber(jackpot.last.amount)}). </>}</>}
+        {jackpot?.enabled && <>Gros lot : trois meilleurs symboles alignés avec une mise de {jackpot.minStake} points ou plus. {jackpot.last && <>Dernier gagnant : <strong><Nick name={jackpot.last.username} /></strong> (+{formatNumber(jackpot.last.amount)}). </>}</>}
         Jeu de hasard avec des points du site : gagner n'est jamais garanti.
         {me.lossLeft !== null && <> Limite du jour : encore {formatNumber(me.lossLeft)} points.</>}
       </div>

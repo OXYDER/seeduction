@@ -1,3 +1,4 @@
+import Nick from '../components/Nick';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client';
@@ -178,7 +179,7 @@ export default function SupportTicket() {
                 <StatusChip status={ticket.status} />
                 {staffView && <PriorityChip priority={ticket.priority} />}
                 <span className="muted">Ouvert {timeAgo(ticket.createdAt)} par <UserLink user={ticket.requester} />{ticket.source === 'CHAT' ? ' depuis le chat' : ticket.source === 'STAFF' ? ' (par l’équipe)' : ''}</span>
-                {ticket.assignee && <span className="muted">· pris en charge par <strong>{ticket.assignee.username}</strong></span>}
+                {ticket.assignee && <span className="muted">· pris en charge par <strong><Nick id={ticket.assignee.id} name={ticket.assignee.username} /></strong></span>}
               </div>
             </div>
             <Link to={isStaff ? '/moderation?tab=billets' : '/support'} className="secondary" style={{ padding: '8px 14px', alignSelf: 'flex-start' }}>← {isStaff ? 'File des billets' : 'Mes billets'}</Link>

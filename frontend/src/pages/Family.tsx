@@ -1,3 +1,4 @@
+import Nick from '../components/Nick';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -314,7 +315,7 @@ function ChatsPanel({ profiles }: { profiles: Card[] }) {
         <div className="fam-chat-view">
           {!openId ? <p className="muted">Choisis une conversation.</p> : msgs === null ? <Loading /> : msgs.length === 0 ? <p className="muted">Aucun message.</p> : msgs.map((m) => (
             <div key={m.id} className={`fam-msg${m.fromChild ? ' child' : ''}`}>
-              <div className="fam-msg-head"><strong>{m.sender.username}</strong> <span className="muted">{new Date(m.at).toLocaleString('fr-CA')}</span></div>
+              <div className="fam-msg-head"><strong><Nick id={m.sender.id} name={m.sender.username} /></strong> <span className="muted">{new Date(m.at).toLocaleString('fr-CA')}</span></div>
               <div>
                 {m.type === 'SYSTEM' ? <em>{m.content}</em> : m.type === 'VOICE' ? '🎤 Message vocal' : m.type === 'FILE' ? `📎 ${m.fileName ?? 'Fichier'}` : null}
                 {m.imageUrl && <img src={m.imageUrl} alt="" style={{ maxWidth: 220, borderRadius: 8, display: 'block' }} />}

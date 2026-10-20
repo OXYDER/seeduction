@@ -1,3 +1,4 @@
+import Nick from './Nick';
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useMessenger } from '../store/messenger';
@@ -29,7 +30,7 @@ export default function ChatMutesPanel() {
           <div key={r.userId} className="row" style={{ gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
             <span className="row" style={{ gap: 8, alignItems: 'center' }}>
               <Avatar user={{ username: r.username, avatarUrl: r.avatarUrl }} size={28} />
-              <span><strong>{r.username}</strong> <span className="muted" style={{ fontSize: 12 }}>· {until(r.expiresAt)}</span></span>
+              <span><strong><Nick name={r.username} /></strong> <span className="muted" style={{ fontSize: 12 }}>· {until(r.expiresAt)}</span></span>
             </span>
             <button type="button" className="secondary" onClick={() => removeMute(r.userId)}>Réactiver</button>
           </div>

@@ -1,3 +1,4 @@
+import UserLink from './UserLink';
 import { Link } from 'react-router-dom';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
@@ -88,7 +89,7 @@ export default function PendingTorrentCard({ t, compact, busy, rejecting, select
         </div>
         {checks}
         <div className="mod-uploader">
-          <span>Envoyé par <Link to={`/users/${u.id}`}>{u.username}</Link>{t.anonymousUpload ? ' (anonyme)' : ''}{ROLES[u.role] ? <span className="badge" style={{ marginLeft: 6 }}>{ROLES[u.role]}</span> : null}</span>
+          <span>Envoyé par <UserLink user={u} />{t.anonymousUpload ? ' (anonyme)' : ''}{ROLES[u.role] ? <span className="badge" style={{ marginLeft: 6 }}>{ROLES[u.role]}</span> : null}</span>
           <span className={isOld(t.createdAt) ? 'mod-late' : ''}>· {timeAgo(t.createdAt)}</span>
           <span className={newcomer ? 'mod-flag' : ''}>· inscrit {newcomer ? `depuis ${Math.max(0, days(u.createdAt))} j ⚠` : timeAgo(u.createdAt)}</span>
           <span className={lowRatio ? 'mod-flag' : ''}>· ratio {u.ratio === null ? '∞' : u.ratio.toFixed(2)}{lowRatio ? ' ⚠' : ''}</span>

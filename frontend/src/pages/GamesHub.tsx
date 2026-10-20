@@ -1,3 +1,4 @@
+import Nick from '../components/Nick';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -65,7 +66,7 @@ function SlotsCard({ d }: { d: Summary['slots'] }) {
       <div className="gh-head"><span className="gh-icon">🎰</span><div><h2>Machines à sous</h2><div className="gh-tag">Six thèmes, un tour gratuit par jour</div></div></div>
       <p className="gh-desc">Tourne les rouleaux de Grand Écran, Seeduction Or, Rondelle d'Or, Cabane à Sucre, Fête du Moment ou Trésor des Mers. Mise de 5 à 100 points, jokers et tours gratuits.</p>
       <div className="gh-icons">{MACHINE_ORDER.map((m) => <span key={m} title={SKINS[m].name}>{SKINS[m].icon}</span>)}</div>
-      {d.biggest ? <div className="gh-next"><span style={{ fontSize: 22 }}>🏆</span><div><strong>Plus gros gain de la semaine : +{formatNumber(d.biggest.win)}</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.biggest.username} · mise de {d.biggest.stake}</div></div></div> : <div className="gh-next muted">Aucun gain cette semaine : sois le premier !</div>}
+      {d.biggest ? <div className="gh-next"><span style={{ fontSize: 22 }}>🏆</span><div><strong>Plus gros gain de la semaine : +{formatNumber(d.biggest.win)}</strong><div className="muted" style={{ fontSize: 12.5 }}><Nick name={d.biggest.username} /> · mise de {d.biggest.stake}</div></div></div> : <div className="gh-next muted">Aucun gain cette semaine : sois le premier !</div>}
       <div className="gh-stats">
         <Stat label="machines" value={d.machines} />
         <Stat label="tours (24 h)" value={formatNumber(d.spins24h)} />
@@ -87,7 +88,7 @@ function HiLoCard({ d }: { d: Summary['hilo'] }) {
       <p className="gh-desc">Devine si la prochaine carte sera plus haute ou plus basse. Chaque bonne réponse multiplie ton gain : continue pour plus gros, ou encaisse avant de tout perdre.</p>
       <div className="gh-icons" aria-hidden="true"><span>♠️</span><span>♥️</span><span>♦️</span><span>♣️</span></div>
       {d.activeStep !== null ? <div className="gh-next"><span style={{ fontSize: 22 }}>▶️</span><div><strong>Une partie t'attend</strong><div className="muted" style={{ fontSize: 12.5 }}>Série en cours : {d.activeStep}</div></div></div>
-        : d.bestStreak ? <div className="gh-next"><span style={{ fontSize: 22 }}>🔥</span><div><strong>Meilleure série de la semaine : {d.bestStreak.step}</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.bestStreak.username}</div></div></div>
+        : d.bestStreak ? <div className="gh-next"><span style={{ fontSize: 22 }}>🔥</span><div><strong>Meilleure série de la semaine : {d.bestStreak.step}</strong><div className="muted" style={{ fontSize: 12.5 }}><Nick name={d.bestStreak.username} /></div></div></div>
         : <div className="gh-next muted">Aucune série cette semaine : sois le premier !</div>}
       <div className="gh-stats">
         <Stat label="parties (24 h)" value={formatNumber(d.gamesToday)} />
@@ -189,7 +190,7 @@ function BlackjackCard({ d }: { d: Summary['blackjack'] }) {
       <p className="gh-desc">Tire des cartes sans dépasser 21 : double ta mise sur une bonne main, sépare tes paires, et touche 3 pour 2 sur un blackjack. Une partie gratuite chaque jour.</p>
       <div className="gh-icons" aria-hidden="true"><span>🂡</span><span>🂮</span><span>🃁</span><span>🂱</span></div>
       {d.active ? <div className="gh-next"><span style={{ fontSize: 22 }}>▶️</span><div><strong>Une partie t'attend</strong><div className="muted" style={{ fontSize: 12.5 }}>Reprends là où tu t'étais arrêté</div></div></div>
-        : d.biggest ? <div className="gh-next"><span style={{ fontSize: 22 }}>🏆</span><div><strong>Plus gros gain de la semaine : +{formatNumber(d.biggest.payout)}</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.biggest.username} · mise de {d.biggest.stake}</div></div></div>
+        : d.biggest ? <div className="gh-next"><span style={{ fontSize: 22 }}>🏆</span><div><strong>Plus gros gain de la semaine : +{formatNumber(d.biggest.payout)}</strong><div className="muted" style={{ fontSize: 12.5 }}><Nick name={d.biggest.username} /> · mise de {d.biggest.stake}</div></div></div>
         : <div className="gh-next muted">Aucun gain cette semaine : sois le premier !</div>}
       <div className="gh-stats">
         <Stat label="parties (24 h)" value={formatNumber(d.gamesToday)} />
@@ -209,7 +210,7 @@ function DiceCard({ d }: { d: Summary['dice'] }) {
       <div className="gh-head"><span className="gh-icon">🎲</span><div><h2>Dés</h2><div className="gh-tag">Deux dés, un pari, une cote selon tes chances</div></div></div>
       <p className="gh-desc">Parie sur le total de deux dés : moins que, plus que, total exact ou doubles. Plus ton pari est rare, plus la cote grimpe, jusqu'à ×34 sur un total de 2 ou de 12. Un lancer gratuit chaque jour.</p>
       <div className="gh-icons" aria-hidden="true"><span>⚀</span><span>⚂</span><span>⚄</span><span>⚅</span></div>
-      {d.biggest ? <div className="gh-next"><span style={{ fontSize: 22 }}>🏆</span><div><strong>Plus gros gain de la semaine : +{formatNumber(d.biggest.payout)}</strong><div className="muted" style={{ fontSize: 12.5 }}>{d.biggest.username} · mise de {d.biggest.stake}</div></div></div> : <div className="gh-next muted">Aucun gain cette semaine : sois le premier !</div>}
+      {d.biggest ? <div className="gh-next"><span style={{ fontSize: 22 }}>🏆</span><div><strong>Plus gros gain de la semaine : +{formatNumber(d.biggest.payout)}</strong><div className="muted" style={{ fontSize: 12.5 }}><Nick name={d.biggest.username} /> · mise de {d.biggest.stake}</div></div></div> : <div className="gh-next muted">Aucun gain cette semaine : sois le premier !</div>}
       <div className="gh-stats">
         <Stat label="lancers (24 h)" value={formatNumber(d.rollsToday)} />
         <Stat label="mes lancers" value={formatNumber(d.myRolls)} />

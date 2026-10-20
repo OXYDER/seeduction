@@ -1,3 +1,4 @@
+import UserLink from '../components/UserLink';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -35,7 +36,7 @@ export default function HallOfFame() {
               {entries.map((e, i) => (
                 <tr key={e.user.id}>
                   <td>{i + 1}</td>
-                  <td><Link to={`/users/${e.user.id}`}>{e.user.username}</Link></td>
+                  <td><UserLink user={e.user} /></td>
                   <td>{e.badgeCount}</td>
                 </tr>
               ))}

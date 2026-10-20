@@ -1,3 +1,4 @@
+import Nick from '../Nick';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../../api/client';
@@ -84,7 +85,7 @@ export default function NewChatModal({ onClose, onOpened, initialTab = 'direct' 
                     <Avatar user={f} size={34} />
                     <span className="msgr-status-dot" style={{ background: STATUS_COLOR[statusOf(online, f.id)], width: 10, height: 10 }} />
                   </span>
-                  <strong>{f.username}</strong>
+                  <strong><Nick id={f.id} name={f.username} /></strong>
                 </button>
               ))}
             </div>
@@ -102,7 +103,7 @@ export default function NewChatModal({ onClose, onOpened, initialTab = 'direct' 
                 <label key={f.id} className="msgr-share-item">
                   <input type="checkbox" style={{ width: 'auto' }} checked={picked.has(f.id)} onChange={() => toggle(f.id)} />
                   <Avatar user={f} size={30} />
-                  <strong>{f.username}</strong>
+                  <strong><Nick id={f.id} name={f.username} /></strong>
                 </label>
               ))}
             </div>

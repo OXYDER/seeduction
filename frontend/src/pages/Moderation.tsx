@@ -1,3 +1,4 @@
+import UserLink from '../components/UserLink';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
@@ -232,7 +233,7 @@ export default function Moderation() {
                         {r.torrent && r.torrent.status !== 'APPROVED' && <span className="muted"> · {r.torrent.status === 'PENDING' ? 'en attente' : r.torrent.status === 'REJECTED' ? 'déjà rejeté' : r.torrent.status}</span>}
                       </div>
                       <p className="mod-excerpt">« {r.reason} »</p>
-                      <div className="mod-meta">Signalé par {r.reporter ? <Link to={`/users/${r.reporter.id}`}>{r.reporter.username}</Link> : '?'} · <span className={isOld(r.createdAt) ? 'mod-late' : ''}>{timeAgo(r.createdAt)}</span></div>
+                      <div className="mod-meta">Signalé par {r.reporter ? <UserLink user={r.reporter} /> : '?'} · <span className={isOld(r.createdAt) ? 'mod-late' : ''}>{timeAgo(r.createdAt)}</span></div>
                       {rejecting === r.id && <RejectReason busy={busy === r.id} onCancel={() => setRejecting(null)} onConfirm={(reason) => removeReported(r, reason)} />}
                     </div>
                     <div className="mod-actions">

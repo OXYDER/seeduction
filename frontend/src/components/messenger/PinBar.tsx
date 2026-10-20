@@ -1,3 +1,4 @@
+import Nick from '../Nick';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { ChatText, clock, dayLabel } from '../../lib/chatFormat';
@@ -58,7 +59,7 @@ export default function PinBar({ conversationId, pinnedIds, canPin, onJump, me }
           <span className="msgr-pin-icon">📌</span>
           <span className="msgr-pin-text">
             <strong>{pins.length > 1 ? `Message épinglé ${Math.min(idx, pins.length - 1) + 1}/${pins.length}` : 'Message épinglé'}</strong>
-            <span>{current.sender.username} : {previewOf(current).slice(0, 140)}</span>
+            <span><Nick id={current.sender.id} name={current.sender.username} /> : {previewOf(current).slice(0, 140)}</span>
           </span>
         </button>
         <button type="button" className="msgr-pinbar-all" onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? '✕' : `☰ ${pins.length}`}</button>

@@ -1,3 +1,4 @@
+import Nick from './Nick';
 import Pager from './Pager';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -103,7 +104,7 @@ export function SupportQueue() {
                       <strong>{t.subject}</strong> <PriorityChip priority={t.priority} />
                       <div className="muted" style={{ fontSize: 12 }}>{t.category ? `${t.category.icon ?? ''} ${t.category.name}` : 'Sans catégorie'}{t.source === 'CHAT' ? ' · 💬 depuis le chat' : ''}</div>
                     </td>
-                    <td><span className="row" style={{ gap: 6 }}><Avatar user={t.requester} size={22} />{t.requester.username}</span></td>
+                    <td><span className="row" style={{ gap: 6 }}><Avatar user={t.requester} size={22} /><Nick id={t.requester.id} name={t.requester.username} /></span></td>
                     <td><StatusChip status={t.status} /></td>
                     <td className="muted">{t.assignee?.username ?? '—'}</td>
                     <td className="muted">{t.lastReplyBy === 'STAFF' ? 'Équipe' : 'Membre'} · {timeAgo(t.lastReplyAt)}</td>

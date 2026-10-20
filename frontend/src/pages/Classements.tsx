@@ -1,3 +1,4 @@
+import Nick from '../components/Nick';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -39,7 +40,7 @@ export default function Classements() {
                 {b.rows.map((r) => (
                   <li key={r.rank} style={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 8, alignItems: 'baseline', padding: '3px 6px', borderRadius: 6, background: r.mine ? 'rgba(255, 210, 74, 0.14)' : undefined }}>
                     <span>{MEDAL[r.rank - 1] ?? `${r.rank}.`}</span>
-                    <span>{r.username}{r.detail && <span className="muted" style={{ fontSize: 12 }}> · {r.detail}</span>}</span>
+                    <span><Nick name={r.username} />{r.detail && <span className="muted" style={{ fontSize: 12 }}> · {r.detail}</span>}</span>
                     <strong style={{ color: 'var(--green-bright)' }}>{formatNumber(r.value)} <small className="muted">{b.unit}</small></strong>
                   </li>
                 ))}

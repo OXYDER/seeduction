@@ -1,3 +1,4 @@
+import Nick from './Nick';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
@@ -233,7 +234,7 @@ export default function AdminAntiCheat() {
           <tbody>
             {rows?.items.map((r) => (
               <tr key={r.id} onClick={() => openCase(r.id)} style={{ cursor: 'pointer', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                <td style={{ padding: 10 }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Avatar user={r.user} size={28} /><strong>{r.user.username}</strong></span></td>
+                <td style={{ padding: 10 }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Avatar user={r.user} size={28} /><strong><Nick id={r.user.id} name={r.user.username} /></strong></span></td>
                 <td><LevelBadge level={r.level} /></td>
                 <td><ScoreBar score={r.score} level={r.level} /><div className="muted" style={{ fontSize: 11 }}>confiance {r.confidence} %</div></td>
                 <td style={{ maxWidth: 320 }}><span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{r.top.map((t) => <span key={t.kind} style={{ fontSize: 11.5, padding: '1px 7px', borderRadius: 5, background: `${FAMILY_COLOR[kinds.get(t.kind)?.family ?? 'client']}22` }}>{t.label}</span>)}</span></td>

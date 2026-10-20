@@ -1,3 +1,4 @@
+import UserLink from '../components/UserLink';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -36,7 +37,7 @@ function CollectionCard({ c }: { c: CollectionSummary }) {
         </div>
         {c.description && <p className="muted collection-card-desc">{c.description}</p>}
         <div className="muted" style={{ fontSize: 12 }}>
-          Par {c.owner.username} · {c._count.items} torrent{c._count.items > 1 ? 's' : ''}
+          Par <UserLink user={c.owner} /> · {c._count.items} torrent{c._count.items > 1 ? 's' : ''}
           {c.visibility === 'COLLABORATIVE' && c._count.collaborators > 0 && ` · ${c._count.collaborators} collaborateur(s)`}
         </div>
       </div>

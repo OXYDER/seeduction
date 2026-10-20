@@ -1,3 +1,4 @@
+import Nick from '../components/Nick';
 import Pager from '../components/Pager';
 import { useEffect, useState } from 'react';
 import { LANGUAGE_LABELS } from '../lib/languageTag';
@@ -203,7 +204,7 @@ function AuditAdmin() {
             {data.items.map((l: any) => (
               <tr key={l.id}>
                 <td className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(l.createdAt).toLocaleString('fr-FR')}</td>
-                <td>{l.user ? <a href={`/users/${l.user.id}`}>{l.user.username}</a> : <span className="muted">{l.meta?.username ?? '—'}</span>}</td>
+                <td>{l.user ? <a href={`/users/${l.user.id}`}><Nick id={l.user.id} name={l.user.username} /></a> : <span className="muted">{l.meta?.username ?? '—'}</span>}</td>
                 <td>{AUDIT_LABELS[l.action] ?? l.action}</td>
                 <td className="muted" style={{ fontSize: 12 }}>{summary(l.meta)}<MetaDetails meta={l.meta} /></td>
                 <td className="muted">{l.ip ?? ''}</td>

@@ -1,3 +1,4 @@
+import Nick from '../Nick';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
@@ -175,7 +176,7 @@ export default function ConversationList({ activeId, onSelect, onNew }: { active
               return (
                 <button key={h.id} type="button" className="msgr-hit" onClick={() => openHit(h)}>
                   <span className="msgr-hit-top"><strong>{h.conversationType === 'CHANNEL' ? '# ' : ''}{h.conversationName}</strong><span className="muted">{dayLabel(h.createdAt)} · {clock(h.createdAt)}</span></span>
-                  <span className="msgr-hit-text"><span className="muted">{h.sender.username} : </span>{i >= 0 ? <>{h.preview.slice(0, i)}<mark>{h.preview.slice(i, i + term.length)}</mark>{h.preview.slice(i + term.length)}</> : h.preview}</span>
+                  <span className="msgr-hit-text"><span className="muted"><Nick name={h.sender.username} /> : </span>{i >= 0 ? <>{h.preview.slice(0, i)}<mark>{h.preview.slice(i, i + term.length)}</mark>{h.preview.slice(i + term.length)}</> : h.preview}</span>
                 </button>
               );
             })}

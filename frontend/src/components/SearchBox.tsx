@@ -1,3 +1,4 @@
+import Nick from './Nick';
 import MetaChips from './MetaChips';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -157,7 +158,7 @@ export default function SearchBox({
           <>
             <Avatar user={d} size={30} />
             <span className="sb-text">
-              <span className="sb-title">{d.username}</span>
+              <span className="sb-title"><Nick id={d.id} name={d.username} /></span>
               <span className="sb-sub">{displayRank(d, ROLE_LABEL)}</span>
             </span>
           </>

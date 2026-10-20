@@ -1,3 +1,4 @@
+import Nick from './Nick';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import Avatar from './Avatar';
@@ -80,7 +81,7 @@ export default function AdminDonations() {
                 {data.recent.map((d) => (
                   <tr key={d.id}>
                     <td className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(d.receivedAt).toLocaleDateString('fr-CA')}</td>
-                    <td><span className="row" style={{ gap: 6, alignItems: 'center' }}><Avatar user={d.user} size={22} />{d.user.username}</span></td>
+                    <td><span className="row" style={{ gap: 6, alignItems: 'center' }}><Avatar user={d.user} size={22} /><Nick id={d.user.id} name={d.user.username} /></span></td>
                     <td><strong>{d.amount} {d.currency}</strong></td>
                     <td>{d.tierLabel ?? <span className="muted">—</span>}</td>
                     <td className="muted">{d.note ?? ''}</td>

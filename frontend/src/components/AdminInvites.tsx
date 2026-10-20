@@ -1,3 +1,4 @@
+import Nick from './Nick';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
@@ -202,14 +203,14 @@ export function InvitesAdmin() {
                     <code className="inv-code">{i.code}</code>
                     <span className={`inv-status ${i.status}`}>{STATUS_LABEL[i.status]}</span>
                     {i.perIpOnce && <span className="badge double" title="Une seule inscription par adresse IP">1 / IP</span>}
-                    {!i.generic && <span className="muted" style={{ fontSize: 12 }}>code de {i.createdBy.username}</span>}
+                    {!i.generic && <span className="muted" style={{ fontSize: 12 }}>code de <Nick id={i.createdBy.id} name={i.createdBy.username} /></span>}
                     {i.label && <span className="muted">· {i.label}</span>}
                   </div>
                   <div className="muted inv-meta">
                     <span>👥 {i.useCount} / {i.maxUses}</span>
                     {i.startsAt && <span>▶ dès le {dt(i.startsAt)}</span>}
                     <span>{i.expiresAt ? `⏳ jusqu'au ${dt(i.expiresAt)}` : '⏳ sans limite de temps'}</span>
-                    <span>créé {timeAgo(i.createdAt)} par {i.createdBy.username}</span>
+                    <span>créé {timeAgo(i.createdAt)} par <Nick id={i.createdBy.id} name={i.createdBy.username} /></span>
                   </div>
                 </div>
                 <div className="inv-actions">

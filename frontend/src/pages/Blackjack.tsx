@@ -1,3 +1,4 @@
+import Nick from '../components/Nick';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -223,7 +224,7 @@ export default function Blackjack() {
           {data.biggest.length === 0 ? <p className="muted">Aucun gain pour l'instant.</p> : (
             <table className="moj-board"><tbody>
               {data.biggest.map((b, i) => (
-                <tr key={i}><td>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td><td>{b.username}</td><td className="muted">mise {b.stake}{b.outcome === 'blackjack' ? ' · blackjack' : ''}</td><td style={{ textAlign: 'right' }}><strong>+{formatNumber(b.payout)}</strong></td></tr>
+                <tr key={i}><td>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td><td><Nick name={b.username} /></td><td className="muted">mise {b.stake}{b.outcome === 'blackjack' ? ' · blackjack' : ''}</td><td style={{ textAlign: 'right' }}><strong>+{formatNumber(b.payout)}</strong></td></tr>
               ))}
             </tbody></table>
           )}

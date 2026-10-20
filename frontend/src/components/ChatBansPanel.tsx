@@ -1,3 +1,4 @@
+import UserLink from './UserLink';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -37,7 +38,7 @@ export default function ChatBansPanel() {
             <span className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
               <Avatar user={b.user} size={32} />
               <span>
-                <Link to={`/users/${b.user.id}`}><strong>{b.user.username}</strong></Link> <span className="badge">{b.scope}</span><br />
+                <strong><UserLink user={b.user} /></strong> <span className="badge">{b.scope}</span><br />
                 <span style={{ fontSize: 13 }}>« {b.reason} »</span><br />
                 <span className="muted" style={{ fontSize: 12 }}>
                   Par {b.issuedByName} · {timeAgo(b.createdAt)} · {b.expiresAt ? `jusqu'au ${new Date(b.expiresAt).toLocaleString('fr-CA', { dateStyle: 'medium', timeStyle: 'short' })}` : 'définitif'}
