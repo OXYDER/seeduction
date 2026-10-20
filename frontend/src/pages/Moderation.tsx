@@ -11,6 +11,7 @@ import { SupportQueue, SupportStats } from '../components/AdminSupport';
 import ChatBansPanel from '../components/ChatBansPanel';
 import { useSupport } from '../store/support';
 import Loading from '../components/Loading';
+import FixesQueue from '../components/FixesQueue';
 
 interface ReportRow {
   id: string; targetType: string; targetId: string; reason: string; createdAt: string; label: string; link: string | null;
@@ -26,11 +27,12 @@ export default function Moderation() {
   const role = useAuthStore((s) => s.user?.role);
   const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '');
   const refreshQueue = useQueue((s) => s.refresh);
+  const pendingFixes = useQueue((s) => s.pendingFixes);
   const location = useLocation();
   const [params, setParams] = useSearchParams();
-  type Tab = 'torrents' | 'reports' | 'billets' | 'support-stats' | 'chat-bans';
+  type Tab = 'torrents' | 'reports' | 'fixes' | 'billets' | 'support-stats' | 'chat-bans';
   const fromUrl = params.get('tab');
-  const tab: Tab = fromUrl === 'billets' || fromUrl === 'support-stats' || fromUrl === 'chat-bans' || fromUrl === 'reports' || fromUrl === 'torrents' ? fromUrl : (location.state as any)?.tab === 'reports' ? 'reports' : 'torrents';
+  const tab: Tab = fromUrl === 'billets' || fromUrl === 'support-stats' || fromUrl === 'chat-bans' || fromUrl === 'reports' || fromUrl === 'fixes' || fromUrl === 'torrents' ? fromUrl : (location.state as any)?.tab === 'reports' ? 'reports' : 'torrents';
   const setTab = (t: Tab) => { const next = new URLSearchParams(params); if (t === 'torrents') next.delete('tab'); else next.set('tab', t); setParams(next, { replace: true }); };
   const openTickets = useSupport((s) => s.staff);
   const refreshSupport = useSupport((s) => s.refreshBadge);
@@ -150,6 +152,9 @@ export default function Moderation() {
         <button type="button" role="tab" aria-selected={tab === 'reports'} className={tab === 'reports' ? 'on' : ''} onClick={() => setTab('reports')}>
           Signalements {reports ? <span className={`mod-count${reports.length ? ' hot' : ''}`}>{reports.length}</span> : null}
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'fixes'} className={tab === 'fixes' ? 'on' : ''} onClick={() => setTab('fixes')}>
+          ✏️ Corrections proposées <span className={'mod-count' + (pendingFixes ? ' hot' : '')}>{pendingFixes}</span>
+        </button>
         <button type="button" role="tab" aria-selected={tab === 'billets'} className={tab === 'billets' ? 'on' : ''} onClick={() => setTab('billets')}>
           🎫 Billets de support {openTickets !== null ? <span className={`mod-count${openTickets ? ' hot' : ''}`}>{openTickets}</span> : null}
         </button>
@@ -196,6 +201,8 @@ export default function Moderation() {
           )}
         </>
       )}
+
+      {tab === 'fixes' && <FixesQueue />}
 
       {tab === 'reports' && (
         <>

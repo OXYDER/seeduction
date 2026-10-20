@@ -4,6 +4,7 @@ import { api } from '../api/client';
 interface QueueState {
   pendingTorrents: number;
   openReports: number;
+  pendingFixes: number;
   total: number;
   /** Recompte la file de modération (réservé au staff : les autres reçoivent une erreur, ignorée). */
   refresh: () => Promise<void>;
@@ -14,12 +15,13 @@ interface QueueState {
 export const useQueue = create<QueueState>((set) => ({
   pendingTorrents: 0,
   openReports: 0,
+  pendingFixes: 0,
   total: 0,
   async refresh() {
     try {
       const { data } = await api.get('/admin/queue');
-      set({ pendingTorrents: data.pendingTorrents ?? 0, openReports: data.openReports ?? 0, total: data.total ?? 0 });
+      set({ pendingTorrents: data.pendingTorrents ?? 0, openReports: data.openReports ?? 0, pendingFixes: data.pendingFixes ?? 0, total: data.total ?? 0 });
     } catch { /* hors ligne ou pas staff */ }
   },
-  reset: () => set({ pendingTorrents: 0, openReports: 0, total: 0 }),
+  reset: () => set({ pendingTorrents: 0, openReports: 0, pendingFixes: 0, total: 0 }),
 }));

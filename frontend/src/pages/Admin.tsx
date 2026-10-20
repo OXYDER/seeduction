@@ -1,5 +1,7 @@
 import Pager from '../components/Pager';
 import { useEffect, useState } from 'react';
+import { LANGUAGE_LABELS } from '../lib/languageTag';
+import { RESOLUTIONS, SOURCES } from '../lib/searchParser';
 import { useSearchParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { api } from '../api/client';
@@ -635,6 +637,24 @@ function TorrentsAdmin() {
   const [torrents, setTorrents] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [bulk, setBulk] = useState({ language: '', resolution: '', source: '', categoryId: '' });
+  const [bulkMsg, setBulkMsg] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  async function applyBulk() {
+    const changes = Object.fromEntries(Object.entries(bulk).filter(([, v]) => v));
+    if (Object.keys(changes).length === 0) { setBulkMsg('Choisis au moins une valeur à appliquer.'); return; }
+    if (!confirm('Appliquer ces corrections à ' + sel.size + ' torrent(s) ?')) return;
+    setBulkBusy(true); setBulkMsg('');
+    try {
+      const r = (await api.post('/admin/torrents/bulk-edit', { ids: [...sel], changes })).data;
+      setBulkMsg(r.updated + ' torrent(s) corrigé(s)' + (r.failed.length ? ', ' + r.failed.length + ' en échec (' + r.failed[0].error + ')' : '') + '.');
+      setSel(new Set()); setBulk({ language: '', resolution: '', source: '', categoryId: '' });
+      refresh();
+    } catch (e: any) { setBulkMsg(e.response?.data?.message ?? 'Échec'); } finally { setBulkBusy(false); }
+  }
 
   function refresh() {
     api.get('/admin/torrents', { params: { search } }).then((r) => setTorrents(r.data));
@@ -663,12 +683,38 @@ function TorrentsAdmin() {
         <h3>Tous les torrents ({torrents.length})</h3>
         <input placeholder="Rechercher..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 240 }} />
       </div>
+      {sel.size > 0 && (
+        <div className="panel" style={{ display: 'grid', gap: 8, margin: '8px 0', background: 'rgba(125,211,252,0.07)' }}>
+          <strong>✏️ Édition groupée : {sel.size} torrent(s) sélectionné(s)</strong>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+            <label style={{ display: 'grid', gap: 3, fontSize: 13 }}>Langue
+              <select value={bulk.language} onChange={(e) => setBulk({ ...bulk, language: e.target.value })}><option value="">(inchangée)</option>{Object.keys(LANGUAGE_LABELS).map((l) => <option key={l} value={l}>{l}</option>)}</select>
+            </label>
+            <label style={{ display: 'grid', gap: 3, fontSize: 13 }}>Résolution
+              <select value={bulk.resolution} onChange={(e) => setBulk({ ...bulk, resolution: e.target.value })}><option value="">(inchangée)</option>{RESOLUTIONS.map((l) => <option key={l} value={l}>{l}</option>)}</select>
+            </label>
+            <label style={{ display: 'grid', gap: 3, fontSize: 13 }}>Source
+              <select value={bulk.source} onChange={(e) => setBulk({ ...bulk, source: e.target.value })}><option value="">(inchangée)</option>{SOURCES.map((l) => <option key={l} value={l}>{l}</option>)}</select>
+            </label>
+            <label style={{ display: 'grid', gap: 3, fontSize: 13 }}>Catégorie
+              <select value={bulk.categoryId} onChange={(e) => setBulk({ ...bulk, categoryId: e.target.value })}><option value="">(inchangée)</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            </label>
+            <button type="button" disabled={bulkBusy} onClick={applyBulk}>Appliquer à la sélection</button>
+            <button type="button" className="secondary" onClick={() => { setSel(new Set()); setBulkMsg(''); }}>Tout désélectionner</button>
+          </div>
+          <span className="muted" style={{ fontSize: 12 }}>Seules les valeurs choisies sont changées ; chaque modification est inscrite au journal de modération.</span>
+        </div>
+      )}
+      {bulkMsg && <p className="muted" style={{ margin: '4px 0' }}>{bulkMsg}</p>}
       <table>
-        <thead><tr><th>Nom</th><th>Catégorie</th><th>Statut</th><th>FL</th><th>2x</th><th></th></tr></thead>
+        <thead><tr><th style={{ width: 28 }}><input type="checkbox" style={{ width: 'auto' }} aria-label="Tout sélectionner" checked={torrents.length > 0 && torrents.every((t) => sel.has(t.id))} onChange={(e) => setSel(e.target.checked ? new Set(torrents.map((t) => t.id)) : new Set())} /></th><th>Nom</th><th>Langue</th><th>Résolution</th><th>Catégorie</th><th>Statut</th><th>FL</th><th>2x</th><th></th></tr></thead>
         <tbody>
           {torrents.map((t) => (
             <tr key={t.id}>
+              <td><input type="checkbox" style={{ width: 'auto' }} aria-label={'Sélectionner ' + t.name} checked={sel.has(t.id)} onChange={() => toggle(t.id)} /></td>
               <td>{t.name}</td>
+              <td>{t.language ?? '—'}</td>
+              <td>{t.resolution ?? '—'}</td>
               <td>
                 <select value={t.categoryId} onChange={(e) => update(t.id, { categoryId: e.target.value })}>
                   {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

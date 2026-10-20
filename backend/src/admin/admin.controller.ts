@@ -57,6 +57,14 @@ export class AdminController {
     return this.adminService.allTorrents(search);
   }
 
+  /** Édition groupée par l'équipe : mêmes corrections (langue, qualité, source, codec, audio, catégorie) sur une sélection de torrents. */
+  @Post('torrents/bulk-edit')
+  async bulkEdit(@Body() body: { ids?: string[]; changes?: Record<string, any> }, @Request() req: any) {
+    const result = await this.adminService.bulkEditTorrents(body?.ids, body?.changes);
+    await this.audit.log(req.user.userId, 'TORRENT_BULK_EDIT', { count: result.updated, failed: result.failed.length, fields: result.fields, changes: body?.changes, torrentIds: result.ids }, this.ip(req));
+    return { updated: result.updated, failed: result.failed };
+  }
+
   @Patch('torrents/:id')
   async updateTorrent(@Param('id') id: string, @Body() body: any, @Request() req: any) {
     const result = await this.adminService.updateTorrent(id, body);

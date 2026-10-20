@@ -7,6 +7,7 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import TorrentPeers from '../components/TorrentPeers';
 import TorrentCompletion from '../components/TorrentCompletion';
+import TorrentFixes from '../components/TorrentFixes';
 import StaffQueueBanner from '../components/StaffQueueBanner';
 import OwnerReviewBanner from '../components/OwnerReviewBanner';
 import CopyButton from '../components/CopyButton';
@@ -364,6 +365,7 @@ export default function TorrentDetail() {
         )}
       </div>
       {tokenError}
+      <TorrentFixes key={'fixes-' + torrent.id} torrent={torrent} />
       <TorrentVersions torrentId={torrent.id} />
       {['LOGICIEL', 'JEU'].includes(contentKind ?? '') && <InstallNotes torrentId={torrent.id} />}
       <NfoPanel torrentId={torrent.id} />

@@ -365,6 +365,7 @@ model Torrent {
   // Date à laquelle le synopsis et le slogan affichés sur la fiche ont été traduits en français (vide = pas encore fait).
   overviewTranslatedAt DateTime?
   snatches       Snatch[]
+  fixes          TorrentFix[]
   revivals       TorrentRevival[]
   playbackPositions PlaybackPosition[]
   chatShares     Message[]
@@ -2579,4 +2580,25 @@ model TournamentWeek {
   participants Int      @default(0)
   jackpot      Int      @default(0)
   results      Json
+}
+
+/// Correction proposée par un membre sur la fiche d'un torrent (langue, qualité, saison / épisode...) ou signalement d'un détail pas clair : l'équipe l'applique ou la refuse depuis la file de modération.
+model TorrentFix {
+  id           String    @id @default(uuid())
+  torrent      Torrent   @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId    String
+  authorId     String
+  /// Valeurs proposées par champ (voir common/utils/torrent-fix.ts) ; vide = simple remarque.
+  changes      Json      @default("{}")
+  note         String?   @db.VarChar(500)
+  status       String    @default("PENDING") @db.VarChar(10) // PENDING | ACCEPTED | REJECTED
+  reviewedById String?
+  reviewedByName String? @db.VarChar(60)
+  reviewNote   String?   @db.VarChar(300)
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([torrentId, status])
+  @@index([authorId, createdAt])
 }

@@ -79,11 +79,12 @@ export class AdminService {
 
   /** Compteurs de la file de modération (pastille du menu « Modération »). */
   async queueCounts() {
-    const [pendingTorrents, openReports] = await Promise.all([
+    const [pendingTorrents, openReports, pendingFixes] = await Promise.all([
       this.prisma.torrent.count({ where: { status: 'PENDING', holdAt: null } }), // les torrents en attente de correction ne sont pas à examiner
       this.prisma.report.count({ where: { status: 'OPEN' } }),
+      this.prisma.torrentFix.count({ where: { status: 'PENDING' } }),
     ]);
-    return { pendingTorrents, openReports, total: pendingTorrents + openReports };
+    return { pendingTorrents, openReports, pendingFixes, total: pendingTorrents + openReports + pendingFixes };
   }
 
   /**
@@ -184,6 +185,28 @@ export class AdminService {
   }
 
   /** Seuls ces champs sont modifiables (le corps de la requête n'est jamais passé tel quel à la base). */
+  /** Champs qu'on peut corriger sur une sélection de torrents (jamais le nom, la description ni la fiche : ceux-là se corrigent un par un). */
+  static readonly BULK_FIELDS = ['language', 'resolution', 'source', 'codec', 'audio', 'categoryId', 'origin', 'videoType'] as const;
+
+  /** Édition groupée : applique les mêmes corrections à une sélection (100 torrents au plus), chacune validée comme une modification normale. */
+  async bulkEditTorrents(ids: unknown, changes: unknown) {
+    const list = [...new Set(Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string' && x.length > 0) : [])];
+    if (list.length === 0) throw new BadRequestException('Aucun torrent sélectionné');
+    if (list.length > 100) throw new BadRequestException('100 torrents au maximum à la fois');
+    const picked: Record<string, any> = {};
+    for (const key of AdminService.BULK_FIELDS) {
+      const v = (changes as Record<string, unknown> | null)?.[key];
+      if (typeof v === 'string' && v.trim()) picked[key] = v.trim();
+    }
+    if (Object.keys(picked).length === 0) throw new BadRequestException('Choisis au moins une valeur à appliquer (langue, qualité, source, codec, audio, catégorie...)');
+    const failed: { id: string; error: string }[] = [];
+    let updated = 0;
+    for (const id of list) {
+      try { await this.updateTorrent(id, picked); updated++; } catch (e: any) { failed.push({ id, error: typeof e?.getStatus === 'function' ? String(e.message).slice(0, 160) : 'Torrent introuvable ou valeur refusée' }); }
+    }
+    return { updated, failed, fields: Object.keys(picked), ids: list };
+  }
+
   async updateTorrent(id: string, body: Record<string, any>, opts: { owner?: boolean } = {}) {
     const data: Record<string, any> = {};
     if (typeof body.name === 'string' && body.name.trim()) data.name = stripReleaseExtension(body.name.trim().slice(0, 300));

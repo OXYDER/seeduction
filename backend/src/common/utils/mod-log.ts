@@ -22,7 +22,7 @@ const A = (label: string, category: Category, severity: Severity = 'info'): Info
 
 export const ACTIONS: Record<string, Info> = {
   TORRENT_APPROVE: A('a validé un torrent', 'torrents'), TORRENT_REJECT: A('a refusé un torrent', 'torrents', 'important'), TORRENT_HOLD: A('a demandé une correction', 'torrents'),
-  TORRENT_EDIT: A('a modifié un torrent', 'torrents'), TORRENT_DELETE: A('a supprimé un torrent', 'torrents', 'important'),
+  TORRENT_EDIT: A('a modifié un torrent', 'torrents'), TORRENT_BULK_EDIT: A('a modifié plusieurs torrents d\'un coup', 'torrents', 'important'), TORRENT_FIX_ACCEPT: A('a appliqué une correction proposée par un membre', 'torrents'), TORRENT_FIX_REJECT: A('a refusé une correction proposée par un membre', 'torrents'), TORRENT_DELETE: A('a supprimé un torrent', 'torrents', 'important'),
   REPORT_RESOLVE: A('a traité un signalement', 'membres'), REPORT_DISMISS: A('a classé un signalement sans suite', 'membres'),
   USER_WARN: A('a averti un membre', 'membres', 'important'), USER_BAN: A('a banni un membre', 'membres', 'grave'), USER_UNBAN: A('a levé un bannissement', 'membres', 'important'),
   USER_EDIT: A('a modifié un membre', 'membres'), USER_DELETE: A('a supprimé un compte', 'membres', 'grave'), USER_ACTIVATE: A('a activé un compte', 'membres'),
