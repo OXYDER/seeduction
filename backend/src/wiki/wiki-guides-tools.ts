@@ -34,6 +34,7 @@ export const GUIDES_TOOLS: WikiSeedCategory = {
         `• [url=/wiki/guide-envoyer-premier-torrent]Envoyer ton premier torrent[/url]\n` +
         `• [url=/wiki/guide-nommer-releases]Bien nommer et décrire une release : langues, qualité, NFO[/url]\n` +
         `• [url=/wiki/guide-fiches]Les fiches (TMDB, ThePornDB…) et les packs[/url]\n` +
+        `• [url=/wiki/guide-uploadeur]Le rang Uploadeur (envois approuvés d'office)[/url]\n` +
         `• [url=/wiki/guide-envoyer-plusieurs]Envoyer plusieurs torrents depuis ton client[/url] et [url=/wiki/guide-envoi-multiple-depannage]son dépannage[/url]\n\n` +
         `[b]Profiter du site[/b]\n` +
         `• [url=/wiki/guide-points-bonus]Points bonus[/url] · [url=/wiki/guide-pot-commun]Pot commun[/url] · [url=/wiki/guide-mise-o-jeu]Mise-O-jeu (paris sur le Canadien)[/url] · [url=/wiki/guide-machines-a-sous]Machines à sous[/url] · [url=/wiki/guide-plus-haut-plus-bas]Plus haut ou plus bas[/url] · [url=/wiki/guide-blackjack]Blackjack[/url] · [url=/wiki/guide-des]Dés[/url] · [url=/wiki/guide-cartes]Cartes à collectionner[/url] · [url=/wiki/guide-defis]Défis[/url] · [url=/wiki/guide-classements]Classements[/url] · [url=/wiki/guide-duels]Duels[/url] · [url=/wiki/guide-roue-de-la-fortune]Roue de la fortune[/url] · [url=/wiki/guide-quiz-quotidien]Quiz quotidien[/url] · [url=/wiki/guide-pronostics-lnh]Pronostics LNH[/url] · [url=/wiki/guide-hit-and-run-reparer]Réparer un hit & run[/url] · [url=/wiki/guide-reanimation]Faire revivre un torrent[/url] · [url=/wiki/guide-demandes]Demandes[/url]\n` +

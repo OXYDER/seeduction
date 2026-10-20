@@ -755,6 +755,29 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Un hit & run en cours bloque « Irréprochable » ; il revient dès que tu l'as régularisé ([url=/wiki/guide-hit-and-run-reparer]Réparer un hit & run[/url]).`,
     },
     {
+      title: 'Le rang Uploadeur : des envois approuvés d\'office',
+      slug: 'guide-uploadeur',
+      keywords: 'uploadeur, uploader, rang, modération, approuvé, automatique, promotion, confiance, envois réguliers, signalements',
+      isFaq: true,
+      content:
+        `Quand tes envois sont presque toujours approuvés du premier coup, le site te donne le rang [b]Uploadeur[/b] tout seul : ensuite, tes torrents sont [b]approuvés dès l'envoi[/b], sans attendre la modération.\n` +
+        `\n` +
+        `[b]Comment l'obtenir[/b]\n` +
+        `Chaque nuit, le site examine les membres qui ont déjà plusieurs torrents approuvés. Par défaut, il faut : un compte de 30 jours ou plus, au moins 15 torrents approuvés, au moins 10 approuvés [b]du premier coup[/b] (sans demande de correction ni refus) sur les 90 derniers jours et 90 % des torrents examinés approuvés du premier coup, aucun signalement ni correction récente et aucune sanction récente. Ces seuils sont réglables par l'administration (Admin > Torrents).\n` +
+        `Tu reçois une notification quand tu deviens Uploadeur, ton pseudo prend la couleur turquoise ([url=/wiki/rangs-et-classes]Rangs et classes[/url]).\n` +
+        `\n` +
+        `[b]Comment le garder[/b]\n` +
+        `• Envoie [b]régulièrement[/b] : au moins un torrent tous les 60 jours.\n` +
+        `• Évite les fautes : plus de 2 corrections demandées ou refus en 60 jours, ou plus de 3 signalements sur tes torrents, font retirer le rang.\n` +
+        `• Une sanction (avertissement ou bannissement) récente fait aussi retirer le rang.\n` +
+        `Si tu perds le rang, tu reçois une notification avec la raison ; tes prochains torrents repassent par la modération et tu peux le regagner en reprenant des envois réguliers et sans faute.\n` +
+        `\n` +
+        `[b]Bon à savoir[/b]\n` +
+        `• Un Uploadeur nommé à la main par l'équipe garde son rang tant que l'équipe ne le retire pas.\n` +
+        `• Un torrent approuvé d'office reste sous surveillance : les refus et les signalements comptent comme pour les autres.\n` +
+        `• Les règles d'envoi ([url=/wiki/guide-envoyer-premier-torrent]Envoyer un torrent[/url]) restent les mêmes : NFO ou MediaInfo obligatoire, bon nom, bonne catégorie.`,
+    },
+    {
       title: 'Parrainage : inviter et être récompensé',
       slug: 'guide-parrainage',
       keywords: 'parrainage, invitation, inviter, code, lien, prime, points, invité, recruteur, mentor, quota',

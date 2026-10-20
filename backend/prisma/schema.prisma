@@ -169,6 +169,8 @@ model User {
   donorInvites     Int        @default(0)
   /// Parrainage : moment où celui qui a invité ce membre a reçu sa prime (et son montant ; 0 = aucune prime : code générique, même IP...).
   referralRewardedAt DateTime?
+  /// Date de promotion automatique au rang « Uploadeur » (null : rang nommé à la main, jamais retiré automatiquement).
+  autoUploaderAt   DateTime?
   /// Compte supprimé : le pseudo, les statistiques et les actions restent (le pseudo est réservé pour toujours), mais courriel, mot de passe, passkey, adresses IP et données privées sont effacés.
   deletedAt        DateTime?
   referralReward   Int        @default(0)

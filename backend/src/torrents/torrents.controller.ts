@@ -6,6 +6,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { TorrentsService, type TorrentFilters } from './torrents.service';
 import { RecommendationsService } from './recommendations.service';
+import { TrustedUploadersService } from '../admin/trusted-uploaders.service';
 import { accountOf, assertPerm } from '../common/utils/account';
 import { normalizeOrigin } from '../common/utils/facets';
 import { FACETS } from '../common/utils/facet-schema';
@@ -26,7 +27,7 @@ const attrFiltersOf = (query: Record<string, string>) => {
 
 @Controller('torrents')
 export class TorrentsController {
-  constructor(private torrentsService: TorrentsService, private recommendations: RecommendationsService) {}
+  constructor(private torrentsService: TorrentsService, private recommendations: RecommendationsService, private trusted: TrustedUploadersService) {}
 
   /** Libellés et valeurs de tous les filtres de catégorie (fiche d'un torrent, édition). */
   @UseGuards(JwtAuthGuard)
@@ -226,7 +227,7 @@ export class TorrentsController {
   @UseGuards(JwtAuthGuard)
   @Post('upload')
   @UseInterceptors(FileInterceptor('torrentFile', { limits: { fileSize: 15 * 1024 * 1024, files: 1 } }))
-  upload(
+  async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: Record<string, string>,
     @Request() req: any,
@@ -237,7 +238,7 @@ export class TorrentsController {
     if (!body.nfo || body.nfo.replace(/\s+/g, ' ').trim().length < 20) {
       throw new BadRequestException('Le NFO ou le MediaInfo de la release est obligatoire : ajoute le fichier .nfo ou colle le texte du MediaInfo.');
     }
-    return this.torrentsService.upload({
+    const created = await this.torrentsService.upload({
       userId: accountOf(req),
       fileBuffer: file.buffer,
       name: body.name,
@@ -266,6 +267,9 @@ export class TorrentsController {
       nfo: body.nfo && body.nfo.trim() ? body.nfo.slice(0, 200_000) : undefined,
       attrs: (() => { try { return body.attrs ? JSON.parse(body.attrs) : undefined; } catch { return undefined; } })(),
     });
+    // Un Uploadeur (rang gagné par des envois réguliers et sans faute) n'a plus à passer par la modération.
+    if (await this.trusted.autoApproveIfTrusted(accountOf(req), created.id)) return { ...created, status: 'APPROVED' as const, autoApproved: true };
+    return created;
   }
 
   @UseGuards(JwtAuthGuard)

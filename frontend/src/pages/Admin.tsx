@@ -17,6 +17,7 @@ import { SupportAdmin } from '../components/AdminSupport';
 import { LockdownAdmin } from '../components/AdminLockdown';
 import { AdminStaff2fa } from '../components/AdminStaff2fa';
 import { AdminReferral } from '../components/AdminReferral';
+import { AdminUploaders } from '../components/AdminUploaders';
 import AdminTournament from '../components/AdminTournament';
 import { ImportAdmin } from '../components/AdminImport';
 import PotAdmin from '../components/AdminPot';
@@ -67,7 +68,7 @@ export default function Admin() {
       {tab === 'Nouvelles' && <NewsAdmin />}
       {tab === 'Freeleech' && <FreeleechAdmin />}
       {tab === 'Catégories torrents' && <TorrentCategoriesAdmin />}
-      {tab === 'Torrents' && <TorrentsAdmin />}
+      {tab === 'Torrents' && <><TorrentsAdmin /><AdminUploaders /></>}
       {tab === 'Forum' && <ForumAdmin />}
       {tab === 'Templates' && <TemplatesAdmin />}
       {tab === 'Wiki' && <WikiAdmin />}

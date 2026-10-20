@@ -4,9 +4,10 @@ import { TorrentsService } from './torrents.service';
 import { RecommendationsService } from './recommendations.service';
 import { MetadataModule } from '../metadata/metadata.module';
 import { TeamsModule } from '../teams/teams.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
-  imports: [MetadataModule, TeamsModule],
+  imports: [MetadataModule, TeamsModule, AdminModule],
   controllers: [TorrentsController],
   providers: [TorrentsService, RecommendationsService],
   exports: [TorrentsService],

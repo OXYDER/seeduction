@@ -330,6 +330,7 @@ export class AdminService {
       // On ne peut attribuer qu'un rôle strictement inférieur au sien (le propriétaire peut tout attribuer).
       if (actor.role !== 'OWNER' && ROLE_RANK[body.role] >= ROLE_RANK[actor.role]) throw new ForbiddenException('Tu ne peux pas attribuer un rôle égal ou supérieur au tien');
       data.role = body.role;
+      if (body.role !== target.role) data.autoUploaderAt = null; // un rôle changé à la main n'est plus « automatique »
     }
     if (typeof body.username === 'string' && body.username.trim() && body.username.trim() !== target.username) {
       const username = body.username.trim();
