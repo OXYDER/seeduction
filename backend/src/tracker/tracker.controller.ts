@@ -52,10 +52,9 @@ export class TrackerController {
         userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
       });
 
-      // Format compact IPv4 (6 octets par peer) : les peers IPv6 sont ignorés au lieu de faire échouer l'announce.
-      const ipv4Peers = result.peers
-        .map((p) => ({ ...p, ip: p.ip.replace(/^::ffff:/i, '') }))
-        .filter((p) => /^(\d{1,3}\.){3}\d{1,3}$/.test(p.ip) && p.port > 0 && p.port < 65536);
+      // Format compact : IPv4 (6 octets par pair) dans « peers », IPv6 (18 octets) dans « peers6 » : un seeder joignable en IPv6 n'est plus perdu.
+      const cleaned = result.peers.map((p) => ({ ...p, ip: p.ip.replace(/^::ffff:/i, '') })).filter((p) => p.port > 0 && p.port < 65536);
+      const ipv4Peers = cleaned.filter((p) => /^(\d{1,3}\.){3}\d{1,3}$/.test(p.ip));
       const peersCompact = Buffer.concat(
         ipv4Peers.map((p) => {
           const parts = p.ip.split('.').map(Number);
@@ -64,6 +63,9 @@ export class TrackerController {
           buf.writeUInt16BE(p.port, 4);
           return buf;
         }),
+      );
+      const peers6Compact = Buffer.concat(
+        cleaned.filter((p) => !ipv4Peers.includes(p)).map((p) => ipv6ToBuffer(p.ip, p.port)).filter((b): b is Buffer => !!b),
       );
 
       res.set('Content-Type', 'text/plain');
@@ -74,6 +76,7 @@ export class TrackerController {
           complete: result.complete,
           incomplete: result.incomplete,
           peers: peersCompact,
+          ...(peers6Compact.length ? { peers6: peers6Compact } : {}),
         }),
       );
     } catch (err: any) {
@@ -103,4 +106,20 @@ export class TrackerController {
     res.set('Content-Type', 'text/plain');
     res.send(bencode({ files }));
   }
+}
+
+/** Adresse IPv6 + port au format compact (16 octets + 2 octets) ; null si l'adresse est illisible. */
+export function ipv6ToBuffer(ip: string, port: number): Buffer | null {
+  const clean = ip.split('%')[0];
+  if (!/^[0-9a-f:.]+$/i.test(clean) || !clean.includes(':')) return null;
+  const [head, tail = ''] = clean.split('::');
+  const h = head ? head.split(':') : [];
+  const t2 = clean.includes('::') && tail ? tail.split(':') : [];
+  if (!clean.includes('::') && h.length !== 8) return null;
+  const groups = clean.includes('::') ? [...h, ...Array(8 - h.length - t2.length).fill('0'), ...t2] : h;
+  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/i.test(g))) return null;
+  const buf = Buffer.alloc(18);
+  groups.forEach((g, i) => buf.writeUInt16BE(parseInt(g, 16), i * 2));
+  buf.writeUInt16BE(port, 16);
+  return buf;
 }

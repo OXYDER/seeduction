@@ -1,7 +1,10 @@
 package org.seeduction.player
 
 import org.libtorrent4j.Priority
+import org.libtorrent4j.AlertListener
 import org.libtorrent4j.SessionManager
+import org.libtorrent4j.alerts.Alert
+import org.libtorrent4j.alerts.AlertType
 import org.libtorrent4j.SessionParams
 import org.libtorrent4j.SettingsPack
 import org.libtorrent4j.TorrentFlags
@@ -50,11 +53,32 @@ class SessionStats(
 /** Le client BitTorrent (libtorrent) : ajoute un torrent, télécharge dans l'ordre et en priorité la zone qu'on lit, dit quels morceaux sont arrivés. */
 class TorrentEngine(private val saveDir: File) {
     val sm = SessionManager()
+    private val events = java.util.ArrayDeque<String>()
+
+    /** Les derniers événements utiles au diagnostic (réponses et erreurs du tracker, connexions de pairs), les plus récents en dernier. */
+    fun recentEvents(n: Int): List<String> = synchronized(events) { events.toList().takeLast(n) }
+
+    private fun note(line: String) {
+        synchronized(events) { events.addLast(line); while (events.size > 40) events.removeFirst() }
+        Journal.log(line)
+    }
 
     fun start() {
         val sp = SettingsPack()
         sp.setString(settings_pack.string_types.user_agent.swigValue(), "Seeduction-Android/" + Config.APP_VERSION)
         sp.connectionsLimit(150)
+        // Alertes utiles : erreurs, tracker, connexions, état (pour expliquer à l'écran pourquoi aucun pair n'arrive).
+        sp.setInteger(settings_pack.int_types.alert_mask.swigValue(), 1 or 16 or 32 or 64)
+        sm.addListener(object : AlertListener {
+            override fun types(): IntArray? = null
+            override fun alert(alert: Alert<*>) {
+                when (alert.type()) {
+                    AlertType.TRACKER_REPLY, AlertType.TRACKER_ERROR, AlertType.TRACKER_WARNING, AlertType.TORRENT_ERROR,
+                    AlertType.LISTEN_SUCCEEDED, AlertType.LISTEN_FAILED, AlertType.PEER_ERROR -> note(alert.message())
+                    else -> {}
+                }
+            }
+        })
         sm.start(SessionParams(sp))
         saveDir.mkdirs()
         Journal.log("libtorrent démarré, dossier : " + saveDir.absolutePath)

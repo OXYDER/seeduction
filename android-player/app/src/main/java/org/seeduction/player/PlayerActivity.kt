@@ -211,7 +211,8 @@ class PlayerActivity : AppCompatActivity() {
             setLoading(
                 if (peers == 0 && waited > 8) "Recherche de pairs…" else "Mise en mémoire tampon… $percent %",
                 (if (peers > 0) "$peers pair(s) · ↓ ${formatSpeed(st?.downRate ?: 0)}" else "Connexion au swarm") +
-                    (if (waited > 60 && peers == 0) "\nAucun pair pour l'instant : le torrent n'a peut-être plus de seeder." else ""),
+                    (if (peers == 0 && waited > 15) "\n" + svc.engine.recentEvents(3).joinToString("\n") { it.take(160) } else "") +
+                    (if (waited > 60 && peers == 0) "\nAucun pair pour l'instant. S'il y a des seeders sur le site, ils sont peut-être injoignables depuis ce réseau (essaie en Wi-Fi). Touche « Partager le journal » dans l'application pour me l'envoyer." else ""),
             )
             delay(500)
         }

@@ -54,6 +54,14 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE))) }
         })
 
+        root.addView(Button(this).apply {
+            text = "Partager le journal de diagnostic"
+            setOnClickListener {
+                val log = try { java.io.File(filesDir, "lecteur.log").readText().takeLast(20000) } catch (_: Exception) { "(journal vide)" }
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, "Journal du lecteur Seeduction").putExtra(Intent.EXTRA_TEXT, log), "Envoyer le journal"))
+            }
+        })
+
         root.addView(Switch(this).apply {
             text = "Partager seulement en Wi-Fi"
             setTextColor(Color.parseColor("#E8ECF8"))
