@@ -4304,3 +4304,18 @@ button.link:hover { filter: none; transform: none; text-decoration-style: solid;
 .user-link.rank-VETERAN { color: #fb923c; font-weight: 600; }
 .user-link.rank-ELITE { color: #60a5fa; font-weight: 600; }
 .user-link.rank-POWER_USER { color: #a5b4fc; }
+
+/* Infobulles riches des statistiques du haut (ratio, upload, marge de téléchargement...) */
+.stat-tip-anchor { display: inline-flex; }
+.stat-tip { position: fixed; z-index: 1500; background: #0d1224; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 10px; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55); padding: 12px 14px; color: #e8ecf8; }
+.stat-tip-card { display: grid; gap: 8px; font-size: 13px; line-height: 1.5; }
+.stat-tip-title { font-weight: 800; font-size: 14.5px; }
+.stat-tip-intro { color: #aab1c8; }
+.stat-tip-rows { display: grid; gap: 4px; border-top: 1px solid rgba(255, 255, 255, 0.1); border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 8px 0; }
+.stat-tip-row { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; }
+.stat-tip-label { color: #aab1c8; }
+.stat-tip-value { font-weight: 800; text-align: right; display: grid; justify-items: end; }
+.stat-tip-value small { font-weight: 400; color: #8f97b3; font-size: 11.5px; max-width: 190px; }
+.stat-tip-value.up { color: #4ade80; } .stat-tip-value.down { color: #ff7b8a; } .stat-tip-value.gold { color: #fbd45f; }
+.stat-tip-note { color: #aab1c8; font-size: 12.5px; }
+.stat-tip-link { color: #4ade80; font-weight: 700; font-size: 13px; }

@@ -6,6 +6,7 @@ import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-d
 import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
 import { formatBytes, formatNumber } from '../lib/format';
+import HeaderStats, { type EconInfo } from './HeaderStats';
 import NotificationsBell from './NotificationsBell';
 import TelegramHeaderLink from './TelegramHeaderLink';
 import InstallPrompt from './InstallPrompt';
@@ -195,7 +196,7 @@ function LayoutInner() {
   const [friendIds, setFriendIds] = useState<string[]>([]);
   const onlineMap = useMessenger((s) => s.online);
   const friendsOnline = friendIds.filter((id) => (onlineMap[id] ?? 'OFFLINE') !== 'OFFLINE').length;
-  const [econ, setEcon] = useState<{ seeding: number; hnr: number } | null>(null);
+  const [econ, setEcon] = useState<EconInfo | null>(null);
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => { api.get('/roadmap/version').then((r) => setVersion(r.data.version)).catch(() => {}); }, []);
   const dmConnect = useDmStore((s) => s.connect);
@@ -267,7 +268,10 @@ function LayoutInner() {
   // Hit & run, torrents en seed : pastilles du haut, rafraîchies à chaque page puis toutes les 2 minutes.
   useEffect(() => {
     if (!accessToken) return;
-    const load = () => api.get('/bonus/me').then((r) => setEcon({ seeding: r.data.seedingCount ?? 0, hnr: r.data.unresolved?.length ?? 0 })).catch(() => {});
+    const load = () => api.get('/bonus/me').then((r) => setEcon({
+      seeding: r.data.seedingCount ?? 0, hnr: r.data.unresolved?.length ?? 0, perHour: r.data.perHour ?? 0, minRatio: r.data.minRatio ?? 0.5, graceGb: r.data.rules?.ratioGraceGb ?? 5,
+      giftGb: r.data.rules?.welcomeUploadGb ?? 0, hnrSeedHours: r.data.rules?.hnrSeedHours ?? 72, hnrRatio: r.data.rules?.hnrRatio ?? 1, hnrLimit: r.data.rules?.hnrLimit ?? 5, maxTorrents: r.data.rules?.bonusMaxTorrents ?? 200,
+    })).catch(() => {});
     load();
     const t = setInterval(() => { if (!document.hidden) load(); }, 120_000);
     return () => clearInterval(t);
@@ -520,15 +524,7 @@ function LayoutInner() {
               />
             </form>
             {profile && (
-              <div className="stat-pills">
-                <Link to="/profile" className={`pill ratio ${profile.ratio != null && profile.ratio < 1 ? 'down' : 'up'}`} title="Ratio : upload ÷ téléchargé">⚖ Ratio {profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</Link>
-                <span className="pill up" title="Upload">▲ {formatBytes(profile.uploaded)}</span>
-                <span className="pill down" title="Téléchargé">▼ {formatBytes(profile.downloaded)}</span>
-                <Link to="/bonus" className="pill gold" title="Points bonus : boutique et règle du seed">✦ {formatNumber(Math.round(profile.bonusPoints))}</Link>
-                <span className={`pill ${Number(profile.uploaded) >= Number(profile.downloaded) ? 'up' : 'down'}`} title="Différentiel : upload moins téléchargé (ta marge avant de passer sous un ratio de 1)">Δ {Number(profile.uploaded) >= Number(profile.downloaded) ? '+' : '−'}{formatBytes(Math.abs(Number(profile.uploaded) - Number(profile.downloaded)))}</span>
-                {econ && <Link to="/activity" className="pill up" title="Mon activité : ce que tu seedes et télécharges">🌱 {econ.seeding}</Link>}
-                {econ && <Link to="/hit-and-run" className={`pill ${econ.hnr > 0 ? 'down' : ''}`} title={econ.hnr > 0 ? `${econ.hnr} hit & run non régularisé${econ.hnr > 1 ? 's' : ''}` : 'Aucun hit & run : parfait !'}>H&amp;R {econ.hnr}</Link>}
-              </div>
+              <HeaderStats profile={profile} econ={econ} />
             )}
             <div className="row" style={{ gap: 8 }}>
               <NewYearCountdown />

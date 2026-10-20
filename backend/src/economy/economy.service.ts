@@ -6,6 +6,7 @@ import { moveDonated, spendDonatedFirst } from '../common/utils/points';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SettingsService } from '../settings/settings.service';
 import { TrackerService } from '../tracker/tracker.service';
+import { downloadMarginBytes } from '../common/utils/download-margin';
 import { ECONOMY, SHOP_ITEMS } from '../common/utils/economy';
 import { setSource } from '../common/utils/ledger';
 
@@ -126,7 +127,7 @@ export class EconomyService {
 
   async overview(userId: string) {
     const [user, seeding, hnrList, freeleechUntil] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: userId }, select: { bonusPoints: true, freeleechTokens: true, uploaded: true, downloaded: true } }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { bonusPoints: true, freeleechTokens: true, uploaded: true, downloaded: true, minRatio: true } }),
       this.prisma.$queryRaw<{ n: bigint }[]>`
         SELECT COUNT(DISTINCT "torrentId") AS n FROM "Peer" WHERE "userId" = ${userId} AND "isSeeder" = true AND "lastAnnounceAt" > now() - interval '45 minutes'`,
       this.prisma.snatch.findMany({ where: { userId, hnr: true, satisfied: false }, orderBy: { completedAt: 'desc' }, take: 50 }),
@@ -144,7 +145,10 @@ export class EconomyService {
       seedingCount,
       perHour: Math.min(seedingCount, ECONOMY.bonusMaxTorrents) * ECONOMY.bonusPerTorrentHour,
       freeleechUntil,
-      rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours, hnrLimit: ECONOMY.hnrLimit, ratioGraceGb: ECONOMY.ratioGraceGb },
+      rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours, hnrLimit: ECONOMY.hnrLimit, ratioGraceGb: ECONOMY.ratioGraceGb, welcomeUploadGb: ECONOMY.welcomeUploadGb, bonusMaxTorrents: ECONOMY.bonusMaxTorrents },
+      // Ratio minimum du membre (celui du site, 0,5 par défaut) et marge de téléchargement qui en découle : c'est lui, et non un ratio de 1, que le tracker applique.
+      minRatio: user.minRatio,
+      downloadMarginBytes: downloadMarginBytes(Number(user.uploaded), Number(user.downloaded), user.minRatio, ECONOMY.ratioGraceGb * 1e9),
       unresolved: hnrList.map((h) => ({
         id: h.id, torrentId: h.torrentId, name: names.get(h.torrentId) ?? '(torrent supprimé)',
         seedHours: Math.floor(h.seedSeconds / 3600), completedAt: h.completedAt,
