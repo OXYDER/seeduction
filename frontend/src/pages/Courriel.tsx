@@ -11,7 +11,7 @@ import '../mail.css';
 
 type Mailbox = MailBoxInfo;
 interface Folder { path: string; name: string; special: string | null; unread: number }
-interface Item { uid: number; subject: string; from: { name: string; address: string }; to: { name: string; address: string }[]; date: string | null; seen: boolean; flagged: boolean; answered: boolean; size: number; attachments: boolean }
+interface Item { uid: number; subject: string; from: { name: string; address: string }; to: { name: string; address: string }[]; date: string | null; seen: boolean; flagged: boolean; answered: boolean; size: number; attachments: boolean; attachmentMatch?: { filename: string; via: 'nom' | 'contenu' } }
 interface Msg {
   uid: number; folder: string; subject: string; date: string | null; from: { name: string; address: string } | null; to: { name: string; address: string }[]; cc: { name: string; address: string }[]; via: string | null;
   html: string; remoteImages: number; text: string; attachments: { index: number; filename: string; contentType: string; size: number }[]; flagged: boolean;
@@ -62,7 +62,8 @@ export default function Courriel() {
   const [typed, setTyped] = useState('');
   const [alias, setAlias] = useState('');
   const [unseen, setUnseen] = useState(false);
-  const [list, setList] = useState<{ items: Item[]; total: number; pageSize: number } | null>(null);
+  const [deep, setDeep] = useState(false); // chercher aussi dans le contenu des pièces jointes texte
+  const [list, setList] = useState<{ items: Item[]; total: number; pageSize: number; contacts?: { name: string; address: string; n: number }[] } | null>(null);
   const [uid, setUid] = useState<number | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
   const [sel, setSel] = useState<number[]>([]);
@@ -100,8 +101,8 @@ export default function Courriel() {
   const loadList = useCallback(() => {
     if (!boxId) return;
     setError('');
-    api.get(`${base}/messages`, { params: { folder, page, q: query || undefined, alias: alias || undefined, unseen: unseen ? '1' : undefined } }).then((r) => setList(r.data)).catch((e) => { setList({ items: [], total: 0, pageSize: 30 }); setError(errorOf(e)); });
-  }, [boxId, base, folder, page, query, alias, unseen]);
+    api.get(`${base}/messages`, { params: { folder, page, q: query || undefined, alias: alias || undefined, unseen: unseen ? '1' : undefined, pj: query && deep ? 'contenu' : undefined } }).then((r) => setList(r.data)).catch((e) => { setList({ items: [], total: 0, pageSize: 30 }); setError(errorOf(e)); });
+  }, [boxId, base, folder, page, query, alias, unseen, deep]);
   useEffect(() => { setList(null); setSel([]); loadList(); }, [loadList]);
   useEffect(() => { const t = setInterval(() => { if (!document.hidden && !compose) { loadList(); loadFolders(); } }, 90_000); return () => clearInterval(t); }, [loadList, loadFolders, compose]);
   useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(''), 5000); return () => clearTimeout(t); }, [note]);
@@ -307,9 +308,10 @@ export default function Courriel() {
       <section className="mail-list">
         <form className="mail-search" onSubmit={(e) => { e.preventDefault(); setQuery(typed.trim()); setPage(1); }}>
           <input type="checkbox" checked={allChecked} onChange={(e) => setSel(e.target.checked ? items.map((i) => i.uid) : [])} aria-label="Tout sélectionner" title="Tout sélectionner" style={{ flex: 'none' }} />
-          <input ref={searchRef} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Rechercher (sujet, expéditeur, texte)…  /" />
+          <input ref={searchRef} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Rechercher (sujet, contact, texte, pièces jointes)…  /" />
           <button type="submit" className="secondary">🔎</button>
           <label title="Regrouper les courriels d'une même conversation"><input type="checkbox" checked={grouped} onChange={(e) => { setGrouped(e.target.checked); try { localStorage.setItem('mail-grouped', e.target.checked ? 'on' : 'off'); } catch { /* navigation privée */ } }} /> 💬</label>
+          <label title="Cherche aussi dans le contenu des pièces jointes en texte (.txt, .csv, .log, .json…). Le contenu des PDF et des documents Office n'est pas lu. Plus lent."><input type="checkbox" checked={deep} onChange={(e) => { setDeep(e.target.checked); setPage(1); }} /> 📎 contenu</label>
           <label title="Seulement les non lus"><input type="checkbox" checked={unseen} onChange={(e) => { setUnseen(e.target.checked); setPage(1); }} /> non lus</label>
         </form>
         {sel.length > 0 && (
@@ -326,6 +328,12 @@ export default function Courriel() {
           </div>
         )}
         {error && <p style={{ color: 'var(--danger)', margin: '6px 8px' }}>{error}</p>}
+        {query && list?.contacts && list.contacts.length > 0 && (
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', padding: '6px 8px', fontSize: 12.5 }} aria-label="Contacts correspondants">
+            <span className="muted">👤 Contacts :</span>
+            {list.contacts.map((c) => <button key={c.address} type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} title={'Voir tous les courriels avec ' + c.address} onClick={() => { setTyped(c.address); setQuery(c.address); setPage(1); }}>{c.name ? c.name + ' · ' : ''}{c.address}</button>)}
+          </div>
+        )}
         {!list ? <Loading /> : list.items.length === 0 ? <p className="muted" style={{ padding: 12 }}>{query || alias || unseen ? 'Aucun résultat.' : 'Ce dossier est vide.'}</p> : (
           <ul ref={listRef}>
             {groups.map(({ head: it, all }) => {
@@ -337,7 +345,7 @@ export default function Courriel() {
                   <input type="checkbox" className="mail-chk" checked={checked} onClick={(e) => e.stopPropagation()} onChange={(e) => setSel(e.target.checked ? [...new Set([...sel, ...uids])] : sel.filter((u) => !uids.includes(u)))} aria-label="Sélectionner" />
                   <div className="mail-main">
                     <div className="mail-row1"><span className="mail-from">{special === '\\Drafts' ? <em>Brouillon</em> : isSent ? `À ${who(it.to[0])}` : who(it.from)}{all.length > 1 && <span className="mail-n" title={`${all.length} courriels dans cette conversation`}>{all.length}</span>}</span><span className="mail-date">{shortDate(it.date)}</span></div>
-                    <div className="mail-row2"><span className="mail-subject">{all.some((x) => x.flagged) ? '⭐ ' : ''}{it.answered ? '↩ ' : ''}{it.subject || '(sans sujet)'}</span>{all.some((x) => x.attachments) && <span title="Pièce jointe">📎</span>}</div>
+                    <div className="mail-row2"><span className="mail-subject">{all.some((x) => x.flagged) ? '⭐ ' : ''}{it.answered ? '↩ ' : ''}{it.subject || '(sans sujet)'}</span>{all.some((x) => x.attachments) && <span title="Pièce jointe">📎</span>}{it.attachmentMatch && <span className="muted" style={{ fontSize: 11.5, marginLeft: 6 }} title={it.attachmentMatch.via === 'nom' ? 'La recherche correspond au nom de cette pièce jointe' : 'La recherche correspond au contenu de cette pièce jointe'}>📎 {it.attachmentMatch.filename}{it.attachmentMatch.via === 'contenu' ? ' (contenu)' : ''}</span>}</div>
                   </div>
                 </li>
               );

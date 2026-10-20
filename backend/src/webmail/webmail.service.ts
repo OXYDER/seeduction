@@ -7,6 +7,7 @@ import { AuditService } from '../audit/audit.service';
 import { assertPublicHost } from '../importer/net-guard';
 import { openText, sealText } from '../common/utils/seal';
 import { extractInlineImages, headerSafe, htmlToText, parseAddress, normalizeSubject, parseAddressList, prefixSubject, sanitizeMailHtml, sanitizeOutgoingHtml, textToHtml } from '../common/utils/mail-html';
+import { AttachmentInfo, attachmentsMatching, attachmentsOf, decodeText, fold, isSearchableText, matchesAll, termsOf } from '../common/utils/mail-search';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const MailComposer = require('nodemailer/lib/mail-composer');
@@ -25,6 +26,8 @@ const PURPOSE = 'webmail';
 export const STAFF_ROLES = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const isStaff = (role: string) => STAFF_ROLES.includes(role);
 const PAGE = 30;
+/** Nombre de messages récents dont on examine les pièces jointes à chaque recherche. */
+const ATTACHMENT_SCAN = 400;
 const MAX_SOURCE = 30 * 1024 * 1024;
 const MAX_SEND_BYTES = 20 * 1024 * 1024;
 const SEND_PER_HOUR = 40;
@@ -240,13 +243,65 @@ export class WebmailService {
     return (node.childNodes ?? []).some((n: any) => this.hasAttachment(n));
   }
 
-  async messages(viewer: Viewer, id: string, opts: { folder?: string; page?: number; q?: string; alias?: string; unseen?: boolean }) {
+  private attCache = new Map<string, string>();
+
+  /** Lit une pièce jointe texte (200 Ko au plus), en minuscules sans accents ; vide si elle ne peut pas être lue. */
+  private async readPart(c: ImapFlow, uid: number, part: string): Promise<string> {
+    try {
+      const dl: any = await c.download(String(uid), part, { uid: true, maxBytes: 200_000 } as any);
+      const chunks: Buffer[] = [];
+      for await (const ch of dl.content) chunks.push(Buffer.from(ch));
+      return fold(decodeText(Buffer.concat(chunks))).slice(0, 200_000);
+    } catch { return ''; }
+  }
+
+  /**
+   * Messages dont une pièce jointe correspond à la recherche : par son NOM (structure des 400 derniers messages du dossier, rien n'est téléchargé) et, si `deep`, par son CONTENU quand c'est du texte
+   * (.txt, .csv, .log, .json... 25 lectures au plus par recherche, résultats gardés en mémoire). Le contenu des PDF et des documents Office n'est pas lu.
+   */
+  private async searchAttachments(c: ImapFlow, boxId: string, folder: string, q: string, deep: boolean) {
+    const hits = new Map<number, { filename: string; via: 'nom' | 'contenu' }>();
+    const terms = termsOf(q);
+    const total = (c.mailbox as any).exists ?? 0;
+    if (terms.length === 0 || total === 0) return hits;
+    const withText: { uid: number; att: AttachmentInfo }[] = [];
+    for await (const m of c.fetch(`${Math.max(1, total - ATTACHMENT_SCAN + 1)}:${total}`, { uid: true, bodyStructure: true } as any)) {
+      const list = attachmentsOf(m.bodyStructure);
+      const byName = attachmentsMatching(list, terms)[0];
+      if (byName) hits.set(m.uid, { filename: byName.filename, via: 'nom' });
+      else if (deep) for (const a of list) if (isSearchableText(a)) withText.push({ uid: m.uid, att: a });
+    }
+    if (deep) {
+      const started = Date.now();
+      let reads = 0;
+      for (const { uid, att } of withText.sort((a, b) => b.uid - a.uid).slice(0, 60)) {
+        if (hits.has(uid)) continue;
+        if (Date.now() - started > 8000 || reads >= 25) break;
+        const key = `${boxId}|${folder}|${uid}|${att.part}`;
+        let text = this.attCache.get(key);
+        if (text === undefined) {
+          text = await this.readPart(c, uid, att.part);
+          reads++;
+          this.attCache.set(key, text);
+          if (this.attCache.size > 400) this.attCache.delete(this.attCache.keys().next().value as string);
+        }
+        if (matchesAll(text, terms)) hits.set(uid, { filename: att.filename, via: 'contenu' });
+      }
+    }
+    return hits;
+  }
+
+  async messages(viewer: Viewer, id: string, opts: { folder?: string; page?: number; q?: string; alias?: string; unseen?: boolean; deep?: boolean }) {
     const row = await this.row(viewer, id);
     const folder = String(opts.folder || 'INBOX');
     const page = Math.max(1, Math.floor(opts.page ?? 1));
     const q = String(opts.q ?? '').trim().slice(0, 100);
     const alias = parseAddress(String(opts.alias ?? ''))?.address;
-    return this.imap(row, async (c) => {
+    const attachHits = new Map<number, { filename: string; via: 'nom' | 'contenu' }>();
+    // Les contacts dont le NOM correspond : beaucoup de serveurs ne cherchent que l'adresse dans « De » et « À », alors on cherche aussi leurs adresses.
+    const contactHits = q ? (await this.contacts(viewer, id, q).catch(() => [])).slice(0, 5) : [];
+    const contactQueries = contactHits.flatMap((c) => [{ from: c.address }, { to: c.address }]);
+    const result = await this.imap(row, async (c) => {
       const lock = await c.getMailboxLock(folder, { readOnly: true });
       try {
         const want = { uid: true, envelope: true, flags: true, size: true, bodyStructure: true, internalDate: true } as any;
@@ -260,11 +315,14 @@ export class WebmailService {
           if (q) {
             // certains serveurs refusent une recherche trop large : on essaie du plus complet au plus simple (sujet seulement)
             let found: number[] | null = null;
-            for (const query of [{ or: [{ subject: q }, { from: q }, { to: q }, { body: q }] }, { or: [{ subject: q }, { from: q }] }, { subject: q }] as any[]) {
+            for (const query of [{ or: [{ subject: q }, { from: q }, { to: q }, { body: q }, ...contactQueries] }, { or: [{ subject: q }, { from: q }, ...contactQueries.filter((x: any) => x.from)] }, { subject: q }] as any[]) {
               const r = await c.search(query, { uid: true }).catch(() => false);
               if (r !== false) { found = r as number[]; break; }
             }
-            intersect(found ?? []);
+            // + les pièces jointes : par leur nom, et (option) par leur contenu quand c'est du texte
+            const extra = await this.searchAttachments(c, row.id, folder, q, !!opts.deep).catch(() => new Map<number, { filename: string; via: 'nom' | 'contenu' }>());
+            for (const [uid, hit] of extra) attachHits.set(uid, hit);
+            intersect([...new Set([...(found ?? []), ...extra.keys()])]);
           }
           const all = [...(uids ?? [])].sort((a, b) => b - a);
           total = all.length;
@@ -285,12 +343,16 @@ export class WebmailService {
           items.push({
             uid: m.uid, subject: String(env.subject ?? '(sans sujet)'), from: addr(env.from?.[0]), to: (env.to ?? []).slice(0, 5).map(addr), date: (env.date ?? m.internalDate ?? null),
             seen: m.flags?.has('\\Seen') ?? false, flagged: m.flags?.has('\\Flagged') ?? false, answered: m.flags?.has('\\Answered') ?? false, size: m.size ?? 0, attachments: this.hasAttachment(m.bodyStructure),
+            ...(attachHits.has(m.uid) ? { attachmentMatch: attachHits.get(m.uid) } : {}),
           });
         }
         items.sort((a, b) => b.uid - a.uid);
         return { folder, page, pageSize: PAGE, total, items };
       } finally { lock.release(); }
     });
+    // Les contacts qui correspondent à la recherche (nom ou adresse), pour passer d'un clic à tout ce qu'on a échangé avec eux.
+    if (q && page === 1) (result as any).contacts = contactHits;
+    return result;
   }
 
   private async load(c: ImapFlow, folder: string, uid: number, write = false) {

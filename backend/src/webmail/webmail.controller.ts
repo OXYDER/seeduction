@@ -28,7 +28,7 @@ export class WebmailController {
 
   @Get('mailboxes/:id/messages')
   messages(@Param('id') id: string, @Query() q: any, @Request() req: any) {
-    return this.mail.messages(viewerOf(req), id, { folder: q.folder, page: num(q.page) || 1, q: q.q, alias: q.alias, unseen: q.unseen === '1' });
+    return this.mail.messages(viewerOf(req), id, { folder: q.folder, page: num(q.page) || 1, q: q.q, alias: q.alias, unseen: q.unseen === '1', deep: q.pj === 'contenu' });
   }
 
   @Get('mailboxes/:id/message')
