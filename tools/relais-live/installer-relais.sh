@@ -520,7 +520,8 @@ HTML
 
 # 4. Le service de démarrage à la demande.
 ecrire_service_demande
-[ -f "$UNITE" ] || ecrire_unite
+# Toujours réécrite : une unité posée par une ancienne version du script garderait sa vieille commande ffmpeg (ex. sans $CODEC, donc sans conversion).
+ecrire_unite
 
 # 5. Nginx : la liste de lecture (index.m3u8) passe par le service de démarrage à la demande ; les petits morceaux vidéo sont servis directement, sans cache.
 cat > "$CONF_NGINX" <<'NGINX'
