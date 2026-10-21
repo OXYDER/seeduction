@@ -24,6 +24,15 @@ maintenance() {
 }
 NOTICE=0
 if maintenance start; then NOTICE=1; echo "→ Message de maintenance affiché sur le site."; fi
+# Si le déploiement échoue en route (ex. build Docker raté), l'ancien backend tourne encore : on retire quand même le message plutôt que
+# de le laisser affiché 20 minutes pour rien.
+fin_en_erreur() {
+  local code=$?
+  if [ "$code" != "0" ] && [ "$NOTICE" = "1" ]; then
+    maintenance end && echo "→ Déploiement échoué : message de maintenance retiré (le site reste sur la version précédente)."
+  fi
+}
+trap fin_en_erreur EXIT
 
 # Filet de sécurité : instantané chiffré de la base juste avant la mise à jour (les 5 derniers sont gardés dans backups/full/). Ne bloque jamais le déploiement :
 # sans effet, sans erreur, si le backend ne tourne pas encore ou n'a pas encore cette fonction.
@@ -54,7 +63,7 @@ docker compose up -d --build
 if [ "$NOTICE" = "1" ]; then
   echo "→ Attente du nouveau backend pour retirer le message de maintenance..."
   for _ in $(seq 1 60); do
-    if maintenance end; then echo "✓ Message de maintenance retiré."; break; fi
+    if maintenance end; then echo "✓ Message de maintenance retiré."; NOTICE=0; break; fi
     sleep 3
   done
 fi
