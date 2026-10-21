@@ -473,6 +473,14 @@ PAQUETS="ffmpeg nginx python3 curl openssl"
 if [ "${DNS_CF,,}" = "o" ]; then PAQUETS="$PAQUETS python3-certbot-dns-cloudflare"; fi
 apt-get install -y $PAQUETS
 
+# La conversion à la volée (Admin > Direct > Compatibilité navigateur) demande ces deux encodeurs de ffmpeg : on vérifie qu'ils sont là.
+ENCODEURS="$(ffmpeg -hide_banner -encoders 2>/dev/null || true)"
+if echo "$ENCODEURS" | grep -q libx264 && echo "$ENCODEURS" | grep -qE ' aac '; then
+  echo "ffmpeg : conversion H.264 + AAC disponible ($(nproc) cœur(s) de processeur sur ce serveur)."
+else
+  echo "!! Ce ffmpeg ne contient pas tous les encodeurs nécessaires à la conversion (libx264 ou aac) : la copie directe fonctionnera, pas la conversion."
+fi
+
 # Certificat par le DNS de Cloudflare (aucun port à ouvrir) : le jeton ne sert qu'à modifier les enregistrements DNS de ta zone.
 if [ "${DNS_CF,,}" = "o" ]; then
   echo ""
