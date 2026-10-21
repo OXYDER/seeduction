@@ -38,12 +38,13 @@ url_valide() {
 }
 
 domaine() { cat "$CONF_DIR/domaine" 2>/dev/null || true; }
-protocole() { if [ -d "/etc/letsencrypt/live/$(domaine)" ]; then echo https; else echo http; fi; }
+protocole() { if [ -f "$CONF_DIR/proxy" ] || [ -d "/etc/letsencrypt/live/$(domaine)" ]; then echo https; else echo http; fi; }
 lire_port() { local v; v="$(cat "$CONF_DIR/$1" 2>/dev/null || true)"; echo "${v:-$2}"; }
 # Adresse de base du relais, avec le port s'il n'est pas le port habituel (80 en HTTP, 443 en HTTPS).
 base_url() {
   local d; d="$(domaine)"
-  if [ "$(protocole)" = https ]; then local p; p="$(lire_port port_https 443)"; [ "$p" = 443 ] && echo "https://$d" || echo "https://$d:$p"
+  if [ -f "$CONF_DIR/proxy" ]; then echo "https://$d"  # HTTPS géré par un proxy placé devant (adresse publique, sans port)
+  elif [ "$(protocole)" = https ]; then local p; p="$(lire_port port_https 443)"; [ "$p" = 443 ] && echo "https://$d" || echo "https://$d:$p"
   else local p; p="$(lire_port port_http 80)"; [ "$p" = 80 ] && echo "http://$d" || echo "http://$d:$p"; fi
 }
 # Qui écoute sur ce port (autre que nginx) ? Vide = libre pour nous.
@@ -309,6 +310,21 @@ UNIT
   systemctl restart relais-live-demande
 }
 
+afficher_proxy() {
+  [ -f "$CONF_DIR/proxy" ] || return 0
+  echo ""
+  echo "=== Réglage de ton proxy (Nginx Proxy Manager) ==="
+  echo "Proxy Hosts > Add Proxy Host :"
+  echo "  • Domain Names   : $(domaine)"
+  echo "  • Scheme         : http"
+  echo "  • Forward Host   : l'adresse de CE serveur, vue depuis ton proxy (ex. 192.168.x.x ou son IP)"
+  echo "  • Forward Port   : $(lire_port port_http 8080)"
+  echo "  • Cache Assets : désactivé · Block Common Exploits : au choix · Websockets : inutile"
+  echo "  • Onglet SSL     : demande un certificat (Request a new SSL Certificate) et coche Force SSL"
+  echo "  • Onglet Advanced (si le premier spectateur attend trop) : proxy_read_timeout 60s;"
+  echo "  Si ce serveur et le proxy sont sur des machines différentes, autorise le port $(lire_port port_http 8080) dans le pare-feu de ce serveur, pour l'adresse du proxy seulement."
+}
+
 afficher_infos() {
   local d c; d="$(domaine)"; c="$(cat "$CONF_DIR/canal" 2>/dev/null || true)"
   echo ""
@@ -317,6 +333,7 @@ afficher_infos() {
   echo "Secret              : $(cat "$CONF_DIR/secret" 2>/dev/null || echo '(introuvable)')"
   echo "Adresse du flux     : $(base_url)/live/$c/index.m3u8"
   echo "(Garde le secret pour toi : il permet de commander le relais.)"
+  afficher_proxy
 }
 
 ajouter_flux() { # ajouter_flux NOM URL
@@ -395,7 +412,8 @@ fi
 
 echo ""
 demander "Nom de domaine de ce relais (ex. relais.exemple.com, qui doit déjà pointer vers ce serveur)" DOMAINE
-demander "Courriel pour le certificat HTTPS (avis d'expiration seulement)" COURRIEL
+demander "Le HTTPS est-il déjà géré par un proxy placé devant ce relais (ex. Nginx Proxy Manager) ? (o/n)" PROXY "n"
+if [ "${PROXY,,}" != "o" ]; then demander "Courriel pour le certificat HTTPS (avis d'expiration seulement)" COURRIEL; fi
 [ -n "$DOMAINE" ] || { echo "Il faut un nom de domaine."; exit 1; }
 
 # Ports : 80 et 443 par défaut. Si un autre programme (Apache, un autre proxy, un conteneur…) les utilise déjà, le script le signale et on en choisit d'autres.
@@ -413,14 +431,24 @@ choisir_port() { # choisir_port "Question" VARIABLE défaut
   done
 }
 echo ""
-choisir_port "Port HTTP (80 recommandé : nécessaire pour obtenir le certificat HTTPS)" PORT_HTTP 80
-if [ "$PORT_HTTP" = 80 ]; then choisir_port "Port HTTPS" PORT_HTTPS 443; else PORT_HTTPS=443; fi
-mkdir -p "$CONF_DIR"; printf '%s' "$PORT_HTTP" > "$CONF_DIR/port_http"; printf '%s' "$PORT_HTTPS" > "$CONF_DIR/port_https"
+mkdir -p "$CONF_DIR"
+if [ "${PROXY,,}" = "o" ]; then
+  # Le proxy s'occupe du HTTPS et du domaine : le relais écoute seulement en HTTP, sur un port libre que le proxy utilisera.
+  choisir_port "Port sur lequel ce relais écoute (ton proxy y enverra le domaine)" PORT_HTTP 8080
+  PORT_HTTPS=443; : > "$CONF_DIR/proxy"
+else
+  rm -f "$CONF_DIR/proxy"
+  choisir_port "Port HTTP (80 recommandé : nécessaire pour obtenir le certificat HTTPS)" PORT_HTTP 80
+  if [ "$PORT_HTTP" = 80 ]; then choisir_port "Port HTTPS" PORT_HTTPS 443; else PORT_HTTPS=443; fi
+fi
+printf '%s' "$PORT_HTTP" > "$CONF_DIR/port_http"; printf '%s' "$PORT_HTTPS" > "$CONF_DIR/port_https"
 
 # 2. Programmes nécessaires.
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y ffmpeg nginx certbot python3-certbot-nginx python3 curl openssl
+PAQUETS="ffmpeg nginx python3 curl openssl"
+[ "${PROXY,,}" = "o" ] || PAQUETS="$PAQUETS certbot python3-certbot-nginx"
+apt-get install -y $PAQUETS
 
 # 3. Dossier de diffusion + page de test (lecteur dans le navigateur : /?flux=NOM). La page attend patiemment le démarrage du flux.
 mkdir -p "$DOSSIER_WEB" "$CONF_DIR"
@@ -491,7 +519,9 @@ elif ! systemctl start nginx; then
 fi
 
 # 6. HTTPS (si le nom de domaine pointe déjà vers ce serveur ; sinon on continue en HTTP).
-if [ "$PORT_HTTP" = 80 ]; then
+if [ "${PROXY,,}" = "o" ]; then
+  echo "Mode proxy : aucun certificat à demander ici, ton proxy s'en charge."
+elif [ "$PORT_HTTP" = 80 ]; then
   if ! certbot --nginx -d "$DOMAINE" --non-interactive --agree-tos -m "${COURRIEL:-admin@$DOMAINE}" --redirect --https-port "$PORT_HTTPS"; then
     echo "!! Le certificat HTTPS n'a pas pu être obtenu (le nom de domaine pointe-t-il vers ce serveur ?). Relance « certbot --nginx -d $DOMAINE --https-port $PORT_HTTPS » plus tard."
   fi
