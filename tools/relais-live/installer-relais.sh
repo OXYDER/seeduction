@@ -4,6 +4,7 @@
 # CANAL DU SITE (Admin > Direct) : le site te donne un calendrier ; il dit au relais quel flux de ton Dispatcharr diffuser à chaque moment, par une API
 # protégée par un secret. Le relais publie le tout sous UNE adresse secrète. En mode « à la demande », il ne se connecte à ton Dispatcharr que lorsqu'un
 # spectateur regarde (quelques secondes d'attente au début) et se coupe environ une minute après le dernier ; en mode « continu », il reste connecté pendant tout le créneau.
+# COMPATIBILITÉ NAVIGATEUR : le site peut demander au relais de convertir le son (AAC) ou l'image et le son (H.264 + AAC) quand la source n'est pas lisible telle quelle.
 # FLUX MANUELS (facultatif, --ajouter) : des flux nommés, toujours à la demande ; le site ne les utilise pas.
 # Pendant qu'on regarde, il ne sort de chez toi qu'un flux par canal, peu importe le nombre de spectateurs. Le flux est découpé en HLS sans ré-encodage, puis servi en HTTPS.
 #
@@ -60,7 +61,7 @@ Wants=network-online.target
 [Service]
 User=www-data
 EnvironmentFile=/etc/relais-live/%i.env
-ExecStart=/usr/bin/ffmpeg -nostdin -loglevel warning $RECO -i ${STREAM_URL} -c copy -f hls -hls_time 4 -hls_list_size 6 -hls_flags delete_segments+omit_endlist+append_list+discont_start /var/www/relais-live/%i/index.m3u8
+ExecStart=/usr/bin/ffmpeg -nostdin -loglevel warning $RECO -i ${STREAM_URL} $CODEC -f hls -hls_time 4 -hls_list_size 6 -hls_flags delete_segments+omit_endlist+append_list+discont_start /var/www/relais-live/%i/index.m3u8
 Restart=always
 RestartSec=5
 UNIT
@@ -82,6 +83,12 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 CONF, WEB = "/etc/relais-live", "/var/www/relais-live"
 IDLE, WAIT = 60, 22
 CHEMIN = re.compile(r"^/live/([a-z0-9][a-z0-9-]{0,30})/index\.m3u8$")
+# Compatibilité navigateur : un navigateur lit H.264 + AAC. « audio » ne convertit que le son (léger), « full » convertit aussi l'image (demande du processeur).
+CODECS = {
+    "copy": "-c copy",
+    "audio": "-map 0:v:0 -map 0:a:0? -c:v copy -c:a aac -b:a 128k -ac 2",
+    "full": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset veryfast -profile:v main -pix_fmt yuv420p -force_key_frames expr:gte(t,n_forced*4) -c:a aac -b:a 128k -ac 2",
+}
 URL_OK = re.compile(r"^(https?|rtmp|rtsp|srt|udp)://[^\s\"'\\]+$", re.I)
 last, locks, guard = {}, {}, threading.Lock()
 
@@ -98,14 +105,14 @@ def etat():
     try:
         with open(os.path.join(CONF, "etat.json")) as f:
             e = json.load(f)
-        return {"url": e.get("url"), "surdemande": bool(e.get("surdemande", True))}
+        return {"url": e.get("url"), "surdemande": bool(e.get("surdemande", True)), "transcode": e.get("transcode")}
     except (OSError, ValueError):
-        return {"url": None, "surdemande": True}
+        return {"url": None, "surdemande": True, "transcode": None}
 
 
-def ecrire_etat(url, surdemande):
+def ecrire_etat(url, surdemande, transcode="copy"):
     with open(os.path.join(CONF, "etat.json"), "w") as f:
-        json.dump({"url": url, "surdemande": surdemande}, f)
+        json.dump({"url": url, "surdemande": surdemande, "transcode": transcode}, f)
 
 
 def verrou(n):
@@ -138,12 +145,12 @@ def demarrer(n):
             systemctl("start", "--no-block", "relais-live@" + n)
 
 
-def ecrire_env(n, url):
+def ecrire_env(n, url, transcode="copy"):
     """Adresse du flux gardée lisible par root seulement (elle peut contenir un jeton)."""
     reco = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 10" if url.lower().startswith(("http://", "https://")) else ""
     fd = os.open(os.path.join(CONF, n + ".env"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
-        f.write("STREAM_URL=%s\nRECO=%s\n" % (url, reco))
+        f.write("STREAM_URL=%s\nRECO=%s\nCODEC=%s\n" % (url, reco, CODECS.get(transcode, CODECS["copy"])))
     dossier = os.path.join(WEB, n)
     os.makedirs(dossier, exist_ok=True)
     try:
@@ -152,8 +159,8 @@ def ecrire_env(n, url):
         pass
 
 
-def appliquer(url, surdemande):
-    """Règle le canal du site : url = adresse du flux à diffuser, ou None pour ne rien diffuser."""
+def appliquer(url, surdemande, transcode="copy"):
+    """Règle le canal du site : url = adresse du flux à diffuser, ou None pour ne rien diffuser ; transcode = copy | audio | full."""
     n = lire("canal")
     if not n:
         raise ValueError("canal non initialisé")
@@ -168,12 +175,12 @@ def appliquer(url, surdemande):
                 os.remove(env)
             except OSError:
                 pass
-            ecrire_etat(None, surdemande)
+            ecrire_etat(None, surdemande, transcode)
             return
-        change = ancien["url"] != url or not os.path.exists(env)
+        change = ancien["url"] != url or ancien["transcode"] != transcode or not os.path.exists(env)
         if change:
-            ecrire_env(n, url)
-        ecrire_etat(url, surdemande)
+            ecrire_env(n, url, transcode)
+        ecrire_etat(url, surdemande, transcode)
         if actif(n):
             if change:
                 systemctl("restart", "relais-live@" + n)  # on garde la liste de lecture : le lecteur enchaîne avec une coupure
@@ -226,20 +233,22 @@ class Demande(BaseHTTPRequestHandler):
         if self.command == "GET" and chemin == "/controle/etat":
             n, e = lire("canal"), etat()
             d = last.get(n)
-            return self.repondre(200, {"canal": bool(n), "configure": bool(e["url"]), "surdemande": e["surdemande"], "actif": bool(n) and actif(n), "derniere_demande_il_y_a": None if d is None else int(time.time() - d)})
+            return self.repondre(200, {"canal": bool(n), "configure": bool(e["url"]), "surdemande": e["surdemande"], "transcode": e["transcode"] or "copy", "actif": bool(n) and actif(n), "derniere_demande_il_y_a": None if d is None else int(time.time() - d)})
         if self.command == "PUT" and chemin == "/controle/source":
             longueur = int(self.headers.get("Content-Length") or 0)
             if longueur > 4096:
                 return self.repondre(413, "Trop gros")
             try:
                 corps = json.loads(self.rfile.read(longueur) or b"{}")
-                url, surdemande = corps.get("url"), bool(corps.get("onDemand", True))
+                url, surdemande, transcode = corps.get("url"), bool(corps.get("onDemand", True)), corps.get("transcode", "copy")
             except (ValueError, AttributeError):
                 return self.repondre(400, "JSON invalide")
+            if transcode not in CODECS:
+                return self.repondre(400, "Mode de conversion inconnu")
             if url is not None and (not isinstance(url, str) or len(url) > 1000 or not URL_OK.match(url)):
                 return self.repondre(400, "Adresse de flux invalide")
             try:
-                appliquer(url, surdemande)
+                appliquer(url, surdemande, transcode)
             except ValueError as e:
                 return self.repondre(409, str(e))
             return self.repondre(200, {"ok": True, "diffusion": bool(url)})
@@ -285,7 +294,7 @@ if __name__ == "__main__":
     e = etat()
     if e["url"] and not e["surdemande"]:  # après un redémarrage du serveur : on reprend le direct en cours
         try:
-            appliquer(e["url"], False)
+            appliquer(e["url"], False, e["transcode"] or "copy")
         except Exception:
             pass
     threading.Thread(target=couper_les_inactifs, daemon=True).start()
@@ -346,7 +355,7 @@ ajouter_flux() { # ajouter_flux NOM URL
   # Les options de reconnexion ne valent que pour les flux http(s). L'adresse est gardée lisible par root seulement : elle peut contenir un jeton.
   local reco=""
   case "$url" in http://*|https://*) reco="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 10";; esac
-  ( umask 077; printf 'STREAM_URL=%s\nRECO=%s\n' "$url" "$reco" > "$CONF_DIR/$nom.env" )
+  ( umask 077; printf 'STREAM_URL=%s\nRECO=%s\nCODEC=-c copy\n' "$url" "$reco" > "$CONF_DIR/$nom.env" )
   # Pas de démarrage ici : le flux se connecte à la première demande d'un lecteur.
   systemctl stop "relais-live@$nom" 2>/dev/null || true
   echo "Flux « $nom » prêt (se connecte à la demande) : $(base_url)/live/$nom/index.m3u8"

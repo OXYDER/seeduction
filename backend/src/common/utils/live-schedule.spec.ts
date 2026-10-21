@@ -98,6 +98,15 @@ describe('normalizeLiveConfig', () => {
   });
 });
 
+describe('compatibilité navigateur', () => {
+  it('copie par défaut, accepte audio et full, refuse le reste', () => {
+    expect(normalizeLiveConfig({}).transcode).toBe('copy');
+    expect(normalizeLiveConfig({ transcode: 'audio' }).transcode).toBe('audio');
+    expect(normalizeLiveConfig({ transcode: 'full' }).transcode).toBe('full');
+    expect(normalizeLiveConfig({ transcode: 'rm -rf' }, normalizeLiveConfig({ transcode: 'audio' })).transcode).toBe('audio');
+  });
+});
+
 describe('validStreamUrl', () => {
   it('accepte les adresses de flux courantes et refuse le reste', () => {
     expect(validStreamUrl('http://100.64.0.2:9191/proxy/ts/stream/abc')).toBe(true);

@@ -226,7 +226,7 @@ export class LiveService {
     try {
       const { cfg, stream } = await this.current();
       if (!cfg.controlUrl || !cfg.secret) return;
-      const want = cfg.enabled && stream ? { url: stream.url, onDemand: cfg.onDemand } : { url: null as string | null, onDemand: cfg.onDemand };
+      const want = cfg.enabled && stream ? { url: stream.url, onDemand: cfg.onDemand, transcode: cfg.transcode } : { url: null as string | null, onDemand: cfg.onDemand, transcode: cfg.transcode };
       const key = JSON.stringify(want);
       if (!force && key === this.lastKey && Date.now() - this.lastPushAt < PUSH_EVERY_MS) return;
       // Sans rien à diffuser et sans avoir jamais rien envoyé : pas la peine de déranger le relais.
@@ -254,7 +254,7 @@ export class LiveService {
     try { return JSON.parse(text); } catch { return {}; }
   }
 
-  private pushToRelay(cfg: LiveConfig, want: { url: string | null; onDemand: boolean }) { return this.relay(cfg, 'PUT', '/source', want); }
+  private pushToRelay(cfg: LiveConfig, want: { url: string | null; onDemand: boolean; transcode: string }) { return this.relay(cfg, 'PUT', '/source', want); }
 
   /** Bouton « Tester le relais » : demande son état et vérifie le secret. */
   async testRelay() {

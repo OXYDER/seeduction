@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 
-interface Cfg { enabled: boolean; controlUrl: string; playbackUrl: string; onDemand: boolean; timezone: string; secretSet: boolean }
+interface Cfg { enabled: boolean; controlUrl: string; playbackUrl: string; onDemand: boolean; timezone: string; transcode: 'copy' | 'audio' | 'full'; secretSet: boolean }
 interface Stream { id: string; name: string; url: string; enabled: boolean }
 interface Slot { id: string; streamId: string; title: string | null; startsAt: string; durationMin: number; repeat: 'NONE' | 'DAILY' | 'WEEKLY'; repeatUntil: string | null; enabled: boolean; stream: { id: string; name: string } }
 interface Occ { slotId: string; streamName: string; title: string | null; start: string; end: string }
@@ -69,6 +69,14 @@ export default function AdminLive() {
         <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
           <input type="checkbox" checked={cfg.onDemand} onChange={(e) => setCfg({ ...cfg, onDemand: e.target.checked })} style={{ marginTop: 3 }} />
           <span>Se connecter à ton Dispatcharr seulement quand quelqu'un regarde<br /><span className="muted" style={{ fontSize: 12 }}>Recommandé : rien ne sort de chez toi tant que personne ne regarde (quelques secondes d'attente pour le premier spectateur). Décoché : le relais reste connecté pendant tout le créneau.</span></span>
+        </label>
+        <label style={{ display: 'grid', gap: 3, fontSize: 13 }}>Compatibilité navigateur
+          <select value={cfg.transcode} onChange={(e) => setCfg({ ...cfg, transcode: e.target.value as Cfg['transcode'] })} style={{ maxWidth: 420 }}>
+            <option value="copy">Copier tel quel (le plus léger)</option>
+            <option value="audio">Convertir le son seulement (AAC)</option>
+            <option value="full">Convertir l'image et le son (H.264 + AAC)</option>
+          </select>
+          <span className="muted" style={{ fontSize: 12 }}>Un navigateur lit l'image en H.264 et le son en AAC. Si la vidéo reste noire ou muette, essaie « le son seulement » ; sinon « l'image et le son », qui demande beaucoup plus de processeur sur le relais (environ 1 à 4 cœurs par flux selon la taille de l'image).</span>
         </label>
         <label style={{ display: 'grid', gap: 3, fontSize: 13, maxWidth: 280 }}>Fuseau horaire des répétitions
           <input value={cfg.timezone} onChange={(e) => setCfg({ ...cfg, timezone: e.target.value })} />

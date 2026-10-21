@@ -852,6 +852,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• [b]Tes flux[/b] : le nom et l'adresse de chacun (par exemple un canal de ton Dispatcharr). Les adresses ne sont jamais montrées aux membres.\n` +
         `• [b]Le calendrier[/b] : pour chaque créneau, le flux, la date et l'heure de début, la durée, et si la diffusion se répète (une fois, tous les jours, chaque semaine, avec une date de fin facultative). Une diffusion répétée garde la même heure toute l'année. Si deux créneaux se chevauchent, le plus récent remplace l'autre.\n` +
         `• [b]À la demande[/b] (recommandé) : le relais ne se connecte à ton Dispatcharr que lorsqu'un membre regarde, et se coupe une minute après le dernier. Décoché, il reste connecté pendant tout le créneau.\n` +
+        `• [b]Compatibilité navigateur[/b] : un navigateur lit l'image en H.264 et le son en AAC. Si la vidéo reste noire ou muette, choisis [b]Convertir le son seulement[/b], puis [b]Convertir l'image et le son[/b] si ça ne suffit pas (c'est plus lourd pour le relais).\n` +
         `• Le site envoie l'état voulu au relais toutes les 20 secondes ; la dernière réponse du relais est visible dans la page, avec l'erreur s'il y en a une.`,
     },
     {
