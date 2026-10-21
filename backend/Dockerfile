@@ -1,8 +1,11 @@
 FROM node:22-alpine AS build
 RUN apk add --no-cache openssl
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+# Versions figées par package-lock.json (npm ci) : un build ne tire jamais une nouvelle version d'une dépendance par surprise.
+# node-datachannel (WebTorrent) télécharge un binaire précompilé depuis GitHub à l'installation ; si ce téléchargement échoue,
+# son repli (compilation depuis les sources) est cassé : on réessaie donc quelques fois avant d'abandonner.
+RUN npm ci --no-audit --no-fund || (sleep 15 && npm ci --no-audit --no-fund) || (sleep 45 && npm ci --no-audit --no-fund)
 COPY . .
 RUN npx prisma generate
 RUN npm run build
