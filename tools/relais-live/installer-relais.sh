@@ -412,7 +412,16 @@ fi
 
 echo ""
 demander "Nom de domaine de ce relais (ex. relais.exemple.com, qui doit déjà pointer vers ce serveur)" DOMAINE
-demander "Le HTTPS est-il déjà géré par un proxy placé devant ce relais (ex. Nginx Proxy Manager) ? (o/n)" PROXY "n"
+if [ -z "${PROXY:-}" ] && [ -z "${DNS_CF:-}" ]; then
+  echo ""
+  echo "Comment le HTTPS (le cadenas) doit-il être assuré ?"
+  echo "  1) Ce relais obtient lui-même son certificat : il faut que les ports 80 et 443 de ce serveur soient libres."
+  echo "  2) Un proxy placé devant ce relais s'en charge (ex. Nginx Proxy Manager)."
+  echo "  3) Ce relais obtient son certificat par le DNS de Cloudflare : pour un serveur dont les ports 80 et 443 sont déjà pris (le relais sert alors le HTTPS sur un autre port, ex. 8443)."
+  read -r -p "Ton choix [1] : " CHOIX || CHOIX=1
+  case "${CHOIX:-1}" in 2) PROXY=o;; 3) DNS_CF=o;; esac
+fi
+PROXY="${PROXY:-n}"; DNS_CF="${DNS_CF:-n}"
 if [ "${PROXY,,}" != "o" ]; then demander "Courriel pour le certificat HTTPS (avis d'expiration seulement)" COURRIEL; fi
 [ -n "$DOMAINE" ] || { echo "Il faut un nom de domaine."; exit 1; }
 
@@ -436,6 +445,10 @@ if [ "${PROXY,,}" = "o" ]; then
   # Le proxy s'occupe du HTTPS et du domaine : le relais écoute seulement en HTTP, sur un port libre que le proxy utilisera.
   choisir_port "Port sur lequel ce relais écoute (ton proxy y enverra le domaine)" PORT_HTTP 8080
   PORT_HTTPS=443; : > "$CONF_DIR/proxy"
+elif [ "${DNS_CF,,}" = "o" ]; then
+  rm -f "$CONF_DIR/proxy"
+  choisir_port "Port HTTPS de ce relais (les ports 80 et 443 sont pris : 8443 par exemple)" PORT_HTTPS 8443
+  PORT_HTTP=80  # non utilisé : le relais n'écoute qu'en HTTPS
 else
   rm -f "$CONF_DIR/proxy"
   choisir_port "Port HTTP (80 recommandé : nécessaire pour obtenir le certificat HTTPS)" PORT_HTTP 80
@@ -448,7 +461,24 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 PAQUETS="ffmpeg nginx python3 curl openssl"
 [ "${PROXY,,}" = "o" ] || PAQUETS="$PAQUETS certbot python3-certbot-nginx"
+if [ "${DNS_CF,,}" = "o" ]; then PAQUETS="$PAQUETS python3-certbot-dns-cloudflare"; fi
 apt-get install -y $PAQUETS
+
+# Certificat par le DNS de Cloudflare (aucun port à ouvrir) : le jeton ne sert qu'à modifier les enregistrements DNS de ta zone.
+if [ "${DNS_CF,,}" = "o" ]; then
+  echo ""
+  echo "=== Jeton d'API Cloudflare ==="
+  echo "Crée-le sur https://dash.cloudflare.com/profile/api-tokens > Create Token > modèle « Edit zone DNS » > Zone Resources : ta zone (ex. seeduction.org)."
+  echo "Il ne donne accès qu'au DNS de cette zone. Il est gardé sur ce serveur seulement (fichier lisible par root)."
+  if [ -z "${CF_TOKEN:-}" ]; then read -r -s -p "Jeton d'API Cloudflare (invisible pendant la saisie) : " CF_TOKEN || true; echo; fi
+  [ -n "${CF_TOKEN:-}" ] || { echo "Il faut le jeton."; exit 1; }
+  ( umask 077; printf 'dns_cloudflare_api_token = %s\n' "$CF_TOKEN" > "$CONF_DIR/cloudflare.ini" )
+  if ! certbot certonly --dns-cloudflare --dns-cloudflare-credentials "$CONF_DIR/cloudflare.ini" --dns-cloudflare-propagation-seconds 30 \
+      -d "$DOMAINE" --non-interactive --agree-tos -m "${COURRIEL:-admin@$DOMAINE}" --deploy-hook "systemctl reload nginx || true"; then
+    echo "!! Certificat refusé : vérifie le jeton (permission « Zone > DNS > Edit » sur la bonne zone) et que le domaine $DOMAINE appartient bien à cette zone."
+    exit 1
+  fi
+fi
 
 # 3. Dossier de diffusion + page de test (lecteur dans le navigateur : /?flux=NOM). La page attend patiemment le démarrage du flux.
 mkdir -p "$DOSSIER_WEB" "$CONF_DIR"
@@ -499,9 +529,12 @@ server {
     }
 }
 NGINX
-sed -i "s#@DOMAINE@#$DOMAINE#g; s#@WEB@#$DOSSIER_WEB#g; s#@PORT_HTTP@#$PORT_HTTP#g" "$CONF_NGINX"
+if [ "${DNS_CF,,}" = "o" ]; then
+  sed -i 's#    listen @PORT_HTTP@;#    listen @PORT_HTTPS@ ssl;\n    ssl_certificate /etc/letsencrypt/live/@DOMAINE@/fullchain.pem;\n    ssl_certificate_key /etc/letsencrypt/live/@DOMAINE@/privkey.pem;#' "$CONF_NGINX"
+fi
+sed -i "s#@DOMAINE@#$DOMAINE#g; s#@WEB@#$DOSSIER_WEB#g; s#@PORT_HTTP@#$PORT_HTTP#g; s#@PORT_HTTPS@#$PORT_HTTPS#g" "$CONF_NGINX"
 # Le site par défaut de nginx écoute aussi sur le port 80 : il empêcherait nginx de démarrer si un autre programme l'occupe.
-if [ "$PORT_HTTP" != 80 ]; then rm -f /etc/nginx/sites-enabled/default; fi
+if [ "$PORT_HTTP" != 80 ] || [ "${DNS_CF,,}" = "o" ]; then rm -f /etc/nginx/sites-enabled/default; fi
 nginx -t
 # Nginx doit tourner (un « reload » échoue s'il est arrêté, par exemple parce qu'un autre programme occupe déjà le port 80).
 systemctl enable nginx >/dev/null 2>&1 || true
@@ -521,6 +554,10 @@ fi
 # 6. HTTPS (si le nom de domaine pointe déjà vers ce serveur ; sinon on continue en HTTP).
 if [ "${PROXY,,}" = "o" ]; then
   echo "Mode proxy : aucun certificat à demander ici, ton proxy s'en charge."
+elif [ "${DNS_CF,,}" = "o" ]; then
+  echo "Certificat obtenu par le DNS de Cloudflare (renouvelé automatiquement). Le relais répond en HTTPS sur le port $PORT_HTTPS."
+  echo "À faire : (1) dans Cloudflare > DNS, l'enregistrement $DOMAINE doit pointer vers l'adresse de CE serveur, en « DNS seulement » (nuage gris) ;"
+  echo "          (2) ouvrir le port $PORT_HTTPS dans le pare-feu de ce serveur et, s'il y en a un, dans le panneau de ton hébergeur."
 elif [ "$PORT_HTTP" = 80 ]; then
   if ! certbot --nginx -d "$DOMAINE" --non-interactive --agree-tos -m "${COURRIEL:-admin@$DOMAINE}" --redirect --https-port "$PORT_HTTPS"; then
     echo "!! Le certificat HTTPS n'a pas pu être obtenu (le nom de domaine pointe-t-il vers ce serveur ?). Relance « certbot --nginx -d $DOMAINE --https-port $PORT_HTTPS » plus tard."
