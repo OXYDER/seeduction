@@ -832,6 +832,29 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Les chiffres du mois en cours se mettent à jour chaque nuit.`,
     },
     {
+      title: 'Direct : les diffusions en direct',
+      slug: 'guide-direct',
+      keywords: 'direct, diffusion, en direct, live, stream, flux, calendrier, programmation, émission, podcast, vidéo, relais',
+      isFaq: true,
+      content:
+        `La page [b]Direct[/b] diffuse les émissions en direct planifiées par l'équipe, directement dans le site.\n` +
+        `\n` +
+        `[b]Où le trouver ?[/b]\n` +
+        `Un lien [b]🔴 Direct[/b] apparaît dans le menu [b]seulement pendant une diffusion[/b]. Tu peux aussi ouvrir la page [url=/direct]Direct[/url] à tout moment : elle affiche la diffusion en cours ou, sinon, les prochaines émissions prévues, et elle se met à jour toute seule.\n` +
+        `\n` +
+        `[b]Regarder[/b]\n` +
+        `• L'image démarre [b]sans le son[/b] : clique sur le haut-parleur de la vidéo pour l'activer.\n` +
+        `• [b]La toute première connexion peut prendre quelques secondes[/b] : le direct n'est lancé que lorsque quelqu'un le regarde, c'est normal.\n` +
+        `• Si l'image se fige, recharge la page. Si une émission est terminée, la page affiche la suivante dès qu'elle commence.\n` +
+        `\n` +
+        `[b]Pour l'administration : Admin > Direct[/b]\n` +
+        `• [b]Le relais[/b] : un petit serveur à part (script fourni, voir le dossier tools/relais-live) va chercher le flux chez toi une seule fois et le sert aux membres, pour ne pas surcharger ta connexion. Tu renseignes dans le site son adresse de contrôle, son secret et l'adresse que les membres regardent, puis tu cliques sur [b]Tester le relais[/b].\n` +
+        `• [b]Tes flux[/b] : le nom et l'adresse de chacun (par exemple un canal de ton Dispatcharr). Les adresses ne sont jamais montrées aux membres.\n` +
+        `• [b]Le calendrier[/b] : pour chaque créneau, le flux, la date et l'heure de début, la durée, et si la diffusion se répète (une fois, tous les jours, chaque semaine, avec une date de fin facultative). Une diffusion répétée garde la même heure toute l'année. Si deux créneaux se chevauchent, le plus récent remplace l'autre.\n` +
+        `• [b]À la demande[/b] (recommandé) : le relais ne se connecte à ton Dispatcharr que lorsqu'un membre regarde, et se coupe une minute après le dernier. Décoché, il reste connecté pendant tout le créneau.\n` +
+        `• Le site envoie l'état voulu au relais toutes les 20 secondes ; la dernière réponse du relais est visible dans la page, avec l'erreur s'il y en a une.`,
+    },
+    {
       title: 'État du site : le site fonctionne-t-il ?',
       slug: 'guide-etat-du-site',
       keywords: 'état, statut, panne, mise à jour, déploiement, maintenance, disponibilité, le site fonctionne, injoignable, redémarre',

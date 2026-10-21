@@ -20,6 +20,7 @@ const FreeleechCalendarPage = lazyPage(() => import('./pages/FreeleechCalendarPa
 const Pot = lazyPage(() => import('./pages/Pot'));
 const Jeux = lazyPage(() => import('./pages/Jeux'));
 const GamesHub = lazyPage(() => import('./pages/GamesHub'));
+const Live = lazyPage(() => import('./pages/Live'));
 const Slots = lazyPage(() => import('./pages/Slots'));
 const HiLo = lazyPage(() => import('./pages/HiLo'));
 const Wheel = lazyPage(() => import('./pages/Wheel'));
@@ -161,6 +162,7 @@ export default function App() {
           <Route path="/pot" element={<Pot />} />
           <Route path="/mes-envois" element={<MyUploads />} />
           <Route path="/jeux" element={<GamesHub />} />
+          <Route path="/direct" element={<Live />} />
           <Route path="/jeux/mise-o-jeu" element={<Jeux />} />
           <Route path="/jeux/machines" element={<Slots />} />
           <Route path="/jeux/plus-haut-plus-bas" element={<HiLo />} />

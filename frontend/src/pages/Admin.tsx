@@ -25,6 +25,7 @@ import AdminTournament from '../components/AdminTournament';
 import { ImportAdmin } from '../components/AdminImport';
 import PotAdmin from '../components/AdminPot';
 import AdminJeux from '../components/AdminJeux';
+import AdminLive from '../components/AdminLive';
 import AdminSlots from '../components/AdminSlots';
 import AdminHiLo from '../components/AdminHiLo';
 import AdminWheel from '../components/AdminWheel';
@@ -49,14 +50,14 @@ import AdminEventThemes from '../components/AdminEventThemes';
 import Loading from '../components/Loading';
 
 const BASE_TABS = ['Vue d\'ensemble', 'Nouvelles', 'Freeleech', 'Catégories torrents', 'Torrents', 'Forum', 'Templates', 'Wiki', 'Support', 'Telegram', 'Anti-triche'] as const;
-type Tab = typeof BASE_TABS[number] | 'Paramètres' | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal' | 'Sécurité' | 'Import' | 'Pot commun' | 'Dons' | 'Sauvegardes' | 'Événements' | 'Jeux' | 'Courriel';
+type Tab = typeof BASE_TABS[number] | 'Paramètres' | 'Invitations' | 'Canaux' | 'Monitoring' | 'Journal' | 'Sécurité' | 'Import' | 'Pot commun' | 'Dons' | 'Sauvegardes' | 'Événements' | 'Jeux' | 'Courriel' | 'Direct';
 
 export default function Admin() {
   const role = useAuthStore((s) => s.user?.role);
   const [params] = useSearchParams();
-  const [tab, setTab] = useState<Tab>(() => (([...BASE_TABS, 'Import', 'Pot commun', 'Dons', 'Sauvegardes', 'Événements', 'Jeux', 'Courriel'] as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'Vue d\'ensemble'));
+  const [tab, setTab] = useState<Tab>(() => (([...BASE_TABS, 'Import', 'Pot commun', 'Dons', 'Sauvegardes', 'Événements', 'Jeux', 'Courriel', 'Direct'] as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'Vue d\'ensemble'));
   // Le monitoring expose des détails d'infrastructure : réservé ADMIN/OWNER (les modérateurs voient le reste).
-  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Paramètres', 'Invitations', 'Canaux', 'Journal', 'Monitoring', 'Import', 'Pot commun', 'Dons', 'Sauvegardes', 'Événements', 'Jeux', 'Courriel', 'Sécurité'] : [...BASE_TABS];
+  const TABS: Tab[] = role === 'ADMIN' || role === 'OWNER' ? [...BASE_TABS, 'Paramètres', 'Invitations', 'Canaux', 'Journal', 'Monitoring', 'Import', 'Pot commun', 'Dons', 'Sauvegardes', 'Événements', 'Jeux', 'Courriel', 'Direct', 'Sécurité'] : [...BASE_TABS];
 
   return (
     <div className="grid">
@@ -86,6 +87,7 @@ export default function Admin() {
       {tab === 'Jeux' && <><AdminEconomy /><AdminJeux /><AdminSlots /><AdminHiLo /><AdminBlackjack /><AdminDice /><AdminCards /><AdminChallenges /><AdminDuels /><AdminTournament /><AdminWheel /><AdminQuiz /><AdminPicks /><AdminCashback /></>}
       {tab === 'Dons' && <><AdminDonationsAuto /><AdminDonations /></>}
       {tab === 'Courriel' && <AdminMailboxes />}
+      {tab === 'Direct' && <AdminLive />}
       {tab === 'Telegram' && <TelegramAdmin />}
       {tab === 'Anti-triche' && <AdminAntiCheat />}
       {tab === 'Sauvegardes' && <AdminBackup />}

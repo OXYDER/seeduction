@@ -2647,3 +2647,30 @@ model MessageRequest {
   @@index([toId, status])
   @@index([fromId, createdAt])
 }
+
+/// Flux de diffusion en direct (Admin > Direct) : l'adresse d'un flux (ex. un canal de ton Dispatcharr) que le serveur relais peut diffuser aux membres.
+model LiveStream {
+  id        String     @id @default(uuid())
+  name      String     @db.VarChar(80)
+  url       String     @db.VarChar(1000)
+  enabled   Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  slots     LiveSlot[]
+}
+
+/// Un créneau du calendrier des directs : quel flux est diffusé, quand, et s'il se répète.
+model LiveSlot {
+  id          String     @id @default(uuid())
+  streamId    String
+  stream      LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  title       String?    @db.VarChar(120)
+  startsAt    DateTime
+  durationMin Int
+  repeat      String     @default("NONE") @db.VarChar(10) // NONE | DAILY | WEEKLY
+  repeatUntil DateTime?
+  enabled     Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+
+  @@index([streamId])
+  @@index([startsAt])
+}

@@ -101,7 +101,7 @@ export const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
   'imprimante-3d': { icon: '🧊', color: '#fb7185' },
 };
 
-interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; staffOnly?: boolean; adminOnly?: boolean }
+interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; staffOnly?: boolean; adminOnly?: boolean; /** Visible seulement pendant une diffusion en direct. */ liveOnly?: boolean }
 
 const starts = (prefix: string) => (p: string) => p === prefix || p.startsWith(`${prefix}/`);
 
@@ -120,6 +120,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
   { to: '/suggestions', icon: '💡', cls: 'c-forum', label: 'Suggestions', match: starts('/suggestions') },
   { to: '/jeux', icon: '🎲', cls: 'c-chat', label: 'Jeux', match: starts('/jeux') },
+  { to: '/direct', icon: '🔴', cls: 'c-livechat', label: 'Direct', match: starts('/direct'), liveOnly: true },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
   { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead') },
   { to: '/soutenir', icon: '❤️', cls: 'c-rules', label: 'Soutenir', match: starts('/soutenir') },
@@ -332,6 +333,16 @@ function LayoutInner() {
   const isStaff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user?.role ?? '');
   const isAdmin = ['ADMIN', 'OWNER'].includes(user?.role ?? '');
 
+  // Direct : le lien du menu n'apparaît que pendant une diffusion planifiée (page « Direct » ; Admin > Direct).
+  const [liveNow, setLiveNow] = useState(false);
+  useEffect(() => {
+    if (!accessToken) { setLiveNow(false); return; }
+    const load = () => api.get('/live').then((r) => setLiveNow(!!r.data?.live)).catch(() => undefined);
+    void load();
+    const t = setInterval(() => { if (!document.hidden) void load(); }, 60_000);
+    return () => clearInterval(t);
+  }, [accessToken]);
+
   // Courriel (équipe) : le lien apparaît dans le menu du compte seulement si une boîte a été configurée pour ce membre ; pastille = courriels non lus.
   const [hasMail, setHasMail] = useState(false);
   const publishMail = useMailStore((st) => st.setHasMail);
@@ -433,7 +444,7 @@ function LayoutInner() {
 
   // ---- Thème Prestige : barre latérale (ordinateur) / barre d'onglets (mobile) ----
   if (theme === 'prestige') {
-    const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && !(item.to === '/upload' && user?.profile && !user.profile.perms?.upload)); // sans le droit d'envoi accordé par le profil principal
+    const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && (!item.liveOnly || liveNow || starts('/direct')(location.pathname)) && !(item.to === '/upload' && user?.profile && !user.profile.perms?.upload)); // sans le droit d'envoi accordé par le profil principal
     const tabs = ['/', '/browse', '/upload', '/forum'].map((to) => NAV_ITEMS.find((i) => i.to === to)!);
 
     return (
@@ -651,7 +662,7 @@ function LayoutInner() {
 
       <div className="mainnav">
         <div className="nav-links">
-          {NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin)).map((item) => {
+          {NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && (!item.liveOnly || liveNow || starts('/direct')(location.pathname))).map((item) => {
             const active = item.match(location.pathname);
             return (
               <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
