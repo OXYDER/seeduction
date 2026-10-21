@@ -72,11 +72,11 @@ export default function AdminLive() {
         </label>
         <label style={{ display: 'grid', gap: 3, fontSize: 13 }}>Compatibilité navigateur
           <select value={cfg.transcode} onChange={(e) => setCfg({ ...cfg, transcode: e.target.value as Cfg['transcode'] })} style={{ maxWidth: 420 }}>
+            <option value="audio">Convertir le son seulement (AAC) : recommandé</option>
             <option value="copy">Copier tel quel (le plus léger)</option>
-            <option value="audio">Convertir le son seulement (AAC)</option>
             <option value="full">Convertir l'image et le son (H.264 + AAC)</option>
           </select>
-          <span className="muted" style={{ fontSize: 12 }}>Un navigateur lit l'image en H.264 et le son en AAC. Si la vidéo reste noire ou muette, essaie « le son seulement » ; sinon « l'image et le son », qui demande beaucoup plus de processeur sur le relais (environ 1 à 4 cœurs par flux selon la taille de l'image).</span>
+          <span className="muted" style={{ fontSize: 12 }}>Un navigateur lit l'image en H.264 et le son en AAC. Un navigateur lit mal l'AC3, l'E-AC3 ou le DTS : « le son seulement » règle le plus souvent l'absence de son. Si l'image reste noire, choisis « l'image et le son », qui demande beaucoup plus de processeur sur le relais (environ 1 à 4 cœurs par flux selon la taille de l'image).</span>
         </label>
         <label style={{ display: 'grid', gap: 3, fontSize: 13, maxWidth: 280 }}>Fuseau horaire des répétitions
           <input value={cfg.timezone} onChange={(e) => setCfg({ ...cfg, timezone: e.target.value })} />

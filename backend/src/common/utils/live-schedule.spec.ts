@@ -99,11 +99,12 @@ describe('normalizeLiveConfig', () => {
 });
 
 describe('compatibilité navigateur', () => {
-  it('copie par défaut, accepte audio et full, refuse le reste', () => {
-    expect(normalizeLiveConfig({}).transcode).toBe('copy');
+  it('convertit le son par défaut, accepte copy et full, refuse le reste', () => {
+    expect(normalizeLiveConfig({}).transcode).toBe('audio');
+    expect(normalizeLiveConfig({ transcode: 'copy' }).transcode).toBe('copy');
     expect(normalizeLiveConfig({ transcode: 'audio' }).transcode).toBe('audio');
     expect(normalizeLiveConfig({ transcode: 'full' }).transcode).toBe('full');
-    expect(normalizeLiveConfig({ transcode: 'rm -rf' }, normalizeLiveConfig({ transcode: 'audio' })).transcode).toBe('audio');
+    expect(normalizeLiveConfig({ transcode: 'rm -rf' }, normalizeLiveConfig({ transcode: 'full' })).transcode).toBe('full');
   });
 });
 

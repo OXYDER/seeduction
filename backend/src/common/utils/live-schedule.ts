@@ -121,7 +121,7 @@ export interface LiveConfig {
 export type Transcode = 'copy' | 'audio' | 'full';
 export const TRANSCODES: Transcode[] = ['copy', 'audio', 'full'];
 
-export const DEFAULT_LIVE_CONFIG: LiveConfig = { enabled: false, controlUrl: '', secret: '', playbackUrl: '', onDemand: true, timezone: DEFAULT_TIMEZONE, transcode: 'copy' };
+export const DEFAULT_LIVE_CONFIG: LiveConfig = { enabled: false, controlUrl: '', secret: '', playbackUrl: '', onDemand: true, timezone: DEFAULT_TIMEZONE, transcode: 'audio' };
 
 const cleanUrl = (v: unknown, previous: string): string => {
   if (typeof v !== 'string') return previous;
@@ -141,7 +141,7 @@ export function normalizeLiveConfig(raw: any, previous: LiveConfig = DEFAULT_LIV
     playbackUrl: playback,
     onDemand: typeof r.onDemand === 'boolean' ? r.onDemand : previous.onDemand,
     timezone: isValidTimezone(r.timezone) ? r.timezone : previous.timezone,
-    transcode: TRANSCODES.includes(r.transcode) ? r.transcode : previous.transcode ?? 'copy',
+    transcode: TRANSCODES.includes(r.transcode) ? r.transcode : previous.transcode ?? 'audio',
   };
 }
 

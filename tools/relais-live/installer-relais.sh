@@ -4,7 +4,7 @@
 # CANAL DU SITE (Admin > Direct) : le site te donne un calendrier ; il dit au relais quel flux de ton Dispatcharr diffuser à chaque moment, par une API
 # protégée par un secret. Le relais publie le tout sous UNE adresse secrète. En mode « à la demande », il ne se connecte à ton Dispatcharr que lorsqu'un
 # spectateur regarde (quelques secondes d'attente au début) et se coupe environ une minute après le dernier ; en mode « continu », il reste connecté pendant tout le créneau.
-# COMPATIBILITÉ NAVIGATEUR : le site peut demander au relais de convertir le son (AAC) ou l'image et le son (H.264 + AAC) quand la source n'est pas lisible telle quelle.
+# COMPATIBILITÉ NAVIGATEUR : par défaut, le relais convertit le son en AAC stéréo et conserve l'image (un navigateur ne lit pas l'AC3, l'E-AC3, le DTS…). Le site peut aussi demander « copy » (tel quel) ou « full » (image et son : H.264 + AAC).
 # FLUX MANUELS (facultatif, --ajouter) : des flux nommés, toujours à la demande ; le site ne les utilise pas.
 # Pendant qu'on regarde, il ne sort de chez toi qu'un flux par canal, peu importe le nombre de spectateurs. Le flux est découpé en HLS sans ré-encodage, puis servi en HTTPS.
 #
@@ -61,7 +61,7 @@ Wants=network-online.target
 [Service]
 User=www-data
 EnvironmentFile=/etc/relais-live/%i.env
-ExecStart=/usr/bin/ffmpeg -nostdin -loglevel warning $RECO -i ${STREAM_URL} $CODEC -f hls -hls_time 4 -hls_list_size 6 -hls_flags delete_segments+omit_endlist+append_list+discont_start /var/www/relais-live/%i/index.m3u8
+ExecStart=/usr/bin/ffmpeg -nostdin -hide_banner -loglevel warning $RECO -i ${STREAM_URL} $CODEC -f hls -hls_time 4 -hls_list_size 6 -hls_flags delete_segments+omit_endlist+append_list+discont_start /var/www/relais-live/%i/index.m3u8
 Restart=always
 RestartSec=5
 UNIT
@@ -105,12 +105,12 @@ def etat():
     try:
         with open(os.path.join(CONF, "etat.json")) as f:
             e = json.load(f)
-        return {"url": e.get("url"), "surdemande": bool(e.get("surdemande", True)), "transcode": e.get("transcode")}
+        return {"url": e.get("url"), "surdemande": bool(e.get("surdemande", True)), "transcode": e.get("transcode") or "audio"}
     except (OSError, ValueError):
-        return {"url": None, "surdemande": True, "transcode": None}
+        return {"url": None, "surdemande": True, "transcode": "audio"}
 
 
-def ecrire_etat(url, surdemande, transcode="copy"):
+def ecrire_etat(url, surdemande, transcode="audio"):
     with open(os.path.join(CONF, "etat.json"), "w") as f:
         json.dump({"url": url, "surdemande": surdemande, "transcode": transcode}, f)
 
@@ -145,7 +145,7 @@ def demarrer(n):
             systemctl("start", "--no-block", "relais-live@" + n)
 
 
-def ecrire_env(n, url, transcode="copy"):
+def ecrire_env(n, url, transcode="audio"):
     """Adresse du flux gardée lisible par root seulement (elle peut contenir un jeton)."""
     # Analyse plus longue de la source : dans un flux IPTV (MPEG-TS), la piste audio est souvent repérée trop tard avec les réglages par défaut
     # de ffmpeg, qui la laisse alors tomber sans erreur (vidéo muette, surtout en mode « audio » où sa présence est facultative : 0:a:0?).
@@ -154,7 +154,7 @@ def ecrire_env(n, url, transcode="copy"):
         reco += " -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 10"
     fd = os.open(os.path.join(CONF, n + ".env"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
-        f.write("STREAM_URL=%s\nRECO=%s\nCODEC=%s\n" % (url, reco, CODECS.get(transcode, CODECS["copy"])))
+        f.write("STREAM_URL=%s\nRECO=%s\nCODEC=%s\n" % (url, reco, CODECS.get(transcode, CODECS["audio"])))
     dossier = os.path.join(WEB, n)
     os.makedirs(dossier, exist_ok=True)
     try:
@@ -163,8 +163,8 @@ def ecrire_env(n, url, transcode="copy"):
         pass
 
 
-def appliquer(url, surdemande, transcode="copy"):
-    """Règle le canal du site : url = adresse du flux à diffuser, ou None pour ne rien diffuser ; transcode = copy | audio | full."""
+def appliquer(url, surdemande, transcode="audio"):
+    """Règle le canal du site : url = adresse du flux à diffuser, ou None pour ne rien diffuser ; transcode = audio (par défaut) | copy | full."""
     n = lire("canal")
     if not n:
         raise ValueError("canal non initialisé")
@@ -237,14 +237,14 @@ class Demande(BaseHTTPRequestHandler):
         if self.command == "GET" and chemin == "/controle/etat":
             n, e = lire("canal"), etat()
             d = last.get(n)
-            return self.repondre(200, {"canal": bool(n), "configure": bool(e["url"]), "surdemande": e["surdemande"], "transcode": e["transcode"] or "copy", "actif": bool(n) and actif(n), "derniere_demande_il_y_a": None if d is None else int(time.time() - d)})
+            return self.repondre(200, {"canal": bool(n), "configure": bool(e["url"]), "surdemande": e["surdemande"], "transcode": e["transcode"] or "audio", "actif": bool(n) and actif(n), "derniere_demande_il_y_a": None if d is None else int(time.time() - d)})
         if self.command == "PUT" and chemin == "/controle/source":
             longueur = int(self.headers.get("Content-Length") or 0)
             if longueur > 4096:
                 return self.repondre(413, "Trop gros")
             try:
                 corps = json.loads(self.rfile.read(longueur) or b"{}")
-                url, surdemande, transcode = corps.get("url"), bool(corps.get("onDemand", True)), corps.get("transcode", "copy")
+                url, surdemande, transcode = corps.get("url"), bool(corps.get("onDemand", True)), corps.get("transcode", "audio")
             except (ValueError, AttributeError):
                 return self.repondre(400, "JSON invalide")
             if transcode not in CODECS:
@@ -298,7 +298,7 @@ if __name__ == "__main__":
     e = etat()
     if e["url"] and not e["surdemande"]:  # après un redémarrage du serveur : on reprend le direct en cours
         try:
-            appliquer(e["url"], False, e["transcode"] or "copy")
+            appliquer(e["url"], False, e["transcode"] or "audio")
         except Exception:
             pass
     threading.Thread(target=couper_les_inactifs, daemon=True).start()
@@ -359,7 +359,7 @@ ajouter_flux() { # ajouter_flux NOM URL
   # Les options de reconnexion ne valent que pour les flux http(s). L'adresse est gardée lisible par root seulement : elle peut contenir un jeton.
   local reco=""
   case "$url" in http://*|https://*) reco="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 10";; esac
-  ( umask 077; printf 'STREAM_URL=%s\nRECO=%s\nCODEC=-c copy\n' "$url" "$reco" > "$CONF_DIR/$nom.env" )
+  ( umask 077; printf 'STREAM_URL=%s\nRECO=%s\nCODEC=-map 0:v:0 -map 0:a:0? -c:v copy -c:a aac -b:a 128k -ac 2\n' "$url" "$reco" > "$CONF_DIR/$nom.env" )
   # Pas de démarrage ici : le flux se connecte à la première demande d'un lecteur.
   systemctl stop "relais-live@$nom" 2>/dev/null || true
   echo "Flux « $nom » prêt (se connecte à la demande) : $(base_url)/live/$nom/index.m3u8"
@@ -599,6 +599,7 @@ echo "=== Terminé ==="
 lister_flux
 afficher_infos
 echo ""
+echo "Compatibilité navigateur : le son est converti en AAC stéréo par défaut (image copiée sans réencodage) ; réglable dans Admin > Direct."
 echo "Les flux restent en veille : ils se connectent à ton Dispatcharr seulement quand quelqu'un ouvre le lien, et se coupent environ une minute après son départ."
 echo "Page de test d'un flux manuel : $(base_url)/?flux=NOM  (compte quelques secondes avant que l'image apparaisse la première fois)"
 echo "Pour ajouter un flux plus tard : sudo bash $0 --ajouter NOM URL"

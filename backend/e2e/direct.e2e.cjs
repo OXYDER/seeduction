@@ -100,13 +100,15 @@ const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E
     await call('POST', '/admin/live/sync', TA);
     check('mode continu transmis au relais', last()?.url === URL_A && last()?.onDemand === false);
     await call('PUT', '/admin/live/config', TA, { onDemand: true });
-    check('par défaut le relais reçoit « copier tel quel »', last()?.transcode === 'copy', JSON.stringify(last()));
+    check('par défaut le relais reçoit « convertir le son »', last()?.transcode === 'audio', JSON.stringify(last()));
     const tcBad = await call('PUT', '/admin/live/config', TA, { transcode: 'rm -rf /' });
-    check('un mode de conversion inconnu est ignoré', tcBad.b?.transcode === 'copy');
+    check('un mode de conversion inconnu est ignoré', tcBad.b?.transcode === 'audio');
     await call('PUT', '/admin/live/config', TA, { transcode: 'full' });
     await call('POST', '/admin/live/sync', TA);
     check('la conversion image + son est transmise au relais', last()?.transcode === 'full' && last()?.url === URL_A, JSON.stringify(last()));
     await call('PUT', '/admin/live/config', TA, { transcode: 'copy' });
+    await call('POST', '/admin/live/sync', TA);
+    check('« copier tel quel » reste possible', last()?.transcode === 'copy');
 
     // Panne du relais
     relayUp = false;
