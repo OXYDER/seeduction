@@ -7,6 +7,8 @@
 # FLUX MANUELS (facultatif, --ajouter) : des flux nommés, toujours à la demande.
 # Pendant qu'on regarde, il ne sort de chez toi qu'un flux par canal, peu importe le nombre de spectateurs. Le flux est découpé en HLS sans ré-encodage, puis servi en HTTPS.
 #
+# Les ports HTTP (80) et HTTPS (443) sont demandés : si un autre programme les occupe, le script le dit et propose d'autres ports (8080 / 8443).
+#
 # Utilisation (en root, sur le serveur relais) :
 #   sudo bash installer-relais.sh                       installation (pose les questions : domaine, puis un ou plusieurs flux)
 #   sudo bash installer-relais.sh --ajouter NOM URL     ajoute un flux (ex. --ajouter salle2 http://100.x.y.z:9191/proxy/ts/stream/ID)
@@ -37,6 +39,15 @@ url_valide() {
 
 domaine() { cat "$CONF_DIR/domaine" 2>/dev/null || true; }
 protocole() { if [ -d "/etc/letsencrypt/live/$(domaine)" ]; then echo https; else echo http; fi; }
+lire_port() { local v; v="$(cat "$CONF_DIR/$1" 2>/dev/null || true)"; echo "${v:-$2}"; }
+# Adresse de base du relais, avec le port s'il n'est pas le port habituel (80 en HTTP, 443 en HTTPS).
+base_url() {
+  local d; d="$(domaine)"
+  if [ "$(protocole)" = https ]; then local p; p="$(lire_port port_https 443)"; [ "$p" = 443 ] && echo "https://$d" || echo "https://$d:$p"
+  else local p; p="$(lire_port port_http 80)"; [ "$p" = 80 ] && echo "http://$d" || echo "http://$d:$p"; fi
+}
+# Qui écoute sur ce port (autre que nginx) ? Vide = libre pour nous.
+port_occupe() { ss -ltnpH "sport = :$1" 2>/dev/null | grep -v '"nginx"' || true; }
 
 ecrire_unite() {
   cat > "$UNITE" <<'UNIT'
@@ -302,9 +313,9 @@ afficher_infos() {
   local d c; d="$(domaine)"; c="$(cat "$CONF_DIR/canal" 2>/dev/null || true)"
   echo ""
   echo "=== À copier dans le site : Admin > Direct > Relais ==="
-  echo "Adresse de contrôle : $(protocole)://$d/controle"
+  echo "Adresse de contrôle : $(base_url)/controle"
   echo "Secret              : $(cat "$CONF_DIR/secret" 2>/dev/null || echo '(introuvable)')"
-  echo "Adresse du flux     : $(protocole)://$d/live/$c/index.m3u8"
+  echo "Adresse du flux     : $(base_url)/live/$c/index.m3u8"
   echo "(Garde le secret pour toi : il permet de commander le relais.)"
 }
 
@@ -321,7 +332,7 @@ ajouter_flux() { # ajouter_flux NOM URL
   ( umask 077; printf 'STREAM_URL=%s\nRECO=%s\n' "$url" "$reco" > "$CONF_DIR/$nom.env" )
   # Pas de démarrage ici : le flux se connecte à la première demande d'un lecteur.
   systemctl stop "relais-live@$nom" 2>/dev/null || true
-  echo "Flux « $nom » prêt (se connecte à la demande) : $(protocole)://$(domaine)/live/$nom/index.m3u8"
+  echo "Flux « $nom » prêt (se connecte à la demande) : $(base_url)/live/$nom/index.m3u8"
 }
 
 lister_flux() {
@@ -332,7 +343,7 @@ lister_flux() {
     local nom etat; nom="$(basename "$f" .env)"
     if systemctl is-active --quiet "relais-live@$nom"; then etat="connecté (quelqu'un regarde)"; else etat="en veille (se connecte à la demande)"; fi
     local lib="$nom"; [ "$nom" = "$(cat "$CONF_DIR/canal" 2>/dev/null || true)" ] && lib="canal du site"
-    echo "$lib : $etat → $(protocole)://$(domaine)/live/$nom/index.m3u8"
+    echo "$lib : $etat → $(base_url)/live/$nom/index.m3u8"
   done
   [ "$trouve" = 1 ] || echo "Aucun flux connecté en ce moment (le canal du site apparaît ici pendant une diffusion)."
 }
@@ -387,6 +398,25 @@ demander "Nom de domaine de ce relais (ex. relais.exemple.com, qui doit déjà p
 demander "Courriel pour le certificat HTTPS (avis d'expiration seulement)" COURRIEL
 [ -n "$DOMAINE" ] || { echo "Il faut un nom de domaine."; exit 1; }
 
+# Ports : 80 et 443 par défaut. Si un autre programme (Apache, un autre proxy, un conteneur…) les utilise déjà, le script le signale et on en choisit d'autres.
+choisir_port() { # choisir_port "Question" VARIABLE défaut
+  local question="$1" var="$2" defaut="$3" rep=""
+  if [ -n "${!var:-}" ]; then return; fi
+  while true; do
+    local qui; qui="$(port_occupe "$defaut" | head -n1)"
+    if [ -n "$qui" ]; then echo "   Le port $defaut est déjà utilisé par : $(echo "$qui" | sed -E 's/.*users:\(\("?([^",)]*).*/\1/')"; fi
+    read -r -p "$question [$defaut] : " rep || { echo "Pas de réponse : arrêt."; exit 1; }
+    rep="${rep:-$defaut}"
+    [[ "$rep" =~ ^[0-9]+$ ]] && [ "$rep" -ge 1 ] && [ "$rep" -le 65535 ] || { echo "   Un numéro de port entre 1 et 65535, s'il te plaît."; continue; }
+    if [ -n "$(port_occupe "$rep")" ]; then echo "   Le port $rep est déjà utilisé : choisis-en un autre."; case "$rep" in 80) defaut=8080;; 443) defaut=8443;; *) defaut="$((rep+1))";; esac; continue; fi
+    printf -v "$var" '%s' "$rep"; return
+  done
+}
+echo ""
+choisir_port "Port HTTP (80 recommandé : nécessaire pour obtenir le certificat HTTPS)" PORT_HTTP 80
+if [ "$PORT_HTTP" = 80 ]; then choisir_port "Port HTTPS" PORT_HTTPS 443; else PORT_HTTPS=443; fi
+mkdir -p "$CONF_DIR"; printf '%s' "$PORT_HTTP" > "$CONF_DIR/port_http"; printf '%s' "$PORT_HTTPS" > "$CONF_DIR/port_https"
+
 # 2. Programmes nécessaires.
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
@@ -416,7 +446,7 @@ ecrire_service_demande
 # 5. Nginx : la liste de lecture (index.m3u8) passe par le service de démarrage à la demande ; les petits morceaux vidéo sont servis directement, sans cache.
 cat > "$CONF_NGINX" <<'NGINX'
 server {
-    listen 80;
+    listen @PORT_HTTP@;
     server_name @DOMAINE@;
     root @WEB@;
 
@@ -441,7 +471,9 @@ server {
     }
 }
 NGINX
-sed -i "s#@DOMAINE@#$DOMAINE#g; s#@WEB@#$DOSSIER_WEB#g" "$CONF_NGINX"
+sed -i "s#@DOMAINE@#$DOMAINE#g; s#@WEB@#$DOSSIER_WEB#g; s#@PORT_HTTP@#$PORT_HTTP#g" "$CONF_NGINX"
+# Le site par défaut de nginx écoute aussi sur le port 80 : il empêcherait nginx de démarrer si un autre programme l'occupe.
+if [ "$PORT_HTTP" != 80 ]; then rm -f /etc/nginx/sites-enabled/default; fi
 nginx -t
 # Nginx doit tourner (un « reload » échoue s'il est arrêté, par exemple parce qu'un autre programme occupe déjà le port 80).
 systemctl enable nginx >/dev/null 2>&1 || true
@@ -459,8 +491,15 @@ elif ! systemctl start nginx; then
 fi
 
 # 6. HTTPS (si le nom de domaine pointe déjà vers ce serveur ; sinon on continue en HTTP).
-if ! certbot --nginx -d "$DOMAINE" --non-interactive --agree-tos -m "${COURRIEL:-admin@$DOMAINE}" --redirect; then
-  echo "!! Le certificat HTTPS n'a pas pu être obtenu (le nom de domaine pointe-t-il vers ce serveur ?). Relance « certbot --nginx -d $DOMAINE » plus tard."
+if [ "$PORT_HTTP" = 80 ]; then
+  if ! certbot --nginx -d "$DOMAINE" --non-interactive --agree-tos -m "${COURRIEL:-admin@$DOMAINE}" --redirect --https-port "$PORT_HTTPS"; then
+    echo "!! Le certificat HTTPS n'a pas pu être obtenu (le nom de domaine pointe-t-il vers ce serveur ?). Relance « certbot --nginx -d $DOMAINE --https-port $PORT_HTTPS » plus tard."
+  fi
+else
+  echo ""
+  echo "!! Le port HTTP choisi n'est pas 80 : le certificat HTTPS ne peut pas être obtenu ici (la vérification se fait obligatoirement sur le port 80)."
+  echo "   Le relais répond en HTTP sur le port $PORT_HTTP. Les navigateurs bloquent une vidéo HTTP dans un site HTTPS : il faut donc mettre devant lui un proxy HTTPS"
+  echo "   (le proxy qui occupe déjà le port 80/443, par exemple Nginx Proxy Manager) qui envoie le domaine $DOMAINE vers http://ADRESSE-DE-CE-SERVEUR:$PORT_HTTP (sans mise en cache et avec un délai de réponse d'au moins 40 s)."
 fi
 
 # 7. Flux manuels (facultatif) : un nom et une adresse pour chacun (ligne vide pour terminer). Le canal géré par le site, lui, n'a rien à saisir ici.
@@ -483,5 +522,5 @@ lister_flux
 afficher_infos
 echo ""
 echo "Les flux restent en veille : ils se connectent à ton Dispatcharr seulement quand quelqu'un ouvre le lien, et se coupent environ une minute après son départ."
-echo "Page de test d'un flux manuel : $(protocole)://$DOMAINE/?flux=NOM  (compte quelques secondes avant que l'image apparaisse la première fois)"
+echo "Page de test d'un flux manuel : $(base_url)/?flux=NOM  (compte quelques secondes avant que l'image apparaisse la première fois)"
 echo "Pour ajouter un flux plus tard : sudo bash $0 --ajouter NOM URL"
