@@ -4,7 +4,7 @@
 # CANAL DU SITE (Admin > Direct) : le site te donne un calendrier ; il dit au relais quel flux de ton Dispatcharr diffuser à chaque moment, par une API
 # protégée par un secret. Le relais publie le tout sous UNE adresse secrète. En mode « à la demande », il ne se connecte à ton Dispatcharr que lorsqu'un
 # spectateur regarde (quelques secondes d'attente au début) et se coupe environ une minute après le dernier ; en mode « continu », il reste connecté pendant tout le créneau.
-# FLUX MANUELS (facultatif, --ajouter) : des flux nommés, toujours à la demande.
+# FLUX MANUELS (facultatif, --ajouter) : des flux nommés, toujours à la demande ; le site ne les utilise pas.
 # Pendant qu'on regarde, il ne sort de chez toi qu'un flux par canal, peu importe le nombre de spectateurs. Le flux est découpé en HLS sans ré-encodage, puis servi en HTTPS.
 #
 # Les ports HTTP (80) et HTTPS (443) sont demandés : si un autre programme les occupe, le script le dit et propose d'autres ports (8080 / 8443).
@@ -569,19 +569,8 @@ else
   echo "   (le proxy qui occupe déjà le port 80/443, par exemple Nginx Proxy Manager) qui envoie le domaine $DOMAINE vers http://ADRESSE-DE-CE-SERVEUR:$PORT_HTTP (sans mise en cache et avec un délai de réponse d'au moins 40 s)."
 fi
 
-# 7. Flux manuels (facultatif) : un nom et une adresse pour chacun (ligne vide pour terminer). Le canal géré par le site, lui, n'a rien à saisir ici.
-echo ""
-echo "=== Flux manuels (facultatif : appuie sur Entrée pour passer) ==="
-if [ -n "${STREAM_URL:-}" ]; then ajouter_flux "${NOM_FLUX:-event}" "$STREAM_URL"; else
-  while true; do
-    NOM=""; URL=""
-    read -r -p "Nom du flux (ex. salle1, sans espace ; vide pour terminer) : " NOM || true
-    [ -n "$NOM" ] || break
-    nom_valide "$NOM" || { echo "Nom invalide : lettres minuscules, chiffres et tirets seulement."; continue; }
-    read -r -p "Adresse du flux « $NOM » dans Dispatcharr (ex. http://100.x.y.z:9191/proxy/ts/stream/ID-DU-CANAL) : " URL || true
-    ajouter_flux "$NOM" "$URL" || true
-  done
-fi
+# 7. Les flux (tes podcasts) s'ajoutent dans le site, Admin > Direct : rien à saisir ici. (Flux manuels facultatifs : --ajouter NOM URL, ou STREAM_URL=… à l'installation.)
+if [ -n "${STREAM_URL:-}" ]; then ajouter_flux "${NOM_FLUX:-event}" "$STREAM_URL"; fi
 
 echo ""
 echo "=== Terminé ==="
