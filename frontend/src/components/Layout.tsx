@@ -301,6 +301,23 @@ function LayoutInner() {
     }
   }, [accessToken]);
 
+  // Les chiffres du haut (ratio, upload, téléchargé, points) restent à jour : sans ça ils gardaient les valeurs de la connexion pendant que les listes de membres montraient les chiffres du moment.
+  // On ne remplace que les statistiques (pas le reste du profil, pour ne pas écraser un réglage en cours de modification).
+  useEffect(() => {
+    if (!accessToken) return;
+    let last = Date.now();
+    const refresh = () => {
+      if (document.hidden) return;
+      last = Date.now();
+      api.get('/users/me').then((r) => setProfile((p) => (p ? { ...p, uploaded: r.data.uploaded, downloaded: r.data.downloaded, bonusPoints: r.data.bonusPoints, ratio: r.data.ratio } : r.data))).catch(() => undefined);
+    };
+    const t = setInterval(refresh, 30_000);
+    const onVisible = () => { if (!document.hidden && Date.now() - last > 10_000) refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); };
+  }, [accessToken]);
+
   // Compte famille : revenir à l'écran « Qui est-ce ? » (nouveau choix de profil, donc nouveau PIN).
   async function switchProfile() {
     try {
