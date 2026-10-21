@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
@@ -9,6 +10,8 @@ import {
 
 const KEY = 'liveRelay';
 const PUSH_EVERY_MS = 60_000;
+/** Durée de vie d'un jeton « Ouvrir dans le lecteur Seeduction » (le clic ouvre le logiciel en quelques secondes). */
+const PLAYER_TOKEN_TTL_MS = 2 * 60_000;
 
 export interface RelayStatus {
   /** Dernier envoi au relais. */
@@ -31,6 +34,8 @@ export class LiveService {
   private lastPushAt = 0;
   private status: RelayStatus = { lastPushAt: null, lastOk: null, lastError: null, pushed: null };
   private busy = false;
+  /** Jetons à usage unique remis au lecteur desktop (seeduction://live/<jeton>) : il n'a pas de session web. */
+  private playerTokens = new Map<string, number>();
 
   constructor(private prisma: PrismaService, private settings: SettingsService) {}
 
@@ -205,6 +210,27 @@ export class LiveService {
       playbackUrl: live ? cfg.playbackUrl : null,
       next,
     };
+  }
+
+  /** « Ouvrir dans le lecteur Seeduction » : jeton à usage unique, seulement pendant une diffusion. */
+  async createPlayerToken() {
+    const { live } = await this.forMembers();
+    if (!live) throw new NotFoundException('Aucune diffusion en ce moment.');
+    const now = Date.now();
+    for (const [t, exp] of this.playerTokens) if (exp < now) this.playerTokens.delete(t);
+    const token = randomUUID();
+    this.playerTokens.set(token, now + PLAYER_TOKEN_TTL_MS);
+    return { token };
+  }
+
+  /** Consommé une seule fois par le lecteur desktop : l'adresse du relais (jamais celle de la source) et le titre en cours. */
+  async resolvePlayerToken(token: string) {
+    const exp = this.playerTokens.get(token);
+    this.playerTokens.delete(token);
+    if (!exp || exp < Date.now()) throw new NotFoundException('Lien expiré : relance « Ouvrir dans le lecteur » depuis la page Direct.');
+    const s = await this.forMembers();
+    if (!s.live || !s.playbackUrl) throw new NotFoundException('La diffusion est terminée.');
+    return { playbackUrl: s.playbackUrl, title: s.title };
   }
 
   // ── Envoi au relais ─────────────────────────────────────────────────────────

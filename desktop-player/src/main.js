@@ -391,12 +391,13 @@ function registerSession(session) {
 async function handleUrl(rawUrl) {
   try {
     const url = new URL(rawUrl);
-    if (url.protocol !== `${PROTOCOL}:` || url.hostname !== 'stream') {
+    if (url.protocol !== `${PROTOCOL}:` || (url.hostname !== 'stream' && url.hostname !== 'live')) {
       throw new Error('Lien non reconnu par le lecteur Seeduction.');
     }
     const token = decodeURIComponent(url.pathname.replace(/^\//, ''));
     if (!token) throw new Error('Lien incomplet.');
-    await playToken(token);
+    if (url.hostname === 'live') await playLiveToken(token);
+    else await playToken(token);
   } catch (err) {
     // La cause détaillée (ex : code d'erreur TLS/réseau précis) va dans la console pour le débogage ;
     // la fenêtre affichée au membre reste courte et lisible.
@@ -414,6 +415,28 @@ async function playToken(token) {
   }
   const { torrentBase64, fileIndex, torrentId, torrentName, coverImage } = await res.json();
   await startPlayback(Buffer.from(torrentBase64, 'base64'), fileIndex, { torrentId, torrentName, coverImage });
+}
+
+/** Direct (seeduction://live/<jeton>) : pas de torrent ici, VLC lit directement le flux HLS du relais — avec le son
+ * d'origine (AC3, E-AC3, 5.1…) qu'un navigateur ne sait pas lire, donc sans aucune conversion sur le relais. */
+async function playLiveToken(token) {
+  const res = await fetch(`${SITE_BASE_URL}/api/live/player/${encodeURIComponent(token)}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message || `Le lien du direct a expiré ou est invalide (${res.status}). Relance-le depuis Seeduction.`);
+  }
+  const { playbackUrl, title } = await res.json();
+  if (!/^https?:\/\//i.test(String(playbackUrl || ''))) throw new Error('Adresse du direct invalide.');
+  const vlcPath = findVlc();
+  if (!vlcPath) {
+    shell.openExternal(playbackUrl);
+    notifyError("VLC n'a pas été trouvé sur ton PC : réinstalle le lecteur Seeduction pour regarder le direct avec le son.");
+    return;
+  }
+  const child = spawn(vlcPath, [playbackUrl, '--meta-title', title || 'Direct Seeduction', '--network-caching=4000'], { detached: true, stdio: 'ignore' });
+  child.on('error', (err) => log('Erreur du processus VLC (direct) :', err.message));
+  child.unref();
+  notify('Direct', title || 'Lecture démarrée');
 }
 
 async function startPlayback(torrentBuffer, fileIndex, meta = {}) {

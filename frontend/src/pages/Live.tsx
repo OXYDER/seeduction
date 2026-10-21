@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 
 interface LiveState { live: boolean; title: string | null; endsAt: string | null; playbackUrl: string | null; next: { title: string; start: string; end: string }[] }
@@ -38,6 +39,36 @@ function Player({ url }: { url: string }) {
   );
 }
 
+/** Ouvre le direct dans le lecteur Seeduction (VLC) : son et image d'origine, sans conversion sur le relais. */
+function OpenInPlayer() {
+  const [state, setState] = useState<'idle' | 'opening' | 'hint'>('idle');
+  const [error, setError] = useState('');
+  async function open() {
+    setError('');
+    try {
+      const { data } = await api.post('/live/player');
+      setState('opening');
+      window.location.href = `seeduction://live/${data.token}`;
+      // Même astuce que la fiche torrent : si la page garde le focus, le lecteur n'est probablement pas installé.
+      window.setTimeout(() => setState(document.hidden ? 'idle' : 'hint'), 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.message ?? "Impossible d'ouvrir le lecteur.");
+    }
+  }
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button type="button" onClick={open} title="Le lecteur Seeduction lit le son et l'image d'origine, même quand le navigateur ne peut pas">🖥️ Ouvrir dans le lecteur Seeduction</button>
+        <span className="muted" style={{ fontSize: 12.5 }}>Pas de son ici ? Le lecteur lit tous les formats.</span>
+      </div>
+      {error && <p style={{ color: 'var(--danger)', margin: 0 }}>{error}</p>}
+      {state === 'hint' && (
+        <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>Rien ne s'est ouvert ? Le lecteur n'est peut-être pas installé sur ce PC : <Link to="/player">comment l'installer</Link>.</p>
+      )}
+    </div>
+  );
+}
+
 export default function Live() {
   const [s, setS] = useState<LiveState | null>(null);
   const [err, setErr] = useState(false);
@@ -57,6 +88,7 @@ export default function Live() {
         <div className="panel" style={{ display: 'grid', gap: 10 }}>
           <div style={{ fontWeight: 700 }}>🔴 {s.title}{s.endsAt && <span className="muted" style={{ fontWeight: 400 }}> · jusqu'à {until(s.endsAt)}</span>}</div>
           <Player url={s.playbackUrl} />
+          <OpenInPlayer />
         </div>
       ) : (
         <div className="panel" style={{ display: 'grid', gap: 6 }}>

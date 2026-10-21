@@ -71,3 +71,11 @@ sur le PC du membre, jamais sur le NAS : par défaut dans `Téléchargements/See
 Téléchargements (`desktop-player/src/settings.js`). Les métadonnées des sessions actives (`sessions.json`) et une
 copie de chaque `.torrent` sont gardées dans le dossier de données de l'app pour pouvoir reprendre le seed après un
 redémarrage du logiciel.
+
+## Le direct dans le lecteur Seeduction
+
+La page **Direct** affiche aussi **🖥️ Ouvrir dans le lecteur Seeduction**. Un navigateur ne lit que l'AAC : si la source
+du direct est en AC3, E-AC3 ou MP2, la vidéo reste muette tant que le relais ne convertit pas le son. Le lecteur desktop,
+lui, lance Seeduction VLC directement sur le flux HLS du relais (`seeduction://live/<jeton>`, jeton à usage unique :
+`POST /api/live/player` puis `GET /api/live/player/:jeton`), qui lit le son et l'image d'origine sans aucune conversion.
+Pas de torrent ici : rien ne passe par WebTorrent.

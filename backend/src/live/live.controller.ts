@@ -13,6 +13,19 @@ export class LiveController {
 
   @Get()
   now() { return this.live.forMembers(); }
+
+  /** Jeton pour le lien seeduction://live/<jeton> (lecteur desktop : VLC lit le son et l'image d'origine, sans conversion). */
+  @Post('player')
+  player() { return this.live.createPlayerToken(); }
+}
+
+/** Consommé une seule fois par le lecteur desktop (pas de session web : le jeton en tient lieu). */
+@Controller('live/player')
+export class LivePlayerController {
+  constructor(private live: LiveService) {}
+
+  @Get(':token')
+  resolve(@Param('token') token: string) { return this.live.resolvePlayerToken(token); }
 }
 
 /** Admin > Direct : relais, flux et calendrier. Réservé à l'administration (les adresses des flux peuvent contenir des jetons). */

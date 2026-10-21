@@ -86,8 +86,8 @@ CHEMIN = re.compile(r"^/live/([a-z0-9][a-z0-9-]{0,30})/index\.m3u8$")
 # Compatibilité navigateur : un navigateur lit H.264 + AAC. « audio » ne convertit que le son (léger), « full » convertit aussi l'image (demande du processeur).
 CODECS = {
     "copy": "-c copy",
-    "audio": "-map 0:v:0 -map 0:a:0? -c:v copy -c:a aac -b:a 128k -ac 2",
-    "full": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset veryfast -profile:v main -pix_fmt yuv420p -force_key_frames expr:gte(t,n_forced*4) -c:a aac -b:a 128k -ac 2",
+    "audio": "-map 0:v:0 -map 0:a:0? -c:v copy -c:a aac -b:a 128k -ac 2 -af aresample=async=1",
+    "full": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset veryfast -profile:v main -pix_fmt yuv420p -force_key_frames expr:gte(t,n_forced*4) -c:a aac -b:a 128k -ac 2 -af aresample=async=1",
 }
 URL_OK = re.compile(r"^(https?|rtmp|rtsp|srt|udp)://[^\s\"'\\]+$", re.I)
 last, locks, guard = {}, {}, threading.Lock()
@@ -147,7 +147,11 @@ def demarrer(n):
 
 def ecrire_env(n, url, transcode="copy"):
     """Adresse du flux gardée lisible par root seulement (elle peut contenir un jeton)."""
-    reco = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 10" if url.lower().startswith(("http://", "https://")) else ""
+    # Analyse plus longue de la source : dans un flux IPTV (MPEG-TS), la piste audio est souvent repérée trop tard avec les réglages par défaut
+    # de ffmpeg, qui la laisse alors tomber sans erreur (vidéo muette, surtout en mode « audio » où sa présence est facultative : 0:a:0?).
+    reco = "-analyzeduration 10000000 -probesize 10000000"
+    if url.lower().startswith(("http://", "https://")):
+        reco += " -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 10"
     fd = os.open(os.path.join(CONF, n + ".env"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         f.write("STREAM_URL=%s\nRECO=%s\nCODEC=%s\n" % (url, reco, CODECS.get(transcode, CODECS["copy"])))
