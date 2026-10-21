@@ -75,6 +75,12 @@ export default function CanadiensPill() {
   const [goal, setGoal] = useState(false);
   const [receivedAt, setReceivedAt] = useState(0);
   const [inferred, setInferred] = useState(false);
+  // Page « Direct » : le lien du cadre dit si une diffusion est en cours (chargé à l'ouverture du cadre).
+  const [live, setLive] = useState<{ live: boolean; title: string | null } | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    api.get('/live').then((r) => setLive({ live: !!r.data?.live, title: r.data?.title ?? null })).catch(() => setLive(null));
+  }, [open]);
   const sample = useRef<{ key: string; secs: number; at: string } | null>(null);
   const [now, setNow] = useState(Date.now());
   const prev = useRef<{ id: number; score: number; at: number } | null>(null);
@@ -169,6 +175,7 @@ export default function CanadiensPill() {
           </label>
           {data.last.length > 0 && <><div className="mtl-sub">Derniers résultats</div>{data.last.map((x) => <GameRow key={x.id} g={x} />)}</>}
           {data.next.length > 0 && <><div className="mtl-sub">Prochains matchs</div>{data.next.filter((x) => x.id !== g.id || g.state === 'FINAL').map((x) => <GameRow key={x.id} g={x} />)}</>}
+          <Link to="/direct" className={`mtl-play mtl-live${live?.live ? ' on' : ''}`} onClick={close}>{live?.live ? <>🔴 En direct : {live.title} </> : <>📺 Direct : la programmation </>}<span aria-hidden="true">→</span></Link>
           <Link to="/jeux/mise-o-jeu" className="mtl-play" onClick={close}>🎲 Parier sur les matchs du Canadien : Mise-O-jeu <span aria-hidden="true">→</span></Link>
           <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Données : LNH. Le chrono avance en direct ; score mis à jour toutes les 5 secondes pendant un match.</div>
         </div>
