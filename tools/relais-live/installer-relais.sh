@@ -443,7 +443,20 @@ server {
 NGINX
 sed -i "s#@DOMAINE@#$DOMAINE#g; s#@WEB@#$DOSSIER_WEB#g" "$CONF_NGINX"
 nginx -t
-systemctl reload nginx
+# Nginx doit tourner (un « reload » échoue s'il est arrêté, par exemple parce qu'un autre programme occupe déjà le port 80).
+systemctl enable nginx >/dev/null 2>&1 || true
+if systemctl is-active --quiet nginx; then
+  systemctl reload nginx
+elif ! systemctl start nginx; then
+  echo ""
+  echo "!! Nginx n'a pas pu démarrer. Cause la plus fréquente : un autre programme utilise déjà le port 80 ou 443."
+  echo "   Qui occupe le port 80 :"
+  ss -ltnp 2>/dev/null | grep -E ':(80|443)\s' || echo "   (rien trouvé : regarde le détail avec « journalctl -xeu nginx »)"
+  echo "   Détail de l'erreur :"
+  journalctl -u nginx --no-pager -n 8 2>/dev/null || true
+  echo "   Arrête ou déplace l'autre programme (ex. « systemctl disable --now apache2 »), puis relance ce script : il reprend là où il s'est arrêté."
+  exit 1
+fi
 
 # 6. HTTPS (si le nom de domaine pointe déjà vers ce serveur ; sinon on continue en HTTP).
 if ! certbot --nginx -d "$DOMAINE" --non-interactive --agree-tos -m "${COURRIEL:-admin@$DOMAINE}" --redirect; then
