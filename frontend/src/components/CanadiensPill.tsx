@@ -140,22 +140,28 @@ export default function CanadiensPill() {
     return () => clearInterval(t);
   }, [ticking]);
 
-  if (!enabled || !data || !data.enabled || !data.available || !data.featured) return null;
-  const g = data.featured;
-  const { body, tone } = pillBody(g);
-  const m = mine(g), o = other(g);
+  if (!enabled || !data || !data.enabled) return null;
+  // Sans match aujourd'hui (ni en cours, ni tout juste terminé) : une simple icône du Canadien reste en haut de la page, pour consulter les derniers résultats et les prochains matchs.
+  const f = data.featured;
+  const nextGame = data.next?.[0] ?? null;
+  const g = f ?? nextGame ?? data.last?.[0] ?? null;
+  const pill = f ? pillBody(f) : null;
+  const tone = pill?.tone ?? 'idle';
+  const m = g ? mine(g) : null, o = g ? other(g) : null;
 
   return (
     <>
       <button ref={btn} type="button" className={`mtl-pill ${tone}${goal ? ' goal' : ''}`} onClick={() => setOpen((v) => !v)} aria-expanded={open} title="Canadiens de Montréal : score et calendrier">
         {tone === 'live' && <i className="mtl-dot" aria-hidden="true" />}
-        {goal ? <strong className="mtl-but">BUT !</strong> : null}{body}
-        {g.state === 'LIVE' && g.period && <small className="mtl-per">{g.clock?.intermission ? 'Entr.' : g.period.replace(' période', '')} {clockLeft(g, data, receivedAt, now, moving)}</small>}
+        {goal ? <strong className="mtl-but">BUT !</strong> : null}
+        {pill ? pill.body : <><Logo abbrev="MTL" name="Canadiens de Montréal" />{nextGame && <small className="mtl-opt">{dayFmt(nextGame.startUtc)}</small>}</>}
+        {f && f.state === 'LIVE' && f.period && <small className="mtl-per">{f.clock?.intermission ? 'Entr.' : f.period.replace(' période', '')} {clockLeft(f, data, receivedAt, now, moving)}</small>}
       </button>
       <HeaderPopover open={open} anchorRef={btn} onClose={close} width={380} label="Canadiens de Montréal">
         <div className="hp-head"><strong>🏒 Canadiens de Montréal</strong>{data.stale && <span className="muted" style={{ fontSize: 11.5 }}>données en attente de la LNH</span>}</div>
         <div style={{ padding: '10px 14px', overflowY: 'auto' }}>
-          <div className="mtl-card">
+          {!g && <p className="muted" style={{ margin: '0 0 10px' }}>Aucun match à afficher pour l'instant.</p>}
+          {g && m && o && <div className="mtl-card">
             <div className="muted" style={{ fontSize: 12 }}>
               {g.state === 'LIVE' ? `En direct · ${g.clock?.intermission ? 'Entracte' : g.period ?? ''} ${clockLeft(g, data, receivedAt, now, moving)}` : g.state === 'FINAL' ? (g.outcome ?? 'Final') : 'À venir'}
               {KIND[g.kind] ? ` · ${KIND[g.kind]}` : ''}
@@ -168,13 +174,13 @@ export default function CanadiensPill() {
               {g.state === 'FUT' || g.state === 'PRE' ? `${dayFmt(g.startUtc)} à ${timeFmt(g.startUtc)}` : g.state === 'LIVE' && m.sog !== null ? `Tirs au but : ${m.abbrev} ${m.sog} – ${o.sog ?? 0} ${o.abbrev}` : ''}
               {g.venue ? ` · ${g.venue}` : ''}{g.tv.length ? ` · ${g.tv.slice(0, 3).join(', ')}` : ''}
             </div>
-          </div>
+          </div>}
           <label className="row" style={{ gap: 8, margin: '2px 0 8px', fontSize: 13, cursor: 'pointer', alignItems: 'center' }}>
             <input type="checkbox" checked={sound} onChange={(e) => { setSound(e.target.checked); if (e.target.checked) { primeGoalHorn(); playGoalHorn(); } }} />
             🚨 Sirène quand le Canadien marque
           </label>
-          {data.last.length > 0 && <><div className="mtl-sub">Derniers résultats</div>{data.last.map((x) => <GameRow key={x.id} g={x} />)}</>}
-          {data.next.length > 0 && <><div className="mtl-sub">Prochains matchs</div>{data.next.filter((x) => x.id !== g.id || g.state === 'FINAL').map((x) => <GameRow key={x.id} g={x} />)}</>}
+          {(data.last?.length ?? 0) > 0 && <><div className="mtl-sub">Derniers résultats</div>{data.last.map((x) => <GameRow key={x.id} g={x} />)}</>}
+          {(data.next?.length ?? 0) > 0 && <><div className="mtl-sub">Prochains matchs</div>{data.next.filter((x) => x.id !== g?.id || g?.state === 'FINAL').map((x) => <GameRow key={x.id} g={x} />)}</>}
           <Link to="/direct" className={`mtl-play mtl-live${live?.live ? ' on' : ''}`} onClick={close}>{live?.live ? <>🔴 En direct : {live.title} </> : <>📺 Direct : la programmation </>}<span aria-hidden="true">→</span></Link>
           <Link to="/jeux/mise-o-jeu" className="mtl-play" onClick={close}>🎲 Parier sur les matchs du Canadien : Mise-O-jeu <span aria-hidden="true">→</span></Link>
           <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Données : LNH. Le chrono avance en direct ; score mis à jour toutes les 5 secondes pendant un match.</div>
