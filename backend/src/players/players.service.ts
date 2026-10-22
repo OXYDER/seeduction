@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { createHash, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { createReadStream, createWriteStream, promises as fsp } from 'fs';
 import * as path from 'path';
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
 import { isValidVersion } from '../common/utils/app-version';
+import { SettingsService } from '../settings/settings.service';
 
 export type Platform = 'windows' | 'android';
 
@@ -34,6 +35,8 @@ export class PlayersService {
   private readonly log = new Logger(PlayersService.name);
   /** Envois en cours (en mémoire) : un envoi interrompu par un redémarrage du serveur recommence simplement. */
   private uploads = new Map<string, { platform: Platform; received: number; bytes: number; at: number }>();
+
+  constructor(private settings: SettingsService) {}
 
   private dir() { return process.env.PLAYER_DOWNLOADS_DIR ?? './storage/downloads'; }
   private tmpDir() { return path.join(this.dir(), '.tmp'); }
@@ -73,9 +76,49 @@ export class PlayersService {
 
   // ── Côté administration : publication par morceaux ────────────────────────
 
+  /** Ce que voit l'administration : ce qui est publié sur le site, la version écrite dans le code (à compiler et publier si elle est plus récente) et l'état de la clé de publication. */
   async overview() {
     const m = await this.readManifest();
-    return { windows: m.windows ?? null, android: m.android ?? null };
+    const key = await this.keyInfo();
+    return { windows: m.windows ?? null, android: m.android ?? null, code: await this.codeVersions(), key };
+  }
+
+  // ── Clé de publication (script « publier-lecteurs » : compile et publie sans mot de passe) ──
+
+  private static KEY = 'playerPublishKey';
+  private hashKey(k: string) { return createHash('sha256').update(k).digest('hex'); }
+
+  async keyInfo() {
+    const v = await this.settings.get<{ hash: string; createdAt: string }>(PlayersService.KEY);
+    return { set: !!v?.hash, createdAt: v?.createdAt ?? null };
+  }
+
+  /** Crée (ou remplace) la clé : elle n'est montrée qu'une fois, seule son empreinte est gardée. */
+  async createKey() {
+    const key = randomBytes(32).toString('hex');
+    await this.settings.set(PlayersService.KEY, { hash: this.hashKey(key), createdAt: new Date().toISOString() });
+    return { key };
+  }
+
+  async revokeKey() { await this.settings.set(PlayersService.KEY, null); }
+
+  async verifyKey(candidate: string): Promise<boolean> {
+    const v = await this.settings.get<{ hash: string }>(PlayersService.KEY);
+    if (!v?.hash || typeof candidate !== 'string' || candidate.length > 200) return false;
+    const a = Buffer.from(this.hashKey(candidate), 'hex'), b = Buffer.from(v.hash, 'hex');
+    return a.length === b.length && timingSafeEqual(a, b);
+  }
+
+  /** Versions inscrites dans le code du projet (dossier monté en lecture seule dans le conteneur) : celles du prochain lecteur à compiler. */
+  async codeVersions(): Promise<{ windows: string | null; android: string | null }> {
+    const root = process.env.PROJECT_DIR ?? '/host/project';
+    const read = async (rel: string) => { try { return await fsp.readFile(path.join(root, rel), 'utf8'); } catch { return null; } };
+    const pkg = await read('desktop-player/package.json');
+    const gradle = await read('android-player/app/build.gradle.kts');
+    let windows: string | null = null;
+    try { windows = pkg ? (JSON.parse(pkg).version ?? null) : null; } catch { windows = null; }
+    const android = gradle ? (/versionName\s*=\s*"([^"]+)"/.exec(gradle)?.[1] ?? null) : null;
+    return { windows: isValidVersion(windows) ? windows : null, android: isValidVersion(android) ? android : null };
   }
 
   async startUpload(platform: Platform) {

@@ -27,6 +27,10 @@ téléchargement affiche alors la nouvelle version et les lecteurs déjà instal
 **Avant chaque compilation, augmenter `version` dans `package.json`** : c'est ce numéro que les lecteurs comparent à celui publié sur le site
 (`node --test test/version.test.js` vérifie la comparaison).
 
+**Publication automatique** : `tools/publier-lecteurs.bat` (à la racine du projet) choisit le numéro de version suivant, compile ce lecteur et l'application Android,
+les publie sur le site avec la clé de publication (Admin > Lecteurs > « Publication automatique »), vérifie le résultat et enregistre la version dans git.
+`node tools/publier-lecteurs.mjs --dry-run` montre ce qui serait publié sans rien faire.
+
 ## Domaine du site
 
 Par défaut, le lecteur appelle `https://seeduction.org`. Si ce n'est pas le bon domaine, soit modifier la constante

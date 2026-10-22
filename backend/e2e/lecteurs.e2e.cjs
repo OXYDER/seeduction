@@ -8,8 +8,8 @@ const bcrypt = require(B + 'bcrypt');
 const BASE = E2E.BASE;
 const tok = (u) => jwt.sign({ sub: u.id, username: u.username, role: u.role }, E2E.SECRET, { expiresIn: '1h' });
 let fails = 0; const check = (l, c, x = '') => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + l + (x ? ' — ' + x : '')); if (!c) fails++; };
-async function call(method, p, token, body, raw) {
-  const headers = { ...(token ? { Authorization: 'Bearer ' + token } : {}) };
+async function call(method, p, token, body, raw, extra) {
+  const headers = { ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(extra || {}) };
   if (body && !raw) headers['Content-Type'] = 'application/json';
   if (raw) headers['Content-Type'] = 'application/octet-stream';
   const r = await fetch(BASE + p, { method, headers, body: raw ?? (body ? JSON.stringify(body) : undefined) });
@@ -75,13 +75,33 @@ async function publish(T, platform, data, version, chunk = 1024 * 1024) {
     check('l\'APK est publié et téléchargeable sous son nom habituel', finA.s === 201 && dlA.buf.equals(apk) && /Seeduction\.Player\.apk/.test(dlA.h.get('content-disposition') ?? ''));
     check('l\'administration voit les deux versions', (await call('GET', '/admin/players', TA)).b.android?.version === '1.1.0');
 
+    // Clé de publication : le script « publier-lecteurs » publie sans mot de passe
+    check('sans clé ni session : refusé', (await call('POST', '/admin/players/windows/start')).s === 401);
+    check('une mauvaise clé est refusée', (await call('POST', '/admin/players/windows/start', null, null, null, { 'X-Publish-Key': 'mauvaise' })).s === 401);
+    check('un membre ne peut pas créer de clé', (await call('POST', '/admin/players/key', TM)).s === 403);
+    const k = (await call('POST', '/admin/players/key', TA)).b;
+    check('clé créée (64 caractères), montrée une seule fois', /^[0-9a-f]{64}$/.test(k?.key ?? ''));
+    const ov = await call('GET', '/admin/players', TA);
+    check('l\'administration voit qu\'une clé existe, sans jamais la revoir ; les versions du code sont indiquées', ov.b.key.set === true && !ov.buf.toString().includes(k.key) && 'code' in ov.b && 'windows' in ov.b.code);
+    const KEY = { 'X-Publish-Key': k.key };
+    const startK = await call('POST', '/admin/players/windows/start', null, null, null, KEY);
+    check('la clé permet de publier (sans session)', startK.s === 201 && !!startK.b.upload);
+    const exeK = fake('MZ', 1_500_000);
+    await call('POST', `/admin/players/chunk?upload=${startK.b.upload}&index=0`, null, null, exeK, KEY);
+    const finK = await call('POST', '/admin/players/finish', null, { upload: startK.b.upload, version: '3.0.0', notes: 'Script' }, null, KEY);
+    check('publication par clé : version, taille exactes', finK.s === 201 && finK.b.version === '3.0.0' && finK.b.size === exeK.length);
+    check('la clé lit la liste mais ne peut pas gérer les clés', (await call('GET', '/admin/players', null, null, null, KEY)).s === 200 && [401, 403].includes((await call('POST', '/admin/players/key', null, null, null, KEY)).s) && [401, 403].includes((await call('DELETE', '/admin/players/key', null, null, null, KEY)).s));
+    check('la clé ne donne accès à rien d\'autre dans l\'administration', (await call('GET', '/admin/live', null, null, null, KEY)).s === 401);
+    check('révocation de la clé', (await call('DELETE', '/admin/players/key', TA)).s === 200);
+    check('après révocation, la clé est refusée', (await call('POST', '/admin/players/windows/start', null, null, null, KEY)).s === 401 && (await call('GET', '/admin/players', TA)).b.key.set === false);
+
     // Retrait
     check('retrait des installateurs', (await call('DELETE', '/admin/players/windows', TA)).s === 200 && (await call('DELETE', '/admin/players/android', TA)).s === 200);
     check('après retrait : liste vide et téléchargement introuvable', Object.keys((await call('GET', '/downloads/players')).b).length === 0 && (await call('GET', '/downloads/players/windows')).s === 404);
-    check('les actions sont dans le journal', (await p.activityLog.count({ where: { userId: admin.id, action: { in: ['PLAYER_PUBLISH', 'PLAYER_REMOVE'] }, createdAt: { gt: new Date(Date.now() - 120_000) } } })) >= 4);
+    check('les actions sont dans le journal', (await p.activityLog.count({ where: { userId: admin.id, action: { in: ['PLAYER_PUBLISH', 'PLAYER_REMOVE', 'PLAYER_KEY'] }, createdAt: { gt: new Date(Date.now() - 120_000) } } })) >= 6);
   } finally {
     await call('DELETE', '/admin/players/windows', TA).catch(() => undefined); await call('DELETE', '/admin/players/android', TA).catch(() => undefined);
-    await p.activityLog.deleteMany({ where: { userId: admin.id, action: { in: ['PLAYER_PUBLISH', 'PLAYER_REMOVE'] }, createdAt: { gt: new Date(Date.now() - 300_000) } } });
+    await p.activityLog.deleteMany({ where: { userId: admin.id, action: { in: ['PLAYER_PUBLISH', 'PLAYER_REMOVE', 'PLAYER_KEY'] }, createdAt: { gt: new Date(Date.now() - 300_000) } } });
     await p.user.delete({ where: { id: member.id } }).catch(() => undefined);
     await p.$disconnect();
   }

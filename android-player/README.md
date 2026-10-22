@@ -23,7 +23,8 @@ export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 
 L'APK signé est `app/build/outputs/apk/release/app-release.apk` (environ 57 Mo). À publier sur le site : **Admin > Lecteurs** (choisir le fichier, indiquer la version, « Publier »). L'application compare sa version
 (`versionName` dans `app/build.gradle.kts`) à celle du site et propose le téléchargement ; **augmenter `versionName` et `versionCode` avant chaque compilation**
-(sinon Android refuse d'installer par-dessus).
+(sinon Android refuse d'installer par-dessus). `tools/publier-lecteurs.bat` fait tout cela automatiquement (version suivante, compilation, publication, vérification) ;
+voir `desktop-player/README.md`.
 
 ## Signature
 

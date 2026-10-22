@@ -7,3 +7,6 @@ backups/
 desktop-player/vendor/
 backend/changelog.txt
 package-lock.json
+
+# Clé de publication des lecteurs (tools/publier-lecteurs.mjs) : à ne jamais versionner
+tools/publier-lecteurs.config.json
