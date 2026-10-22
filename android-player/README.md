@@ -3,6 +3,8 @@
 Application Android (Kotlin) équivalente au lecteur Windows : un lien `seeduction://stream/<jeton>` ouvre l'application, qui échange le jeton contre le `.torrent` personnalisé du membre,
 télécharge le fichier **dans l'ordre** (libtorrent), le sert à VLC par un petit serveur HTTP local (127.0.0.1, avec les demandes de zone « Range »), et signale « en train de regarder » et la position au site.
 
+Un lien `seeduction://live/<jeton>` (bouton « Ouvrir dans le lecteur Seeduction » de la page Direct du site) ouvre `LiveActivity` : l'application échange le jeton (à usage unique) contre l'adresse du direct sur le relais et le lit dans VLC avec le son et l'image d'origine, choix de la piste audio, nouvelles tentatives automatiques si le relais démarre ou coupe un instant.
+
 - **Moteur BitTorrent** : libtorrent4j (arm64 et arm 32 bits). Un service au premier plan (notification discrète) garde le téléchargement et le seed actifs écran éteint ; le partage reprend après un redémarrage.
 - **Lecture** : libVLC (tous les formats, pistes audio, sous-titres, y compris les sous-titres partagés sur le site). Double-tape à gauche / droite : ±10 s ; au centre : pause.
 - **Règles du site** : l'obligation de partage (72 h ou ratio 1) est affichée ; le partage se met en pause sur données mobiles (réglage « Wi-Fi seulement »).

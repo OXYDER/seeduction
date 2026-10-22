@@ -845,6 +845,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Regarder[/b]\n` +
         `• L'image démarre [b]sans le son[/b] : clique sur le haut-parleur de la vidéo pour l'activer.\n` +
         `• [b]La toute première connexion peut prendre quelques secondes[/b] : le direct n'est lancé que lorsque quelqu'un le regarde, c'est normal.\n` +
+        `• [b]Pas de son, ou un son particulier (5.1, plusieurs langues) ?[/b] Touche [b]Ouvrir dans le lecteur Seeduction[/b] : le [url=/wiki/guide-lecteur]lecteur Seeduction[/url] (Windows ou Android) lit le direct avec le son et l'image d'origine, et te laisse choisir la piste audio. Sur Android, le lecteur doit être installé.
+` +
         `• Si l'image se fige, recharge la page. Si une émission est terminée, la page affiche la suivante dès qu'elle commence.\n` +
         `\n` +
         `[b]Pour l'administration : Admin > Direct[/b]\n` +

@@ -250,10 +250,24 @@ class PieceInputStream(
         val chunk = minOf(len.toLong(), endInclusive - pos + 1, 256L * 1024).toInt()
         engine.ensure(handle, map, pos, chunk, 150_000, cancelled)
         val f = open()
-        f.seek(pos)
-        val n = f.read(b, off, chunk)
-        if (n > 0) pos += n
+        // Un morceau déclaré « reçu » n'est pas toujours déjà visible sur le disque (l'écriture se termine juste après) : on relit un court instant
+        // plutôt que de servir des zéros (artefacts dans la vidéo) ou une fin de fichier trop tôt.
+        var n = 0
+        for (attempt in 0..30) {
+            f.seek(pos)
+            n = f.read(b, off, chunk)
+            if (n > 0 && !allZero(b, off, n)) break
+            if (cancelled()) throw IOException("annulé")
+            Thread.sleep(100)
+        }
+        if (n <= 0) throw IOException("Lecture impossible à la position $pos")
+        pos += n
         return n
+    }
+
+    private fun allZero(b: ByteArray, off: Int, n: Int): Boolean {
+        for (i in off until off + n) if (b[i].toInt() != 0) return false
+        return true
     }
 
     override fun available(): Int = 0

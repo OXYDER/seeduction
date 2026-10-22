@@ -15,6 +15,9 @@ class PlaySession(val torrent: ByteArray, val fileIndex: Int, val torrentId: Str
 
 class SubtitleFile(val file: File, val iso3: String?)
 
+/** Un direct en cours : l'adresse du flux sur le relais (jamais celle de la source) et le titre de l'émission. */
+class LiveInfo(val playbackUrl: String, val title: String)
+
 /** Dialogue avec le site Seeduction (jeton de lecture, suivi « en train de regarder », sous-titres partagés). Aucune session web : tout passe par le jeton ou la passkey, comme le lecteur Windows. */
 object SiteApi {
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
@@ -53,6 +56,20 @@ object SiteApi {
             torrentName = o.optString("torrentName").ifEmpty { null },
             coverImage = o.optString("coverImage").ifEmpty { null },
         )
+    }
+
+    /** Échange le jeton du lien seeduction://live/<jeton> (à usage unique) contre l'adresse du direct en cours. */
+    suspend fun live(token: String): LiveInfo = withContext(Dispatchers.IO) {
+        val c = open(Config.SITE + "/api/live/player/" + enc(token))
+        val text = readAll(c)
+        if (c.responseCode !in 200..299) {
+            val msg = try { JSONObject(text).optString("message") } catch (_: Exception) { "" }
+            throw IllegalStateException(msg.ifEmpty { "Le lien du direct a expiré ou est invalide (" + c.responseCode + "). Relance-le depuis la page Direct." })
+        }
+        val o = JSONObject(text)
+        val url = o.optString("playbackUrl")
+        if (!Regex("^https?://", RegexOption.IGNORE_CASE).containsMatchIn(url)) throw IllegalStateException("Adresse du direct invalide.")
+        LiveInfo(url, o.optString("title").ifEmpty { "Direct" })
     }
 
     /** « 🎬 Regarde X » sur le site + position de lecture (pour « Reprendre à xx:xx » et « Continuer à regarder »). Jamais bloquant. */

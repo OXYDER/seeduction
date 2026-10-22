@@ -125,6 +125,9 @@ fun extractPasskey(announce: String?): String? {
     return Regex("/([^/?]+)/announce(?:\\?|$)", RegexOption.IGNORE_CASE).find(announce)?.groupValues?.get(1)
 }
 
+/** « seeduction://live/<jeton> » (lien du bouton « Ouvrir dans le lecteur Seeduction » de la page Direct) → le jeton, ou null si ce n'est pas un lien de direct. */
+fun liveTokenOf(link: String?): String? = Regex("^seeduction://live/([^/?#]+)", RegexOption.IGNORE_CASE).find(link ?: "")?.groupValues?.get(1)
+
 /** Adresse d'annonce (« announce ») lue directement dans le .torrent bencodé, sans dépendre de libtorrent : sert à retrouver la passkey et à ajouter le tracker si le moteur ne l'a pas retenu. */
 fun announceOf(torrent: ByteArray): String? {
     val text = String(torrent, Charsets.ISO_8859_1)

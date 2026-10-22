@@ -40,6 +40,22 @@
             </intent-filter>
         </activity>
 
+        <!-- Le lien « Ouvrir dans le lecteur Seeduction » de la page Direct : seeduction://live/<jeton> -->
+        <activity
+            android:name=".LiveActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.Seeduction.Player">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="seeduction" android:host="live" />
+            </intent-filter>
+        </activity>
+
         <service android:name=".TorrentService" android:exported="false" android:foregroundServiceType="dataSync" />
     </application>
 </manifest>
