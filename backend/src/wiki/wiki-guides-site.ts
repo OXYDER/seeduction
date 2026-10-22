@@ -853,6 +853,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• [b]La toute première connexion peut prendre quelques secondes[/b] : le direct n'est lancé que lorsque quelqu'un le regarde, c'est normal.\n` +
         `• [b]Pas de son, ou un son particulier (5.1, plusieurs langues) ?[/b] Touche [b]Ouvrir dans le lecteur Seeduction[/b] : le [url=/wiki/guide-lecteur]lecteur Seeduction[/url] (Windows ou Android) lit le direct avec le son et l'image d'origine, et te laisse choisir la piste audio. Sur Android, le lecteur doit être installé.
 ` +
+        `• [b]Chat et réactions[/b] : pendant une diffusion, le nombre de [b]membres qui regardent[/b] (👁) s'affiche sur l'image, les [b]réactions[/b] en émojis flottent par-dessus et un [b]chat[/b] est à côté du lecteur. Les réactions sont limitées (quelques-unes par seconde et par minute), le chat a un mode lent, les liens y sont refusés, et l'équipe peut retirer un message ou réduire un membre au silence. Rien n'est conservé : le chat repart à zéro à chaque diffusion.\n` +
+        `• [b]Pour être tranquille[/b] : le bouton [b]💬 Chat et réactions[/b], en haut à droite de l'image, coupe d'un coup le chat, les réactions et le compteur (ton choix est retenu). Le bouton ⛶ met le lecteur, le chat et les réactions en plein écran.\n` +
         `• Si l'image se fige, recharge la page. Si une émission est terminée, la page affiche la suivante dès qu'elle commence.\n` +
         `\n` +
         `[b]Pour l'administration : Admin > Direct[/b]\n` +

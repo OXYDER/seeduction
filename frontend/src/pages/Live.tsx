@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import Hls from 'hls.js';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import LiveCalendar, { CalendarView, LiveEvent } from '../components/LiveCalendar';
+import LiveStage from '../components/LiveRoom';
 import { countdown, hm, longDate } from '../lib/liveTime';
 
 interface Upcoming { title: string; description: string | null; posterUrl: string | null; color: string | null; start: string; end: string }
@@ -26,7 +27,7 @@ function useNow(skew: number) {
 }
 
 /** Lecteur du direct : l'image apparaît quand une diffusion du calendrier est en cours (la première fois, compte quelques secondes de connexion). */
-function Player({ url, muted }: { url: string; muted: boolean }) {
+function Player({ url, muted, overlay }: { url: string; muted: boolean; overlay?: ReactNode }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [problem, setProblem] = useState('');
   useEffect(() => {
@@ -54,7 +55,11 @@ function Player({ url, muted }: { url: string; muted: boolean }) {
   }, [url, muted]);
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <video ref={ref} controls autoPlay muted={muted} playsInline style={{ width: '100%', maxHeight: '70vh', background: '#000', borderRadius: 10 }} />
+      {/* Le plein écran est celui de la scène (lecteur + chat + réactions) : on retire celui du lecteur. */}
+      <div style={{ position: 'relative' }}>
+        <video ref={ref} controls controlsList="nofullscreen" autoPlay muted={muted} playsInline style={{ width: '100%', maxHeight: '70vh', background: '#000', borderRadius: 10, display: 'block' }} />
+        {overlay}
+      </div>
       {problem && <p style={{ color: 'var(--danger)', margin: 0 }}>{problem}</p>}
       <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>
         {muted ? 'La lecture démarre sans le son : clique sur le haut-parleur de la vidéo pour l\'activer. ' : ''}Au tout début, la connexion au direct peut prendre quelques secondes.
@@ -185,7 +190,7 @@ export default function Live() {
             {page.showEndTime && s.endsAt && <span className="muted" style={{ fontWeight: 400 }}> · jusqu'à {hm(s.endsAt, tz)}</span>}
           </div>
           {page.showDescription && s.description && <div className="muted" style={{ whiteSpace: 'pre-line' }}>{s.description}</div>}
-          <Player url={s.playbackUrl} muted={page.startMuted} />
+          <LiveStage>{(overlay) => <Player url={s.playbackUrl!} muted={page.startMuted} overlay={overlay} />}</LiveStage>
           {page.showPlayerButton && <OpenInPlayer />}
         </div>
       ) : page.showPlayerWhenOff ? (

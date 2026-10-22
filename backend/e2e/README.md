@@ -36,6 +36,7 @@ Ils complètent les tests unitaires (`npm test`), qui ne touchent ni la base ni 
 | `points-seed.e2e.cjs` | points du seed pondérés par la taille et la rareté du torrent |
 | `demandes-message.e2e.cjs` | demandes de message : obligatoires avant d'écrire à un non-ami, sauf équipe, amis et discussions déjà commencées |
 | `direct.e2e.cjs` | directs planifiés (Admin > Direct) : droits, secret jamais renvoyé, flux piégés refusés, créneau en cours envoyé à un faux relais, chevauchement, répétition hebdomadaire, panne du relais, adresse source jamais montrée aux membres |
+| `direct-chat.e2e.cjs` | chat, réactions et nombre de spectateurs pendant un direct : connexion vérifiée, compteur, limites (liens, longueur, 6 messages par minute, 3 réactions par seconde), couper chat et réactions chez un spectateur, équipe (supprimer, silence), réglages de l'administration, plus de chat sans diffusion |
 | `lecteurs.e2e.cjs` | installateurs des lecteurs hébergés par le site (Admin > Lecteurs) : envoi par morceaux (ordre, début du fichier, version), liste publique sans chemin du serveur, téléchargement identique, remplacement d'une version, retrait, droits |
 | `equipe-2fa.e2e.cjs` | 2FA obligatoire pour l'équipe : outils fermés sans 2FA, bandeau, désactivation refusée, audit |
 | `securite.e2e.cjs`, `inspection.e2e.cjs` | sécurité : sessions liées à l'état du compte, rapports suspects, CSP ; compte complet d'un membre, conversations déverrouillées et tracées, réinitialisation obligatoire du mot de passe |

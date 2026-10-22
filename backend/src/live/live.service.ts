@@ -4,6 +4,7 @@ import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { jobMonitor } from '../common/utils/job-monitor';
+import { DEFAULT_INTERACTIONS, InteractionConfig, normalizeInteractions } from '../common/utils/live-room';
 import {
   activeAt, LiveConfig, normalizeLiveConfig, occurrencesBetween, Repeat, slotColor, slotImage, SlotLike, upcoming, validStreamUrl, zonedParts, zonedToUtc,
 } from '../common/utils/live-schedule';
@@ -56,6 +57,16 @@ export class LiveService {
   publicConfig(c: LiveConfig) {
     const { secret, ...rest } = c;
     return { ...rest, secretSet: !!secret };
+  }
+
+  // ── Interactions (chat, réactions) ──────────────────────────────────────────
+
+  async interactions(): Promise<InteractionConfig> { return normalizeInteractions(await this.settings.get('liveInteractions'), DEFAULT_INTERACTIONS); }
+
+  async saveInteractions(raw: any): Promise<InteractionConfig> {
+    const next = normalizeInteractions(raw, await this.interactions());
+    await this.settings.set('liveInteractions', next);
+    return next;
   }
 
   // ── Flux ───────────────────────────────────────────────────────────────────
@@ -186,6 +197,7 @@ export class LiveService {
     const names = new Map(streams.map((s) => [s.id, s.name]));
     return {
       config: this.publicConfig(cfg),
+      interactions: await this.interactions(),
       streams,
       slots: rows,
       now: occ ? { slotId: occ.slot.id, streamId: occ.slot.streamId, streamName: names.get(occ.slot.streamId) ?? '?', title: occ.slot.title ?? null, start: occ.start, end: occ.end } : null,

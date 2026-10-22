@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import AdminLivePage, { LivePageCfg } from './AdminLivePage';
+import AdminLiveInteractions from './AdminLiveInteractions';
 
 interface Cfg { enabled: boolean; controlUrl: string; playbackUrl: string; onDemand: boolean; timezone: string; transcode: 'copy' | 'audio' | 'full'; secretSet: boolean; page: LivePageCfg }
 interface Stream { id: string; name: string; url: string; enabled: boolean }
@@ -102,6 +103,8 @@ export default function AdminLive() {
           Dernier envoi au relais : {data.relay.lastPushAt ? `${new Date(data.relay.lastPushAt).toLocaleTimeString('fr-CA')} · ${data.relay.lastOk ? `✓ (${data.relay.pushed})` : `✗ ${data.relay.lastError}`}` : 'aucun pour l\'instant'}
         </div>
       </div>
+
+      <AdminLiveInteractions />
 
       <div className="panel" style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0 }}>2. Tes flux</h3>

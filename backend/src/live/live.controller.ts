@@ -48,6 +48,14 @@ export class LiveAdminController {
   @Post('test')
   test() { return this.live.testRelay(); }
 
+  /** Chat, réactions et leurs limites pendant un direct. */
+  @Put('interactions')
+  async saveInteractions(@Body() body: any, @Request() req: any) {
+    const cfg = await this.live.saveInteractions(body);
+    await this.audit.log(req.user.userId, 'LIVE_CONFIG', { interactions: cfg });
+    return cfg;
+  }
+
   /** Renvoie tout de suite l'état voulu au relais (sinon c'est fait toutes les 20 secondes). */
   @Post('sync')
   async sync() { await this.live.sync(true); return this.live.overview(); }
