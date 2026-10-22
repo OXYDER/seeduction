@@ -288,7 +288,7 @@ export class LiveService {
   async resolvePlayerToken(token: string) {
     const exp = this.playerTokens.get(token);
     this.playerTokens.delete(token);
-    if (!exp || exp < Date.now()) throw new NotFoundException('Lien expiré : relance « Ouvrir dans le lecteur » depuis la page Direct.');
+    if (!exp || exp < Date.now()) throw new NotFoundException('Lien expiré : relance « Ouvrir dans le lecteur » depuis la page « Canadien en direct ».');
     const s = await this.forMembers();
     if (!s.live || !s.playbackUrl) throw new NotFoundException('La diffusion est terminée.');
     return { playbackUrl: s.playbackUrl, title: s.title };

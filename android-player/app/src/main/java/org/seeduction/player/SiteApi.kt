@@ -67,7 +67,7 @@ object SiteApi {
         val text = readAll(c)
         if (c.responseCode !in 200..299) {
             val msg = try { JSONObject(text).optString("message") } catch (_: Exception) { "" }
-            throw IllegalStateException(msg.ifEmpty { "Le lien du direct a expiré ou est invalide (" + c.responseCode + "). Relance-le depuis la page Direct." })
+            throw IllegalStateException(msg.ifEmpty { "Le lien du direct a expiré ou est invalide (" + c.responseCode + "). Relance-le depuis la page « Canadien en direct »." })
         }
         val o = JSONObject(text)
         val url = o.optString("playbackUrl")

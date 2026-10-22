@@ -24,7 +24,7 @@ import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
 
 /**
- * Le direct : reçoit le lien seeduction://live/<jeton> de la page « Direct » du site, échange le jeton contre l'adresse du flux sur le relais, et le lit dans VLC
+ * Le direct : reçoit le lien seeduction://live/<jeton> de la page « Canadien en direct » du site, échange le jeton contre l'adresse du flux sur le relais, et le lit dans VLC
  * avec le son et l'image d'origine (AC3, E-AC3, 5.1… que le navigateur ne lit pas), toutes les pistes audio au choix. Aucun téléchargement ni partage : c'est un flux.
  */
 class LiveActivity : AppCompatActivity() {
@@ -93,7 +93,7 @@ class LiveActivity : AppCompatActivity() {
 
     private fun handleIntent(i: Intent) {
         val token = if (i.action == Intent.ACTION_VIEW) liveTokenOf(i.dataString) else null
-        if (token == null) { showError("Aucun direct à ouvrir : touche « Ouvrir dans le lecteur Seeduction » sur la page Direct du site."); return }
+        if (token == null) { showError("Aucun direct à ouvrir : touche « Ouvrir dans le lecteur Seeduction » sur la page « Canadien en direct » du site."); return }
         job?.cancel()
         releasePlayer()
         retries = 0
@@ -144,7 +144,7 @@ class LiveActivity : AppCompatActivity() {
     private fun retry() {
         val url = playbackUrl ?: return
         if (retries >= MAX_RETRIES) {
-            showError("Le direct n'est plus disponible (terminé ou interrompu). Reviens sur la page Direct du site pour voir la suite du programme.")
+            showError("Le direct n'est plus disponible (terminé ou interrompu). Reviens sur la page « Canadien en direct » du site pour voir la suite du programme.")
             return
         }
         retries++
