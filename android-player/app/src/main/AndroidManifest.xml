@@ -40,7 +40,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Le lien « Ouvrir dans le lecteur Seeduction » de la page « Canadien en direct » : seeduction://live/<jeton> -->
+        <!-- Le lien « Ouvrir dans le lecteur Seeduction » de la page « Canadiens en direct » : seeduction://live/<jeton> -->
         <activity
             android:name=".LiveActivity"
             android:exported="true"

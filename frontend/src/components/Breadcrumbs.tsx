@@ -47,7 +47,7 @@ const NODES: Node[] = [
   { path: '/bonus', label: 'Points bonus' },
   { path: '/activity', label: 'Mon activité' },
   { path: '/recap', label: 'Mon récap du mois' },
-  { path: '/canadien-en-direct', label: 'Canadien en direct' },
+  { path: '/canadiens-en-direct', label: 'Canadiens en direct' },
   { path: '/series', label: 'Mes séries suivies' },
   { path: '/seeds', label: 'Mes seeds' },
   { path: '/hit-and-run', label: 'Hit & run' },

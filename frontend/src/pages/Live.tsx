@@ -180,7 +180,7 @@ export default function Live() {
 
   return (
     <div className="grid" style={{ gap: 16 }}>
-      <h1>📺 Canadien en direct</h1>
+      <h1>📺 Canadiens en direct</h1>
       {page.banner && <div className="panel" style={{ whiteSpace: 'pre-line' }}>{page.banner}</div>}
 
       {s.live && s.playbackUrl ? (
