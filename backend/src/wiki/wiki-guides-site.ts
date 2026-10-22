@@ -838,15 +838,15 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Les chiffres du mois en cours se mettent à jour chaque nuit.`,
     },
     {
-      title: 'Direct : les diffusions en direct',
+      title: 'Canadien en direct : les diffusions en direct',
       slug: 'guide-direct',
       keywords: 'direct, diffusion, en direct, live, stream, flux, calendrier, programmation, émission, podcast, vidéo, relais',
       isFaq: true,
       content:
-        `La page [b]Direct[/b] diffuse les émissions en direct planifiées par l'équipe, directement dans le site.\n` +
+        `La page [b]Canadien en direct[/b] diffuse les émissions en direct planifiées par l'équipe, directement dans le site.\n` +
         `\n` +
         `[b]Où le trouver ?[/b]\n` +
-        `Un lien [b]🔴 Direct[/b] apparaît dans le menu [b]seulement pendant une diffusion[/b]. Tu peux aussi ouvrir la page [url=/direct]Direct[/url] à tout moment : elle affiche la diffusion en cours ou, sinon, les prochaines émissions prévues, et elle se met à jour toute seule.\n` +
+        `Un lien [b]🔴 Canadien en direct[/b] apparaît dans le menu [b]seulement pendant une diffusion[/b]. Tu peux aussi ouvrir la page [url=/canadien-en-direct]Canadien en direct[/url] à tout moment : elle affiche la diffusion en cours ou, sinon, les prochaines émissions prévues, et elle se met à jour toute seule.\n` +
         `\n` +
         `[b]Regarder[/b]\n` +
         `• L'image démarre [b]sans le son[/b] : clique sur le haut-parleur de la vidéo pour l'activer.\n` +
@@ -857,7 +857,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• [b]Pour être tranquille[/b] : le bouton [b]💬 Chat et réactions[/b], en haut à droite de l'image, coupe d'un coup le chat, les réactions et le compteur (ton choix est retenu). Le bouton ⛶ met le lecteur, le chat et les réactions en plein écran.\n` +
         `• Si l'image se fige, recharge la page. Si une émission est terminée, la page affiche la suivante dès qu'elle commence.\n` +
         `\n` +
-        `[b]Pour l'administration : Admin > Direct[/b]\n` +
+        `[b]Pour l'administration : Admin > Canadien en direct[/b]\n` +
         `• [b]Le relais[/b] : un petit serveur à part (script fourni, voir le dossier tools/relais-live) va chercher le flux chez toi une seule fois et le sert aux membres, pour ne pas surcharger ta connexion. Tu renseignes dans le site son adresse de contrôle, son secret et l'adresse que les membres regardent, puis tu cliques sur [b]Tester le relais[/b].\n` +
         `• [b]Tes flux[/b] : le nom et l'adresse de chacun (par exemple un canal de ton Dispatcharr). Les adresses ne sont jamais montrées aux membres.\n` +
         `• [b]Le calendrier[/b] : pour chaque créneau, le flux, la date et l'heure de début, la durée, et si la diffusion se répète (une fois, tous les jours, chaque semaine, avec une date de fin facultative). Une diffusion répétée garde la même heure toute l'année. Si deux créneaux se chevauchent, le plus récent remplace l'autre.\n` +

@@ -181,7 +181,7 @@ export default function CanadiensPill() {
           </label>
           {(data.last?.length ?? 0) > 0 && <><div className="mtl-sub">Derniers résultats</div>{data.last.map((x) => <GameRow key={x.id} g={x} />)}</>}
           {(data.next?.length ?? 0) > 0 && <><div className="mtl-sub">Prochains matchs</div>{data.next.filter((x) => x.id !== g?.id || g?.state === 'FINAL').map((x) => <GameRow key={x.id} g={x} />)}</>}
-          <Link to="/direct" className={`mtl-play mtl-live${live?.live ? ' on' : ''}`} onClick={close}>{live?.live ? <>🔴 En direct : {live.title} </> : <>📺 Direct : la programmation </>}<span aria-hidden="true">→</span></Link>
+          <Link to="/canadien-en-direct" className={`mtl-play mtl-live${live?.live ? ' on' : ''}`} onClick={close}>{live?.live ? <>🔴 En direct : {live.title} </> : <>📺 Canadien en direct : la programmation </>}<span aria-hidden="true">→</span></Link>
           <Link to="/jeux/mise-o-jeu" className="mtl-play" onClick={close}>🎲 Parier sur les matchs du Canadien : Mise-O-jeu <span aria-hidden="true">→</span></Link>
           <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Données : LNH. Le chrono avance en direct ; score mis à jour toutes les 5 secondes pendant un match.</div>
         </div>

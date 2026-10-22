@@ -120,7 +120,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
   { to: '/suggestions', icon: '💡', cls: 'c-forum', label: 'Suggestions', match: starts('/suggestions') },
   { to: '/jeux', icon: '🎲', cls: 'c-chat', label: 'Jeux', match: starts('/jeux') },
-  { to: '/direct', icon: '🔴', cls: 'c-livechat', label: 'Direct', match: starts('/direct'), liveOnly: true },
+  { to: '/canadien-en-direct', icon: '🔴', cls: 'c-livechat', label: 'Canadien en direct', match: starts('/canadien-en-direct'), liveOnly: true },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
   { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead') },
   { to: '/soutenir', icon: '❤️', cls: 'c-rules', label: 'Soutenir', match: starts('/soutenir') },
@@ -444,7 +444,7 @@ function LayoutInner() {
 
   // ---- Thème Prestige : barre latérale (ordinateur) / barre d'onglets (mobile) ----
   if (theme === 'prestige') {
-    const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && (!item.liveOnly || liveNow || starts('/direct')(location.pathname)) && !(item.to === '/upload' && user?.profile && !user.profile.perms?.upload)); // sans le droit d'envoi accordé par le profil principal
+    const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && (!item.liveOnly || liveNow || starts('/canadien-en-direct')(location.pathname)) && !(item.to === '/upload' && user?.profile && !user.profile.perms?.upload)); // sans le droit d'envoi accordé par le profil principal
     const tabs = ['/', '/browse', '/upload', '/forum'].map((to) => NAV_ITEMS.find((i) => i.to === to)!);
 
     return (
@@ -662,7 +662,7 @@ function LayoutInner() {
 
       <div className="mainnav">
         <div className="nav-links">
-          {NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && (!item.liveOnly || liveNow || starts('/direct')(location.pathname))).map((item) => {
+          {NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && (!item.liveOnly || liveNow || starts('/canadien-en-direct')(location.pathname))).map((item) => {
             const active = item.match(location.pathname);
             return (
               <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>

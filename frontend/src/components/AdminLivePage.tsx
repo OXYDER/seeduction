@@ -115,7 +115,7 @@ export default function AdminLivePage({ initial, onSaved }: { initial: LivePageC
 
       <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="button" onClick={save}>Enregistrer la page Direct</button>
-        <a href="/direct" target="_blank" rel="noreferrer" className="secondary">Voir la page</a>
+        <a href="/canadien-en-direct" target="_blank" rel="noreferrer" className="secondary">Voir la page</a>
         {(msg || err) && <span style={{ color: err ? 'var(--danger)' : 'var(--success)' }}>{err || msg}</span>}
       </div>
     </div>

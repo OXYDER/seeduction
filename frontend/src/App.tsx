@@ -162,7 +162,8 @@ export default function App() {
           <Route path="/pot" element={<Pot />} />
           <Route path="/mes-envois" element={<MyUploads />} />
           <Route path="/jeux" element={<GamesHub />} />
-          <Route path="/direct" element={<Live />} />
+          <Route path="/canadien-en-direct" element={<Live />} />
+          <Route path="/direct" element={<Navigate to="/canadien-en-direct" replace />} />
           <Route path="/jeux/mise-o-jeu" element={<Jeux />} />
           <Route path="/jeux/machines" element={<Slots />} />
           <Route path="/jeux/plus-haut-plus-bas" element={<HiLo />} />
