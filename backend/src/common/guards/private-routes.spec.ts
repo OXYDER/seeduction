@@ -13,6 +13,7 @@ const PUBLIC_ROUTES: Record<string, string> = {
   'GET /chat/files/:filename': 'fichier à nom secret (aperçus, Telegram)', 'GET /covers/:filename': 'image à nom secret (aperçus, Telegram, *arr)', 'GET /messenger/files/:filename': 'fichier à nom secret',
   'GET /lockdown/status': 'écran d\'alerte générale', 'POST /lockdown/unlock': 'déblocage par mot de passe',
   'POST /security/csp-report': 'rapports envoyés par le navigateur', 'GET /system/status': 'bandeau de maintenance (avant la connexion)', 'GET /system/public-status': 'page d\'état « le site fonctionne » (services, disponibilité, incidents sans détail technique)', 'POST /system/maintenance': 'script de déploiement (local seulement)',
+  'GET /downloads/players': 'versions des lecteurs (mises à jour des lecteurs, sans session)', 'GET /downloads/players/:platform': 'installateurs des lecteurs (aussi publics qu\'avant sur GitHub)',
   'GET /sports/logo/:abbrev': 'image de logo (balise img)', 'GET /sports/goal-sound': 'son de but (balise audio)',
   'GET /public/torrents': 'API par clé', 'GET /public/torrents/:id': 'API par clé', 'GET /public/me': 'API par clé', 'GET /public/stats': 'API par clé', 'GET /public/rss/torrents.xml': 'flux RSS par clé',
   'POST /donations/webhook/kofi': 'Ko-fi (jeton vérifié)', 'POST /donations/webhook/bmc': 'Buy Me a Coffee (signature vérifiée)',

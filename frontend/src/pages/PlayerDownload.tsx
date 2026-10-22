@@ -1,4 +1,9 @@
-// URL de l'asset de la release GitHub (le lecteur ne peut pas être hébergé dans le dépôt : un installateur avec
+import { useEffect, useState } from 'react';
+import { api } from '../api/client';
+import { formatBytes } from '../lib/format';
+
+// Les installateurs sont hébergés par le site (Admin > Lecteurs). Les adresses GitHub ci-dessous ne servent plus que de secours tant que rien n'est publié.
+// (Ancien commentaire :) URL de l'asset de la release GitHub (le lecteur ne peut pas être hébergé dans le dépôt : un installateur avec
 // VLC intégré dépasse largement la limite de 100 Mo par fichier de Git). À mettre à jour après chaque nouvelle
 // release publiée depuis desktop-player/ (voir desktop-player/README.md).
 const DOWNLOAD_URL = 'https://github.com/OXYDER/seeduction/releases/latest/download/Seeduction.Player.Setup.exe';
@@ -22,7 +27,24 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
+interface Release { version: string; size: number; publishedAt: string; notes: string | null; url: string }
+
+/** Version, taille et date d'un installateur publié, avec les nouveautés si l'équipe en a indiqué. */
+function Meta({ r }: { r: Release | undefined }) {
+  if (!r) return <p className="muted" style={{ fontSize: 12.5, margin: '0 0 10px' }}>Version publiée sur GitHub (le site n'héberge pas encore cet installateur).</p>;
+  return (
+    <p className="muted" style={{ fontSize: 12.5, margin: '0 0 10px' }}>
+      Version <strong>{r.version}</strong> · {formatBytes(r.size)} · publiée le {new Date(r.publishedAt).toLocaleDateString('fr-CA')}
+      {r.notes ? <><br />{r.notes}</> : null}
+    </p>
+  );
+}
+
 export default function PlayerDownload() {
+  const [rel, setRel] = useState<{ windows?: Release; android?: Release }>({});
+  useEffect(() => { api.get('/downloads/players').then((r) => setRel(r.data)).catch(() => undefined); }, []);
+  const winUrl = rel.windows?.url ?? DOWNLOAD_URL;
+  const andUrl = rel.android?.url ?? ANDROID_URL;
   return (
     <div className="grid page-narrow" style={{ gap: 18 }}>
       <div>
@@ -40,11 +62,12 @@ export default function PlayerDownload() {
         <p className="muted" style={{ margin: '0 0 16px' }}>
           Inclut Seeduction VLC (une copie de VLC) — rien d'autre à installer.
         </p>
-        <a href={DOWNLOAD_URL} className="download-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
+        <Meta r={rel.windows} />
+        <a href={winUrl} className="download-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
           ⬇ Télécharger le lecteur (.exe)
         </a>
         <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          Toutes les versions : <a href={RELEASES_URL} target="_blank" rel="noreferrer">releases GitHub</a>
+          Le lecteur te prévient tout seul quand une nouvelle version est disponible.
         </p>
       </div>
 
@@ -54,7 +77,8 @@ export default function PlayerDownload() {
         <p className="muted" style={{ margin: '0 0 16px' }}>
           Même principe que sur PC : touche « Ouvrir dans le lecteur Seeduction » sur le site, le téléphone télécharge ce qu'il faut et lance la vidéo (tous les formats, pistes audio et sous-titres).
         </p>
-        <a href={ANDROID_URL} className="download-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
+        <Meta r={rel.android} />
+        <a href={andUrl} className="download-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
           ⬇ Télécharger l'application (.apk)
         </a>
         <div className="muted" style={{ fontSize: 13, marginTop: 12, textAlign: 'left', lineHeight: 1.7 }}>

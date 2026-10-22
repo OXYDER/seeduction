@@ -63,6 +63,7 @@ import { BackupModule } from './backup/backup.module';
 import { EventThemesModule } from './event-themes/event-themes.module';
 import { SportsModule } from './sports/sports.module';
 import { LiveModule } from './live/live.module';
+import { PlayersModule } from './players/players.module';
 import { GamesModule } from './games/games.module';
 import { UploadCreditModule } from './upload-credit/upload-credit.module';
 import { TeamsModule } from './teams/teams.module';
@@ -136,6 +137,7 @@ import { WebmailModule } from './webmail/webmail.module';
     EventThemesModule,
     SportsModule,
     LiveModule,
+    PlayersModule,
     GamesModule,
     UploadCreditModule,
     TeamsModule,

@@ -1,6 +1,6 @@
 {
   "name": "seeduction-player",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Lecteur desktop Seeduction : un lien seeduction:// ouvre ce logiciel et joue le torrent directement (Seeduction VLC, une copie de VLC incluse), sans passer par le NAS et sans limite de format.",
   "main": "src/main.js",

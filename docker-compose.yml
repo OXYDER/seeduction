@@ -67,6 +67,8 @@ services:
       # chacun leur propre mot de passe codé en dur).
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracker}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-tracker}?schema=public&connection_limit=${DB_POOL_SIZE:-15}&pool_timeout=30
       LOCKDOWN_DIR: /app/storage/lockdown
+      # Installateurs des lecteurs (Windows et Android), publiés depuis Admin > Lecteurs.
+      PLAYER_DOWNLOADS_DIR: /app/storage/downloads
       BACKUPS_DIR: /app/backups
       # Sauvegardes complètes (Admin > Sauvegardes) : le dossier du projet, monté en LECTURE SEULE ci-dessous, sert à y inclure les fichiers .env
       # (qui ne sont pas dans git : sans eux, un site restauré ne pourrait pas relire les mots de passe chiffrés ni les connexions), le code et la version.
@@ -77,6 +79,8 @@ services:
       - chat_file_storage:/app/storage/chat-files
       # Alerte générale : coffre chiffré (jamais effacé automatiquement) et sauvegardes du NAS, chiffrées elles aussi pendant le verrouillage.
       - lockdown_storage:/app/storage/lockdown
+      # Installateurs des lecteurs : hébergés ici plutôt que sur GitHub (Admin > Lecteurs).
+      - downloads_storage:/app/storage/downloads
       # Dossier des sauvegardes : ./backups par défaut ; BACKUPS_PATH (dans le .env racine) le place ailleurs, p. ex. sur le gros disque d'un NAS (/volume1/...).
       - ${BACKUPS_PATH:-./backups}:/app/backups
       - ./:/host/project:ro
@@ -136,3 +140,4 @@ volumes:
   cover_storage:
   chat_file_storage:
   lockdown_storage:
+  downloads_storage:

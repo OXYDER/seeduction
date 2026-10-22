@@ -653,6 +653,11 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Le [b]lecteur Seeduction[/b] les charge automatiquement quand tu regardes ce torrent : ils sont dans le menu Sous-titres de VLC (touche [b]V[/b] pour passer de l'un à l'autre, le français est préféré).\n` +
         `• Pour un pack de saison, choisis l'épisode (le fichier) auquel les sous-titres vont. [b]Synchronisation[/b] : si les sous-titres arrivent trop tôt ou trop tard, l'auteur (ou l'équipe) les décale de 0,5 s avec les boutons −0,5 s / +0,5 s, et tout le monde en profite, y compris dans le lecteur. Dans VLC, [b]G[/b] et [b]H[/b] règlent aussi le décalage pour toi seulement.\n` +
         `• Tu peux supprimer les tiens ; l'équipe peut retirer un sous-titre mauvais ou déplacé. Limites : 30 envois par jour, 8 sous-titres par langue et par fichier.\n\n` +
+        `[b]Mises à jour[/b]\n` +
+        `• Le lecteur [b]te prévient tout seul[/b] quand une nouvelle version est publiée sur le site : au démarrage puis toutes les 6 heures (Windows), à l'ouverture de l'application (Android). Tu choisis « Télécharger et installer », « Plus tard » ou « Ignorer cette version ».\n` +
+        `• Tu peux aussi vérifier à la main : clic droit sur l'icône du lecteur (zone de notification) > [b]Rechercher une mise à jour[/b], ou le bouton du même nom dans l'application Android.\n` +
+        `• La [url=/player]page de téléchargement[/url] indique la version actuelle, la taille, la date et les nouveautés. Tes partages sont conservés pendant une mise à jour.\n` +
+        `\n` +
         `[b]Quand utiliser le lecteur ?[/b]\n` +
         `Pour regarder vite, sur un ordinateur de bureau. Pour des téléchargements en masse ou une seedbox, préfère un client classique ([url=/wiki/guide-telecharger]Télécharger un torrent[/url]).\n\n` +
         `Références : [url=/wiki/installer-le-lecteur]Installer le lecteur[/url], [url=/wiki/fonctionnement-du-lecteur]Comment fonctionne le lecteur[/url].`,

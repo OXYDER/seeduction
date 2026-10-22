@@ -17,6 +17,7 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -47,11 +48,17 @@ class MainActivity : AppCompatActivity() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(24), dp(18), dp(24)) }
         root.addView(text("Seeduction", 28f, Color.parseColor("#E0B84A"), true))
         root.addView(text("Lecteur pour Android", 15f, Color.parseColor("#9AA3C0")))
+        root.addView(text("Version " + Config.APP_VERSION, 12f, Color.parseColor("#9AA3C0")))
         root.addView(text("\nRegarde un film ou une série directement depuis ton téléphone, sans limite de format. Sur le site Seeduction, ouvre la fiche d'un torrent et touche « Ouvrir dans le lecteur Seeduction » : ce lecteur s'ouvre tout seul, télécharge ce qu'il faut et lance la vidéo.\n", 14f))
 
         root.addView(Button(this).apply {
             text = "Ouvrir Seeduction"
             setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE))) }
+        })
+
+        root.addView(Button(this).apply {
+            text = "Rechercher une mise à jour"
+            setOnClickListener { checkUpdate(manual = true) }
         })
 
         root.addView(Button(this).apply {
@@ -83,6 +90,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        checkUpdate(manual = false)
         bindIfRunning()
         refreshJob?.cancel()
         refreshJob = lifecycleScope.launch {
@@ -98,6 +106,33 @@ class MainActivity : AppCompatActivity() {
         refreshJob?.cancel()
         connection?.let { try { unbindService(it) } catch (_: Exception) { /* déjà détaché */ } }
         connection = null; service = null
+    }
+
+    /** Une mise à jour est-elle publiée sur le site ? Automatique au plus une fois toutes les 6 h ; « manual » = demandé par le bouton (on répond aussi « à jour » ou l'erreur). */
+    private fun checkUpdate(manual: Boolean) {
+        val prefs = Prefs(this)
+        if (!manual && System.currentTimeMillis() - prefs.lastUpdateCheck < 6 * 3600_000L) return
+        lifecycleScope.launch {
+            val rel = try { SiteApi.latestAndroid() } catch (e: Exception) {
+                Journal.log("mise à jour : " + e.message)
+                if (manual) Toast.makeText(this@MainActivity, "Impossible de joindre le site pour vérifier les mises à jour.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            prefs.lastUpdateCheck = System.currentTimeMillis()
+            if (rel == null || compareVersions(rel.version, Config.APP_VERSION) <= 0) {
+                if (manual) Toast.makeText(this@MainActivity, "Ton application est à jour (version " + Config.APP_VERSION + ").", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            if (!manual && prefs.skippedVersion == rel.version) return@launch
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("Mise à jour disponible")
+                .setMessage("Version " + rel.version + " (tu as la " + Config.APP_VERSION + ", " + formatSize(rel.size) + ")." + (rel.notes?.let { "\n\nNouveautés : $it" } ?: "") +
+                    "\n\nLe fichier se télécharge dans ton navigateur : touche-le ensuite pour l'installer par-dessus (tes partages sont conservés).")
+                .setPositiveButton("Télécharger") { _, _ -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE + rel.url))) }
+                .setNegativeButton("Plus tard", null)
+                .setNeutralButton("Ignorer cette version") { _, _ -> prefs.skippedVersion = rel.version }
+                .show()
+        }
     }
 
     /** Se relie au service seulement s'il tourne déjà (inutile de le démarrer pour afficher une liste vide). */

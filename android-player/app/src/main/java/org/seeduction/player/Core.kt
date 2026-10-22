@@ -14,7 +14,8 @@ import java.util.Locale
 /** Réglages et constantes du lecteur Seeduction pour Android. */
 object Config {
     val SITE: String get() = BuildConfig.SITE_BASE_URL.trimEnd('/')
-    const val APP_VERSION = "1.0.0"
+    /** Version de l'application (build.gradle.kts) : affichée à l'écran et comparée à celle publiée par le site pour proposer une mise à jour. */
+    val APP_VERSION: String get() = BuildConfig.VERSION_NAME
 
     // Alignés avec HNR_SEED_HOURS / HNR_RATIO du site (backend/src/common/utils/economy.ts) : une estimation locale pour informer le membre ; l'obligation réelle reste calculée par le tracker.
     const val HNR_SEED_HOURS = 72
@@ -92,6 +93,16 @@ class Prefs(ctx: Context) {
         p.edit().putString("sessions", arr.toString()).apply()
     }
 
+    /** Version qu'on a choisi d'ignorer (« Ignorer cette version » dans la proposition de mise à jour). */
+    var skippedVersion: String?
+        get() = p.getString("skippedVersion", null)
+        set(v) { p.edit().putString("skippedVersion", v).apply() }
+
+    /** Dernière vérification réussie des mises à jour (millisecondes) : on ne redemande pas plus d'une fois toutes les 6 heures. */
+    var lastUpdateCheck: Long
+        get() = p.getLong("lastUpdateCheck", 0)
+        set(v) { p.edit().putLong("lastUpdateCheck", v).apply() }
+
     /** Dernière position de lecture (secondes) d'un fichier, pour reprendre là où on s'est arrêté. */
     fun position(torrentId: String?, fileIndex: Int): Int = if (torrentId == null) 0 else p.getInt("pos:$torrentId:$fileIndex", 0)
     fun savePosition(torrentId: String?, fileIndex: Int, seconds: Int) { if (torrentId != null) p.edit().putInt("pos:$torrentId:$fileIndex", seconds).apply() }
@@ -102,6 +113,17 @@ fun isUnmetered(ctx: Context): Boolean {
     val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
     return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+}
+
+/** Négatif si a < b, 0 si égales, positif si a > b (« 1.2 » égale « 1.2.0 ») : même règle que le site (app-version.ts). */
+fun compareVersions(a: String, b: String): Int {
+    val pa = a.trim().split('.').map { it.toIntOrNull() ?: 0 }
+    val pb = b.trim().split('.').map { it.toIntOrNull() ?: 0 }
+    for (i in 0 until maxOf(pa.size, pb.size)) {
+        val d = (pa.getOrElse(i) { 0 }) - (pb.getOrElse(i) { 0 })
+        if (d != 0) return d
+    }
+    return 0
 }
 
 fun formatSize(bytes: Long): String {

@@ -20,8 +20,8 @@ android {
         applicationId = "org.seeduction.player"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         // Les téléphones d'aujourd'hui : 64 bits (la grande majorité) et 32 bits (anciens modèles). Pas x86 : l'APK serait bien plus gros.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
         buildConfigField("String", "SITE_BASE_URL", "\"https://seeduction.org\"")

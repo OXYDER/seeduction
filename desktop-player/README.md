@@ -20,8 +20,12 @@ npm run dist
 ```
 
 Le résultat (`.exe` sur Windows, `.dmg` sur macOS, `.AppImage` sur Linux) est généré dans `dist/`. C'est ce fichier
-qu'il faut héberger quelque part (une release GitHub, ou directement sur le site) et lier depuis une page
-« Télécharger le lecteur » sur Seeduction.
+qu'il faut publier sur le site : **Admin > Lecteurs** (choisir le fichier, vérifier le numéro de version, « Publier »). La page de
+téléchargement affiche alors la nouvelle version et les lecteurs déjà installés proposent la mise à jour à leur utilisateur
+(vérification au démarrage puis toutes les 6 h, et dans le menu de l'icône : « Rechercher une mise à jour »).
+
+**Avant chaque compilation, augmenter `version` dans `package.json`** : c'est ce numéro que les lecteurs comparent à celui publié sur le site
+(`node --test test/version.test.js` vérifie la comparaison).
 
 ## Domaine du site
 

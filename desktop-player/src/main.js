@@ -25,6 +25,7 @@ const { spawn, execSync } = require('child_process');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const WebTorrent = require('webtorrent');
 const settingsStore = require('./settings');
+const { createUpdater } = require('./updater');
 
 const SITE_BASE_URL = (process.env.SEEDUCTION_BASE_URL || 'https://seeduction.org').replace(/\/+$/, '');
 const PROTOCOL = 'seeduction';
@@ -43,6 +44,16 @@ const SESSIONS_FILE = path.join(app.getPath('userData'), 'sessions.json');
 const LOG_FILE = path.join(app.getPath('userData'), 'player.log');
 
 let settings = settingsStore.load();
+// Mises à jour : le site héberge l'installateur ; on le consulte au démarrage puis toutes les 6 h (voir updater.js).
+const UPDATE_CHECK_EVERY_MS = 6 * 3600 * 1000;
+const updater = createUpdater({
+  baseUrl: SITE_BASE_URL,
+  getSettings: () => settings,
+  saveSettings: (s) => { settings = s; settingsStore.save(settings); },
+  log,
+  onProgress: (pct) => { if (tray) tray.setToolTip(pct === null ? 'Lecteur Seeduction' : `Lecteur Seeduction
+Téléchargement de la mise à jour : ${pct} %`); },
+});
 let tray = null;
 let client = null;
 let downloadsWin = null;
@@ -123,6 +134,12 @@ if (!gotLock) {
     setupIpc();
     restoreSessions();
 
+    // Mises à jour automatiques (seulement une fois installé : en développement, la version n'a pas de sens).
+    if (app.isPackaged) {
+      setTimeout(() => updater.check(false), 30_000);
+      setInterval(() => updater.check(false), UPDATE_CHECK_EVERY_MS);
+    }
+
     const launchUrl = process.argv.find((a) => a.startsWith(`${PROTOCOL}://`));
     if (launchUrl) handleUrl(launchUrl);
   });
@@ -151,6 +168,7 @@ function refreshTrayMenu() {
     { label: '💻 Ouvrir le client Seeduction', click: openDownloadsWindow },
     { label: '📂 Ouvrir le dossier de téléchargement', click: () => shell.openPath(settings.downloadPath) },
     { label: '📄 Afficher les journaux', click: () => shell.openPath(LOG_FILE) },
+    { label: `🔄 Rechercher une mise à jour (version ${app.getVersion()})`, click: () => updater.check(true) },
     { type: 'separator' },
     // Quitter le logiciel ne doit pas supprimer les fichiers déjà téléchargés ni casser le seed — un membre qui
     // ferme le lecteur doit pouvoir le rouvrir plus tard et continuer à respecter ses obligations de seed. Mais tant

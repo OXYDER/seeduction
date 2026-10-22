@@ -15,6 +15,9 @@ class PlaySession(val torrent: ByteArray, val fileIndex: Int, val torrentId: Str
 
 class SubtitleFile(val file: File, val iso3: String?)
 
+/** La dernière version de l'application publiée par le site (Admin > Lecteurs) et son adresse de téléchargement. */
+class AppRelease(val version: String, val size: Long, val notes: String?, val url: String)
+
 /** Un direct en cours : l'adresse du flux sur le relais (jamais celle de la source) et le titre de l'émission. */
 class LiveInfo(val playbackUrl: String, val title: String)
 
@@ -70,6 +73,15 @@ object SiteApi {
         val url = o.optString("playbackUrl")
         if (!Regex("^https?://", RegexOption.IGNORE_CASE).containsMatchIn(url)) throw IllegalStateException("Adresse du direct invalide.")
         LiveInfo(url, o.optString("title").ifEmpty { "Direct" })
+    }
+
+    /** Dernière version Android publiée sur le site, ou null si rien n'est publié. */
+    suspend fun latestAndroid(): AppRelease? = withContext(Dispatchers.IO) {
+        val c = open(Config.SITE + "/api/downloads/players")
+        val text = readAll(c)
+        if (c.responseCode !in 200..299) throw IllegalStateException("Le site a répondu " + c.responseCode)
+        val a = JSONObject(text).optJSONObject("android") ?: return@withContext null
+        AppRelease(a.getString("version"), a.optLong("size"), a.optString("notes").ifEmpty { null }, a.getString("url"))
     }
 
     /** « 🎬 Regarde X » sur le site + position de lecture (pour « Reprendre à xx:xx » et « Continuer à regarder »). Jamais bloquant. */
