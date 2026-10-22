@@ -2664,6 +2664,9 @@ model LiveSlot {
   streamId    String
   stream      LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
   title       String?    @db.VarChar(120)
+  description String?    @db.VarChar(500) // affichée sur la page Direct (écran du lecteur, calendrier)
+  posterUrl   String?    @db.VarChar(500) // image de fond de l'écran avant la diffusion
+  color       String?    @db.VarChar(9)   // couleur dans le calendrier (#rrggbb)
   startsAt    DateTime
   durationMin Int
   repeat      String     @default("NONE") @db.VarChar(10) // NONE | DAILY | WEEKLY

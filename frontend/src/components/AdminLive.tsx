@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
+import AdminLivePage, { LivePageCfg } from './AdminLivePage';
 
-interface Cfg { enabled: boolean; controlUrl: string; playbackUrl: string; onDemand: boolean; timezone: string; transcode: 'copy' | 'audio' | 'full'; secretSet: boolean }
+interface Cfg { enabled: boolean; controlUrl: string; playbackUrl: string; onDemand: boolean; timezone: string; transcode: 'copy' | 'audio' | 'full'; secretSet: boolean; page: LivePageCfg }
 interface Stream { id: string; name: string; url: string; enabled: boolean }
-interface Slot { id: string; streamId: string; title: string | null; startsAt: string; durationMin: number; repeat: 'NONE' | 'DAILY' | 'WEEKLY'; repeatUntil: string | null; enabled: boolean; stream: { id: string; name: string } }
+interface Slot { id: string; streamId: string; title: string | null; description: string | null; posterUrl: string | null; color: string | null; startsAt: string; durationMin: number; repeat: 'NONE' | 'DAILY' | 'WEEKLY'; repeatUntil: string | null; enabled: boolean; stream: { id: string; name: string } }
 interface Occ { slotId: string; streamName: string; title: string | null; start: string; end: string }
 interface Overview { config: Cfg; streams: Stream[]; slots: Slot[]; now: (Occ & { streamId: string }) | null; next: Occ[]; relay: { lastPushAt: string | null; lastOk: boolean | null; lastError: string | null; pushed: string | null } }
 
@@ -11,6 +12,8 @@ const REPEAT_LABEL = { NONE: 'Une seule fois', DAILY: 'Tous les jours', WEEKLY: 
 const fmt = (iso: string) => new Date(iso).toLocaleString('fr-CA', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hm = (iso: string) => new Date(iso).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' });
 /** Valeur par défaut d'un champ « date et heure » : l'heure ronde qui vient, à l'heure du navigateur. */
+/** ISO → valeur d'un champ « date et heure » (heure du navigateur). */
+const toLocalInput = (iso: string) => { const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
 const nextHour = () => { const d = new Date(Date.now() + 3600_000); d.setMinutes(0, 0, 0); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
 const hostOf = (url: string) => { try { return new URL(url).host; } catch { return url.slice(0, 30); } };
 const DURATIONS = [[30, '30 min'], [60, '1 h'], [90, '1 h 30'], [120, '2 h'], [180, '3 h'], [240, '4 h']] as const;
@@ -29,7 +32,16 @@ export default function AdminLive() {
   const [sName, setSName] = useState('');
   const [sUrl, setSUrl] = useState('');
   const [edit, setEdit] = useState<{ id: string; name: string; url: string } | null>(null);
-  const [slot, setSlot] = useState({ streamId: '', title: '', startsAt: nextHour(), durationMin: 120, repeat: 'NONE' as Slot['repeat'], repeatUntil: '' });
+  const emptySlot = () => ({ streamId: '', title: '', description: '', posterUrl: '', color: '', startsAt: nextHour(), durationMin: 120, repeat: 'NONE' as Slot['repeat'], repeatUntil: '' });
+  const [slot, setSlot] = useState(emptySlot);
+  const [editingSlot, setEditingSlot] = useState<string | null>(null);
+  const editSlot = (s: Slot) => {
+    setEditingSlot(s.id);
+    setSlot({
+      streamId: s.streamId, title: s.title ?? '', description: s.description ?? '', posterUrl: s.posterUrl ?? '', color: s.color ?? '',
+      startsAt: toLocalInput(s.startsAt), durationMin: s.durationMin, repeat: s.repeat, repeatUntil: s.repeatUntil ? toLocalInput(s.repeatUntil).slice(0, 10) : '',
+    });
+  };
 
   async function run(fn: () => Promise<any>, ok: string) {
     setMsg(''); setErr('');
@@ -82,7 +94,7 @@ export default function AdminLive() {
           <input value={cfg.timezone} onChange={(e) => setCfg({ ...cfg, timezone: e.target.value })} />
         </label>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button type="button" onClick={() => run(async () => { const { secret, secretSet, ...body } = cfg; const r = await api.put('/admin/live/config', { ...body, secret }); setCfg({ ...r.data, secret: '' }); }, '✓ Réglages enregistrés')}>Enregistrer</button>
+          <button type="button" onClick={() => run(async () => { const { secret, secretSet, page, ...body } = cfg; const r = await api.put('/admin/live/config', { ...body, secret }); setCfg({ ...r.data, secret: '' }); }, '✓ Réglages enregistrés')}>Enregistrer</button>
           <button type="button" className="secondary" onClick={() => run(async () => { const r = (await api.post('/admin/live/test')).data; if (!r.ok) throw { response: { data: { message: `Relais injoignable : ${r.error}` } } }; }, '✓ Le relais répond et accepte le secret')}>Tester le relais</button>
           <button type="button" className="secondary" onClick={() => run(() => api.post('/admin/live/sync'), '✓ État envoyé au relais')}>Renvoyer l'état maintenant</button>
         </div>
@@ -120,7 +132,7 @@ export default function AdminLive() {
       <div className="panel" style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0 }}>3. Calendrier</h3>
         {data.streams.length === 0 ? <p className="muted" style={{ margin: 0 }}>Ajoute d'abord un flux.</p> : (
-          <div style={{ display: 'grid', gap: 8 }}>
+          <div id="live-slot-form" style={{ display: 'grid', gap: 8 }}>
             <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
               <label style={{ display: 'grid', gap: 3, fontSize: 13 }}>Flux
                 <select value={streamId} onChange={(e) => setSlot({ ...slot, streamId: e.target.value })}>{data.streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
@@ -145,12 +157,31 @@ export default function AdminLive() {
               <label style={{ display: 'grid', gap: 3, fontSize: 13 }}>Titre affiché (facultatif)
                 <input value={slot.title} onChange={(e) => setSlot({ ...slot, title: e.target.value })} placeholder="Nom du flux par défaut" style={{ width: 200 }} />
               </label>
+            </div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+              <label style={{ display: 'grid', gap: 3, fontSize: 13, flex: 1, minWidth: 240 }}>Description (facultatif, affichée aux membres)
+                <textarea rows={2} value={slot.description} onChange={(e) => setSlot({ ...slot, description: e.target.value })} maxLength={500} />
+              </label>
+              <label style={{ display: 'grid', gap: 3, fontSize: 13, flex: 1, minWidth: 220 }}>Image de l'écran avant la diffusion (facultatif)
+                <input value={slot.posterUrl} onChange={(e) => setSlot({ ...slot, posterUrl: e.target.value })} placeholder="https://… ou /api/covers/…" />
+              </label>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+                <input type="checkbox" checked={!!slot.color} onChange={(e) => setSlot({ ...slot, color: e.target.checked ? '#7c3aed' : '' })} /> Couleur à lui
+                {slot.color && <input type="color" value={slot.color} onChange={(e) => setSlot({ ...slot, color: e.target.value })} style={{ width: 36, height: 26, padding: 0, border: 'none', background: 'none' }} />}
+              </label>
+            </div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => run(async () => {
-                await api.post('/admin/live/slots', {
-                  streamId, title: slot.title || null, startsAt: new Date(slot.startsAt).toISOString(), durationMin: slot.durationMin, repeat: slot.repeat,
+                const body = {
+                  streamId, title: slot.title || null, description: slot.description || null, posterUrl: slot.posterUrl || null, color: slot.color || null,
+                  startsAt: new Date(slot.startsAt).toISOString(), durationMin: slot.durationMin, repeat: slot.repeat,
                   repeatUntil: slot.repeat !== 'NONE' && slot.repeatUntil ? new Date(`${slot.repeatUntil}T23:59:59`).toISOString() : null,
-                });
-              }, '✓ Créneau ajouté')}>Ajouter au calendrier</button>
+                };
+                if (editingSlot) await api.put(`/admin/live/slots/${editingSlot}`, body); else await api.post('/admin/live/slots', body);
+                setEditingSlot(null);
+                setSlot(emptySlot());
+              }, editingSlot ? '✓ Créneau modifié' : '✓ Créneau ajouté')}>{editingSlot ? 'Enregistrer les modifications' : 'Ajouter au calendrier'}</button>
+              {editingSlot && <button type="button" className="secondary" onClick={() => { setEditingSlot(null); setSlot(emptySlot()); }}>Annuler</button>}
             </div>
             <p className="muted" style={{ margin: 0, fontSize: 12 }}>Les heures sont celles de ton navigateur. Une diffusion répétée garde la même heure locale toute l'année (changement d'heure compris). Si deux créneaux se chevauchent, le plus récent remplace l'autre.</p>
           </div>
@@ -162,11 +193,12 @@ export default function AdminLive() {
             <tbody>
               {data.slots.map((s) => (
                 <tr key={s.id} style={s.enabled ? undefined : { opacity: 0.5 }}>
-                  <td>{s.title ? `${s.title} ` : ''}<span className="muted">({s.stream.name})</span></td>
+                  <td>{s.color && <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 5, background: s.color, marginRight: 6 }} />}{s.title ? `${s.title} ` : ''}<span className="muted">({s.stream.name})</span>{s.description && <div className="muted" style={{ fontSize: 12 }}>{s.description}</div>}</td>
                   <td>{fmt(s.startsAt)}</td>
                   <td>{s.durationMin >= 60 ? `${Math.floor(s.durationMin / 60)} h${s.durationMin % 60 ? ` ${s.durationMin % 60}` : ''}` : `${s.durationMin} min`}</td>
                   <td>{REPEAT_LABEL[s.repeat]}{s.repeatUntil ? ` jusqu'au ${new Date(s.repeatUntil).toLocaleDateString('fr-CA')}` : ''}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button type="button" className="secondary" onClick={() => { editSlot(s); document.getElementById('live-slot-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>Modifier</button>{' '}
                     <button type="button" className="secondary" onClick={() => run(() => api.put(`/admin/live/slots/${s.id}`, { enabled: !s.enabled }), s.enabled ? '✓ Créneau désactivé' : '✓ Créneau réactivé')}>{s.enabled ? 'Désactiver' : 'Réactiver'}</button>{' '}
                     <button type="button" className="secondary" onClick={() => window.confirm('Supprimer ce créneau ?') && run(() => api.delete(`/admin/live/slots/${s.id}`), '✓ Créneau supprimé')}>Supprimer</button>
                   </td>
@@ -185,6 +217,8 @@ export default function AdminLive() {
           </div>
         )}
       </div>
+
+      <AdminLivePage initial={cfg.page} onSaved={(page) => setCfg({ ...cfg, page })} />
     </div>
   );
 }

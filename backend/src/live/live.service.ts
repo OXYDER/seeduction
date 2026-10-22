@@ -5,7 +5,7 @@ import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { jobMonitor } from '../common/utils/job-monitor';
 import {
-  activeAt, LiveConfig, normalizeLiveConfig, Repeat, SlotLike, upcoming, validStreamUrl,
+  activeAt, LiveConfig, normalizeLiveConfig, occurrencesBetween, Repeat, slotColor, slotImage, SlotLike, upcoming, validStreamUrl, zonedParts, zonedToUtc,
 } from '../common/utils/live-schedule';
 
 const KEY = 'liveRelay';
@@ -73,6 +73,11 @@ export class LiveService {
       if (!validStreamUrl(body?.url)) throw new BadRequestException('Adresse de flux invalide : elle doit commencer par http://, https://, rtmp://, rtsp://, srt:// ou udp://, sans espace ni guillemet.');
       data.url = String(body.url).trim();
     }
+    if (body?.description !== undefined) data.description = body.description ? String(body.description).trim().slice(0, 500) || null : null;
+    const poster = slotImage(body?.posterUrl);
+    if (poster !== undefined) data.posterUrl = poster;
+    const c = slotColor(body?.color);
+    if (c !== undefined) data.color = c;
     if (body?.enabled !== undefined) data.enabled = !!body.enabled;
     return data;
   }
@@ -191,24 +196,68 @@ export class LiveService {
 
   // ── Côté membres ────────────────────────────────────────────────────────────
 
-  /** Ce que voit un membre : la diffusion en cours (avec l'adresse du relais) et les prochaines. Jamais l'adresse d'un flux source. */
+  /**
+   * Ce que voit un membre : la diffusion en cours (avec l'adresse du relais), la dernière terminée, les prochaines et le calendrier,
+   * plus les réglages d'affichage de la page. Jamais l'adresse d'un flux source.
+   */
   async forMembers() {
     const now = new Date();
     const { cfg, occ, stream } = await this.current(now);
+    const page = cfg.page;
     const [rows, streams] = await Promise.all([this.prisma.liveSlot.findMany(), this.prisma.liveStream.findMany()]);
-    const names = new Map(streams.map((s) => [s.id, s.name]));
     const live = cfg.enabled && !!occ && !!stream && !!cfg.playbackUrl;
-    const next = cfg.enabled
-      ? upcoming(this.slotLikes(rows).filter((s) => streams.find((x) => x.id === s.streamId)?.enabled), now, 14, 6, cfg.timezone)
-        .filter((o) => !occ || o.slot.id !== occ.slot.id || o.start.getTime() !== occ.start.getTime())
-        .map((o) => ({ title: o.slot.title ?? names.get(o.slot.streamId) ?? 'Direct', start: o.start, end: o.end }))
-      : [];
+    const byId = new Map<string, any>(rows.map((r: any) => [r.id, r]));
+    const names = new Map<string, string>(streams.map((s: any) => [s.id, s.name]));
+    const visible = cfg.enabled ? this.slotLikes(rows).filter((s) => streams.find((x) => x.id === s.streamId)?.enabled) : [];
+    const info = (o: { slot: SlotLike; start: Date; end: Date }) => {
+      const r: any = byId.get(o.slot.id) ?? {};
+      return {
+        title: o.slot.title ?? names.get(o.slot.streamId) ?? 'Direct',
+        description: page.showDescription ? r.description ?? null : null,
+        posterUrl: r.posterUrl ?? null,
+        color: r.color ?? null,
+        start: o.start,
+        end: o.end,
+      };
+    };
+
+    // Calendrier : du début du mois précédent (si les diffusions passées sont montrées) jusqu'à l'horizon choisi.
+    const z = zonedParts(now, cfg.timezone);
+    const from = page.showPast ? zonedToUtc(z.m === 1 ? z.y - 1 : z.y, z.m === 1 ? 12 : z.m - 1, 1, 0, 0, cfg.timezone) : now;
+    const to = new Date(now.getTime() + page.horizonDays * 86_400_000);
+    const all = visible.flatMap((s) => occurrencesBetween(s, from, to, cfg.timezone)).sort((a, b) => a.start.getTime() - b.start.getTime());
+    const isCurrent = (o: { slot: SlotLike; start: Date }) => !!occ && o.slot.id === occ.slot.id && o.start.getTime() === occ.start.getTime();
+    const events = all.slice(0, 1500).map((o) => ({ ...info(o), live: live && isCurrent(o) }));
+
+    const next = upcoming(visible, now, page.horizonDays, page.upcomingCount + 1, cfg.timezone)
+      .filter((o) => o.start.getTime() > now.getTime() && !isCurrent(o))
+      .slice(0, page.upcomingCount)
+      .map(info);
+
+    // La dernière diffusion terminée depuis moins de `endedMinutes` (écran « Diffusion terminée »).
+    let ended: { title: string; end: Date } | null = null;
+    if (!live && page.endedMinutes > 0) {
+      const since = new Date(now.getTime() - page.endedMinutes * 60_000);
+      const done = visible.flatMap((s) => occurrencesBetween(s, since, now, cfg.timezone))
+        .filter((o) => o.end.getTime() <= now.getTime() && o.end.getTime() > since.getTime())
+        .sort((a, b) => b.end.getTime() - a.end.getTime())[0];
+      if (done) ended = { title: info(done).title, end: done.end };
+    }
+
+    const current = live ? info(occ!) : null;
     return {
       live,
-      title: live ? occ!.slot.title ?? stream!.name : null,
+      title: current ? occ!.slot.title ?? stream!.name : null,
+      description: current?.description ?? null,
+      startedAt: live ? occ!.start : null,
       endsAt: live ? occ!.end : null,
       playbackUrl: live ? cfg.playbackUrl : null,
+      ended,
       next,
+      events,
+      timezone: cfg.timezone,
+      serverTime: now,
+      page,
     };
   }
 

@@ -116,12 +116,111 @@ export interface LiveConfig {
   timezone: string;
   /** Compatibilité navigateur : le relais copie le flux tel quel, convertit le son seulement (AAC) ou l'image et le son (H.264 + AAC). */
   transcode: Transcode;
+  /** Affichage de la page Direct des membres. */
+  page: LivePageConfig;
+}
+
+export type CalendarView = 'month' | 'week' | 'list';
+export const CALENDAR_VIEWS: CalendarView[] = ['month', 'week', 'list'];
+
+/** Réglages d'affichage de la page Direct (Admin > Direct > Page Direct). */
+export interface LivePageConfig {
+  /** Hors diffusion : afficher quand même l'écran du lecteur (titre, date et compte à rebours de la prochaine diffusion). */
+  showPlayerWhenOff: boolean;
+  showCountdown: boolean;
+  countdownSeconds: boolean;
+  offlineTitle: string;
+  offlineMessage: string;
+  /** Après la fin d'une diffusion, pendant `endedMinutes`, l'écran l'indique (« Diffusion terminée »). 0 = jamais. */
+  endedTitle: string;
+  endedMessage: string;
+  endedMinutes: number;
+  noneMessage: string;
+  /** Image de fond de l'écran hors diffusion (l'image d'un créneau a priorité). */
+  posterUrl: string;
+  showCalendar: boolean;
+  calendarView: CalendarView;
+  weekStartsMonday: boolean;
+  /** Jusqu'où le calendrier montre les diffusions à venir, en jours. */
+  horizonDays: number;
+  showPast: boolean;
+  showUpcomingList: boolean;
+  upcomingCount: number;
+  showEndTime: boolean;
+  showDescription: boolean;
+  showPlayerButton: boolean;
+  startMuted: boolean;
+  todayColor: string;
+  eventColor: string;
+  liveColor: string;
+  /** Message affiché au-dessus du lecteur (annonce, règles…), vide = rien. */
+  banner: string;
+}
+
+export const DEFAULT_LIVE_PAGE: LivePageConfig = {
+  showPlayerWhenOff: true, showCountdown: true, countdownSeconds: true,
+  offlineTitle: 'Aucune diffusion en ce moment', offlineMessage: 'La page se met à jour toute seule : la diffusion démarre ici à l\'heure prévue.',
+  endedTitle: 'Diffusion terminée', endedMessage: 'Merci d\'avoir regardé !', endedMinutes: 30,
+  noneMessage: 'Aucune diffusion n\'est prévue pour l\'instant.',
+  posterUrl: '', showCalendar: true, calendarView: 'month', weekStartsMonday: false, horizonDays: 60, showPast: true,
+  showUpcomingList: true, upcomingCount: 6, showEndTime: true, showDescription: true, showPlayerButton: true, startMuted: true,
+  todayColor: '#f59e0b', eventColor: '#7c3aed', liveColor: '#ef4444', banner: '',
+};
+
+const HEX = /^#[0-9a-f]{6}$/i;
+const txt = (v: unknown, prev: string, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : prev);
+const bool = (v: unknown, prev: boolean) => (typeof v === 'boolean' ? v : prev);
+const int = (v: unknown, prev: number, min: number, max: number) => { const n = Math.floor(Number(v)); return v === undefined || v === null || v === '' || !Number.isFinite(n) ? prev : Math.min(max, Math.max(min, n)); };
+const color = (v: unknown, prev: string) => (typeof v === 'string' && HEX.test(v.trim()) ? v.trim().toLowerCase() : prev);
+const image = (v: unknown, prev: string) => { if (typeof v !== 'string') return prev; const s = v.trim(); return !s ? '' : /^(https?:\/\/|\/)[^\s"'<>]+$/i.test(s) ? s.slice(0, 500) : prev; };
+
+export function normalizeLivePage(raw: any, previous: LivePageConfig = DEFAULT_LIVE_PAGE): LivePageConfig {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const p = { ...DEFAULT_LIVE_PAGE, ...previous };
+  return {
+    showPlayerWhenOff: bool(r.showPlayerWhenOff, p.showPlayerWhenOff),
+    showCountdown: bool(r.showCountdown, p.showCountdown),
+    countdownSeconds: bool(r.countdownSeconds, p.countdownSeconds),
+    offlineTitle: txt(r.offlineTitle, p.offlineTitle, 120),
+    offlineMessage: txt(r.offlineMessage, p.offlineMessage, 500),
+    endedTitle: txt(r.endedTitle, p.endedTitle, 120),
+    endedMessage: txt(r.endedMessage, p.endedMessage, 500),
+    endedMinutes: int(r.endedMinutes, p.endedMinutes, 0, 1440),
+    noneMessage: txt(r.noneMessage, p.noneMessage, 500),
+    posterUrl: image(r.posterUrl, p.posterUrl),
+    showCalendar: bool(r.showCalendar, p.showCalendar),
+    calendarView: CALENDAR_VIEWS.includes(r.calendarView) ? r.calendarView : p.calendarView,
+    weekStartsMonday: bool(r.weekStartsMonday, p.weekStartsMonday),
+    horizonDays: int(r.horizonDays, p.horizonDays, 7, 365),
+    showPast: bool(r.showPast, p.showPast),
+    showUpcomingList: bool(r.showUpcomingList, p.showUpcomingList),
+    upcomingCount: int(r.upcomingCount, p.upcomingCount, 1, 30),
+    showEndTime: bool(r.showEndTime, p.showEndTime),
+    showDescription: bool(r.showDescription, p.showDescription),
+    showPlayerButton: bool(r.showPlayerButton, p.showPlayerButton),
+    startMuted: bool(r.startMuted, p.startMuted),
+    todayColor: color(r.todayColor, p.todayColor),
+    eventColor: color(r.eventColor, p.eventColor),
+    liveColor: color(r.liveColor, p.liveColor),
+    banner: txt(r.banner, p.banner, 1000),
+  };
+}
+
+/** Couleur d'un créneau (#rrggbb) ou null. */
+export function slotColor(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  return typeof v === 'string' && HEX.test(v.trim()) ? v.trim().toLowerCase() : null;
+}
+/** Image d'un créneau (adresse http(s) ou chemin du site) ou null. */
+export function slotImage(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  return image(v, '') || null;
 }
 
 export type Transcode = 'copy' | 'audio' | 'full';
 export const TRANSCODES: Transcode[] = ['copy', 'audio', 'full'];
 
-export const DEFAULT_LIVE_CONFIG: LiveConfig = { enabled: false, controlUrl: '', secret: '', playbackUrl: '', onDemand: true, timezone: DEFAULT_TIMEZONE, transcode: 'audio' };
+export const DEFAULT_LIVE_CONFIG: LiveConfig = { enabled: false, controlUrl: '', secret: '', playbackUrl: '', onDemand: true, timezone: DEFAULT_TIMEZONE, transcode: 'audio', page: DEFAULT_LIVE_PAGE };
 
 const cleanUrl = (v: unknown, previous: string): string => {
   if (typeof v !== 'string') return previous;
@@ -142,6 +241,7 @@ export function normalizeLiveConfig(raw: any, previous: LiveConfig = DEFAULT_LIV
     onDemand: typeof r.onDemand === 'boolean' ? r.onDemand : previous.onDemand,
     timezone: isValidTimezone(r.timezone) ? r.timezone : previous.timezone,
     transcode: TRANSCODES.includes(r.transcode) ? r.transcode : previous.transcode ?? 'audio',
+    page: normalizeLivePage(r.page, previous.page ?? DEFAULT_LIVE_PAGE),
   };
 }
 

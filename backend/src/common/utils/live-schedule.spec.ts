@@ -1,4 +1,4 @@
-import { activeAt, occurrencesBetween, normalizeLiveConfig, upcoming, validStreamUrl, zonedToUtc, SlotLike } from './live-schedule';
+import { activeAt, occurrencesBetween, normalizeLiveConfig, normalizeLivePage, slotColor, slotImage, DEFAULT_LIVE_PAGE, upcoming, validStreamUrl, zonedToUtc, SlotLike } from './live-schedule';
 
 const TZ = 'America/Toronto';
 const slot = (over: Partial<SlotLike> = {}): SlotLike => ({ id: 's1', streamId: 'a', startsAt: new Date('2026-01-06T01:00:00Z'), durationMin: 120, repeat: 'NONE', enabled: true, ...over });
@@ -116,5 +116,28 @@ describe('validStreamUrl', () => {
     expect(validStreamUrl('http://x/ a')).toBe(false);
     expect(validStreamUrl('http://x/"; rm -rf')).toBe(false);
     expect(validStreamUrl('')).toBe(false);
+  });
+
+  it('réglages de la page Direct : valeurs par défaut, bornes et rejet des valeurs invalides', () => {
+    expect(normalizeLiveConfig({}).page).toEqual(DEFAULT_LIVE_PAGE);
+    const p = normalizeLivePage({ horizonDays: 9999, upcomingCount: 0, todayColor: 'red', eventColor: '#ABCDEF', calendarView: 'year', posterUrl: 'javascript:alert(1)', endedMinutes: '15' });
+    expect(p.horizonDays).toBe(365);
+    expect(p.upcomingCount).toBe(1);
+    expect(p.todayColor).toBe(DEFAULT_LIVE_PAGE.todayColor);
+    expect(p.eventColor).toBe('#abcdef');
+    expect(p.calendarView).toBe('month');
+    expect(p.posterUrl).toBe('');
+    expect(p.endedMinutes).toBe(15);
+    // Un enregistrement partiel garde le reste.
+    expect(normalizeLiveConfig({ page: { showCalendar: false } }, normalizeLiveConfig({ page: { banner: 'Salut' } })).page).toMatchObject({ showCalendar: false, banner: 'Salut' });
+  });
+
+  it('couleur et image d\'un créneau', () => {
+    expect(slotColor(undefined)).toBeUndefined();
+    expect(slotColor('#FF0000')).toBe('#ff0000');
+    expect(slotColor('rouge')).toBeNull();
+    expect(slotImage('/api/covers/a.jpg')).toBe('/api/covers/a.jpg');
+    expect(slotImage('https://x.ca/a.png')).toBe('https://x.ca/a.png');
+    expect(slotImage('javascript:alert(1)')).toBeNull();
   });
 });
