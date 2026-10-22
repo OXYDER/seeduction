@@ -94,7 +94,8 @@ function build(platform, version) {
   const dir = path.join(ROOT, 'android-player');
   if (!noBuild) {
     const javaHome = process.env.JAVA_HOME || ['C:\\Program Files\\Android\\Android Studio\\jbr', '/Applications/Android Studio.app/Contents/jbr/Contents/Home'].find(existsSync);
-    run(process.platform === 'win32' ? 'gradlew.bat' : './gradlew', ['--no-daemon', 'assembleRelease', '-q'], dir, javaHome ? { JAVA_HOME: javaHome } : {});
+    // Chemin complet entre guillemets : sous Windows, l'interpréteur ne cherche pas dans le dossier courant.
+    run(process.platform === 'win32' ? `"${path.join(dir, 'gradlew.bat')}"` : './gradlew', ['--no-daemon', 'assembleRelease', '-q'], dir, javaHome ? { JAVA_HOME: javaHome } : {});
   }
   const file = path.join(dir, 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
   if (!existsSync(file)) fail(`APK introuvable : ${file}`);
@@ -170,6 +171,13 @@ for (const x of plan) {
   const check = (await published(cfg))[x.platform];
   if (check?.version !== x.target || check.sha256 !== release.sha256) fail(`Le site n'affiche pas la version publiée (${x.platform}).`);
   console.log(`  ✓ publié : version ${check.version}, ${(check.size / 1048576).toFixed(1)} Mo, empreinte ${check.sha256.slice(0, 12)}…`);
+}
+
+// Un numéro de version écrit lors d'une exécution précédente (compilation ratée, par exemple) et pas encore enregistré dans git doit l'être aussi.
+for (const x of plan) {
+  const f = path.relative(ROOT, x.platform === 'windows' ? PKG : GRADLE);
+  const dirty = spawnSync('git', ['status', '--porcelain', '--', f], { cwd: ROOT, encoding: 'utf8' }).stdout.trim();
+  if (dirty && !changed.includes(x.platform)) changed.push(x.platform);
 }
 
 if (changed.length && !noCommit) {
