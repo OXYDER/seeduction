@@ -2090,7 +2090,16 @@ a.msgr-torrent:hover { background: rgba(255,255,255,0.16); color: var(--text); b
 
 /* composeur */
 .msgr-composer { position: relative; padding: 8px 12px 12px; border-top: 1px solid rgba(255,255,255,0.07); display: grid; gap: 6px; flex-shrink: 0; }
-.msgr-composer-row { display: flex; align-items: flex-end; gap: 4px; }
+.msgr-composer-row { display: flex; align-items: flex-end; gap: 6px; }
+/* Fenêtre flottante : un « + » range les outils rares, le champ de texte prend toute la place, l'icône d'envoi apparaît dès qu'il y a du texte */
+.msgr-tools-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 2px 2px; }
+.msgr-tool { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.09); color: var(--text); font-size: 13px; font-weight: 500; box-shadow: none; cursor: pointer; }
+.msgr-tool:hover:not(:disabled) { background: rgba(255,255,255,0.18); transform: none; filter: none; }
+.msgr-more.on { background: rgba(255,255,255,0.22); }
+.msgr-dock-window .msgr-composer-row .msgr-editor { min-height: 40px; font-size: 15px; padding: 10px 14px; background: rgba(10,14,28,0.55); border-color: rgba(255,255,255,0.2); }
+.msgr-dock-window .msgr-composer-row .msgr-editor:focus { border-color: var(--acc1, #e0b84a); }
+.msgr-dock-window .msgr-composer-row .chat-icon-btn.lg, .msgr-dock-window .msgr-composer-row .chat-send-btn { width: 36px; height: 36px; }
+.chat-send-btn svg { margin-left: 2px; }
 .msgr-composer textarea { flex: 1; min-width: 0; resize: none; border-radius: 20px; padding: 9px 14px; line-height: 1.35; max-height: 140px; background: rgba(255,255,255,0.08); }
 /* Champ de saisie « tel quel » : la mise en forme se voit pendant qu'on écrit */
 .msgr-editor { flex: 1; min-width: 0; box-sizing: border-box; border-radius: 20px; padding: 9px 14px; line-height: 1.35; min-height: 38px; max-height: 140px; overflow-y: auto; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 14.5px; font-family: var(--font-body); color: var(--text); background: rgba(255,255,255,0.08); border: 1px solid var(--border); outline: none; cursor: text; }

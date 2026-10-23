@@ -66,6 +66,9 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   const scroller = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
+  // Pendant 2 s après l'ouverture (ou un changement de taille de la fenêtre), on reste collé en bas tant que le membre n'a pas fait défiler lui-même : sinon le redimensionnement de la fenêtre flottante, ou une image qui charge, faisait croire qu'il avait quitté le bas.
+  const userMoved = useRef(false);
+  const settleUntil = useRef(0);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const anchor = useRef<{ height: number } | null>(null);
   const initialRead = useRef<string | null>(null);
@@ -96,7 +99,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     return () => window.clearInterval(t);
   }, []);
 
-  useEffect(() => { setReplyTo(null); setEditing(null); setSearchOpen(false); setQuery(''); setNewBelow(0); setAwayFromBottom(false); stick.current = true; initialRead.current = null; lastCount.current = 0; }, [conversationId]);
+  useEffect(() => { setReplyTo(null); setEditing(null); setSearchOpen(false); setQuery(''); setNewBelow(0); setAwayFromBottom(false); stick.current = true; userMoved.current = false; settleUntil.current = Date.now() + 2000; initialRead.current = null; lastCount.current = 0; }, [conversationId]);
   useEffect(() => { if (thread?.loaded && initialRead.current === null) initialRead.current = thread.myLastReadAt ?? ''; }, [thread?.loaded, thread?.myLastReadAt]);
 
   const mutes = useMessenger((s) => s.mutes);
@@ -114,9 +117,13 @@ export default function ConversationView({ conversationId, variant, onClose, onM
   useEffect(() => {
     const el = content.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(() => { if (stick.current && !anchor.current) scrollToBottom(); });
+    const ro = new ResizeObserver(() => { if ((stick.current || (!userMoved.current && Date.now() < settleUntil.current)) && !anchor.current) { stick.current = true; scrollToBottom(); } });
     ro.observe(el);
-    return () => ro.disconnect();
+    // La fenêtre elle-même change de taille (ouverture, agrandissement, retour de la réduction) : on se remet en bas.
+    const box = scroller.current;
+    const ro2 = new ResizeObserver(() => { settleUntil.current = Date.now() + 2000; if (!userMoved.current && !anchor.current) { stick.current = true; scrollToBottom(); } });
+    if (box) ro2.observe(box);
+    return () => { ro.disconnect(); ro2.disconnect(); };
   }, [conversationId, scrollToBottom]);
 
   // Messages plus anciens ajoutés en haut : on garde la position de lecture au lieu de sauter.
@@ -140,7 +147,8 @@ export default function ConversationView({ conversationId, variant, onClose, onM
     const el = scroller.current;
     if (!el) return;
     const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    stick.current = fromBottom < 140;
+    stick.current = fromBottom < 140 || (!userMoved.current && Date.now() < settleUntil.current);
+    if (fromBottom < 8) userMoved.current = false;
     setAwayFromBottom(fromBottom > 320);
     if (stick.current && newBelow) { setNewBelow(0); markRead(conversationId); }
     if (el.scrollTop < 140 && thread?.hasMore && !thread.loading) {
@@ -359,7 +367,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
       <PinBar conversationId={conversationId} pinnedIds={conv.pinnedMessageIds ?? []} canPin={canPin} onJump={jumpTo} me={me?.id} />
 
       <div className="msgr-scroll-wrap">
-      <div className="msgr-scroll" ref={scroller} onScroll={onScroll}>
+      <div className="msgr-scroll" ref={scroller} onScroll={onScroll} onWheel={() => { userMoved.current = true; }} onTouchMove={() => { userMoved.current = true; }} onMouseDown={() => { userMoved.current = true; }}>
         <div className="msgr-content" ref={content}>
         {thread?.loading && messages.length > 0 && <div className="msgr-load-more muted">Chargement…</div>}
         {thread && !thread.hasMore && thread.loaded && (

@@ -63,6 +63,8 @@ export default function Composer({ conversationId, writable, ban, people, replyT
   const [share, setShare] = useState(false);
   const [fmt, setFmt] = useState(false);
   const [poll, setPoll] = useState(false);
+  // Fenêtre flottante (étroite) : les outils rares (photo, torrent, sondage, mise en forme) se rangent derrière un « + » pour laisser la place au texte.
+  const [tools, setTools] = useState(false);
   const conv = useMessenger((s) => s.conversations.find((c) => c.id === conversationId));
   const myRole = useAuthStore((s) => s.user?.role);
   // Sondage : conversations privées et groupes ; dans un canal public, la modération seulement.
@@ -258,10 +260,31 @@ export default function Composer({ conversationId, writable, ban, people, replyT
           <button type="button" className="chat-send-btn" title="Envoyer le vocal" aria-label="Envoyer le vocal" onClick={() => stopRecording(true)}>➤</button>
         </div>
       ) : (
+      <>
+      {!editing && compact && tools && (
+        <div className="msgr-tools-row" role="toolbar" aria-label="Plus d'actions">
+          <button type="button" className="msgr-tool" disabled={busy} onClick={() => { setTools(false); fileInput.current?.click(); }}>📎 <span>Photo ou fichier</span></button>
+          <button type="button" className="msgr-tool" onClick={() => { setTools(false); setShare(true); }}>🎬 <span>Torrent</span></button>
+          {canPoll && <button type="button" className="msgr-tool" onClick={() => { setTools(false); setPoll(true); }}>📊 <span>Sondage</span></button>}
+          <div className="msgr-emoji-anchor">
+            <button type="button" className="msgr-tool" aria-label="Mise en forme" onClick={() => setFmt((v) => !v)}>Aa <span>Mise en forme</span></button>
+            {fmt && (
+              <div className="msgr-fmt-pop" role="toolbar" aria-label="Mise en forme">
+                {FORMATS.map((f) => (
+                  <button key={f.title} type="button" style={f.style} title={`${f.title}${f.keys ? ` (${f.keys})` : ''}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { area.current?.format(f.fmt); setFmt(false); setTools(false); }}>{f.label}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div className="msgr-composer-row">
-        {!editing && (
+        {!editing && <input ref={fileInput} type="file" hidden multiple onChange={(e) => { [...(e.target.files ?? [])].slice(0, 5).forEach((f) => sendFile(f)); e.target.value = ''; }} />}
+        {!editing && compact && (
+          <button type="button" className={`chat-icon-btn lg msgr-more${tools ? ' on' : ''}`} title="Plus d'actions : photo, torrent, sondage, mise en forme" aria-label="Plus d'actions" aria-expanded={tools} onClick={() => { setTools((v) => !v); setFmt(false); }}>{tools ? '✕' : '＋'}</button>
+        )}
+        {!editing && !compact && (
           <>
-            <input ref={fileInput} type="file" hidden multiple onChange={(e) => { [...(e.target.files ?? [])].slice(0, 5).forEach((f) => sendFile(f)); e.target.value = ''; }} />
             <button type="button" className="chat-icon-btn lg" title="Photo ou fichier" disabled={busy} onClick={() => fileInput.current?.click()}>📎</button>
             <button type="button" className="chat-icon-btn lg" title="Partager un torrent" onClick={() => setShare(true)}>🎬</button>
             {canPoll && <button type="button" className="chat-icon-btn lg" title="Créer un sondage" onClick={() => setPoll(true)}>📊</button>}
@@ -276,7 +299,7 @@ export default function Composer({ conversationId, writable, ban, people, replyT
           onKeyDown={onKeyDown}
           onPaste={onPaste}
         />
-        <div className="msgr-emoji-anchor">
+        {!compact && <div className="msgr-emoji-anchor">
           <button type="button" className="chat-icon-btn lg" title="Mise en forme : gras, italique, code, spoiler, citation" aria-label="Mise en forme" onClick={() => setFmt((v) => !v)}>Aa</button>
           {fmt && (
             <div className="msgr-fmt-pop" role="toolbar" aria-label="Mise en forme">
@@ -285,7 +308,7 @@ export default function Composer({ conversationId, writable, ban, people, replyT
               ))}
             </div>
           )}
-        </div>
+        </div>}
         {!editing && (
           <div className="msgr-emoji-anchor">
             <button type="button" className="chat-icon-btn lg" title="Émojis, autocollants et GIF" onClick={() => setEmoji((v) => !v)}>😀</button>
@@ -323,9 +346,10 @@ export default function Composer({ conversationId, writable, ban, people, replyT
         {!editing && !text.trim() && canRecordVoice() ? (
           <button type="button" className="chat-send-btn mic" disabled={busy} title="Message vocal" aria-label="Enregistrer un message vocal" onClick={startRecording}>🎤</button>
         ) : (
-          <button type="button" className="chat-send-btn" disabled={!text.trim() || busy} title={editing ? 'Enregistrer' : 'Envoyer'} aria-label="Envoyer" onClick={submit}>{editing ? '✓' : '➤'}</button>
+          <button type="button" className="chat-send-btn" disabled={!text.trim() || busy} title={editing ? 'Enregistrer' : 'Envoyer'} aria-label="Envoyer" onClick={submit}>{editing ? '✓' : <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="M2.5 20.5 22 12 2.5 3.5l.01 6.6L15 12 2.5 13.9z" /></svg>}</button>
         )}
       </div>
+      </>
       )}
       {poll && <PollModal conversationId={conversationId} onClose={() => setPoll(false)} />}
       {share && <ShareTorrentModal onClose={() => setShare(false)} onPick={(torrentId) => { setShare(false); send(conversationId, { torrentId, content: text.trim() || undefined, replyToId: replyTo?.id }); setText(''); drafts.delete(conversationId); onCancelReply(); }} />}
