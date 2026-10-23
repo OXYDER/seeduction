@@ -4,7 +4,7 @@ import { PeerEvent } from '@prisma/client';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AntiCheatService } from '../anticheat/anticheat.service';
-import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY, reseedReward } from '../common/utils/economy';
+import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY, reseedReward, SEED_FRESH_MS } from '../common/utils/economy';
 import { setSource } from '../common/utils/ledger';
 import { DELETED_USER_ID } from '../admin/account-deletion.service';
 
@@ -186,7 +186,9 @@ export class TrackerService {
     }
     // Trop de « hit & run » non régularisés : plus de nouveaux téléchargements tant que ce n'est pas réglé.
     if (isDownloading && params.event === 'started') {
-      const unresolved = await this.prisma.snatch.count({ where: { userId: user.id, hnr: true, satisfied: false } });
+      // Un hit & run « en réparation » (le membre seede de nouveau ce torrent) ne compte pas dans la limite : il ne bloque plus ses téléchargements tant que le seed continue.
+      const repairing = (await this.prisma.peer.findMany({ where: { userId: user.id, isSeeder: true, lastAnnounceAt: { gt: new Date(Date.now() - SEED_FRESH_MS) } }, select: { torrentId: true }, distinct: ['torrentId'] })).map((p) => p.torrentId);
+      const unresolved = await this.prisma.snatch.count({ where: { userId: user.id, hnr: true, satisfied: false, ...(repairing.length ? { torrentId: { notIn: repairing } } : {}) } });
       if (unresolved >= ECONOMY.hnrLimit) {
         throw new ForbiddenException(`${unresolved} torrents complétés ont été abandonnés trop tôt : reprends leur seed (voir ton profil) pour débloquer les téléchargements`);
       }

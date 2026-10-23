@@ -7,11 +7,11 @@ import { formatBytes } from '../lib/format';
 interface SeedItem {
   torrentId: string; name: string; coverImage: string | null; size: number; completedAt: string;
   seedSeconds: number; requiredSeconds: number; remainingSeconds: number; ratio: number; deadline: string;
-  status: 'hnr' | 'idle' | 'seeding';
+  status: 'hnr' | 'repairing' | 'idle' | 'seeding';
 }
 interface SeedData {
   rules: { hnrSeedHours: number; hnrRatio: number; hnrGraceHours: number };
-  counts: { total: number; hnr: number; idle: number; seeding: number };
+  counts: { total: number; hnr: number; repairing?: number; idle: number; seeding: number };
   items: SeedItem[];
 }
 
@@ -76,6 +76,7 @@ export default function SeedObligations() {
                       {i.status === 'seeding' && `🟢 En seed — encore ${hours(i.remainingSeconds)}`}
                       {i.status === 'idle' && `🟠 Ne seede pas — relance-le avant le ${dayTime(i.deadline)}`}
                       {i.status === 'hnr' && '🔴 Hit & run — reprends le seed pour régulariser'}
+                      {i.status === 'repairing' && `🟡 En réparation — tu le seedes à nouveau, encore ${hours(i.remainingSeconds)}`}
                     </span>
                   </span>
                 </Link>

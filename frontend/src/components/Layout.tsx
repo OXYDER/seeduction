@@ -272,7 +272,7 @@ function LayoutInner() {
   useEffect(() => {
     if (!accessToken) return;
     const load = () => api.get('/bonus/me').then((r) => setEcon({
-      seeding: r.data.seedingCount ?? 0, hnr: r.data.unresolved?.length ?? 0, perHour: r.data.perHour ?? 0, minRatio: r.data.minRatio ?? 0.5, graceGb: r.data.rules?.ratioGraceGb ?? 5,
+      seeding: r.data.seedingCount ?? 0, hnr: (r.data.unresolved ?? []).filter((u: { repairing?: boolean }) => !u.repairing).length, perHour: r.data.perHour ?? 0, minRatio: r.data.minRatio ?? 0.5, graceGb: r.data.rules?.ratioGraceGb ?? 5,
       giftGb: r.data.rules?.welcomeUploadGb ?? 0, hnrSeedHours: r.data.rules?.hnrSeedHours ?? 72, hnrRatio: r.data.rules?.hnrRatio ?? 1, hnrLimit: r.data.rules?.hnrLimit ?? 5, maxTorrents: r.data.rules?.bonusMaxTorrents ?? 200,
     })).catch(() => {});
     load();

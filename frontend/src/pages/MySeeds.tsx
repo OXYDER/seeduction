@@ -8,11 +8,13 @@ import Loading from '../components/Loading';
 interface Item {
   torrentId: string; name: string; coverImage: string | null; size: number; seedingNow: boolean; own: boolean; cleared: boolean;
   state: 'done' | 'progress' | 'idle' | 'hnr' | 'none';
+  /** Hit & run confirmé, mais le torrent est seedé à nouveau : « en réparation ». */
+  repairing?: boolean;
   completedAt: string | null; lastSeedAt: string | null; seedSeconds: number; requiredSeconds: number; remainingSeconds: number; ratio: number; deadline: string | null;
 }
 interface Data {
   rules: { hnrSeedHours: number; hnrRatio: number; hnrGraceHours: number; bonusPerTorrentHour: number };
-  counts: { seeding: number; progress: number; done: number; hnr: number };
+  counts: { seeding: number; progress: number; done: number; hnr: number; repairing?: number };
   items: Item[];
 }
 type Tab = 'now' | 'todo' | 'done' | 'all';
@@ -80,7 +82,9 @@ export default function MySeeds() {
                   {i.state === 'done' && <span className="seedpage-chip done">✅ Obligation terminée{i.cleared ? ' (effacée avec des points)' : ''}</span>}
                   {i.state === 'progress' && <span className="seedpage-chip seeding">⏳ Encore {fmtH(i.remainingSeconds)} de seed</span>}
                   {i.state === 'idle' && <span className="seedpage-chip idle">🟠 Ne seede plus — relance-le{i.deadline ? ` avant le ${dayTime(i.deadline)}` : ''}</span>}
-                  {i.state === 'hnr' && <span className="seedpage-chip hnr">🔴 Hit & run — reprends le seed</span>}
+                  {i.state === 'hnr' && (i.repairing
+                    ? <span className="seedpage-chip seeding">🟡 En réparation — tu le seedes à nouveau, encore {fmtH(i.remainingSeconds)}</span>
+                    : <span className="seedpage-chip hnr">🔴 Hit & run — reprends le seed</span>)}
                   {i.state === 'none' && <span className="seedpage-chip none">{i.own ? '📤 Ton upload : aucune obligation' : 'Aucune obligation'}</span>}
                 </span>
               </span>

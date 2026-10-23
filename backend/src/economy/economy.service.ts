@@ -8,7 +8,7 @@ import { SettingsService } from '../settings/settings.service';
 import { TrackerService } from '../tracker/tracker.service';
 import { downloadMarginBytes } from '../common/utils/download-margin';
 import { SeededTorrent, memberHourly } from '../common/utils/bonus-rate';
-import { ECONOMY, hnrAbandoned, SHOP_ITEMS } from '../common/utils/economy';
+import { ECONOMY, hnrAbandoned, SEED_FRESH_MS, SHOP_ITEMS } from '../common/utils/economy';
 import { setSource } from '../common/utils/ledger';
 
 const TOKEN_DURATION_MS = 7 * 86400_000;
@@ -150,6 +150,9 @@ export class EconomyService {
     const torrents = await this.prisma.torrent.findMany({ where: { id: { in: hnrList.map((h) => h.torrentId) } }, select: { id: true, name: true } });
     const names = new Map(torrents.map((t) => [t.id, t.name]));
     const seedingCount = Number(seeding[0]?.n ?? 0);
+    // Un hit & run dont le torrent est seedé à nouveau est « en réparation » : il disparaît à 72 h / ratio 1 mais ne compte plus comme un cas à problème.
+    const activePeers = hnrList.length ? await this.prisma.peer.findMany({ where: { userId, isSeeder: true, torrentId: { in: hnrList.map((h) => h.torrentId) }, lastAnnounceAt: { gt: new Date(Date.now() - SEED_FRESH_MS) } }, select: { torrentId: true } }) : [];
+    const repairingNow = new Set(activePeers.map((p) => p.torrentId));
 
     return {
       points: user.bonusPoints,
@@ -163,7 +166,7 @@ export class EconomyService {
       downloadMarginBytes: downloadMarginBytes(Number(user.uploaded), Number(user.downloaded), user.minRatio, ECONOMY.ratioGraceGb * 1e9),
       unresolved: hnrList.map((h) => ({
         id: h.id, torrentId: h.torrentId, name: names.get(h.torrentId) ?? '(torrent supprimé)',
-        seedHours: Math.floor(h.seedSeconds / 3600), completedAt: h.completedAt,
+        seedHours: Math.floor(h.seedSeconds / 3600), completedAt: h.completedAt, repairing: repairingNow.has(h.torrentId),
       })),
       shop: SHOP_ITEMS,
     };
@@ -193,7 +196,7 @@ export class EconomyService {
       const seedingNow = mine.some((p) => p.isSeeder && p.lastAnnounceAt.getTime() > fresh);
       const uploaded = mine.reduce((n, p) => n + Number(p.uploaded), 0);
       const size = Number(s.torrent.size);
-      const status = s.hnr ? 'hnr' : seedingNow ? 'seeding' : 'idle';
+      const status = s.hnr ? (seedingNow ? 'repairing' : 'hnr') : seedingNow ? 'seeding' : 'idle';
       return {
         torrentId: s.torrentId, name: s.torrent.name, coverImage: s.torrent.coverImage, size,
         completedAt: s.completedAt, seedSeconds: s.seedSeconds, requiredSeconds: required,
@@ -203,11 +206,11 @@ export class EconomyService {
         status,
       };
     });
-    const rank = { hnr: 0, idle: 1, seeding: 2 } as const;
+    const rank = { hnr: 0, repairing: 1, idle: 2, seeding: 3 } as const;
     items.sort((a, b) => rank[a.status as keyof typeof rank] - rank[b.status as keyof typeof rank] || (a.status === 'seeding' ? a.remainingSeconds - b.remainingSeconds : a.deadline.getTime() - b.deadline.getTime()));
     return {
       rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours },
-      counts: { total: items.length, hnr: items.filter((i) => i.status === 'hnr').length, idle: items.filter((i) => i.status === 'idle').length, seeding: items.filter((i) => i.status === 'seeding').length },
+      counts: { total: items.length, hnr: items.filter((i) => i.status === 'hnr').length, repairing: items.filter((i) => i.status === 'repairing').length, idle: items.filter((i) => i.status === 'idle').length, seeding: items.filter((i) => i.status === 'seeding').length },
       items,
     };
   }
@@ -313,6 +316,8 @@ export class EconomyService {
       return {
         torrentId: t.id, name: t.name, coverImage: t.coverImage, size,
         seedingNow: now, state, own,
+        // Hit & run confirmé mais torrent seedé à nouveau : « en réparation » (disparaît à 72 h ou ratio 1).
+        repairing: state === 'hnr' && now,
         cleared: !!s?.hnrClearedAt,
         completedAt: s?.completedAt ?? null,
         lastSeedAt: s?.lastSeedAt ?? null,
@@ -328,7 +333,7 @@ export class EconomyService {
     const count = (st: string) => items.filter((i) => i.state === st).length;
     return {
       rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours, bonusPerTorrentHour: ECONOMY.bonusPerTorrentHour },
-      counts: { seeding: items.filter((i) => i.seedingNow).length, progress: count('progress') + count('idle') + count('hnr'), done: count('done'), hnr: count('hnr') },
+      counts: { seeding: items.filter((i) => i.seedingNow).length, progress: count('progress') + count('idle') + count('hnr'), done: count('done'), hnr: items.filter((i) => i.state === 'hnr' && !i.repairing).length, repairing: items.filter((i) => i.repairing).length },
       items,
     };
   }

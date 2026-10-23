@@ -50,7 +50,7 @@ export default function HitAndRun() {
           Cette page n'affiche que ceux qui sont <strong>confirmés</strong>. À {rules.hnrLimit} hit & run non régularisés, les nouveaux téléchargements sont bloqués.
         </p>
         <p className="muted" style={{ margin: '8px 0 0' }}>
-          <strong>La bonne façon de régulariser : reprendre le seed.</strong> Le temps de partage est ce qui fait vivre le tracker, et chaque heure de seed te rapporte {rules.bonusPerTorrentHour} point bonus.
+          <strong>La bonne façon de régulariser : reprendre le seed.</strong> Tant que tu seedes à nouveau un torrent, son cas est « en réparation » : il ne bloque plus tes téléchargements et il disparaît à 72 h cumulées (ou ratio 1). Le temps de partage est ce qui fait vivre le tracker, et chaque heure de seed te rapporte {rules.bonusPerTorrentHour} point bonus.
           Si vraiment tu ne peux pas, tu peux effacer un hit & run avec des points : {rules.clearBase} points de base + {rules.clearPerHour} par heure de seed manquante
           {rules.clearRepeat > 0 && <> + {rules.clearRepeat} par hit & run déjà effacé ces 30 derniers jours</>} (maximum {rules.clearMax}).
         </p>

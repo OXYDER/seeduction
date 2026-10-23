@@ -103,6 +103,9 @@ export const SHOP_ITEMS = [
   { id: 'invite', label: 'Invitation', cost: 2000, description: 'Un code d\'invitation valable 7 jours.' },
 ] as const;
 
+/** Une ligne de pair de seed est « active » si le client a annoncé il y a moins de 45 minutes (au-delà, la ligne est purgée). */
+export const SEED_FRESH_MS = 45 * 60_000;
+
 /**
  * Hit & run : le membre a-t-il vraiment abandonné le seed ? Non s'il seede en ce moment, ni si son dernier signe de partage (dernière annonce comptée) est récent :
  * les lignes de pairs sont purgées après 45 minutes sans annonce alors que les clients n'annoncent que toutes les 30 minutes, donc un simple retard
