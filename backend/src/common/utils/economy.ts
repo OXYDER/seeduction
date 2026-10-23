@@ -12,6 +12,8 @@ export const ECONOMY = {
   hnrRatio: num('HNR_RATIO', 1),
   /** Délai laissé après la fin du téléchargement avant de considérer un « hit & run ». */
   hnrGraceHours: num('HNR_GRACE_HOURS', 48),
+  /** Un seed n'est considéré comme abandonné que si le dernier signe de partage date de plus de ce nombre d'heures : une annonce en retard (déploiement du site, client qui réessaie) n'est pas un abandon. */
+  hnrAbandonHours: num('HNR_ABANDON_HOURS', 3),
   /** Nombre de hit & run non régularisés au-delà duquel les nouveaux téléchargements sont bloqués. */
   hnrLimit: num('HNR_LIMIT', 5),
   /** Le ratio minimum ne s'applique qu'après avoir téléchargé ce volume (en Go) : période de grâce des nouveaux. */
@@ -100,3 +102,14 @@ export const SHOP_ITEMS = [
   { id: 'freeleech_token', label: 'Jeton freeleech', cost: 300, description: 'À dépenser sur un torrent : son téléchargement ne compte pas dans ton ratio pendant 7 jours.' },
   { id: 'invite', label: 'Invitation', cost: 2000, description: 'Un code d\'invitation valable 7 jours.' },
 ] as const;
+
+/**
+ * Hit & run : le membre a-t-il vraiment abandonné le seed ? Non s'il seede en ce moment, ni si son dernier signe de partage (dernière annonce comptée) est récent :
+ * les lignes de pairs sont purgées après 45 minutes sans annonce alors que les clients n'annoncent que toutes les 30 minutes, donc un simple retard
+ * (tracker redémarré pendant un déploiement, réessai du client) fait disparaître la ligne un court instant sans que le membre ait cessé de seeder.
+ */
+export function hnrAbandoned(input: { seedingNow: boolean; lastSeedAt: Date | null; completedAt: Date }, now: Date = new Date(), abandonHours: number = ECONOMY.hnrAbandonHours): boolean {
+  if (input.seedingNow) return false;
+  const lastSign = input.lastSeedAt ?? input.completedAt;
+  return now.getTime() - lastSign.getTime() >= abandonHours * 3600_000;
+}

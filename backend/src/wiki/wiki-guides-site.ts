@@ -159,6 +159,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `4. Dès que la condition est remplie, l'avertissement est levé tout seul.\n\n` +
         `[b]Option 2 : effacer avec des points bonus[/b]\n` +
         `Si tu n'as plus les fichiers, ou pas le temps, tu peux effacer le hit & run contre des points (bouton sur la page Hit & run). Le prix est volontairement plus élevé que le seed : 250 points de base + 5 points par heure de seed manquante, majorés si tu en effaces souvent, avec un plafond. Le torrent est alors considéré comme régularisé. Voir [url=/wiki/hit-and-run]Hit & Run[/url] pour le détail.\n\n` +
+        `[b]Je seede pourtant et j'ai un hit & run ?[/b]\n` +
+        `Un hit & run n'est déclaré que si ton dernier signe de partage date de [b]plus de 3 heures[/b] : une annonce en retard, un redémarrage du site ou un client qui réessaie ne compte plus comme un abandon. Si tu en as un alors que tu seedes bien, continue simplement de seeder (le temps déjà cumulé compte, l'avertissement se lève tout seul à 72 h), ou écris au [url=/wiki/support-chat-et-billets]Support[/url] : l'équipe peut l'effacer.\n\n` +
         `[b]Que se passe-t-il si je n'en fais rien ?[/b]\n` +
         `À partir de 5 hit & run non régularisés, tes nouveaux téléchargements sont bloqués (le seed continue). Régularise-en assez pour être débloqué.\n\n` +
         `[b]Éviter qu'un hit & run se reproduise[/b]\n` +

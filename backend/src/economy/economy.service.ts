@@ -8,7 +8,7 @@ import { SettingsService } from '../settings/settings.service';
 import { TrackerService } from '../tracker/tracker.service';
 import { downloadMarginBytes } from '../common/utils/download-margin';
 import { SeededTorrent, memberHourly } from '../common/utils/bonus-rate';
-import { ECONOMY, SHOP_ITEMS } from '../common/utils/economy';
+import { ECONOMY, hnrAbandoned, SHOP_ITEMS } from '../common/utils/economy';
 import { setSource } from '../common/utils/ledger';
 
 const TOKEN_DURATION_MS = 7 * 86400_000;
@@ -102,7 +102,8 @@ export class EconomyService {
     for (const s of candidates) {
       if (exempt.has(s.userId)) { await this.prisma.snatch.update({ where: { id: s.id }, data: { satisfied: true } }); continue; }
       const seeding = await this.prisma.peer.count({ where: { userId: s.userId, torrentId: s.torrentId, isSeeder: true } });
-      if (seeding > 0) continue; // il seede encore : on lui laisse le temps
+      // Il seede encore, ou son dernier signe de partage est trop récent pour parler d'abandon (annonce en retard, déploiement du site) : on lui laisse le temps.
+      if (!hnrAbandoned({ seedingNow: seeding > 0, lastSeedAt: s.lastSeedAt, completedAt: s.completedAt })) continue;
       const torrent = await this.prisma.torrent.findUnique({ where: { id: s.torrentId }, select: { name: true, uploaderId: true } });
       if (!torrent || torrent.uploaderId === s.userId) {
         await this.prisma.snatch.update({ where: { id: s.id }, data: { satisfied: true } }); // torrent supprimé ou à lui : rien à régulariser
