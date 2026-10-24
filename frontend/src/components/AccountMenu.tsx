@@ -78,7 +78,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
   // Dans <body> : la colonne du menu coupe tout ce qui dépasse (et un parent transformé casse la position fixe).
   return createPortal(
     <div className={`account-menu${pos?.compact ? ' compact' : ''}`} ref={ref} role="menu" aria-label="Menu du compte" style={pos ? { left: pos.left, top: pos.top, maxHeight: pos.maxHeight } : { visibility: 'hidden' }}>
-      {profile && (
+      {profile && !['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role) && (
         <div className="account-stats">
           <Link to="/profile" onClick={onClose}><span className="muted">Ratio</span><strong style={{ color: profile.ratio != null && profile.ratio < 1 ? 'var(--danger)' : 'var(--success)' }}>{profile.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong></Link>
           <Link to="/profile" onClick={onClose}><span className="muted">Upload</span><strong style={{ color: 'var(--success)' }}>{formatBytes(profile.uploaded)}</strong></Link>

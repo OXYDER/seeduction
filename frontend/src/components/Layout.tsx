@@ -554,7 +554,7 @@ function LayoutInner() {
               />
             </form>
             {profile && (
-              <HeaderStats profile={profile} econ={econ} />
+              <HeaderStats profile={profile} econ={econ} teamExempt={['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role)} />
             )}
             <div className="row" style={{ gap: 8 }}>
               <NewYearCountdown />

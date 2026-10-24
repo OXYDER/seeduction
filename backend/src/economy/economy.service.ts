@@ -9,6 +9,7 @@ import { TrackerService } from '../tracker/tracker.service';
 import { downloadMarginBytes } from '../common/utils/download-margin';
 import { SeededTorrent, memberHourly } from '../common/utils/bonus-rate';
 import { ECONOMY, hnrAbandoned, SEED_FRESH_MS, SHOP_ITEMS } from '../common/utils/economy';
+import { STAFF_ROLES } from '../common/utils/staff-2fa';
 import { setSource } from '../common/utils/ledger';
 
 const TOKEN_DURATION_MS = 7 * 86400_000;
@@ -98,7 +99,8 @@ export class EconomyService {
       orderBy: { completedAt: 'asc' },
     });
     // Donateurs : hit & run désactivé tant que leur avantage est actif (leurs torrents complétés sont comptés comme réguliers).
-    const exempt = new Set((await this.prisma.user.findMany({ where: { id: { in: [...new Set(candidates.map((c) => c.userId))] }, hnrExemptUntil: { gt: new Date() } }, select: { id: true } })).map((u) => u.id));
+    // Exemptés : donateurs (avantage actif) et équipe (ses transferts ne sont pas comptabilisés).
+    const exempt = new Set((await this.prisma.user.findMany({ where: { id: { in: [...new Set(candidates.map((c) => c.userId))] }, OR: [{ hnrExemptUntil: { gt: new Date() } }, { role: { in: [...STAFF_ROLES] } }] }, select: { id: true } })).map((u) => u.id));
     for (const s of candidates) {
       if (exempt.has(s.userId)) { await this.prisma.snatch.update({ where: { id: s.id }, data: { satisfied: true } }); continue; }
       const seeding = await this.prisma.peer.count({ where: { userId: s.userId, torrentId: s.torrentId, isSeeder: true } });

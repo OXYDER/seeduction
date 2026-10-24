@@ -5,6 +5,7 @@ import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AntiCheatService } from '../anticheat/anticheat.service';
 import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY, reseedReward, SEED_FRESH_MS } from '../common/utils/economy';
+import { isStaffRole } from '../common/utils/staff-2fa';
 import { setSource } from '../common/utils/ledger';
 import { DELETED_USER_ID } from '../admin/account-deletion.service';
 
@@ -174,8 +175,10 @@ export class TrackerService {
         }))
       : false;
 
+    // Les membres de l'équipe ne sont pas comptabilisés : ni upload ni téléchargement ajoutés à leur compte, donc pas de ratio minimum ni de limite de hit & run pour eux.
+    const staffExempt = isStaffRole(user.role);
     const isDownloading = params.left > 0;
-    if (isDownloading && !isFree) {
+    if (isDownloading && !isFree && !staffExempt) {
       // Enforcement ratio minimum : bloque le download (pas le seed) si ratio trop bas,
       // sauf pour les nouveaux membres qui n'ont pas encore téléchargé le volume de grâce.
       const graceBytes = BigInt(Math.round(ECONOMY.ratioGraceGb * 1e9));
@@ -185,7 +188,7 @@ export class TrackerService {
       }
     }
     // Trop de « hit & run » non régularisés : plus de nouveaux téléchargements tant que ce n'est pas réglé.
-    if (isDownloading && params.event === 'started') {
+    if (isDownloading && params.event === 'started' && !staffExempt) {
       // Un hit & run « en réparation » (le membre seede de nouveau ce torrent) ne compte pas dans la limite : il ne bloque plus ses téléchargements tant que le seed continue.
       const repairing = (await this.prisma.peer.findMany({ where: { userId: user.id, isSeeder: true, lastAnnounceAt: { gt: new Date(Date.now() - SEED_FRESH_MS) } }, select: { torrentId: true }, distinct: ['torrentId'] })).map((p) => p.torrentId);
       const unresolved = await this.prisma.snatch.count({ where: { userId: user.id, hnr: true, satisfied: false, ...(repairing.length ? { torrentId: { notIn: repairing } } : {}) } });
@@ -212,9 +215,12 @@ export class TrackerService {
     let deltaDown = BigInt(params.downloaded) - prevDown;
     if (deltaUp < 0n) deltaUp = 0n; // client redémarré / reset -> ignore le delta négatif
     if (deltaDown < 0n) deltaDown = 0n;
+    // Ligne de pair absente alors que le client n'annonce pas « started » : la ligne a été purgée (45 min sans annonce : déploiement, mise en veille, réseau coupé) en pleine session.
+    // Ses compteurs sont cumulatifs depuis le début de la session et ont déjà été comptés : on les adopte comme point de départ au lieu de tout recréditer une deuxième fois.
+    if (!existingPeer && params.event !== 'started') { deltaUp = 0n; deltaDown = 0n; }
 
     const multiplier = torrent.doubleUpload || (await this.settings.doubleUploadActive()) ? 2 : 1; // double upload du torrent, ou global (récompense du pot commun)
-    const creditedUp = deltaUp * BigInt(multiplier);
+    const creditedUp = staffExempt ? 0n : deltaUp * BigInt(multiplier);
 
     if (params.event === 'stopped') {
       if (existingPeer) {
@@ -257,7 +263,7 @@ export class TrackerService {
     }
 
     // Crédite le user + garde une trace pour les snapshots de ratio (un téléchargement freeleech ne compte pas).
-    const creditedDown = isFree ? 0n : deltaDown;
+    const creditedDown = isFree || staffExempt ? 0n : deltaDown;
     if (deltaUp > 0n || deltaDown > 0n) {
       await this.prisma.user.update({
         where: { id: user.id },
@@ -271,7 +277,7 @@ export class TrackerService {
     }
 
     // Anti-triche : examine ce que le client déclare (sans attendre, sans jamais faire échouer l'announce).
-    void this.anticheat.onAnnounce({
+    if (!staffExempt) void this.anticheat.onAnnounce({
       userId: user.id, role: user.role, profileType: user.profileType, torrentId: torrent.id, size: Number(torrent.size), peerId: params.peerId,
       ctx: { free: isFree, doubleUp: multiplier === 2, ownTorrent: torrent.uploaderId === user.id, hotTorrent: Date.now() - torrent.createdAt.getTime() < 3 * 86_400_000 }, userAgent: params.userAgent, event: params.event, viaStream: params.viaStream,
       ip: params.ip, uploaded: params.uploaded, downloaded: params.downloaded, left: params.left,

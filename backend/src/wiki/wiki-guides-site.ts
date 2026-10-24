@@ -141,7 +141,9 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `1. Va dans [b]🌱 Mes seeds[/b] et relance les torrents « à relancer » (ils sont en orange ou rouge).\n` +
         `2. Utilise des freeleech pour continuer à télécharger sans baisser ton ratio.\n` +
         `3. Seede tout ce que tu peux et attends : le seed fait remonter le ratio.\n` +
-        `4. Les points bonus peuvent racheter de l'upload.`,
+        `4. Les points bonus peuvent racheter de l'upload.\n\n` +
+        `[b]Et l'équipe ?[/b]\n` +
+        `Les membres de l'équipe (modérateurs et administrateurs) ne sont [b]pas comptabilisés[/b] : leur upload et leur téléchargé ne sont pas ajoutés à leur compte, ils n'ont ni ratio minimum ni obligation de seed (hit & run), et ils ne figurent ni dans les classements ni dans les statistiques des membres.`,
     },
     {
       title: 'Réparer un hit & run',

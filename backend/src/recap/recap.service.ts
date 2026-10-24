@@ -44,10 +44,10 @@ export class RecapService {
              base AS (SELECT DISTINCT ON ("userId") "userId", uploaded FROM "RatioSnapshot" WHERE "takenAt" < ${range.start} ORDER BY "userId", "takenAt" DESC)
         SELECT l."userId", GREATEST(0, l.uploaded - COALESCE(b.uploaded, l.uploaded))::float8 AS gained
         FROM last_in l LEFT JOIN base b ON b."userId" = l."userId" JOIN "User" u ON u.id = l."userId"
-        WHERE u."parentId" IS NULL AND u."deletedAt" IS NULL AND u."profileType" <> 'BOT' AND u."status" = 'ACTIVE'`,
+        WHERE u."parentId" IS NULL AND u."deletedAt" IS NULL AND u."profileType" <> 'BOT' AND u."status" = 'ACTIVE' AND u.role NOT IN ('MODERATOR','SUPER_MODERATOR','ADMIN','OWNER')`,
       this.prisma.$queryRaw<{ userId: string; earned: number }[]>`
         SELECT p."userId", SUM(p.credit)::float8 AS earned FROM "PointsLedger" p JOIN "User" u ON u.id = p."userId"
-        WHERE p."hour" >= ${range.start} AND p."hour" < ${range.end} AND u."parentId" IS NULL AND u."deletedAt" IS NULL AND u."profileType" <> 'BOT' AND u."status" = 'ACTIVE'
+        WHERE p."hour" >= ${range.start} AND p."hour" < ${range.end} AND u."parentId" IS NULL AND u."deletedAt" IS NULL AND u."profileType" <> 'BOT' AND u."status" = 'ACTIVE' AND u.role NOT IN ('MODERATOR','SUPER_MODERATOR','ADMIN','OWNER')
         GROUP BY p."userId"`,
     ]);
     const value = { at: Date.now(), up: new Map(up.map((r) => [r.userId, r.gained])), pts: new Map(pts.map((r) => [r.userId, r.earned])) };

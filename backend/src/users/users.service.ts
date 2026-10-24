@@ -1,3 +1,4 @@
+import { STAFF_ROLES } from '../common/utils/staff-2fa';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PresenceStatus, DmPrivacy } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
@@ -215,7 +216,7 @@ export class UsersService {
 
   async leaderboard(limit = 50) {
     const users = await this.prisma.user.findMany({
-      where: { parentId: null },
+      where: { parentId: null, role: { notIn: [...STAFF_ROLES] } }, // l'équipe n'est pas classée : ses transferts ne sont pas comptabilisés
       orderBy: { uploaded: 'desc' },
       take: limit,
       select: { id: true, username: true, uploaded: true, downloaded: true, bonusPoints: true },

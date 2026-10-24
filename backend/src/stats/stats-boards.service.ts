@@ -45,11 +45,12 @@ export class StatsBoardsService {
   members() {
     return this.cached('members', async () => {
       const q = <T = MemberRow>(sql: Prisma.Sql) => this.prisma.$queryRaw<T[]>(sql);
-      const base = Prisma.sql`u."parentId" IS NULL AND u.status = 'ACTIVE'`;
+      // L'équipe n'apparaît pas dans les classements de membres (ses transferts ne sont pas comptabilisés).
+      const base = Prisma.sql`u."parentId" IS NULL AND u.status = 'ACTIVE' AND u.role NOT IN ('MODERATOR','SUPER_MODERATOR','ADMIN','OWNER')`;
       const viaAccount = (table: string, col: string, extra = Prisma.empty) => Prisma.sql`
         SELECT a.id, a.username, a."avatarUrl", COUNT(*)::int AS v FROM ${Prisma.raw(`"${table}"`)} x
         JOIN "User" au ON au.id = x.${Prisma.raw(`"${col}"`)} JOIN "User" a ON a.id = COALESCE(au."parentId", au.id)
-        WHERE a.status = 'ACTIVE' ${extra} GROUP BY a.id ORDER BY v DESC LIMIT ${TOP}`;
+        WHERE a.status = 'ACTIVE' AND a.role NOT IN ('MODERATOR','SUPER_MODERATOR','ADMIN','OWNER') ${extra} GROUP BY a.id ORDER BY v DESC LIMIT ${TOP}`;
 
       const [
         ratioHigh, ratioLow, uploadVolume, downloadVolume, bonus, hnrOpen, hnrTotal, seedHours, completed, activeDays,
@@ -212,7 +213,7 @@ export class StatsBoardsService {
   async me(accountId: string) {
     const [row] = await this.prisma.$queryRaw<any[]>(Prisma.sql`
       WITH me AS (SELECT * FROM "User" WHERE id = ${accountId}),
-      pool AS (SELECT * FROM "User" u WHERE u."parentId" IS NULL AND u.status = 'ACTIVE')
+      pool AS (SELECT * FROM "User" u WHERE u."parentId" IS NULL AND u.status = 'ACTIVE' AND u.role NOT IN ('MODERATOR','SUPER_MODERATOR','ADMIN','OWNER'))
       SELECT (SELECT uploaded::float8 FROM me) AS uploaded, (SELECT downloaded::float8 FROM me) AS downloaded, (SELECT "bonusPoints"::float8 FROM me) AS bonus,
         (SELECT COUNT(*)::int FROM pool) AS members,
         (SELECT COUNT(*)::int + 1 FROM pool WHERE uploaded > (SELECT uploaded FROM me)) AS "uploadRank",

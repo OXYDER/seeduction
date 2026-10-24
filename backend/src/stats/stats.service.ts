@@ -1,3 +1,4 @@
+import { STAFF_ROLES } from '../common/utils/staff-2fa';
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
@@ -19,7 +20,7 @@ export class StatsService {
       this.prisma.snatch.count(),
     ]);
     const totalSizeAgg = await this.prisma.torrent.aggregate({ _sum: { size: true } });
-    const trafficAgg = await this.prisma.user.aggregate({ _sum: { uploaded: true, downloaded: true } });
+    const trafficAgg = await this.prisma.user.aggregate({ where: { role: { notIn: [...STAFF_ROLES] } }, _sum: { uploaded: true, downloaded: true } }); // sans l'équipe : ses transferts ne sont pas comptabilisés
     const totalTraffic = (trafficAgg._sum.uploaded ?? 0n) + (trafficAgg._sum.downloaded ?? 0n);
 
     return {
@@ -65,16 +66,17 @@ export class StatsService {
         WHERE "createdAt" > now() - make_interval(days => ${days}::int) GROUP BY 1 ORDER BY 1`,
       this.prisma.torrent.groupBy({ by: ['resolution'], where: { ...approved, resolution: { not: null } }, _count: { _all: true }, orderBy: { _count: { resolution: 'desc' } }, take: 8 }),
       this.prisma.torrent.groupBy({ by: ['language'], where: { ...approved, language: { not: null } }, _count: { _all: true }, orderBy: { _count: { language: 'desc' } }, take: 8 }),
-      this.prisma.torrent.groupBy({ by: ['uploaderId'], where: { ...approved, anonymousUpload: false }, _count: { _all: true }, orderBy: { _count: { uploaderId: 'desc' } }, take: 10 }),
+      this.prisma.torrent.groupBy({ by: ['uploaderId'], where: { ...approved, anonymousUpload: false, uploader: { role: { notIn: [...STAFF_ROLES] } } }, _count: { _all: true }, orderBy: { _count: { uploaderId: 'desc' } }, take: 10 }),
       this.prisma.$queryRaw<{ userId: string; n: bigint }[]>`
         SELECT p."userId", COUNT(DISTINCT p."torrentId") AS n FROM "Peer" p
-        WHERE p."isSeeder" = true AND p."lastAnnounceAt" > now() - interval '45 minutes' GROUP BY p."userId" ORDER BY n DESC LIMIT 10`,
+        JOIN "User" pu ON pu.id = p."userId"
+        WHERE p."isSeeder" = true AND p."lastAnnounceAt" > now() - interval '45 minutes' AND pu.role NOT IN ('MODERATOR','SUPER_MODERATOR','ADMIN','OWNER') GROUP BY p."userId" ORDER BY n DESC LIMIT 10`,
       this.prisma.torrentComment.groupBy({ by: ['torrentId'], _count: { _all: true }, orderBy: { _count: { torrentId: 'desc' } }, take: 10 }),
       this.prisma.torrent.findMany({ where: approved, orderBy: { size: 'desc' }, take: 5, select: { id: true, name: true, size: true, coverImage: true } }),
       this.prisma.user.groupBy({ by: ['memberClass'], where: { parentId: null }, _count: { _all: true } }),
       this.prisma.user.groupBy({ by: ['role'], where: { parentId: null }, _count: { _all: true } }),
       this.prisma.user.aggregate({ where: { parentId: null }, _sum: { bonusPoints: true } }),
-      this.prisma.$queryRaw<{ r: number | null }[]>`SELECT AVG(uploaded::float8 / NULLIF(downloaded::float8, 0)) AS r FROM "User" WHERE "parentId" IS NULL AND downloaded > 0`,
+      this.prisma.$queryRaw<{ r: number | null }[]>`SELECT AVG(uploaded::float8 / NULLIF(downloaded::float8, 0)) AS r FROM "User" WHERE "parentId" IS NULL AND downloaded > 0 AND role NOT IN ('MODERATOR','SUPER_MODERATOR','ADMIN','OWNER')`,
       this.prisma.snatch.count({ where: { hnr: true, satisfied: false } }),
       this.prisma.peer.count({ where: { lastAnnounceAt: { gt: new Date(Date.now() - 45 * 60_000) } } }),
     ]);

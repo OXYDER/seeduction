@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { isStaffRole } from '../common/utils/staff-2fa';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
@@ -59,8 +60,8 @@ export class UploadCreditService implements OnModuleInit {
     if (!torrent || torrent.status !== 'APPROVED' || !torrent.approvedAt) return 'skipped';
     if (cfg.startedAt && torrent.approvedAt < new Date(cfg.startedAt)) return 'skipped';
 
-    const uploader = await this.prisma.user.findUnique({ where: { id: torrent.uploaderId }, select: { id: true, parentId: true, profileType: true, status: true } });
-    if (!uploader || uploader.profileType === 'BOT' || uploader.status !== 'ACTIVE') return 'skipped'; // le robot d'import n'est pas un membre à récompenser
+    const uploader = await this.prisma.user.findUnique({ where: { id: torrent.uploaderId }, select: { id: true, parentId: true, profileType: true, status: true, role: true } });
+    if (!uploader || uploader.profileType === 'BOT' || uploader.status !== 'ACTIVE' || isStaffRole(uploader.role)) return 'skipped'; // ni le robot, ni l'équipe (ses transferts ne sont pas comptabilisés) // le robot d'import n'est pas un membre à récompenser
     const accountId = uploader.parentId ?? uploader.id;
 
     const existing = await this.prisma.uploadCredit.findUnique({ where: { torrentId } });

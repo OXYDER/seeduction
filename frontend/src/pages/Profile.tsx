@@ -162,9 +162,13 @@ export default function Profile() {
       {showTab('overview') && (
         <>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-        <Card label="Ratio" value={profile.ratio ? profile.ratio.toFixed(2) : '∞'} />
-        <Card label="Upload" value={`${(Number(profile.uploaded) / 1e9).toFixed(2)} Go`} />
-        <Card label="Download" value={`${(Number(profile.downloaded) / 1e9).toFixed(2)} Go`} />
+        {['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role)
+          ? <Card label="Transferts" value="Non comptabilisés (équipe)" />
+          : <>
+            <Card label="Ratio" value={profile.ratio ? profile.ratio.toFixed(2) : '∞'} />
+            <Card label="Upload" value={`${(Number(profile.uploaded) / 1e9).toFixed(2)} Go`} />
+            <Card label="Download" value={`${(Number(profile.downloaded) / 1e9).toFixed(2)} Go`} />
+          </>}
         <Card label="Bonus points" value={profile.bonusPoints?.toFixed(0) ?? 0} />
       </div>
       {own && profile.freeleechUntil && (
@@ -187,7 +191,7 @@ export default function Profile() {
           ))}
         </div>
       </div>
-      {!id && chartData.length > 0 && (
+      {!id && chartData.length > 0 && !['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role) && (
         <div className="panel">
           <h3>Évolution du ratio (30 jours)</h3>
           <ResponsiveContainer width="100%" height={240}>

@@ -9,7 +9,7 @@ interface P { uploaded: string; downloaded: string; bonusPoints: number; ratio: 
 const fr = (n: number, d = 2) => n.toLocaleString('fr-CA', { minimumFractionDigits: d, maximumFractionDigits: d });
 
 /** Les pastilles de statistiques du haut du site, chacune avec une infobulle qui explique le chiffre (ratio, upload, téléchargé, points, marge de téléchargement, seeds, hit & run). */
-export default function HeaderStats({ profile, econ }: { profile: P; econ: EconInfo | null }) {
+export default function HeaderStats({ profile, econ, teamExempt = false }: { profile: P; econ: EconInfo | null; teamExempt?: boolean }) {
   const up = Number(profile.uploaded), down = Number(profile.downloaded);
   const minRatio = econ?.minRatio ?? 0.5;
   const graceBytes = (econ?.graceGb ?? 5) * 1e9;
@@ -18,6 +18,21 @@ export default function HeaderStats({ profile, econ }: { profile: P; econ: EconI
   const gift = (econ?.giftGb ?? 0) * 1e9;
   const giftIncluded = gift > 0 && up >= gift;
   const ratioText = profile.ratio != null ? fr(profile.ratio) : '∞';
+
+  // Équipe : ni ratio, ni upload, ni téléchargé, ni marge, ni hit & run (rien n'est comptabilisé) ; il reste les points bonus et les seeds.
+  if (teamExempt) {
+    return (
+      <div className="stat-pills">
+        <StatTip card={<TipCard icon="🛡️" title="Équipe" intro="Les membres de l'équipe ne sont pas comptabilisés : ni ratio, ni upload, ni téléchargé, ni obligation de seed (hit & run), et ils ne figurent pas dans les classements." rows={[]} />}>
+          <span className="pill">🛡️ Équipe : transferts non comptabilisés</span>
+        </StatTip>
+        <StatTip card={<TipCard icon="✦" title="Points bonus" intro="Gagnés en seedant (et en jouant) : à dépenser dans la boutique." rows={[]} link={{ to: '/bonus', label: 'Boutique bonus →' }} />}>
+          <Link to="/bonus" className="pill gold">✦ {formatNumber(Math.round(profile.bonusPoints))}</Link>
+        </StatTip>
+        {econ && <Link to="/activity" className="pill up" title="Torrents en seed">🌱 {econ.seeding}</Link>}
+      </div>
+    );
+  }
 
   return (
     <div className="stat-pills">
