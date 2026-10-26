@@ -6,7 +6,7 @@ import { AdminService } from '../admin/admin.service';
 import { ImportConfig, ImportSecrets, openSecrets, sealSecrets } from './importer.types';
 import { Qbit, QbitTorrent } from './qbit.client';
 import { ClientKind, CLIENT_KINDS, TorrentClient } from './torrent-clients';
-import { FtpConnectError, hasNfo, nfoFor, probeFor } from './release-files';
+import { FtpConnectError, fallbackNfo, hasNfo, nfoFor, probeFor } from './release-files';
 import { LANGUAGE_TAGS, normalizeLanguage } from '../common/utils/language';
 import { detectReleaseMeta, hasMediainfoAudio } from './release-meta';
 import { MetadataService, titleKey } from '../metadata/metadata.service';
@@ -657,7 +657,13 @@ export class ImporterService {
       try {
         buf = await q.exportTorrent(t.hash);
         if (!buf.length || buf[0] !== 0x64) throw new Error("le fichier exporté n'est pas un .torrent");
-        nfo = await nfoFor(cfg, secrets, sourceId, t);
+        try { nfo = await nfoFor(cfg, secrets, sourceId, t); }
+        catch (e: any) {
+          // MediaInfo ne sait pas lire cette vidéo : le staff l'a validée à la main, on ne la laisse pas revenir indéfiniment dans « À vérifier » (description tirée du nom)
+          if (!/MediaInfo n'a rien reconnu/.test(String(e?.message))) throw e;
+          nfo = fallbackNfo(t.name, t.size);
+          await ev('WARN', `${t.name} — MediaInfo illisible : description déduite du nom de la release (validée à la main)`);
+        }
       } catch (e: any) { await ev('ERROR', `${t.name} — ${e.message}`); await back(String(e.message)); continue; }
       if (!hasNfo(nfo)) { await ev('WARN', `${t.name} — NFO / MediaInfo introuvable (obligatoire)`); await back('NFO / MediaInfo introuvable : ajoute un .nfo dans le dossier de la release, puis valide à nouveau'); continue; }
       const chosen: Chosen = { id: o.categoryId, name: o.categoryName ?? '', how: 'validé à la main', meta: o.metaKind && o.metaId ? { kind: o.metaKind, id: o.metaId, title: o.metaTitle ?? o.metaId } : undefined, language: o.language || undefined };

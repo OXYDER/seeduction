@@ -305,6 +305,13 @@ async function videoMediainfo(cfg: ImportConfig, secrets: ImportSecrets, t: Qbit
     // vraie taille (début et fin réels, milieu vide : les atomes sont sautés d'après leur taille) que MediaInfo sait lire. Rien d'autre n'est téléchargé.
     if (video.size <= headBytes * 2 || video.size > MAX_SPARSE_BYTES) throw firstError;
     try {
+      // Dernier recours avant la fin : un début plus long (4 fois), pour les MKV dont la description des pistes est précédée de pièces jointes volumineuses.
+      const bigger = Math.min(headBytes * 4, video.size);
+      if (bigger > headBytes) {
+        const longHead = await readHead(cfg, secrets, video.path, bigger);
+        await fs.writeFile(tmp, longHead);
+        try { return cleanPartialMediainfo(await mediainfoOf(tmp), video.name, video.size); } catch { /* on tente alors le début + la fin */ }
+      }
       const tail = await readHead(cfg, secrets, video.path, headBytes, video.size - headBytes);
       const fh = await fs.open(tmpTail, 'w');
       try {
@@ -321,3 +328,24 @@ async function videoMediainfo(cfg: ImportConfig, secrets: ImportSecrets, t: Qbit
 const MAX_SPARSE_BYTES = 200 * 1024 ** 3;
 
 export const hasNfo = longEnough;
+
+/**
+ * Description de secours quand MediaInfo ne sait pas lire la vidéo (format exotique, lecture partielle impossible) : ce que dit le NOM de la release.
+ * Réservée aux releases que le staff a validées à la main ; elle est clairement présentée comme déduite du nom, jamais comme un MediaInfo.
+ */
+export function fallbackNfo(name: string, size: number): string {
+  const m = detectReleaseMeta(name, '');
+  const lines = [
+    'MediaInfo indisponible : le format de la vidéo ne permet pas une lecture partielle.',
+    'Informations déduites du nom de la release :',
+    '',
+    `Release : ${name}`,
+    `Taille : ${gib(size)}`,
+    m.resolution ? `Résolution : ${m.resolution}` : '',
+    m.source ? `Source : ${m.source}` : '',
+    m.codec ? `Codec vidéo : ${m.codec}` : '',
+    m.audio ? `Audio : ${m.audio}` : '',
+    m.language ? `Langue : ${m.language}` : '',
+  ];
+  return lines.filter((l, i) => l || i === 2).join(String.fromCharCode(10));
+}

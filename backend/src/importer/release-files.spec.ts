@@ -1,4 +1,4 @@
-import { applyMapping, dirScore, flatName, learnMapping } from './release-files';
+import { applyMapping, dirScore, fallbackNfo, flatName, hasNfo, learnMapping } from './release-files';
 
 describe('recherche d\'une release sur le FTP : correspondance des chemins', () => {
   it('apprend le préfixe qui change entre qBittorrent et le FTP', () => {
@@ -35,5 +35,15 @@ describe('recherche d\'une release sur le FTP : correspondance des chemins', () 
     expect(s('photos')).toBeGreaterThan(s('.cache'));
     expect(s('photos')).toBeGreaterThan(s('@eaDir'));
     expect(dirScore('photos', wanted, 1)).toBeGreaterThan(dirScore('photos', wanted, 6));
+  });
+});
+
+describe('description de secours quand MediaInfo ne lit pas la vidéo', () => {
+  it('tirée du nom de la release, assez longue pour être acceptée, et jamais présentée comme un MediaInfo', () => {
+    const t = fallbackNfo('L.Arene.S01E07.FRENCH.AD.1080p.WEB.EAC3.5.1.x264-MTLQC.mkv', 2_287_000_000);
+    expect(hasNfo(t)).toBe(true);
+    expect(t).toMatch(/MediaInfo indisponible/);
+    expect(t).toMatch(/1080p/);
+    expect(t).toMatch(/2\.13 GiB/);
   });
 });
