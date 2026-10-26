@@ -591,19 +591,23 @@ export class TorrentsService implements OnModuleInit {
     const t = await this.prisma.torrent.findUnique({ where: { id }, select: { metaSource: true, metaExternalId: true, season: true, episode: true, categoryId: true } });
     if (!t || !t.metaSource || !t.metaExternalId) return [];
     if (!['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '') && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) return [];
-    const rows = await this.prisma.torrent.findMany({
-      where: {
-        OR: [
-          { id },
-          { status: 'APPROVED', metaSource: t.metaSource, metaExternalId: t.metaExternalId, ...(t.season ? { season: t.season, episode: t.episode } : {}) },
-        ],
-      },
+    const found = await this.prisma.torrent.findMany({
+      where: { OR: [{ id }, { status: 'APPROVED', metaSource: t.metaSource, metaExternalId: t.metaExternalId }] },
       select: {
         id: true, name: true, size: true, resolution: true, source: true, codec: true, audio: true, subtitles: true, language: true, hdr: true, containerFormat: true, releaseDate: true,
         seeders: true, leechers: true, freeleech: true, createdAt: true, anonymousUpload: true, completedCount: true, season: true, episode: true, status: true, releaseGroup: true, _count: { select: { comments: true } }, uploader: { select: { id: true, username: true } },
       },
-      take: 60,
+      take: 300,
     });
+    // Une série : seules les releases du MÊME épisode (ou de la même saison complète) sont des versions ; les autres épisodes de la série ne le sont pas.
+    // Comparaison sur les nombres (« S01E04 », « E04 », « 4 » : même épisode) ; une release sans numéro de saison compte pour la saison 1 (séries d'une seule saison, animés).
+    const num = (v?: string | null) => { const m = /(\d+)/.exec(String(v ?? '')); return m ? parseInt(m[1], 10) : null; };
+    const cs = num(t.season), ce = num(t.episode);
+    const rows = (cs === null && ce === null ? found : found.filter((r) => {
+      if (r.id === id) return true;
+      const rs = num(r.season), re = num(r.episode);
+      return re === ce && (cs ?? 1) === (rs ?? 1);
+    })).slice(0, 60);
     const rank = (r?: string | null) => (r?.startsWith('4K') ? 4 : r === '1080p' ? 3 : r === '720p' ? 2 : r ? 1 : 0);
     return rows
       .sort((a, b) => rank(b.resolution) - rank(a.resolution) || Number(b.size) - Number(a.size))

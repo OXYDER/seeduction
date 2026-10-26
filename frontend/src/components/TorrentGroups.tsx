@@ -115,7 +115,7 @@ export function VersionRow({ t, current, standalone, nameLink, star, actions, de
           {standalone && star}
           {!standalone && <CopyButton text={t.name} title="Copier le nom de la release" />}
         </div>
-        {nameLink && !standalone && !current && <Link to={`/torrents/${t.id}`} className="vr-sub-name" title={t.name}>{t.name}</Link>}
+        {nameLink && !standalone && <Link to={`/torrents/${t.id}`} className="vr-sub-name" title={t.name}>{t.name}</Link>}
       </div>
       <span className="vr-num vr-cm" title="Commentaires">{comments(t)}</span>
       <span className="vr-num vr-age">{timeAgo(t.createdAt)}</span>
