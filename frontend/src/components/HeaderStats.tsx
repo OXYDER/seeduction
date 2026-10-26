@@ -29,7 +29,7 @@ export default function HeaderStats({ profile, econ, teamExempt = false }: { pro
         <StatTip card={<TipCard icon="✦" title="Points bonus" intro="Gagnés en seedant (et en jouant) : à dépenser dans la boutique." rows={[]} link={{ to: '/bonus', label: 'Boutique bonus →' }} />}>
           <Link to="/bonus" className="pill gold">✦ {formatNumber(Math.round(profile.bonusPoints))}</Link>
         </StatTip>
-        {econ && <Link to="/activity" className="pill up" title="Torrents en seed">🌱 {econ.seeding}</Link>}
+        {econ && <Link to="/seeds" className="pill up" title="Torrents en seed">🌱 {econ.seeding}</Link>}
       </div>
     );
   }
@@ -93,8 +93,8 @@ export default function HeaderStats({ profile, econ, teamExempt = false }: { pro
         <StatTip card={<TipCard icon="🌱" title="Torrents en seed" intro="Les torrents que tu partages en ce moment."
           rows={[{ label: 'En seed', value: econ.seeding, tone: 'up' }, { label: 'Points gagnés', value: `+${formatNumber(Math.round(econ.perHour))} pts/h` }]}
           note="Plus tu seedes, plus tu gagnes de points bonus, et plus ton ratio monte quand d'autres téléchargent depuis toi."
-          link={{ to: '/activity', label: 'Mon activité →' }} />}>
-          <Link to="/activity" className="pill up">🌱 {econ.seeding}</Link>
+          link={{ to: '/seeds', label: 'Mes seeds et téléchargements →' }} />}>
+          <Link to="/seeds" className="pill up">🌱 {econ.seeding}</Link>
         </StatTip>
       )}
 

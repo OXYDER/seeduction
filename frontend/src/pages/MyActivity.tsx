@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import Loading from '../components/Loading';
+import ShareCard, { LeechCard } from '../components/ShareCard';
 
 interface LiveRow { torrentId: string; name: string; coverImage: string | null; size: number; uploaded: number; downloaded: number; ratio: number | null; progress: number; lastAnnounceAt: string; seedSeconds: number; requiredSeconds: number; obligationDone: boolean | null }
 interface DoneRow { torrentId: string; name: string; coverImage: string | null; size: number; completedAt: string; startedAt: string | null; firstDay: string | null; receivedBytes: number | null; sentBytes: number | null; seedSeconds: number; requiredSeconds: number; satisfied: boolean; hnr: boolean; hnrResolved: boolean; own: boolean; seedingNow: boolean }
@@ -17,10 +18,6 @@ type Tab = 'seeding' | 'leeching' | 'completed' | 'uploads';
 
 const hours = (secs: number) => (secs >= 3600 ? `${Math.round(secs / 360) / 10} h`.replace('.', ',') : `${Math.max(0, Math.round(secs / 60))} min`);
 const STATUS: Record<string, string> = { APPROVED: 'Approuvé', PENDING: 'En attente', REJECTED: 'Rejeté', DEAD: '☠️ Mort' };
-
-function Thumb({ src }: { src: string | null }) {
-  return src ? <img src={src} alt="" className="act-thumb" loading="lazy" /> : <span className="act-thumb plain">🎬</span>;
-}
 
 /** Mon activité : mes seeds, mes téléchargements en cours et terminés, et mes envois, avec les volumes échangés. */
 export default function MyActivity() {
@@ -43,16 +40,12 @@ export default function MyActivity() {
   );
   const TABS: [Tab, string][] = [['seeding', `🌱 Seeds (${t.seeding})`], ['leeching', `⬇️ Téléchargements en cours (${t.leeching})`], ['completed', `✅ Téléchargés (${t.completed})`], ['uploads', `⬆️ Mes envois (${t.uploads})`]];
 
-  const nameCell = (id: string, name: string, cover: string | null) => (
-    <td className="act-name"><Link to={`/torrents/${id}`} className="row" style={{ gap: 10 }}><Thumb src={cover} /><span>{name}</span></Link></td>
-  );
-
   return (
     <div className="grid" style={{ gap: 16 }}>
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <h1 style={{ margin: 0 }}>📈 Mon activité</h1>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <Link to="/seeds" className="secondary" style={{ padding: '6px 12px', borderRadius: 8 }}>🌱 Obligation de partage</Link>
+          <Link to="/seeds" className="secondary" style={{ padding: '6px 12px', borderRadius: 8 }}>🌱 Mes seeds et obligations</Link>
           <Link to="/hit-and-run" className="secondary" style={{ padding: '6px 12px', borderRadius: 8 }}>⚠️ Hit & run</Link>
         </div>
       </div>
@@ -70,87 +63,64 @@ export default function MyActivity() {
         {TABS.map(([k, label]) => <button key={k} type="button" className={`secondary${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>{label}</button>)}
       </div>
 
-      <div className="panel" style={{ overflowX: 'auto' }}>
-        {tab === 'seeding' && (data.seeding.length === 0 ? <p className="muted" style={{ margin: 0 }}>Aucun torrent en seed pour le moment. Laisse ton client BitTorrent ouvert pour qu'il apparaisse ici.</p> : (
-          <table className="act-table">
-            <thead><tr><th>Torrent</th><th>Taille</th><th>Envoyé</th><th>Ratio</th><th>Seed cumulé</th><th>Dernière annonce</th></tr></thead>
-            <tbody>
-              {data.seeding.map((r) => (
-                <tr key={r.torrentId}>
-                  {nameCell(r.torrentId, r.name, r.coverImage)}
-                  <td className="muted">{formatBytes(r.size)}</td>
-                  <td style={{ color: 'var(--success)' }}>{formatBytes(r.uploaded)}</td>
-                  <td>{r.ratio == null ? '∞' : r.ratio.toFixed(2)}</td>
-                  <td>{r.obligationDone === null ? <span className="muted">—</span> : r.obligationDone ? <span className="seedpage-chip done">✅ Obligation terminée</span> : <span className="seedpage-chip seeding">{hours(r.seedSeconds)} / {data.rules.hnrSeedHours} h</span>}</td>
-                  <td className="muted">{timeAgo(r.lastAnnounceAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ))}
+      {tab === 'seeding' && (data.seeding.length === 0 ? <div className="panel"><p className="muted" style={{ margin: 0 }}>Aucun torrent en seed pour le moment. Laisse ton client BitTorrent ouvert pour qu'il apparaisse ici.</p></div> : (
+        <div className="seedpage-list">
+          {data.seeding.map((r) => (
+            <ShareCard key={r.torrentId} id={r.torrentId} name={r.name} cover={r.coverImage}
+              bar={r.obligationDone === null ? undefined : { pct: r.obligationDone ? 100 : Math.min(100, (r.seedSeconds / Math.max(1, r.requiredSeconds)) * 100), kind: r.obligationDone ? 'done' : 'seeding' }}
+              sub={<>{r.obligationDone !== null && <>Seed cumulé {hours(r.seedSeconds)} / {hours(r.requiredSeconds)} · </>}ratio {r.ratio == null ? '∞' : r.ratio.toFixed(2)} · {formatBytes(r.size)} · envoyé {formatBytes(r.uploaded)} · dernière annonce {timeAgo(r.lastAnnounceAt)}</>}
+              chips={<>
+                <span className="seedpage-chip seeding">🟢 En seed</span>
+                {r.obligationDone === true && <span className="seedpage-chip done">✅ Obligation terminée</span>}
+                {r.obligationDone === false && <span className="seedpage-chip seeding">⏳ Encore {hours(Math.max(0, r.requiredSeconds - r.seedSeconds))} de seed</span>}
+                {r.obligationDone === null && <span className="seedpage-chip none">Aucune obligation</span>}
+              </>} />
+          ))}
+        </div>
+      ))}
 
-        {tab === 'leeching' && (data.leeching.length === 0 ? <p className="muted" style={{ margin: 0 }}>Aucun téléchargement en cours.</p> : (
-          <table className="act-table">
-            <thead><tr><th>Torrent</th><th>Taille</th><th style={{ minWidth: 160 }}>Progression</th><th>Reçu</th><th>Envoyé</th><th>Dernière annonce</th></tr></thead>
-            <tbody>
-              {data.leeching.map((r) => (
-                <tr key={r.torrentId}>
-                  {nameCell(r.torrentId, r.name, r.coverImage)}
-                  <td className="muted">{formatBytes(r.size)}</td>
-                  <td><span className="seedob-bar" style={{ display: 'block', minWidth: 120 }}><span className="seeding" style={{ width: `${Math.round(r.progress * 100)}%` }} /></span><span className="muted" style={{ fontSize: 12 }}>{Math.round(r.progress * 100)} %</span></td>
-                  <td style={{ color: 'var(--danger)' }}>{formatBytes(r.downloaded)}</td>
-                  <td style={{ color: 'var(--success)' }}>{formatBytes(r.uploaded)}</td>
-                  <td className="muted">{timeAgo(r.lastAnnounceAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ))}
+      {tab === 'leeching' && (data.leeching.length === 0 ? <div className="panel"><p className="muted" style={{ margin: 0 }}>Aucun téléchargement en cours.</p></div> : (
+        <div className="seedpage-list">{data.leeching.map((r) => <LeechCard key={r.torrentId} r={r} />)}</div>
+      ))}
 
-        {tab === 'completed' && (data.completed.length === 0 ? <p className="muted" style={{ margin: 0 }}>Aucun téléchargement terminé pour l'instant.</p> : (
-          <table className="act-table">
-            <thead><tr><th>Torrent</th><th>Taille</th><th>Ajouté</th><th>Terminé</th><th>Reçu ↓</th><th>Envoyé ↑</th><th>Seed cumulé</th><th>Obligation de seed</th></tr></thead>
-            <tbody>
-              {data.completed.map((r) => (
-                <tr key={r.torrentId}>
-                  {nameCell(r.torrentId, r.name, r.coverImage)}
-                  <td className="muted">{formatBytes(r.size)}</td>
-                  <td className="muted" title={r.startedAt ? undefined : 'Téléchargement d\'avant l\'enregistrement de l\'heure de début'}>{r.startedAt ? dateTime(r.startedAt) : r.firstDay ? `${new Date(r.firstDay).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}` : '—'}</td>
-                  <td className="muted" title={timeAgo(r.completedAt)}>{dateTime(r.completedAt)}</td>
-                  <td style={{ color: 'var(--danger)' }}>{r.receivedBytes === null ? <span className="muted">—</span> : formatBytes(r.receivedBytes)}</td>
-                  <td style={{ color: 'var(--success)' }}>{r.sentBytes === null ? <span className="muted">—</span> : formatBytes(r.sentBytes)}</td>
-                  <td>{hours(r.seedSeconds)} / {hours(r.requiredSeconds)}{r.seedingNow && <span className="seedpage-chip seeding" style={{ marginLeft: 8 }}>🟢 En seed</span>}</td>
-                  <td>
-                    {r.own ? <span className="muted">Ton envoi : aucune obligation</span>
-                      : r.satisfied ? <span className="seedpage-chip done">✅ Atteinte{r.hnrResolved ? ' (hit & run régularisé)' : ''}</span>
-                      : r.hnr ? <Link to="/hit-and-run" className="seedpage-chip hnr">🔴 Pas atteinte : hit & run à régler</Link>
-                      : <span className="seedpage-chip idle">⏳ Pas encore atteinte : encore {hours(Math.max(0, r.requiredSeconds - r.seedSeconds))}</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ))}
+      {tab === 'completed' && (data.completed.length === 0 ? <div className="panel"><p className="muted" style={{ margin: 0 }}>Aucun téléchargement terminé pour l'instant.</p></div> : (
+        <div className="seedpage-list">
+          {data.completed.map((r) => {
+            const pct = r.own || r.satisfied ? 100 : Math.min(100, (r.seedSeconds / Math.max(1, r.requiredSeconds)) * 100);
+            const added = r.startedAt ? dateTime(r.startedAt) : r.firstDay ? new Date(r.firstDay).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null;
+            return (
+              <ShareCard key={r.torrentId} id={r.torrentId} name={r.name} cover={r.coverImage}
+                bar={r.own ? undefined : { pct, kind: r.satisfied ? 'done' : r.hnr ? 'hnr' : 'seeding' }}
+                sub={<>
+                  {formatBytes(r.size)} · {added ? <>ajouté {added} · </> : null}terminé {dateTime(r.completedAt)}
+                  {r.receivedBytes !== null && <> · reçu ↓ {formatBytes(r.receivedBytes)}</>}{r.sentBytes !== null && <> · envoyé ↑ {formatBytes(r.sentBytes)}</>}
+                  {!r.own && <> · seed cumulé {hours(r.seedSeconds)} / {hours(r.requiredSeconds)}</>}
+                </>}
+                chips={<>
+                  {r.seedingNow && <span className="seedpage-chip seeding">🟢 En seed</span>}
+                  {r.own ? <span className="seedpage-chip none">📤 Ton envoi : aucune obligation</span>
+                    : r.satisfied ? <span className="seedpage-chip done">✅ Obligation atteinte{r.hnrResolved ? ' (hit & run régularisé)' : ''}</span>
+                    : r.hnr ? <span className="seedpage-chip hnr">🔴 Pas atteinte : hit & run à régler</span>
+                    : <span className="seedpage-chip idle">⏳ Pas encore atteinte : encore {hours(Math.max(0, r.requiredSeconds - r.seedSeconds))}</span>}
+                </>} />
+            );
+          })}
+        </div>
+      ))}
 
-        {tab === 'uploads' && (data.uploads.length === 0 ? <p className="muted" style={{ margin: 0 }}>Tu n'as pas encore envoyé de torrent. <Link to="/upload">Envoyer un torrent →</Link></p> : (
-          <table className="act-table">
-            <thead><tr><th>Torrent</th><th>Taille</th><th>Statut</th><th>Seeders</th><th>Leechers</th><th>Complétés</th><th>Envoyé</th></tr></thead>
-            <tbody>
-              {data.uploads.map((r) => (
-                <tr key={r.id}>
-                  {nameCell(r.id, r.name, r.coverImage)}
-                  <td className="muted">{formatBytes(r.size)}</td>
-                  <td>{STATUS[r.status] ?? r.status}</td>
-                  <td style={{ color: 'var(--success)' }}>{r.seeders}</td>
-                  <td style={{ color: 'var(--danger)' }}>{r.leechers}</td>
-                  <td>{r.completedCount}</td>
-                  <td className="muted">{timeAgo(r.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ))}
-      </div>
+      {tab === 'uploads' && (data.uploads.length === 0 ? <div className="panel"><p className="muted" style={{ margin: 0 }}>Tu n'as pas encore envoyé de torrent. <Link to="/upload">Envoyer un torrent →</Link></p></div> : (
+        <div className="seedpage-list">
+          {data.uploads.map((r) => (
+            <ShareCard key={r.id} id={r.id} name={r.name} cover={r.coverImage}
+              sub={<>{formatBytes(r.size)} · envoyé {timeAgo(r.createdAt)} · {r.completedCount} complété{r.completedCount > 1 ? 's' : ''}</>}
+              chips={<>
+                <span className={`seedpage-chip ${r.status === 'APPROVED' ? 'done' : r.status === 'PENDING' ? 'idle' : 'hnr'}`}>{STATUS[r.status] ?? r.status}</span>
+                <span className="seedpage-chip seeding">{r.seeders} seeder{r.seeders > 1 ? 's' : ''}</span>
+                <span className="seedpage-chip">{r.leechers} leecher{r.leechers > 1 ? 's' : ''}</span>
+              </>} />
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

@@ -2600,6 +2600,8 @@ a.seedpage-item:hover { background: rgba(255,255,255,0.07); }
 .seedpage-chip.idle { background: rgba(245,158,11,0.2); color: #fbbf24; }
 .seedpage-chip.hnr { background: rgba(229,56,79,0.2); color: #f87171; }
 .seedob-bar .done { background: #1fa855; }
+.seedob-bar .dl { background: #3b82f6; }
+.seedpage-chip.dl { background: rgba(59,130,246,0.2); color: #93c5fd; }
 .hnr-actions { display: grid; gap: 6px; flex: none; justify-items: stretch; text-align: center; }
 .transfer-form { display: grid; gap: 2px; }
 @media (max-width: 640px) { .seedpage-item.hnr-item { flex-wrap: wrap; } .hnr-actions { width: 100%; grid-auto-flow: column; } }
