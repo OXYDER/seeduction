@@ -36,6 +36,12 @@ export function groupKey(t: any): string {
 
 /** « 1 épisode », « 2 épisodes ». */
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
+/** « Saison 2 · 6 épisodes » (une saison), « 3 saisons · 24 épisodes » (plusieurs), « 6 épisodes » (saison inconnue). */
+const episodesLabel = (rows: any[]) => {
+  const seasons = [...new Set(rows.map((r) => digits(r.season)).filter(Boolean))].sort((a, b) => a - b);
+  const n = plural(distinctEpisodes(rows), 'épisode');
+  return seasons.length === 1 ? `Saison ${seasons[0]} · ${n}` : seasons.length > 1 ? `${plural(seasons.length, 'saison')} · ${n}` : n;
+};
 /** Nombre d'épisodes DISTINCTS (saison + épisode) d'une liste de releases : deux releases du même épisode ne comptent qu'une fois. */
 const distinctEpisodes = (rows: any[]) => new Set(rows.map((r) => `${digits(r.season)}:${digits(r.episode)}`)).size;
 const distinctSeasons = (rows: any[]) => new Set(rows.map((r) => digits(r.season))).size;
@@ -187,8 +193,8 @@ function SeriesBody({ rows, mode, star, actions }: { rows: any[]; mode: 'packs' 
             </Node>
           );
         }
-        // Une seule saison : pas de ligne de saison, les épisodes s'affichent directement sous la série.
-        if (nums.length === 1) return <div key={sKey}>{episodeNodes(sKey, sRows, 1)}</div>;
+        // Épisodes sans numéro de saison : pas de ligne de saison. Sinon la saison est toujours indiquée (même s'il n'y en a qu'une), dépliée d'office.
+        if (nums.length === 1 && n === 0) return <div key={sKey}>{episodeNodes(sKey, sRows, 1)}</div>;
         return (
           <Node key={sKey} depth={1} label={label} rows={sRows} open={openSeasons.has(sKey)} onToggle={() => flip(openSeasons, setOpenSeasons, sKey)}
             tags={<span className="vg-tags muted">{plural(distinctEpisodes(sRows), 'épisode')}</span>}>
@@ -236,7 +242,7 @@ function Group({ rows, actions, star }: { rows: any[]; actions?: (t: any) => Rea
             {isSeries ? (
               <>
                 {packs.length > 0 && <button type="button" className={`vg-mode${open && mode === 'packs' ? ' on' : ''}`} onClick={() => pick('packs')} title={plural(packs.length, 'release')}>{plural(distinctSeasons(packs), 'saison')} complète{distinctSeasons(packs) > 1 ? 's' : ''} ⌄</button>}
-                {eps.length > 0 && <button type="button" className={`vg-mode${open && mode === 'episodes' ? ' on' : ''}`} onClick={() => pick('episodes')} title={plural(eps.length, 'release')}>{plural(distinctEpisodes(eps), 'épisode')} ⌄</button>}
+                {eps.length > 0 && <button type="button" className={`vg-mode${open && mode === 'episodes' ? ' on' : ''}`} onClick={() => pick('episodes')} title={plural(eps.length, 'release')}>{episodesLabel(eps)} ⌄</button>}
               </>
             ) : (
               <>

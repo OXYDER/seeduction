@@ -60,7 +60,7 @@ function CountBadge({ n, open }: { n: number; open: boolean }) {
 }
 
 /** Une ligne d'épisode : une seule release s'affiche tout de suite ; plusieurs : le nombre de releases, et un clic sur l'épisode les montre avec leurs étiquettes. */
-function EpisodeRow({ season, ep, have, hasPack, torrentId, seriesTitle }: { season: number; ep: { number: number; name: string; airDate?: string | null }; have: TvTorrent[]; hasPack: boolean; torrentId: string; seriesTitle: string }) {
+function EpisodeRow({ season, ep, have, hasPack, torrentId, seriesTitle, unlisted }: { season: number; ep: { number: number; name: string; airDate?: string | null }; have: TvTorrent[]; hasPack: boolean; torrentId: string; seriesTitle: string; /** Épisode présent sur Seeduction mais pas (encore) dans la liste de TMDB. */ unlisted?: boolean }) {
   const [open, setOpen] = useState(false);
   const many = have.length > 1;
   const label = (t: TvTorrent) => { const c = t.coverage.find((x) => x.season === season); return c?.episodes && c.episodes.length > 1 ? `épisodes ${ranges(c.episodes)}` : undefined; };
@@ -68,7 +68,7 @@ function EpisodeRow({ season, ep, have, hasPack, torrentId, seriesTitle }: { sea
     <>
       <tr className={many ? 'rel-click' : undefined} onClick={many ? () => setOpen((o) => !o) : undefined}>
         <td className="muted" style={{ width: 60 }}>E{pad(ep.number)}</td>
-        <td>{ep.name}{ep.airDate && <span className="muted"> · {ep.airDate}</span>}</td>
+        <td>{ep.name}{ep.airDate && <span className="muted"> · {ep.airDate}</span>}{unlisted && <span className="muted" title="TMDB n'a pas encore cet épisode dans sa liste : il est disponible sur Seeduction"> · pas encore listé par TMDB</span>}</td>
         <td>
           {have.length === 0
             ? (hasPack ? <span className="muted">Dans la saison complète</span> : <span className="muted">Non disponible — <Link to={requestLink(`${seriesTitle} S${pad(season)}E${pad(ep.number)}`)}>faire une demande</Link></span>)
@@ -189,6 +189,13 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
   const coversEpisode = (season: number, ep: number, epNums: number[] | null) =>
     torrents.filter((t) => t.coverage.some((c) => c.season === season && !isPack(c, epNums) && c.episodes !== null && c.episodes.includes(ep)));
   const packs = (season: number, epNums: number[] | null) => torrents.filter((t) => t.coverage.some((c) => c.season === season && isPack(c, epNums)));
+  /** Épisodes disponibles sur Seeduction mais absents de la liste TMDB de la saison (épisodes trop récents pour TMDB) : on les montre quand même. */
+  const unlistedEpisodes = (season: number, epNums: number[] | null) => {
+    if (!epNums) return [] as number[];
+    const have = new Set<number>();
+    covering(season).forEach((t) => t.coverage.forEach((c) => { if (c.season === season) (c.episodes ?? []).forEach((e) => have.add(e)); }));
+    return [...have].filter((e) => !epNums.includes(e)).sort((a, b) => a - b);
+  };
   /** Résumé d'une saison : saison complète disponible, ou nombre d'épisodes disponibles. */
   const availability = (season: number) => {
     const list = covering(season);
@@ -226,6 +233,7 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                     <span>
                       <span className="rel-ok">{av.count} épisode{av.count > 1 ? 's' : ''} disponible{av.count > 1 ? 's' : ''}</span>
                       {s.episodeCount && s.episodeCount >= av.count ? <span className="muted"> sur {s.episodeCount}</span> : null}
+                      {s.episodeCount && av.count > s.episodeCount ? <span className="muted"> (TMDB n'en liste que {s.episodeCount} pour l'instant)</span> : null}
                       {missing > 0 && <span className="muted"> · {missing} manquant{missing > 1 ? 's' : ''} — <Link to={requestLink(`${seriesTitle} ${s.name} (saison complète)`)}>faire une demande</Link></span>}
                     </span>
                   );
@@ -241,6 +249,7 @@ export default function TorrentRelated({ torrentId, seriesTitle }: { torrentId: 
                     <table>
                       <tbody>
                         {eps.map((e: any) => <EpisodeRow key={e.number} season={n} ep={e} have={coversEpisode(n, e.number, epNums)} hasPack={packs(n, epNums).length > 0} torrentId={torrentId} seriesTitle={seriesTitle} />)}
+                        {unlistedEpisodes(n, epNums).map((num) => <EpisodeRow key={`x${num}`} unlisted season={n} ep={{ number: num, name: `Épisode ${num}` }} have={coversEpisode(n, num, epNums)} hasPack={false} torrentId={torrentId} seriesTitle={seriesTitle} />)}
                       </tbody>
                     </table>
                   )}
