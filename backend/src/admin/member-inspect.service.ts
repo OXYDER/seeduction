@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthService } from '../auth/auth.service';
+import { ECONOMY } from '../common/utils/economy';
 
 export const SECTIONS = ['downloads', 'unfinished', 'uploads', 'seeds', 'hnr', 'friends', 'forum', 'pm', 'dm', 'chat'] as const;
 export type Section = (typeof SECTIONS)[number];
@@ -15,7 +16,10 @@ const excerpt = (s: string | null | undefined, n = 600) => { const t = String(s 
 const gb = (b: bigint | number) => { const n = Number(b); return n >= 1e9 ? `${(n / 1e9).toFixed(2)} Go` : `${Math.round(n / 1e6)} Mo`; };
 const hours = (s: number) => (s >= 3600 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 60)} min`);
 
-export interface InspectItem { id: string; at: string; primary: string; secondary?: string; text?: string; tags: string[]; link?: string }
+/** `facts` : des lignes « étiquette : valeur » faciles à lire (dates, obligation de seed, volumes échangés...). `tone` colore la valeur : ok (vert), warn (orange), bad (rouge). */
+export interface InspectItem { id: string; at: string; primary: string; secondary?: string; text?: string; tags: string[]; link?: string; facts?: { label: string; value: string; tone?: 'ok' | 'warn' | 'bad' }[] }
+const when = (d: Date | null | undefined) => (d ? d.toLocaleString('fr-CA', { timeZone: 'America/Toronto', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null);
+const dayOnly = (d: Date | null | undefined) => (d ? d.toLocaleDateString('fr-CA', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }) : null);
 export interface Actor { userId: string; username: string; role: string }
 
 /**
@@ -63,7 +67,7 @@ export class MemberInspectService {
       this.prisma.snatch.count({ where: { userId: { in: ids } } }),
       this.prisma.torrent.count({ where: { uploaderId: { in: ids } } }),
       this.prisma.peer.count({ where: { userId: { in: ids } } }),
-      this.prisma.snatch.count({ where: { userId: { in: ids }, hnr: true } }),
+      this.prisma.snatch.count({ where: { userId: { in: ids }, hnr: true, satisfied: false } }), // seulement les cas à régler : les régularisés ne sont plus qu'un historique (liste des téléchargements)
       this.prisma.friendship.count({ where: { OR: [{ requesterId: { in: ids } }, { addresseeId: { in: ids } }] } }),
       this.prisma.forumPost.count({ where: { authorId: { in: ids } } }),
       this.prisma.privateMessage.count({ where: { OR: [{ senderId: { in: ids } }, { recipientId: { in: ids } }] } }),
@@ -93,12 +97,37 @@ export class MemberInspectService {
     const done = (items: InspectItem[], total: number) => ({ section: sec, items, total, page: pg, pageSize: PAGE });
 
     if (sec === 'downloads' || sec === 'hnr') {
-      const where = { userId: { in: ids }, ...(sec === 'hnr' ? { hnr: true } : {}) };
+      // Onglet « Hit & run » : seulement les cas encore à régler. Un hit & run régularisé n'apparaît plus que dans l'historique des téléchargements (étiquette sur la ligne).
+      const where = { userId: { in: ids }, ...(sec === 'hnr' ? { hnr: true, satisfied: false } : {}) };
       const [rows, total] = await Promise.all([this.prisma.snatch.findMany({ where, orderBy: { completedAt: 'desc' }, skip, take: PAGE, include: { torrent: { select: { id: true, name: true, size: true } } } }), this.prisma.snatch.count({ where })]);
-      return done(rows.map((s) => ({
-        id: s.id, at: s.completedAt.toISOString(), primary: s.torrent?.name ?? '(torrent supprimé)', secondary: `${s.torrent ? gb(s.torrent.size) : ''} · seedé ${hours(s.seedSeconds)}`,
-        tags: [s.satisfied ? 'Régularisé' : 'À seeder', ...(s.hnr ? [s.hnrClearedAt ? 'Hit & run effacé' : 'Hit & run'] : [])], link: s.torrent ? `/torrents/${s.torrent.id}` : undefined,
-      })), total);
+      const tids = [...new Set(rows.map((r) => r.torrentId))];
+      const flows = tids.length ? await this.prisma.userTorrentFlow.groupBy({ by: ['torrentId'], where: { userId: { in: ids }, torrentId: { in: tids } }, _sum: { up: true, down: true }, _min: { day: true } }) : [];
+      const flowOf = new Map(flows.map((f) => [f.torrentId, f]));
+      const required = ECONOMY.hnrSeedHours;
+      return done(rows.map((s) => {
+        const f = flowOf.get(s.torrentId);
+        const seeded = Math.floor(s.seedSeconds / 3600);
+        const added = s.startedAt ? when(s.startedAt) : f?._min.day ? `${dayOnly(f._min.day)} (heure inconnue)` : null;
+        const obligation = s.hnrClearedAt ? 'Effacée avec des points bonus'
+          : s.satisfied ? `Atteinte ✓ (${seeded} h de seed sur ${required} h demandées)`
+          : `Pas encore atteinte : ${seeded} h de seed sur ${required} h demandées`;
+        const hnrState = s.hnr && !s.satisfied ? 'Hit & run à régler' : s.hnr && s.satisfied ? 'Hit & run régularisé (historique)' : null;
+        return {
+          id: s.id, at: s.completedAt.toISOString(), primary: s.torrent?.name ?? '(torrent supprimé)',
+          secondary: s.torrent ? `Taille : ${gb(s.torrent.size)}` : undefined,
+          tags: [s.satisfied ? 'Obligation de seed atteinte' : 'Obligation de seed à terminer', ...(hnrState ? [hnrState] : [])],
+          link: s.torrent ? `/torrents/${s.torrent.id}` : undefined,
+          facts: [
+            { label: 'Ajouté le', value: added ?? 'Non enregistré (téléchargement d\'avant ce suivi)' },
+            { label: 'Complété le', value: when(s.completedAt) ?? '—' },
+            { label: 'Obligation de seed', value: obligation, tone: s.satisfied ? 'ok' : 'warn' },
+            ...(s.hnr ? [{ label: 'Hit & run', value: s.hnrClearedAt ? `Effacé avec des points${s.hnrResolvedAt ? ` le ${when(s.hnrResolvedAt)}` : ''}` : s.satisfied ? `Régularisé en reprenant le seed${s.hnrResolvedAt ? ` le ${when(s.hnrResolvedAt)}` : ''} : clos, plus d'avertissement` : 'Non régularisé : le membre doit reprendre le seed', tone: s.satisfied ? ('ok' as const) : ('bad' as const) }] : []),
+            { label: 'Données reçues (download)', value: f ? gb(f._sum.down ?? 0n) : 'Non enregistrées' },
+            { label: 'Données envoyées (upload)', value: f ? gb(f._sum.up ?? 0n) : 'Non enregistrées' },
+            ...(s.lastSeedAt ? [{ label: 'Dernier signe de seed', value: when(s.lastSeedAt) ?? '' }] : []),
+          ],
+        };
+      }), total);
     }
     if (sec === 'unfinished') {
       // Torrents dont le membre a reçu des morceaux (suivi quotidien des annonces) sans jamais les terminer ; ses propres envois n'en font pas partie.

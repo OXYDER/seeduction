@@ -483,6 +483,8 @@ model Peer {
   isSeeder      Boolean   @default(false)
   lastEvent     PeerEvent @default(NONE)
   lastAnnounceAt DateTime @default(now())
+  /// Première annonce de ce client sur ce torrent : sert de « date d'ajout » dans l'historique des téléchargements.
+  createdAt     DateTime  @default(now())
 
   @@unique([torrentId, userId, peerId])
   @@index([torrentId, isSeeder])
@@ -502,6 +504,8 @@ model Snatch {
   satisfied   Boolean  @default(false) // temps de seed ou ratio sur ce torrent atteint
   hnr         Boolean  @default(false) // a arrêté de seeder trop tôt (avertissement envoyé)
   hnrClearedAt DateTime? // hit & run effacé avec des points bonus
+  startedAt   DateTime? // début du téléchargement (première annonce de ce membre sur ce torrent), si connu
+  hnrResolvedAt DateTime? // hit & run régularisé en reprenant le seed : le cas est clos, il ne reste que l'historique
 
   @@index([userId, torrentId])
   @@index([satisfied, hnr, completedAt])

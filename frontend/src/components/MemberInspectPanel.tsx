@@ -5,7 +5,8 @@ import { timeAgo } from '../lib/time';
 import { Pagination } from './ForumBits';
 import Loading from './Loading';
 
-interface Item { id: string; at: string; primary: string; secondary?: string; text?: string; tags: string[]; link?: string }
+interface Item { id: string; at: string; primary: string; secondary?: string; text?: string; tags: string[]; link?: string; facts?: { label: string; value: string; tone?: 'ok' | 'warn' | 'bad' }[] }
+const TONE = { ok: 'var(--success)', warn: '#fbbf24', bad: 'var(--danger)' } as const;
 interface Overview {
   user: { id: string; username: string; role: string; status: string; email: string };
   mustResetPassword: boolean; counts: Record<string, number>; privateUnlocked: boolean; canSeePrivate: boolean;
@@ -108,6 +109,16 @@ export default function MemberInspectPanel({ userId }: { userId: string }) {
                 <span className="muted" style={{ fontSize: 12.5 }} title={new Date(it.at).toLocaleString('fr-CA')}>{timeAgo(it.at)}</span>
               </div>
               {it.secondary && <span className="muted" style={{ fontSize: 12.5 }}>{it.secondary}</span>}
+              {it.facts && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, max-content) 1fr', gap: '3px 14px', fontSize: 13, margin: '2px 0' }}>
+                  {it.facts.map((f) => (
+                    <div key={f.label} style={{ display: 'contents' }}>
+                      <span className="muted">{f.label}</span>
+                      <span style={f.tone ? { color: TONE[f.tone], fontWeight: 600 } : undefined}>{f.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {it.text && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13.5 }}>{it.text}</div>}
               {it.tags.length > 0 && <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>{it.tags.map((t) => <span key={t} className="badge">{t}</span>)}</div>}
             </div>

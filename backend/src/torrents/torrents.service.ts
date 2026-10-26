@@ -848,7 +848,7 @@ export class TorrentsService implements OnModuleInit {
     const seedingNow = new Set(peers.filter((p) => p.isSeeder).map((p) => p.userId));
 
     const completed = [...new Map(snatches.map((s) => [s.userId, s])).values()].filter((s) => who.has(s.userId)).map((s) => ({
-      user: who.get(s.userId)!, completedAt: s.completedAt, seedHours: Math.round((s.seedSeconds / 3600) * 10) / 10, satisfied: s.satisfied, hnr: s.hnr && !s.hnrClearedAt, seedingNow: seedingNow.has(s.userId),
+      user: who.get(s.userId)!, completedAt: s.completedAt, seedHours: Math.round((s.seedSeconds / 3600) * 10) / 10, satisfied: s.satisfied, hnr: s.hnr && !s.satisfied, seedingNow: seedingNow.has(s.userId),
     }));
 
     const leech = new Map(peers.filter((p) => !p.isSeeder).map((p) => [p.userId, p]));

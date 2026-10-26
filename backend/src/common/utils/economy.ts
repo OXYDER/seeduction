@@ -116,3 +116,10 @@ export function hnrAbandoned(input: { seedingNow: boolean; lastSeedAt: Date | nu
   const lastSign = input.lastSeedAt ?? input.completedAt;
   return now.getTime() - lastSign.getTime() >= abandonHours * 3600_000;
 }
+
+/** Retire l'avertissement automatique d'un hit & run régularisé : le cas est clos, il ne doit pas laisser de tache au dossier du membre (il reste l'historique du téléchargement). */
+export async function dropHnrWarnings(db: { warning: { deleteMany: (a: any) => Promise<{ count: number }> }; torrent: { findUnique: (a: any) => Promise<{ name: string } | null> } }, userId: string, torrentId: string): Promise<number> {
+  const t = await db.torrent.findUnique({ where: { id: torrentId }, select: { name: true } });
+  if (!t) return 0;
+  return (await db.warning.deleteMany({ where: { userId, issuedBy: 'Système', reason: { startsWith: `Hit & run : « ${t.name} »` } } })).count;
+}

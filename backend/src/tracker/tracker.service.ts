@@ -4,7 +4,7 @@ import { PeerEvent } from '@prisma/client';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AntiCheatService } from '../anticheat/anticheat.service';
-import { ANNOUNCE_INTERVAL_SECONDS, ECONOMY, reseedReward, SEED_FRESH_MS } from '../common/utils/economy';
+import { ANNOUNCE_INTERVAL_SECONDS, dropHnrWarnings, ECONOMY, reseedReward, SEED_FRESH_MS } from '../common/utils/economy';
 import { isStaffRole } from '../common/utils/staff-2fa';
 import { setSource } from '../common/utils/ledger';
 import { DELETED_USER_ID } from '../admin/account-deletion.service';
@@ -127,7 +127,10 @@ export class TrackerService {
     const ratioReached = Number(torrent.size) > 0 && uploadedThisSession / Number(torrent.size) >= ECONOMY.hnrRatio;
     const satisfied = seedSeconds >= ECONOMY.hnrSeedHours * 3600 || ratioReached;
 
-    await this.prisma.snatch.update({ where: { id: snatch.id }, data: { seedSeconds, lastSeedAt: now, satisfied } });
+    // Un hit & run réglé en reprenant le seed est clos : on garde l'historique (hnr reste vrai, avec la date) mais l'avertissement automatique est retiré.
+    const resolvesHnr = satisfied && snatch.hnr && !snatch.satisfied;
+    await this.prisma.snatch.update({ where: { id: snatch.id }, data: { seedSeconds, lastSeedAt: now, satisfied, ...(resolvesHnr ? { hnrResolvedAt: now } : {}) } });
+    if (resolvesHnr) await dropHnrWarnings(this.prisma, userId, torrent.id).catch(() => undefined);
   }
 
   private robotCache: { at: number; id: string | null } | null = null;
@@ -287,7 +290,7 @@ export class TrackerService {
     if (params.event === 'completed') {
       // Le lecteur Seeduction est un vrai client BitTorrent qui continue de seeder après coup : un téléchargement
       // complété via le lecteur crée une obligation de seed normale, exactement comme n'importe quel client.
-      await this.prisma.snatch.create({ data: { torrentId: torrent.id, userId: user.id, lastSeedAt: new Date() } });
+      await this.prisma.snatch.create({ data: { torrentId: torrent.id, userId: user.id, lastSeedAt: new Date(), startedAt: existingPeer?.createdAt ?? null } });
       await this.prisma.torrent.update({
         where: { id: torrent.id },
         data: { completedCount: { increment: 1 }, ...(params.viaStream ? { streamCompletedCount: { increment: 1 } } : {}) },

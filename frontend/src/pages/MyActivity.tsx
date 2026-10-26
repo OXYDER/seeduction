@@ -6,7 +6,8 @@ import { timeAgo } from '../lib/time';
 import Loading from '../components/Loading';
 
 interface LiveRow { torrentId: string; name: string; coverImage: string | null; size: number; uploaded: number; downloaded: number; ratio: number | null; progress: number; lastAnnounceAt: string; seedSeconds: number; requiredSeconds: number; obligationDone: boolean | null }
-interface DoneRow { torrentId: string; name: string; coverImage: string | null; size: number; completedAt: string; seedSeconds: number; requiredSeconds: number; satisfied: boolean; hnr: boolean; own: boolean; seedingNow: boolean }
+interface DoneRow { torrentId: string; name: string; coverImage: string | null; size: number; completedAt: string; startedAt: string | null; firstDay: string | null; receivedBytes: number | null; sentBytes: number | null; seedSeconds: number; requiredSeconds: number; satisfied: boolean; hnr: boolean; hnrResolved: boolean; own: boolean; seedingNow: boolean }
+const dateTime = (iso: string) => new Date(iso).toLocaleString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 interface UpRow { id: string; name: string; coverImage: string | null; size: number; status: string; seeders: number; leechers: number; completedCount: number; createdAt: string }
 interface Data {
   totals: { seeding: number; leeching: number; completed: number; uploads: number; uploadedBytes: number; downloadedBytes: number; seedingBytes: number };
@@ -108,19 +109,22 @@ export default function MyActivity() {
 
         {tab === 'completed' && (data.completed.length === 0 ? <p className="muted" style={{ margin: 0 }}>Aucun téléchargement terminé pour l'instant.</p> : (
           <table className="act-table">
-            <thead><tr><th>Torrent</th><th>Taille</th><th>Terminé</th><th>Seed cumulé</th><th>Obligation de partage</th></tr></thead>
+            <thead><tr><th>Torrent</th><th>Taille</th><th>Ajouté</th><th>Terminé</th><th>Reçu ↓</th><th>Envoyé ↑</th><th>Seed cumulé</th><th>Obligation de seed</th></tr></thead>
             <tbody>
               {data.completed.map((r) => (
                 <tr key={r.torrentId}>
                   {nameCell(r.torrentId, r.name, r.coverImage)}
                   <td className="muted">{formatBytes(r.size)}</td>
-                  <td className="muted">{timeAgo(r.completedAt)}</td>
-                  <td>{hours(r.seedSeconds)}{r.seedingNow && <span className="seedpage-chip seeding" style={{ marginLeft: 8 }}>🟢 En seed</span>}</td>
+                  <td className="muted" title={r.startedAt ? undefined : 'Téléchargement d\'avant l\'enregistrement de l\'heure de début'}>{r.startedAt ? dateTime(r.startedAt) : r.firstDay ? `${new Date(r.firstDay).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}` : '—'}</td>
+                  <td className="muted" title={timeAgo(r.completedAt)}>{dateTime(r.completedAt)}</td>
+                  <td style={{ color: 'var(--danger)' }}>{r.receivedBytes === null ? <span className="muted">—</span> : formatBytes(r.receivedBytes)}</td>
+                  <td style={{ color: 'var(--success)' }}>{r.sentBytes === null ? <span className="muted">—</span> : formatBytes(r.sentBytes)}</td>
+                  <td>{hours(r.seedSeconds)} / {hours(r.requiredSeconds)}{r.seedingNow && <span className="seedpage-chip seeding" style={{ marginLeft: 8 }}>🟢 En seed</span>}</td>
                   <td>
                     {r.own ? <span className="muted">Ton envoi : aucune obligation</span>
-                      : r.satisfied ? <span className="seedpage-chip done">✅ Terminée</span>
-                      : r.hnr ? <Link to="/hit-and-run" className="seedpage-chip hnr">🔴 Hit & run</Link>
-                      : <span className="seedpage-chip idle">⏳ Encore {hours(Math.max(0, r.requiredSeconds - r.seedSeconds))}</span>}
+                      : r.satisfied ? <span className="seedpage-chip done">✅ Atteinte{r.hnrResolved ? ' (hit & run régularisé)' : ''}</span>
+                      : r.hnr ? <Link to="/hit-and-run" className="seedpage-chip hnr">🔴 Pas atteinte : hit & run à régler</Link>
+                      : <span className="seedpage-chip idle">⏳ Pas encore atteinte : encore {hours(Math.max(0, r.requiredSeconds - r.seedSeconds))}</span>}
                   </td>
                 </tr>
               ))}

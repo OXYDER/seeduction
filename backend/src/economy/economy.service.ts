@@ -8,7 +8,7 @@ import { SettingsService } from '../settings/settings.service';
 import { TrackerService } from '../tracker/tracker.service';
 import { downloadMarginBytes } from '../common/utils/download-margin';
 import { SeededTorrent, memberHourly } from '../common/utils/bonus-rate';
-import { ECONOMY, hnrAbandoned, SEED_FRESH_MS, SHOP_ITEMS } from '../common/utils/economy';
+import { dropHnrWarnings, ECONOMY, hnrAbandoned, SEED_FRESH_MS, SHOP_ITEMS } from '../common/utils/economy';
 import { STAFF_ROLES } from '../common/utils/staff-2fa';
 import { setSource } from '../common/utils/ledger';
 
@@ -89,9 +89,16 @@ export class EconomyService {
     await this.tracker.confirmLongSeedPendingRewards();
   }
 
+  /** Les hit & run déjà régularisés ne laissent plus d'avertissement au dossier (ceux d'avant cette règle sont nettoyés ici, quelques-uns à la fois). */
+  private async tidyRegularizedWarnings() {
+    const rows = await this.prisma.snatch.findMany({ where: { hnr: true, satisfied: true }, select: { userId: true, torrentId: true }, take: 200, orderBy: { completedAt: 'desc' } });
+    for (const r of rows) await dropHnrWarnings(this.prisma, r.userId, r.torrentId).catch(() => undefined);
+  }
+
   /** Chaque heure : détecte les « hit & run » (torrent complété, délai de grâce écoulé, seed insuffisant, plus de seed en cours). */
   @Cron('15 * * * *')
   async detectHitAndRun() {
+    await this.tidyRegularizedWarnings();
     const cutoff = new Date(Date.now() - ECONOMY.hnrGraceHours * 3600_000);
     const candidates = await this.prisma.snatch.findMany({
       where: { satisfied: false, hnr: false, completedAt: { lt: cutoff } },
@@ -265,9 +272,16 @@ export class EconomyService {
     const leeching = live.filter(([, c]) => c.leeching && !c.seeding).map(([id, c]) => row(id, c)).sort((a, b) => b.progress - a.progress);
     const seedingNow = new Set(seeding.map((r) => r.torrentId));
 
+    // Volumes échangés sur chaque torrent terminé (suivi quotidien des annonces) : « reçu » et « envoyé », avec la première journée connue.
+    const flows = snatchByTorrent.size ? await this.prisma.userTorrentFlow.groupBy({ by: ['torrentId'], where: { userId, torrentId: { in: [...snatchByTorrent.keys()] } }, _sum: { up: true, down: true }, _min: { day: true } }) : [];
+    const flowOf = new Map(flows.map((f) => [f.torrentId, f]));
     const completed = [...snatchByTorrent.values()].map((s) => ({
       torrentId: s.torrentId, name: s.torrent.name, coverImage: s.torrent.coverImage, size: Number(s.torrent.size), completedAt: s.completedAt,
-      seedSeconds: s.seedSeconds, requiredSeconds: required, satisfied: s.satisfied, hnr: s.hnr, own: s.torrent.uploaderId === userId, seedingNow: seedingNow.has(s.torrentId),
+      startedAt: s.startedAt ?? null, firstDay: flowOf.get(s.torrentId)?._min.day ?? null,
+      receivedBytes: flowOf.has(s.torrentId) ? Number(flowOf.get(s.torrentId)!._sum.down ?? 0n) : null, sentBytes: flowOf.has(s.torrentId) ? Number(flowOf.get(s.torrentId)!._sum.up ?? 0n) : null,
+      seedSeconds: s.seedSeconds, requiredSeconds: required, satisfied: s.satisfied,
+      // Un hit & run régularisé est clos : il ne s'affiche plus comme un hit & run (seulement l'obligation atteinte).
+      hnr: s.hnr && !s.satisfied, hnrResolved: s.hnr && s.satisfied, own: s.torrent.uploaderId === userId, seedingNow: seedingNow.has(s.torrentId),
     }));
 
     return {
@@ -389,7 +403,7 @@ export class EconomyService {
       const debited = await tx.user.updateMany({ where: { id: userId, bonusPoints: { gte: cost } }, data: { bonusPoints: { decrement: cost } } });
       if (debited.count === 0) throw new BadRequestException(`Points bonus insuffisants : il t'en faut ${cost}`);
       await spendDonatedFirst(tx, userId, cost);
-      const done = await tx.snatch.updateMany({ where: { id: snatch.id, hnr: true, satisfied: false }, data: { hnr: false, satisfied: true, hnrClearedAt: new Date() } });
+      const done = await tx.snatch.updateMany({ where: { id: snatch.id, hnr: true, satisfied: false }, data: { hnr: false, satisfied: true, hnrClearedAt: new Date(), hnrResolvedAt: new Date() } });
       if (done.count === 0) throw new BadRequestException('Ce hit & run a déjà été régularisé'); // annule aussi le débit
       await tx.warning.deleteMany({ where: { userId, issuedBy: 'Système', reason: { startsWith: `Hit & run : « ${snatch.torrent.name} »` } } });
     });
