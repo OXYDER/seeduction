@@ -61,7 +61,7 @@ function Player({ url, muted, overlay }: { url: string; muted: boolean; overlay?
         {overlay}
       </div>
       {problem && <p style={{ color: 'var(--danger)', margin: 0 }}>{problem}</p>}
-      <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>
+      <p className="muted live-hint" style={{ margin: 0, fontSize: 12.5 }}>
         {muted ? 'La lecture démarre sans le son : clique sur le haut-parleur de la vidéo pour l\'activer. ' : ''}Au tout début, la connexion au direct peut prendre quelques secondes.
       </p>
     </div>

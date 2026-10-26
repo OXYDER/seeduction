@@ -3890,34 +3890,51 @@ html.ev-static .ev-gitems svg, html.ev-static .ev-mascot { animation: none; }
 .mtl-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; white-space: nowrap; color: #fff; background: rgba(175, 30, 45, 0.28); border: 1px solid rgba(220, 60, 75, 0.6); box-shadow: none; }
 .mtl-pill small { font-size: 11.5px; opacity: 0.85; font-weight: 400; }
 .mtl-pill:hover { background: rgba(175, 30, 45, 0.42); filter: none; transform: none; }
-/* Direct : scène du lecteur (spectateurs, réactions qui flottent, chat) */
-.live-stage { display: flex; gap: 12px; align-items: stretch; background: transparent; }
-.live-stage:fullscreen { background: #000; padding: 8px; box-sizing: border-box; }
-.live-stage:fullscreen video { max-height: calc(100vh - 90px) !important; }
-.live-main { flex: 1 1 0; min-width: 0; display: grid; gap: 8px; align-content: start; }
-.live-badge { position: absolute; top: 10px; left: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 13px; font-weight: 600; pointer-events: none; }
-.live-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; opacity: 0.35; transition: opacity 0.2s; }
-.live-main:hover .live-tools, .live-tools:focus-within { opacity: 1; }
-.live-tools button { padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 12.5px; cursor: pointer; box-shadow: none; }
-.live-tools button.off { background: rgba(160, 40, 50, 0.75); }
-.live-floats { position: absolute; inset: 0 0 46px 0; overflow: hidden; pointer-events: none; }
-.live-float { position: absolute; bottom: 0; font-size: 30px; animation-name: live-float-up; animation-timing-function: ease-out; animation-fill-mode: forwards; }
-@keyframes live-float-up { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 12% { opacity: 1; transform: translateY(-20px) scale(1); } 100% { transform: translateY(-220px) scale(1.15); opacity: 0; } }
-.live-reactions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.live-reactions button { padding: 4px 10px; font-size: 20px; line-height: 1.2; border-radius: 999px; box-shadow: none; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); }
-.live-reactions button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.18); transform: translateY(-2px); }
-.live-chat { flex: 0 0 320px; width: 320px; display: flex; flex-direction: column; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; background: rgba(10, 14, 28, 0.85); min-height: 320px; max-height: 70vh; }
-.live-stage:fullscreen .live-chat { max-height: none; }
-.live-chat-head { padding: 8px 12px; font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.live-chat-list { flex: 1; overflow-y: auto; padding: 8px 10px; display: grid; gap: 4px; align-content: start; font-size: 13.5px; }
-.live-chat-msg { word-break: break-word; position: relative; }
+/* Direct : le chat, les réactions et le compteur sont PAR-DESSUS l'image (fond transparent) : en plein écran, la vidéo occupe tout l'écran et ils restent dessus */
+.live-stage { position: relative; background: #000; border-radius: 10px; overflow: hidden; }
+.live-stage:fullscreen { border-radius: 0; display: flex; flex-direction: column; justify-content: center; }
+.live-stage:fullscreen video { max-height: 100vh !important; height: 100vh; border-radius: 0 !important; object-fit: contain; }
+.live-stage:fullscreen .live-hint { display: none; }
+.live-main { display: grid; gap: 0; }
+.live-main > div { gap: 0 !important; }
+.live-stage .live-hint { padding: 8px 12px; background: var(--bg-panel-raised, #10162a); }
+.live-badge { position: absolute; top: 10px; left: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(4px); color: #fff; font-size: 13px; font-weight: 600; pointer-events: none; z-index: 3; }
+.live-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; opacity: 0.4; transition: opacity 0.2s; z-index: 4; }
+.live-stage:hover .live-tools, .live-tools:focus-within { opacity: 1; }
+.live-tools button { padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(4px); color: #fff; font-size: 12.5px; cursor: pointer; box-shadow: none; }
+.live-tools button.off { background: rgba(160, 40, 50, 0.8); }
+.live-floats { position: absolute; inset: 0 0 56px 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.live-float { position: absolute; bottom: 0; font-size: 32px; animation-name: live-float-up; animation-timing-function: ease-out; animation-fill-mode: forwards; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); }
+@keyframes live-float-up { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 12% { opacity: 1; transform: translateY(-20px) scale(1); } 100% { transform: translateY(-260px) scale(1.15); opacity: 0; } }
+/* Réactions : colonne d'émojis à gauche, au-dessus de la barre de lecture */
+.live-reactions { position: absolute; left: 10px; bottom: 56px; display: flex; flex-direction: column; gap: 6px; z-index: 3; opacity: 0.55; transition: opacity 0.2s; }
+.live-stage:hover .live-reactions, .live-reactions:focus-within { opacity: 1; }
+.live-reactions button { width: 40px; height: 40px; padding: 0; font-size: 21px; line-height: 1; border-radius: 50%; box-shadow: none; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(4px); border: 1px solid rgba(255, 255, 255, 0.22); }
+.live-reactions button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.25); transform: scale(1.12); }
+/* Chat : à droite, fond transparent, les anciens messages s'estompent vers le haut */
+.live-chat { position: absolute; right: 10px; bottom: 56px; top: 52px; width: min(320px, 42%); display: flex; flex-direction: column; justify-content: flex-end; z-index: 3; pointer-events: none; }
+.live-chat-list { overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; padding: 0; font-size: 13.5px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 35%); mask-image: linear-gradient(to bottom, transparent 0, #000 35%); }
+.live-chat-msg { align-self: flex-end; max-width: 100%; padding: 4px 10px; border-radius: 12px; background: rgba(0, 0, 0, 0.42); backdrop-filter: blur(3px); color: #fff; word-break: break-word; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); pointer-events: auto; }
+.live-chat-msg .nick, .live-chat-msg strong { font-weight: 700; }
+.live-chat-empty { align-self: flex-end; padding: 4px 10px; border-radius: 12px; background: rgba(0, 0, 0, 0.35); color: rgba(255, 255, 255, 0.8); font-size: 12.5px; }
 .live-chat-mod { margin-left: 6px; display: none; }
 .live-chat-msg:hover .live-chat-mod { display: inline; }
 .live-chat-mod button { padding: 0 4px; font-size: 12px; background: none; border: 0; box-shadow: none; cursor: pointer; }
-.live-chat-error { padding: 4px 10px; font-size: 12px; color: var(--danger); }
-.live-chat-input { display: flex; gap: 6px; padding: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-.live-chat-input input { flex: 1; min-width: 0; }
-@media (max-width: 860px) { .live-stage { flex-direction: column; } .live-chat { flex: none; width: auto; min-height: 240px; max-height: 340px; } .live-tools { opacity: 1; } .live-tools button:first-child { font-size: 11.5px; padding: 3px 8px; } }
+.live-chat-error { margin-top: 4px; align-self: flex-end; padding: 3px 10px; border-radius: 10px; background: rgba(160, 40, 50, 0.75); font-size: 12px; color: #fff; }
+.live-chat-input { display: flex; gap: 6px; margin-top: 6px; pointer-events: auto; opacity: 0.6; transition: opacity 0.2s; }
+.live-stage:hover .live-chat-input, .live-chat-input:focus-within { opacity: 1; }
+.live-chat-input input { flex: 1; min-width: 0; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); color: #fff; padding: 7px 14px; font-size: 13.5px; }
+.live-chat-input input::placeholder { color: rgba(255, 255, 255, 0.6); }
+.live-chat-input button { border-radius: 999px; padding: 6px 14px; font-size: 13px; box-shadow: none; }
+@media (max-width: 860px) {
+  .live-chat { width: min(300px, 62%); top: auto; max-height: 40%; }
+  .live-tools { opacity: 1; }
+  .live-tools button:first-child { font-size: 11.5px; padding: 3px 8px; }
+  /* Téléphone : les réactions en rangée sous le compteur, le chat en bas à droite au-dessus de la barre de lecture */
+  .live-reactions { flex-direction: row; top: 44px; bottom: auto; left: 8px; right: 8px; overflow-x: auto; opacity: 0.8; }
+  .live-reactions button { flex: none; width: 34px; height: 34px; font-size: 18px; }
+  .live-chat { bottom: 52px; }
+}
 .mtl-pill.idle { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); padding: 4px 10px; }
 .mtl-pill.idle:hover { background: rgba(175, 30, 45, 0.3); }
 .mtl-pill.win { background: rgba(34, 160, 90, 0.25); border-color: rgba(60, 200, 120, 0.6); }

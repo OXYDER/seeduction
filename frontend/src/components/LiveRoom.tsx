@@ -88,9 +88,8 @@ function Chat({ room }: { room: ReturnType<typeof useLiveRoom> }) {
   }
   return (
     <div className="live-chat">
-      <div className="live-chat-head">💬 Chat du direct</div>
       <div className="live-chat-list" ref={box} onScroll={(e) => { const b = e.currentTarget; stick.current = b.scrollHeight - b.scrollTop - b.clientHeight < 40; }}>
-        {messages.length === 0 && <div className="muted" style={{ fontSize: 12.5 }}>Sois le premier à écrire !</div>}
+        {messages.length === 0 && <div className="live-chat-empty">Sois le premier à écrire !</div>}
         {messages.map((m) => (
           <div key={m.id} className="live-chat-msg">
             <strong><Nick id={m.userId} name={m.username} /></strong> <span>{m.text}</span>
@@ -109,8 +108,8 @@ function Chat({ room }: { room: ReturnType<typeof useLiveRoom> }) {
 }
 
 /**
- * Scène du direct : le lecteur avec, par-dessus, le nombre de spectateurs, les réactions qui flottent et le bouton qui coupe tout (chat, réactions, compteur) ;
- * à côté le chat, dessous la barre de réactions. « Plein écran » prend toute la scène : le chat et les réactions restent visibles.
+ * Scène du direct : le lecteur avec, PAR-DESSUS l'image, le nombre de spectateurs, les réactions qui flottent, la barre de réactions, le chat (fond transparent) et le bouton qui coupe
+ * tout. Rien n'est à côté : en plein écran, la vidéo occupe tout l'écran et le chat et les réactions restent dessus.
  */
 export default function LiveStage({ children }: { children: (overlay: ReactNode) => ReactNode }) {
   const room = useLiveRoom();
@@ -145,21 +144,18 @@ export default function LiveStage({ children }: { children: (overlay: ReactNode)
       <div className="live-floats" aria-hidden="true">
         {room.floats.map((f) => <span key={f.id} className="live-float" style={{ left: `${f.left}%`, animationDuration: `${f.duration}s` }}>{f.emoji}</span>)}
       </div>
+      {showReactions && cfg && (
+        <div className="live-reactions" role="group" aria-label="Réactions" title={`${cfg.reactionsPerMinute} réactions par minute au plus`}>
+          {cfg.emojis.map((e) => <button key={e} type="button" onClick={() => react(e)} disabled={cool} aria-label={`Réagir ${e}`}>{e}</button>)}
+        </div>
+      )}
+      {showChat && <Chat room={room} />}
     </>
   );
 
   return (
     <div ref={stage} className="live-stage">
-      <div className="live-main">
-        {children(overlay)}
-        {showReactions && cfg && (
-          <div className="live-reactions" role="group" aria-label="Réactions">
-            {cfg.emojis.map((e) => <button key={e} type="button" onClick={() => react(e)} disabled={cool} aria-label={`Réagir ${e}`}>{e}</button>)}
-            <span className="muted" style={{ fontSize: 11.5 }}>{cfg.reactionsPerMinute} par minute au plus</span>
-          </div>
-        )}
-      </div>
-      {showChat && <Chat room={room} />}
+      <div className="live-main">{children(overlay)}</div>
     </div>
   );
 }
