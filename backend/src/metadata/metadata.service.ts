@@ -6,6 +6,7 @@ import { PrismaService } from '../common/prisma.service';
 import { TranslateService } from './translate.service';
 import { cleanTitle } from '../importer/category-guess';
 import { releaseDateOf } from './release-date';
+import { looseKey, searchVariants, similarity, withoutSubtitle } from './title-search';
 import { collectStudios, parseAdultName, parseStudioId, pickPorndbMatch, PorndbHit, porndbCovers } from './porndb-match';
 
 export interface SearchResult {
@@ -190,26 +191,29 @@ export class MetadataService {
     let y = year && /^\d{4}$/.test(year) ? year : undefined;
     if (/[._]/.test(q) && !/\s/.test(q)) { const parsed = cleanTitle(q); if (parsed.title) { q = parsed.title; if (!y && parsed.year) y = String(parsed.year); } }
 
-    const variants: { q: string; y?: string }[] = [{ q, y }];
-    if (y) variants.push({ q });
-    if (/oe/i.test(q)) variants.push({ q: q.replace(/oe/gi, 'œ'), y });
-    const noSub = q.split(/\s*[:\u2013\u2014]\s*|\s+-\s+/)[0].trim();
-    if (noSub && noSub !== q) variants.push({ q: noSub });
-    const words = q.split(/\s+/);
-    if (words.length > 2) variants.push({ q: words.slice(0, -1).join(' ') });
-
+    // Variantes de la requête (sous-titre retiré, singulier / pluriel, sans article, plus courte...) : on s'arrête dès qu'une fiche quasi identique est trouvée
+    // ou qu'on a assez de candidats ; si rien ne sort, on élargit jusqu'au bout plutôt que de laisser sans résultat.
+    const base = withoutSubtitle(q);
+    const closeEnough = (h: { titles: string[] }) => h.titles.some((t) => similarity(t, q) >= 0.9 || similarity(t, base) >= 0.9);
     const pool = new Map<string, { id: string; r: any; titles: string[] }>();
-    for (const v of variants) {
-      for (const hit of await this.tmdbPool(type, v.q, v.y)) if (!pool.has(hit.id)) pool.set(hit.id, hit);
-      if (pool.size >= 5) break; // assez de candidats : inutile d'élargir davantage
+    for (const v of searchVariants(q, y)) {
+      try {
+        for (const hit of await this.tmdbPool(type, v.q, v.y)) if (!pool.has(hit.id)) pool.set(hit.id, hit);
+      } catch (e) {
+        if (!pool.size) throw e;
+        break;
+      }
+      if ([...pool.values()].some(closeEnough) && pool.size >= 3) break;
+      if (pool.size >= 8) break;
     }
 
     const wanted = titleKey(q);
     const dateOf = (r: any): string => String((type === 'movie' ? r.release_date : r.first_air_date) ?? '');
     const score = (h: { r: any; titles: string[] }, order: number) => {
       const exact = h.titles.some((t) => titleKey(t) === wanted) ? 1000 : 0;
+      const close = Math.round(Math.max(...h.titles.map((t) => Math.max(similarity(t, q), similarity(t, base)))) * 400); // titre le plus ressemblant d'abord (« Zombie Car » pour « Zombie Cars - Sauvé de la scrap »)
       const gap = y && dateOf(h.r) ? Math.abs(Number(dateOf(h.r).slice(0, 4)) - Number(y)) : 9;
-      return exact + (gap === 0 ? 100 : gap === 1 ? 50 : 0) - order; // le rang d'origine départage
+      return exact + close + (gap === 0 ? 100 : gap === 1 ? 50 : 0) - order; // le rang d'origine départage
     };
     const ranked = [...pool.values()].map((h, i) => ({ h, sc: score(h, i) })).sort((a, b) => b.sc - a.sc).map((x) => x.h);
 
@@ -1089,6 +1093,17 @@ export class MetadataService {
           const res = await this.fetchJson(`${TMDB_API}/search/${type}?query=${encodeURIComponent(query)}&language=${language}${extra}&api_key=${this.tmdbKey}`, 'TMDB');
           const hit = (res.results ?? []).find((r: any) => sameTitle(r) && yearOk(r, type === 'tv' && !!year && extra === ''));
           if (hit) return { id: String(hit.id), genreIds: Array.isArray(hit.genre_ids) ? hit.genre_ids : [], title: String(hit.title ?? hit.name ?? title), year: dateOf(hit).slice(0, 4) || undefined };
+        }
+      }
+      // Second passage, toujours prudent : même titre au pluriel / singulier près, ou titre identique une fois le sous-titre retiré
+      // (« Zombie Cars - Sauvé de la scrap » = « Zombie Car »). Jamais une simple ressemblance : la clé tolérante doit être strictement égale.
+      const accepted = new Set([looseKey(title), looseKey(withoutSubtitle(title))].filter((k) => k.length >= 5));
+      if (!accepted.size) return null;
+      const queries = searchVariants(title, year ? String(year) : undefined).filter((v) => !v.y).slice(0, 5);
+      for (const v of queries) {
+        for (const hit of await this.tmdbPool(type, v.q)) {
+          if (!hit.titles.some((t) => accepted.has(looseKey(t))) || !yearOk(hit.r, type === 'tv' && !!year)) continue;
+          return { id: hit.id, genreIds: Array.isArray(hit.r.genre_ids) ? hit.r.genre_ids : [], title: String(hit.r.title ?? hit.r.name ?? title), year: dateOf(hit.r).slice(0, 4) || undefined };
         }
       }
       return null;
