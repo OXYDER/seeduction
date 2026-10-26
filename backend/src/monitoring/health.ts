@@ -7,7 +7,8 @@ export type Level = 'ok' | 'warn' | 'error';
 export interface Check { id: string; label: string; level: Level; detail: string }
 
 export interface HealthInput {
-  db: { ok: boolean; latencyMs: number | null };
+  /** `slowForMs` : depuis combien de temps les mesures sont lentes sans interruption (absent = on ne sait pas : une mesure lente suffit). */
+  db: { ok: boolean; latencyMs: number | null; slowForMs?: number };
   secretWeakness: string | null;
   configWeaknesses?: string[];
   /** Administrateurs actifs sans double authentification (leurs noms). */
@@ -36,7 +37,12 @@ export function evaluate(i: HealthInput): Check[] {
   const now = i.now ?? Date.now();
   const out: Check[] = [];
   out.push(i.db.ok
-    ? { id: 'database', label: 'Base de données', level: (i.db.latencyMs ?? 0) > 1500 ? 'warn' : 'ok', detail: `Répond en ${i.db.latencyMs} ms` }
+    ? (() => {
+      // Une seule mesure lente (pic ponctuel pendant une tâche lourde) n'est pas une alerte : il faut que la lenteur dure d'un contrôle à l'autre (plus de 4 min).
+      const slow = (i.db.latencyMs ?? 0) > 1500;
+      const lasting = slow && (i.db.slowForMs === undefined || i.db.slowForMs >= 4 * 60_000);
+      return { id: 'database', label: 'Base de données', level: (lasting ? 'warn' : 'ok') as Level, detail: `Répond en ${i.db.latencyMs} ms${slow && !lasting ? ' (pic ponctuel, pas d’alerte)' : ''}` };
+    })()
     : { id: 'database', label: 'Base de données', level: 'error', detail: 'Injoignable' });
   out.push(i.secretWeakness
     ? { id: 'secret', label: 'Sécurité : secret des sessions', level: 'error', detail: `${i.secretWeakness}. Définis un JWT_SECRET long et aléatoire dans backend/.env (les sessions seront réinitialisées et les mots de passe de seedbox et le jeton Telegram sont à ressaisir).` }

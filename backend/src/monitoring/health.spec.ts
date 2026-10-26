@@ -17,6 +17,8 @@ describe('Santé du site : contrôles', () => {
   it('une base injoignable ou lente est signalée', () => {
     expect(by(evaluate(base({ db: { ok: false, latencyMs: null } })), 'database').level).toBe('error');
     expect(by(evaluate(base({ db: { ok: true, latencyMs: 2500 } })), 'database').level).toBe('warn');
+    expect(by(evaluate(base({ db: { ok: true, latencyMs: 2500, slowForMs: 0 } })), 'database').level).toBe('ok'); // pic ponctuel : pas d'alerte
+    expect(by(evaluate(base({ db: { ok: true, latencyMs: 2500, slowForMs: 6 * 60_000 } })), 'database').level).toBe('warn'); // lenteur qui dure
   });
 
   it('un secret faible est une erreur de sécurité avec la marche à suivre', () => {

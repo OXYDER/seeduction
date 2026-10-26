@@ -26,6 +26,7 @@ export class HealthService implements OnModuleInit {
   private extra = new Map<string, ExtraCheck>();
   private last: { at: number; checks: Check[] } | null = null;
   private running = false;
+  private dbSlowSince: number | null = null;
 
   constructor(private prisma: PrismaService, private settings: SettingsService, private notifications: NotificationsService, private sports: SportsService, private metrics: MetricsService, private telegram: TelegramService) {}
 
@@ -66,6 +67,12 @@ export class HealthService implements OnModuleInit {
     const start = Date.now();
     let db = { ok: true, latencyMs: 0 as number | null };
     try { await this.prisma.$queryRaw`SELECT 1`; db.latencyMs = Date.now() - start; } catch { db = { ok: false, latencyMs: null }; }
+    // Depuis quand la base répond lentement sans interruption (un « SELECT 1 » lent = file d'attente des connexions saturée ou serveur occupé, souvent le temps d'une tâche lourde)
+    if (db.ok && (db.latencyMs ?? 0) > 1500) {
+      this.dbSlowSince ??= Date.now();
+      this.logger.warn(`Base de données lente : SELECT 1 en ${db.latencyMs} ms (mémoire ${Math.round(process.memoryUsage().rss / 1048576)} Mo, tâches lancées depuis 5 min : ${jobMonitor.snapshot().filter((j) => j.lastRunAt && Date.now() - j.lastRunAt < 5 * 60_000).map((j) => j.name).join(', ') || 'aucune'})`);
+    } else this.dbSlowSince = null;
+    (db as any).slowForMs = this.dbSlowSince ? Date.now() - this.dbSlowSince : undefined;
     const series = this.metrics.series().slice(-10);
     const staff = await this.prisma.user.findMany({ where: { role: { in: ['ADMIN', 'OWNER'] }, status: 'ACTIVE', parentId: null, twoFactorEnabled: false }, select: { username: true }, take: 50 }).catch(() => []);
     const checks = evaluate({
