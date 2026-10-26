@@ -51,7 +51,16 @@ export default function Referrals() {
   const cfg = data.config;
   return (
     <div className="grid">
-      <h1 style={{ marginBottom: 0 }}>🤝 Parrainage</h1>
+      <h1 style={{ marginBottom: 0 }}>🎟️ Inviter un ami : invitations et parrainage</h1>
+      <div className="panel" style={{ display: 'grid', gap: 8 }}>
+        <h3 style={{ margin: 0 }}>Comment obtenir et envoyer une invitation ?</h3>
+        <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4, lineHeight: 1.5 }}>
+          <li><strong>Crée un code ici</strong> avec le bouton « ＋ Créer une invitation » ci-dessous : le lien d'inscription est copié, il ne te reste qu'à l'envoyer à ton ami (message, courriel…). Le nombre de codes ouverts en même temps dépend de ton rang.</li>
+          <li><strong>Plus de codes ?</strong> Achète-en avec tes points bonus dans la <Link to="/bonus">boutique bonus</Link> (🎁), ou monte en rang.</li>
+          <li><strong>Ton ami s'inscrit</strong> avec ce lien dans les 7 jours (un code ne sert qu'une fois). Quand il devient un vrai membre, tu reçois une prime en points.</li>
+        </ol>
+        <span className="muted" style={{ fontSize: 12.5 }}>Tu retrouves cette page à tout moment dans le menu de ton compte (clique sur ton nom, en haut à gauche) : « 🎟️ Inviter un ami », et en haut du site sur « Invitations ».</span>
+      </div>
       <div className="panel" style={{ display: 'grid', gap: 8 }}>
         <p style={{ margin: 0 }}>
           Invite des personnes de confiance. {cfg.enabled ? <>Quand l'une d'elles devient un vrai membre ({cfg.minDays} jours d'ancienneté et le rang « {cfg.minClassLabel} »), tu reçois <strong>+{cfg.rewardPoints} points bonus</strong> (au plus {cfg.maxPerMonth} primes par mois).</> : <>Les primes de parrainage sont suspendues pour l'instant.</>}

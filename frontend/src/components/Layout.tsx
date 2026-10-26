@@ -637,10 +637,10 @@ function LayoutInner() {
               <span className="value">{Number(profile.uploaded) >= Number(profile.downloaded) ? '+' : '−'}{formatBytes(Math.abs(Number(profile.uploaded) - Number(profile.downloaded)))}</span>
             </div>
             {econ && <Link to="/seeds" className="topbar-stat" title="Torrents en seed / hit & run"><span className="label">Seeds / H&amp;R :</span><span className="value">{econ.seeding} / {econ.hnr}</span></Link>}
-            <div className="topbar-stat">
+            <Link to="/referrals" className="topbar-stat" title="Inviter un ami : créer un code d'invitation, voir mes invités">
               <span className="label">Invitations :</span>
               <span className="value">{profile._count.invitees}</span>
-            </div>
+            </Link>
           </div>
         )}
         <div className="row">

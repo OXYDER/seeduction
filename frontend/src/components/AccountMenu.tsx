@@ -54,6 +54,7 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
   if (!open) return null;
   const links: [string, ReactNode, string][] = [
     ['/profile', '👤', 'Mon profil'],
+    ['/referrals', '🎟️', 'Inviter un ami (invitations)'],
     ...(canUpload && userId ? [[`/browse?uploaderId=${userId}`, '⬆️', 'Mes uploads'] as [string, ReactNode, string]] : []),
     ['/activity', '📈', 'Mon activité'],
     ['/recap', '📅', 'Mon récap du mois'],
@@ -69,7 +70,6 @@ export default function AccountMenu({ userId, profile, open, onClose, onStatus, 
     ['/integrations', '🔌', 'API & flux RSS'],
     ['/telegram', <TelegramLogo size={16} />, 'Telegram'],
     ['/achievements', '🏅', 'Mes réalisations'],
-    ['/referrals', '🤝', 'Parrainage'],
     ['/alerts', '🔔', 'Mes alertes'],
     ['/wiki', '📖', 'Wiki'],
   ];

@@ -15,7 +15,7 @@ const NODES: Node[] = [
   { path: '/favorites', label: 'Favoris' },
   { path: '/alerts', label: 'Mes alertes' },
   { path: '/achievements', label: 'Mes réalisations' },
-  { path: '/referrals', label: 'Parrainage' },
+  { path: '/referrals', label: 'Inviter un ami' },
   { path: '/collections', label: 'Collections' },
   { path: '/collections/:id', label: 'Collection', parent: '/collections' },
   { path: '/friends', label: 'Amis' },
