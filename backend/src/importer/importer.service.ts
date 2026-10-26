@@ -149,8 +149,10 @@ export class ImporterService {
     return { deleted: true };
   }
 
+  /** Historique d'une source (300 derniers éléments) ; `status` accepte plusieurs états séparés par des virgules (« REVIEW,READY ») : le filtre est fait côté base, pour que les éléments à vérifier plus anciens que les 300 derniers ne disparaissent pas. */
   items(sourceId: string, status?: string) {
-    return this.prisma.importItem.findMany({ where: { sourceId, ...(status ? { status } : {}) }, orderBy: { updatedAt: 'desc' }, take: 300 });
+    const statuses = (status ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+    return this.prisma.importItem.findMany({ where: { sourceId, ...(statuses.length ? { status: { in: statuses } } : {}) }, orderBy: { updatedAt: 'desc' }, take: 300 });
   }
 
   async retryItem(id: string) {

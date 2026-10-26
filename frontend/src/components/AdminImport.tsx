@@ -427,7 +427,7 @@ function SourceForm({ source, cats, onCancel, onSaved, onError }: { source: Sour
 function ReviewPanel({ source, onChanged, ok, fail }: { source: Source; onChanged: () => void; ok: (m: string) => void; fail: (e: any) => void }) {
   const [items, setItems] = useState<ImportItem[] | null>(null);
   const [options, setOptions] = useState<{ categories: { id: string; name: string }[]; kinds: string[] }>({ categories: [], kinds: [] });
-  const load = useCallback(() => api.get(`/importer/sources/${source.id}/items`).then((r) => setItems((r.data as ImportItem[]).filter((i) => i.status === 'REVIEW' || i.status === 'READY'))).catch(fail), [source.id]);
+  const load = useCallback(() => api.get(`/importer/sources/${source.id}/items`, { params: { status: 'REVIEW,READY' } }).then((r) => setItems((r.data as ImportItem[]).filter((i) => i.status === 'REVIEW' || i.status === 'READY'))).catch(fail), [source.id]);
   useEffect(() => { load(); api.get('/importer/review-options').then((r) => setOptions(r.data)).catch(() => undefined); }, [load]);
   const waiting = (items ?? []).some((i) => i.status === 'READY');
   useEffect(() => {
