@@ -281,7 +281,7 @@ export default function HomeStreaming() {
           <HomeSection id="activity" label="Mon activité" icon="⏯️">
           {active.length > 0 && (
             <section className="panel ornate rail-section rail-plex">
-              <div className="panel-title"><span className="title-icon">⏯️</span>Mon activité<span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 400 }}>Tes téléchargements et seeds en cours</span><Link to="/activity" className="rail-all" style={{ marginLeft: 14, fontFamily: "var(--font-body)", fontWeight: 400 }}>Voir toute mon activité →</Link></div>
+              <div className="panel-title"><span className="title-icon">⏯️</span>Mon activité<span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 400 }}>Tes téléchargements et seeds en cours · <Link to="/seeds">Tout voir →</Link></span><Link to="/activity" className="rail-all" style={{ marginLeft: 14, fontFamily: "var(--font-body)", fontWeight: 400 }}>Voir toute mon activité →</Link></div>
               <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
             </section>
           )}
