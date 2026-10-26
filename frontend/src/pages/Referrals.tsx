@@ -12,6 +12,7 @@ interface Data {
   quota: { open: number; max: number | null; rankLabel: string; canCreate: boolean };
   rewardedThisMonth: number;
   totals: { invitees: number; rewarded: number; points: number };
+  purchase: { cost: number; balance: number };
   codes: Code[]; invitees: Invitee[];
 }
 const errorOf = (e: any) => { const m = e?.response?.data?.message; return Array.isArray(m) ? m.join(', ') : m ?? 'Erreur'; };
@@ -33,14 +34,24 @@ export default function Referrals() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [fresh, setFresh] = useState<{ code: string; expiresAt: string | null; bought: boolean } | null>(null); // l'invitation qui vient d'être créée ou achetée : code et lien bien visibles
   const load = () => api.get('/referrals').then((r) => setData(r.data)).catch((e) => setError(errorOf(e)));
   useEffect(() => { void load(); }, []);
 
   async function create() {
     setBusy(true); setError(''); setNote('');
-    try { const r = await api.post('/referrals/invite'); await navigator.clipboard?.writeText(linkOf(r.data.code)).catch(() => undefined); setNote('Invitation créée : le lien est copié, envoie-le à ton invité (valable 7 jours).'); await load(); }
+    try { const r = await api.post('/referrals/invite'); setFresh({ code: r.data.code, expiresAt: r.data.expiresAt ?? null, bought: false }); await load(); }
     catch (e) { setError(errorOf(e)); } finally { setBusy(false); }
   }
+  /** Achat d'une invitation avec les points bonus (même article que dans la boutique). */
+  async function buy() {
+    if (!data) return;
+    if (!window.confirm(`Acheter une invitation pour ${data.purchase.cost.toLocaleString('fr-CA')} points bonus ?`)) return;
+    setBusy(true); setError(''); setNote('');
+    try { const r = await api.post('/bonus/redeem', { item: 'invite' }); setFresh({ code: r.data.inviteCode, expiresAt: new Date(Date.now() + 7 * 86400_000).toISOString(), bought: true }); await load(); }
+    catch (e) { setError(errorOf(e)); } finally { setBusy(false); }
+  }
+  async function copyText(text: string, what: string) { try { await navigator.clipboard.writeText(text); setNote(`${what} copié.`); } catch { setNote(text); } }
   async function revoke(c: Code) {
     if (!window.confirm('Retirer cette invitation ?')) return;
     try { await api.delete(`/referrals/invite/${c.id}`); await load(); } catch (e) { setError(errorOf(e)); }
@@ -55,8 +66,8 @@ export default function Referrals() {
       <div className="panel" style={{ display: 'grid', gap: 8 }}>
         <h3 style={{ margin: 0 }}>Comment obtenir et envoyer une invitation ?</h3>
         <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4, lineHeight: 1.5 }}>
-          <li><strong>Crée un code ici</strong> avec le bouton « ＋ Créer une invitation » ci-dessous : le lien d'inscription est copié, il ne te reste qu'à l'envoyer à ton ami (message, courriel…). Le nombre de codes ouverts en même temps dépend de ton rang.</li>
-          <li><strong>Plus de codes ?</strong> Achète-en avec tes points bonus dans la <Link to="/bonus">boutique bonus</Link> (🎁), ou monte en rang.</li>
+          <li><strong>Crée un code ici</strong> avec le bouton « ＋ Créer une invitation » ci-dessous : le code et le lien d'inscription s'affichent, tu partages celui que tu préfères (message, courriel…). Le nombre de codes ouverts en même temps dépend de ton rang.</li>
+          <li><strong>Plus de codes ?</strong> Achète une invitation avec tes points bonus (<strong>{data.purchase.cost.toLocaleString('fr-CA')} points</strong>) avec le bouton « 🎁 Acheter une invitation » ci-dessous, ou monte en rang.</li>
           <li><strong>Ton ami s'inscrit</strong> avec ce lien dans les 7 jours (un code ne sert qu'une fois). Quand il devient un vrai membre, tu reçois une prime en points.</li>
         </ol>
         <span className="muted" style={{ fontSize: 12.5 }}>Tu retrouves cette page à tout moment dans le menu de ton compte (clique sur ton nom, en haut à gauche) : « 🎟️ Inviter un ami », et en haut du site sur « Invitations ».</span>
@@ -67,12 +78,31 @@ export default function Referrals() {
         </p>
         <div className="row" style={{ gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" onClick={create} disabled={busy || !data.quota.canCreate}>＋ Créer une invitation</button>
+          <button type="button" className="secondary" onClick={buy} disabled={busy || data.purchase.balance < data.purchase.cost} title="Une invitation de plus, payée avec tes points bonus (valable 7 jours)">🎁 Acheter une invitation · {data.purchase.cost.toLocaleString('fr-CA')} points</button>
+          <span className="muted">Ton solde : <strong>{data.purchase.balance.toLocaleString('fr-CA')} points</strong>{data.purchase.balance < data.purchase.cost ? ` (il t'en manque ${(data.purchase.cost - data.purchase.balance).toLocaleString('fr-CA')})` : ''}</span>
           <span className="muted">{data.quota.max === null ? `${data.quota.open} invitation${data.quota.open > 1 ? 's' : ''} ouverte${data.quota.open > 1 ? 's' : ''} (sans limite pour l'équipe)` : `${data.quota.open} / ${data.quota.max} invitations ouvertes (rang ${data.quota.rankLabel})`}</span>
           <span className="muted">Primes reçues : <strong>{data.totals.rewarded}</strong> · {data.totals.points} points · ce mois-ci {data.rewardedThisMonth}/{cfg.maxPerMonth}</span>
         </div>
-        {data.quota.max === 0 && <p className="muted" style={{ margin: 0, fontSize: 13 }}>Ton rang ne permet pas encore d'inviter : monte en rang, ou achète une invitation dans la <Link to="/bonus">boutique bonus</Link>.</p>}
+        {data.quota.max === 0 && <p className="muted" style={{ margin: 0, fontSize: 13 }}>Ton rang ne permet pas encore d'inviter : monte en rang, ou achète une invitation avec tes points bonus (bouton ci-dessus).</p>}
+        {data.quota.max !== null && data.quota.max > 0 && !data.quota.canCreate && <p className="muted" style={{ margin: 0, fontSize: 13 }}>Tu as atteint le nombre d'invitations ouvertes de ton rang : utilise-les, retires-en une, ou achètes-en une avec tes points bonus.</p>}
         {error && <span style={{ color: 'var(--danger)' }}>{error}</span>}
         {note && <span style={{ color: 'var(--success)' }}>{note}</span>}
+        {fresh && (
+          <div className="panel" style={{ display: 'grid', gap: 8, borderColor: 'var(--success)' }}>
+            <strong style={{ color: 'var(--success)' }}>✓ {fresh.bought ? 'Invitation achetée' : 'Invitation créée'} : partage le code ou le lien, comme tu préfères</strong>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="muted" style={{ minWidth: 60 }}>Code</span>
+              <code style={{ overflowWrap: 'anywhere', userSelect: 'all', flex: '1 1 260px' }}>{fresh.code}</code>
+              <button type="button" className="secondary" onClick={() => copyText(fresh.code, 'Code')}>📋 Copier le code</button>
+            </div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="muted" style={{ minWidth: 60 }}>Lien</span>
+              <code style={{ overflowWrap: 'anywhere', userSelect: 'all', flex: '1 1 260px' }}>{linkOf(fresh.code)}</code>
+              <button type="button" className="secondary" onClick={() => copyText(linkOf(fresh.code), 'Lien')}>📋 Copier le lien</button>
+            </div>
+            <span className="muted" style={{ fontSize: 12.5 }}>Valable 7 jours{fresh.expiresAt ? ` (jusqu'au ${new Date(fresh.expiresAt).toLocaleDateString('fr-CA')})` : ''}, une seule personne. Tu la retrouves plus bas dans « Mes invitations ».</span>
+          </div>
+        )}
       </div>
 
       <div className="panel" style={{ display: 'grid', gap: 8 }}>
@@ -80,13 +110,14 @@ export default function Referrals() {
         {data.codes.length === 0 ? <span className="muted">Aucune invitation pour l'instant.</span> : data.codes.map((c) => (
           <div key={c.id} className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
             <div style={{ minWidth: 0 }}>
-              <code style={{ overflowWrap: 'anywhere' }}>{c.code.slice(0, 8)}…{c.code.slice(-4)}</code>{' '}
+              <code style={{ overflowWrap: 'anywhere' }}>{c.status === 'open' ? c.code : `${c.code.slice(0, 8)}…${c.code.slice(-4)}`}</code>{' '}
               {c.status === 'open' && <span className="badge">ouverte{c.expiresAt ? ` · expire le ${new Date(c.expiresAt).toLocaleDateString('fr-CA')}` : ''}</span>}
               {c.status === 'used' && <span className="badge">utilisée{c.usedBy ? ` par ${c.usedBy}` : ''}</span>}
               {c.status === 'expired' && <span className="badge">expirée</span>}
             </div>
             {c.status === 'open' && (
               <div className="row" style={{ gap: 6 }}>
+                <button type="button" className="secondary" onClick={() => copyText(c.code, 'Code')}>📋 Copier le code</button>
                 <button type="button" className="secondary" onClick={() => copy(c)}>📋 Copier le lien</button>
                 <button type="button" className="secondary" onClick={() => revoke(c)} aria-label="Retirer">🗑️</button>
               </div>

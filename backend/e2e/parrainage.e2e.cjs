@@ -75,6 +75,7 @@ const daysAgo = (n) => new Date(Date.now() - n * 86400_000);
   const o3 = await call('GET', '/referrals', TP);
   check('les invitations ouvertes sont listées', o3.b.codes.filter((c) => c.status === 'open').length === 2 && o3.b.quota.canCreate === false);
   check('un autre membre ne peut pas retirer cette invitation', (await call('DELETE', `/referrals/invite/${i1.b.id}`, TO)).s === 404);
+  check('la page indique le prix d\'une invitation et le solde du membre', o3.b.purchase && o3.b.purchase.cost === 2000 && typeof o3.b.purchase.balance === 'number', JSON.stringify(o3.b.purchase));
   check('retirer une invitation libère une place', (await call('DELETE', `/referrals/invite/${i1.b.id}`, TP)).s === 200 && (await call('GET', '/referrals', TP)).b.quota.canCreate === true);
   await p.inviteCode.update({ where: { id: i2.b.id }, data: { used: true, useCount: 1 } });
   check('une invitation déjà utilisée ne se retire pas', (await call('DELETE', `/referrals/invite/${i2.b.id}`, TP)).s === 400);

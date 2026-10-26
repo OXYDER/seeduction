@@ -902,8 +902,8 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Inviter, c'est faire grandir Seeduction avec des gens de confiance, et être remercié quand ils s'installent.\n` +
         `\n` +
         `[b]Inviter quelqu'un[/b]\n` +
-        `1. Ouvre [b]🎟️ Inviter un ami[/b] (menu de ton compte : clique sur ton nom, en haut à gauche ; ou « Invitations » en haut du site) et clique sur [b]＋ Créer une invitation[/b] : le lien est copié, envoie-le à ton invité. Il est valable 7 jours et ne sert qu'une fois.\n` +
-        `2. Le nombre d'invitations ouvertes en même temps dépend de ton rang (Power User : 2, Élite : 5, Vétéran : 10, plus celles des dons). Tu peux aussi en acheter dans la [url=/bonus]boutique bonus[/url]. Tu retires une invitation non utilisée avec 🗑️.\n` +
+        `1. Ouvre [b]🎟️ Inviter un ami[/b] (menu de ton compte : clique sur ton nom, en haut à gauche ; ou « Invitations » en haut du site) et clique sur [b]＋ Créer une invitation[/b] : le [b]code[/b] et le [b]lien[/b] s'affichent, copie celui que tu préfères et envoie-le à ton invité. Il est valable 7 jours et ne sert qu'une fois.\n` +
+        `2. Le nombre d'invitations ouvertes en même temps dépend de ton rang (Power User : 2, Élite : 5, Vétéran : 10, plus celles des dons). Tu peux aussi en acheter directement sur cette page avec le bouton [b]🎁 Acheter une invitation[/b] (le prix en points bonus et ton solde y sont affichés ; c'est le même article que dans la [url=/bonus]boutique bonus[/url]). Tu retires une invitation non utilisée avec 🗑️.\n` +
         `\n` +
         `[b]La prime de parrainage[/b]\n` +
         `• Quand ton invité devient un vrai membre (par défaut : [b]14 jours[/b] d'ancienneté et le rang [b]Membre[/b]), tu reçois des [b]points bonus[/b] (500 par défaut), une seule fois par invité. Tu es prévenu dans la cloche.\n` +

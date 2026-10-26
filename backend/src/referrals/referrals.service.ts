@@ -5,7 +5,7 @@ import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { setSource } from '../common/utils/ledger';
-import { CLASS_LABELS, INVITE_QUOTA } from '../common/utils/economy';
+import { CLASS_LABELS, INVITE_QUOTA, SHOP_ITEMS } from '../common/utils/economy';
 import { CLASS_ORDER, DEFAULT_REFERRAL, type ReferralConfig, classAtLeast, inviteeProgress, monthStart, normalizeReferral } from '../common/utils/referral';
 
 const KEY = 'referral';
@@ -38,7 +38,7 @@ export class ReferralsService {
     const cfg = await this.config();
     const now = new Date();
     const [me, codes, invitees, rewardedThisMonth] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, memberClass: true, donorUntil: true, donorInvites: true } }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, memberClass: true, donorUntil: true, donorInvites: true, bonusPoints: true } }),
       this.prisma.inviteCode.findMany({ where: { createdById: userId, generic: false }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, code: true, used: true, expiresAt: true, createdAt: true, uses: { select: { userId: true }, take: 1 } } }),
       this.prisma.user.findMany({
         where: { invitedById: userId, parentId: null }, orderBy: { createdAt: 'desc' }, take: 200,
@@ -53,6 +53,8 @@ export class ReferralsService {
     return {
       config: { enabled: cfg.enabled, rewardPoints: cfg.rewardPoints, minDays: cfg.minDays, minClass: cfg.minClass, minClassLabel: CLASS_LABELS[cfg.minClass], maxPerMonth: cfg.maxPerMonth },
       quota: { open, max: quota, rankLabel: CLASS_LABELS[me.memberClass] ?? me.memberClass, canCreate: quota === null || open < quota },
+      // Achat d'une invitation avec les points bonus, sans passer par la boutique (même prix, même article)
+      purchase: { cost: SHOP_ITEMS.find((i) => i.id === 'invite')?.cost ?? 0, balance: me.bonusPoints },
       rewardedThisMonth,
       totals: { invitees: invitees.length, rewarded: invitees.filter((i) => i.referralReward > 0).length, points: invitees.reduce((s, i) => s + i.referralReward, 0) },
       codes: codes.map((c) => ({ id: c.id, code: c.code, status: c.used ? 'used' : c.expiresAt && c.expiresAt <= now ? 'expired' : 'open', expiresAt: c.expiresAt, createdAt: c.createdAt, usedBy: c.uses[0] ? names.get(c.uses[0].userId) ?? null : null })),
