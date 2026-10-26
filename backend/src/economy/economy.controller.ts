@@ -39,6 +39,13 @@ export class EconomyController {
     return this.economy.seedObligations(accountOf(req));
   }
 
+  /** Tous les torrents du membre (seeds, téléchargements en cours et terminés, envois) en une seule liste filtrable et triable côté page. */
+  @UseGuards(JwtAuthGuard)
+  @Get('my-torrents')
+  myTorrents(@Request() req: any) {
+    return this.economy.myTorrents(accountOf(req));
+  }
+
   /** Page « Mon activité » : seeds, téléchargements en cours, historique des téléchargements terminés et envois du membre. */
   @UseGuards(JwtAuthGuard)
   @Get('activity')

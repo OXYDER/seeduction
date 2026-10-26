@@ -976,7 +976,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Seeduction te montre ta situation et celle du site de plusieurs façons.\n\n` +
         `[b]Pour toi[/b]\n` +
         `• L'[b]en-tête[/b] : ratio, upload, téléchargé, points bonus, ton différentiel (upload moins téléchargé), tes seeds 🌱 et tes hit & run.\n` +
-        `• [b]📈 Mon activité[/b] (menu du compte) : tes torrents en seed, tes téléchargements en cours avec leur progression, l'historique de tes téléchargements et de tes envois, tous présentés en cartes avec une barre de progression (le même style que [b]🌱 Mes seeds[/b]). Un clic sur le 🌱 en haut du site ouvre [b]Mes seeds et téléchargements[/b], avec l'obligation de seed de chaque torrent.\n` +
+        `• [b]📈 Mes torrents[/b] (menu du compte) : tous tes torrents en une seule liste — en seed, en téléchargement avec leur progression, terminés, et tes envois. Tu peux [b]chercher, filtrer[/b] (état, catégorie, qualité, taille, dates), [b]trier[/b] (date, nom, taille, catégorie, reçu, envoyé, ratio, temps de seed...), choisir l'affichage en [b]cartes[/b] ou en [b]liste[/b] avec les colonnes que tu veux, et [b]exporter en CSV[/b] ; tes choix sont retenus. C'est le même style que [b]🌱 Mes seeds[/b] (cartes avec barre de progression). Un clic sur le 🌱 en haut du site ouvre [b]Mes seeds et téléchargements[/b], avec l'obligation de seed de chaque torrent.\n` +
         `• [b]🌱 Mes seeds[/b] : ce que tu seedes, depuis combien de temps, ton ratio sur chaque torrent, et l'état de ton obligation (terminée ✅, en cours ⏳, à relancer 🟠, hit & run 🔴).\n` +
         `• Ton profil : le graphique de l'évolution de ton ratio.\n\n` +
         `[b]Pour tout le site : la page Stats[/b]\n` +

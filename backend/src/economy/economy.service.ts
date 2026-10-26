@@ -297,6 +297,70 @@ export class EconomyService {
   }
 
   /**
+   * Tous les torrents du membre réunis en UNE liste (un torrent = une ligne, même s'il est à la fois terminé, en seed et à lui) : ce qu'il seede ou télécharge
+   * en ce moment, tout ce qu'il a terminé, et ses propres envois, avec la catégorie, les dates, les volumes échangés et l'état de l'obligation de seed.
+   * La page filtre, trie et choisit ses colonnes elle-même : on renvoie tout (plafonné) plutôt que de multiplier les requêtes.
+   */
+  async myTorrents(userId: string) {
+    const fresh = new Date(Date.now() - SEED_FRESH_MS);
+    const pick = { id: true, name: true, size: true, coverImage: true, uploaderId: true, createdAt: true, status: true, resolution: true, language: true, seeders: true, leechers: true, completedCount: true, category: { select: { id: true, name: true, parent: { select: { id: true, name: true } } } } } as const;
+    const [user, peers, snatches, uploads] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId }, select: { uploaded: true, downloaded: true } }),
+      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh } }, select: { torrentId: true, isSeeder: true, left: true, uploaded: true, downloaded: true, lastAnnounceAt: true, torrent: { select: pick } } }),
+      this.prisma.snatch.findMany({ where: { userId }, orderBy: { completedAt: 'desc' }, take: 3000, include: { torrent: { select: pick } } }),
+      this.prisma.torrent.findMany({ where: { uploaderId: userId }, orderBy: { createdAt: 'desc' }, take: 1500, select: pick }),
+    ]);
+    type T = (typeof uploads)[number];
+    const rows = new Map<string, { t: T; live?: { seeding: boolean; leeching: boolean; left: number; up: number; down: number; last: Date }; snatch?: (typeof snatches)[number]; mine: boolean }>();
+    const slot = (t: T) => { let r = rows.get(t.id); if (!r) { r = { t, mine: false }; rows.set(t.id, r); } return r; };
+    for (const p of peers) {
+      const r = slot(p.torrent as T);
+      const l = r.live ?? { seeding: false, leeching: false, left: Number.MAX_SAFE_INTEGER, up: 0, down: 0, last: p.lastAnnounceAt };
+      if (p.isSeeder) l.seeding = true; else l.leeching = true;
+      l.left = Math.min(l.left, Number(p.left)); l.up += Number(p.uploaded); l.down += Number(p.downloaded);
+      if (p.lastAnnounceAt > l.last) l.last = p.lastAnnounceAt;
+      r.live = l;
+    }
+    for (const s of snatches) { const r = slot(s.torrent as T); if (!r.snatch) r.snatch = s; } // le plus récent par torrent
+    for (const t of uploads) slot(t).mine = true;
+
+    const flowIds = [...rows.keys()];
+    const flows = flowIds.length ? await this.prisma.userTorrentFlow.groupBy({ by: ['torrentId'], where: { userId, torrentId: { in: flowIds } }, _sum: { up: true, down: true }, _min: { day: true } }) : [];
+    const flowOf = new Map(flows.map((f) => [f.torrentId, f]));
+    const required = ECONOMY.hnrSeedHours * 3600;
+
+    const items = [...rows.values()].map(({ t, live, snatch, mine }) => {
+      const size = Number(t.size);
+      const f = flowOf.get(t.id);
+      const own = mine || t.uploaderId === userId;
+      const received = f ? Number(f._sum.down ?? 0n) : live ? live.down : null;
+      const sent = f ? Number(f._sum.up ?? 0n) : live ? live.up : null;
+      const leechingNow = !!live?.leeching && !live.seeding;
+      const state: 'done' | 'progress' | 'idle' | 'hnr' | 'none' = own || !snatch ? 'none' : snatch.satisfied ? 'done' : snatch.hnr ? 'hnr' : live?.seeding ? 'progress' : 'idle';
+      return {
+        torrentId: t.id, name: t.name, coverImage: t.coverImage, size,
+        category: t.category ? { id: t.category.id, name: t.category.name, parent: t.category.parent ? { id: t.category.parent.id, name: t.category.parent.name } : null } : null,
+        resolution: t.resolution, language: t.language, status: t.status, seeders: t.seeders, leechers: t.leechers, completedCount: t.completedCount,
+        addedAt: t.createdAt, // date d'ajout du torrent sur le site
+        startedAt: snatch?.startedAt ?? null, firstDay: f?._min.day ?? null, completedAt: snatch?.completedAt ?? null,
+        seedingNow: !!live?.seeding, leechingNow, completed: !!snatch, own,
+        progress: leechingNow && size > 0 ? Math.max(0, Math.min(1, 1 - live!.left / size)) : snatch || live?.seeding ? 1 : 0,
+        lastAnnounceAt: live?.last ?? null,
+        receivedBytes: received, sentBytes: sent,
+        ratio: received && received > 0 ? Math.round(((sent ?? 0) / received) * 100) / 100 : null,
+        seedSeconds: snatch?.seedSeconds ?? 0, requiredSeconds: required, satisfied: snatch?.satisfied ?? false,
+        state, hnr: !!snatch && snatch.hnr && !snatch.satisfied, hnrResolved: !!snatch && snatch.hnr && snatch.satisfied,
+      };
+    });
+    items.sort((a, b) => (b.completedAt ?? b.addedAt).getTime() - (a.completedAt ?? a.addedAt).getTime());
+    return {
+      totals: { uploadedBytes: Number(user?.uploaded ?? 0), downloadedBytes: Number(user?.downloaded ?? 0) },
+      rules: { hnrSeedHours: ECONOMY.hnrSeedHours },
+      items,
+    };
+  }
+
+  /**
    * Page « Mes seeds » : ce que le membre seede en ce moment et ce qu'il a téléchargé, avec le temps de seed cumulé et
    * l'état de l'obligation de partage (terminée, en cours, à relancer, hit & run).
    */

@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import Loading from '../components/Loading';
 import ShareCard, { LeechCard, type Leech } from '../components/ShareCard';
+import { categoryOptions, type MyTorrent } from '../lib/myTorrents';
 
 interface Item {
   torrentId: string; name: string; coverImage: string | null; size: number; seedingNow: boolean; own: boolean; cleared: boolean;
@@ -20,6 +21,8 @@ interface Data {
 }
 interface Totals { seeding: number; leeching: number; completed: number; uploads: number; uploadedBytes: number; downloadedBytes: number; seedingBytes: number }
 type Tab = 'now' | 'leeching' | 'todo' | 'done' | 'all';
+type Sort = 'state' | 'date' | 'name' | 'size' | 'category' | 'seedTime' | 'ratio';
+const SORTS: [Sort, string][] = [['state', 'État (à régler d\'abord)'], ['date', 'Date de téléchargement'], ['name', 'Nom'], ['size', 'Taille'], ['category', 'Catégorie'], ['seedTime', 'Temps de seed'], ['ratio', 'Ratio']];
 
 const fmtH = (secs: number) => (secs >= 3600 ? `${Math.round(secs / 360) / 10} h`.replace('.', ',') : `${Math.max(0, Math.round(secs / 60))} min`);
 const fmtRatio = (n: number) => String(n).replace('.', ',');
@@ -31,23 +34,55 @@ export default function MySeeds() {
   const [live, setLive] = useState<{ leeching: Leech[]; totals: Totals } | null>(null);
   const [tab, setTab] = useState<Tab>('now');
   const [error, setError] = useState('');
+  const [meta, setMeta] = useState<Map<string, MyTorrent>>(new Map()); // catégorie et dates de chaque torrent
+  const [q, setQ] = useState('');
+  const [category, setCategory] = useState('');
+  const [sort, setSort] = useState<Sort>('state');
+  const [dir, setDir] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     const load = () => {
       api.get('/bonus/my-seeds').then((r) => setData(r.data)).catch(() => setError('Impossible de charger tes seeds'));
       api.get('/bonus/activity').then((r) => setLive({ leeching: r.data.leeching, totals: r.data.totals })).catch(() => undefined);
+      api.get('/bonus/my-torrents').then((r) => setMeta(new Map((r.data.items as MyTorrent[]).map((m) => [m.torrentId, m])))).catch(() => undefined);
     };
     load();
     const t = setInterval(() => { if (!document.hidden) load(); }, 2 * 60_000);
     return () => clearInterval(t);
   }, []);
 
+  const cats = useMemo(() => categoryOptions([...meta.values()]), [meta]);
   if (!data) return <Loading error={error} />;
   const { rules, counts } = data;
   const leeching = live?.leeching ?? [];
   const tot = live?.totals;
   const ratio = tot ? (tot.downloadedBytes > 0 ? (tot.uploadedBytes / tot.downloadedBytes).toFixed(2) : '∞') : null;
-  const shown = data.items.filter((i) => (tab === 'now' ? i.seedingNow : tab === 'todo' ? ['progress', 'idle', 'hnr'].includes(i.state) : tab === 'done' ? i.state === 'done' : true));
+  const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const filtered = data.items.filter((i) => {
+    if (!(tab === 'now' ? i.seedingNow : tab === 'todo' ? ['progress', 'idle', 'hnr'].includes(i.state) : tab === 'done' ? i.state === 'done' : true)) return false;
+    const m = meta.get(i.torrentId);
+    if (q.trim() && !plain(i.name).includes(plain(q.trim())) && !plain(m?.category?.name ?? '').includes(plain(q.trim()))) return false;
+    if (category && m?.category?.id !== category && m?.category?.parent?.id !== category) return false;
+    return true;
+  });
+  // « État » garde l'ordre du serveur (à régler d'abord) ; les autres choix trient la liste dans le sens voulu.
+  const keyOf = (i: Item): number | string => {
+    const m = meta.get(i.torrentId);
+    switch (sort) {
+      case 'date': return new Date(i.completedAt ?? m?.addedAt ?? 0).getTime();
+      case 'name': return i.name.toLowerCase();
+      case 'size': return i.size;
+      case 'category': return `${m?.category?.parent?.name ?? m?.category?.name ?? ''} ${m?.category?.name ?? ''}`.toLowerCase();
+      case 'seedTime': return i.seedSeconds;
+      case 'ratio': return i.ratio;
+      default: return 0;
+    }
+  };
+  const shown = sort === 'state' ? filtered : [...filtered].sort((a, b) => {
+    const x = keyOf(a), y = keyOf(b);
+    const c = typeof x === 'string' ? x.localeCompare(String(y), 'fr') : (x as number) - (y as number);
+    return dir === 'asc' ? c : -c;
+  });
   const TABS: [Tab, string][] = [['now', `🌱 En seed maintenant (${counts.seeding})`], ['leeching', `⬇️ Téléchargements en cours (${leeching.length})`], ['todo', `⏳ Obligation à terminer (${counts.progress})`], ['done', `✅ Obligation terminée (${counts.done})`], ['all', `Tout (${data.items.length})`]];
 
   return (
@@ -55,7 +90,7 @@ export default function MySeeds() {
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <h1 style={{ margin: 0 }}>🌱 Mes seeds et téléchargements</h1>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <Link to="/activity" className="secondary" style={{ padding: '6px 12px', borderRadius: 8 }}>📈 Mon activité (terminés et envois)</Link>
+          <Link to="/activity" className="secondary" style={{ padding: '6px 12px', borderRadius: 8 }}>📈 Mes torrents (terminés, envois, filtres)</Link>
           <Link to="/hit-and-run" className="secondary" style={{ padding: '6px 12px', borderRadius: 8 }}>⚠️ Hit & run</Link>
         </div>
       </div>
@@ -79,6 +114,26 @@ export default function MySeeds() {
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         {TABS.map(([k, label]) => <button key={k} type="button" className={`secondary${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>{label}</button>)}
       </div>
+
+      {tab !== 'leeching' && (
+        <div className="panel row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔎 Chercher (nom, catégorie)" style={{ flex: '1 1 220px' }} />
+          <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: 'auto' }} title="Catégorie">
+            <option value="">Toutes les catégories</option>
+            {cats.map((g) => (
+              <optgroup key={g.id} label={g.name}>
+                <option value={g.id}>{g.name} (tout) — {g.count}</option>
+                {g.children.map((c) => <option key={c.id} value={c.id}>{c.name} — {c.count}</option>)}
+              </optgroup>
+            ))}
+          </select>
+          <label className="row" style={{ gap: 6, fontSize: 13 }}>Trier par
+            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} style={{ width: 'auto' }}>{SORTS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}</select>
+          </label>
+          {sort !== 'state' && <button type="button" className="secondary" style={{ padding: '3px 10px' }} onClick={() => setDir(dir === 'asc' ? 'desc' : 'asc')}>{dir === 'asc' ? '↑ Croissant' : '↓ Décroissant'}</button>}
+          <Link to="/activity" className="muted" style={{ marginLeft: 'auto', fontSize: 13 }}>Plus de filtres, dates, colonnes et export CSV : Mes torrents →</Link>
+        </div>
+      )}
 
       {tab === 'leeching' ? (
         leeching.length === 0

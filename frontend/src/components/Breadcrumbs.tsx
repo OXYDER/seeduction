@@ -45,7 +45,7 @@ const NODES: Node[] = [
   { path: '/wiki', label: 'Wiki' },
   { path: '/wiki/:slug', label: 'Article', parent: '/wiki' },
   { path: '/bonus', label: 'Points bonus' },
-  { path: '/activity', label: 'Mon activité' },
+  { path: '/activity', label: 'Mes torrents' },
   { path: '/recap', label: 'Mon récap du mois' },
   { path: '/canadiens-en-direct', label: 'Canadiens en direct' },
   { path: '/series', label: 'Mes séries suivies' },
