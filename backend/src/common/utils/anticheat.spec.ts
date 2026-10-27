@@ -1,4 +1,4 @@
-import { analyseAnnounce, analyseClient, collusionPoints, expectedTransfer, imbalancePoints, ipNetwork, learnKindWeights, levelOf, mayAlert, normalizeAntiCheatConfig, passkeySharingPoints, scoreEvents, surgePoints, DEFAULT_ANTICHEAT } from './anticheat';
+import { contextWeight, explainContext, analyseAnnounce, analyseClient, collusionPoints, expectedTransfer, imbalancePoints, ipNetwork, learnKindWeights, levelOf, mayAlert, normalizeAntiCheatConfig, passkeySharingPoints, scoreEvents, surgePoints, DEFAULT_ANTICHEAT } from './anticheat';
 
 const GB = 1024 ** 3;
 const MB = 1024 ** 2;
@@ -257,5 +257,42 @@ describe('transferts entre comptes liés', () => {
     expect(collusionPoints(6 * GB, 0)).toBeGreaterThan(0);
     expect(collusionPoints(50 * GB, 0)).toBeGreaterThan(collusionPoints(6 * GB, 0));
     expect(collusionPoints(2 * GB, 0)).toBe(0);
+  });
+});
+
+describe('contexte : freeleech, torrents à soi et sorties récentes', () => {
+  it('un torrent récent ou publié par le membre pèse moins dans les analyses', () => {
+    expect(contextWeight(false, 10)).toBe(1);
+    expect(contextWeight(false, 1)).toBeLessThan(1);
+    expect(contextWeight(true, 30)).toBeLessThan(1);
+  });
+
+  const none = { upBytes: 0, downBytes: 0, gotBytes: 0, upOwn: 0, upHot: 0, gotFreeEvent: 0, gotFreeTorrent: 0, freeleechTitles: [], publishedTorrents: 0 };
+
+  it('pas de volumes : rien à comparer', () => {
+    expect(explainContext(none).verdict).toBe('NODATA');
+  });
+
+  it('un membre qui a surtout profité d’un freeleech est « plausiblement explicable »', () => {
+    const r = explainContext({ ...none, upBytes: 20 * GB, downBytes: 5 * GB, gotBytes: 100 * GB, gotFreeEvent: 90 * GB, freeleechTitles: ['Freeleech-O-Ween'] });
+    expect(r.verdict).toBe('EXPLAINED');
+    expect(r.notes.some((n) => /Freeleech-O-Ween/.test(n.text))).toBe(true);
+  });
+
+  it('un membre qui publie beaucoup de nouveaux torrents est expliqué par ses propres torrents', () => {
+    const r = explainContext({ ...none, upBytes: 200 * GB, upOwn: 150 * GB, upHot: 30 * GB, gotBytes: 10 * GB, publishedTorrents: 12 });
+    expect(r.verdict).toBe('EXPLAINED');
+    expect(r.notes[0].text).toMatch(/12 torrents/);
+  });
+
+  it('rien dans le contexte : le verdict reste « aucun »', () => {
+    const r = explainContext({ ...none, upBytes: 200 * GB, gotBytes: 10 * GB });
+    expect(r.verdict).toBe('NONE');
+    expect(r.notes).toEqual([]);
+  });
+
+  it('en partie : une part seulement vient du contexte', () => {
+    const r = explainContext({ ...none, upBytes: 100 * GB, upHot: 30 * GB, gotBytes: 10 * GB });
+    expect(r.verdict).toBe('PARTLY');
   });
 });

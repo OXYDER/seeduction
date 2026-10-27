@@ -54,15 +54,18 @@ const today = () => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d;
   check('adresse partagée par deux inconnus : petit indice seulement', (await events(pairs.plain[0].id, 'SHARED_IP')).every((e) => e.points <= 5) && (await events(pairs.plain[0].id, 'SHARED_IP')).length === 1);
 
   // ---------- envolée du ratio : seul l'upload sans receveur compte
-  const t3 = await tor('conf'), t4 = await tor('unconf');
-  const s1 = await u('conf'), r1 = await u('recv'), s2 = await u('unconf'), bot = await u('bot', { profileType: 'BOT' });
+  const t3 = await tor('conf'), t4 = await tor('unconf', { createdAt: new Date(Date.now() - 10 * 86400_000) }), t5 = await tor('hot');
+  const s1 = await u('conf'), r1 = await u('recv'), s2 = await u('unconf'), s3 = await u('hot'), bot = await u('bot', { profileType: 'BOT' });
   await flow(s1.id, t3.id, 150 * GB, 0); await flow(r1.id, t3.id, 0, 150 * GB);
   await flow(s2.id, t4.id, 150 * GB, 0);
+  await flow(s3.id, t5.id, 150 * GB, 0); // même volume, mais sur une sortie toute récente
   await flow(bot.id, t4.id, 150 * GB, 0);
   await an.ratioSurge(100);
   check('150 Go envoyés et reçus par un autre membre (sortie très demandée) : confirmé, aucune alerte', (await events(s1.id, 'RATIO_SURGE')).length === 0);
   const surge = await events(s2.id, 'RATIO_SURGE');
   check('150 Go envoyés sans aucun receveur sur un compte récent : signalé', surge.length === 1 && surge[0].details.unconfirmedGb >= 100, JSON.stringify(surge.map((e) => e.details)));
+  const hot = await events(s3.id, 'RATIO_SURGE');
+  check('même volume sur une sortie récente (très demandée) : signalé mais pèse moins', hot.length === 1 && surge.length === 1 && hot[0].points < surge[0].points && hot[0].details.unconfirmedGb < surge[0].details.unconfirmedGb, JSON.stringify([hot.map((e) => [e.points, e.details.unconfirmedGb]), surge.map((e) => [e.points, e.details.unconfirmedGb])]));
   check('le robot du site n\'est jamais examiné', (await events(bot.id)).length === 0);
 
   // ---------- passkey sur plusieurs réseaux

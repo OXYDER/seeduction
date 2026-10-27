@@ -397,3 +397,53 @@ export function imbalancePoints(attributableGb: number): number {
   if (attributableGb < 1) return 0;
   return Math.min(45, Math.round(12 + 6 * Math.log2(1 + attributableGb)));
 }
+
+// ------------------------------------------------------------------ contexte : ce qui explique des chiffres élevés sans triche
+
+/** Un envoi sur un torrent publié depuis moins de 3 jours, ou sur son propre torrent, est très demandé : les receveurs ne sont pas tous suivis et les volumes sont normalement élevés. */
+export const HOT_DAYS = 3;
+export const HOT_WEIGHT = 0.4;
+
+/** Poids d'un volume d'envoi dans les analyses : réduit pour un torrent récent ou à soi (voir HOT_WEIGHT), plein sinon. */
+export function contextWeight(own: boolean, torrentAgeDays: number): number {
+  return own || torrentAgeDays < HOT_DAYS ? HOT_WEIGHT : 1;
+}
+
+export interface FlowContext {
+  /** Volumes des 30 derniers jours (octets). */
+  upBytes: number; downBytes: number; gotBytes: number;
+  /** Part envoyée sur ses propres torrents, sur des torrents de moins de 3 jours (hors les siens). */
+  upOwn: number; upHot: number;
+  /** Part reçue pendant un freeleech du site (jours couverts) ou sur des torrents freeleech. */
+  gotFreeEvent: number; gotFreeTorrent: number;
+  /** Titres des freeleech du site qui ont couvert la période. */
+  freeleechTitles: string[];
+  /** Nombre de torrents que le membre a publiés dans la période. */
+  publishedTorrents: number;
+}
+
+export interface ContextNote { icon: string; text: string }
+export interface ContextReport { verdict: 'EXPLAINED' | 'PARTLY' | 'NONE' | 'NODATA'; headline: string; notes: ContextNote[]; shares: { ownUp: number; hotUp: number; freeGot: number } }
+
+const pct = (a: number, b: number) => (b > 0 ? Math.round((100 * Math.min(a, b)) / b) : 0);
+const gbText = (n: number) => `${Math.round((n / GB) * 10) / 10} Go`;
+
+/**
+ * Ce que l'équipe doit regarder AVANT de conclure : quelle part des chiffres du membre vient d'un freeleech du site, de ses propres torrents ou de sorties récentes (très demandées).
+ * Un membre dont l'essentiel du volume s'explique ainsi n'est pas présenté comme un tricheur : « plausiblement explicable ».
+ */
+export function explainContext(c: FlowContext): ContextReport {
+  const notes: ContextNote[] = [];
+  const ownUp = pct(c.upOwn, c.upBytes), hotUp = pct(c.upHot, c.upBytes);
+  const freeGot = pct(Math.max(c.gotFreeEvent, c.gotFreeTorrent), c.gotBytes);
+  if (c.upBytes <= 0 && c.gotBytes <= 0) return { verdict: 'NODATA', headline: 'Pas de volumes enregistrés sur les 30 derniers jours : rien à comparer.', notes, shares: { ownUp: 0, hotUp: 0, freeGot: 0 } };
+  if (c.publishedTorrents > 0 || ownUp >= 20) notes.push({ icon: '📤', text: `A publié ${c.publishedTorrents} torrent${c.publishedTorrents > 1 ? 's' : ''} sur la période : ${ownUp} % de son envoi (${gbText(c.upOwn)}) vient de ses propres torrents. Le premier seed d'un torrent qu'on publie est naturellement très actif.` });
+  if (hotUp >= 20) notes.push({ icon: '🆕', text: `${hotUp} % de son envoi (${gbText(c.upHot)}) est sur des torrents de moins de ${HOT_DAYS} jours : une sortie récente est très demandée, les gros volumes y sont normaux.` });
+  if (freeGot >= 20) notes.push({ icon: '🎉', text: `${freeGot} % de ce qu'il a reçu (${gbText(Math.max(c.gotFreeEvent, c.gotFreeTorrent))}) l'a été pendant un freeleech${c.freeleechTitles.length ? ` (${c.freeleechTitles.slice(0, 3).join(', ')})` : ''} ou sur des torrents freeleech : télécharger beaucoup à ce moment-là est exactement ce que le freeleech encourage.` });
+  const explained = Math.max(ownUp + hotUp, freeGot);
+  const verdict: ContextReport['verdict'] = notes.length === 0 ? 'NONE' : explained >= 60 ? 'EXPLAINED' : 'PARTLY';
+  const headline = verdict === 'EXPLAINED' ? 'Plausiblement explicable : l\'essentiel des volumes vient d\'un freeleech, de ses propres torrents ou de sorties récentes.'
+    : verdict === 'PARTLY' ? 'En partie explicable : une partie des volumes vient d\'un freeleech, de ses propres torrents ou de sorties récentes ; le reste mérite un coup d\'œil.'
+    : 'Rien dans le contexte n\'explique ces volumes (ni freeleech, ni torrents récents ou publiés par lui).';
+  return { verdict, headline, notes, shares: { ownUp, hotUp, freeGot } };
+}

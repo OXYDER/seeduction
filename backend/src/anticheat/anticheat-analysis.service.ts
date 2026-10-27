@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { AntiCheatService } from './anticheat.service';
-import { CheatSignal, collusionPoints, expectedTransfer, imbalancePoints, ipNetwork, passkeySharingPoints, surgePoints } from '../common/utils/anticheat';
+import { CheatSignal, HOT_WEIGHT, collusionPoints, contextWeight, expectedTransfer, imbalancePoints, ipNetwork, passkeySharingPoints, surgePoints } from '../common/utils/anticheat';
 
 const GB = 1024 ** 3;
 /** Au-delà de ce nombre de comptes sur une même adresse, c'est un VPN, un partage de connexion d'opérateur ou une résidence : on n'en tire rien. */
@@ -108,6 +108,8 @@ export class AntiCheatAnalysisService {
       SELECT f."userId", f."torrentId", SUM(f.up)::float8 AS up FROM "UserTorrentFlow" f JOIN "User" u ON u.id = f."userId"
       WHERE f.day >= current_date - 1 AND f."torrentId" IN (${Prisma.join(ids)}) AND u."profileType" <> 'BOT' GROUP BY f."userId", f."torrentId" HAVING SUM(f.up) >= 1e9`;
     const byTorrent = new Map(torrents.map((t) => [t.torrentId, t]));
+    // Torrents récents ou publiés par l'envoyeur : très demandés, les receveurs ne sont pas tous suivis : l'écart pèse moins (voir contextWeight).
+    const meta = new Map((await this.prisma.torrent.findMany({ where: { id: { in: ids } }, select: { id: true, createdAt: true, uploaderId: true } })).map((t) => [t.id, t]));
     const perTorrent = new Map<string, { userId: string; up: number }[]>();
     for (const r of rows) perTorrent.set(r.torrentId, [...(perTorrent.get(r.torrentId) ?? []), { userId: r.userId, up: r.up }]);
     let n = 0;
@@ -120,11 +122,14 @@ export class AntiCheatAnalysisService {
         if (remaining <= 0) break;
         const attributable = Math.min(r.up, remaining);
         remaining -= attributable;
-        const points = imbalancePoints(attributable / GB);
+        const m = meta.get(torrentId);
+        const own = !!m && m.uploaderId === r.userId;
+        const w = contextWeight(own, m ? (Date.now() - m.createdAt.getTime()) / 86_400_000 : 99);
+        const points = Math.round(imbalancePoints(attributable / GB) * w);
         if (points <= 0) continue;
         n += await this.emit(r.userId, {
           kind: 'SWARM_IMBALANCE', points, torrentScoped: true,
-          details: { torrentId, upGb: round(r.up / GB), swarmUpGb: round(t.up / GB), swarmReceivedGb: round(t.down / GB), attributableGb: round(attributable / GB) },
+          details: { torrentId, upGb: round(r.up / GB), swarmUpGb: round(t.up / GB), swarmReceivedGb: round(t.down / GB), attributableGb: round(attributable / GB), ...(w < 1 ? { context: [own ? 'son propre torrent' : 'sortie récente'], reducedTo: `${Math.round(w * 100)} %` } : {}) },
         }, torrentId);
       }
     }
@@ -144,10 +149,10 @@ export class AntiCheatAnalysisService {
       )
       SELECT f."userId", u."createdAt",
         SUM(f.up) FILTER (WHERE f.day >= current_date - 1)::float8 AS recent,
-        COALESCE(SUM(f.up * (1 - LEAST(1, tor.down * 1.15 / NULLIF(tor.up, 0)))) FILTER (WHERE f.day >= current_date - 1), 0)::float8 AS unconfirmed,
+        COALESCE(SUM(f.up * (1 - LEAST(1, tor.down * 1.15 / NULLIF(tor.up, 0))) * (CASE WHEN tt."uploaderId" = f."userId" OR tt."createdAt" > now() - interval '3 days' THEN ${HOT_WEIGHT}::float8 ELSE 1 END)) FILTER (WHERE f.day >= current_date - 1), 0)::float8 AS unconfirmed,
         COALESCE(SUM(f.up) FILTER (WHERE f.day < current_date - 1), 0)::float8 AS older,
         COUNT(DISTINCT f.day) FILTER (WHERE f.day < current_date - 1)::int AS days
-      FROM "UserTorrentFlow" f JOIN "User" u ON u.id = f."userId" LEFT JOIN tor ON tor."torrentId" = f."torrentId"
+      FROM "UserTorrentFlow" f JOIN "User" u ON u.id = f."userId" LEFT JOIN tor ON tor."torrentId" = f."torrentId" LEFT JOIN "Torrent" tt ON tt.id = f."torrentId"
       WHERE f.day >= current_date - 30 AND u."profileType" <> 'BOT'
       GROUP BY f."userId", u."createdAt"
       HAVING SUM(f.up) FILTER (WHERE f.day >= current_date - 1) >= ${surgeGb * GB}`;

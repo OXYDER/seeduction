@@ -29,6 +29,7 @@ interface Detail {
   linked: { id: string; username: string; status: string; createdAt: string; ips: string[]; lastSeenAt: string }[];
   clients: { client: string; version: string | null; userAgent: string | null; ip: string; torrent: { id: string; name: string }; isSeeder: boolean; lastAnnounceAt: string }[];
   flow: { torrent: { id: string; name: string }; up: number; down: number; got: number; freeleech?: boolean; doubleUpload?: boolean }[];
+  context?: { verdict: 'EXPLAINED' | 'PARTLY' | 'NONE' | 'NODATA'; headline: string; notes: { icon: string; text: string }[]; shares: { ownUp: number; hotUp: number; freeGot: number } };
   privileges?: { credited: { uploaded: number; downloaded: number }; organic35d: { uploaded: number; downloaded: number; acquired: number }; accountFreeleechUntil: string | null; siteFreeleech: boolean; siteDoubleUpload: boolean; fastLine: boolean; welcomeUploadGb: number; accountDays: number };
 }
 
@@ -267,6 +268,15 @@ export default function AdminAntiCheat() {
               {detail.case ? <div style={{ textAlign: 'right' }}><LevelBadge level={detail.case.level} big /><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>score {Math.round(detail.case.score)} · confiance {detail.case.confidence} % · {STATUS_LABEL[detail.case.status]}</div></div> : <span className="muted">Aucun dossier : rien de suspect enregistré.</span>}
               <button type="button" className="secondary" onClick={close} aria-label="Fermer">✕</button>
             </div>
+
+            {detail.context && detail.context.verdict !== 'NODATA' && (
+              <div style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, background: detail.context.verdict === 'NONE' ? 'rgba(248,113,113,0.07)' : 'rgba(52,211,153,0.09)', borderLeft: `3px solid ${detail.context.verdict === 'NONE' ? '#f87171' : '#34d399'}` }}>
+                <strong>{detail.context.verdict === 'NONE' ? '🔎 Contexte : rien ne l’explique' : detail.context.verdict === 'EXPLAINED' ? '✅ Contexte : plausiblement explicable' : '🟡 Contexte : en partie explicable'}</strong>
+                <div className="muted" style={{ marginTop: 4, lineHeight: 1.6 }}>{detail.context.headline}</div>
+                {detail.context.notes.map((n, i) => <div key={i} className="muted" style={{ marginTop: 4, lineHeight: 1.6 }}>{n.icon} {n.text}</div>)}
+                <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>À regarder avant de conclure : les envois sur un torrent récent ou à lui comptent déjà moins dans les analyses, mais un freeleech ou une grosse publication peuvent encore faire monter un dossier. Si le contexte explique l'essentiel, classe-le « innocenté » : le système apprend de ces choix.</div>
+              </div>
+            )}
 
             {detail.privileges && (
               <div style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, background: 'rgba(125,211,252,0.07)', borderLeft: '3px solid #7dd3fc' }}>

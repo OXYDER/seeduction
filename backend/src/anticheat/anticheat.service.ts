@@ -8,7 +8,7 @@ import { parsePeerClient } from '../common/utils/peer-client';
 import { ECONOMY } from '../common/utils/economy';
 import {
   AnnounceCtx, AntiCheatConfig, CHEAT_FAMILY_LABELS, CHEAT_KINDS, CheatLevel, CheatSignal, LEVEL_ORDER, analyseAnnounce, ctxLabels, kindLabel, learnKindWeights, levelIndex, mayAlert, normalizeAntiCheatConfig,
-  normalizeIp, scoreEvents, WINDOW_DAYS,
+  normalizeIp, scoreEvents, WINDOW_DAYS, HOT_DAYS, explainContext,
 } from '../common/utils/anticheat';
 
 const SETTING_KEY = 'anticheat';
@@ -375,6 +375,24 @@ export class AntiCheatService {
       linked.set(s.userId, cur);
     }
 
+    // Contexte des 30 derniers jours : ce qui explique des chiffres élevés sans triche (freeleech du site, ses propres torrents, sorties récentes).
+    const ctxRows = await this.prisma.$queryRaw<{ up: number; down: number; got: number; up_own: number; up_hot: number; got_event: number; got_torrent: number }[]>`
+      SELECT COALESCE(SUM(f.up), 0)::float8 AS up, COALESCE(SUM(f.down), 0)::float8 AS down, COALESCE(SUM(f.got), 0)::float8 AS got,
+        COALESCE(SUM(f.up) FILTER (WHERE t."uploaderId" = f."userId"), 0)::float8 AS up_own,
+        COALESCE(SUM(f.up) FILTER (WHERE t."uploaderId" <> f."userId" AND f.day <= t."createdAt"::date + ${HOT_DAYS}::int), 0)::float8 AS up_hot,
+        COALESCE(SUM(f.got) FILTER (WHERE EXISTS (SELECT 1 FROM "FreeleechEvent" e WHERE f.day >= e."startsAt"::date AND f.day <= e."endsAt"::date)), 0)::float8 AS got_event,
+        COALESCE(SUM(f.got) FILTER (WHERE t.freeleech), 0)::float8 AS got_torrent
+      FROM "UserTorrentFlow" f JOIN "Torrent" t ON t.id = f."torrentId" WHERE f."userId" = ${user.id} AND f.day >= current_date - 30`;
+    const [published, freeEvents] = await Promise.all([
+      this.prisma.torrent.count({ where: { uploaderId: user.id, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } } }),
+      this.prisma.freeleechEvent.findMany({ where: { endsAt: { gte: new Date(Date.now() - 30 * 86_400_000) }, startsAt: { lte: new Date() } }, select: { title: true }, take: 5 }),
+    ]);
+    const cx = ctxRows[0];
+    const context = explainContext({
+      upBytes: cx?.up ?? 0, downBytes: cx?.down ?? 0, gotBytes: cx?.got ?? 0, upOwn: cx?.up_own ?? 0, upHot: cx?.up_hot ?? 0, gotFreeEvent: cx?.got_event ?? 0, gotFreeTorrent: cx?.got_torrent ?? 0,
+      freeleechTitles: freeEvents.map((e) => e.title), publishedTorrents: published,
+    });
+
     const torrentIds = [...new Set([...events.map((e) => e.torrentId), ...flow.map((f) => f.torrentId)].filter((x): x is string => !!x))];
     const torrents = torrentIds.length ? await this.prisma.torrent.findMany({ where: { id: { in: torrentIds } }, select: { id: true, name: true, freeleech: true, doubleUpload: true } }) : [];
     const tname = new Map(torrents.map((t) => [t.id, t]));
@@ -383,6 +401,7 @@ export class AntiCheatService {
     return {
       user: { ...user, uploaded: up, downloaded: down, bonusPoints: Math.round(user.bonusPoints), ratio: down > 0 ? Math.round((up / down) * 100) / 100 : null, warnings, bans },
       case: theCase ? { ...theCase, notes: theCase.notes } : null,
+      context,
       events: events.map((e) => ({ id: e.id, kind: e.kind, label: kindLabel(e.kind), family: CHEAT_KINDS[e.kind]?.family ?? 'client', points: Math.round(e.points * 10) / 10, count: e.count, details: e.details, firstAt: e.createdAt, lastAt: e.lastAt, torrent: e.torrentId ? tname.get(e.torrentId) ?? { id: e.torrentId, name: '(torrent supprimé)' } : null })),
       ips: ips.map((i) => ({ ip: i.ip, firstSeenAt: i.firstSeenAt, lastSeenAt: i.lastSeenAt, announces: i.announces, shared: sharing.filter((s) => s.ip === i.ip).length })),
       linked: [...linked.values()].sort((a, b) => b.ips.length - a.ips.length),
