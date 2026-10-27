@@ -326,6 +326,7 @@ export default function HomeStreaming() {
     <div className="home-plex">
       <HomeSectionsControls />
       <div className="home-greet"><h1>{greeting} {user?.profile?.name ?? user?.username} 👋</h1><HomeCustomize /></div>
+      {prefs.actions && <HomeActions canUpload={canUpload} />}
       <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
       <div className={`home-layout${prefs.rail ? ' with-rail' : ''}`}>
         <div className="home-col">
@@ -333,7 +334,6 @@ export default function HomeStreaming() {
           <NewsPanel heroOnly={!prefs.prevNews} />
           {prefs.strip && <HomeStrip />}
           <HomeTabs tabs={tabs} />
-          {prefs.actions && <HomeActions canUpload={canUpload} />}
         </div>
         {prefs.rail && <HomeRail />}
       </div>

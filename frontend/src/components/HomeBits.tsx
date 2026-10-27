@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { create } from 'zustand';
 import { api } from '../api/client';
-import { CATEGORY_STYLE, type LayoutContext } from './Layout';
 import { useCountdown } from './FreeleechCalendar';
 
 // ------------------------------------------------------------------ préférences de l'accueil (propres à l'appareil)
@@ -16,7 +15,7 @@ export const useHomePrefs = create<{ prefs: HomePrefs; set: (patch: Partial<Home
   set(patch) { const next = { ...get().prefs, ...patch }; try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* préférence facultative */ } set({ prefs: next }); },
 }));
 
-const OPTIONS: [keyof HomePrefs, string][] = [['strip', 'Freeleech et pot commun'], ['prevNews', 'Nouvelles précédentes'], ['rail', 'Colonne de droite (Canadiens, amis, chat, défi)'], ['actions', 'Actions rapides et catégories']];
+const OPTIONS: [keyof HomePrefs, string][] = [['strip', 'Freeleech et pot commun'], ['prevNews', 'Nouvelles précédentes'], ['rail', 'Colonne de droite (Canadiens, amis, chat, défi)'], ['actions', 'Actions rapides (en haut)']];
 
 /** Bouton « Personnaliser l'accueil » : le membre choisit ce qu'il garde. La dernière nouvelle reste toujours affichée. */
 export function HomeCustomize() {
@@ -99,16 +98,21 @@ export function HomeStrip() {
   );
 }
 
-// ------------------------------------------------------------------ actions rapides et catégories
+// ------------------------------------------------------------------ actions rapides
 
-/** Quatre actions utiles (les autres pages sont dans le menu) et les pastilles de catégories. */
+/** Quatre actions utiles, en haut de l'accueil, avec leur petit compteur (demandes ouvertes, obligation de seed à terminer). */
 export function HomeActions({ canUpload }: { canUpload: boolean }) {
-  const { categories } = useOutletContext<LayoutContext>();
+  const [open, setOpen] = useState<number | null>(null);
+  const [seeds, setSeeds] = useState<number | null>(null);
+  useEffect(() => {
+    api.get('/requests').then((r) => setOpen(r.data?.stats?.open ?? null)).catch(() => undefined);
+    api.get('/bonus/seeds').then((r) => setSeeds(r.data?.counts?.total ?? null)).catch(() => undefined);
+  }, []);
   const ACTIONS: { to: string; icon: string; label: string; hint: string }[] = [
     ...(canUpload ? [{ to: '/upload', icon: '⬆️', label: 'Envoyer un torrent', hint: 'Partager un nouveau torrent' }] : []),
-    { to: '/requests', icon: '🙋', label: 'Faire une demande', hint: 'Ce que la communauté cherche' },
+    { to: '/requests', icon: '🙋', label: 'Faire une demande', hint: open === null ? 'Ce que la communauté cherche' : `${open} demande${open > 1 ? 's' : ''} ouverte${open > 1 ? 's' : ''}` },
     { to: '/referrals', icon: '🎟️', label: 'Inviter un ami', hint: 'Code ou achat en points' },
-    { to: '/seeds', icon: '🌱', label: 'Mes seeds', hint: 'Obligations et téléchargements' },
+    { to: '/seeds', icon: '🌱', label: 'Mes seeds', hint: seeds === null ? 'Obligations et téléchargements' : seeds === 0 ? 'Aucune obligation à terminer' : `${seeds} obligation${seeds > 1 ? 's' : ''} à terminer` },
   ];
   return (
     <section className="home-actions" aria-label="Actions rapides">
@@ -117,14 +121,6 @@ export function HomeActions({ canUpload }: { canUpload: boolean }) {
           <Link key={a.to} to={a.to} className="ha-btn"><span className="ha-icon" aria-hidden="true">{a.icon}</span><span><strong>{a.label}</strong><small>{a.hint}</small></span></Link>
         ))}
       </div>
-      {categories?.length > 0 && (
-        <div className="hs-cats">
-          {categories.map((c) => {
-            const style = CATEGORY_STYLE[c.slug];
-            return <Link key={c.id} to={`/browse?categoryId=${c.id}`} className="hs-cat" style={style ? { borderColor: `${style.color}66` } : undefined}>{style?.icon ?? '📁'} {c.name}</Link>;
-          })}
-        </div>
-      )}
     </section>
   );
 }

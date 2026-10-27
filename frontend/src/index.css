@@ -4457,8 +4457,8 @@ html a.user-link.rank-POWER_USER, html a .nick.rank-POWER_USER { color: #a5b4fc;
 .hstrip-gauge i { display: block; height: 100%; background: linear-gradient(90deg, #f59e0b, #f5c542); }
 .home-actions { display: grid; gap: 12px; }
 .ha-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
-.ha-btn { display: flex; gap: 11px; align-items: center; padding: 11px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: inherit; }
-.ha-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--gold-bright, #f5c542); }
+.ha-btn { display: flex; gap: 11px; align-items: center; padding: 12px 14px; border-radius: 12px; background: #121a3d; border: 1px solid #222d52; color: inherit; transition: border-color .15s, transform .15s; }
+.ha-btn:hover { border-color: #f5c542; transform: translateY(-1px); }
 .ha-btn small { display: block; opacity: 0.65; }
 .ha-icon { font-size: 22px; }
 .hr-card { padding: 12px 14px; border-radius: 14px; background: var(--bg-panel, #0d1330); border: 1px solid var(--border); }
