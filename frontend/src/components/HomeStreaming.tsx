@@ -16,6 +16,7 @@ import ModerationRail from './ModerationRail';
 import FreeleechCalendar from './FreeleechCalendar';
 import HomeShortcuts from './HomeShortcuts';
 import HomeSection, { HomeSectionsControls } from './HomeSection';
+import HomeTabs, { type HomeTab } from './HomeTabs';
 import ContinueWatching from './ContinueWatching';
 import UserLink from './UserLink';
 import { HealthDot } from './TorrentBits';
@@ -104,6 +105,25 @@ function ContinueCard({ t }: { t: any }) {
   );
 }
 
+/** « Par catégorie » : une pastille par catégorie, une seule rangée d'affiches à la fois (au lieu de six rangées empilées). */
+function CategoryRails({ rows }: { rows: { id: string; name: string; slug: string; items: any[] }[] }) {
+  const [sel, setSel] = useState(rows[0]?.id);
+  const row = rows.find((r) => r.id === sel) ?? rows[0];
+  if (!row) return null;
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <div className="home-catpills">
+        {rows.map((r) => (
+          <button key={r.id} type="button" className={`home-catpill${r.id === row.id ? ' on' : ''}`} onClick={() => setSel(r.id)}>
+            <span aria-hidden="true">{CATEGORY_STYLE[r.slug]?.icon ?? '📁'}</span> {r.name}
+          </button>
+        ))}
+      </div>
+      <Rail icon={CATEGORY_STYLE[row.slug]?.icon ?? '📁'} title={row.name} to={`/browse?categoryId=${row.id}`} items={row.items} />
+    </div>
+  );
+}
+
 /**
  * Accueil du thème Prestige, façon Plex : fond cinématographique (l'image du torrent à la une), les nouvelles, l'activité de la
  * communauté (forum, top, chiffres), puis le grand titre à la une et les rangées d'affiches par catégorie.
@@ -180,14 +200,64 @@ export default function HomeStreaming() {
   const hour = new Date().getHours();
   const greeting = hour < 5 ? 'Bonne nuit' : hour < 18 ? 'Bonjour' : 'Bonsoir';
 
-  return (
-    <div className="home-plex">
-      <HomeSectionsControls />
-      <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
-      <HomeSection id="freeleech" label="Calendrier freeleech" icon="🗓️"><FreeleechCalendar compact /></HomeSection>
-      <HomeSection id="pot" label="Pot commun" icon="🍯"><PotWidget /></HomeSection>
-      <HomeSection id="shortcuts" label="Raccourcis" icon="⚡"><HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} /></HomeSection>
-      <HomeSection id="news" label="Nouvelles" icon="📰"><NewsPanel /></HomeSection>
+  // L'onglet « Mon activité » : reprendre la lecture + les torrents en cours de téléchargement ou de seed.
+  const activityNode = (
+    <>
+      <ContinueWatching />
+      {active.length > 0 && (
+        <section className="panel ornate rail-section rail-plex">
+          <div className="panel-title"><span className="title-icon">⏯️</span>Mon activité<span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 400 }}>Tes téléchargements et seeds en cours · <Link to="/seeds">Tout voir →</Link></span><Link to="/activity" className="rail-all" style={{ marginLeft: 14, fontFamily: "var(--font-body)", fontWeight: 400 }}>Voir tous mes torrents →</Link></div>
+          <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
+        </section>
+      )}
+    </>
+  );
+
+  const heroNode = (
+    <>
+          {featured ? (
+            <section key={featured.id} className="panel ornate hero-frame hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
+              {/* La même image que le fond de la page, bien visible à droite du texte. */}
+              <span className="hero-frame-bg" aria-hidden="true" style={{ backgroundImage: `url("${String(featured.backdrop ?? featured.coverImage).replace(/"/g, '%22')}")` }} />
+              <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
+              <div className="hero-plex">
+              <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username} · À la une</div>
+              <h1 title={featured.name}>{featured.name}</h1>
+              <MetaChips t={featured} className="hero-chips" explicitEpisode />
+              <div className="hero-meta">
+                {[featured.category?.name, formatBytes(featured.size)].filter(Boolean).join('  ·  ')}
+                <span className="hero-health"><HealthDot seeders={featured.seeders} />{featured.seeders} seeders</span>
+              </div>
+              {featured.synopsis && <p className="hero-synopsis">{featured.synopsis}</p>}
+              <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+                <Link to={`/torrents/${featured.id}`}><button type="button" className="hero-cta">Voir la fiche</button></Link>
+                <Link to="/browse"><button type="button" className="secondary hero-cta-2">Parcourir le catalogue</button></Link>
+              </div>
+              {featuredList.length > 1 && (
+                <div className="hero-dots" role="tablist" aria-label="Torrents à la une">
+                  {featuredList.map((f, i) => (
+                    <button key={f.id} type="button" role="tab" aria-selected={i === heroIndex % featuredList.length} className={i === heroIndex % featuredList.length ? 'on' : ''} onClick={() => setHeroIndex(i)} aria-label={`${i + 1} : ${f.name}`} title={f.name}>{i + 1}</button>
+                  ))}
+                </div>
+              )}
+              </div>
+            </section>
+          ) : (
+            <section className="panel ornate hero-frame">
+              <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
+              <div className="hero-plex">
+              <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username}</div>
+              <h1>Bienvenue sur Seeduction</h1>
+              <p className="hero-synopsis">Le tracker privé d'exception. Les premiers torrents envoyés apparaîtront ici, en grand.</p>
+              <Link to="/upload"><button type="button" className="hero-cta">Envoyer un torrent</button></Link>
+              </div>
+            </section>
+          )}
+    </>
+  );
+
+  const statsNode = (
+    <>
         <div className="home-bottom">
           <HomeSection id="forum" label="Derniers sujets du forum" icon="💬">
           <Board
@@ -233,69 +303,31 @@ export default function HomeStreaming() {
           )}
           </HomeSection>
         </div>
-      
+    </>
+  );
 
-          <HomeSection id="hero" label="À la une" icon="⭐">
-          {featured ? (
-            <section key={featured.id} className="panel ornate hero-frame hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
-              {/* La même image que le fond de la page, bien visible à droite du texte. */}
-              <span className="hero-frame-bg" aria-hidden="true" style={{ backgroundImage: `url("${String(featured.backdrop ?? featured.coverImage).replace(/"/g, '%22')}")` }} />
-              <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
-              <div className="hero-plex">
-              <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username} · À la une</div>
-              <h1 title={featured.name}>{featured.name}</h1>
-              <MetaChips t={featured} className="hero-chips" explicitEpisode />
-              <div className="hero-meta">
-                {[featured.category?.name, formatBytes(featured.size)].filter(Boolean).join('  ·  ')}
-                <span className="hero-health"><HealthDot seeders={featured.seeders} />{featured.seeders} seeders</span>
-              </div>
-              {featured.synopsis && <p className="hero-synopsis">{featured.synopsis}</p>}
-              <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
-                <Link to={`/torrents/${featured.id}`}><button type="button" className="hero-cta">Voir la fiche</button></Link>
-                <Link to="/browse"><button type="button" className="secondary hero-cta-2">Parcourir le catalogue</button></Link>
-              </div>
-              {featuredList.length > 1 && (
-                <div className="hero-dots" role="tablist" aria-label="Torrents à la une">
-                  {featuredList.map((f, i) => (
-                    <button key={f.id} type="button" role="tab" aria-selected={i === heroIndex % featuredList.length} className={i === heroIndex % featuredList.length ? 'on' : ''} onClick={() => setHeroIndex(i)} aria-label={`${i + 1} : ${f.name}`} title={f.name}>{i + 1}</button>
-                  ))}
-                </div>
-              )}
-              </div>
-            </section>
-          ) : (
-            <section className="panel ornate hero-frame">
-              <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
-              <div className="hero-plex">
-              <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username}</div>
-              <h1>Bienvenue sur Seeduction</h1>
-              <p className="hero-synopsis">Le tracker privé d'exception. Les premiers torrents envoyés apparaîtront ici, en grand.</p>
-              <Link to="/upload"><button type="button" className="hero-cta">Envoyer un torrent</button></Link>
-              </div>
-            </section>
-          )}
-          </HomeSection>
+  // Les sections de l'accueil, réunies en onglets (la première et la dernière sont fixes ; les onglets sans contenu n'apparaissent pas).
+  const tabs: HomeTab[] = [
+    { id: 'nouvelles', label: 'Dernières nouvelles', icon: '📰', color: '#f59e0b', content: <NewsPanel /> },
+    { id: 'une', label: 'À la une', icon: '⭐', color: '#a78bfa', content: heroNode },
+    { id: 'activite', label: 'Mon activité', icon: '⏯️', color: '#34d399', badge: active.length || null, content: activityNode },
+    ...(followed.length > 0 ? [{ id: 'abonnements', label: 'Mes abonnements', icon: '🔔', color: '#60a5fa', badge: followed.length, content: <Rail icon="🔔" title="De tes abonnements" to="/favorites" items={followed} /> }] : []),
+    ...(recommended.length > 0 ? [{ id: 'pour-toi', label: 'Pour toi', icon: '✨', color: '#f472b6', content: <Rail icon="✨" title="Recommandé pour toi" to="/browse" items={recommended} /> }] : []),
+    { id: 'nouveautes', label: 'Derniers torrents', icon: '🆕', color: '#38bdf8', content: <TimeRangeRail title="Derniers torrents" sort="date" icon="🆕" /> },
+    { id: 'populaires', label: 'Les plus populaires', icon: '🔥', color: '#fb923c', content: <TimeRangeRail title="Les plus populaires" sort="seeders" allowCount icon="🔥" /> },
+    ...(byCategory.length > 0 ? [{ id: 'categories', label: 'Par catégorie', icon: '📂', color: '#c084fc', badge: byCategory.length, content: <CategoryRails rows={byCategory} /> }] : []),
+    ...(atRisk.length > 0 ? [{ id: 'a-risque', label: 'À seeder', icon: '⚠️', color: '#f87171', badge: atRisk.length, content: <Rail icon="⚠️" title="Torrents à risque (1-2 seeders) : un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} /> }] : []),
+    { id: 'stats', label: 'Dernières activités et stats', icon: '📊', color: '#2dd4bf', badge: topics.some((t) => t.unread) ? '●' : null, content: statsNode },
+  ];
 
-          <ContinueWatching />
-
-          <HomeSection id="activity" label="Mon activité" icon="⏯️">
-          {active.length > 0 && (
-            <section className="panel ornate rail-section rail-plex">
-              <div className="panel-title"><span className="title-icon">⏯️</span>Mon activité<span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 400 }}>Tes téléchargements et seeds en cours · <Link to="/seeds">Tout voir →</Link></span><Link to="/activity" className="rail-all" style={{ marginLeft: 14, fontFamily: "var(--font-body)", fontWeight: 400 }}>Voir toute mon activité →</Link></div>
-              <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
-            </section>
-          )}
-          </HomeSection>
-          <HomeSection id="atrisk" label="Torrents à risque" icon="⚠️"><Rail icon="⚠️" title="Torrents à risque (1-2 seeders)" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} /></HomeSection>
-          <HomeSection id="followed" label="De tes abonnements" icon="🔔"><Rail icon="🔔" title="De tes abonnements" to="/favorites" items={followed} /></HomeSection>
-          <HomeSection id="recommended" label="Recommandé pour toi" icon="✨"><Rail icon="✨" title="Recommandé pour toi" to="/browse" items={recommended} /></HomeSection>
-          <HomeSection id="latest" label="Derniers torrents" icon="🆕"><TimeRangeRail title="Derniers torrents" sort="date" icon="🆕" /></HomeSection>
-          <HomeSection id="popular" label="Les plus populaires" icon="🔥"><TimeRangeRail title="Les plus populaires" sort="seeders" allowCount icon="🔥" /></HomeSection>
-          {byCategory.map((row) => (
-            <HomeSection key={row.id} id={`cat:${row.slug}`} label={row.name} icon={CATEGORY_STYLE[row.slug]?.icon ?? '📁'}>
-              <Rail icon={CATEGORY_STYLE[row.slug]?.icon ?? '📁'} title={row.name} to={`/browse?categoryId=${row.id}`} items={row.items} />
-            </HomeSection>
-          ))}
+  return (
+    <div className="home-plex">
+      <HomeSectionsControls />
+      <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
+      <HomeSection id="freeleech" label="Calendrier freeleech" icon="🗓️"><FreeleechCalendar compact /></HomeSection>
+      <HomeSection id="pot" label="Pot commun" icon="🍯"><PotWidget /></HomeSection>
+      <HomeSection id="shortcuts" label="Raccourcis" icon="⚡"><HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} /></HomeSection>
+      <HomeTabs tabs={tabs} />
     </div>
   );
 }
