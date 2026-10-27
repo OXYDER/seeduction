@@ -12,14 +12,6 @@ export default function HomeTabs({ tabs, initial }: { tabs: HomeTab[]; initial?:
   const [active, setActive] = useState<string>(() => fromHash() ?? initial ?? tabs[0]?.id);
   const [seen, setSeen] = useState<Set<string>>(() => new Set([fromHash() ?? initial ?? tabs[0]?.id]));
   const barRef = useRef<HTMLDivElement>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [stickTop, setStickTop] = useState(0); // hauteur de la barre du haut du site : la barre d'onglets se colle juste dessous
-  useEffect(() => {
-    const measure = () => { const t = document.querySelector('.side-topbar, .topbar') as HTMLElement | null; setStickTop(t && getComputedStyle(t).position === 'sticky' ? Math.round(t.getBoundingClientRect().height) : 0); };
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, []);
 
   // Un onglet qui disparaît (plus rien à montrer) : retour au premier.
   const current = tabs.some((t) => t.id === active) ? active : tabs[0]?.id;
@@ -28,8 +20,6 @@ export default function HomeTabs({ tabs, initial }: { tabs: HomeTab[]; initial?:
   function pick(id: string, writeHash = true) {
     setActive(id);
     setSeen((s) => (s.has(id) ? s : new Set(s).add(id)));
-    // La barre est collée en haut : si on a défilé loin, on remonte au début du contenu de l'onglet choisi (pas au milieu de son contenu).
-    requestAnimationFrame(() => { const el = rootRef.current; if (!el) return; const r = el.getBoundingClientRect(); if (r.top < stickTop) window.scrollTo({ top: window.scrollY + r.top - stickTop - 6, behavior: 'smooth' }); });
     if (writeHash) { try { window.history.replaceState(null, '', id === tabs[0]?.id ? window.location.pathname + window.location.search : `#${encodeURIComponent(id)}`); } catch { /* ignoré */ } }
   }
   function onKey(e: React.KeyboardEvent) {
@@ -39,8 +29,8 @@ export default function HomeTabs({ tabs, initial }: { tabs: HomeTab[]; initial?:
   }
 
   return (
-    <div className="home-tabs" ref={rootRef}>
-      <div className="home-tabbar" role="tablist" ref={barRef} onKeyDown={onKey} style={{ top: stickTop + 6 }}>
+    <div className="home-tabs">
+      <div className="home-tabbar" role="tablist" ref={barRef} onKeyDown={onKey}>
         {tabs.map((t) => (
           <button key={t.id} type="button" role="tab" id={`ht-${t.id}`} data-tab={t.id} aria-selected={t.id === current} aria-controls={`htp-${t.id}`} tabIndex={t.id === current ? 0 : -1}
             className={`home-tab${t.id === current ? ' on' : ''}`} style={{ ['--tab-c' as string]: t.color }} onClick={() => pick(t.id)}>

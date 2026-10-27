@@ -2499,9 +2499,8 @@ button.msgr-link-btn.danger { color: #ff8a8a; }
 
 /* ---- Accès rapides de l'accueil ---- */
 .home-shortcuts { display: grid; gap: 12px; margin-bottom: 8px; }
-.hs-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.hs-tile small { display: none; }
-.hs-tile { position: relative; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); transition: transform 0.15s, background 0.15s; }
+.hs-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.hs-tile { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); transition: transform 0.15s, background 0.15s; }
 .hs-tile:hover { transform: translateY(-2px); background: rgba(255,255,255,0.1); }
 .hs-icon { font-size: 26px; flex: none; }
 .hs-text { display: grid; min-width: 0; }
@@ -4421,7 +4420,7 @@ html a.user-link.rank-POWER_USER, html a .nick.rank-POWER_USER { color: #a5b4fc;
 
 /* Accueil : les sections réunies en onglets colorés (voir HomeTabs.tsx). Chaque onglet a sa couleur (--tab-c). */
 .home-tabs { display: grid; gap: 14px; }
-.home-tabbar { position: sticky; z-index: 30; display: flex; gap: 8px; overflow-x: auto; padding: 8px; border-radius: 16px; background: rgba(10, 14, 30, 0.55); border: 1px solid rgba(255, 255, 255, 0.09); backdrop-filter: blur(6px); scrollbar-width: thin; }
+.home-tabbar { display: flex; gap: 8px; overflow-x: auto; padding: 8px; border-radius: 16px; background: rgba(10, 14, 30, 0.55); border: 1px solid rgba(255, 255, 255, 0.09); backdrop-filter: blur(6px); scrollbar-width: thin; }
 .home-tab { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--tab-c) 28%, transparent); background: color-mix(in srgb, var(--tab-c) 8%, transparent); color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s, transform .15s, box-shadow .15s; }
 .home-tab:hover { background: color-mix(in srgb, var(--tab-c) 18%, transparent); transform: translateY(-1px); }
 .home-tab:focus-visible { outline: 2px solid var(--tab-c); outline-offset: 2px; }
@@ -4437,8 +4436,3 @@ html a.user-link.rank-POWER_USER, html a .nick.rank-POWER_USER { color: #a5b4fc;
 .home-catpill.on { background: color-mix(in srgb, var(--tab-c, #c084fc) 40%, #0b1020); border-color: var(--tab-c, #c084fc); color: #fff; }
 @media (max-width: 640px) { .home-tab { padding: 8px 12px; font-size: 13px; } .home-tab-label { max-width: 140px; overflow: hidden; text-overflow: ellipsis; } }
 @media (prefers-reduced-motion: reduce) { .home-tabpanel { animation: none; } .home-tab { transition: none; } }
-
-/* Accueil : calendrier freeleech et pot commun côte à côte quand la largeur le permet */
-.home-duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 18px; align-items: start; }
-.home-duo > .hs { min-width: 0; }
-.home-duo > .hs:empty { display: none; }
