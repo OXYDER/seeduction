@@ -16,6 +16,7 @@ import ThemeSwitcher from './ThemeSwitcher';
 import SearchBox from './SearchBox';
 import { addSearch } from '../lib/searchHistory';
 import Avatar from './Avatar';
+import QuickSearch from './QuickSearch';
 import ChatDock from './ChatDock';
 import BrowserNotifications from './BrowserNotifications';
 import IdleWatcher from './IdleWatcher';
@@ -101,35 +102,55 @@ export const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
   'imprimante-3d': { icon: '🧊', color: '#fb7185' },
 };
 
-interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; staffOnly?: boolean; adminOnly?: boolean; /** Visible seulement pendant une diffusion en direct. */ liveOnly?: boolean }
+type NavGroupId = 'pin' | 'catalogue' | 'communaute' | 'jeux' | 'compte' | 'aide' | 'equipe';
+interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; group: NavGroupId; staffOnly?: boolean; adminOnly?: boolean; /** Visible seulement pendant une diffusion en direct. */ liveOnly?: boolean; /** Seulement dans le menu latéral groupé (pas dans la barre du haut du thème classique). */ sideOnly?: boolean }
+
+/** Les groupes du menu latéral : « Toujours là » reste visible, les autres se replient (le groupe de la page courante s'ouvre tout seul). */
+const NAV_GROUPS: { id: Exclude<NavGroupId, 'pin'>; icon: string; label: string; color: string }[] = [
+  { id: 'catalogue', icon: '🎬', label: 'Catalogue', color: '#38bdf8' },
+  { id: 'communaute', icon: '👥', label: 'Communauté', color: '#f472b6' },
+  { id: 'jeux', icon: '🎲', label: 'Jeux', color: '#a78bfa' },
+  { id: 'compte', icon: '👤', label: 'Mon compte', color: '#34d399' },
+  { id: 'aide', icon: '❓', label: 'Aide', color: '#2dd4bf' },
+  { id: 'equipe', icon: '🛡️', label: 'Équipe', color: '#f87171' },
+];
 
 const starts = (prefix: string) => (p: string) => p === prefix || p.startsWith(`${prefix}/`);
 
 /** Le lien de la section en cours est surligné (les pages de détail comptent dans leur section : un torrent → Parcourir). */
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', icon: '🏠', cls: 'c-home', label: 'Accueil', match: (p) => p === '/' },
-  { to: '/browse', icon: '🔍', cls: 'c-search', label: 'Parcourir', match: (p) => starts('/browse')(p) || starts('/torrents')(p) || starts('/entities')(p) },
-  { to: '/news', icon: '📰', cls: 'c-rules', label: 'Nouvelles', match: starts('/news') },
-  { to: '/upload', icon: '⬆️', cls: 'c-upload', label: 'Envoyer', match: starts('/upload') },
-  { to: '/requests', icon: '💬', cls: 'c-chat', label: 'Demandes', match: starts('/requests') },
-  { to: '/favorites', icon: '⭐', cls: 'c-collections', label: 'Favoris', match: starts('/favorites') },
-  { to: '/collections', icon: '📚', cls: 'c-collections', label: 'Collections', match: starts('/collections') },
-  { to: '/friends', icon: '👫', cls: 'c-collections', label: 'Amis', match: starts('/friends') },
-  { to: '/teams', icon: '🏴', cls: 'c-forum', label: 'Teams', match: starts('/teams') },
-  { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat') },
-  { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum') },
-  { to: '/suggestions', icon: '💡', cls: 'c-forum', label: 'Suggestions', match: starts('/suggestions') },
-  { to: '/jeux', icon: '🎲', cls: 'c-chat', label: 'Jeux', match: starts('/jeux') },
-  { to: '/canadiens-en-direct', icon: '🔴', cls: 'c-livechat', label: 'Canadiens en direct', match: starts('/canadiens-en-direct'), liveOnly: true },
-  { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p) },
-  { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead') },
-  { to: '/soutenir', icon: '❤️', cls: 'c-rules', label: 'Soutenir', match: starts('/soutenir') },
-  { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p) },
-  { to: '/support', icon: '🛟', cls: 'c-livechat', label: 'Support', match: starts('/support') },
-  { to: '/staff-board', icon: '📋', cls: 'c-staff', label: 'Tableau de bord', match: starts('/staff-board'), staffOnly: true },
-  { to: '/moderation', icon: '🛡️', cls: 'c-staff', label: 'Modération', match: starts('/moderation'), staffOnly: true },
-  { to: '/equipe', icon: '🏅', cls: 'c-staff', label: 'Équipe et rangs', match: starts('/equipe'), staffOnly: true },
-  { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true },
+  { to: '/', icon: '🏠', cls: 'c-home', label: 'Accueil', match: (p) => p === '/', group: 'pin' },
+  { to: '/browse', icon: '🔍', cls: 'c-search', label: 'Parcourir', match: (p) => starts('/browse')(p) || starts('/torrents')(p) || starts('/entities')(p), group: 'pin' },
+  { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat'), group: 'pin' },
+  { to: '/activity', icon: '📈', cls: 'c-search', label: 'Mes torrents', match: starts('/activity'), group: 'pin', sideOnly: true },
+  { to: '/upload', icon: '⬆️', cls: 'c-upload', label: 'Envoyer', match: starts('/upload'), group: 'pin' },
+  { to: '/news', icon: '📰', cls: 'c-rules', label: 'Nouvelles', match: starts('/news'), group: 'catalogue' },
+  { to: '/requests', icon: '💬', cls: 'c-chat', label: 'Demandes', match: starts('/requests'), group: 'catalogue' },
+  { to: '/favorites', icon: '⭐', cls: 'c-collections', label: 'Favoris', match: starts('/favorites'), group: 'catalogue' },
+  { to: '/collections', icon: '📚', cls: 'c-collections', label: 'Collections', match: starts('/collections'), group: 'catalogue' },
+  { to: '/suggestions', icon: '💡', cls: 'c-forum', label: 'Suggestions', match: starts('/suggestions'), group: 'catalogue' },
+  { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead'), group: 'catalogue' },
+  { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum'), group: 'communaute' },
+  { to: '/friends', icon: '👫', cls: 'c-collections', label: 'Amis', match: starts('/friends'), group: 'communaute' },
+  { to: '/teams', icon: '🏴', cls: 'c-forum', label: 'Teams', match: starts('/teams'), group: 'communaute' },
+  { to: '/canadiens-en-direct', icon: '🔴', cls: 'c-livechat', label: 'Canadiens en direct', match: starts('/canadiens-en-direct'), liveOnly: true, group: 'communaute' },
+  { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats et classements', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p), group: 'communaute' },
+  { to: '/jeux', icon: '🎲', cls: 'c-chat', label: 'Tous les jeux', match: (p) => p === '/jeux', group: 'jeux' },
+  { to: '/jeux/mise-o-jeu', icon: '🏒', cls: 'c-chat', label: 'Mise-O-jeu', match: starts('/jeux/mise-o-jeu'), group: 'jeux', sideOnly: true },
+  { to: '/jeux/duels', icon: '⚔️', cls: 'c-chat', label: 'Duels', match: starts('/jeux/duels'), group: 'jeux', sideOnly: true },
+  { to: '/jeux/defis', icon: '🏆', cls: 'c-chat', label: 'Défis', match: starts('/jeux/defis'), group: 'jeux', sideOnly: true },
+  { to: '/jeux/quiz', icon: '❓', cls: 'c-chat', label: 'Quiz', match: starts('/jeux/quiz'), group: 'jeux', sideOnly: true },
+  { to: '/seeds', icon: '🌱', cls: 'c-search', label: 'Mes seeds', match: (p) => starts('/seeds')(p) || starts('/hit-and-run')(p), group: 'compte', sideOnly: true },
+  { to: '/referrals', icon: '🎟️', cls: 'c-rules', label: 'Inviter un ami', match: starts('/referrals'), group: 'compte', sideOnly: true },
+  { to: '/bonus', icon: '✦', cls: 'c-rules', label: 'Points bonus', match: starts('/bonus'), group: 'compte', sideOnly: true },
+  { to: '/profile', icon: '🪪', cls: 'c-home', label: 'Mon profil', match: starts('/profile'), group: 'compte', sideOnly: true },
+  { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p), group: 'aide' },
+  { to: '/support', icon: '🛟', cls: 'c-livechat', label: 'Support', match: starts('/support'), group: 'aide' },
+  { to: '/soutenir', icon: '❤️', cls: 'c-rules', label: 'Soutenir', match: starts('/soutenir'), group: 'aide' },
+  { to: '/staff-board', icon: '📋', cls: 'c-staff', label: 'Tableau de bord', match: starts('/staff-board'), staffOnly: true, group: 'equipe' },
+  { to: '/moderation', icon: '🛡️', cls: 'c-staff', label: 'Modération', match: starts('/moderation'), staffOnly: true, group: 'equipe' },
+  { to: '/equipe', icon: '🏅', cls: 'c-staff', label: 'Équipe et rangs', match: starts('/equipe'), staffOnly: true, group: 'equipe' },
+  { to: '/admin', icon: '👑', cls: 'c-staff', label: 'Staff', match: starts('/admin'), staffOnly: true, group: 'equipe' },
 ];
 
 /**
@@ -427,6 +448,35 @@ function LayoutInner() {
     return null;
   };
 
+  // Menu en groupes : ceux que le membre a ouverts sont mémorisés ; le groupe de la page courante s'ouvre tout seul.
+  const [openGroups, setOpenGroups] = useState<string[]>(() => { try { const v = JSON.parse(localStorage.getItem('side-groups') ?? '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; } catch { return []; } });
+  const saveGroups = (g: string[]) => { setOpenGroups(g); try { localStorage.setItem('side-groups', JSON.stringify(g)); } catch { /* préférence facultative */ } };
+  const toggleGroup = (id: string) => saveGroups(openGroups.includes(id) ? openGroups.filter((x) => x !== id) : [...openGroups, id]);
+  useEffect(() => {
+    const here = NAV_ITEMS.find((i) => i.group !== 'pin' && i.match(location.pathname));
+    if (here && !openGroups.includes(here.group)) setOpenGroups((g) => (g.includes(here.group) ? g : [...g, here.group]));
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Recherche rapide : Ctrl+K (ou ⌘K) depuis n'importe quelle page.
+  const [quickOpen, setQuickOpen] = useState(false);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setQuickOpen((v) => !v); } };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
+
+  /** Pastille d'une entrée en chiffre (pour résumer un groupe replié : un « 2 » sur « Communauté » = 2 choses à voir dedans). */
+  const countOf = (item: NavItem): number => {
+    switch (item.to) {
+      case '/friends': return pendingFriendRequests;
+      case '/forum': return forumUnread;
+      case '/news': return newsUnseen;
+      case '/support': return supportMine;
+      case '/moderation': return queueTotal + (supportStaff ?? 0);
+      case '/dead': return deadMine;
+      default: return 0;
+    }
+  };
+
   function goSearch(query?: string) {
     const q = query ?? search;
     addSearch(q);
@@ -525,16 +575,45 @@ function LayoutInner() {
             </div>
           )}
           <nav className="side-links">
-            {visibleNav.map((item) => {
-              const active = item.match(location.pathname);
+            {(() => {
+              const link = (item: NavItem) => {
+                const active = item.match(location.pathname);
+                return (
+                  <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={item.label}>
+                    <span className="side-icon">{item.icon}</span>
+                    <span>{item.label}</span>
+                    {evNav(item.to)}{badgesFor(item)}
+                  </Link>
+                );
+              };
+              // Menu réduit (icônes seules) : la liste à plat, comme avant.
+              if (collapsed) return visibleNav.map(link);
               return (
-                <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={item.label}>
-                  <span className="side-icon">{item.icon}</span>
-                  <span>{item.label}</span>
-                  {evNav(item.to)}{badgesFor(item)}
-                </Link>
+                <>
+                  <div className="side-label">Toujours là</div>
+                  {visibleNav.filter((i) => i.group === 'pin').map(link)}
+                  <div className="side-label">Explorer</div>
+                  {NAV_GROUPS.map((g) => {
+                    const items = visibleNav.filter((i) => i.group === g.id);
+                    if (items.length === 0) return null;
+                    const open = openGroups.includes(g.id);
+                    const hasActive = items.some((i) => i.match(location.pathname));
+                    const todo = open ? 0 : items.reduce((n, i) => n + countOf(i), 0);
+                    return (
+                      <div key={g.id} className={`side-group${open ? ' open' : ''}${hasActive ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }}>
+                        <button type="button" className="side-group-head" onClick={() => toggleGroup(g.id)} aria-expanded={open}>
+                          <span className="side-icon">{g.icon}</span>
+                          <span>{g.label}</span>
+                          {todo > 0 && <span className="side-badge red" title="À voir dans ce groupe">{todo > 99 ? '99+' : todo}</span>}
+                          <span className="side-chev" aria-hidden="true">›</span>
+                        </button>
+                        {open && <div className="side-group-items">{items.map(link)}</div>}
+                      </div>
+                    );
+                  })}
+                </>
               );
-            })}
+            })()}
           </nav>
           {version && <Link to="/roadmap" className="side-version" title="Roadmap et journal des modifications">v{version}</Link>}
 
@@ -553,6 +632,7 @@ function LayoutInner() {
                 history
               />
             </form>
+            <button type="button" className="secondary side-kbd" onClick={() => setQuickOpen(true)} title="Recherche rapide : pages, torrents, membres">Ctrl K</button>
             {profile && (
               <HeaderStats profile={profile} econ={econ} teamExempt={['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role)} />
             )}
@@ -569,6 +649,7 @@ function LayoutInner() {
             </div>
           </header>
 
+          <QuickSearch open={quickOpen} onClose={() => setQuickOpen(false)} pages={visibleNav.map((i) => ({ to: i.to, icon: i.icon, label: i.label }))} />
           <main className="container">
             <EventStrip />
             <Staff2faBanner />
@@ -662,7 +743,7 @@ function LayoutInner() {
 
       <div className="mainnav">
         <div className="nav-links">
-          {NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && (!item.liveOnly || liveNow || starts('/canadiens-en-direct')(location.pathname))).map((item) => {
+          {NAV_ITEMS.filter((item) => !item.sideOnly && (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && (!item.liveOnly || liveNow || starts('/canadiens-en-direct')(location.pathname))).map((item) => {
             const active = item.match(location.pathname);
             return (
               <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
