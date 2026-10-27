@@ -324,8 +324,10 @@ export default function HomeStreaming() {
     <div className="home-plex">
       <HomeSectionsControls />
       <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
-      <HomeSection id="freeleech" label="Calendrier freeleech" icon="🗓️"><FreeleechCalendar compact /></HomeSection>
-      <HomeSection id="pot" label="Pot commun" icon="🍯"><PotWidget /></HomeSection>
+      <div className="home-duo">
+        <HomeSection id="freeleech" label="Calendrier freeleech" icon="🗓️"><FreeleechCalendar compact /></HomeSection>
+        <HomeSection id="pot" label="Pot commun" icon="🍯"><PotWidget /></HomeSection>
+      </div>
       <HomeSection id="shortcuts" label="Raccourcis" icon="⚡"><HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} /></HomeSection>
       <HomeTabs tabs={tabs} />
     </div>
