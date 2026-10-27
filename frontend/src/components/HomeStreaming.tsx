@@ -13,7 +13,7 @@ import NewsPanel from './NewsPanel';
 import TelegramLogo from './TelegramLogo';
 import ModerationRail from './ModerationRail';
 import HomeRail from './HomeRail';
-import { HomeActions, HomeCustomize, HomeStrip, SeedsToFinish, useHomePrefs } from './HomeBits';
+import { ForYouGrid, HomeActions, HomeCustomize, HomeStrip, useHomePrefs } from './HomeBits';
 import HomeSection, { HomeSectionsControls } from './HomeSection';
 import HomeTabs, { type HomeTab } from './HomeTabs';
 import ContinueWatching from './ContinueWatching';
@@ -199,18 +199,11 @@ export default function HomeStreaming() {
   const hour = new Date().getHours();
   const greeting = hour < 5 ? 'Bonne nuit' : hour < 18 ? 'Bonjour' : 'Bonsoir';
 
-  // L'onglet « Pour toi » : reprendre la lecture, mes téléchargements et seeds en cours, les seeds à terminer, mes abonnements et les recommandations.
+  // L'onglet « Pour toi » : reprendre la lecture, puis quatre cartes côte à côte (téléchargements, seeds à terminer, épisode suivant, abonnements) et les recommandations.
   const forYouNode = (
     <>
-      <ContinueWatching />
-      {active.length > 0 && (
-        <section className="panel ornate rail-section rail-plex">
-          <div className="panel-title"><span className="title-icon">⏯️</span>Mon activité<span className="muted" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 400 }}>Tes téléchargements et seeds en cours · <Link to="/seeds">Tout voir →</Link></span><Link to="/activity" className="rail-all" style={{ marginLeft: 14, fontFamily: "var(--font-body)", fontWeight: 400 }}>Voir tous mes torrents →</Link></div>
-          <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
-        </section>
-      )}
-      <SeedsToFinish />
-      {followed.length > 0 && <Rail icon="🔔" title="De tes abonnements" to="/favorites" items={followed} />}
+      <ContinueWatching hideNext />
+      <ForYouGrid active={active} followed={followed} />
       {recommended.length > 0 && <Rail icon="✨" title="Recommandé pour toi" to="/browse" items={recommended} />}
     </>
   );

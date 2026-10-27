@@ -10,7 +10,7 @@ interface NextItem { torrentId: string; title: string; name: string; cover: stri
 const ep = (s: number | null, e: number | null) => (s != null && e != null ? `S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')}` : '');
 
 /** Accueil : « Continuer à regarder » (reprendre là où le lecteur Seeduction s'est arrêté) et « Épisode suivant » des séries dont le dernier épisode est terminé. N'affiche rien s'il n'y a rien à reprendre. */
-export default function ContinueWatching() {
+export default function ContinueWatching({ hideNext }: { hideNext?: boolean } = {}) {
   const [data, setData] = useState<{ resume: ResumeItem[]; next: NextItem[] } | null>(null);
   const [error, setError] = useState('');
   const [hint, setHint] = useState(false);
@@ -40,7 +40,8 @@ export default function ContinueWatching() {
     try { await api.delete(`/stream/continue/${t.torrentId}`); setData((d) => d && { ...d, resume: d.resume.filter((x) => x.torrentId !== t.torrentId) }); } catch { /* sans effet */ }
   }
 
-  if (!data || (data.resume.length === 0 && data.next.length === 0)) return null;
+  const nextShown = hideNext ? [] : data?.next ?? [];
+  if (!data || (data.resume.length === 0 && nextShown.length === 0)) return null;
   return (
     <HomeSection id="continue" label="Continuer à regarder" icon="▶️">
       <div className="panel" style={{ display: 'grid', gap: 10 }}>
@@ -71,7 +72,7 @@ export default function ContinueWatching() {
               {!t.playingNow && <button type="button" className="cw-x" onClick={() => forget(t)} title="Retirer de cette liste" aria-label={`Retirer ${t.title}`}>✕</button>}
             </div>
           ))}
-          {data.next.map((t) => (
+          {nextShown.map((t) => (
             <div key={t.torrentId} className="cw-card">
               <Link to={`/torrents/${t.torrentId}`} className="cw-poster" title={t.name}>
                 {t.cover ? <img src={t.cover} alt="" loading="lazy" /> : <span className="cw-noimg">🎬</span>}

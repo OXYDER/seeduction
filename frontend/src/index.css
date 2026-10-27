@@ -4511,3 +4511,29 @@ html a.user-link.rank-POWER_USER, html a .nick.rank-POWER_USER { color: #a5b4fc;
 .qs-empty { padding: 14px 16px; color: #8e9abd; }
 .qs-foot { display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid #222d52; color: #8e9abd; font-size: 12px; }
 .side-group-head .side-badge + .side-chev { margin-left: 6px; }
+
+/* Onglet « Pour toi » : quatre cartes côte à côte (style de la maquette) */
+.fy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; align-items: start; }
+.fy-card { background: var(--bg-panel, #0d1330); border: 1px solid var(--border, #222d52); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+.fy-card h3 { margin: 0 0 10px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.fy-card h3 a { margin-left: auto; font-size: 12.5px; font-weight: 400; color: var(--gold-bright, #f5c542); white-space: nowrap; }
+.fy-empty { margin: 0; font-size: 13px; opacity: 0.7; line-height: 1.5; }
+.fy-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, 0.06); color: inherit; }
+.fy-card h3 + .fy-row { border-top: 0; }
+.fy-row:hover .fy-t b { color: var(--gold-bright, #f5c542); }
+.fy-th { width: 34px; height: 48px; border-radius: 6px; flex: none; object-fit: cover; background: rgba(255, 255, 255, 0.07); }
+.fy-th.none { display: grid; place-items: center; font-size: 16px; }
+.fy-t { min-width: 0; flex: 1; display: grid; gap: 2px; }
+.fy-t b { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fy-t small { font-size: 12px; opacity: 0.65; }
+.fy-bar { display: block; height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); overflow: hidden; margin: 2px 0; }
+.fy-bar i { display: block; height: 100%; border-radius: 99px; background: #60a5fa; }
+.fy-bar i.done, .fy-bar i.seeding { background: #34d399; } .fy-bar i.idle { background: #f59e0b; } .fy-bar i.hnr { background: #f87171; }
+.fy-chip { font-size: 11.5px; border-radius: 99px; padding: 1px 9px; white-space: nowrap; }
+.fy-chip.dl { background: rgba(96, 165, 250, 0.2); color: #93c5fd; } .fy-chip.ok { background: rgba(52, 211, 153, 0.18); color: #6ee7b7; } .fy-chip.warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; } .fy-chip.bad { background: rgba(248, 113, 113, 0.2); color: #fca5a5; }
+.fy-posters { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+.fy-poster { flex: none; width: 112px; color: inherit; }
+.fy-poster img, .fy-pnone { display: block; width: 112px; height: 160px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border, #222d52); background: rgba(255, 255, 255, 0.06); }
+.fy-pnone { display: grid; place-items: center; font-size: 28px; }
+.fy-poster b { display: block; font-size: 12.5px; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fy-poster small { opacity: 0.65; }

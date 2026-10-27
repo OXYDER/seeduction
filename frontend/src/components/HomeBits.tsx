@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { create } from 'zustand';
 import { api } from '../api/client';
 import { useCountdown } from './FreeleechCalendar';
+import { releaseTitle } from './TorrentGroups';
+import { episodeCode } from '../lib/frText';
 
 // ------------------------------------------------------------------ préférences de l'accueil (propres à l'appareil)
 
@@ -125,40 +127,85 @@ export function HomeActions({ canUpload }: { canUpload: boolean }) {
   );
 }
 
-// ------------------------------------------------------------------ seeds à terminer (onglet « Pour toi »)
+// ------------------------------------------------------------------ onglet « Pour toi » : quatre cartes côte à côte
 
 interface SeedRow { torrentId: string; name: string; coverImage: string | null; status: 'seeding' | 'idle' | 'hnr' | 'repairing'; seedSeconds: number; requiredSeconds: number; remainingSeconds: number }
+interface NextEp { torrentId: string; title: string; name: string; cover: string | null; season: number; episode: number; afterEpisode: number }
 const hoursOf = (s: number) => (s >= 3600 ? `${Math.round(s / 360) / 10} h`.replace('.', ',') : `${Math.max(0, Math.round(s / 60))} min`);
+const epCode = (s: number, e: number) => `S${String(s).padStart(2, '0')}E${String(e).padStart(2, '0')}`;
 
-/** Les torrents dont l'obligation de seed n'est pas terminée, avec leur barre : le plus pressé d'abord. Rien à afficher = pas de carte. */
-export function SeedsToFinish() {
-  const [rows, setRows] = useState<SeedRow[] | null>(null);
-  useEffect(() => { api.get('/bonus/seeds').then((r) => setRows(r.data.items ?? [])).catch(() => setRows([])); }, []);
-  if (!rows || rows.length === 0) return null;
+function Thumb({ src }: { src: string | null }) {
+  return src ? <img className="fy-th" src={src} alt="" loading="lazy" /> : <span className="fy-th none" aria-hidden="true">🎬</span>;
+}
+
+/** Une ligne de carte : miniature, titre, barre (facultative), détail et pastille d'état. */
+function Row({ to, cover, title, bar, sub, chip }: { to: string; cover: string | null; title: string; bar?: { pct: number; kind: 'dl' | 'done' | 'seeding' | 'idle' | 'hnr' }; sub: string; chip?: { text: string; tone: 'dl' | 'ok' | 'warn' | 'bad' } }) {
   return (
-    <section className="panel ornate rail-section rail-plex">
-      <div className="panel-title"><span className="title-icon">🌱</span>Seeds à terminer<Link to="/seeds" className="rail-all" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontWeight: 400 }}>Tout voir →</Link></div>
-      <div className="seedpage-list">
-        {rows.slice(0, 4).map((i) => {
+    <Link to={to} className="fy-row">
+      <Thumb src={cover} />
+      <span className="fy-t">
+        <b title={title}>{title}</b>
+        {bar && <span className="fy-bar"><i className={bar.kind} style={{ width: `${Math.max(0, Math.min(100, Math.round(bar.pct)))}%` }} /></span>}
+        <small>{sub}</small>
+      </span>
+      {chip && <span className={`fy-chip ${chip.tone}`}>{chip.text}</span>}
+    </Link>
+  );
+}
+
+/** « Pour toi » : mes téléchargements, mes seeds à terminer, l'épisode suivant de mes séries et les nouveautés de mes abonnements, quatre cartes côte à côte. */
+export function ForYouGrid({ active, followed }: { active: any[]; followed: any[] }) {
+  const [seeds, setSeeds] = useState<SeedRow[] | null>(null);
+  const [next, setNext] = useState<NextEp[] | null>(null);
+  useEffect(() => {
+    api.get('/bonus/seeds').then((r) => setSeeds(r.data.items ?? [])).catch(() => setSeeds([]));
+    api.get('/stream/continue').then((r) => setNext(r.data.next ?? [])).catch(() => setNext([]));
+  }, []);
+  const leeching = active.filter((t) => !t.isSeeder);
+  const mb = (n: number) => { const g = n / 1024 ** 3; return g >= 1 ? `${g.toFixed(1).replace('.', ',')} Go` : `${Math.round(n / 1024 ** 2)} Mo`; };
+
+  return (
+    <div className="fy-grid">
+      <section className="fy-card">
+        <h3>⬇️ Mes téléchargements<Link to="/seeds">Tout voir →</Link></h3>
+        {leeching.length === 0 && <p className="fy-empty">Aucun téléchargement en cours.</p>}
+        {leeching.slice(0, 4).map((t) => (
+          <Row key={t.id} to={`/torrents/${t.id}`} cover={t.coverImage} title={t.name} bar={{ pct: t.progress * 100, kind: 'dl' }} sub={`${Math.round(t.progress * 100)} % · ${mb(Number(t.size) || 0)}`} chip={{ text: '⬇️ En cours', tone: 'dl' }} />
+        ))}
+      </section>
+
+      <section className="fy-card">
+        <h3>🌱 Seeds à terminer<Link to="/seeds">Mes seeds →</Link></h3>
+        {seeds && seeds.length === 0 && <p className="fy-empty">Aucune obligation à terminer : bravo !</p>}
+        {(seeds ?? []).slice(0, 4).map((i) => {
           const pct = Math.min(100, Math.round((i.seedSeconds / i.requiredSeconds) * 100));
-          return (
-            <Link key={i.torrentId} to={`/torrents/${i.torrentId}`} className="seedpage-item">
-              {i.coverImage ? <img src={i.coverImage} alt="" className="seedob-cover" loading="lazy" /> : <span className="seedob-cover plain">🎬</span>}
-              <span className="seedob-text">
-                <span className="seedob-name" style={{ fontSize: 14 }}>{i.name}</span>
-                <span className="seedob-bar"><span className={i.status === 'seeding' || i.status === 'repairing' ? 'seeding' : i.status} style={{ width: `${pct}%` }} /></span>
-                <span className="seedob-sub">{hoursOf(i.seedSeconds)} / {hoursOf(i.requiredSeconds)} · encore {hoursOf(i.remainingSeconds)}</span>
-                <span className="seedpage-chips">
-                  {i.status === 'seeding' && <span className="seedpage-chip seeding">🟢 En seed</span>}
-                  {i.status === 'idle' && <span className="seedpage-chip idle">🟠 Ne seede plus : relance-le</span>}
-                  {i.status === 'hnr' && <span className="seedpage-chip hnr">🔴 Hit & run : reprends le seed</span>}
-                  {i.status === 'repairing' && <span className="seedpage-chip seeding">🟡 En réparation</span>}
-                </span>
-              </span>
-            </Link>
-          );
+          const done = i.remainingSeconds <= 0;
+          const chip = done ? { text: '✅ Terminée', tone: 'ok' as const } : i.status === 'hnr' ? { text: '🔴 Hit & run', tone: 'bad' as const } : i.status === 'idle' ? { text: '🟠 Relance-le', tone: 'warn' as const } : { text: `⏳ Encore ${hoursOf(i.remainingSeconds)}`, tone: 'warn' as const };
+          return <Row key={i.torrentId} to={`/torrents/${i.torrentId}`} cover={i.coverImage} title={i.name} bar={{ pct: done ? 100 : pct, kind: done ? 'done' : i.status === 'hnr' ? 'hnr' : i.status === 'idle' ? 'idle' : 'seeding' }} sub={`${hoursOf(i.seedSeconds)} / ${hoursOf(i.requiredSeconds)}`} chip={chip} />;
         })}
-      </div>
-    </section>
+      </section>
+
+      <section className="fy-card">
+        <h3>⏯️ Épisode suivant<Link to="/favorites">Mes séries →</Link></h3>
+        {next && next.length === 0 && <p className="fy-empty">Quand tu finis un épisode, le suivant apparaît ici dès qu'il est disponible.</p>}
+        {(next ?? []).slice(0, 4).map((t) => <Row key={t.torrentId} to={`/torrents/${t.torrentId}`} cover={t.cover} title={t.title} sub={`${epCode(t.season, t.episode)} est disponible`} chip={{ text: 'Nouveau', tone: 'ok' }} />)}
+      </section>
+
+      <section className="fy-card">
+        <h3>🔔 Nouveautés de tes abonnements<Link to="/favorites">Tout voir →</Link></h3>
+        {followed.length === 0 && <p className="fy-empty">Abonne-toi à une série (🔔 sur sa fiche) pour voir ses nouveaux épisodes ici.</p>}
+        {followed.length > 0 && (
+          <div className="fy-posters">
+            {followed.slice(0, 8).map((t) => (
+              <Link key={t.id} to={`/torrents/${t.id}`} className="fy-poster">
+                {t.coverImage ? <img src={t.coverImage} alt="" loading="lazy" /> : <span className="fy-pnone" aria-hidden="true">🎬</span>}
+                <b title={t.name}>{t.displayTitle ?? releaseTitle(t.name)}</b>
+                <small>{episodeCode(t.season, t.episode) ?? ''}</small>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
