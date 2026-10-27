@@ -8,13 +8,12 @@ import { usePageBackdrop } from '../lib/backdrop';
 import { CATEGORY_STYLE, type LayoutContext } from './Layout';
 import { PosterCard, Rail } from './TorrentRail';
 import MetaChips from './MetaChips';
-import PotWidget from './PotWidget';
 import { Board } from './stats/StatsParts';
 import NewsPanel from './NewsPanel';
 import TelegramLogo from './TelegramLogo';
 import ModerationRail from './ModerationRail';
-import FreeleechCalendar from './FreeleechCalendar';
-import HomeShortcuts from './HomeShortcuts';
+import HomeRail from './HomeRail';
+import { HomeActions, HomeCustomize, HomeStrip, SeedsToFinish, useHomePrefs } from './HomeBits';
 import HomeSection, { HomeSectionsControls } from './HomeSection';
 import HomeTabs, { type HomeTab } from './HomeTabs';
 import ContinueWatching from './ContinueWatching';
@@ -200,8 +199,8 @@ export default function HomeStreaming() {
   const hour = new Date().getHours();
   const greeting = hour < 5 ? 'Bonne nuit' : hour < 18 ? 'Bonjour' : 'Bonsoir';
 
-  // L'onglet « Mon activité » : reprendre la lecture + les torrents en cours de téléchargement ou de seed.
-  const activityNode = (
+  // L'onglet « Pour toi » : reprendre la lecture, mes téléchargements et seeds en cours, les seeds à terminer, mes abonnements et les recommandations.
+  const forYouNode = (
     <>
       <ContinueWatching />
       {active.length > 0 && (
@@ -210,6 +209,9 @@ export default function HomeStreaming() {
           <div className="rail">{active.map((t) => <span key={t.id}><ContinueCard t={t} /></span>)}</div>
         </section>
       )}
+      <SeedsToFinish />
+      {followed.length > 0 && <Rail icon="🔔" title="De tes abonnements" to="/favorites" items={followed} />}
+      {recommended.length > 0 && <Rail icon="✨" title="Recommandé pour toi" to="/browse" items={recommended} />}
     </>
   );
 
@@ -306,28 +308,35 @@ export default function HomeStreaming() {
     </>
   );
 
-  // Les sections de l'accueil, réunies en onglets (la première et la dernière sont fixes ; les onglets sans contenu n'apparaissent pas).
+  // Les sections de l'accueil sous la dernière nouvelle, réunies en onglets (un onglet sans contenu n'apparaît pas).
   const tabs: HomeTab[] = [
-    { id: 'nouvelles', label: 'Dernières nouvelles', icon: '📰', color: '#f59e0b', content: <NewsPanel /> },
+    { id: 'pour-toi', label: 'Pour toi', icon: '🎯', color: '#34d399', badge: active.length || null, content: forYouNode },
     { id: 'une', label: 'À la une', icon: '⭐', color: '#a78bfa', content: heroNode },
-    { id: 'activite', label: 'Mon activité', icon: '⏯️', color: '#34d399', badge: active.length || null, content: activityNode },
-    ...(followed.length > 0 ? [{ id: 'abonnements', label: 'Mes abonnements', icon: '🔔', color: '#60a5fa', badge: followed.length, content: <Rail icon="🔔" title="De tes abonnements" to="/favorites" items={followed} /> }] : []),
-    ...(recommended.length > 0 ? [{ id: 'pour-toi', label: 'Pour toi', icon: '✨', color: '#f472b6', content: <Rail icon="✨" title="Recommandé pour toi" to="/browse" items={recommended} /> }] : []),
-    { id: 'nouveautes', label: 'Derniers torrents', icon: '🆕', color: '#38bdf8', content: <TimeRangeRail title="Derniers torrents" sort="date" icon="🆕" /> },
     { id: 'populaires', label: 'Les plus populaires', icon: '🔥', color: '#fb923c', content: <TimeRangeRail title="Les plus populaires" sort="seeders" allowCount icon="🔥" /> },
+    { id: 'nouveautes', label: 'Derniers torrents', icon: '🆕', color: '#38bdf8', content: <TimeRangeRail title="Derniers torrents" sort="date" icon="🆕" /> },
     ...(byCategory.length > 0 ? [{ id: 'categories', label: 'Par catégorie', icon: '📂', color: '#c084fc', badge: byCategory.length, content: <CategoryRails rows={byCategory} /> }] : []),
     ...(atRisk.length > 0 ? [{ id: 'a-risque', label: 'À seeder', icon: '⚠️', color: '#f87171', badge: atRisk.length, content: <Rail icon="⚠️" title="Torrents à risque (1-2 seeders) : un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} /> }] : []),
     { id: 'stats', label: 'Dernières activités et stats', icon: '📊', color: '#2dd4bf', badge: topics.some((t) => t.unread) ? '●' : null, content: statsNode },
   ];
 
+  const { prefs } = useHomePrefs();
+  const canUpload = !user?.profile || user.profile.perms?.upload !== false;
+
   return (
     <div className="home-plex">
       <HomeSectionsControls />
+      <div className="home-greet"><h1>{greeting} {user?.profile?.name ?? user?.username} 👋</h1><HomeCustomize /></div>
       <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
-      <HomeSection id="freeleech" label="Calendrier freeleech" icon="🗓️"><FreeleechCalendar compact /></HomeSection>
-      <HomeSection id="pot" label="Pot commun" icon="🍯"><PotWidget /></HomeSection>
-      <HomeSection id="shortcuts" label="Raccourcis" icon="⚡"><HomeShortcuts canUpload={!user?.profile || user.profile.perms?.upload !== false} /></HomeSection>
-      <HomeTabs tabs={tabs} />
+      <div className={`home-layout${prefs.rail ? ' with-rail' : ''}`}>
+        <div className="home-col">
+          {/* La dernière nouvelle reste toujours affichée, en grand ; les précédentes en petites cartes (au choix). */}
+          <NewsPanel heroOnly={!prefs.prevNews} />
+          {prefs.strip && <HomeStrip />}
+          <HomeTabs tabs={tabs} />
+          {prefs.actions && <HomeActions canUpload={canUpload} />}
+        </div>
+        {prefs.rail && <HomeRail />}
+      </div>
     </div>
   );
 }
