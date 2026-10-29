@@ -1876,7 +1876,7 @@ td.cat-cell .cat-tag { display: flex; height: 44px; width: 140px; border-radius:
 /* ======================================================================== */
 
 .msgr-page {
-  display: grid; grid-template-columns: 340px minmax(0, 1fr); height: calc(100vh - 128px); min-height: 480px;
+  display: grid; grid-template-columns: 340px minmax(0, 1fr); height: var(--msgr-h, calc(100dvh - 140px)); min-height: 320px;
   border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; background: rgba(8,11,24,0.62); backdrop-filter: blur(10px);
 }
 .msgr-page.with-info { grid-template-columns: 340px minmax(0, 1fr) 320px; }
@@ -4537,3 +4537,6 @@ html a.user-link.rank-POWER_USER, html a .nick.rank-POWER_USER { color: #a5b4fc;
 .fy-pnone { display: grid; place-items: center; font-size: 28px; }
 .fy-poster b { display: block; font-size: 12.5px; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fy-poster small { opacity: 0.65; }
+
+/* Chat en pleine page : pas de marge sous la fenêtre (elle prend toute la hauteur restante, sans défilement) */
+@media (min-width: 901px) { :root[data-theme] body.chat-fit .shell .container, body.chat-fit .shell .container { padding-bottom: 14px; } }

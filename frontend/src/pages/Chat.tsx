@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMessenger } from '../store/messenger';
 import ConversationList from '../components/messenger/ConversationList';
@@ -15,6 +15,25 @@ export default function Chat() {
   const [info, setInfo] = useState(false);
   const [creating, setCreating] = useState<false | 'direct' | 'group'>(false);
 
+  // La fenêtre du chat prend exactement la hauteur restante de l'écran (sous le haut de la page, bannières comprises) : plus besoin de défiler pour écrire.
+  const pageRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = pageRef.current;
+    if (!el) return;
+    const fit = () => {
+      if (window.matchMedia('(max-width: 900px)').matches) { el.style.removeProperty('--msgr-h'); return; } // téléphone : règles propres (barre du bas)
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      el.style.setProperty('--msgr-h', `${Math.max(320, Math.floor(window.innerHeight - top - 14))}px`);
+    };
+    document.body.classList.add('chat-fit'); // la page n'a plus de marge du bas : le chat finit au bord de la fenêtre
+    fit();
+    window.scrollTo(0, 0);
+    window.addEventListener('resize', fit);
+    const ro = new ResizeObserver(fit); // une bannière qui apparaît ou disparaît au-dessus décale le chat
+    ro.observe(document.body);
+    return () => { window.removeEventListener('resize', fit); ro.disconnect(); el.style.removeProperty('--msgr-h'); document.body.classList.remove('chat-fit'); };
+  }, []);
+
   const select = (id: string | null) => setParams(id ? { c: id } : {}, { replace: false });
 
   // Sur grand écran, on ouvre directement une conversation (le canal Général, sinon la plus récente) ; sur mobile on montre la liste.
@@ -28,7 +47,7 @@ export default function Chat() {
   useEffect(() => { setInfo(false); }, [activeId]);
 
   return (
-    <div className={`msgr-page${activeId ? ' has-active' : ''}${info ? ' with-info' : ''}`}>
+    <div ref={pageRef} className={`msgr-page${activeId ? ' has-active' : ''}${info ? ' with-info' : ''}`}>
       <ConversationList activeId={activeId} onSelect={select} onNew={() => setCreating('direct')} />
       <main className="msgr-main">
         {activeId ? (
