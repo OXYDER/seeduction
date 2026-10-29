@@ -35,6 +35,7 @@ export const GUIDES_TOOLS: WikiSeedCategory = {
         `• [url=/wiki/guide-nommer-releases]Bien nommer et décrire une release : langues, qualité, NFO[/url]\n` +
         `• [url=/wiki/guide-fiches]Les fiches (TMDB, ThePornDB…) et les packs[/url]\n` +
         `• [url=/wiki/guide-uploadeur]Le rang Uploadeur (envois approuvés d'office)[/url]\n` +
+        `• [url=/wiki/guide-api-envoi]Envoyer un torrent par l'API (script ou robot, sans le formulaire)[/url]\n` +
         `• [url=/wiki/guide-envoyer-plusieurs]Envoyer plusieurs torrents depuis ton client[/url] et [url=/wiki/guide-envoi-multiple-depannage]son dépannage[/url]\n\n` +
         `[b]Profiter du site[/b]\n` +
         `• [url=/wiki/guide-points-bonus]Points bonus[/url] · [url=/wiki/guide-pot-commun]Pot commun[/url] · [url=/wiki/guide-mise-o-jeu]Mise-O-jeu (paris sur le Canadien)[/url] · [url=/wiki/guide-machines-a-sous]Machines à sous[/url] · [url=/wiki/guide-plus-haut-plus-bas]Plus haut ou plus bas[/url] · [url=/wiki/guide-blackjack]Blackjack[/url] · [url=/wiki/guide-des]Dés[/url] · [url=/wiki/guide-cartes]Cartes à collectionner[/url] · [url=/wiki/guide-defis]Défis[/url] · [url=/wiki/guide-classements]Classements[/url] · [url=/wiki/guide-duels]Duels[/url] · [url=/wiki/guide-roue-de-la-fortune]Roue de la fortune[/url] · [url=/wiki/guide-quiz-quotidien]Quiz quotidien[/url] · [url=/wiki/guide-pronostics-lnh]Pronostics LNH[/url] · [url=/wiki/guide-hit-and-run-reparer]Réparer un hit & run[/url] · [url=/wiki/guide-reanimation]Faire revivre un torrent[/url] · [url=/wiki/guide-demandes]Demandes[/url]\n` +
@@ -320,6 +321,29 @@ export const GUIDES_TOOLS: WikiSeedCategory = {
         `• [code]{SITE}/api?t=caps[/code] : doit afficher du XML sans demander de clé. Sinon, le site ou le proxy bloque.\n` +
         `• [code]{SITE}/api?t=search&apikey=TA_CLE&limit=3[/code] : doit afficher 3 torrents.\n\n` +
         `Toujours bloqué ? Ouvre un billet au [url=/wiki/support-chat-et-billets]Support[/url] en indiquant l'outil, sa version, l'adresse utilisée (sans ta clé) et le message d'erreur exact.`,
+    },
+    {
+      title: "Envoyer un torrent par l'API (sans le formulaire)",
+      slug: 'guide-api-envoi',
+      keywords: 'api, envoi, upload, script, robot, curl, automatisation, torrents:upload, clé api, multipart, nfo, catégorie, POST',
+      content:
+        `Un script, un robot ou ton propre outil peut envoyer un torrent à Seeduction sans ouvrir le formulaire : une requête [b]POST[/b] fait exactement la même chose que le formulaire (nettoyage du .torrent, filtres détectés, validation par l'équipe, approbation automatique pour un [url=/wiki/guide-uploadeur]Uploadeur[/url]).\n\n` +
+        `[b]1. Créer une clé d'envoi[/b]\n` +
+        `Ouvre la page [url=/integrations]API & flux RSS[/url] et clique sur « Créer une clé d'envoi » (section 4) : elle a les portées [b]torrents:upload[/b] et [b]torrents:read[/b]. Copie-la tout de suite : elle n'est montrée qu'une fois. Tu peux aussi créer une clé dans Profil > Développeur en cochant « torrents:upload ».\n\n` +
+        `[b]2. Envoyer[/b]\n` +
+        `Adresse : [code]POST {SITE}/api/public/torrents[/code], en multipart/form-data, avec ta clé dans l'en-tête [code]x-api-key[/code] (ou [code]Authorization: Bearer ta_clé[/code]). Exemple :\n` +
+        `[code]curl -X POST "{SITE}/api/public/torrents" -H "x-api-key: sd_..." -F "torrentFile=@Film.torrent" -F "nfoFile=@Film.nfo" -F "name=Film.2026.1080p.WEB-DL" -F "category=Films"[/code]\n` +
+        `• Obligatoires : [b]torrentFile[/b] (le .torrent), [b]name[/b], [b]category[/b] (nom ou slug) ou [b]categoryId[/b], et le NFO ([b]nfo[/b] en texte ou [b]nfoFile[/b] en fichier, 20 caractères au moins).\n` +
+        `• Facultatifs : description, anonymous (true pour cacher ton nom), year, language, resolution, source, codec, audio, season, episode, genres, tags, coverImage, metaKind + metaId. Ce que tu n'envoies pas est détecté d'après le nom et le NFO.\n` +
+        `• Les catégories : [code]GET {SITE}/api/public/categories[/code] (portée torrents:read) donne les identifiants, les noms et les slugs ; choisis une sous-catégorie.\n\n` +
+        `[b]3. Lire la réponse[/b]\n` +
+        `• [b]201[/b] : le torrent est créé. La réponse donne son id, son infoHash, son lien et son statut : [code]PENDING[/code] (en attente de l'équipe) ou [code]APPROVED[/code].\n` +
+        `• [b]400[/b] : un message clair dit ce qui manque (fichier, NFO, catégorie, .torrent illisible).\n` +
+        `• [b]401[/b] : clé absente ou invalide. [b]403[/b] : la clé n'a pas la portée torrents:upload, ou le compte n'est pas actif. [b]429[/b] : trop d'envois (20 par minute au plus).\n\n` +
+        `[b]Bon à savoir[/b]\n` +
+        `• Les mêmes règles que le formulaire s'appliquent : nom correct, NFO obligatoire, pas de doublon. Un envoi par l'API compte comme le tien.\n` +
+        `• Garde ta clé secrète : elle permet d'envoyer en ton nom. Révoque-la dans Profil > Développeur si elle fuit.\n` +
+        `• En cas de doute : [url=/wiki/guide-depannage-api]dépannage de l'API[/url].\n`,
     },
   ],
 };

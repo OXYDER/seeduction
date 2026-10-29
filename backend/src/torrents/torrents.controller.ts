@@ -8,6 +8,7 @@ import { TorrentsService, type TorrentFilters } from './torrents.service';
 import { RecommendationsService } from './recommendations.service';
 import { TrustedUploadersService } from '../admin/trusted-uploaders.service';
 import { accountOf, assertPerm } from '../common/utils/account';
+import { uploadParamsFromBody } from './upload-params';
 import { normalizeOrigin } from '../common/utils/facets';
 import { FACETS } from '../common/utils/facet-schema';
 import { GAME_PLATFORMS, detectGamePlatforms, platformIdsFromRawg } from '../common/utils/game-platforms';
@@ -240,40 +241,9 @@ export class TorrentsController {
     @Request() req: any,
   ) {
     assertPerm(req, 'upload');
-    // Le NFO ou le MediaInfo est obligatoire : il décrit la release (qualité, audio, langues...) et remplit les filtres.
     if (!file) throw new BadRequestException('Fichier .torrent manquant');
-    if (!body.nfo || body.nfo.replace(/\s+/g, ' ').trim().length < 20) {
-      throw new BadRequestException('Le NFO ou le MediaInfo de la release est obligatoire : ajoute le fichier .nfo ou colle le texte du MediaInfo.');
-    }
-    const created = await this.torrentsService.upload({
-      userId: accountOf(req),
-      fileBuffer: file.buffer,
-      name: body.name,
-      description: body.description,
-      categoryId: body.categoryId,
-      tags: body.tags ? body.tags.split(',').map((t) => t.trim()) : [],
-      anonymous: body.anonymous === 'true',
-      coverImage: body.coverImage || undefined,
-      metaKind: body.metaKind || undefined,
-      metaId: body.metaId || undefined,
-      year: body.year ? Number(body.year) : undefined,
-      language: body.language || undefined,
-      origin: normalizeOrigin(body.origin),
-      resolution: body.resolution || undefined,
-      codec: body.codec || undefined,
-      hdr: body.hdr === 'true',
-      audio: body.audio || undefined,
-      source: body.source || undefined,
-      containerFormat: body.containerFormat || undefined,
-      fps: body.fps ? Number(body.fps) : undefined,
-      durationMinutes: body.durationMinutes ? Number(body.durationMinutes) : undefined,
-      season: body.season || undefined,
-      episode: body.episode || undefined,
-      genres: body.genres ? body.genres.split(',').map((g) => g.trim()).filter(Boolean).slice(0, 8) : [],
-      videoType: body.videoType || undefined,
-      nfo: body.nfo && body.nfo.trim() ? body.nfo.slice(0, 200_000) : undefined,
-      attrs: (() => { try { return body.attrs ? JSON.parse(body.attrs) : undefined; } catch { return undefined; } })(),
-    });
+    // Le NFO ou le MediaInfo est obligatoire (voir uploadParamsFromBody) ; les mêmes champs servent à l'API publique d'envoi.
+    const created = await this.torrentsService.upload(uploadParamsFromBody(accountOf(req), file.buffer, body, body.categoryId));
     // Un Uploadeur (rang gagné par des envois réguliers et sans faute) n'a plus à passer par la modération.
     if (await this.trusted.autoApproveIfTrusted(accountOf(req), created.id)) return { ...created, status: 'APPROVED' as const, autoApproved: true };
     return created;

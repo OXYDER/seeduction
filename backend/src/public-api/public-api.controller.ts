@@ -1,4 +1,5 @@
-import { Controller, Get, Param, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, Res, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { PublicApiService } from './public-api.service';
@@ -27,6 +28,29 @@ export class PublicApiController {
   @Get('torrents/:id')
   torrent(@Param('id') id: string) {
     return this.publicApi.torrentDetail(id);
+  }
+
+  /** Les catégories d'envoi (identifiant, nom, parent) : pour choisir `categoryId` ou `category` à l'envoi. */
+  @RequireScope('torrents:read')
+  @Get('categories')
+  categories() {
+    return this.publicApi.listCategories();
+  }
+
+  /**
+   * Envoie un torrent sans passer par le formulaire du site : multipart/form-data avec `torrentFile` (le .torrent), le NFO (`nfo` en texte ou `nfoFile` en fichier) et les mêmes champs que le formulaire
+   * (`name`, `categoryId` ou `category`, `description`, `anonymous`, `year`, `language`, `resolution`...). Portée « torrents:upload » ; au plus 20 envois par minute.
+   */
+  @RequireScope('torrents:upload')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post('torrents')
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'torrentFile', maxCount: 1 }, { name: 'nfoFile', maxCount: 1 }], { limits: { fileSize: 15 * 1024 * 1024, files: 2 } }))
+  upload(
+    @UploadedFiles() files: { torrentFile?: Express.Multer.File[]; nfoFile?: Express.Multer.File[] },
+    @Body() body: Record<string, string>,
+    @Req() req: Request & { apiKey: { userId: string } },
+  ) {
+    return this.publicApi.uploadTorrent(req.apiKey.userId, files?.torrentFile?.[0], files?.nfoFile?.[0], body ?? {}, process.env.SITE_URL || `${req.protocol}://${req.get('host')}`);
   }
 
   @RequireScope('user:read')

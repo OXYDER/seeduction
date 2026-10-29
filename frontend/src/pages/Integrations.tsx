@@ -95,6 +95,25 @@ export default function Integrations() {
     finally { setBusy(false); }
   }
 
+  const [upKey, setUpKey] = useState('');
+  async function createUploadKey() {
+    setBusy(true); setError('');
+    try {
+      const { data } = await api.post('/keys', { label: `Envoi par API (${new Date().toLocaleDateString()})`, scopes: ['torrents:upload', 'torrents:read'] });
+      setUpKey(data.rawKey);
+    } catch (e: any) { setError(e.response?.data?.message ?? 'Création de la clé impossible'); }
+    finally { setBusy(false); }
+  }
+  const upShown = upKey || key.trim() || 'sd_TA_CLE_AVEC_LA_PORTEE_TORRENTS_UPLOAD';
+  const curl = `curl -X POST "${site}/api/public/torrents" \\
+  -H "x-api-key: ${upShown}" \\
+  -F "torrentFile=@Mon.Film.2026.1080p.WEB-DL.torrent" \\
+  -F "nfoFile=@Mon.Film.2026.1080p.WEB-DL.nfo" \\
+  -F "name=Mon.Film.2026.1080p.WEB-DL" \\
+  -F "category=Films" \\
+  -F "description=Texte de la description" \\
+  -F "anonymous=false"`;
+
   const feedUrl = useMemo(() => {
     const p = new URLSearchParams({ t: 'search', apikey: k });
     if (rssCats.length) p.set('cat', rssCats.join(','));
@@ -219,6 +238,34 @@ export default function Integrations() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="panel">
+        <h3 style={{ marginTop: 0 }}>4. Envoyer un torrent par l'API (sans le formulaire)</h3>
+        <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
+          Pour un script, un robot ou ton propre outil : une requête <code>POST</code> envoie le torrent exactement comme le formulaire du site (même nettoyage du .torrent, mêmes filtres détectés, même validation de l'équipe, approbation automatique pour un Uploadeur). Il faut une clé avec la portée <strong>torrents:upload</strong> (au plus 20 envois par minute).
+        </p>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+          <button type="button" className="secondary" disabled={busy} onClick={createUploadKey}>🔑 Créer une clé d'envoi</button>
+          {upKey && <span className="muted" style={{ fontSize: 12 }}>Copie-la maintenant : elle ne sera plus montrée. Elle est déjà dans l'exemple ci-dessous.</span>}
+        </div>
+        <CopyField label="Exemple (curl)" value={curl} hint="Remplace les noms de fichiers et les valeurs. La clé est aussi acceptée dans l'en-tête Authorization: Bearer ..." />
+        <div style={{ overflowX: 'auto', marginTop: 8 }}>
+          <table>
+            <thead><tr><th>Champ</th><th>Obligatoire</th><th>Contenu</th></tr></thead>
+            <tbody>
+              <tr><td><code>torrentFile</code></td><td>oui</td><td>le fichier .torrent</td></tr>
+              <tr><td><code>name</code></td><td>oui</td><td>le nom de la release</td></tr>
+              <tr><td><code>category</code> ou <code>categoryId</code></td><td>oui</td><td>le nom, le slug ou l'identifiant d'une sous-catégorie. La liste : <code>GET {site}/api/public/categories</code> (portée torrents:read)</td></tr>
+              <tr><td><code>nfo</code> ou <code>nfoFile</code></td><td>oui</td><td>le NFO ou le MediaInfo de la release (texte, ou fichier .nfo) : 20 caractères au moins</td></tr>
+              <tr><td><code>description</code>, <code>anonymous</code></td><td>non</td><td>la description (BBCode) ; <code>true</code> pour cacher ton nom comme envoyeur</td></tr>
+              <tr><td><code>year</code>, <code>language</code>, <code>resolution</code>, <code>source</code>, <code>codec</code>, <code>audio</code>, <code>season</code>, <code>episode</code>, <code>genres</code>, <code>tags</code>, <code>coverImage</code>, <code>metaKind</code> + <code>metaId</code></td><td>non</td><td>les mêmes champs que le formulaire ; ceux que tu n'envoies pas sont détectés à partir du nom et du NFO</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+          Réponse : <code>201</code> avec <code>id</code>, <code>status</code> (<code>PENDING</code> en attente de l'équipe, ou <code>APPROVED</code>), <code>infoHash</code> et le lien du torrent. Erreurs : <code>400</code> avec un message clair (fichier, NFO ou catégorie manquants), <code>401/403</code> (clé absente, sans la portée, ou compte non actif). Détails dans le <Link to="/wiki/guide-api-envoi">guide Envoyer par l'API</Link>.
+        </p>
       </div>
     </div>
   );
