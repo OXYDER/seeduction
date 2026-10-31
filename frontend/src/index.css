@@ -4662,3 +4662,8 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .msgr-dock-window .msgr-scroll { padding-bottom: 16px; }
 .dm-window-body, .public-chat-body { padding-bottom: 20px; }
 .msg-thread { padding-bottom: 10px; }
+
+/* Mise en forme (chat compact) : les options s'affichent dans la rangée, à côté du bouton, au lieu d'une fenêtre qui déborde du bord gauche. */
+.msgr-tools-row .msgr-emoji-anchor { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.msgr-tools-row .msgr-emoji-anchor:has(.msgr-fmt-pop) { flex-basis: 100%; }
+.msgr-tools-row .msgr-fmt-pop { position: static; bottom: auto; right: auto; flex-wrap: wrap; box-shadow: none; }
