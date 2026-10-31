@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from '../presence/presence.service';
 import { DmGateway } from '../dm/dm.gateway';
+import { LAST_SEEN_SELECT, lastSeenVisible } from '../common/utils/last-seen';
 
 const userSelect = { id: true, username: true, avatarUrl: true };
 
@@ -22,13 +23,15 @@ export class FriendsService {
       include: { requester: { select: userSelect }, addressee: { select: userSelect } },
       orderBy: { createdAt: 'desc' },
     });
+    const flags = await this.prisma.user.findMany({ where: { id: { in: rows.map((f) => (f.requesterId === userId ? f.addresseeId : f.requesterId)) } }, select: { id: true, ...LAST_SEEN_SELECT } });
+    const seen = new Map(flags.map((u) => [u.id, lastSeenVisible(u, { self: false, staff: false })]));
     const friends: any[] = [];
     const incoming: any[] = [];
     const outgoing: any[] = [];
     for (const f of rows) {
       const isRequester = f.requesterId === userId;
       const other = isRequester ? f.addressee : f.requester;
-      if (f.status === 'ACCEPTED') friends.push({ friendshipId: f.id, ...other, status: this.presence.publicStatus(other.id) });
+      if (f.status === 'ACCEPTED') friends.push({ friendshipId: f.id, ...other, status: this.presence.publicStatus(other.id), lastSeenAt: seen.get(other.id) ?? null });
       else if (isRequester) outgoing.push({ friendshipId: f.id, ...other });
       else incoming.push({ friendshipId: f.id, ...other });
     }

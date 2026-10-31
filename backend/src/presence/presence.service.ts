@@ -48,6 +48,8 @@ export class PresenceService extends EventEmitter {
       return false;
     }
     this.users.delete(userId);
+    // Dernière activité : le moment où le membre a quitté le chat (affiché « Vu la dernière fois il y a… »).
+    void this.prisma.user.update({ where: { id: userId }, data: { lastSeenAt: new Date() } }).catch(() => undefined);
     this.emit('presence-changed', { userId, online: false });
     return true;
   }

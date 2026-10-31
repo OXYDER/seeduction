@@ -55,7 +55,7 @@ export interface ConvSummary {
   slug?: string | null;
   description?: string | null;
   iconUrl?: string | null;
-  other: (MsgUser & { status: PublicStatus }) | null;
+  other: (MsgUser & { status: PublicStatus; lastSeenAt?: string | null }) | null;
   members?: (MsgUser & { role: string })[];
   memberCount?: number;
   last: { id: string; type: string; preview: string; senderId: string; senderUsername: string; createdAt: string } | null;

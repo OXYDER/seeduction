@@ -7,6 +7,7 @@ import { FriendsService } from '../friends/friends.service';
 import { PresenceService } from '../presence/presence.service';
 import { ALL_PERMS, permsOf, type Perms } from '../common/utils/family-perms';
 import { COLORED_CLASSES, COLORED_ROLES, rankKeyOf } from '../common/utils/rank';
+import { lastSeenVisible } from '../common/utils/last-seen';
 
 const PRESENCE_VALUES: PresenceStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'INVISIBLE'];
 const DM_PRIVACY_VALUES: DmPrivacy[] = ['EVERYONE', 'FRIENDS_ONLY'];
@@ -31,7 +32,7 @@ export class UsersService {
       select: {
         id: true, username: true, email: true, role: true, uploaded: true,
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
-        lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
+        lastSeenAt: true, showLastSeen: true, anonymous: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
         watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, chatRail: true, anonymousSelf: true, anonymousUploads: true, anonymousTeam: true, goalSound: true, tipStyle: true,
         parentId: true, profileName: true, profileType: true, profilePerms: true, familyEnabled: true, deletedAt: true,
@@ -62,7 +63,7 @@ export class UsersService {
     if (user.profileType === 'BOT' && !isStaff) Object.assign(user, { uploaded: 0n, downloaded: 0n, bonusPoints: 0 });
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, chatBubbles, chatRail, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, showLastSeen, anonymous: adminAnonymous, defaultView, chatBubbles, chatRail, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     const onlineStatus = this.presence.publicStatus(user.id);
@@ -72,6 +73,8 @@ export class UsersService {
     const teamRow = await this.prisma.teamMember.findFirst({ where: { userId: user.parentId ?? user.id }, include: { team: { select: { id: true, name: true, tag: true } } } });
     return {
       ...publicInfo,
+      // « Vu la dernière fois » : seulement si le membre ne l'a pas caché (voir lastSeenVisible).
+      lastSeenAt: lastSeenVisible({ lastSeenAt: user.lastSeenAt, showLastSeen, presenceStatus, anonymous: adminAnonymous, anonymousSelf }, { self: isSelf, staff: isStaff }),
       ...(teamRow ? { team: { ...teamRow.team, role: teamRow.role } } : {}),
       ...(profile ? { profile } : {}),
       ratio,
@@ -81,7 +84,7 @@ export class UsersService {
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus,
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, defaultView, chatBubbles, chatRail, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, showLastSeen, defaultView, chatBubbles, chatRail, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
   }
@@ -155,6 +158,12 @@ export class UsersService {
     if (!TIP_STYLES.includes(style)) throw new BadRequestException('Style inconnu');
     await this.prisma.user.update({ where: { id: userId }, data: { tipStyle: style } });
     return { tipStyle: style };
+  }
+
+  /** Montrer ou cacher aux autres « Vu la dernière fois il y a… » (profil, chat, amis). */
+  async setShowLastSeen(userId: string, enabled: boolean) {
+    await this.prisma.user.update({ where: { id: userId }, data: { showLastSeen: !!enabled } });
+    return { showLastSeen: !!enabled };
   }
 
   /** Afficher ou non « en train de regarder X » (voir StreamService.pingWatching) quand le lecteur desktop tourne. */

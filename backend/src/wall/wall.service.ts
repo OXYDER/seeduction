@@ -3,6 +3,8 @@ import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AdultService } from '../adult/adult.service';
 import { BadgesService } from '../badges/badges.service';
+import { LinkPreviewService } from '../messenger/link-preview.service';
+import { extractMentions } from '../notifications/notifications.service';
 import {
   WALL_COMMENTS_PER_DAY, WALL_POSTS_PER_DAY, WALL_PROFILE_VISIBILITY, WALL_TEAM_VISIBILITY,
   canSeeWallPost, cleanWallImage, cleanWallLink, isWallReaction,
@@ -15,7 +17,7 @@ const PAGE = 15;
 const DAY = 86_400_000;
 const ANON_AUTHOR = { id: null, username: 'Anonyme', avatarUrl: null };
 
-type PostRow = { id: string; authorId: string; teamId: string | null; content: string; imageUrl: string | null; linkUrl: string | null; torrentId: string | null; visibility: string; createdAt: Date };
+type PostRow = { id: string; authorId: string; teamId: string | null; content: string; imageUrl: string | null; linkUrl: string | null; linkTitle: string | null; linkDescription: string | null; linkSite: string | null; torrentId: string | null; visibility: string; createdAt: Date; editedAt: Date | null };
 
 /**
  * Le Mur : publications sur le profil d'un membre et sur la page d'une team, avec réactions et commentaires. Tout est réservé aux membres du site : rien n'est jamais public.
@@ -23,7 +25,7 @@ type PostRow = { id: string; authorId: string; teamId: string | null; content: s
  */
 @Injectable()
 export class WallService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private adult: AdultService, private badges: BadgesService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private adult: AdultService, private badges: BadgesService, private previews: LinkPreviewService) {}
 
   // ------------------------------------------------------------------ aides
 
@@ -118,7 +120,8 @@ export class WallService {
       const t = r.torrentId ? tById.get(r.torrentId) : null;
       const manage = staff || r.authorId === v.accountId || ['LEADER', 'OFFICER'].includes(roleOf.get(r.teamId ?? '') ?? '');
       return {
-        kind: 'POST' as const, id: r.id, createdAt: r.createdAt, content: r.content, imageUrl: r.imageUrl, linkUrl: r.linkUrl, visibility: r.visibility, teamId: r.teamId,
+        kind: 'POST' as const, id: r.id, createdAt: r.createdAt, editedAt: r.editedAt, content: r.content, imageUrl: r.imageUrl, linkUrl: r.linkUrl, linkPreview: r.linkUrl && (r.linkTitle || r.linkDescription) ? { title: r.linkTitle, description: r.linkDescription, site: r.linkSite } : null, visibility: r.visibility, teamId: r.teamId,
+        canEdit: r.authorId === v.accountId,
         // Torrent partagé : retiré depuis (ou catégorie adulte non activée) → on dit seulement qu'il n'est plus disponible.
         torrent: r.torrentId ? (t && !hiddenCats.includes(t.categoryId) ? { id: t.id, name: t.name, coverImage: t.coverImage, size: Number(t.size), seeders: t.seeders } : { unavailable: true }) : null,
         author: author(r),
@@ -127,6 +130,41 @@ export class WallService {
         canDelete: manage,
       };
     });
+  }
+
+  /** Aperçu d'un lien (titre, description, site) : service déjà durci du Messenger (adresses publiques seulement, 5 s, jamais d'image). N'échoue jamais : sans aperçu, le lien s'affiche seul. */
+  private async previewOf(userId: string, link: string | null) {
+    const none = { linkTitle: null, linkDescription: null, linkSite: null };
+    if (!link) return none;
+    try {
+      const p = await Promise.race([this.previews.preview(userId, link), new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))]);
+      return { linkTitle: p?.title ?? null, linkDescription: p?.description ?? null, linkSite: p?.siteName ?? null };
+    } catch { return none; }
+  }
+
+  /** Qui peut lire la publication : null = tous les membres, sinon la liste des identifiants (amis de l'auteur, membres de la team, personne). */
+  private async audience(post: { authorId: string; teamId: string | null; visibility: string }): Promise<Set<string> | null> {
+    if (post.visibility === 'MEMBERS') return null;
+    if (post.teamId) return new Set((await this.prisma.teamMember.findMany({ where: { teamId: post.teamId }, select: { userId: true } })).map((m) => m.userId));
+    if (post.visibility === 'FRIENDS') return new Set(await this.friendIds(post.authorId));
+    return new Set();
+  }
+
+  /** Prévient les membres @mentionnés qui peuvent lire la publication ; `before` = texte précédent (modification) : ceux déjà mentionnés ne sont pas prévenus une seconde fois. */
+  private async notifyMentioned(post: { id: string; authorId: string; teamId: string | null; visibility: string }, text: string, v: WallViewer, where: string, before = '', skip: string[] = []) {
+    const old = new Set(extractMentions(before).map((n) => n.toLowerCase()));
+    const names = extractMentions(text).filter((n) => !old.has(n.toLowerCase()));
+    if (names.length === 0) return;
+    const [me, aud] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: v.accountId }, select: { username: true, anonymous: true, anonymousSelf: true, anonymousTeam: true } }),
+      this.audience(post),
+    ]);
+    const anon = !!me && (me.anonymous || me.anonymousSelf || (!!post.teamId && me.anonymousTeam));
+    await this.notifications.notifyMentions({
+      text: names.map((n) => `@${n}`).join(' '), authorId: v.accountId, authorName: anon ? 'Un membre anonyme' : me?.username ?? 'Un membre', where,
+      link: post.teamId ? `/teams/${post.teamId}` : `/users/${post.authorId}`, skip,
+      canSee: aud ? (u) => aud.has(u.id) : undefined,
+    }).catch(() => undefined);
   }
 
   // ------------------------------------------------------------------ lire les murs
@@ -232,8 +270,28 @@ export class WallService {
     if ((await this.prisma.wallPost.count({ where: { authorId: v.accountId, createdAt: { gt: new Date(Date.now() - DAY) } } })) >= WALL_POSTS_PER_DAY) {
       throw new BadRequestException(`Limite de ${WALL_POSTS_PER_DAY} publications par jour atteinte`);
     }
-    const post = await this.prisma.wallPost.create({ data: { authorId: v.accountId, teamId, content, imageUrl, linkUrl, torrentId, visibility } });
+    const post = await this.prisma.wallPost.create({ data: { authorId: v.accountId, teamId, content, imageUrl, linkUrl, ...(await this.previewOf(v.accountId, linkUrl)), torrentId, visibility } });
+    void this.notifyMentioned(post, content, v, 'dans une publication');
     return (await this.decorate([post], v))[0];
+  }
+
+  /** Modifier sa publication (texte, lien, image, visibilité) : l'auteur seulement ; le torrent partagé ne change pas. */
+  async update(postId: string, v: WallViewer, body: any) {
+    const { post, isAuthor } = await this.load(postId, v);
+    if (!isAuthor) throw new ForbiddenException('Seul l\u2019auteur peut modifier sa publication');
+    const content = body?.content !== undefined ? String(body.content ?? '').trim() : post.content;
+    if (content.length > 2000) throw new BadRequestException('Publication trop longue (2000 caractères maximum)');
+    let linkUrl = post.linkUrl;
+    if (body?.linkUrl !== undefined) { linkUrl = body.linkUrl ? cleanWallLink(body.linkUrl) : null; if (body.linkUrl && !linkUrl) throw new BadRequestException('Lien invalide : il doit commencer par http:// ou https://'); }
+    let imageUrl = post.imageUrl;
+    if (body?.imageUrl !== undefined) { imageUrl = body.imageUrl ? cleanWallImage(body.imageUrl) : null; if (body.imageUrl && !imageUrl) throw new BadRequestException('Image invalide : envoie-la depuis le site'); }
+    let visibility = post.visibility;
+    if (body?.visibility !== undefined) { visibility = String(body.visibility); if (!(post.teamId ? WALL_TEAM_VISIBILITY : WALL_PROFILE_VISIBILITY).includes(visibility as never)) throw new BadRequestException('Visibilité invalide'); }
+    if (!content && !imageUrl && !linkUrl && !post.torrentId) throw new BadRequestException('Écris quelque chose, ou ajoute une image, un lien ou un torrent');
+    const preview = linkUrl === post.linkUrl ? { linkTitle: post.linkTitle, linkDescription: post.linkDescription, linkSite: post.linkSite } : await this.previewOf(v.accountId, linkUrl);
+    const updated = await this.prisma.wallPost.update({ where: { id: post.id }, data: { content, linkUrl, imageUrl, visibility, ...preview, editedAt: new Date() } });
+    void this.notifyMentioned(updated, content, v, 'dans une publication', post.content);
+    return (await this.decorate([updated], v))[0];
   }
 
   async remove(postId: string, v: WallViewer) {
@@ -262,7 +320,7 @@ export class WallService {
     const { post, manage } = await this.load(postId, v);
     const rows = await this.prisma.wallComment.findMany({ where: { postId: post.id }, orderBy: { createdAt: 'asc' }, take: 200 });
     const author = await this.authorsOf(rows.map((r) => ({ authorId: r.authorId, teamId: post.teamId })), v);
-    return rows.map((r) => ({ id: r.id, content: r.content, createdAt: r.createdAt, author: author({ authorId: r.authorId, teamId: post.teamId }), canDelete: manage || r.authorId === v.accountId }));
+    return rows.map((r) => ({ id: r.id, content: r.content, createdAt: r.createdAt, editedAt: r.editedAt, author: author({ authorId: r.authorId, teamId: post.teamId }), canDelete: manage || r.authorId === v.accountId, canEdit: r.authorId === v.accountId }));
   }
 
   async addComment(postId: string, v: WallViewer, contentRaw: string) {
@@ -284,7 +342,21 @@ export class WallService {
       }).catch(() => undefined);
     }
     const author = await this.authorsOf([{ authorId: v.accountId, teamId: post.teamId }], v);
-    return { id: c.id, content: c.content, createdAt: c.createdAt, author: author({ authorId: v.accountId, teamId: post.teamId }), canDelete: true };
+    void this.notifyMentioned(post, content, v, 'dans un commentaire', '', [post.authorId]);
+    return { id: c.id, content: c.content, createdAt: c.createdAt, editedAt: null, author: author({ authorId: v.accountId, teamId: post.teamId }), canDelete: true, canEdit: true };
+  }
+
+  async editComment(commentId: string, v: WallViewer, contentRaw: string) {
+    const c = await this.prisma.wallComment.findUnique({ where: { id: commentId }, include: { post: true } });
+    if (!c || !(await this.access(c.post, v)).see) throw new NotFoundException('Commentaire introuvable');
+    if (c.authorId !== v.accountId) throw new ForbiddenException('Seul l\u2019auteur peut modifier son commentaire');
+    const content = String(contentRaw ?? '').trim();
+    if (!content) throw new BadRequestException('Écris ton commentaire');
+    if (content.length > 1000) throw new BadRequestException('Commentaire trop long (1000 caractères maximum)');
+    const updated = await this.prisma.wallComment.update({ where: { id: c.id }, data: { content, editedAt: new Date() } });
+    void this.notifyMentioned(c.post, content, v, 'dans un commentaire', c.content, [c.post.authorId]);
+    const author = await this.authorsOf([{ authorId: v.accountId, teamId: c.post.teamId }], v);
+    return { id: updated.id, content: updated.content, createdAt: updated.createdAt, editedAt: updated.editedAt, author: author({ authorId: v.accountId, teamId: c.post.teamId }), canDelete: true, canEdit: true };
   }
 
   async removeComment(commentId: string, v: WallViewer) {

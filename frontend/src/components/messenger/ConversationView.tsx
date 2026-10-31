@@ -5,7 +5,8 @@ import { useAuthStore } from '../../store/auth';
 import { isUserMuted, statusOf, useMessenger, type Msg, type MsgUser } from '../../store/messenger';
 import { useCalls } from '../../store/calls';
 import { useSupport } from '../../store/support';
-import { STATUS_LABEL } from '../../lib/presence';
+import { STATUS_LABEL, type PublicStatus } from '../../lib/presence';
+import { lastSeenText } from '../../lib/time';
 import { clock, dayLabel, isSameDay } from '../../lib/chatFormat';
 import ConvAvatar from './ConvAvatar';
 import Nick from '../Nick';
@@ -38,6 +39,19 @@ interface Props {
 }
 
 /** Une conversation complète : en-tête, fil de messages (défilement infini vers le haut), « en train d'écrire », composeur. Sert à la page Messenger et aux fenêtres flottantes. */
+/** Sous le nom d'une discussion privée : « En ligne », ou « Vu la dernière fois il y a… » quand l'autre est hors ligne (le moment est mis à jour dès qu'il se déconnecte pendant qu'on regarde). */
+function SeenSubtitle({ status, seenAt }: { status: PublicStatus; seenAt: string | null }) {
+  const [left, setLeft] = useState<string | null>(null);
+  const before = useRef(status);
+  useEffect(() => {
+    if (before.current !== 'OFFLINE' && status === 'OFFLINE') setLeft(new Date().toISOString());
+    if (status !== 'OFFLINE') setLeft(null);
+    before.current = status;
+  }, [status]);
+  const at = status === 'OFFLINE' ? left ?? seenAt : null;
+  return <span className="muted">{at ? lastSeenText(at) : STATUS_LABEL[status]}</span>;
+}
+
 export default function ConversationView({ conversationId, variant, onClose, onMinimize, onHeaderPointerDown, onExpandToPage, onToggleSize, sizeBig, onOpenInfo, infoOpen, onBack }: Props) {
   const me = useAuthStore((s) => s.user);
   const conv = useMessenger((s) => s.conversations.find((c) => c.id === conversationId));
@@ -293,7 +307,7 @@ export default function ConversationView({ conversationId, variant, onClose, onM
 
   const subtitle = typingNames.length
     ? <span className="msgr-typing-text">{typingNames.join(', ')} {typingNames.length > 1 ? 'écrivent' : 'écrit'}…</span>
-    : conv.type === 'DIRECT' ? <span className="muted">{STATUS_LABEL[status]}</span>
+    : conv.type === 'DIRECT' ? <SeenSubtitle status={status} seenAt={conv.other?.lastSeenAt ?? null} />
     : conv.type === 'GROUP' ? <span className="muted">{conv.memberCount} membres</span>
     : <span className="muted">{conv.description ?? 'Canal public'} · {onlineList.length} en ligne</span>;
 

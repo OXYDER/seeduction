@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { useDmStore } from '../store/dm';
 import { useMessenger, statusOf } from '../store/messenger';
 import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
+import { lastSeenText } from '../lib/time';
 
 type Tab = 'friends' | 'incoming' | 'outgoing';
 
@@ -89,7 +90,7 @@ export default function Friends() {
                     </span>
                     <div>
                       <strong><Nick id={f.id} name={f.username} /></strong>
-                      <div className="muted" style={{ fontSize: 12 }}>{STATUS_LABEL[status as keyof typeof STATUS_LABEL]}</div>
+                      <div className="muted" style={{ fontSize: 12 }}>{status === 'OFFLINE' && f.lastSeenAt ? lastSeenText(f.lastSeenAt) : STATUS_LABEL[status as keyof typeof STATUS_LABEL]}</div>
                     </div>
                   </Link>
                   <div className="row" style={{ gap: 6 }}>

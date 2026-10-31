@@ -4656,3 +4656,9 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .home-bottom .community-tile strong { font-size: 17px; }
 .home-bottom .community-tile .muted { font-size: 11px; }
 .home-bottom .community-tile-icon { font-size: 16px; top: 5px; right: 7px; }
+
+/* Discussions : un peu d'espace sous le dernier message, pour qu'il ne colle pas à la ligne du bas. */
+.msgr-scroll { padding-bottom: 22px; }
+.msgr-dock-window .msgr-scroll { padding-bottom: 16px; }
+.dm-window-body, .public-chat-body { padding-bottom: 20px; }
+.msg-thread { padding-bottom: 10px; }

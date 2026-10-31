@@ -1,3 +1,9 @@
+/** « Vu la dernière fois il y a 5 min » (ou « Vu à l'instant »). */
+export function lastSeenText(iso: string) {
+  const ago = timeAgo(iso);
+  return ago === "à l'instant" ? "Vu à l'instant" : `Vu la dernière fois ${ago}`;
+}
+
 export function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60_000);

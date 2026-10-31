@@ -41,6 +41,7 @@ model User {
   anonymousSelf    Boolean    @default(false)
   anonymousUploads Boolean    @default(false)
   anonymousTeam    Boolean    @default(false)
+  showLastSeen     Boolean    @default(true) // montre aux autres « Vu la dernière fois il y a… » (profil, chat, amis)
   /// Les sessions ouvertes avant cette date ne sont plus valides (posée à chaque changement ou réinitialisation de mot de passe).
   sessionsValidAfter DateTime?
   /// Réinitialisation du mot de passe exigée par l'équipe : le compte reste inutilisable tant que le membre n'a pas choisi un nouveau mot de passe avec le lien reçu par courriel.
@@ -2763,10 +2764,15 @@ model WallPost {
   content    String   @default("") @db.VarChar(2000)
   imageUrl   String?  @db.VarChar(300)
   linkUrl    String?  @db.VarChar(500)
+  /// Aperçu du lien (titre, description, site), lu par le serveur à la publication : jamais d'image, rien n'est chargé chez les lecteurs.
+  linkTitle       String? @db.VarChar(160)
+  linkDescription String? @db.VarChar(260)
+  linkSite        String? @db.VarChar(80)
   torrentId  String?
   /// Profil : ME | FRIENDS | MEMBERS. Team : TEAM | MEMBERS.
   visibility String   @default("MEMBERS") @db.VarChar(8)
   createdAt  DateTime @default(now())
+  editedAt   DateTime?
 
   reactions WallReaction[]
   comments  WallComment[]
@@ -2795,6 +2801,7 @@ model WallComment {
   authorId  String
   content   String   @db.VarChar(1000)
   createdAt DateTime @default(now())
+  editedAt  DateTime?
 
   @@index([postId, createdAt])
 }

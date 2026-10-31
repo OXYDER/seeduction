@@ -26,6 +26,8 @@ import { STATUS_COLOR, STATUS_LABEL } from '../lib/presence';
 import { useCrumbTitle } from '../store/crumbs';
 import Loading from '../components/Loading';
 import { rankClass, rankKeyOf } from '../store/ranks';
+import { lastSeenText } from '../lib/time';
+import LastSeenPanel from '../components/LastSeenPanel';
 
 export default function Profile() {
   const { id } = useParams();
@@ -117,7 +119,7 @@ export default function Profile() {
         {profile.status === 'BANNED' && <span className="badge" style={{ background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>Banni</span>}
         <span className="muted">
           Membre depuis le {new Date(profile.createdAt).toLocaleDateString('fr-FR')}
-          {profile.lastSeenAt && ` · vu ${new Date(profile.lastSeenAt).toLocaleDateString('fr-FR')}`}
+          {profile.lastSeenAt && profile.onlineStatus === 'OFFLINE' && ` · ${lastSeenText(profile.lastSeenAt)}`}
           {profile._count && ` · ${profile._count.torrentsUploaded} torrent(s) envoyé(s)`}
         </span>
         {id && (
@@ -218,6 +220,7 @@ export default function Profile() {
       {showTab('account') && <ChatMutesPanel />}
       {showTab('account') && <TipStylePanel />}
       {showTab('account') && <WatchingVisibilityPanel value={profile.showWatchingStatus !== false} />}
+      {showTab('account') && <LastSeenPanel value={profile.showLastSeen !== false} />}
       {showTab('account') && <AdultPreference enabled={!!profile.showAdult} />}
       {showTab('security') && <SecurityPanel />}
       {showTab('dev') && (

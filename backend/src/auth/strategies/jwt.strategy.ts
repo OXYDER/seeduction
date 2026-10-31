@@ -41,6 +41,7 @@ interface Checked { at: number; blocked: boolean; perms: Perms }
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   private checked = new Map<string, Checked>();
+  private touched = new Map<string, number>();
 
   constructor(private prisma: PrismaService) {
     super({
@@ -50,10 +51,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  /** La dernière activité du compte (« Vu la dernière fois… ») suit ses requêtes, au plus une écriture toutes les 5 minutes. */
+  private touch(accountId: string) {
+    const now = Date.now();
+    if (now - (this.touched.get(accountId) ?? 0) < 5 * 60_000) return;
+    if (this.touched.size > 5000) this.touched.clear();
+    this.touched.set(accountId, now);
+    void this.prisma.user.update({ where: { id: accountId }, data: { lastSeenAt: new Date() } }).catch(() => undefined);
+  }
+
   async validate(payload: JwtPayload): Promise<AuthUser> {
     // Après une alerte générale, toutes les sessions ouvertes avant elle sont coupées : tout le monde doit se reconnecter.
     if (lockState.tokenRevoked(payload.iat)) throw new UnauthorizedException('Session expirée : reconnecte-toi');
     if (payload.scope === 'account') {
+      this.touch(payload.sub);
       return { userId: payload.sub, accountId: payload.sub, username: payload.username, role: payload.role, scope: 'account', isMaster: true, fam: false, perms: ALL_PERMS };
     }
     let perms: Perms = ALL_PERMS;
@@ -81,6 +92,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (hit.blocked) throw new UnauthorizedException('Ce profil est bloqué');
       perms = hit.perms;
     }
+    this.touch(payload.acct ?? payload.sub);
     return {
       userId: payload.sub,
       accountId: payload.acct ?? payload.sub,

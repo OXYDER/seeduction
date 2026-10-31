@@ -8,6 +8,7 @@ import DeletedMark from './DeletedMark';
 import { useRanks, rankClass } from '../store/ranks';
 import Avatar from './Avatar';
 import { formatBytes } from '../lib/format';
+import { lastSeenText } from '../lib/time';
 import { displayRank } from '../lib/memberClass';
 import { ROLE_LABEL } from './StaffUserPanel';
 import { useAuthStore } from '../store/auth';
@@ -110,7 +111,7 @@ function UserCard({ u }: { u: any }) {
           <span style={{ color: 'var(--success)' }}>▲ {formatBytes(u.uploaded)}</span> · <span style={{ color: 'var(--danger)' }}>▼ {formatBytes(u.downloaded)}</span><br />
           {u._count?.torrentsUploaded ?? 0} torrent(s) envoyé(s)<br />
           Membre depuis le {new Date(u.createdAt).toLocaleDateString('fr-FR')}
-          {u.lastSeenAt && <><br />Vu le {new Date(u.lastSeenAt).toLocaleDateString('fr-FR')}</>}
+          {u.lastSeenAt && <><br />{lastSeenText(u.lastSeenAt)}</>}
         </div>
         <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
           <FriendAction u={u} />

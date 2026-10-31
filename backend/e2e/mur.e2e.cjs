@@ -83,6 +83,40 @@ async function call(m, p, t, body) { const r = await fetch(BASE + p, { method: m
     check('un membre anonyme sur le site : son mur est introuvable', (await call('GET', `/wall/user/${timide.id}`, O)).s === 404);
     // --- signalement
     check('on peut signaler une publication', (await call('POST', '/reports', O, { targetType: 'wallPost', targetId: postId, reason: 'Contenu douteux' })).s === 201);
+    // --- modification
+    const mine2 = await call('POST', '/wall/posts', A, { content: 'Version 1', visibility: 'MEMBERS' });
+    check('l’auteure peut modifier sa publication', mine2.b?.canEdit === true && (await call('PATCH', `/wall/posts/${mine2.b.id}`, A, { content: 'Version 2', visibility: 'FRIENDS' })).b?.content === 'Version 2');
+    const edited = (await call('GET', `/wall/user/${alice.id}`, A)).b.items.find((i) => i.id === mine2.b.id);
+    check('…elle est marquée modifiée, avec sa nouvelle visibilité', !!edited?.editedAt && edited.visibility === 'FRIENDS');
+    check('un autre membre ne peut pas la modifier', (await call('PATCH', `/wall/posts/${mine2.b.id}`, F, { content: 'piratée' })).s === 403);
+    check('le staff non plus', (await call('PATCH', `/wall/posts/${mine2.b.id}`, M, { content: 'piratée' })).s === 403);
+    check('on ne peut pas tout vider', (await call('PATCH', `/wall/posts/${mine2.b.id}`, A, { content: '' })).s === 400);
+    check('un lien invalide est refusé à la modification', (await call('PATCH', `/wall/posts/${mine2.b.id}`, A, { linkUrl: 'ftp://x.y' })).s === 400);
+    const cmt = await call('POST', `/wall/posts/${mine2.b.id}/comments`, F, { content: 'Premier' });
+    check('l’auteur d’un commentaire le modifie', (await call('PATCH', `/wall/comments/${cmt.b.id}`, F, { content: 'Corrigé' })).b?.editedAt != null);
+    check('…mais pas un autre', (await call('PATCH', `/wall/comments/${cmt.b.id}`, A, { content: 'x' })).s === 403);
+    // --- mentions
+    const notes = async (u) => { await new Promise((r) => setTimeout(r, 600)); return p.notification.count({ where: { userId: u.id, title: { contains: 'mentionné' } } }); };
+    await call('POST', '/wall/posts', A, { content: `Salut @${ami.username} et @${autre.username}`, visibility: 'FRIENDS' });
+    check('un ami mentionné est prévenu', (await notes(ami)) === 1);
+    check('un membre qui ne peut pas lire la publication n’est pas prévenu', (await notes(autre)) === 0);
+    await call('POST', '/wall/posts', A, { content: `Pour @${autre.username}`, visibility: 'ME' });
+    check('une publication privée ne prévient personne', (await notes(autre)) === 0);
+    const pubId = (await call('POST', '/wall/posts', A, { content: `Hello @${autre.username}`, visibility: 'MEMBERS' })).b.id;
+    check('une publication ouverte à tous prévient le membre mentionné', (await notes(autre)) === 1);
+    await call('PATCH', `/wall/posts/${pubId}`, A, { content: `Hello @${autre.username} (modifié)` });
+    check('modifier ne prévient pas deux fois', (await notes(autre)) === 1);
+    await call('POST', `/wall/posts/${pubId}/comments`, F, { content: `Bravo @${autre.username} !` });
+    check('un commentaire peut aussi mentionner', (await notes(autre)) === 2);
+    // --- dernière activité
+    await p.user.update({ where: { id: alice.id }, data: { lastSeenAt: new Date(Date.now() - 5 * 60_000) } });
+    check('« Vu la dernière fois » : visible par défaut', !!(await call('GET', `/users/${alice.id}`, O)).b?.lastSeenAt);
+    check('…réglage de confidentialité', (await call('PATCH', '/users/me/last-seen-visibility', A, { enabled: false })).s === 200);
+    check('…caché pour les autres', (await call('GET', `/users/${alice.id}`, O)).b?.lastSeenAt === null);
+    check('…toujours visible par elle et par le staff', !!(await call('GET', '/users/me', A)).b?.lastSeenAt && !!(await call('GET', `/users/${alice.id}`, M)).b?.lastSeenAt);
+    await call('PATCH', '/users/me/last-seen-visibility', A, { enabled: true });
+    await call('PATCH', '/users/me/presence', A, { status: 'INVISIBLE' });
+    check('…caché quand elle apparaît hors ligne', (await call('GET', `/users/${alice.id}`, O)).b?.lastSeenAt === null);
     // --- limite
     await p.wallPost.createMany({ data: Array.from({ length: 30 }, () => ({ authorId: autre.id, content: 'spam' })) });
     check('limite de 30 publications par jour', (await call('POST', '/wall/posts', O, { content: 'de trop' })).s === 400);

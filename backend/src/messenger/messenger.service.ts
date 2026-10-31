@@ -8,6 +8,7 @@ import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from '../presence/presence.service';
 import { ChatModerationService, describeExpiry } from './chat-moderation.service';
+import { LAST_SEEN_SELECT, lastSeenVisible } from '../common/utils/last-seen';
 
 const ROLE_ORDER = ['USER', 'UPLOADER', 'MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const rank = (r?: string | null) => (r ? ROLE_ORDER.indexOf(r) : -1);
@@ -227,6 +228,7 @@ export class MessengerService extends EventEmitter {
     const peopleBy = new Map<string, typeof participants>();
     for (const p of participants) peopleBy.set(p.conversationId, [...(peopleBy.get(p.conversationId) ?? []), p]);
 
+    const seen = await this.seenOf(visible.filter((m) => m.conversation.type === 'DIRECT').flatMap((m) => (peopleBy.get(m.conversation.id) ?? []).filter((p) => p.userId !== actor.userId).map((p) => p.userId)), actor);
     const result = visible.flatMap((m) => {
       const c = m.conversation;
       const last = lastBy.get(c.id) ?? null;
@@ -242,7 +244,7 @@ export class MessengerService extends EventEmitter {
         slug: c.slug,
         description: c.description,
         iconUrl: c.iconUrl,
-        other: other ? { ...other, status: this.presence.publicStatus(other.id) } : null,
+        other: other ? { ...other, status: this.presence.publicStatus(other.id), lastSeenAt: seen.get(other.id) ?? null } : null,
         members: c.type === 'GROUP' ? people.map((p) => ({ ...p.user, role: p.role })) : undefined,
         memberCount: c.type === 'CHANNEL' ? undefined : people.length,
         last: last ? { id: last.id, type: last.type, preview: previewOf({ type: last.type, content: last.content, fileName: last.fileName, deletedAt: last.deletedAt }), senderId: last.senderId, senderUsername: last.username, createdAt: last.createdAt } : null,
@@ -268,6 +270,14 @@ export class MessengerService extends EventEmitter {
     });
   }
 
+  /** « Vu la dernière fois » de ces membres, tel que l'acteur a le droit de le voir. */
+  private async seenOf(ids: string[], actor: Actor) {
+    if (ids.length === 0) return new Map<string, Date | null>();
+    const rows = await this.prisma.user.findMany({ where: { id: { in: [...new Set(ids)] } }, select: { id: true, ...LAST_SEEN_SELECT } });
+    const staff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(actor.role);
+    return new Map(rows.map((r) => [r.id, lastSeenVisible(r, { self: r.id === actor.userId, staff })]));
+  }
+
   async get(actor: Actor, conversationId: string) {
     await this.access(actor, conversationId);
     const all = await this.list(actor);
@@ -276,9 +286,10 @@ export class MessengerService extends EventEmitter {
     // Une discussion tout juste ouverte (aucun message encore) n'est pas dans la liste : on la décrit directement.
     const conv = await this.prisma.conversation.findUniqueOrThrow({ where: { id: conversationId }, include: { members: { include: { user: { select: USER_SELECT } } } } });
     const other = conv.members.find((p) => p.userId !== actor.userId)?.user ?? null;
+    const seen = await this.seenOf(other ? [other.id] : [], actor);
     return {
       id: conv.id, type: conv.type, name: conv.type === 'DIRECT' ? other?.username ?? 'Membre' : conv.name, slug: conv.slug, description: conv.description,
-      iconUrl: conv.iconUrl, other: other ? { ...other, status: this.presence.publicStatus(other.id) } : null, members: undefined, memberCount: conv.members.length,
+      iconUrl: conv.iconUrl, other: other ? { ...other, status: this.presence.publicStatus(other.id), lastSeenAt: seen.get(other.id) ?? null } : null, members: undefined, memberCount: conv.members.length,
       last: null, unread: 0, mentions: 0, mutedUntil: null, pinned: false, archived: false, myRole: 'MEMBER', pinnedMessageIds: [] as string[], motd: conv.motd, motdAt: conv.motdAt, writable: true, ban: null, position: conv.position, lastMessageAt: conv.lastMessageAt,
     };
   }

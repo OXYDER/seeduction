@@ -69,6 +69,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/last-seen-visibility')
+  setShowLastSeen(@Body('enabled') enabled: boolean, @Request() req: any) {
+    return this.usersService.setShowLastSeen(req.user.userId, enabled);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('me/watching-visibility')
   setShowWatchingStatus(@Body('enabled') enabled: boolean, @Request() req: any) {
     return this.usersService.setShowWatchingStatus(req.user.userId, enabled);

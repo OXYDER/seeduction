@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { WallService, WallViewer } from './wall.service';
 
@@ -22,6 +22,9 @@ export class WallController {
   @Post('posts')
   create(@Body() body: any, @Request() req: any) { return this.wall.create(viewerOf(req), body ?? {}); }
 
+  @Patch('posts/:id')
+  update(@Param('id') id: string, @Body() body: any, @Request() req: any) { return this.wall.update(id, viewerOf(req), body ?? {}); }
+
   @Delete('posts/:id')
   remove(@Param('id') id: string, @Request() req: any) { return this.wall.remove(id, viewerOf(req)); }
 
@@ -36,6 +39,9 @@ export class WallController {
 
   @Post('posts/:id/comments')
   comment(@Param('id') id: string, @Body('content') content: string, @Request() req: any) { return this.wall.addComment(id, viewerOf(req), content); }
+
+  @Patch('comments/:id')
+  editComment(@Param('id') id: string, @Body('content') content: string, @Request() req: any) { return this.wall.editComment(id, viewerOf(req), content); }
 
   @Delete('comments/:id')
   removeComment(@Param('id') id: string, @Request() req: any) { return this.wall.removeComment(id, viewerOf(req)); }
