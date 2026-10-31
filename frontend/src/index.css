@@ -4667,3 +4667,15 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .msgr-tools-row .msgr-emoji-anchor { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .msgr-tools-row .msgr-emoji-anchor:has(.msgr-fmt-pop) { flex-basis: 100%; }
 .msgr-tools-row .msgr-fmt-pop { position: static; bottom: auto; right: auto; flex-wrap: wrap; box-shadow: none; }
+
+/* Accueil : barre « Qu'avez-vous en tête ? » à la place de la salutation. */
+.home-greet > .home-compose { flex: 1 1 420px; min-width: 0; }
+.home-compose-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.home-compose-input { flex: 1; min-width: 0; text-align: left; padding: 10px 16px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 0; color: var(--muted, #aab); font-size: 15px; font-weight: 400; box-shadow: none; cursor: text; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-compose-input:hover { background: rgba(255,255,255,0.13); transform: none; filter: none; }
+
+/* Barre des bulles en « Petites » : pastille de statut et nom à l'échelle, pour que rien ne déborde de la bulle. */
+.chat-rail[data-size="sm"] .cr-av .msgr-status-dot { width: 11px !important; height: 11px !important; right: -3px; bottom: -3px; border-width: 2px; }
+.chat-rail[data-size="sm"] .cr-av .dot-badge { transform: scale(.85); }
+.cr-av > .msgr-conv-avatar { display: block; line-height: 0; }
+.home-greet > .home-compose.open { flex-basis: 100%; }

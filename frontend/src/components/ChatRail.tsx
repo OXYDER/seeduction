@@ -14,6 +14,8 @@ const DEFAULT_PREFS: RailPrefs = { pos: 'left', size: 'md', labels: true };
 const readPrefs = (): RailPrefs => { try { return { ...DEFAULT_PREFS, ...(JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as Partial<RailPrefs>) }; } catch { return DEFAULT_PREFS; } };
 /** Épaisseur de la barre de bulles selon la taille choisie (réserve de place pour le contenu du site). */
 const THICK: Record<RailPrefs['size'], number> = { sm: 64, md: 80, lg: 96 };
+/** Diamètre de l'image dans la bulle (la bulle moins son contour de 2 px), pour que les avatars suivent la taille choisie. */
+const AVATAR_PX: Record<RailPrefs['size'], number> = { sm: 30, md: 42, lg: 54 };
 const HIDDEN_KEY = 'chat-rail-hidden';
 /** Bulles retirées : conversation → date du dernier message au moment du retrait (sur cet appareil). */
 const readHidden = (): Record<string, string> => { try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '{}') || {}; } catch { return {}; } };
@@ -148,7 +150,7 @@ export default function ChatRail() {
         <button type="button" className={`cr-bubble${open ? ' open' : ''}${unread ? ' unread' : ''}${muted ? ' muted' : ''}`} onClick={() => click(c)}
           title={`${c.type === 'CHANNEL' ? 'Canal public' : c.type === 'GROUP' ? 'Groupe' : 'Conversation privée'} : ${label}${unread ? ` — ${c.unread} non lu${c.unread > 1 ? 's' : ''}` : ''}`}>
           <span className={`cr-av${c.type === 'CHANNEL' ? ' channel' : ''}`}>
-            {c.type === 'CHANNEL' ? <span className="cr-hash">#</span> : <ConvAvatar conv={c} size={44} />}
+            {c.type === 'CHANNEL' ? <span className="cr-hash">#</span> : <ConvAvatar conv={c} size={AVATAR_PX[prefs.size]} />}
             {unread && <span className="dot-badge" style={{ top: -3, right: -3 }}>{c.mentions > 0 ? '@' : c.unread > 99 ? '99+' : c.unread}</span>}
           </span>
           <span className="cr-name">{label}</span>

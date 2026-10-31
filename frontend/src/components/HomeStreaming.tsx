@@ -18,6 +18,7 @@ import HomeSection, { HomeSectionsControls } from './HomeSection';
 import HomeTabs, { type HomeTab } from './HomeTabs';
 import ContinueWatching from './ContinueWatching';
 import UserLink from './UserLink';
+import { HomeComposer } from './Wall';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
 
@@ -320,7 +321,8 @@ export default function HomeStreaming() {
       <HomeSectionsControls />
       <div className={`home-layout${prefs.rail ? ' with-rail' : ''}`}>
         <div className="home-col">
-        <div className="home-greet"><h1>{greeting} {user?.profile?.name ?? user?.username} 👋</h1><HomeCustomize /></div>
+        {/* Un profil famille (non principal) garde la salutation : la publication sur le mur est réservée au compte principal. */}
+        <div className="home-greet">{user?.profile && !user.profile.isMaster ? <h1>{greeting} {user?.profile?.name ?? user?.username} 👋</h1> : <HomeComposer />}<HomeCustomize /></div>
         {prefs.actions && <HomeActions canUpload={canUpload} />}
         {prefs.actions && <ForYouGrid active={active} />}
         <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>

@@ -95,12 +95,14 @@ function MentionField({ value, onChange, multiline, onSubmit, ...rest }: { value
 }
 
 /** Zone pour écrire : texte (avec @pseudo), image envoyée sur le site, lien, et qui peut lire. */
-function Composer({ teamId, onPosted, torrentId, compact }: { teamId?: string; onPosted: (post: any) => void; torrentId?: string; compact?: boolean }) {
+function Composer({ teamId: fixedTeam, teams, onPosted, torrentId, compact, autoFocus }: { teamId?: string; /** Teams parmi lesquelles choisir « Publier comme » (accueil) ; sans elle, la cible est fixe. */ teams?: { id: string; name: string }[]; onPosted: (post: any) => void; torrentId?: string; compact?: boolean; autoFocus?: boolean }) {
+  const [target, setTarget] = useState<string>(fixedTeam ?? '');
+  const teamId = target || undefined;
   const [content, setContent] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [showLink, setShowLink] = useState(false);
-  const [visibility, setVisibility] = useState(teamId ? 'TEAM' : 'MEMBERS');
+  const [visibility, setVisibility] = useState(fixedTeam ? 'TEAM' : 'MEMBERS');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const file = useRef<HTMLInputElement>(null);
@@ -125,7 +127,7 @@ function Composer({ teamId, onPosted, torrentId, compact }: { teamId?: string; o
 
   return (
     <div className="panel" style={{ display: 'grid', gap: 8 }}>
-      <MentionField multiline value={content} onChange={setContent} maxLength={2000} rows={compact ? 2 : 3} placeholder={teamId ? 'Écris quelque chose à ta team… (@ pour mentionner)' : torrentId ? 'Ajoute un mot sur ce torrent (facultatif)…' : 'Quoi de neuf ? Un statut, une trouvaille, un lien… (@ pour mentionner)'} />
+      <MentionField multiline autoFocus={autoFocus} value={content} onChange={setContent} maxLength={2000} rows={compact ? 2 : 3} placeholder={teamId ? 'Écris quelque chose à ta team… (@ pour mentionner)' : torrentId ? 'Ajoute un mot sur ce torrent (facultatif)…' : 'Quoi de neuf ? Un statut, une trouvaille, un lien… (@ pour mentionner)'} />
       {imageUrl && (
         <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
           <img src={imageUrl} alt="" style={{ maxHeight: 140, maxWidth: '100%', borderRadius: 8 }} />
@@ -137,7 +139,16 @@ function Composer({ teamId, onPosted, torrentId, compact }: { teamId?: string; o
         <input ref={file} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
         <button type="button" className="icon-btn" disabled={busy} onClick={() => file.current?.click()}>🖼️ Image</button>
         <button type="button" className="icon-btn" onClick={() => setShowLink((v) => !v)}>🔗 Lien</button>
-        <label className="row muted" style={{ gap: 6, marginLeft: 'auto' }}>
+        {teams && teams.length > 0 && (
+          <label className="row muted" style={{ gap: 6, marginLeft: 'auto' }}>
+            Publier comme
+            <select value={target} onChange={(e) => { setTarget(e.target.value); setVisibility(e.target.value ? 'TEAM' : 'MEMBERS'); }} style={{ width: 'auto' }}>
+              <option value="">👤 Moi (mon mur)</option>
+              {teams.map((t) => <option key={t.id} value={t.id}>🏴 {t.name} (mur de la team)</option>)}
+            </select>
+          </label>
+        )}
+        <label className="row muted" style={{ gap: 6, marginLeft: teams && teams.length > 0 ? 0 : 'auto' }}>
           Visible par
           <select value={visibility} onChange={(e) => setVisibility(e.target.value)} style={{ width: 'auto' }}>
             {options.map((o) => <option key={o} value={o}>{VISIBILITY[o].icon} {VISIBILITY[o].label}</option>)}
@@ -380,6 +391,47 @@ export function ShareToWall({ torrentId }: { torrentId: string }) {
     <div style={{ display: 'grid', gap: 8, ...(open ? { flexBasis: '100%' } : {}) }}>
       <button type="button" className="icon-btn" style={{ justifySelf: 'start' }} onClick={() => setOpen((v) => !v)}>📣 Partager sur mon mur</button>
       {open && <Composer torrentId={torrentId} compact onPosted={() => { setDone(true); setOpen(false); }} />}
+    </div>
+  );
+}
+
+/** En haut de l'accueil : « Qu'avez-vous en tête ? ». On publie directement sur son mur, ou sur celui de sa team (« Publier comme »). */
+export function HomeComposer() {
+  const user = useAuthStore((s) => s.user);
+  const [me, setMe] = useState<any>(null);
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState<{ teamId: string | null } | null>(null);
+  useEffect(() => { api.get('/users/me').then((r) => setMe(r.data)).catch(() => undefined); }, []);
+  useEffect(() => {
+    if (!done) return;
+    const t = window.setTimeout(() => setDone(null), 12_000);
+    return () => window.clearTimeout(t);
+  }, [done]);
+  const first = me?.profile?.name ?? me?.username ?? user?.username ?? '';
+  const teams = me?.team ? [{ id: me.team.id as string, name: me.team.name as string }] : [];
+
+  if (open) {
+    return (
+      <div className="home-compose open" style={{ display: 'grid', gap: 6 }}>
+        <Composer teams={teams} autoFocus onPosted={(p) => { setOpen(false); setDone({ teamId: p.teamId ?? null }); }} />
+        <button type="button" className="secondary" style={{ justifySelf: 'end' }} onClick={() => setOpen(false)}>✕ Fermer</button>
+      </div>
+    );
+  }
+  return (
+    <div className="home-compose" style={{ display: 'grid', gap: 6 }}>
+      <div className="home-compose-bar">
+        <Avatar user={me ?? user} size={40} />
+        <button type="button" className="home-compose-input" onClick={() => setOpen(true)}>Qu'avez-vous en tête, {first} ?</button>
+        <button type="button" className="icon-btn" title="Publier une image" aria-label="Publier une image" onClick={() => setOpen(true)}>🖼️</button>
+        <button type="button" className="icon-btn" title="Partager un lien" aria-label="Partager un lien" onClick={() => setOpen(true)}>🔗</button>
+        <button type="button" className="icon-btn" title="Écrire un statut" aria-label="Écrire un statut" onClick={() => setOpen(true)}>😀</button>
+      </div>
+      {done && (
+        <div className="muted" style={{ fontSize: 13 }}>
+          ✓ Publié sur {done.teamId ? 'le mur de ta team' : 'ton mur'} · <Link to={done.teamId ? `/teams/${done.teamId}` : `/users/${me?.id}`}>Voir</Link>
+        </div>
+      )}
     </div>
   );
 }
