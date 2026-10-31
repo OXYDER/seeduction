@@ -44,11 +44,13 @@ export class UsersController {
     return this.usersService.setAnonymity(req.user.accountId ?? req.user.userId, body);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch('me/chat-rail')
   setChatRail(@Body() body: any, @Request() req: any) {
     return this.usersService.setChatRail(req.user.userId, body);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch('me/chat-bubbles')
   setChatBubbles(@Body('enabled') enabled: boolean, @Request() req: any) {
     return this.usersService.setChatBubbles(req.user.userId, enabled);
