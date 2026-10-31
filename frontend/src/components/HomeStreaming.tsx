@@ -320,6 +320,7 @@ export default function HomeStreaming() {
       <HomeSectionsControls />
       <div className="home-greet"><h1>{greeting} {user?.profile?.name ?? user?.username} 👋</h1><HomeCustomize /></div>
       {prefs.actions && <HomeActions canUpload={canUpload} />}
+      {prefs.actions && <ForYouGrid active={active} />}
       <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
       <div className={`home-layout${prefs.rail ? ' with-rail' : ''}`}>
         <div className="home-col">
@@ -338,7 +339,6 @@ export default function HomeStreaming() {
             )}
             <Rail icon="🆕" title="Derniers ajouts" to="/browse?sort=date" items={latest} />
           </div>
-          <ForYouGrid active={active} followed={followed} />
           {atRisk.length > 0 && <Rail icon="⚠️" title="À seeder : torrents à 1-2 seeders, un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />}
           {statsNode}
         </div>
