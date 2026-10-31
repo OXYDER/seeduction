@@ -43,7 +43,12 @@ export function TeamPosts({ teamId, isMember }: { teamId: string; isMember: bool
           <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} style={{ width: 'auto' }}>{Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}</select>
             <label className="row" style={{ gap: 4 }}><input type="checkbox" style={{ width: 'auto' }} checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} /> 📌 Épingler</label>
-            <label className="row" style={{ gap: 4 }} title="Sinon, seuls les membres de la team la voient"><input type="checkbox" style={{ width: 'auto' }} checked={form.publicPost} onChange={(e) => setForm({ ...form, publicPost: e.target.checked })} /> 🌐 Visible par tout le site</label>
+            <label className="row" style={{ gap: 6 }}>Visible par
+              <select value={form.publicPost ? 'public' : 'team'} onChange={(e) => setForm({ ...form, publicPost: e.target.value === 'public' })} style={{ width: 'auto' }}>
+                <option value="team">🔒 Ma team seulement</option>
+                <option value="public">🌐 Tous les membres du site</option>
+              </select>
+            </label>
           </div>
           {error && <span style={{ color: 'var(--danger)' }}>{error}</span>}
           <div className="row" style={{ gap: 8 }}><button type="button" onClick={save}>{editing === 'new' ? 'Publier (la team est prévenue)' : 'Enregistrer'}</button><button type="button" className="secondary" onClick={() => setEditing(null)}>Annuler</button></div>
@@ -54,7 +59,7 @@ export function TeamPosts({ teamId, isMember }: { teamId: string; isMember: bool
           <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="badge">{KINDS[p.kind]?.icon} {KINDS[p.kind]?.label}</span>
             {p.pinned && <span title="Épinglée">📌</span>}
-            {p.publicPost ? <span className="muted" title="Visible par tout le site">🌐</span> : isMember && <span className="muted" title="Réservée aux membres de la team">🔒</span>}
+            {p.publicPost ? <span className="badge" title="Visible par tous les membres du site">🌐 Publique</span> : isMember && <span className="badge" title="Réservée aux membres de la team">🔒 Team</span>}
             <strong>{p.title}</strong>
             <span className="muted" style={{ marginLeft: 'auto', fontSize: 12 }}>{p.author.username} · {timeAgo(p.createdAt)}</span>
           </div>
@@ -110,6 +115,24 @@ export function TeamDashboard({ teamId }: { teamId: string }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Les annonces que les chefs de team ont choisi de montrer à tout le site (page Teams). */
+export function PublicTeamPosts() {
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => { api.get('/teams/posts/public').then((r) => setItems(r.data)).catch(() => undefined); }, []);
+  if (items.length === 0) return null;
+  return (
+    <div className="panel" style={{ display: 'grid', gap: 8 }}>
+      <h3 style={{ margin: 0 }}>📣 Annonces des teams</h3>
+      {items.map((p) => (
+        <Link key={p.id} to={`/teams/${p.team.id}`} className="panel" style={{ background: 'rgba(255,255,255,0.03)', display: 'grid', gap: 2, borderLeft: `3px solid ${p.team.accent || 'var(--border)'}` }}>
+          <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}><span className="badge">{KINDS[p.kind]?.icon} {KINDS[p.kind]?.label}</span>{p.pinned && <span>📌</span>}<strong>{p.title}</strong><span className="muted" style={{ marginLeft: 'auto', fontSize: 12 }}>{p.team.name} · {timeAgo(p.createdAt)}</span></span>
+          <span className="muted" style={{ fontSize: 13 }}>{p.content}{p.content.length >= 280 ? '…' : ''}</span>
+        </Link>
+      ))}
     </div>
   );
 }

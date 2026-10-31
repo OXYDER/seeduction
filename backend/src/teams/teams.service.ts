@@ -267,6 +267,12 @@ export class TeamsService implements OnModuleInit {
     return { canPost: manage, items: rows.map((r) => { const a = byId.get(r.authorId); const hide = !!a?.anonymousTeam && !manage && a.id !== v.accountId; return { id: r.id, kind: r.kind, title: r.title, content: r.content, pinned: r.pinned, publicPost: r.publicPost, createdAt: r.createdAt, updatedAt: r.updatedAt, author: a && !hide ? { id: a.id, username: a.username, avatarUrl: a.avatarUrl } : { id: null, username: 'Anonyme', avatarUrl: null } }; }) };
   }
 
+  /** Les annonces que les chefs ont choisi de montrer à tout le site : les plus récentes, avec leur team. */
+  async publicPosts() {
+    const rows = await this.prisma.teamPost.findMany({ where: { publicPost: true }, orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }], take: 8, include: { team: { select: { id: true, name: true, tag: true, logoUrl: true, accent: true } } } });
+    return rows.map((r) => ({ id: r.id, kind: r.kind, title: r.title, content: r.content.slice(0, 280), pinned: r.pinned, createdAt: r.createdAt, team: r.team }));
+  }
+
   private postData(body: any) {
     const kinds = ['ANNOUNCEMENT', 'NEWS', 'RECRUITING', 'EVENT'];
     const title = this.clean(body?.title, 160), content = this.clean(body?.content, 8000);

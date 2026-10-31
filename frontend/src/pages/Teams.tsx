@@ -7,6 +7,7 @@ import { formatBytes } from '../lib/format';
 import Avatar from '../components/Avatar';
 import { Pagination } from '../components/ForumBits';
 import Loading from '../components/Loading';
+import { PublicTeamPosts } from '../components/TeamExtras';
 
 interface TeamCard {
   id: string; name: string; tag: string | null; description: string; logoUrl: string | null; recruiting: boolean; memberCount: number; totalUpload: number;
@@ -51,6 +52,8 @@ export default function Teams() {
         <h1 style={{ margin: 0 }}>🏴 Teams</h1>
         {canCreate && <button type="button" onClick={() => setCreating((v) => !v)}>➕ Créer une team</button>}
       </div>
+
+      <PublicTeamPosts />
 
       <div className="panel team-info">
         <strong>🤖 Teams détectées automatiquement</strong>

@@ -25,6 +25,10 @@ export class TeamsController {
   @Post('applications/:appId/decline')
   decline(@Param('appId') appId: string, @Request() req: any) { return this.teams.decide(appId, viewerOf(req), false); }
 
+  /** Annonces de team visibles par tous les membres du site (avant la route « :id »). */
+  @Get('posts/public')
+  publicPosts() { return this.teams.publicPosts(); }
+
   @Get(':id')
   get(@Param('id') id: string, @Request() req: any) { return this.teams.get(id, viewerOf(req)); }
 
