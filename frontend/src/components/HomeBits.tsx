@@ -240,3 +240,24 @@ export function ForYouGrid({ active, followed }: { active: any[]; followed: any[
     </div>
   );
 }
+
+// ------------------------------------------------------------------ « Tendances cette semaine » : le top 5 numéroté
+
+/** Les cinq torrents les mieux seedés, numérotés, avec leur miniature, l'année et les seeders / leechers. */
+export function Top5({ items }: { items: any[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <section>
+      <h3 className="h2row">🔥 Tendances cette semaine<Link to="/browse?sort=seeders&period=week">Voir tout →</Link></h3>
+      <div className="top5">
+        {items.slice(0, 5).map((t, i) => (
+          <Link key={t.id} to={`/torrents/${t.id}`} className="t5">
+            <em>{i + 1}</em>
+            {t.coverImage ? <img className="t5-th" src={t.coverImage} alt="" loading="lazy" /> : <span className="t5-th none" aria-hidden="true">🎬</span>}
+            <span className="t5-t"><b title={t.name}>{t.displayTitle ?? releaseTitle(t.name)}</b><small>{[t.year, t.language].filter(Boolean).join(' · ')}{' '}<span className="t5-up">↑ {t.seeders ?? 0}</span> <span className="t5-dn">↓ {t.leechers ?? 0}</span></small></span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}

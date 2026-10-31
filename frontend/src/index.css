@@ -4554,3 +4554,13 @@ html a.user-link.rank-POWER_USER, html a .nick.rank-POWER_USER { color: #a5b4fc;
 .hr-todo-row:hover { background: rgba(255, 255, 255, 0.07); }
 .hr-todo-row.bad { border-left-color: #f87171; background: rgba(248, 113, 113, 0.08); } .hr-todo-row.warn { border-left-color: #f59e0b; } .hr-todo-row.ok { border-left-color: #34d399; }
 .hr-go { margin-left: auto; opacity: 0.6; }
+/* Tendances : le top 5 numéroté */
+.h2row { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 16px; }
+.h2row a { margin-left: auto; font-size: 12.5px; font-weight: 400; color: var(--gold-bright, #f5c542); }
+.top5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.t5 { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--bg-panel, #0d1226); border: 1px solid var(--border, #1f2848); color: inherit; min-width: 0; }
+.t5:hover { border-color: #8b5cf6; }
+.t5 em { font-style: normal; font-size: 24px; font-weight: 600; width: 22px; flex: none; }
+.t5-th { width: 36px; height: 50px; border-radius: 7px; object-fit: cover; flex: none; background: rgba(255, 255, 255, 0.07); } .t5-th.none { display: grid; place-items: center; }
+.t5-t { min-width: 0; display: grid; } .t5-t b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .t5-t small { opacity: 0.75; font-size: 11.5px; }
+.t5-up { color: #6ee7b7; } .t5-dn { color: #fca5a5; }

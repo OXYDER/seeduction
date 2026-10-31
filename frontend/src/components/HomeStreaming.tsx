@@ -13,7 +13,7 @@ import NewsPanel from './NewsPanel';
 import TelegramLogo from './TelegramLogo';
 import ModerationRail from './ModerationRail';
 import HomeRail from './HomeRail';
-import { ForYouGrid, HomeActions, HomeCustomize, HomeStrip, useHomePrefs } from './HomeBits';
+import { ForYouGrid, HomeActions, HomeCustomize, HomeStrip, Top5, useHomePrefs } from './HomeBits';
 import HomeSection, { HomeSectionsControls } from './HomeSection';
 import HomeTabs, { type HomeTab } from './HomeTabs';
 import ContinueWatching from './ContinueWatching';
@@ -326,7 +326,15 @@ export default function HomeStreaming() {
           {/* La dernière nouvelle reste toujours affichée, en grand ; les précédentes en petites cartes (au choix). */}
           {prefs.strip && <HomeStrip />}
           <NewsPanel heroOnly={!prefs.prevNews} />
-          <HomeTabs tabs={tabs} />
+          {/* Les sections se suivent, comme dans l'aperçu validé (plus d'onglets) : reprendre la lecture, recommandations, tendances, derniers ajouts, mon activité, catégories, à seeder, forum et chiffres. */}
+          <ContinueWatching hideNext />
+          {recommended.length > 0 ? <Rail icon="⭐" title="Recommandé pour toi" to="/browse" items={recommended} /> : <Rail icon="🔥" title="Les plus populaires" to="/browse?sort=seeders" items={popular} />}
+          <Top5 items={popular} />
+          <Rail icon="🆕" title="Derniers ajouts" to="/browse?sort=date" items={latest} />
+          <ForYouGrid active={active} followed={followed} />
+          {byCategory.length > 0 && <section className="panel ornate rail-section rail-plex"><div className="panel-title"><span className="title-icon">📂</span>Par catégorie</div><CategoryRails rows={byCategory} /></section>}
+          {atRisk.length > 0 && <Rail icon="⚠️" title="À seeder : torrents à 1-2 seeders, un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />}
+          {statsNode}
         </div>
         {prefs.rail && <HomeRail />}
       </div>
