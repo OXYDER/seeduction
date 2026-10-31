@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { MemberClass } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { CLASS_LABELS, MEMBER_CLASSES } from '../common/utils/economy';
+import { CLASS_LABELS, MEMBER_CLASSES, rankProgress } from '../common/utils/economy';
 
 /**
  * Rangs automatiques : chaque nuit, chaque membre reçoit la plus haute classe
@@ -24,6 +24,13 @@ export class RanksService implements OnModuleInit {
   @Cron('30 3 * * *')
   async nightly() {
     await this.recompute(true);
+  }
+
+  /** Avancement d'un membre vers le rang suivant (null pour un compte introuvable). */
+  async progressOf(userId: string) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { memberClass: true, createdAt: true, uploaded: true, downloaded: true } });
+    if (!u) return { current: 'NOUVEAU', next: null as string | null, pct: 0, parts: [] as ReturnType<typeof rankProgress>['parts'] };
+    return rankProgress(u);
   }
 
   classFor(user: { createdAt: Date; uploaded: bigint; downloaded: bigint }): MemberClass {

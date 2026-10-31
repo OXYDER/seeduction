@@ -88,6 +88,36 @@ export const MEMBER_CLASSES = [
   { id: 'MEMBRE', weeks: 1, uploadGb: 0, ratio: 0.5 },
 ] as const;
 
+export interface RankProgress {
+  /** Rang atteint (id) et rang visé ; « next » vaut null au rang le plus haut. */
+  current: string; next: string | null;
+  /** Avancement vers le rang visé, de 0 à 100 : celui de la condition la plus en retard. */
+  pct: number;
+  parts: { key: 'weeks' | 'upload' | 'ratio'; label: string; have: number; need: number; ok: boolean }[];
+}
+
+/**
+ * Où en est un membre vers le rang automatique suivant (voir MEMBER_CLASSES) : pour chaque condition (ancienneté, upload, ratio) ce qu'il a et ce qu'il faut. Le pourcentage est celui
+ * de la condition la plus en retard (c'est elle qui bloque). Un ratio infini (rien téléchargé) remplit toujours la condition.
+ */
+export function rankProgress(member: { memberClass: string; createdAt: Date; uploaded: bigint; downloaded: bigint }, classes: readonly { id: string; weeks: number; uploadGb: number; ratio: number }[] = MEMBER_CLASSES): RankProgress {
+  const order = [...classes].reverse().map((c) => c.id); // du plus bas au plus haut
+  const idx = member.memberClass === 'NOUVEAU' ? -1 : order.indexOf(member.memberClass);
+  const target = classes.find((c) => c.id === order[idx + 1]);
+  if (!target) return { current: member.memberClass, next: null, pct: 100, parts: [] };
+  const weeks = (Date.now() - member.createdAt.getTime()) / (7 * 86400_000);
+  const uploadGb = Number(member.uploaded) / 1e9;
+  const ratio = member.downloaded > 0n ? Number(member.uploaded) / Number(member.downloaded) : Infinity;
+  const frac = (have: number, need: number) => (need <= 0 ? 1 : Math.max(0, Math.min(1, have / need)));
+  const parts: RankProgress['parts'] = [
+    { key: 'weeks', label: 'Ancienneté (semaines)', have: Math.round(weeks * 10) / 10, need: target.weeks, ok: weeks >= target.weeks },
+    { key: 'upload', label: 'Upload (Go)', have: Math.round(uploadGb), need: target.uploadGb, ok: uploadGb >= target.uploadGb },
+    { key: 'ratio', label: 'Ratio', have: Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : 999, need: target.ratio, ok: ratio >= target.ratio },
+  ];
+  const pct = Math.round(100 * Math.min(frac(weeks, target.weeks), frac(uploadGb, target.uploadGb), Number.isFinite(ratio) ? frac(ratio, target.ratio) : 1));
+  return { current: member.memberClass, next: target.id, pct, parts };
+}
+
 export const CLASS_LABELS: Record<string, string> = {
   NOUVEAU: 'Nouveau', MEMBRE: 'Membre', POWER_USER: 'Power User', ELITE: 'Élite', VETERAN: 'Vétéran',
 };

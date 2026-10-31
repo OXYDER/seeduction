@@ -6,10 +6,12 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { accountOf, assertPerm } from '../common/utils/account';
+import { RanksService } from './ranks.service';
+import { CLASS_LABELS } from '../common/utils/economy';
 
 @Controller('bonus')
 export class EconomyController {
-  constructor(private economy: EconomyService, private settings: SettingsService, private audit: AuditService) {}
+  constructor(private economy: EconomyService, private settings: SettingsService, private audit: AuditService, private ranks: RanksService) {}
 
   /** Public : sert à afficher le bandeau « freeleech global » à tout le monde. */
   @UseGuards(JwtAuthGuard)
@@ -40,6 +42,14 @@ export class EconomyController {
   }
 
   /** Tous les torrents du membre (seeds, téléchargements en cours et terminés, envois) en une seule liste filtrable et triable côté page. */
+  /** Où j'en suis vers le rang automatique suivant (ancienneté, upload, ratio) : barre « Niveau suivant » de l'accueil. */
+  @UseGuards(JwtAuthGuard)
+  @Get('rank')
+  async rank(@Request() req: any) {
+    const p = await this.ranks.progressOf(accountOf(req));
+    return { ...p, currentLabel: CLASS_LABELS[p.current] ?? p.current, nextLabel: p.next ? CLASS_LABELS[p.next] ?? p.next : null };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('my-torrents')
   myTorrents(@Request() req: any) {

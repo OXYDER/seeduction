@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { create } from 'zustand';
 import { api } from '../api/client';
 import { useCountdown } from './FreeleechCalendar';
+import { useAuthStore } from '../store/auth';
 import { releaseTitle } from './TorrentGroups';
 import { episodeCode } from '../lib/frText';
 
@@ -76,6 +77,22 @@ function PotItem({ pot }: { pot: any }) {
   );
 }
 
+/** « Niveau suivant » : où j'en suis vers le rang automatique suivant (la condition la plus en retard donne le pourcentage). Rien pour l'équipe ni au rang le plus haut. */
+function RankItem() {
+  const role = useAuthStore((st) => st.user?.role);
+  const [r, setR] = useState<any>(null);
+  useEffect(() => { api.get('/bonus/rank').then((x) => setR(x.data)).catch(() => undefined); }, []);
+  if (!r || !r.next || ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '')) return null;
+  const fmt = (p: any) => `${String(p.have).replace('.', ',')} / ${String(p.need).replace('.', ',')}`;
+  return (
+    <Link to="/wiki/guide-ratio-seed" className="bc" title={r.parts.map((p: any) => `${p.label} : ${fmt(p)}${p.ok ? ' ✓' : ''}`).join(' · ')}>
+      <div className="bt"><span>🏅 Niveau suivant : <b>{r.nextLabel}</b></span><span>{r.pct} %</span></div>
+      <div className="pb"><i style={{ width: `${r.pct}%`, background: 'linear-gradient(90deg,#8b5cf6,#c084fc)' }} /></div>
+      <div className="bn">{r.parts.filter((p: any) => !p.ok).map((p: any) => `${p.label} ${fmt(p)}`).join(' · ') || 'Conditions remplies : le rang arrive cette nuit'}</div>
+    </Link>
+  );
+}
+
 /** Freeleech et pot commun en une ligne chacun (le détail est une page plus loin). */
 export function HomeStrip() {
   const [fl, setFl] = useState<any>(null);
@@ -90,6 +107,7 @@ export function HomeStrip() {
   if (!fl && !pot?.enabled) return null;
   return (
     <div className="bars">
+      <RankItem />
       {fl && <FreeleechItem state={fl} />}
       {pot?.enabled && <PotItem pot={pot} />}
     </div>
