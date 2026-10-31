@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { create } from 'zustand';
 import { api } from '../api/client';
+import { timeAgo } from '../lib/time';
 import { useCountdown } from './FreeleechCalendar';
 import { useAuthStore } from '../store/auth';
 import { releaseTitle } from './TorrentGroups';
@@ -187,7 +188,9 @@ function Row({ to, cover, title, bar, sub, chip }: { to: string; cover: string |
 /** « Pour toi » : mes téléchargements, mes seeds à terminer, l'épisode suivant de mes séries et les nouveautés de mes abonnements, quatre cartes côte à côte. */
 export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
   const [next, setNext] = useState<NextEp[] | null>(null);
+  const [done, setDone] = useState<any[] | null>(null);
   useEffect(() => {
+    api.get('/bonus/activity').then((r) => setDone((r.data.completed ?? []).filter((c: any) => !c.own).slice(0, 4))).catch(() => setDone([]));
     api.get('/stream/continue').then((r) => setNext(r.data.next ?? [])).catch(() => setNext([]));
   }, []);
   const leeching = active.filter((t) => !t.isSeeder);
@@ -201,6 +204,17 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
         {leeching.slice(0, 4).map((t) => (
           <Row key={t.id} to={`/torrents/${t.id}`} cover={t.coverImage} title={t.name} bar={{ pct: t.progress * 100, kind: 'dl' }} sub={`${Math.round(t.progress * 100)} % · ${mb(Number(t.size) || 0)}`} chip={{ text: '⬇️ En cours', tone: 'dl' }} />
         ))}
+      </section>
+
+      <section className="fy-card">
+        <h3>✅ Mes téléchargements complétés<Link to="/activity">Tout voir →</Link></h3>
+        {done && done.length === 0 && <p className="fy-empty">Tes téléchargements terminés apparaîtront ici.</p>}
+        {(done ?? []).map((c) => {
+          const ok = c.satisfied;
+          const left = Math.max(0, c.requiredSeconds - c.seedSeconds);
+          const chip = ok ? { text: '✅ Seed terminé', tone: 'ok' as const } : c.hnr ? { text: '🔴 Hit & run', tone: 'bad' as const } : { text: `⏳ Encore ${hoursOf(left)}`, tone: 'warn' as const };
+          return <Row key={c.torrentId} to={`/torrents/${c.torrentId}`} cover={c.coverImage} title={c.name} bar={{ pct: ok ? 100 : Math.min(100, (c.seedSeconds / Math.max(1, c.requiredSeconds)) * 100), kind: ok ? 'done' : c.hnr ? 'hnr' : 'seeding' }} sub={`${mb(Number(c.size) || 0)} · terminé ${timeAgo(c.completedAt)}`} chip={chip} />;
+        })}
       </section>
 
       <section className="fy-card">
