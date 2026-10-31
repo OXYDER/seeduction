@@ -127,6 +127,8 @@ model User {
   defaultView      String     @default("grid") @db.VarChar(12)
   // Bulles de discussion sur le côté gauche du site (conversations publiques et privées) : vrai par défaut, désactivables dans le compte.
   chatBubbles      Boolean    @default(true)
+  /// Barre des bulles de chat : position (left, right, top, bottom), taille (sm, md, lg) et noms affichés. Suit le membre d'un appareil à l'autre.
+  chatRail         Json?
   // Sirène quand le Canadien marque : désactivée par défaut, le membre l'active (le réglage suit son compte, sur tous ses appareils).
   goalSound        Boolean    @default(false)
   // Style des info-bulles de torrents au survol : poster | classic | cinema | minimal | off (voir frontend/src/lib/tipStyle.ts).

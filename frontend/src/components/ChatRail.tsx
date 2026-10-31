@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMessenger, type ConvSummary } from '../store/messenger';
 import { useAuthStore } from '../store/auth';
+import { api } from '../api/client';
 import ConvAvatar from './messenger/ConvAvatar';
 
 const isMuted = (c: ConvSummary) => !!c.mutedUntil && new Date(c.mutedUntil).getTime() > Date.now();
@@ -45,7 +46,20 @@ export default function ChatRail() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dragEdge, setDragEdge] = useState<Pos | null>(null);
   const navRef = useRef<HTMLElement>(null);
-  const setPref = (patch: Partial<RailPrefs>) => setPrefs((p) => { const n = { ...p, ...patch }; try { localStorage.setItem(PREFS_KEY, JSON.stringify(n)); } catch { /* préférence facultative */ } return n; });
+  // Les réglages suivent le membre : enregistrés sur le serveur (et gardés en local pour un affichage immédiat).
+  const setPref = (patch: Partial<RailPrefs>) => setPrefs((p) => {
+    const n = { ...p, ...patch };
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(n)); } catch { /* préférence facultative */ }
+    void api.patch('/users/me/chat-rail', n).catch(() => undefined);
+    return n;
+  });
+  useEffect(() => {
+    if (!token) return;
+    api.get('/users/me').then((r) => {
+      const c = r.data?.chatRail;
+      if (c && typeof c === 'object') { const n = { ...DEFAULT_PREFS, ...c } as RailPrefs; setPrefs(n); try { localStorage.setItem(PREFS_KEY, JSON.stringify(n)); } catch { /* ignoré */ } }
+    }).catch(() => undefined);
+  }, [token]);
   /** Le bord le plus proche du pointeur (déplacement façon barre des tâches). */
   const edgeOf = (x: number, y: number): Pos => {
     const d: [Pos, number][] = [['left', x], ['right', window.innerWidth - x], ['top', y], ['bottom', window.innerHeight - y]];

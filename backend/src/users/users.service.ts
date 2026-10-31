@@ -33,7 +33,7 @@ export class UsersService {
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
-        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, goalSound: true, tipStyle: true,
+        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, chatRail: true, goalSound: true, tipStyle: true,
         parentId: true, profileName: true, profileType: true, profilePerms: true, familyEnabled: true, deletedAt: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
@@ -62,7 +62,7 @@ export class UsersService {
     if (user.profileType === 'BOT' && !isStaff) Object.assign(user, { uploaded: 0n, downloaded: 0n, bonusPoints: 0 });
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, chatBubbles, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, chatBubbles, chatRail, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     const onlineStatus = this.presence.publicStatus(user.id);
@@ -81,7 +81,7 @@ export class UsersService {
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus,
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, defaultView, chatBubbles, goalSound, tipStyle } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, defaultView, chatBubbles, chatRail, goalSound, tipStyle } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
   }
@@ -105,6 +105,15 @@ export class UsersService {
     const value = enabled === true || enabled === 'true';
     await this.prisma.user.update({ where: { id: userId }, data: { goalSound: value } });
     return { goalSound: value };
+  }
+
+  /** Barre des bulles : position, taille et noms (valeurs vérifiées ; le reste est ignoré), mémorisés pour le membre. */
+  async setChatRail(userId: string, body: any) {
+    const pos = ['left', 'right', 'top', 'bottom'].includes(body?.pos) ? body.pos : 'left';
+    const size = ['sm', 'md', 'lg'].includes(body?.size) ? body.size : 'md';
+    const value = { pos, size, labels: body?.labels !== false };
+    await this.prisma.user.update({ where: { id: userId }, data: { chatRail: value } });
+    return { chatRail: value };
   }
 
   /** Bulles de discussion sur le côté gauche du site : activées ou non pour ce membre. */
