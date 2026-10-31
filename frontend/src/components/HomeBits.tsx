@@ -202,7 +202,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
       <section className="fy-card">
         <h3>⬇️ Mes téléchargements<Link to="/activity">Tout voir →</Link></h3>
         {leeching.length === 0 && <p className="fy-empty">Aucun téléchargement en cours.</p>}
-        {leeching.slice(0, 4).map((t) => (
+        {leeching.slice(0, 2).map((t) => (
           <Row key={t.id} to={`/torrents/${t.id}`} cover={t.coverImage} title={t.name} bar={{ pct: t.progress * 100, kind: 'dl' }} sub={`${Math.round(t.progress * 100)} % · ${mb(Number(t.size) || 0)}`} chip={{ text: '⬇️ En cours', tone: 'dl' }} />
         ))}
       </section>
@@ -210,7 +210,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
       <section className="fy-card">
         <h3>✅ Mes téléchargements complétés<Link to="/activity">Tout voir →</Link></h3>
         {done && done.length === 0 && <p className="fy-empty">Tes téléchargements terminés apparaîtront ici.</p>}
-        {(done ?? []).map((c) => {
+        {(done ?? []).slice(0, 2).map((c) => {
           const ok = c.satisfied;
           const left = Math.max(0, c.requiredSeconds - c.seedSeconds);
           const chip = ok ? { text: '✅ Seed terminé', tone: 'ok' as const } : c.hnr ? { text: '🔴 Hit & run', tone: 'bad' as const } : { text: `⏳ Encore ${hoursOf(left)}`, tone: 'warn' as const };
@@ -221,7 +221,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
       <section className="fy-card">
         <h3>⏯️ Épisode suivant<Link to="/series">Mes séries →</Link></h3>
         {next && next.length === 0 && <p className="fy-empty">Quand tu finis un épisode, le suivant apparaît ici dès qu'il est disponible.</p>}
-        {(next ?? []).slice(0, 4).map((t) => <Row key={t.torrentId} to={`/torrents/${t.torrentId}`} cover={t.cover} title={t.title} sub={`${epCode(t.season, t.episode)} est disponible`} chip={{ text: 'Nouveau', tone: 'ok' }} />)}
+        {(next ?? []).slice(0, 2).map((t) => <Row key={t.torrentId} to={`/torrents/${t.torrentId}`} cover={t.cover} title={t.title} sub={`${epCode(t.season, t.episode)} est disponible`} chip={{ text: 'Nouveau', tone: 'ok' }} />)}
       </section>
 
     </div>

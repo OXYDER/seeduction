@@ -318,12 +318,12 @@ export default function HomeStreaming() {
   return (
     <div className="home-plex">
       <HomeSectionsControls />
-      <div className="home-greet"><h1>{greeting} {user?.profile?.name ?? user?.username} 👋</h1><HomeCustomize /></div>
-      {prefs.actions && <HomeActions canUpload={canUpload} />}
-      {prefs.actions && <ForYouGrid active={active} />}
-      <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
       <div className={`home-layout${prefs.rail ? ' with-rail' : ''}`}>
         <div className="home-col">
+        <div className="home-greet"><h1>{greeting} {user?.profile?.name ?? user?.username} 👋</h1><HomeCustomize /></div>
+        {prefs.actions && <HomeActions canUpload={canUpload} />}
+        {prefs.actions && <ForYouGrid active={active} />}
+        <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
           {/* La dernière nouvelle reste toujours affichée, en grand ; les précédentes en petites cartes (au choix). */}
           {prefs.strip && <HomeStrip />}
           <NewsPanel heroOnly={!prefs.prevNews} />

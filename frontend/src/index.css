@@ -4622,3 +4622,15 @@ body.side-collapsed .chat-rail[data-pos="top"], body.side-collapsed .chat-rail[d
 .rail-toolbar { margin: 4px 0 10px; }
 .hs-cat.on { background: #5b3bd6; border-color: #8b5cf6; color: #fff; }
 button.hs-cat { font: inherit; cursor: pointer; color: inherit; }
+/* Accueil plus compact : la colonne de droite démarre en haut, liens et cartes prennent moins de place */
+.ha-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.ha-btn { padding: 7px 11px; gap: 9px; border-radius: 10px; }
+.ha-btn small { font-size: 11px; }
+.ha-icon { font-size: 18px; }
+.fy-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.fy-card { padding: 10px 12px; border-radius: 12px; }
+.fy-card h3 { margin-bottom: 4px; font-size: 14px; }
+.fy-row { padding: 5px 0; gap: 8px; }
+.fy-th { width: 28px; height: 40px; }
+.fy-empty { font-size: 12px; }
+.home-greet h1 { font-size: clamp(17px, 1.7vw, 21px); }
