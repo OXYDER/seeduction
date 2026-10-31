@@ -4619,3 +4619,6 @@ body.side-collapsed .chat-rail[data-pos="top"], body.side-collapsed .chat-rail[d
 .cr-drop { position: fixed; inset: 0; z-index: 2999; pointer-events: none; }
 .cr-zone { position: absolute; background: rgba(139, 92, 246, 0.12); border: 2px dashed rgba(139, 92, 246, 0.5); } .cr-zone.on { background: rgba(139, 92, 246, 0.35); }
 .cr-zone.left { left: 0; top: 0; bottom: 0; width: 90px; } .cr-zone.right { right: 0; top: 0; bottom: 0; width: 90px; } .cr-zone.top { left: 90px; right: 90px; top: 0; height: 80px; } .cr-zone.bottom { left: 90px; right: 90px; bottom: 0; height: 80px; }
+.rail-toolbar { margin: 4px 0 10px; }
+.hs-cat.on { background: #5b3bd6; border-color: #8b5cf6; color: #fff; }
+button.hs-cat { font: inherit; cursor: pointer; color: inherit; }

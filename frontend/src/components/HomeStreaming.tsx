@@ -13,7 +13,7 @@ import NewsPanel from './NewsPanel';
 import TelegramLogo from './TelegramLogo';
 import ModerationRail from './ModerationRail';
 import HomeRail from './HomeRail';
-import { ForYouGrid, HomeActions, HomeCustomize, HomeStrip, Top5, useHomePrefs } from './HomeBits';
+import { ForYouGrid, HomeActions, HomeCustomize, HomeStrip, LatestRail, Top5, useHomePrefs } from './HomeBits';
 import HomeSection, { HomeSectionsControls } from './HomeSection';
 import HomeTabs, { type HomeTab } from './HomeTabs';
 import ContinueWatching from './ContinueWatching';
@@ -331,14 +331,7 @@ export default function HomeStreaming() {
           <ContinueWatching hideNext />
           {recommended.length > 0 ? <Rail icon="⭐" title="Recommandé pour toi" to="/browse" items={recommended} /> : <Rail icon="🔥" title="Les plus populaires" to="/browse?sort=seeders" items={popular} />}
           <Top5 items={popular} />
-          <div className="home-latest">
-            {byCategory.length > 0 && (
-              <div className="home-catlinks" aria-label="Derniers ajouts par catégorie">
-                {byCategory.map((r) => <Link key={r.id} to={`/browse?categoryId=${r.id}&sort=date`} className="hs-cat" style={CATEGORY_STYLE[r.slug] ? { borderColor: `${CATEGORY_STYLE[r.slug].color}66` } : undefined}>{CATEGORY_STYLE[r.slug]?.icon ?? '📁'} {r.name}</Link>)}
-              </div>
-            )}
-            <Rail icon="🆕" title="Derniers ajouts" to="/browse?sort=date" items={latest} />
-          </div>
+          <LatestRail latest={latest} />
           {atRisk.length > 0 && <Rail icon="⚠️" title="À seeder : torrents à 1-2 seeders, un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />}
           {statsNode}
         </div>

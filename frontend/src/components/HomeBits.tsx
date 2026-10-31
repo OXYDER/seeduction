@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { create } from 'zustand';
 import { api } from '../api/client';
+import { Rail } from './TorrentRail';
 import { timeAgo } from '../lib/time';
 import { useCountdown } from './FreeleechCalendar';
 import { useAuthStore } from '../store/auth';
@@ -246,4 +247,30 @@ export function Top5({ items }: { items: any[] }) {
       </div>
     </section>
   );
+}
+
+// ------------------------------------------------------------------ « Derniers ajouts » : filtrable par sous-catégorie
+
+/** La rangée des derniers ajouts avec, dans son cadre, une pastille par sous-catégorie présente (Film, Série TV, Audio...) : elle ne change que ce que la rangée affiche. */
+export function LatestRail({ latest }: { latest: any[] }) {
+  const [sel, setSel] = useState<string | null>(null);
+  const [rows, setRows] = useState<any[] | null>(null);
+  const subs = (() => {
+    const m = new Map<string, { id: string; name: string; slug: string; n: number }>();
+    for (const t of latest) { const c = t.category; if (c?.id) { const cur = m.get(c.id) ?? { id: c.id, name: c.name, slug: c.slug, n: 0 }; cur.n++; m.set(c.id, cur); } }
+    return [...m.values()].sort((a, b) => b.n - a.n);
+  })();
+  useEffect(() => {
+    if (!sel) { setRows(null); return; }
+    let off = false;
+    api.get('/torrents', { params: { pageSize: 18, sort: 'date', categoryId: sel } }).then((r) => { if (!off) setRows(r.data.items); }).catch(() => { if (!off) setRows([]); });
+    return () => { off = true; };
+  }, [sel]);
+  const toolbar = subs.length > 1 ? (
+    <div className="home-catlinks" role="group" aria-label="Filtrer par sous-catégorie">
+      <button type="button" className={`hs-cat${sel === null ? ' on' : ''}`} onClick={() => setSel(null)}>Tous</button>
+      {subs.map((c) => <button key={c.id} type="button" className={`hs-cat${sel === c.id ? ' on' : ''}`} onClick={() => setSel(c.id)}>{c.name}</button>)}
+    </div>
+  ) : undefined;
+  return <Rail icon="🆕" title="Derniers ajouts" to={sel ? `/browse?categoryId=${sel}&sort=date` : '/browse?sort=date'} items={sel ? rows ?? [] : latest} loading={!!sel && rows === null} toolbar={toolbar} />;
 }

@@ -39,7 +39,7 @@ export function PosterCard({ t }: { t: any }) {
 }
 
 /** Rangée d'affiches défilante, façon plateforme de streaming. */
-export function Rail({ title, to, items, loading, icon = '🎞️' }: { title: string; to: string; items: any[]; loading?: boolean; icon?: string }) {
+export function Rail({ title, to, items, loading, icon = '🎞️', toolbar }: { title: string; to: string; items: any[]; loading?: boolean; icon?: string; /** Contrôles sous le titre (filtres de la rangée). */ toolbar?: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   if (items.length === 0 && !loading) return null;
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' });
@@ -52,6 +52,7 @@ export function Rail({ title, to, items, loading, icon = '🎞️' }: { title: s
           <button type="button" className="secondary rail-btn" onClick={() => scroll(-1)} aria-label="Précédent">‹</button>
           <button type="button" className="secondary rail-btn" onClick={() => scroll(1)} aria-label="Suivant">›</button>
         </div>
+      {toolbar && <div className="rail-toolbar">{toolbar}</div>}
       </div>
       <div className="rail" ref={ref}>
         {loading && items.length === 0 && Array.from({ length: 8 }, (_, i) => <span key={i} className="skeleton-card"><span className="skeleton-poster" /><span className="skeleton-line" /></span>)}
