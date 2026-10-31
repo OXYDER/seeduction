@@ -144,7 +144,7 @@ export default function MyActivity() {
   return (
     <div className="grid" style={{ gap: 16 }}>
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <h1 style={{ margin: 0 }}>📈 Mes torrents</h1>
+        <h1 style={{ margin: 0 }}>📈 Mes torrents{f.status !== 'all' && <span className="muted" style={{ fontWeight: 500 }}> › {STATUSES.find(([k]) => k === f.status)?.[1]}</span>}</h1>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           <Link to="/seeds" className="secondary" style={{ padding: '6px 12px', borderRadius: 8 }}>🌱 Mes seeds et obligations</Link>
           <Link to="/hit-and-run" className="secondary" style={{ padding: '6px 12px', borderRadius: 8 }}>⚠️ Hit & run</Link>
@@ -161,7 +161,7 @@ export default function MyActivity() {
       </div>
 
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-        {STATUSES.map(([k, label]) => <button key={k} type="button" className={`secondary${f.status === k ? ' on' : ''}`} onClick={() => setFilters({ status: k })}>{label} ({count(k)})</button>)}
+        {STATUSES.map(([k, label]) => <button key={k} type="button" className={`secondary stat-chip${f.status === k ? ' on' : ''}`} aria-pressed={f.status === k} onClick={() => setFilters({ status: k })}>{label} ({count(k)})</button>)}
       </div>
 
       <div className="panel" style={{ display: 'grid', gap: 10 }}>

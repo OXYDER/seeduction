@@ -147,7 +147,7 @@ export function HomeActions({ canUpload }: { canUpload: boolean }) {
     ...(canUpload ? [{ to: '/upload', icon: '⬆️', label: 'Envoyer un torrent', hint: 'Partager un nouveau torrent' }] : []),
     { to: '/requests', icon: '🙋', label: 'Faire une demande', hint: open === null ? 'Ce que la communauté cherche' : `${open} demande${open > 1 ? 's' : ''} ouverte${open > 1 ? 's' : ''}` },
     { to: '/referrals', icon: '🎟️', label: 'Inviter un ami', hint: 'Code ou achat en points' },
-    { to: '/seeds', icon: '🌱', label: 'Mes seeds', hint: seeds === null ? 'Obligations et téléchargements' : seeds === 0 ? 'Aucune obligation à terminer' : `${seeds} obligation${seeds > 1 ? 's' : ''} à terminer` },
+    { to: '/activity?statut=seeding', icon: '🌱', label: 'Mes seeds', hint: seeds === null ? 'Obligations et téléchargements' : seeds === 0 ? 'Aucune obligation à terminer' : `${seeds} obligation${seeds > 1 ? 's' : ''} à terminer` },
   ];
   return (
     <section className="home-actions" aria-label="Actions rapides">
@@ -178,7 +178,7 @@ function Row({ to, cover, title, bar, sub, chip }: { to: string; cover: string |
       <Thumb src={cover} />
       <span className="fy-t">
         <b title={title}>{title}</b>
-        {bar && <span className="fy-bar"><i className={bar.kind} style={{ width: `${Math.max(0, Math.min(100, Math.round(bar.pct)))}%` }} /></span>}
+        {bar ? <span className="fy-bar"><i className={bar.kind} style={{ width: `${Math.max(0, Math.min(100, Math.round(bar.pct)))}%` }} /></span> : <span className="fy-bar ghost" aria-hidden="true" />}
         <small>{sub}</small>
       </span>
       {chip && <span className={`fy-chip ${chip.tone}`}>{chip.text}</span>}
@@ -200,7 +200,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
   return (
     <div className="fy-grid">
       <section className="fy-card">
-        <h3>⬇️ Mes téléchargements<Link to="/activity">Tout voir →</Link></h3>
+        <h3>⬇️ Mes téléchargements<Link to="/activity?statut=leeching">Tout voir →</Link></h3>
         {leeching.length === 0 && <p className="fy-empty">Aucun téléchargement en cours.</p>}
         {leeching.slice(0, 2).map((t) => (
           <Row key={t.id} to={`/torrents/${t.id}`} cover={t.coverImage} title={t.name} bar={{ pct: t.progress * 100, kind: 'dl' }} sub={`${Math.round(t.progress * 100)} % · ${mb(Number(t.size) || 0)}`} chip={{ text: '⬇️ En cours', tone: 'dl' }} />
@@ -208,7 +208,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
       </section>
 
       <section className="fy-card">
-        <h3>✅ Mes téléchargements complétés<Link to="/activity">Tout voir →</Link></h3>
+        <h3>✅ Mes téléchargements complétés<Link to="/activity?statut=completed">Tout voir →</Link></h3>
         {done && done.length === 0 && <p className="fy-empty">Tes téléchargements terminés apparaîtront ici.</p>}
         {(done ?? []).slice(0, 2).map((c) => {
           const ok = c.satisfied;

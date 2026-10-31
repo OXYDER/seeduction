@@ -4634,3 +4634,9 @@ button.hs-cat { font: inherit; cursor: pointer; color: inherit; }
 .fy-th { width: 28px; height: 40px; }
 .fy-empty { font-size: 12px; }
 .home-greet h1 { font-size: clamp(17px, 1.7vw, 21px); }
+/* Mes torrents : la section choisie est bien visible ; accueil : cartes de la même couleur que les liens, lignes de même hauteur */
+button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !important; color: #fff !important; box-shadow: 0 0 0 1px #8b5cf6, 0 4px 14px rgba(139, 92, 246, 0.35); }
+.seedob-bar.ghost, .fy-bar.ghost { visibility: hidden; }
+.fy-card { background: #121a3d; border-color: #222d52; }
+.fy-grid { align-items: stretch; }
+.fy-card { min-height: 150px; }

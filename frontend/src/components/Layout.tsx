@@ -132,7 +132,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/activity?statut=leeching', icon: '⬇️', cls: 'c-search', label: 'Mes téléchargements', match: (p) => starts('/activity')(p) && window.location.search.includes('statut=leeching'), group: 'bibliotheque', sideOnly: true },
   { to: '/activity?statut=completed', icon: '✅', cls: 'c-search', label: 'Téléchargements terminés', match: (p) => starts('/activity')(p) && window.location.search.includes('statut=completed'), group: 'bibliotheque', sideOnly: true },
   { to: '/activity?statut=own', icon: '📤', cls: 'c-search', label: 'Mes envois', match: (p) => starts('/activity')(p) && window.location.search.includes('statut=own'), group: 'bibliotheque', sideOnly: true },
-  { to: '/seeds', icon: '🌱', cls: 'c-search', label: 'Mes seeds', match: (p) => starts('/seeds')(p) || starts('/hit-and-run')(p), group: 'bibliotheque', sideOnly: true },
+  { to: '/activity?statut=seeding', icon: '🌱', cls: 'c-search', label: 'Mes seeds', match: (p) => starts('/seeds')(p) || starts('/hit-and-run')(p) || (starts('/activity')(p) && window.location.search.includes('statut=seeding')), group: 'bibliotheque', sideOnly: true },
   { to: '/favorites', icon: '⭐', cls: 'c-collections', label: 'Favoris', match: starts('/favorites'), group: 'bibliotheque' },
   { to: '/collections', icon: '📚', cls: 'c-collections', label: 'Collections', match: starts('/collections'), group: 'bibliotheque' },
   { to: '/requests', icon: '💬', cls: 'c-chat', label: 'Demandes', match: starts('/requests'), group: 'bibliotheque' },

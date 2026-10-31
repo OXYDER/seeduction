@@ -15,7 +15,7 @@ export default function ShareCard({ id, name, cover, bar, sub, chips }: { id: st
       {cover ? <img src={cover} alt="" className="seedob-cover" loading="lazy" /> : <span className="seedob-cover plain">🎬</span>}
       <span className="seedob-text">
         <span className="seedob-name" style={{ fontSize: 14 }}>{name}</span>
-        {bar && <span className="seedob-bar"><span className={bar.kind} style={{ width: `${Math.max(0, Math.min(100, Math.round(bar.pct)))}%` }} /></span>}
+        {bar ? <span className="seedob-bar"><span className={bar.kind} style={{ width: `${Math.max(0, Math.min(100, Math.round(bar.pct)))}%` }} /></span> : <span className="seedob-bar ghost" aria-hidden="true" />}
         <span className="seedob-sub">{sub}</span>
         {chips && <span className="seedpage-chips">{chips}</span>}
       </span>
