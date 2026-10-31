@@ -17,7 +17,6 @@ import SearchBox from './SearchBox';
 import { addSearch } from '../lib/searchHistory';
 import Avatar from './Avatar';
 import QuickSearch from './QuickSearch';
-import FriendsStrip from './FriendsStrip';
 import ChatDock from './ChatDock';
 import BrowserNotifications from './BrowserNotifications';
 import IdleWatcher from './IdleWatcher';
@@ -622,7 +621,6 @@ function LayoutInner() {
           {version && <Link to="/roadmap" className="side-version" title="Roadmap et journal des modifications">v{version}</Link>}
 
         </aside>
-        <FriendsStrip />
 
         <div className="shell-main">
           <header className="side-topbar">
