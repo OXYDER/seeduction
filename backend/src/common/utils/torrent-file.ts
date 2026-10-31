@@ -20,14 +20,14 @@ export function parseTorrentFile(buf: Buffer): ParsedTorrent {
   const infoBencoded = bencode(meta.info);
   const infoHash = createHash('sha1').update(infoBencoded).digest('hex');
 
-  const name = meta.info.name?.toString('utf8') ?? 'unknown';
+  const name = (meta.info.name?.toString('utf8') ?? 'unknown').replace(/\u0000/g, ''); // 0x00 interdit en base
   const isPrivate = meta.info.private === 1;
 
   let files: { path: string; size: number }[];
   if (meta.info.files) {
     // torrent multi-fichiers
     files = meta.info.files.map((f: any) => ({
-      path: f.path.map((p: Buffer) => p.toString('utf8')).join('/'),
+      path: f.path.map((p: Buffer) => p.toString('utf8')).join('/').replace(/\u0000/g, ''),
       size: f.length,
     }));
   } else {

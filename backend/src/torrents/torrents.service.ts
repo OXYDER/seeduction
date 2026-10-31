@@ -20,6 +20,7 @@ import { Cron } from '@nestjs/schedule';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { parsePeerClient } from '../common/utils/peer-client';
+import { stripNul } from '../common/utils/strip-nul';
 
 const STORAGE_DIR = process.env.TORRENT_STORAGE_DIR ?? './storage/torrents';
 const ANNOUNCE_BASE_URL = process.env.ANNOUNCE_BASE_URL ?? 'https://tracker.example.com/tracker';
@@ -138,6 +139,9 @@ export class TorrentsService implements OnModuleInit {
     /** Import automatique : un nom mal formé (espaces, résolution en majuscule, team isolée...) est remplacé par le nom standard proposé d'après les fichiers et le NFO. */
     standardizeName?: boolean;
   }) {
+    // PostgreSQL refuse l'octet 0x00 : un NFO binaire ou un nom mal formé ferait échouer l'enregistrement.
+    params = Object.fromEntries(Object.entries(params).map(([k, v]) => [k, typeof v === 'string' ? stripNul(v) : Array.isArray(v) ? v.map((x) => (typeof x === 'string' ? stripNul(x) : x)) : v])) as typeof params;
+
     // On stocke (et on calcule l'info_hash sur) la version nettoyée : trackers
     // externes retirés, flag private forcé — voir sanitizeTorrentForUpload.
     let cleanBuffer: Buffer;
