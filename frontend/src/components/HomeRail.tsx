@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useEventTheme } from '../store/eventTheme';
 import { useMessenger } from '../store/messenger';
+import { useMyUploads } from '../store/myUploads';
+import { useSupport } from '../store/support';
 import { STATUS_COLOR, STATUS_LABEL, type PublicStatus } from '../lib/presence';
 import { timeAgo } from '../lib/time';
 import Avatar from './Avatar';
@@ -131,10 +133,53 @@ function ChallengeCard() {
 export default function HomeRail() {
   return (
     <aside className="home-rail" aria-label="Autour de toi">
+      <TodoCard />
       <CanadiensCard />
       <FriendsCard />
       <ChatCard />
       <ChallengeCard />
     </aside>
+  );
+}
+
+// ------------------------------------------------------------------ « À faire » : ce qui demande l'attention du membre
+
+interface Todo { key: string; tone: 'bad' | 'warn' | 'ok'; icon: string; text: string; to: string }
+
+/** Les choses à régler ou à regarder, au même endroit : hit & run, seeds à relancer, envois à corriger, réponses du support, demandes d'ami. Cinq lignes au plus, les plus urgentes d'abord. */
+export function TodoCard() {
+  const [seeds, setSeeds] = useState<{ hnr: number; idle: number } | null>(null);
+  const [friends, setFriends] = useState(0);
+  const [dead, setDead] = useState(0);
+  const supportMine = useSupport((s) => s.mine);
+  const { hold, rejected } = useMyUploads();
+  useEffect(() => {
+    const load = () => {
+      api.get('/bonus/seeds').then((r) => setSeeds({ hnr: r.data.counts?.hnr ?? 0, idle: r.data.counts?.idle ?? 0 })).catch(() => setSeeds({ hnr: 0, idle: 0 }));
+      api.get('/friends').then((r) => setFriends(r.data.incoming?.length ?? 0)).catch(() => undefined);
+      api.get('/stats/dead/mine-count').then((r) => setDead(r.data.count ?? 0)).catch(() => undefined);
+    };
+    load();
+    const t = setInterval(() => { if (!document.hidden) load(); }, 120_000);
+    return () => clearInterval(t);
+  }, []);
+  const s = (n: number, w: string) => `${n} ${w}${n > 1 ? 's' : ''}`;
+  const items: Todo[] = [
+    ...(seeds && seeds.hnr > 0 ? [{ key: 'hnr', tone: 'bad' as const, icon: '🔴', text: `${s(seeds.hnr, 'hit & run')} à régulariser : reprends le seed`, to: '/hit-and-run' }] : []),
+    ...(hold > 0 ? [{ key: 'hold', tone: 'bad' as const, icon: '✏️', text: `${s(hold, 'envoi')} à corriger : l'équipe te demande une modification`, to: '/upload' }] : []),
+    ...(seeds && seeds.idle > 0 ? [{ key: 'idle', tone: 'warn' as const, icon: '🟠', text: `${s(seeds.idle, 'torrent')} ne seede${seeds.idle > 1 ? 'nt' : ''} plus : relance-${seeds.idle > 1 ? 'les' : 'le'} avant la limite`, to: '/seeds' }] : []),
+    ...(supportMine > 0 ? [{ key: 'support', tone: 'warn' as const, icon: '🛟', text: `${s(supportMine, 'réponse')} du support à lire`, to: '/support' }] : []),
+    ...(rejected > 0 ? [{ key: 'rejected', tone: 'warn' as const, icon: '⛔', text: `${s(rejected, 'envoi')} refusé${rejected > 1 ? 's' : ''} : regarde pourquoi`, to: '/activity' }] : []),
+    ...(friends > 0 ? [{ key: 'friends', tone: 'ok' as const, icon: '👫', text: `${s(friends, 'demande')} d'ami en attente`, to: '/friends' }] : []),
+    ...(dead > 0 ? [{ key: 'dead', tone: 'ok' as const, icon: '☠️', text: `${s(dead, 'torrent')} sans seeder que tu peux relancer`, to: '/dead' }] : []),
+  ].slice(0, 5);
+  return (
+    <section className="hr-card hr-todo">
+      <h4>✅ À faire</h4>
+      {items.length === 0 && <p className="hr-empty">Tout est en ordre : rien à régler ✓</p>}
+      {items.map((i) => (
+        <Link key={i.key} to={i.to} className={`hr-todo-row ${i.tone}`}><span aria-hidden="true">{i.icon}</span><span>{i.text}</span><span className="hr-go" aria-hidden="true">→</span></Link>
+      ))}
+    </section>
   );
 }

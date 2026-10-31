@@ -93,6 +93,22 @@ function RankItem() {
   );
 }
 
+/** « Mes réalisations » : combien de badges obtenus sur le total, et le prochain à portée de main. */
+function BadgesItem() {
+  const [d, setD] = useState<any>(null);
+  useEffect(() => { api.get('/badges/progress').then((r) => setD(r.data)).catch(() => undefined); }, []);
+  if (!d || !d.total) return null;
+  const pct = Math.round((d.earnedCount / Math.max(1, d.total)) * 100);
+  const next = (d.items ?? []).filter((i: any) => !i.earned && i.target > 0).sort((a: any, b: any) => b.value / b.target - a.value / a.target)[0];
+  return (
+    <Link to="/achievements" className="bc">
+      <div className="bt"><span>🏅 <b>{d.earnedCount} / {d.total}</b> badges obtenus</span><span>{pct} %</span></div>
+      <div className="pb"><i style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f59e0b,#fde68a)' }} /></div>
+      <div className="bn">{next ? <>Prochain : <b>{next.icon} {next.name}</b> · {next.value} / {next.target}{next.unit ? ` ${next.unit}` : ''}</> : <>{d.pointsToWin ? `${d.pointsToWin} points bonus encore à gagner` : 'Tous les badges sont obtenus !'}</>}</div>
+    </Link>
+  );
+}
+
 /** Freeleech et pot commun en une ligne chacun (le détail est une page plus loin). */
 export function HomeStrip() {
   const [fl, setFl] = useState<any>(null);
@@ -108,6 +124,7 @@ export function HomeStrip() {
   return (
     <div className="bars">
       <RankItem />
+      <BadgesItem />
       {fl && <FreeleechItem state={fl} />}
       {pot?.enabled && <PotItem pot={pot} />}
     </div>
