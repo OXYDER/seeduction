@@ -68,6 +68,7 @@ import { PlayersModule } from './players/players.module';
 import { GamesModule } from './games/games.module';
 import { UploadCreditModule } from './upload-credit/upload-credit.module';
 import { TeamsModule } from './teams/teams.module';
+import { WallModule } from './wall/wall.module';
 import { SupportModule } from './support/support.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { SuggestionsModule } from './suggestions/suggestions.module';
@@ -143,6 +144,7 @@ import { WebmailModule } from './webmail/webmail.module';
     GamesModule,
     UploadCreditModule,
     TeamsModule,
+    WallModule,
     SupportModule,
     TelegramModule,
     SuggestionsModule,

@@ -139,6 +139,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/upload', icon: '⬆️', cls: 'c-upload', label: 'Envoyer', match: starts('/upload'), group: 'bibliotheque' },
   { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat'), group: 'communaute' },
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum'), group: 'communaute' },
+  { to: '/fil', icon: '🧱', cls: 'c-collections', label: 'Fil des membres', match: starts('/fil'), group: 'communaute' },
   { to: '/friends', icon: '👫', cls: 'c-collections', label: 'Amis', match: starts('/friends'), group: 'communaute' },
   { to: '/teams', icon: '🏴', cls: 'c-forum', label: 'Teams', match: starts('/teams'), group: 'communaute' },
   { to: '/canadiens-en-direct', icon: '🔴', cls: 'c-livechat', label: 'Canadiens en direct', match: starts('/canadiens-en-direct'), liveOnly: true, group: 'communaute' },

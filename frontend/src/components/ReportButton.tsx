@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/auth';
 
 /** Bouton « Signaler » : ouvre un petit formulaire de motif et l'envoie au staff. */
 export default function ReportButton({ targetType, targetId, label = '🚩 Signaler', compact }: {
-  targetType: 'torrent' | 'user' | 'forumPost' | 'comment';
+  targetType: 'torrent' | 'user' | 'forumPost' | 'comment' | 'wallPost' | 'wallComment';
   targetId: string;
   label?: string;
   compact?: boolean;

@@ -15,6 +15,7 @@ import CopyButton from '../components/CopyButton';
 import TorrentComments from '../components/TorrentComments';
 import TorrentSocial from '../components/TorrentSocial';
 import ReportButton from '../components/ReportButton';
+import { ShareToWall } from '../components/Wall';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { bbcodeToHtml } from '../lib/bbcode';
@@ -156,6 +157,7 @@ export default function TorrentDetail() {
       <button className="secondary" onClick={() => setAddOpen((v) => !v)}>📚 Collection</button>
       <SeriesFollowButton torrentId={torrent.id} />
       {torrent.uploader?.id !== user.id && <ReportButton targetType="torrent" targetId={torrent.id} />}
+      {torrent.status === 'APPROVED' && <ShareToWall torrentId={torrent.id} />}
       {addOpen && (
         <div className="panel ornate" style={{ position: 'absolute', left: 0, top: '110%', width: 260, zIndex: 30, padding: 10, background: 'var(--bg-panel-raised)' }}>
           {myCollections.length === 0 && <p className="muted" style={{ margin: 0 }}>Crée d'abord une collection.</p>}

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 
-const TARGET_TYPES = ['torrent', 'user', 'forumPost', 'comment'] as const;
+const TARGET_TYPES = ['torrent', 'user', 'forumPost', 'comment', 'wallPost', 'wallComment'] as const;
 type TargetType = (typeof TARGET_TYPES)[number];
 
 @Injectable()
@@ -14,6 +14,8 @@ export class ReportsService {
       case 'user': return !!(await this.prisma.user.findUnique({ where: { id }, select: { id: true } }));
       case 'forumPost': return !!(await this.prisma.forumPost.findUnique({ where: { id }, select: { id: true } }));
       case 'comment': return !!(await this.prisma.torrentComment.findUnique({ where: { id }, select: { id: true } }));
+      case 'wallPost': return !!(await this.prisma.wallPost.findUnique({ where: { id }, select: { id: true } }));
+      case 'wallComment': return !!(await this.prisma.wallComment.findUnique({ where: { id }, select: { id: true } }));
     }
   }
 
@@ -72,6 +74,14 @@ export class ReportsService {
         const c = await this.prisma.torrentComment.findUnique({ where: { id: r.targetId }, select: { torrentId: true, content: true } });
         label = c ? `Commentaire : « ${c.content.slice(0, 80)} »` : '(commentaire supprimé)';
         link = c ? `/torrents/${c.torrentId}` : null;
+      } else if (r.targetType === 'wallPost') {
+        const p = await this.prisma.wallPost.findUnique({ where: { id: r.targetId }, select: { authorId: true, teamId: true, content: true } });
+        label = p ? `Publication du Mur : « ${(p.content || '(sans texte)').slice(0, 100)} »` : '(publication supprimée)';
+        link = p ? (p.teamId ? `/teams/${p.teamId}` : `/users/${p.authorId}`) : null;
+      } else if (r.targetType === 'wallComment') {
+        const c = await this.prisma.wallComment.findUnique({ where: { id: r.targetId }, select: { content: true, post: { select: { authorId: true, teamId: true } } } });
+        label = c ? `Commentaire du Mur : « ${c.content.slice(0, 100)} »` : '(commentaire supprimé)';
+        link = c ? (c.post.teamId ? `/teams/${c.post.teamId}` : `/users/${c.post.authorId}`) : null;
       }
       return { ...r, label, link, torrent };
     }));

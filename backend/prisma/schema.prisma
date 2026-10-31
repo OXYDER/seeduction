@@ -2754,3 +2754,47 @@ model PlayerUse {
   @@unique([userId, platform])
   @@index([lastAt])
 }
+
+/// Le Mur : une publication sur le profil d'un membre (teamId vide) ou sur la page d'une team. Réservé aux membres du site, jamais public.
+model WallPost {
+  id         String   @id @default(uuid())
+  authorId   String
+  teamId     String?
+  content    String   @default("") @db.VarChar(2000)
+  imageUrl   String?  @db.VarChar(300)
+  linkUrl    String?  @db.VarChar(500)
+  torrentId  String?
+  /// Profil : ME | FRIENDS | MEMBERS. Team : TEAM | MEMBERS.
+  visibility String   @default("MEMBERS") @db.VarChar(8)
+  createdAt  DateTime @default(now())
+
+  reactions WallReaction[]
+  comments  WallComment[]
+
+  @@index([authorId, createdAt])
+  @@index([teamId, createdAt])
+  @@index([createdAt])
+}
+
+/// Une réaction (une seule par membre et par publication).
+model WallReaction {
+  id        String   @id @default(uuid())
+  post      WallPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String
+  userId    String
+  type      String   @db.VarChar(8)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model WallComment {
+  id        String   @id @default(uuid())
+  post      WallPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String
+  authorId  String
+  content   String   @db.VarChar(1000)
+  createdAt DateTime @default(now())
+
+  @@index([postId, createdAt])
+}

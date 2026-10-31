@@ -61,6 +61,7 @@ const Family = lazyPage(() => import('./pages/Family'));
 const Roadmap = lazyPage(() => import('./pages/Roadmap'));
 const Teams = lazyPage(() => import('./pages/Teams'));
 const TeamDetail = lazyPage(() => import('./pages/TeamDetail'));
+const Fil = lazyPage(() => import('./pages/Fil'));
 const TeamBySlug = lazyPage(() => import('./pages/TeamBySlug'));
 const UserByName = lazyPage(() => import('./pages/UserByName'));
 const Forum = lazyPage(() => import('./pages/Forum'));
@@ -136,6 +137,7 @@ export default function App() {
           <Route path="/forum/topics/:id" element={<ForumTopic />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/requests" element={<Requests />} />
+          <Route path="/fil" element={<Fil />} />
           <Route path="/friends" element={<Friends />} />
           <Route path="/player" element={<PlayerDownload />} />
           <Route path="/collections" element={<Collections />} />

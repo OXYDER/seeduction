@@ -4641,3 +4641,18 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .fy-grid { align-items: stretch; }
 .fy-card { min-height: 150px; }
 .team-banner { width: 100%; max-height: 220px; object-fit: cover; border-radius: 14px; border: 1px solid var(--team-accent, var(--border)); display: block; }
+
+/* Accueil : forum, top uploaders et communauté, sous les barres — trois cases de même hauteur, texte réduit pour ne pas écraser le reste. */
+.home-bottom { align-items: stretch; gap: 12px; }
+.home-bottom > .hs { display: flex; flex-direction: column; min-width: 0; }
+.home-bottom > .hs > .hs-body { flex: 1; display: flex; flex-direction: column; }
+.home-bottom > .hs > .hs-body > .panel { flex: 1; margin: 0; padding: 10px 12px; }
+.home-bottom .st-board h3 { font-size: 14px; margin: 0 0 2px; }
+.home-bottom .st-board ol { margin-top: 6px; gap: 2px; }
+.home-bottom .st-board li { padding: 3px 8px; font-size: 12.5px; }
+.home-bottom .st-board-footer { margin-top: 8px; font-size: 12px; }
+.home-bottom .community-tiles { gap: 6px; margin-top: 6px; }
+.home-bottom .community-tile { padding: 6px 10px; }
+.home-bottom .community-tile strong { font-size: 17px; }
+.home-bottom .community-tile .muted { font-size: 11px; }
+.home-bottom .community-tile-icon { font-size: 16px; top: 5px; right: 7px; }

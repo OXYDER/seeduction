@@ -9,6 +9,7 @@ import UserLink from '../components/UserLink';
 import { useCrumbTitle } from '../store/crumbs';
 import Loading from '../components/Loading';
 import { TeamDashboard, TeamHistory, TeamPosts } from '../components/TeamExtras';
+import Wall from '../components/Wall';
 
 const ROLE = { LEADER: '👑 Chef', OFFICER: '⭐ Officier', MEMBER: 'Membre' } as Record<string, string>;
 
@@ -108,6 +109,7 @@ export default function TeamDetail() {
       )}
 
       <TeamPosts teamId={team.id} isMember={!!team.isMember} />
+      <Wall source={{ kind: 'team', id: team.id }} title="🧱 Le mur de la team" empty={team.isMember ? 'Le mur est vide : écris le premier message à ta team.' : 'Aucune publication ouverte à tout le site pour le moment.'} />
       {team.isMember && <TeamDashboard teamId={team.id} />}
       {team.isMember && <TeamHistory teamId={team.id} />}
 

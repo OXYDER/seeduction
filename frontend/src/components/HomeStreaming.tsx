@@ -326,6 +326,8 @@ export default function HomeStreaming() {
         <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
           {/* La dernière nouvelle reste toujours affichée, en grand ; les précédentes en petites cartes (au choix). */}
           {prefs.strip && <HomeStrip />}
+          {/* Forum, top uploaders et chiffres de la communauté : juste sous les barres (niveau, badges, pot, freeleech), en trois cases de même hauteur. */}
+          {statsNode}
           <NewsPanel heroOnly={!prefs.prevNews} />
           {/* Les sections se suivent, comme dans l'aperçu validé (plus d'onglets) : reprendre la lecture, recommandations, tendances, derniers ajouts, mon activité, catégories, à seeder, forum et chiffres. */}
           <ContinueWatching hideNext />
@@ -333,7 +335,6 @@ export default function HomeStreaming() {
           <Top5 items={popular} />
           <LatestRail latest={latest} />
           {atRisk.length > 0 && <Rail icon="⚠️" title="À seeder : torrents à 1-2 seeders, un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />}
-          {statsNode}
         </div>
         {prefs.rail && <HomeRail />}
       </div>

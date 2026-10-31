@@ -10,6 +10,7 @@ import TransferPoints from '../components/TransferPoints';
 import ReportButton from '../components/ReportButton';
 import SecurityPanel from '../components/SecurityPanel';
 import ProfileEditor from '../components/ProfileEditor';
+import Wall from '../components/Wall';
 import AdultPreference from '../components/AdultPreference';
 import DmPrivacyPanel from '../components/DmPrivacyPanel';
 import WatchingVisibilityPanel from '../components/WatchingVisibilityPanel';
@@ -162,6 +163,7 @@ export default function Profile() {
       )}
       {showTab('overview') && (
         <>
+      {!profile.deleted && <Wall source={{ kind: 'user', id: targetId as string }} title={own ? '🧱 Mon mur' : `🧱 Le mur de ${profile.username}`} empty={own ? 'Ton mur est vide : écris ton premier statut ou partage un torrent depuis sa fiche.' : "Rien à voir pour l'instant."} />}
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
         {['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role)
           ? <Card label="Transferts" value="Non comptabilisés (équipe)" />
