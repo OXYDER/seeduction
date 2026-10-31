@@ -185,11 +185,9 @@ function Row({ to, cover, title, bar, sub, chip }: { to: string; cover: string |
 }
 
 /** « Pour toi » : mes téléchargements, mes seeds à terminer, l'épisode suivant de mes séries et les nouveautés de mes abonnements, quatre cartes côte à côte. */
-export function ForYouGrid({ active, followed }: { active: any[]; followed: any[] }) {
-  const [seeds, setSeeds] = useState<SeedRow[] | null>(null);
+export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
   const [next, setNext] = useState<NextEp[] | null>(null);
   useEffect(() => {
-    api.get('/bonus/seeds').then((r) => setSeeds(r.data.items ?? [])).catch(() => setSeeds([]));
     api.get('/stream/continue').then((r) => setNext(r.data.next ?? [])).catch(() => setNext([]));
   }, []);
   const leeching = active.filter((t) => !t.isSeeder);
@@ -198,7 +196,7 @@ export function ForYouGrid({ active, followed }: { active: any[]; followed: any[
   return (
     <div className="fy-grid">
       <section className="fy-card">
-        <h3>⬇️ Mes téléchargements<Link to="/seeds">Tout voir →</Link></h3>
+        <h3>⬇️ Mes téléchargements<Link to="/activity">Tout voir →</Link></h3>
         {leeching.length === 0 && <p className="fy-empty">Aucun téléchargement en cours.</p>}
         {leeching.slice(0, 4).map((t) => (
           <Row key={t.id} to={`/torrents/${t.id}`} cover={t.coverImage} title={t.name} bar={{ pct: t.progress * 100, kind: 'dl' }} sub={`${Math.round(t.progress * 100)} % · ${mb(Number(t.size) || 0)}`} chip={{ text: '⬇️ En cours', tone: 'dl' }} />
@@ -206,37 +204,11 @@ export function ForYouGrid({ active, followed }: { active: any[]; followed: any[
       </section>
 
       <section className="fy-card">
-        <h3>🌱 Seeds à terminer<Link to="/seeds">Mes seeds →</Link></h3>
-        {seeds && seeds.length === 0 && <p className="fy-empty">Aucune obligation à terminer : bravo !</p>}
-        {(seeds ?? []).slice(0, 4).map((i) => {
-          const pct = Math.min(100, Math.round((i.seedSeconds / i.requiredSeconds) * 100));
-          const done = i.remainingSeconds <= 0;
-          const chip = done ? { text: '✅ Terminée', tone: 'ok' as const } : i.status === 'hnr' ? { text: '🔴 Hit & run', tone: 'bad' as const } : i.status === 'idle' ? { text: '🟠 Relance-le', tone: 'warn' as const } : { text: `⏳ Encore ${hoursOf(i.remainingSeconds)}`, tone: 'warn' as const };
-          return <Row key={i.torrentId} to={`/torrents/${i.torrentId}`} cover={i.coverImage} title={i.name} bar={{ pct: done ? 100 : pct, kind: done ? 'done' : i.status === 'hnr' ? 'hnr' : i.status === 'idle' ? 'idle' : 'seeding' }} sub={`${hoursOf(i.seedSeconds)} / ${hoursOf(i.requiredSeconds)}`} chip={chip} />;
-        })}
-      </section>
-
-      <section className="fy-card">
-        <h3>⏯️ Épisode suivant<Link to="/favorites">Mes séries →</Link></h3>
+        <h3>⏯️ Épisode suivant<Link to="/series">Mes séries →</Link></h3>
         {next && next.length === 0 && <p className="fy-empty">Quand tu finis un épisode, le suivant apparaît ici dès qu'il est disponible.</p>}
         {(next ?? []).slice(0, 4).map((t) => <Row key={t.torrentId} to={`/torrents/${t.torrentId}`} cover={t.cover} title={t.title} sub={`${epCode(t.season, t.episode)} est disponible`} chip={{ text: 'Nouveau', tone: 'ok' }} />)}
       </section>
 
-      <section className="fy-card">
-        <h3>🔔 Nouveautés de tes abonnements<Link to="/favorites">Tout voir →</Link></h3>
-        {followed.length === 0 && <p className="fy-empty">Abonne-toi à une série (🔔 sur sa fiche) pour voir ses nouveaux épisodes ici.</p>}
-        {followed.length > 0 && (
-          <div className="fy-posters">
-            {followed.slice(0, 8).map((t) => (
-              <Link key={t.id} to={`/torrents/${t.id}`} className="fy-poster">
-                {t.coverImage ? <img src={t.coverImage} alt="" loading="lazy" /> : <span className="fy-pnone" aria-hidden="true">🎬</span>}
-                <b title={t.name}>{t.displayTitle ?? releaseTitle(t.name)}</b>
-                <small>{episodeCode(t.season, t.episode) ?? ''}</small>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }

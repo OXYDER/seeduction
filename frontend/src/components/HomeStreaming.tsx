@@ -330,9 +330,15 @@ export default function HomeStreaming() {
           <ContinueWatching hideNext />
           {recommended.length > 0 ? <Rail icon="⭐" title="Recommandé pour toi" to="/browse" items={recommended} /> : <Rail icon="🔥" title="Les plus populaires" to="/browse?sort=seeders" items={popular} />}
           <Top5 items={popular} />
-          <Rail icon="🆕" title="Derniers ajouts" to="/browse?sort=date" items={latest} />
+          <div className="home-latest">
+            {byCategory.length > 0 && (
+              <div className="home-catlinks" aria-label="Derniers ajouts par catégorie">
+                {byCategory.map((r) => <Link key={r.id} to={`/browse?categoryId=${r.id}&sort=date`} className="hs-cat" style={CATEGORY_STYLE[r.slug] ? { borderColor: `${CATEGORY_STYLE[r.slug].color}66` } : undefined}>{CATEGORY_STYLE[r.slug]?.icon ?? '📁'} {r.name}</Link>)}
+              </div>
+            )}
+            <Rail icon="🆕" title="Derniers ajouts" to="/browse?sort=date" items={latest} />
+          </div>
           <ForYouGrid active={active} followed={followed} />
-          {byCategory.length > 0 && <section className="panel ornate rail-section rail-plex"><div className="panel-title"><span className="title-icon">📂</span>Par catégorie</div><CategoryRails rows={byCategory} /></section>}
           {atRisk.length > 0 && <Rail icon="⚠️" title="À seeder : torrents à 1-2 seeders, un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />}
           {statsNode}
         </div>
