@@ -50,19 +50,18 @@ export function HomeCustomize() {
 function FreeleechItem({ state }: { state: any }) {
   const upcoming: any[] = state?.upcoming ?? [];
   const next = upcoming[0] ?? null;
-  const target = state?.until ?? next?.startsAt ?? null;
-  const left = useCountdown(target);
+  const left = useCountdown(state?.until ?? null);
+  const untilNext = useCountdown(next?.startsAt ?? null);
+  // Part du temps déjà écoulée du freeleech en cours (si on connaît son début).
+  const start = state?.event?.startsAt ? new Date(state.event.startsAt).getTime() : null;
+  const end = state?.until ? new Date(state.until).getTime() : null;
+  const pct = start && end && end > start ? Math.max(0, Math.min(100, ((Date.now() - start) / (end - start)) * 100)) : 100;
   return (
-    <div className="hstrip-card">
-      <span aria-hidden="true">🗓️</span>
-      <span className="hstrip-text">
-        <strong>Freeleech</strong>{' '}
-        {state?.until ? <span className="muted">🎉 {state.event?.title ?? 'en cours'} · se termine dans {left}</span>
-          : next ? <span className="muted">{next.title} · dans {left}</span>
-          : <span className="muted">aucune période prévue</span>}
-      </span>
-      <Link to="/freeleech">Calendrier →</Link>
-    </div>
+    <Link to="/freeleech" className={`bc${state?.until ? ' live' : ''}`}>
+      <div className="bt"><span>🎉 {state?.until ? <>Freeleech en cours : <b>{state.event?.title ?? 'freeleech global'}</b></> : <>Freeleech</>}</span><span>{state?.until ? `se termine dans ${left}` : 'aucune période en cours'}</span></div>
+      <div className="pb"><i style={{ width: `${state?.until ? pct : 0}%`, background: 'linear-gradient(90deg,#10b981,#34d399)' }} /></div>
+      <div className="bn">{next ? <>Prochain : <b>{next.title}</b> · dans {untilNext} · <u>Calendrier</u></> : <>Aucun freeleech prévu · <u>Calendrier</u></>}</div>
+    </Link>
   );
 }
 
@@ -70,13 +69,10 @@ function PotItem({ pot }: { pot: any }) {
   const left = useCountdown(pot?.active?.endsAt ?? null);
   const { cycle } = pot;
   return (
-    <div className="hstrip-card">
-      <span aria-hidden="true">{pot.icon ?? '🍯'}</span>
-      <span className="hstrip-text"><strong>{pot.name}</strong>{pot.active && <span className="muted"> · 🎉 freeleech global, encore {left}</span>}</span>
-      <span className="hstrip-gauge" title={`${cycle.percent} % : quand il est plein, tout le monde est récompensé`}><i style={{ width: `${Math.min(100, cycle.percent)}%` }} /></span>
-      <span className="muted">{cycle.percent} %</span>
-      <Link to="/pot">{cycle.status === 'OPEN' ? 'Donner →' : 'Voir →'}</Link>
-    </div>
+    <Link to="/pot" className="bc">
+      <div className="bt"><span>{pot.icon ?? '🍯'} <b>{pot.name}</b>{pot.active ? ` · 🎉 freeleech global, encore ${left}` : ''}</span><span>{cycle.percent} % · <u>{cycle.status === 'OPEN' ? 'Donner' : 'Voir'}</u></span></div>
+      <div className="pb"><i style={{ width: `${Math.min(100, cycle.percent)}%`, background: 'linear-gradient(90deg,#f59e0b,#f5c542)' }} /></div>
+    </Link>
   );
 }
 
@@ -93,7 +89,7 @@ export function HomeStrip() {
   }, []);
   if (!fl && !pot?.enabled) return null;
   return (
-    <div className="hstrip">
+    <div className="bars">
       {fl && <FreeleechItem state={fl} />}
       {pot?.enabled && <PotItem pot={pot} />}
     </div>

@@ -324,8 +324,8 @@ export default function HomeStreaming() {
       <div className={`home-layout${prefs.rail ? ' with-rail' : ''}`}>
         <div className="home-col">
           {/* La dernière nouvelle reste toujours affichée, en grand ; les précédentes en petites cartes (au choix). */}
-          <NewsPanel heroOnly={!prefs.prevNews} />
           {prefs.strip && <HomeStrip />}
+          <NewsPanel heroOnly={!prefs.prevNews} />
           <HomeTabs tabs={tabs} />
         </div>
         {prefs.rail && <HomeRail />}
