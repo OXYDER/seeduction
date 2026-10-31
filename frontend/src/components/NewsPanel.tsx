@@ -9,11 +9,19 @@ import Loading from './Loading';
 
 const ambient = (url?: string | null) => (url ? ({ '--ambient': `url("${url.replace(/"/g, '%22')}")` } as React.CSSProperties) : undefined);
 const TILE_MIN = 230, TILE_GAP = 12; // doit rester identique à .news-tiles dans index.css
+/** Onglets du bloc (accueil) : un type de nouvelle par onglet. */
+const NEWS_TABS: { id: string; label: string; kinds: string[] | null }[] = [
+  { id: 'all', label: 'Toutes', kinds: null },
+  { id: 'event', label: 'Événements', kinds: ['EVENT'] },
+  { id: 'news', label: 'Nouveautés', kinds: ['NEWS', 'UPDATE'] },
+  { id: 'notice', label: 'Annonces', kinds: ['IMPORTANT', 'MAINTENANCE'] },
+];
 const plain = (t: string) => t.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
 
 /** Accueil : la dernière nouvelle en pleine largeur (image, type, extrait, réactions et commentaires), puis les précédentes en petites cartes sur une rangée, selon la largeur de l'écran. */
 export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: number; heroOnly?: boolean }) {
   const [items, setItems] = useState<any[] | null>(null);
+  const [tab, setTab] = useState('all');
   const rowRef = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(3);
   const hasRest = !heroOnly && (items?.length ?? 0) > 1;
@@ -33,7 +41,9 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
     api.get('/announcements/latest', { params: { limit } }).then((r) => setItems(r.data)).catch(() => setItems([]));
   }, [limit]);
 
-  const [first, ...others] = items ?? [];
+  const tabDef = NEWS_TABS.find((t) => t.id === tab) ?? NEWS_TABS[0];
+  const shownItems = (items ?? []).filter((n) => !tabDef.kinds || tabDef.kinds.includes(n.kind ?? 'NEWS'));
+  const [first, ...others] = shownItems;
   const rest = heroOnly ? [] : others;
   const k = first ? kindOf(first.kind) : null;
   const text = first ? first.summary || plain(first.content).slice(0, 240) : '';
@@ -43,9 +53,16 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
   return (
     <div className="panel ornate">
       <div className="panel-title">
-        <span className="title-icon">📰</span>Dernière nouvelle
+        <span className="title-icon">📰</span>{heroOnly ? 'Dernière nouvelle' : 'Actualités & Événements'}
         <Link to="/news" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13 }}>Toutes les nouvelles →</Link>
       </div>
+      {!heroOnly && items && items.length > 0 && (
+        <div className="news-tabs" role="tablist">
+          {NEWS_TABS.filter((t) => !t.kinds || items.some((n) => t.kinds!.includes(n.kind ?? 'NEWS'))).map((t) => (
+            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+      )}
       {items === null && <Loading />}
       {items?.length === 0 && !heroOnly && <p className="muted">Aucune nouvelle pour l'instant.</p>}
 
