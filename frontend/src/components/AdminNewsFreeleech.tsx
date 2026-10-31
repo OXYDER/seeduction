@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import WysiwygEditor from './WysiwygEditor';
+import NewsEditor from './NewsEditor';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 /** Date -> valeur d'un champ datetime-local (heure locale du navigateur). */
@@ -12,61 +13,32 @@ const fmt = (iso: string | Date) => new Date(iso).toLocaleString('fr-FR', { date
 /** Nouvelles du site : publier, modifier, épingler, supprimer (éditeur complet). */
 export function NewsAdmin() {
   const [items, setItems] = useState<any[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [pinned, setPinned] = useState(false);
-  const [editorKey, setEditorKey] = useState(0);
-  const [error, setError] = useState('');
+  const [editing, setEditing] = useState<any | 'new' | null>(null);
   const [message, setMessage] = useState('');
 
   const load = () => api.get('/announcements/feed', { params: { page: 1, pageSize: 30 } }).then((r) => setItems(r.data.items));
   useEffect(() => { load(); }, []);
 
-  function reset() {
-    setEditingId(null); setTitle(''); setContent(''); setPinned(false); setEditorKey((k) => k + 1);
-  }
-
-  async function save() {
-    setError(''); setMessage('');
-    if (!title.trim() || !content.trim()) { setError('Titre et contenu requis'); return; }
-    try {
-      if (editingId) await api.patch(`/announcements/${editingId}`, { title, content, pinned });
-      else await api.post('/announcements', { title, content, pinned });
-      setMessage(editingId ? '✓ Nouvelle modifiée' : '✓ Nouvelle publiée (tous les membres sont notifiés)');
-      reset();
-      load();
-    } catch (err: any) {
-      setError(err.response?.data?.message ?? 'Enregistrement impossible');
-    }
-  }
-
   async function remove(id: string) {
     if (!window.confirm('Supprimer cette nouvelle ?')) return;
     await api.delete(`/announcements/${id}`).catch(() => {});
-    if (editingId === id) reset();
+    if (editing && editing !== 'new' && editing.id === id) setEditing(null);
     load();
   }
 
   return (
     <div className="grid" style={{ gap: 16 }}>
-      <div className="panel">
-        <h3>{editingId ? '✏️ Modifier la nouvelle' : '📰 Publier une nouvelle'}</h3>
-        <p className="muted">Les nouvelles apparaissent en haut de la page d'accueil et dans la section « Nouvelles ». À la publication, tous les membres reçoivent une notification.</p>
-        <div className="grid" style={{ gap: 10 }}>
-          <input placeholder="Titre" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
-          <WysiwygEditor key={editorKey} value={content} onChange={setContent} minHeight={260} placeholder="Contenu de la nouvelle..." />
-          <label className="row muted" style={{ gap: 6 }}>
-            <input type="checkbox" style={{ width: 'auto' }} checked={pinned} onChange={(e) => setPinned(e.target.checked)} /> 📌 Épingler en haut
-          </label>
-          {error && <div className="muted" style={{ color: 'var(--danger)' }}>{error}</div>}
+      {editing ? (
+        // Le même éditeur complet que dans la page Nouvelles : type (événement, mise à jour...), chapeau, image principale, bannières, épinglage, commentaires verrouillés.
+        <NewsEditor key={editing === 'new' ? 'new' : editing.id} item={editing === 'new' ? undefined : editing} onSaved={() => { setEditing(null); setMessage('✓ Nouvelle enregistrée'); load(); }} onCancel={() => setEditing(null)} />
+      ) : (
+        <div className="panel">
+          <h3>📰 Nouvelles et événements</h3>
+          <p className="muted">Les nouvelles apparaissent en haut de la page d'accueil et dans la section « Nouvelles ». À la publication, tous les membres reçoivent une notification. L'éditeur est le même que dans la page Nouvelles.</p>
           {message && <div className="muted" style={{ color: 'var(--success)' }}>{message}</div>}
-          <div className="row">
-            <button type="button" onClick={save}>{editingId ? 'Enregistrer' : 'Publier'}</button>
-            {editingId && <button type="button" className="secondary" onClick={reset}>Annuler</button>}
-          </div>
+          <button type="button" onClick={() => { setMessage(''); setEditing('new'); }}>＋ Publier une nouvelle</button>
         </div>
-      </div>
+      )}
 
       <div className="panel">
         <h3>Nouvelles publiées</h3>
@@ -76,7 +48,7 @@ export function NewsAdmin() {
               <tr key={n.id}>
                 <td>{n.pinned ? '📌 ' : ''}{n.title}<div className="muted" style={{ fontSize: 12 }}>{fmt(n.createdAt)}{n.author && ` · ${n.author.username}`}</div></td>
                 <td className="row" style={{ justifyContent: 'flex-end' }}>
-                  <button className="secondary" onClick={() => { setEditingId(n.id); setTitle(n.title); setContent(n.content); setPinned(n.pinned); setEditorKey((k) => k + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Éditer</button>
+                  <button className="secondary" onClick={() => { setMessage(''); setEditing(n); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Modifier</button>
                   <button className="danger" onClick={() => remove(n.id)}>Supprimer</button>
                 </td>
               </tr>
