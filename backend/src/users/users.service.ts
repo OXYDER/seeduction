@@ -2,6 +2,7 @@ import { STAFF_ROLES } from '../common/utils/staff-2fa';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PresenceStatus, DmPrivacy } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
+import { AnonymityService } from '../anonymity/anonymity.service';
 import { FriendsService } from '../friends/friends.service';
 import { PresenceService } from '../presence/presence.service';
 import { ALL_PERMS, permsOf, type Perms } from '../common/utils/family-perms';
@@ -14,13 +15,17 @@ const TIP_STYLES = ['poster', 'classic', 'cinema', 'minimal', 'off'];
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService, private friends: FriendsService, private presence: PresenceService) {}
+  constructor(private prisma: PrismaService, private friends: FriendsService, private presence: PresenceService, private anonymity: AnonymityService) {}
 
   /**
    * Profil complet pour soi-même ; le staff voit en plus l'e-mail ; les autres
    * n'ont que les infos publiques (jamais la passkey ni l'e-mail).
    */
   async getProfile(userId: string, viewer?: { userId: string; role: string }) {
+    // Un membre anonyme n'a pas de page pour les autres membres (l'équipe et lui-même la voient).
+    if (this.anonymity.isAnonymous(userId) && viewer?.userId !== userId && !['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '')) {
+      throw new NotFoundException('Ce membre est anonyme.');
+    }
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {

@@ -1,3 +1,4 @@
+import { AnonymityService } from '../anonymity/anonymity.service';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { forgetIdentity } from '../common/utils/session-identity';
 import { SeriesFollowService } from '../series-follow/series-follow.service';
@@ -27,7 +28,7 @@ export interface Actor { userId: string; username: string; role: string }
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService, private social: SocialService, private deletion: AccountDeletionService, private auth: AuthService, private uploadCredit: UploadCreditService, private seriesFollow: SeriesFollowService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService, private badges: BadgesService, private reports: ReportsService, private social: SocialService, private deletion: AccountDeletionService, private auth: AuthService, private uploadCredit: UploadCreditService, private seriesFollow: SeriesFollowService, private anonymity: AnonymityService) {}
 
   async approveTorrent(id: string) {
     const previous = await this.prisma.torrent.findUnique({ where: { id }, select: { approvedAt: true } });
@@ -324,7 +325,7 @@ export class AdminService {
       where: { id: userId },
       select: {
         id: true, username: true, email: true, role: true, status: true, uploaded: true, downloaded: true, bonusPoints: true,
-        minRatio: true, memberClass: true, freeleechTokens: true, parentId: true, familyEnabled: true,
+        minRatio: true, memberClass: true, freeleechTokens: true, parentId: true, familyEnabled: true, anonymous: true,
         createdAt: true, lastSeenAt: true,
         warnings: { orderBy: { createdAt: 'desc' }, take: 20 },
         bans: { orderBy: { createdAt: 'desc' }, take: 20 },
@@ -398,8 +399,10 @@ export class AdminService {
       if (!Number.isFinite(points) || points < 0) throw new BadRequestException('Points bonus invalides');
       data.bonusPoints = points;
     }
+    if (typeof body.anonymous === 'boolean') data.anonymous = body.anonymous;
     if (Object.keys(data).length === 0) throw new BadRequestException('Aucune modification');
     await this.prisma.user.update({ where: { id: userId }, data });
+    if ('anonymous' in data) await this.anonymity.refresh(); // le masquage prend effet tout de suite
     return this.userDetail(userId);
   }
 

@@ -30,6 +30,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
   const [minRatio, setMinRatio] = useState('');
   const [memberClass, setMemberClass] = useState('NOUVEAU');
   const [tokens, setTokens] = useState('');
+  const [anonymous, setAnonymous] = useState(false);
   const [warnReason, setWarnReason] = useState('');
   const [banReason, setBanReason] = useState('');
   const [banUntil, setBanUntil] = useState('');
@@ -54,6 +55,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
       setMinRatio(String(d.minRatio ?? 0.5));
       setMemberClass(d.memberClass ?? 'NOUVEAU');
       setTokens(String(d.freeleechTokens ?? 0));
+      setAnonymous(!!d.anonymous);
     }).catch(() => setDetail(null));
   }
   useEffect(load, [targetId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -94,6 +96,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
       role: role !== detail.role ? role : undefined,
       uploaded, downloaded, bonusPoints: bonus,
       email: email !== detail.email ? email : undefined, minRatio, memberClass, freeleechTokens: tokens,
+      anonymous: anonymous !== !!detail.anonymous ? anonymous : undefined,
     }),
     'Profil mis à jour (le nouveau rôle s\'applique à sa prochaine connexion)',
   );
@@ -149,6 +152,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
             <input type="number" min="0" max="20" step="0.05" value={minRatio} onChange={(e) => setMinRatio(e.target.value)} style={{ width: '100%' }} />
           </div>
           <div>
+            <label className="row" style={{ gap: 6, marginBottom: 10 }} title="Son pseudo et son avatar sont remplacés par « Anonyme » pour les autres membres, sur tout le site et dans les équipes. L'équipe et lui-même voient la vérité."><input type="checkbox" style={{ width: 'auto' }} checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} /> 🕶️ Membre anonyme (pseudo caché sur le site et dans les équipes)</label>
             <div className="muted" style={{ marginBottom: 4 }}>Jetons freeleech</div>
             <input type="number" min="0" value={tokens} onChange={(e) => setTokens(e.target.value)} style={{ width: '100%' }} />
           </div>

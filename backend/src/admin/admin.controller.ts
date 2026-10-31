@@ -148,6 +148,7 @@ export class AdminController {
     const before = await this.adminService.userDetail(id);
     const result = await this.adminService.updateUser(this.actor(req), id, body ?? {});
     const changes: Record<string, any> = {};
+    if ((result as any).anonymous !== (before as any).anonymous) changes.anonymous = { from: (before as any).anonymous, to: (result as any).anonymous };
     if (result.role !== before.role) changes.role = { from: before.role, to: result.role };
     if (result.username !== before.username) changes.username = { from: before.username, to: result.username };
     if (String(result.uploaded) !== String(before.uploaded)) changes.uploaded = { from: String(before.uploaded), to: String(result.uploaded) };

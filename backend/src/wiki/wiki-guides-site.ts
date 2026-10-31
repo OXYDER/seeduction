@@ -701,6 +701,11 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Sous chaque release, des pastilles résument l'essentiel : la date de sortie en premier, la langue ensuite, puis résolution, source, codec, et le codec audio à la fin. Pour une série, la saison et l'épisode sont indiqués.\n\n` +
         `[b]Vie privée et contenu adulte[/b]\n` +
         `Le contenu adulte est masqué par défaut. Tu peux l'activer (et régler qui peut t'écrire, ton statut…) : [url=/wiki/vie-privee]Vie privée[/url].\n\n` +
+        `[b]Membre anonyme (équipe)[/b]
+` +
+        `L'équipe peut rendre un membre [b]anonyme[/b] (fiche du membre > Modération > « 🕶️ Membre anonyme ») : pour les autres membres, son pseudo et son avatar deviennent « Anonyme » partout (torrents, commentaires, forum, équipes, classements), sa page de profil est fermée et on ne le trouve plus par son pseudo. L'équipe et lui-même voient toujours la vérité.
+
+` +
         `[b]Statut de présence[/b]\n` +
         `Clique sur ta carte (avatar + nom) en haut du menu pour choisir En ligne, Absent, Occupé ou Apparaître hors ligne, et écrire un petit message : [url=/wiki/statut-de-presence]Statut de présence[/url].`,
     },

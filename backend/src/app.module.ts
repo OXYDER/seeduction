@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ApiThrottlerGuard } from './common/guards/api-throttler.guard';
 import { AuthModule } from './auth/auth.module';
+import { AnonymityModule } from './anonymity/anonymity.module';
 import { UsersModule } from './users/users.module';
 import { TorrentsModule } from './torrents/torrents.module';
 import { TrackerModule } from './tracker/tracker.module';
@@ -79,6 +80,7 @@ import { WebmailModule } from './webmail/webmail.module';
     ScheduleModule.forRoot(), // active les @Cron (snapshots ratio, purge peers)
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: Number(process.env.API_RATE_LIMIT) || 1500 }]), // plafond général par IP (filet anti-abus, voir ApiThrottlerGuard)
     AuthModule,
+    AnonymityModule,
     UsersModule,
     TorrentsModule,
     TrackerModule,
