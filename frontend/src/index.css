@@ -4576,3 +4576,11 @@ html a.user-link.rank-POWER_USER, html a .nick.rank-POWER_USER { color: #a5b4fc;
 }
 .fs-av { position: relative; display: block; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 50%; }
 .fs-av i { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #0a0e1e; }
+/* Actualités : la grande nouvelle à gauche, les suivantes en liste à droite */
+.news-split.with-side { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .news-split.with-side { grid-template-columns: minmax(0, 1fr); } }
+.news-side { display: grid; gap: 8px; align-content: start; }
+.news-side-item { display: grid; gap: 3px; padding: 9px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border, #1f2848); color: inherit; }
+.news-side-item:hover { border-color: #8b5cf6; }
+.news-side-item strong { font-size: 13.5px; line-height: 1.3; }
+.news-side-all { font-size: 12.5px; text-align: center; padding: 6px; color: var(--gold-bright, #f5c542); }

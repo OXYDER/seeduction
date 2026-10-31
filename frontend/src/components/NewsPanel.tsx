@@ -66,6 +66,7 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
       {items === null && <Loading />}
       {items?.length === 0 && !heroOnly && <p className="muted">Aucune nouvelle pour l'instant.</p>}
 
+      <div className={`news-split${rest.length > 0 ? ' with-side' : ''}`}>
       {first && k && (
         <Link to={`/news/${first.id}`} className="news-hero">
           <span className={`news-hero-img${first.imageUrl ? ' ambient' : ''}`} style={ambient(first.imageUrl)}>{first.imageUrl ? <img src={first.imageUrl} alt="" /> : k.icon}</span>
@@ -91,22 +92,21 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
       )}
 
       {rest.length > 0 && (
-        <div ref={rowRef} className="news-tiles">
-          {rest.slice(0, cols).map((n) => {
+        <div className="news-side">
+          {rest.slice(0, 4).map((n) => {
             const nk = kindOf(n.kind);
             return (
-              <Link key={n.id} to={`/news/${n.id}`} className="news-tile">
-                <span className={`news-tile-img${n.imageUrl ? ' ambient' : ''}`} style={ambient(n.imageUrl)}>{n.imageUrl ? <img src={n.imageUrl} alt="" loading="lazy" /> : nk.icon}</span>
-                <span className="news-tile-body">
-                  <span className={`news-kind k-${(n.kind ?? 'NEWS').toLowerCase()}`}>{nk.icon} {nk.label}</span>
-                  <strong>{n.title}</strong>
-                  <span className="muted news-tile-meta">{timeAgo(n.createdAt)} · 💬 {n._count?.comments ?? 0}</span>
-                </span>
+              <Link key={n.id} to={`/news/${n.id}`} className="news-side-item">
+                <span className={`news-kind k-${(n.kind ?? 'NEWS').toLowerCase()}`}>{nk.icon} {nk.label}</span>
+                <strong>{n.title}</strong>
+                <span className="muted news-tile-meta">{timeAgo(n.createdAt)} · 💬 {n._count?.comments ?? 0}</span>
               </Link>
             );
           })}
+          <Link to="/news" className="news-side-all">Toutes les nouvelles →</Link>
         </div>
       )}
+      </div>
     </div>
   );
 }
