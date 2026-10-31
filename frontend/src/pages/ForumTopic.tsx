@@ -68,6 +68,18 @@ export default function ForumTopic() {
     setReply((prev) => `${prev ? `${prev}\n` : ''}[quote=${who}]${post.content.replace(/\[\/?quote(=[^\]]*)?\]/gi, '').trim()}[/quote]\n`);
     setEditorKey((k) => k + 1);
     replyRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Le curseur se place sous la citation, prêt à écrire la réponse (l'éditeur est recréé après ce rendu).
+    window.setTimeout(() => {
+      const area = replyRef.current?.querySelector<HTMLElement>('.wysiwyg-area');
+      if (!area) return;
+      area.focus({ preventScroll: true });
+      const range = document.createRange();
+      range.selectNodeContents(area);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }, 50);
   }
 
   async function saveEdit(postId: string) {

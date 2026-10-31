@@ -60,8 +60,20 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
   useEffect(() => {
     if (!ref.current || value === lastValue.current) return;
     ref.current.innerHTML = bbcodeToHtml(value, { mentions: false });
+    ensureTail();
     lastValue.current = value;
   }, [value]);
+
+  // Une citation (ou un bloc de code, un dossier, un trait) en fin de texte ne laisse aucune ligne en dessous : on ne pouvait
+  // alors écrire qu'à l'intérieur. Une ligne vide est toujours gardée après le dernier bloc ; elle ne produit rien dans le BBCode.
+  function ensureTail() {
+    const area = ref.current;
+    const last = area?.lastElementChild;
+    if (!area || !last || !['BLOCKQUOTE', 'PRE', 'DETAILS', 'HR', 'UL', 'OL'].includes(last.tagName)) return;
+    const tail = document.createElement('div');
+    tail.appendChild(document.createElement('br'));
+    area.appendChild(tail);
+  }
 
   // Retient la dernière sélection dans l'éditeur, pour la restaurer quand on
   // clique sur un menu/sélecteur de couleur qui lui prend le focus.
@@ -125,6 +137,7 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
 
   function sync() {
     if (!ref.current) return;
+    ensureTail();
     const bbcode = htmlToBbcode(ref.current.innerHTML);
     lastValue.current = bbcode;
     onChange(bbcode);
