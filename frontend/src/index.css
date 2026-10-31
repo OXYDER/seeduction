@@ -4640,3 +4640,4 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .fy-card { background: #121a3d; border-color: #222d52; }
 .fy-grid { align-items: stretch; }
 .fy-card { min-height: 150px; }
+.team-banner { width: 100%; max-height: 220px; object-fit: cover; border-radius: 14px; border: 1px solid var(--team-accent, var(--border)); display: block; }

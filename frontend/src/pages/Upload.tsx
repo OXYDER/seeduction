@@ -43,6 +43,7 @@ function UploadOne() {
   const [categories, setCategories] = useState<any[]>([]);
   const [tags, setTags] = useState('');
   const [anonymous, setAnonymous] = useState(false);
+  useEffect(() => { api.get('/users/me').then((r) => { if (r.data?.anonymousUploads) setAnonymous(true); }).catch(() => undefined); }, []); // réglage « mes torrents sont anonymes »
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const navigate = useNavigate();

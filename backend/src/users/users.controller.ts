@@ -39,6 +39,11 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/anonymity')
+  setAnonymity(@Body() body: any, @Request() req: any) {
+    return this.usersService.setAnonymity(req.user.accountId ?? req.user.userId, body);
+  }
+
   @Patch('me/chat-rail')
   setChatRail(@Body() body: any, @Request() req: any) {
     return this.usersService.setChatRail(req.user.userId, body);

@@ -15,6 +15,7 @@ import DmPrivacyPanel from '../components/DmPrivacyPanel';
 import WatchingVisibilityPanel from '../components/WatchingVisibilityPanel';
 import DefaultViewPanel from '../components/DefaultViewPanel';
 import ChatBubblesPanel from '../components/ChatBubblesPanel';
+import AnonymityPanel from '../components/AnonymityPanel';
 import BrowserNotifyPanel from '../components/BrowserNotifyPanel';
 import ChatMutesPanel from '../components/ChatMutesPanel';
 import TipStylePanel from '../components/TipStylePanel';
@@ -210,6 +211,7 @@ export default function Profile() {
       {showTab('account') && <DmPrivacyPanel value={profile.dmPrivacy ?? 'EVERYONE'} />}
       {showTab('account') && <DefaultViewPanel value={profile.defaultView} />}
       {showTab('account') && <ChatBubblesPanel value={profile.chatBubbles !== false} />}
+      {showTab('account') && profile.anonymousSelf !== undefined && <AnonymityPanel site={!!profile.anonymousSelf} uploads={!!profile.anonymousUploads} team={!!profile.anonymousTeam} />}
       {showTab('account') && <BrowserNotifyPanel />}
       {showTab('account') && <ChatMutesPanel />}
       {showTab('account') && <TipStylePanel />}

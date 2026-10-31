@@ -22,7 +22,7 @@ export class AnonymityService implements OnModuleInit {
   @Interval(60_000)
   async refresh() {
     try {
-      const rows = await this.prisma.user.findMany({ where: { OR: [{ anonymous: true }, { parent: { anonymous: true } }] }, select: { id: true, username: true } });
+      const rows = await this.prisma.user.findMany({ where: { OR: [{ anonymous: true }, { anonymousSelf: true }, { parent: { OR: [{ anonymous: true }, { anonymousSelf: true }] } }] }, select: { id: true, username: true } });
       this.ids = new Set(rows.map((r) => r.id));
       this.names = new Set(rows.map((r) => r.username.toLowerCase()));
     } catch (e) { this.logger.warn(`Membres anonymes : ${(e as Error).message}`); }

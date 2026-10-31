@@ -105,7 +105,7 @@ export class SearchService {
       }),
 
       wanted.has('users') && this.prisma.user.findMany({
-        where: { username: contains, status: 'ACTIVE', ...(['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role) ? {} : { anonymous: false, OR: [{ parentId: null }, { parent: { anonymous: false } }] }) }, // un membre anonyme ne se trouve pas par son pseudo
+        where: { username: contains, status: 'ACTIVE', ...(['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role) ? {} : { anonymous: false, anonymousSelf: false, OR: [{ parentId: null }, { parent: { anonymous: false, anonymousSelf: false } }] }) }, // un membre anonyme ne se trouve pas par son pseudo
         orderBy: { username: 'asc' },
         take: 6,
         select: { id: true, username: true, avatarUrl: true, role: true, memberClass: true },

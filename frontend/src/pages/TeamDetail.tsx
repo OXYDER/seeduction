@@ -8,6 +8,7 @@ import Avatar from '../components/Avatar';
 import UserLink from '../components/UserLink';
 import { useCrumbTitle } from '../store/crumbs';
 import Loading from '../components/Loading';
+import { TeamDashboard, TeamPosts } from '../components/TeamExtras';
 
 const ROLE = { LEADER: '👑 Chef', OFFICER: '⭐ Officier', MEMBER: 'Membre' } as Record<string, string>;
 
@@ -22,7 +23,7 @@ export default function TeamDetail() {
   const [proof, setProof] = useState('');
   const [flash, setFlash] = useState('');
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState({ name: '', tag: '', description: '', requirements: '' });
+  const [draft, setDraft] = useState<any>({ name: '', tag: '', description: '', requirements: '', slogan: '', accent: '', monthlyGoal: 0 });
 
   const load = () => api.get(`/teams/${id}`).then((r) => setTeam(r.data)).catch(() => setError('Team introuvable'));
   useEffect(() => { void load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -39,23 +40,31 @@ export default function TeamDetail() {
     await run(async () => { const { data } = await api.post('/covers/upload', form); await api.patch(`/teams/${id}`, { logoUrl: data.url }); }, '✓ Logo mis à jour');
   }
 
+  async function uploadBanner(file?: File) {
+    if (!file) return;
+    const form = new FormData(); form.append('file', file);
+    await run(async () => { const { data } = await api.post('/covers/upload', form); await api.patch(`/teams/${id}`, { bannerUrl: data.url }); }, '✓ Bannière mise à jour');
+  }
+
   if (!team) return <Loading error={error} />;
 
   return (
-    <div className="grid" style={{ gap: 16 }}>
+    <div className="grid" style={{ gap: 16, ['--team-accent' as string]: team.accent || undefined }}>
       {error && <div className="panel" style={{ borderColor: 'var(--danger)' }}>{error}</div>}
       {flash && <div className="mod-flash" role="status">{flash}</div>}
 
-      <div className="panel team-hero">
+      {team.bannerUrl && <img className="team-banner" src={team.bannerUrl} alt="" />}
+      <div className="panel team-hero" style={team.accent ? { borderColor: team.accent } : undefined}>
         <div className="team-logo big">{team.logoUrl ? <img src={team.logoUrl} alt="" /> : <span>{(team.tag || team.name).slice(0, 2).toUpperCase()}</span>}</div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <h1 style={{ margin: 0 }}>{team.name} {team.tag && <span className="team-tag">[{team.tag}]</span>}</h1>
+          {team.slogan && <div style={{ fontStyle: 'italic', color: team.accent || undefined }}>{team.slogan}</div>}
           <div className="muted" style={{ margin: '4px 0 8px' }}>{team.members.length} membre{team.members.length > 1 ? 's' : ''} · créée {timeAgo(team.createdAt)} · {team.hasOwner ? <span className={team.recruiting ? 'team-rec on' : 'team-rec'}>{team.recruiting ? '🟢 Recrute' : '⚪ Ne recrute pas'}</span> : <span className="team-noowner">Sans propriétaire</span>} · 📦 {team.releaseCount} release{team.releaseCount > 1 ? 's' : ''}</div>
           <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{team.description || 'Aucune description.'}</p>
           {team.requirements && <div style={{ marginTop: 10 }}><strong>Ce que la team attend :</strong><p style={{ whiteSpace: 'pre-wrap', margin: '4px 0 0' }}>{team.requirements}</p></div>}
         </div>
         <div className="team-actions">
-          {team.canManage && <button type="button" className="secondary" onClick={() => { setDraft({ name: team.name, tag: team.tag ?? '', description: team.description, requirements: team.requirements ?? '' }); setEditing((v) => !v); }}>✏️ Modifier</button>}
+          {team.canManage && <button type="button" className="secondary" onClick={() => { setDraft({ name: team.name, tag: team.tag ?? '', description: team.description, requirements: team.requirements ?? '', slogan: team.slogan ?? '', accent: team.accent ?? '', monthlyGoal: team.monthlyGoal ?? 0 }); setEditing((v) => !v); }}>✏️ Modifier</button>}
           {team.myRole && team.myRole !== 'LEADER' && <button type="button" className="danger" onClick={() => window.confirm('Quitter cette team ?') && run(() => api.post(`/teams/${id}/leave`), 'Tu as quitté la team')}>Quitter</button>}
           {team.canDelete && <button type="button" className="danger" onClick={() => window.confirm(`Supprimer la team ${team.name} ?`) && api.delete(`/teams/${id}`).then(() => navigate('/teams'))}>Supprimer</button>}
         </div>
@@ -78,16 +87,26 @@ export default function TeamDetail() {
             <label><span className="muted">Nom</span><input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={40} /></label>
             <label><span className="muted">Tag</span><input value={draft.tag} onChange={(e) => setDraft({ ...draft, tag: e.target.value })} maxLength={8} /></label>
           </div>
+          <div className="inv-grid">
+            <label><span className="muted">Slogan</span><input value={draft.slogan} onChange={(e) => setDraft({ ...draft, slogan: e.target.value })} maxLength={120} /></label>
+            <label><span className="muted">Couleur de la team</span><span className="row" style={{ gap: 6 }}><input type="color" value={draft.accent || '#8b5cf6'} onChange={(e) => setDraft({ ...draft, accent: e.target.value })} style={{ width: 44, padding: 0 }} /><button type="button" className="secondary" onClick={() => setDraft({ ...draft, accent: '' })}>Aucune</button></span></label>
+            <label><span className="muted">Objectif de releases par mois (0 = aucun)</span><input type="number" min={0} value={draft.monthlyGoal} onChange={(e) => setDraft({ ...draft, monthlyGoal: Number(e.target.value) })} /></label>
+          </div>
           <textarea rows={3} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="Description" maxLength={3000} />
           <textarea rows={2} value={draft.requirements} onChange={(e) => setDraft({ ...draft, requirements: e.target.value })} placeholder="Ce que la team attend des candidats" maxLength={2000} />
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             <button type="button" onClick={() => run(async () => { await api.patch(`/teams/${id}`, draft); setEditing(false); }, '✓ Team modifiée')}>Enregistrer</button>
             <button type="button" className="secondary" onClick={() => setEditing(false)}>Annuler</button>
+            <label className="secondary fam-file">🏞️ Bannière<input type="file" accept="image/*" hidden onChange={(e) => { void uploadBanner(e.target.files?.[0]); e.target.value = ''; }} /></label>
+            {team.bannerUrl && <button type="button" className="secondary" onClick={() => run(() => api.patch(`/teams/${id}`, { bannerUrl: null }), '✓ Bannière retirée')}>Retirer la bannière</button>}
             <label className="secondary fam-file">🖼️ Logo<input type="file" accept="image/*" hidden onChange={(e) => { void uploadLogo(e.target.files?.[0]); e.target.value = ''; }} /></label>
             <button type="button" className="secondary" onClick={() => run(() => api.patch(`/teams/${id}`, { recruiting: !team.recruiting }), team.recruiting ? '✓ Recrutement fermé' : '✓ Recrutement ouvert')}>{team.recruiting ? 'Fermer le recrutement' : 'Ouvrir le recrutement'}</button>
           </div>
         </div>
       )}
+
+      <TeamPosts teamId={team.id} isMember={!!team.isMember} />
+      {team.isMember && <TeamDashboard teamId={team.id} />}
 
       {/* Candidature */}
       {!team.myRole && (
@@ -158,7 +177,7 @@ export default function TeamDetail() {
             <tbody>
               {team.members.map((m: any) => (
                 <tr key={m.userId}>
-                  <td><span className="row" style={{ gap: 8 }}>{m.user && <Avatar user={m.user} size={26} />}{m.user && <UserLink user={m.user} />}</span></td>
+                  <td><span className="row" style={{ gap: 8 }}>{m.user && <Avatar user={m.user} size={26} />}{m.user && (m.anonymous && m.user.username === 'Anonyme' ? <span className="muted">🕶️ Anonyme</span> : <UserLink user={m.user} />)}{m.anonymous && m.user?.username !== 'Anonyme' && <span title="Anonyme pour les autres membres de la team">🕶️</span>}</span></td>
                   <td>{ROLE[m.role] ?? m.role}</td>
                   <td className="muted">{CLASS_LABEL[m.user?.memberClass] ?? ''}</td>
                   <td className="muted">{formatBytes(m.uploaded)}</td>
@@ -166,6 +185,7 @@ export default function TeamDetail() {
                   <td className="muted">{timeAgo(m.joinedAt)}</td>
                   {team.canManage && (
                     <td style={{ whiteSpace: 'nowrap' }}>
+                      {team.myRole === 'LEADER' && !String(m.userId).startsWith('anon-') && <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12, marginRight: 4 }} title="Le chef choisit si ce membre apparaît comme Anonyme dans la team" onClick={() => run(() => api.patch(`/teams/${id}/members/${m.userId}/anonymous`, { anonymous: !m.anonymousByLeader }), m.anonymousByLeader ? '✓ Membre visible' : '✓ Membre anonyme')}>{m.anonymousByLeader ? '👁 Rendre visible' : '🕶️ Anonymat'}</button>}
                       {m.role !== 'LEADER' && team.myRole !== 'OFFICER' && <button type="button" className="secondary" style={{ padding: '2px 8px', fontSize: 12, marginRight: 4 }} onClick={() => run(() => api.patch(`/teams/${id}/members/${m.userId}`, { role: m.role === 'OFFICER' ? 'MEMBER' : 'OFFICER' }), '✓ Rôle modifié')}>{m.role === 'OFFICER' ? 'Rétrograder' : '⭐ Officier'}</button>}
                       {m.role !== 'LEADER' && !(m.role === 'OFFICER' && team.myRole === 'OFFICER') && <button type="button" className="danger" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => window.confirm(`Retirer ${m.user?.username} de la team ?`) && run(() => api.delete(`/teams/${id}/members/${m.userId}`), '✓ Membre retiré')}>Retirer</button>}
                     </td>

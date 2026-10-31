@@ -34,165 +34,169 @@ enum UserStatus {
 }
 
 model User {
-  id               String     @id @default(uuid())
+  id                 String     @id @default(uuid())
   /// Membre anonyme (réglé par l'équipe) : son pseudo et son avatar sont remplacés par « Anonyme » pour les autres membres, sur tout le site et dans les équipes (voir AnonymityService).
-  anonymous        Boolean    @default(false)
+  anonymous          Boolean    @default(false)
+  /// Choix du membre : anonyme sur tout le site, torrents envoyés anonymes par défaut, anonyme dans sa team.
+  anonymousSelf    Boolean    @default(false)
+  anonymousUploads Boolean    @default(false)
+  anonymousTeam    Boolean    @default(false)
   /// Les sessions ouvertes avant cette date ne sont plus valides (posée à chaque changement ou réinitialisation de mot de passe).
   sessionsValidAfter DateTime?
   /// Réinitialisation du mot de passe exigée par l'équipe : le compte reste inutilisable tant que le membre n'a pas choisi un nouveau mot de passe avec le lien reçu par courriel.
-  mustResetPassword Boolean @default(false)
-  username         String     @unique
-  email            String     @unique
-  passwordHash     String
-  passkey          String     @unique @default(uuid()) // clé unique injectée dans l'URL announce
-  role             UserRole   @default(USER)
-  status           UserStatus @default(ACTIVE)
+  mustResetPassword  Boolean    @default(false)
+  username           String     @unique
+  email              String     @unique
+  passwordHash       String
+  passkey            String     @unique @default(uuid()) // clé unique injectée dans l'URL announce
+  role               UserRole   @default(USER)
+  status             UserStatus @default(ACTIVE)
 
   // 2FA
-  twoFactorSecret  String?
-  twoFactorEnabled Boolean    @default(false)
-  twoFactorRecovery String[]  // codes de secours (hachés), à usage unique
+  twoFactorSecret   String?
+  twoFactorEnabled  Boolean  @default(false)
+  twoFactorRecovery String[] // codes de secours (hachés), à usage unique
 
   // Ratio / stats globales (dénormalisées pour perf, recalculées via les Announces)
-  uploaded         BigInt     @default(0)
-  downloaded       BigInt     @default(0)
-  bonusPoints      Float      @default(0)
+  uploaded      BigInt  @default(0)
+  downloaded    BigInt  @default(0)
+  bonusPoints   Float   @default(0)
   /// Part de bonusPoints venue d'un don : elle se dépense normalement mais ne peut pas être misée dans Mise-O-jeu (toujours <= bonusPoints).
-  donatedPoints    Float      @default(0)
+  donatedPoints Float   @default(0)
   /// Le membre s'est retiré des jeux (Mise-O-jeu) : plus de paris ni de pronostics.
-  gamesOptOut      Boolean    @default(false)
+  gamesOptOut   Boolean @default(false)
 
   // Parrainage
   invitedById      String?
-  invitedBy        User?      @relation("Invites", fields: [invitedById], references: [id])
-  invitees         User[]     @relation("Invites")
+  invitedBy        User?        @relation("Invites", fields: [invitedById], references: [id])
+  invitees         User[]       @relation("Invites")
   inviteCodesOwned InviteCode[]
 
   // Relations
-  torrentsUploaded Torrent[]  @relation("Uploader")
-  favorites        Favorite[] @relation("UserFavorites")
-  forumReads       ForumTopicRead[] @relation("ForumReads")
-  forumFollows     ForumTopicFollow[] @relation("ForumFollows")
-  torrentComments  TorrentComment[] @relation("CommentAuthor")
-  torrentLikes     TorrentLike[]
-  torrentRatings   TorrentRating[]
-  entityFollows    EntityFollow[]
-  peers            Peer[]
-  snapshots        RatioSnapshot[]
-  requests         TorrentRequest[]
-  requestFills     TorrentRequest[] @relation("RequestFiller")
-  forumPosts       ForumPost[]
-  forumTopics      ForumTopic[]
-  messagesSent     PrivateMessage[] @relation("Sender")
-  messagesReceived PrivateMessage[] @relation("Recipient")
-  reports          Report[]         @relation("Reporter")
-  warnings         Warning[]
-  bans             Ban[]
-  activityLogs     ActivityLog[]
-  announcements    Announcement[]
-  descriptionTemplates DescriptionTemplate[]
-  notifications    Notification[]
-  collections      Collection[]           @relation("CollectionOwner")
-  collectionItemsAdded CollectionItem[]    @relation("CollectionItemAdder")
+  torrentsUploaded         Torrent[]                @relation("Uploader")
+  favorites                Favorite[]               @relation("UserFavorites")
+  forumReads               ForumTopicRead[]         @relation("ForumReads")
+  forumFollows             ForumTopicFollow[]       @relation("ForumFollows")
+  torrentComments          TorrentComment[]         @relation("CommentAuthor")
+  torrentLikes             TorrentLike[]
+  torrentRatings           TorrentRating[]
+  entityFollows            EntityFollow[]
+  peers                    Peer[]
+  snapshots                RatioSnapshot[]
+  requests                 TorrentRequest[]
+  requestFills             TorrentRequest[]         @relation("RequestFiller")
+  forumPosts               ForumPost[]
+  forumTopics              ForumTopic[]
+  messagesSent             PrivateMessage[]         @relation("Sender")
+  messagesReceived         PrivateMessage[]         @relation("Recipient")
+  reports                  Report[]                 @relation("Reporter")
+  warnings                 Warning[]
+  bans                     Ban[]
+  activityLogs             ActivityLog[]
+  announcements            Announcement[]
+  descriptionTemplates     DescriptionTemplate[]
+  notifications            Notification[]
+  collections              Collection[]             @relation("CollectionOwner")
+  collectionItemsAdded     CollectionItem[]         @relation("CollectionItemAdder")
   collectionCollaborations CollectionCollaborator[] @relation("CollectionCollaborator")
-  badges           UserBadge[]
-  apiKeys          ApiKey[]
-  chatMessages     ChatMessage[]
-  chatReactions    ChatReaction[]
-  msgrConversationsCreated Conversation[]       @relation("ConversationCreator")
-  msgrMemberships          ConversationMember[] @relation("ConversationMembers")
-  msgrMessages             Message[]            @relation("MessagesSent")
+  badges                   UserBadge[]
+  apiKeys                  ApiKey[]
+  chatMessages             ChatMessage[]
+  chatReactions            ChatReaction[]
+  msgrConversationsCreated Conversation[]           @relation("ConversationCreator")
+  msgrMemberships          ConversationMember[]     @relation("ConversationMembers")
+  msgrMessages             Message[]                @relation("MessagesSent")
   msgrReactions            MessageReaction[]
-  supportTickets           SupportTicket[]        @relation("TicketRequester")
-  supportAssigned          SupportTicket[]        @relation("TicketAssignee")
+  supportTickets           SupportTicket[]          @relation("TicketRequester")
+  supportAssigned          SupportTicket[]          @relation("TicketAssignee")
   supportMessages          SupportTicketMessage[]
-  friendRequestsSent     Friendship[] @relation("FriendRequester")
-  friendRequestsReceived Friendship[] @relation("FriendAddressee")
+  friendRequestsSent       Friendship[]             @relation("FriendRequester")
+  friendRequestsReceived   Friendship[]             @relation("FriendAddressee")
 
-  minRatio         Float      @default(0.5) // ratio minimum requis pour continuer à download
-  memberClass      MemberClass @default(NOUVEAU) // rang automatique (ancienneté, upload, ratio)
-  freeleechTokens  Int        @default(0)
-  avatarUrl        String?
-  showAdult        Boolean    @default(false) // a activé l'affichage du contenu pour adultes (18+)
-  presenceStatus   PresenceStatus @default(ONLINE) // préférence affichée quand le membre est connecté (voir enum)
-  statusText       String?    @db.VarChar(100) // petit message libre affiché à côté du statut (profil, infobulle, chat)
-  freeleechUntil   DateTime?  // freeleech personnel (cadeau de bienvenue, récompense...) : ses téléchargements ne comptent pas dans son ratio jusqu'à cette date
+  minRatio           Float          @default(0.5) // ratio minimum requis pour continuer à download
+  memberClass        MemberClass    @default(NOUVEAU) // rang automatique (ancienneté, upload, ratio)
+  freeleechTokens    Int            @default(0)
+  avatarUrl          String?
+  showAdult          Boolean        @default(false) // a activé l'affichage du contenu pour adultes (18+)
+  presenceStatus     PresenceStatus @default(ONLINE) // préférence affichée quand le membre est connecté (voir enum)
+  statusText         String?        @db.VarChar(100) // petit message libre affiché à côté du statut (profil, infobulle, chat)
+  freeleechUntil     DateTime? // freeleech personnel (cadeau de bienvenue, récompense...) : ses téléchargements ne comptent pas dans son ratio jusqu'à cette date
   // « En train de regarder X » via le lecteur desktop : rafraîchi toutes les quelques secondes tant que la lecture
   // continue (voir StreamController) — expire tout seul (watchingUntil) si le lecteur ferme sans prévenir, jamais
   // rempli pour du contenu adulte, et respecte showWatchingStatus (préférence du membre).
-  watchingTitle      String?   @db.VarChar(140)
+  watchingTitle      String?        @db.VarChar(140)
   watchingUntil      DateTime?
-  showWatchingStatus Boolean   @default(true)
+  showWatchingStatus Boolean        @default(true)
   // Affichage par défaut des listes de torrents (list | details | grid | posters | compact) — voir frontend/src/lib/viewMode.ts.
-  defaultView      String     @default("grid") @db.VarChar(12)
+  defaultView        String         @default("grid") @db.VarChar(12)
   // Bulles de discussion sur le côté gauche du site (conversations publiques et privées) : vrai par défaut, désactivables dans le compte.
-  chatBubbles      Boolean    @default(true)
+  chatBubbles        Boolean        @default(true)
   /// Barre des bulles de chat : position (left, right, top, bottom), taille (sm, md, lg) et noms affichés. Suit le membre d'un appareil à l'autre.
-  chatRail         Json?
+  chatRail           Json?
   // Sirène quand le Canadien marque : désactivée par défaut, le membre l'active (le réglage suit son compte, sur tous ses appareils).
-  goalSound        Boolean    @default(false)
+  goalSound          Boolean        @default(false)
   // Style des info-bulles de torrents au survol : poster | classic | cinema | minimal | off (voir frontend/src/lib/tipStyle.ts).
-  tipStyle         String     @default("poster") @db.VarChar(10)
-  dmPrivacy        DmPrivacy      @default(EVERYONE) // qui peut lui écrire en chat privé sans être son ami
-  adultAcceptedAt  DateTime?
-  signature        String?    @db.Text
-  createdAt        DateTime   @default(now())
-  lastSeenAt       DateTime?
-  lastIp           String?
+  tipStyle           String         @default("poster") @db.VarChar(10)
+  dmPrivacy          DmPrivacy      @default(EVERYONE) // qui peut lui écrire en chat privé sans être son ami
+  adultAcceptedAt    DateTime?
+  signature          String?        @db.Text
+  createdAt          DateTime       @default(now())
+  lastSeenAt         DateTime?
+  lastIp             String?
 
   // ---- Compte famille ----
   // Un profil est une ligne User rattachée au compte principal (parentId) : messagerie, amis, favoris, collections,
   // commentaires... sont ainsi propres à chaque profil sans rien changer ailleurs. Le ratio, l'upload, la passkey, le
   // mot de passe, la 2FA et les points restent ceux du compte principal. Le profil « principal » est le compte lui-même
   // (profileType MASTER). Le pseudo d'un profil est « <nom>·<pseudo du compte> » : le compte reste toujours visible.
-  parentId         String?
-  parent           User?      @relation("FamilyProfiles", fields: [parentId], references: [id])
-  profiles         User[]     @relation("FamilyProfiles")
-  profileName      String?    @db.VarChar(24)
-  profileType      String     @default("MASTER") @db.VarChar(8) // MASTER | PROFILE (anciens profils : ADULT | CHILD)
-  profilePerms     Json?      // droits accordés par le profil principal (voir common/utils/family-perms.ts)
-  pinHash          String?    // PIN à 4 chiffres (haché) : demandé à chaque connexion et à chaque changement de profil
-  pinFailures      Int        @default(0)
-  pinLockedUntil   DateTime?
-  profileBlocked   Boolean    @default(false) // profil bloqué par le profil principal
-  familyEnabled    Boolean    @default(false) // sur le compte principal : le sélecteur de profils s'affiche à chaque connexion
-
-  @@index([status])
-  @@index([parentId])
-  telegramLink     TelegramLink?
-  savedSearches    SavedSearch[]
-  pushSubscriptions PushSubscription[]
-  chatBans         ChatBan[]  @relation("ChatBanned")
-  requestsFound    TorrentRequest[] @relation("RequestFinder")
+  parentId           String?
+  parent             User?               @relation("FamilyProfiles", fields: [parentId], references: [id])
+  profiles           User[]              @relation("FamilyProfiles")
+  profileName        String?             @db.VarChar(24)
+  profileType        String              @default("MASTER") @db.VarChar(8) // MASTER | PROFILE (anciens profils : ADULT | CHILD)
+  profilePerms       Json? // droits accordés par le profil principal (voir common/utils/family-perms.ts)
+  pinHash            String? // PIN à 4 chiffres (haché) : demandé à chaque connexion et à chaque changement de profil
+  pinFailures        Int                 @default(0)
+  pinLockedUntil     DateTime?
+  profileBlocked     Boolean             @default(false) // profil bloqué par le profil principal
+  familyEnabled      Boolean             @default(false) // sur le compte principal : le sélecteur de profils s'affiche à chaque connexion
+  telegramLink       TelegramLink?
+  savedSearches      SavedSearch[]
+  pushSubscriptions  PushSubscription[]
+  chatBans           ChatBan[]           @relation("ChatBanned")
+  requestsFound      TorrentRequest[]    @relation("RequestFinder")
   // Préférences de notifications : { catégorie: false } coupe cette catégorie (tout est actif par défaut).
-  notifPrefs       Json?
+  notifPrefs         Json?
   // Dons : statut « donateur » (permanent une fois acquis), durée des avantages en cours, et réglages (voir DonationsService).
-  donorSince       DateTime?
-  donorUntil       DateTime?
-  donorTotal       Float      @default(0)
-  donorInvites     Int        @default(0)
+  donorSince         DateTime?
+  donorUntil         DateTime?
+  donorTotal         Float               @default(0)
+  donorInvites       Int                 @default(0)
   /// Parrainage : moment où celui qui a invité ce membre a reçu sa prime (et son montant ; 0 = aucune prime : code générique, même IP...).
   referralRewardedAt DateTime?
   /// Date de promotion automatique au rang « Uploadeur » (null : rang nommé à la main, jamais retiré automatiquement).
-  autoUploaderAt   DateTime?
+  autoUploaderAt     DateTime?
   /// Compte supprimé : le pseudo, les statistiques et les actions restent (le pseudo est réservé pour toujours), mais courriel, mot de passe, passkey, adresses IP et données privées sont effacés.
-  deletedAt        DateTime?
-  referralReward   Int        @default(0)
-  hnrExemptUntil   DateTime?
-  donorWall        Boolean    @default(false) // apparaître sur le mur des donateurs (opt-in)
-  donations        Donation[]
-  requestsProposed TorrentRequest[] @relation("RequestProposer")
-  chatMutes        ChatMute[] @relation("ChatMuter")
-  chatMutedBy      ChatMute[] @relation("ChatMuted")
-  suggestions      Suggestion[]
-  suggestionVotes  SuggestionVote[]
+  deletedAt          DateTime?
+  referralReward     Int                 @default(0)
+  hnrExemptUntil     DateTime?
+  donorWall          Boolean             @default(false) // apparaître sur le mur des donateurs (opt-in)
+  donations          Donation[]
+  requestsProposed   TorrentRequest[]    @relation("RequestProposer")
+  chatMutes          ChatMute[]          @relation("ChatMuter")
+  chatMutedBy        ChatMute[]          @relation("ChatMuted")
+  suggestions        Suggestion[]
+  suggestionVotes    SuggestionVote[]
   suggestionComments SuggestionComment[]
   // Anti-triche (voir src/anticheat) : signaux détectés, dossier de suspicion, adresses vues à l'announce et flux par torrent.
-  cheatEvents      CheatEvent[]
-  cheatCase        CheatCase?
-  userIps          UserIp[]
-  torrentFlows     UserTorrentFlow[]
-  subtitleFiles    SubtitleFile[]
+  cheatEvents        CheatEvent[]
+  cheatCase          CheatCase?
+  userIps            UserIp[]
+  torrentFlows       UserTorrentFlow[]
+  subtitleFiles      SubtitleFile[]
+
+  @@index([status])
+  @@index([parentId])
 }
 
 // Journal « qui a fait quoi » des profils d'un compte famille, lu par le profil principal.
@@ -230,24 +234,24 @@ model MemberActivity {
 }
 
 model InviteCode {
-  id         String    @id @default(uuid())
-  code       String    @unique
-  createdBy  User      @relation(fields: [createdById], references: [id])
+  id          String      @id @default(uuid())
+  code        String      @unique
+  createdBy   User        @relation(fields: [createdById], references: [id])
   createdById String
   usedByEmail String?
-  used       Boolean   @default(false)
-  expiresAt  DateTime?
-  createdAt  DateTime  @default(now())
+  used        Boolean     @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime    @default(now())
   // Codes « génériques » de l'administration (Admin > Invitations) : plusieurs inscriptions possibles, début programmé,
   // une seule inscription par adresse IP si demandé. Un code de membre garde les valeurs par défaut : 1 utilisation.
-  label      String?   @db.VarChar(80)
-  generic    Boolean   @default(false)
-  maxUses    Int       @default(1)
-  useCount   Int       @default(0)
-  perIpOnce  Boolean   @default(false)
-  disabled   Boolean   @default(false)
-  startsAt   DateTime?
-  uses       InviteUse[]
+  label       String?     @db.VarChar(80)
+  generic     Boolean     @default(false)
+  maxUses     Int         @default(1)
+  useCount    Int         @default(0)
+  perIpOnce   Boolean     @default(false)
+  disabled    Boolean     @default(false)
+  startsAt    DateTime?
+  uses        InviteUse[]
 }
 
 // Une ligne par inscription faite avec un code. ipKey n'est rempli que pour les codes limités à une inscription par IP :
@@ -277,29 +281,29 @@ enum TorrentStatus {
 }
 
 model Category {
-  id       String     @id @default(uuid())
-  name     String     @unique
-  slug     String     @unique
-  parent   Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
-  parentId String?
-  children Category[] @relation("SubCategories")
-  torrents Torrent[]
-  requests TorrentRequest[]
+  id          String           @id @default(uuid())
+  name        String           @unique
+  slug        String           @unique
+  parent      Category?        @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId    String?
+  children    Category[]       @relation("SubCategories")
+  torrents    Torrent[]
+  requests    TorrentRequest[]
   // Type de contenu (Film/Série/Musique/...) pour le générateur de description :
   // une sous-catégorie sans valeur hérite de celle de sa catégorie parente.
   contentKind TemplateKind?
   // Image affichée à la place de l'icône dans la barre des catégories (téléversée depuis l'administration).
   imageUrl    String?
   // Contenu pour adultes : masqué pour les membres qui n'ont pas activé l'option dans leur compte (les sous-catégories héritent).
-  adult       Boolean    @default(false)
+  adult       Boolean          @default(false)
 }
 
 model Torrent {
-  id             String        @id @default(uuid())
-  infoHash       String        @unique // sha1 hex du dict "info" du .torrent
+  id             String  @id @default(uuid())
+  infoHash       String  @unique // sha1 hex du dict "info" du .torrent
   name           String
-  description    String?       @db.Text
-  nfo            String?       @db.Text
+  description    String? @db.Text
+  nfo            String? @db.Text
   // Chemin public (ex: /api/covers/xxx.jpg) vers une pochette/affiche
   // téléchargée et sauvegardée sur Seeduction — jamais un lien direct vers un
   // service externe, pour ne pas dépendre de sa disponibilité.
@@ -310,74 +314,74 @@ model Torrent {
   metaSource     String?
   metaExternalId String?
   metadata       Json?
-  filePath       String        // chemin de stockage du .torrent sur disque/S3
+  filePath       String // chemin de stockage du .torrent sur disque/S3
   size           BigInt
-  fileList       Json          // liste des fichiers contenus [{path, size}]
+  fileList       Json // liste des fichiers contenus [{path, size}]
 
-  category       Category      @relation(fields: [categoryId], references: [id])
-  categoryId     String
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId String
 
-  uploader       User          @relation("Uploader", fields: [uploaderId], references: [id])
-  uploaderId     String
-  anonymousUpload Boolean      @default(false)
+  uploader        User    @relation("Uploader", fields: [uploaderId], references: [id])
+  uploaderId      String
+  anonymousUpload Boolean @default(false)
 
-  status         TorrentStatus @default(PENDING)
-  approvedAt     DateTime? // moment de l'approbation par le staff (sert au crédit d'envoi)
+  status        TorrentStatus @default(PENDING)
+  approvedAt    DateTime? // moment de l'approbation par le staff (sert au crédit d'envoi)
   // En attente de correction : le staff a mis le torrent en suspens et demande au membre de le corriger (le statut reste PENDING).
-  holdAt         DateTime?
-  holdReasons    String[]  @default([])
-  holdNote       String?   @db.VarChar(600)
-  holdByName     String?   @db.VarChar(60)
+  holdAt        DateTime?
+  holdReasons   String[]      @default([])
+  holdNote      String?       @db.VarChar(600)
+  holdByName    String?       @db.VarChar(60)
   // Le membre a corrigé et renvoyé le torrent en validation (message facultatif pour l'équipe).
-  resubmittedAt  DateTime?
-  resubmitNote   String?   @db.VarChar(400)
+  resubmittedAt DateTime?
+  resubmitNote  String?       @db.VarChar(400)
   // Dernier motif de rejet, affiché au membre dans « Mes envois ».
-  rejectReason   String?   @db.VarChar(300)
-  freeleech      Boolean       @default(false)
-  doubleUpload   Boolean       @default(false)
+  rejectReason  String?       @db.VarChar(300)
+  freeleech     Boolean       @default(false)
+  doubleUpload  Boolean       @default(false)
 
-  seeders        Int           @default(0)
-  leechers       Int           @default(0)
-  completedCount Int           @default(0) // nb total de "snatch" (téléchargement complet)
-  streamCompletedCount Int     @default(0) // nb de lectures complètes via le lecteur Seeduction (pas de vrai téléchargement, à part)
+  seeders              Int       @default(0)
+  leechers             Int       @default(0)
+  completedCount       Int       @default(0) // nb total de "snatch" (téléchargement complet)
+  streamCompletedCount Int       @default(0) // nb de lectures complètes via le lecteur Seeduction (pas de vrai téléchargement, à part)
   // Passage automatique à DEAD après un délai de grâce à 0 seeder (voir EconomyService.markDeadTorrents) : zeroSeedersSince
   // marque le début de la panne (remis à null dès qu'un seeder revient), diedAt le moment où le statut DEAD a été posé —
   // sert à calculer la récompense de reseed (TrackerService.grantReseedReward), proportionnelle au temps resté mort.
-  zeroSeedersSince DateTime?
-  diedAt           DateTime?
+  zeroSeedersSince     DateTime?
+  diedAt               DateTime?
   // Récompense de reseed en attente de confirmation (voir TrackerService.confirmReseedReward / EconomyService) :
   // posée quand quelqu'un relance un torrent DEAD, confirmée seulement quand un AUTRE membre finit de le télécharger
   // (preuve que ça a vraiment servi) ou, à défaut, quand le releveur a tenu le seed assez longtemps tout seul.
   // Effacée sans récompense si le seed retombe à 0 avant l'une ou l'autre de ces conditions.
-  revivedByUserId String?
-  revivedAt       DateTime?
+  revivedByUserId      String?
+  revivedAt            DateTime?
 
-  peers          Peer[]
-  entities       TorrentEntity[]
-  favoritedBy    Favorite[]     @relation("TorrentFavorites")
-  comments       TorrentComment[]
-  likes          TorrentLike[]
-  ratings        TorrentRating[]
-  reseedRequestedAt DateTime?
+  peers                Peer[]
+  entities             TorrentEntity[]
+  favoritedBy          Favorite[]         @relation("TorrentFavorites")
+  comments             TorrentComment[]
+  likes                TorrentLike[]
+  ratings              TorrentRating[]
+  reseedRequestedAt    DateTime?
   // Titres du film / de la série dans plusieurs langues et régions (une ligne par titre), pour retrouver un torrent quel que soit le titre cherché.
-  searchTitles   String?       @db.Text
-  releaseDate    String?       @db.VarChar(10) // date de SORTIE du contenu (film, épisode, saison, jeu...) : « AAAA-MM-JJ », « AAAA-MM » ou « AAAA » ; jamais la date de mise en ligne
+  searchTitles         String?            @db.Text
+  releaseDate          String?            @db.VarChar(10) // date de SORTIE du contenu (film, épisode, saison, jeu...) : « AAAA-MM-JJ », « AAAA-MM » ou « AAAA » ; jamais la date de mise en ligne
   // Team de la release (clé normalisée du nom après le dernier tiret) : '' = aucune, vide = pas encore examiné (voir TeamsService).
-  releaseGroup   String?       @db.VarChar(40)
+  releaseGroup         String?            @db.VarChar(40)
   // Origine de production (Québec, France, Canada anglais, International) : un filtre, pas une catégorie.
-  origin         String?
+  origin               String?
   // Date à laquelle le synopsis et le slogan affichés sur la fiche ont été traduits en français (vide = pas encore fait).
   overviewTranslatedAt DateTime?
-  snatches       Snatch[]
-  fixes          TorrentFix[]
-  revivals       TorrentRevival[]
-  playbackPositions PlaybackPosition[]
-  chatShares     Message[]
-  requestFilled  TorrentRequest?
-  requestProposals TorrentRequest[] @relation("RequestProposedTorrent")
-  collectionItems CollectionItem[]
+  snatches             Snatch[]
+  fixes                TorrentFix[]
+  revivals             TorrentRevival[]
+  playbackPositions    PlaybackPosition[]
+  chatShares           Message[]
+  requestFilled        TorrentRequest?
+  requestProposals     TorrentRequest[]   @relation("RequestProposedTorrent")
+  collectionItems      CollectionItem[]
 
-  tags           String[]
+  tags String[]
 
   // Métadonnées techniques (facultatives — pertinentes selon la catégorie,
   // remplies à l'upload, utilisées par la recherche avancée).
@@ -385,7 +389,7 @@ model Torrent {
   language        String?
   resolution      String?
   codec           String?
-  hdr             Boolean       @default(false)
+  hdr             Boolean @default(false)
   audio           String?
   source          String?
   containerFormat String?
@@ -393,18 +397,19 @@ model Torrent {
   durationMinutes Int?
 
   // Film / série : saison et épisode (« Intégrale » / « Saison complète » pour un pack), genres, type de vidéo (2D, 3D FSBS, 3D, 3D HSBS).
-  season          String?
-  episode         String?
-  genres          String[]
+  season    String?
+  episode   String?
+  genres    String[]
   // Langues des sous-titres (« FR », « EN », « FR forcés »...) lues dans le MediaInfo, le NFO ou le nom.
-  subtitles       String[]      @default([])
+  subtitles String[]    @default([])
   // Filtres propres à la catégorie ({ clé: [valeurs] }, voir common/utils/facet-schema.ts) ; null = pas encore analysé, {} = analysé sans rien trouver.
-  attrs           Json?
-  videoType       String?
-  nfoFile         TorrentNfo?
+  attrs     Json?
+  videoType String?
+  nfoFile   TorrentNfo?
 
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subtitleFiles SubtitleFile[]
 
   @@index([status])
   @@index([categoryId])
@@ -414,7 +419,6 @@ model Torrent {
   @@index([status, createdAt(sort: Desc)])
   @@index([status, seeders(sort: Desc)])
   @@index([uploaderId, createdAt(sort: Desc)])
-  subtitleFiles   SubtitleFile[]
 }
 
 /// NFO joint à l'upload (stocké à part pour ne pas alourdir les listes de torrents).
@@ -469,26 +473,26 @@ enum PeerEvent {
 
 // Etat courant d'un peer pour un torrent donné (mis à jour à chaque announce)
 model Peer {
-  id            String    @id @default(uuid())
-  torrent       Torrent   @relation(fields: [torrentId], references: [id], onDelete: Cascade)
-  torrentId     String
-  user          User      @relation(fields: [userId], references: [id])
-  userId        String
+  id        String  @id @default(uuid())
+  torrent   Torrent @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId String
+  user      User    @relation(fields: [userId], references: [id])
+  userId    String
 
-  peerId        String    // peer_id envoyé par le client BitTorrent
-  userAgent     String?   @db.VarChar(120) // User-Agent du client à son dernier announce (anti-triche : cohérence avec le peer_id)
-  ip            String
-  port          Int
+  peerId    String // peer_id envoyé par le client BitTorrent
+  userAgent String? @db.VarChar(120) // User-Agent du client à son dernier announce (anti-triche : cohérence avec le peer_id)
+  ip        String
+  port      Int
 
-  uploaded      BigInt    @default(0) // cumulé pour CE torrent
-  downloaded    BigInt    @default(0)
-  left          BigInt    @default(0) // octets restants -> 0 = seeder
+  uploaded   BigInt @default(0) // cumulé pour CE torrent
+  downloaded BigInt @default(0)
+  left       BigInt @default(0) // octets restants -> 0 = seeder
 
-  isSeeder      Boolean   @default(false)
-  lastEvent     PeerEvent @default(NONE)
-  lastAnnounceAt DateTime @default(now())
+  isSeeder       Boolean   @default(false)
+  lastEvent      PeerEvent @default(NONE)
+  lastAnnounceAt DateTime  @default(now())
   /// Première annonce de ce client sur ce torrent : sert de « date d'ajout » dans l'historique des téléchargements.
-  createdAt     DateTime  @default(now())
+  createdAt      DateTime  @default(now())
 
   @@unique([torrentId, userId, peerId])
   @@index([torrentId, isSeeder])
@@ -497,18 +501,18 @@ model Peer {
 
 // Historique des cycles complets de téléchargement (pour stats + anti-cheat)
 model Snatch {
-  id         String   @id @default(uuid())
-  torrent    Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
-  torrentId  String
-  userId     String
-  completedAt DateTime @default(now())
+  id            String    @id @default(uuid())
+  torrent       Torrent   @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId     String
+  userId        String
+  completedAt   DateTime  @default(now())
   // Suivi du seed (règle « hit & run »)
-  seedSeconds Int      @default(0)
-  lastSeedAt  DateTime?
-  satisfied   Boolean  @default(false) // temps de seed ou ratio sur ce torrent atteint
-  hnr         Boolean  @default(false) // a arrêté de seeder trop tôt (avertissement envoyé)
-  hnrClearedAt DateTime? // hit & run effacé avec des points bonus
-  startedAt   DateTime? // début du téléchargement (première annonce de ce membre sur ce torrent), si connu
+  seedSeconds   Int       @default(0)
+  lastSeedAt    DateTime?
+  satisfied     Boolean   @default(false) // temps de seed ou ratio sur ce torrent atteint
+  hnr           Boolean   @default(false) // a arrêté de seeder trop tôt (avertissement envoyé)
+  hnrClearedAt  DateTime? // hit & run effacé avec des points bonus
+  startedAt     DateTime? // début du téléchargement (première annonce de ce membre sur ce torrent), si connu
   hnrResolvedAt DateTime? // hit & run régularisé en reprenant le seed : le cas est clos, il ne reste que l'historique
 
   @@index([userId, torrentId])
@@ -562,39 +566,39 @@ model RatioSnapshot {
 // ---------------------------------------------------------------------------
 
 model TorrentRequest {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
-  description String?  @db.Text
-  bounty      Float    @default(0) // bonus points offerts (total, contributions des autres membres comprises)
-  backers     Int      @default(1) // nombre de contributions à la récompense
+  description String?   @db.Text
+  bounty      Float     @default(0) // bonus points offerts (total, contributions des autres membres comprises)
+  backers     Int       @default(1) // nombre de contributions à la récompense
   year        Int?
-  language    String?  // langue souhaitée (VFQ, VFF, VOSTFR...)
-  resolution  String?  // qualité souhaitée (1080p, 4K/2160p...)
+  language    String? // langue souhaitée (VFQ, VFF, VOSTFR...)
+  resolution  String? // qualité souhaitée (1080p, 4K/2160p...)
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   categoryId  String?
 
-  requestedBy User     @relation(fields: [requestedById], references: [id])
+  requestedBy   User   @relation(fields: [requestedById], references: [id])
   requestedById String
 
-  filledBy    User?    @relation("RequestFiller", fields: [filledById], references: [id])
-  filledById  String?
-  filledTorrent Torrent? @relation(fields: [filledTorrentId], references: [id], onDelete: SetNull)
-  filledTorrentId String? @unique
+  filledBy           User?     @relation("RequestFiller", fields: [filledById], references: [id])
+  filledById         String?
+  filledTorrent      Torrent?  @relation(fields: [filledTorrentId], references: [id], onDelete: SetNull)
+  filledTorrentId    String?   @unique
   // « Trouvé par » : le membre qui a désigné un torrent déjà sur le site (il n'en est pas l'envoyeur) ; il reçoit une petite part de la récompense.
-  finder      User?    @relation("RequestFinder", fields: [finderId], references: [id], onDelete: SetNull)
-  finderId    String?
-  finderPoints Float   @default(0)
-  uploaderPoints Float @default(0)
+  finder             User?     @relation("RequestFinder", fields: [finderId], references: [id], onDelete: SetNull)
+  finderId           String?
+  finderPoints       Float     @default(0)
+  uploaderPoints     Float     @default(0)
   // Proposition en attente de la confirmation du demandeur (un torrent désigné par un autre membre que son envoyeur).
-  proposedTorrent   Torrent? @relation("RequestProposedTorrent", fields: [proposedTorrentId], references: [id], onDelete: SetNull)
-  proposedTorrentId String?
-  proposedBy        User?    @relation("RequestProposer", fields: [proposedById], references: [id], onDelete: SetNull)
-  proposedById      String?
-  proposedAt        DateTime?
+  proposedTorrent    Torrent?  @relation("RequestProposedTorrent", fields: [proposedTorrentId], references: [id], onDelete: SetNull)
+  proposedTorrentId  String?
+  proposedBy         User?     @relation("RequestProposer", fields: [proposedById], references: [id], onDelete: SetNull)
+  proposedById       String?
+  proposedAt         DateTime?
   // Torrents refusés par le demandeur pour cette demande (ils ne peuvent plus être proposés).
-  declinedTorrentIds String[] @default([])
+  declinedTorrentIds String[]  @default([])
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 // ---------------------------------------------------------------------------
@@ -602,43 +606,43 @@ model TorrentRequest {
 // ---------------------------------------------------------------------------
 
 model ForumCategory {
-  id       String         @id @default(uuid())
-  name     String
-  position Int            @default(0)
-  parent   ForumCategory? @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
-  parentId String?
-  children ForumCategory[] @relation("SubCategories")
-  topics   ForumTopic[]
+  id          String          @id @default(uuid())
+  name        String
+  position    Int             @default(0)
+  parent      ForumCategory?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId    String?
+  children    ForumCategory[] @relation("SubCategories")
+  topics      ForumTopic[]
   // true = « catégorie » (simple regroupement de forums, sans sujets) ; false = « forum » (contient des sujets).
-  isCategory Boolean       @default(false)
-  description String?      @db.Text
-  icon        String?      // emoji affiché devant le forum
-  staffOnly   Boolean      @default(false) // visible et utilisable uniquement par le staff
-  locked      Boolean      @default(false) // plus de nouveaux sujets (sauf staff)
+  isCategory  Boolean         @default(false)
+  description String?         @db.Text
+  icon        String? // emoji affiché devant le forum
+  staffOnly   Boolean         @default(false) // visible et utilisable uniquement par le staff
+  locked      Boolean         @default(false) // plus de nouveaux sujets (sauf staff)
   // Accès par rang : { read?: { type, minClass? }, write?: { type, minClass? } } avec type ALL | CLASS | UPLOADERS | DONORS | ADULT | STAFF (voir common/utils/forum-access.ts).
   // null = tout le monde. Se cumule avec staffOnly (lecture réservée au staff) et locked (écriture réservée au staff).
   access      Json?
-  archived    Boolean      @default(false) // archive : lisible, mais plus rien n'y est publié (sauf staff)
-  qa          Boolean      @default(false) // forum d'entraide : l'auteur d'un sujet (ou le staff) peut marquer la réponse qui règle le problème (« Résolu »)
-  rules       String?      @db.Text        // consignes du forum, affichées en haut de sa page
+  archived    Boolean         @default(false) // archive : lisible, mais plus rien n'y est publié (sauf staff)
+  qa          Boolean         @default(false) // forum d'entraide : l'auteur d'un sujet (ou le staff) peut marquer la réponse qui règle le problème (« Résolu »)
+  rules       String?         @db.Text // consignes du forum, affichées en haut de sa page
 }
 
 model ForumTopic {
-  id         String        @id @default(uuid())
-  title      String
-  category   ForumCategory @relation(fields: [categoryId], references: [id])
-  categoryId String
-  author     User          @relation(fields: [authorId], references: [id])
-  authorId   String
-  locked     Boolean       @default(false)
-  sticky     Boolean       @default(false) // épinglé en haut de la liste
-  viewCount  Int           @default(0)
-  lastPostAt DateTime      @default(now())
-  solvedPostId String?     // message choisi comme solution (forum d'entraide)
-  posts      ForumPost[]
-  reads      ForumTopicRead[]
-  follows    ForumTopicFollow[]
-  createdAt  DateTime      @default(now())
+  id           String             @id @default(uuid())
+  title        String
+  category     ForumCategory      @relation(fields: [categoryId], references: [id])
+  categoryId   String
+  author       User               @relation(fields: [authorId], references: [id])
+  authorId     String
+  locked       Boolean            @default(false)
+  sticky       Boolean            @default(false) // épinglé en haut de la liste
+  viewCount    Int                @default(0)
+  lastPostAt   DateTime           @default(now())
+  solvedPostId String? // message choisi comme solution (forum d'entraide)
+  posts        ForumPost[]
+  reads        ForumTopicRead[]
+  follows      ForumTopicFollow[]
+  createdAt    DateTime           @default(now())
 
   @@index([categoryId, sticky, lastPostAt])
 }
@@ -680,19 +684,19 @@ model ForumPost {
 }
 
 model PrivateMessage {
-  id          String   @id @default(uuid())
-  sender      User     @relation("Sender", fields: [senderId], references: [id])
-  senderId    String
-  recipient   User     @relation("Recipient", fields: [recipientId], references: [id])
-  recipientId String
-  subject     String   @default("") // vide pour un message du chat privé (amis) — le formulaire de messagerie classique impose un sujet
-  content     String   @db.Text
-  read        Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id                 String   @id @default(uuid())
+  sender             User     @relation("Sender", fields: [senderId], references: [id])
+  senderId           String
+  recipient          User     @relation("Recipient", fields: [recipientId], references: [id])
+  recipientId        String
+  subject            String   @default("") // vide pour un message du chat privé (amis) — le formulaire de messagerie classique impose un sujet
+  content            String   @db.Text
+  read               Boolean  @default(false)
+  createdAt          DateTime @default(now())
   // Fil de discussion : tous les messages d'une conversation partagent le même threadId (vide = ancien message isolé).
-  threadId    String?
-  deletedBySender    Boolean @default(false)
-  deletedByRecipient Boolean @default(false)
+  threadId           String?
+  deletedBySender    Boolean  @default(false)
+  deletedByRecipient Boolean  @default(false)
 
   @@index([threadId])
   @@index([recipientId, read])
@@ -709,16 +713,16 @@ enum ReportStatus {
 }
 
 model Report {
-  id          String       @id @default(uuid())
-  reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
-  reporterId  String
-  targetType  String       // "torrent" | "user" | "forumPost" | "comment"
-  targetId    String
-  reason      String       @db.Text
-  status      ReportStatus @default(OPEN)
+  id         String       @id @default(uuid())
+  reporter   User         @relation("Reporter", fields: [reporterId], references: [id])
+  reporterId String
+  targetType String // "torrent" | "user" | "forumPost" | "comment"
+  targetId   String
+  reason     String       @db.Text
+  status     ReportStatus @default(OPEN)
   // Message de chat signalé : copie du texte au moment du signalement (l'auteur peut le supprimer ensuite), au format JSON.
-  snapshot    String?      @db.Text
-  createdAt   DateTime     @default(now())
+  snapshot   String?      @db.Text
+  createdAt  DateTime     @default(now())
 }
 
 model Warning {
@@ -741,22 +745,22 @@ model Ban {
 }
 
 model Announcement {
-  id        String   @id @default(uuid())
-  title     String
-  content   String   @db.Text
-  summary   String?  @db.VarChar(300) // chapeau affiché dans les listes
-  imageUrl  String?  // image principale (téléversée sur Seeduction : /api/covers/...)
+  id             String                 @id @default(uuid())
+  title          String
+  content        String                 @db.Text
+  summary        String?                @db.VarChar(300) // chapeau affiché dans les listes
+  imageUrl       String? // image principale (téléversée sur Seeduction : /api/covers/...)
   // Type de nouvelle (badge) : NEWS, UPDATE, EVENT, MAINTENANCE, IMPORTANT
-  kind      String   @default("NEWS") @db.VarChar(12)
-  commentsLocked Boolean @default(false)
-  pinned    Boolean  @default(false)
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  comments  AnnouncementComment[]
-  reactions AnnouncementReaction[]
-  views     AnnouncementView[]
+  kind           String                 @default("NEWS") @db.VarChar(12)
+  commentsLocked Boolean                @default(false)
+  pinned         Boolean                @default(false)
+  author         User                   @relation(fields: [authorId], references: [id])
+  authorId       String
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  comments       AnnouncementComment[]
+  reactions      AnnouncementReaction[]
+  views          AnnouncementView[]
 
   @@index([pinned, createdAt])
 }
@@ -801,7 +805,7 @@ model ActivityLog {
   id        String   @id @default(uuid())
   user      User?    @relation(fields: [userId], references: [id])
   userId    String?
-  action    String   // "LOGIN" | "UPLOAD" | "DELETE_TORRENT" | ...
+  action    String // "LOGIN" | "UPLOAD" | "DELETE_TORRENT" | ...
   meta      Json?
   ip        String?
   createdAt DateTime @default(now())
@@ -835,7 +839,7 @@ model Notification {
   type      NotificationType
   title     String
   body      String?
-  link      String?          // route frontend à ouvrir au clic, ex: /forum/topics/xxx
+  link      String? // route frontend à ouvrir au clic, ex: /forum/topics/xxx
   read      Boolean          @default(false)
   createdAt DateTime         @default(now())
   // Onglet de la page Notifications (messages, forum, torrents, demandes, social, annonces, pot, support, système) : sert aussi aux préférences du membre.
@@ -854,8 +858,8 @@ model Notification {
 // ---------------------------------------------------------------------------
 
 enum CollectionVisibility {
-  PRIVATE       // visible et modifiable par le propriétaire uniquement
-  PUBLIC        // visible par tous, modifiable par le propriétaire uniquement
+  PRIVATE // visible et modifiable par le propriétaire uniquement
+  PUBLIC // visible par tous, modifiable par le propriétaire uniquement
   COLLABORATIVE // visible par tous, modifiable par le propriétaire + les collaborateurs
 }
 
@@ -929,7 +933,7 @@ model ApiKey {
   userId     String
   label      String
   keyHash    String    @unique
-  keyPrefix  String    // affiché dans la liste pour identifier la clé sans exposer le secret
+  keyPrefix  String // affiché dans la liste pour identifier la clé sans exposer le secret
   scopes     String[]
   lastUsedAt DateTime?
   revoked    Boolean   @default(false)
@@ -972,16 +976,16 @@ model Friendship {
 // Chatroom globale unique (pas de canaux) — diffusion temps réel via
 // ChatGateway (WebSocket), historique servi en REST pour le chargement initial.
 model ChatMessage {
-  id        String   @id @default(uuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String         @id @default(uuid())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  content   String   @db.Text
+  content   String         @db.Text
   // Pièce jointe : soit une image (affichée en ligne), soit un fichier quelconque (lien de téléchargement) — jamais les deux.
   imageUrl  String?
   fileUrl   String?
   fileName  String?
   fileSize  Int?
-  createdAt DateTime @default(now())
+  createdAt DateTime       @default(now())
   reactions ChatReaction[]
 
   @@index([createdAt])
@@ -1022,8 +1026,8 @@ enum DmPrivacy {
 // ---------------------------------------------------------------------------
 
 enum EntityType {
-  PERSON   // acteurs, réalisateurs, producteurs, artistes, auteurs...
-  COMPANY  // studios, labels, éditeurs, développeurs, chaînes
+  PERSON // acteurs, réalisateurs, producteurs, artistes, auteurs...
+  COMPANY // studios, labels, éditeurs, développeurs, chaînes
   GENRE
   PLATFORM
 }
@@ -1034,9 +1038,9 @@ model Entity {
   id         String          @id @default(uuid())
   type       EntityType
   name       String
-  source     String          // tmdb | deezer | rawg | seeduction (nom normalisé)
+  source     String // tmdb | deezer | rawg | seeduction (nom normalisé)
   externalId String
-  imageUrl   String?         // sauvegardée sur Seeduction, jamais un lien externe
+  imageUrl   String? // sauvegardée sur Seeduction, jamais un lien externe
   torrents   TorrentEntity[]
   followers  EntityFollow[]
   createdAt  DateTime        @default(now())
@@ -1051,7 +1055,7 @@ model TorrentEntity {
   torrentId String
   entity    Entity  @relation(fields: [entityId], references: [id], onDelete: Cascade)
   entityId  String
-  role      String  // ACTOR | DIRECTOR | PRODUCER | WRITER | CREATOR | ARTIST | AUTHOR | STUDIO | LABEL | PUBLISHER | DEVELOPER | NETWORK | GENRE | PLATFORM
+  role      String // ACTOR | DIRECTOR | PRODUCER | WRITER | CREATOR | ARTIST | AUTHOR | STUDIO | LABEL | PUBLISHER | DEVELOPER | NETWORK | GENRE | PLATFORM
   detail    String? // ex : le personnage joué
   position  Int     @default(0)
 
@@ -1073,13 +1077,13 @@ model Favorite {
 
 // Commentaires sous un torrent.
 model TorrentComment {
-  id        String   @id @default(uuid())
-  torrent   Torrent  @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  torrent   Torrent   @relation(fields: [torrentId], references: [id], onDelete: Cascade)
   torrentId String
-  author    User     @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  author    User      @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   authorId  String
-  content   String   @db.Text
-  createdAt DateTime @default(now())
+  content   String    @db.Text
+  createdAt DateTime  @default(now())
   editedAt  DateTime?
 
   @@index([torrentId, createdAt])
@@ -1373,10 +1377,10 @@ enum MessageType {
   VOICE
   GIF
   SYSTEM
-  BOT_ANSWER   // réponse de l'assistant du canal Support
+  BOT_ANSWER // réponse de l'assistant du canal Support
   TICKET_OFFER // l'assistant propose de demander l'équipe ou d'ouvrir un billet de support
-  HANDOFF      // l'assistant confirme avoir prévenu l'équipe et se retire
-  POLL         // sondage : la question est le contenu, les choix et les votes sont dans Poll
+  HANDOFF // l'assistant confirme avoir prévenu l'équipe et se retire
+  POLL // sondage : la question est le contenu, les choix et les votes sont dans Poll
 }
 
 model Conversation {
@@ -1460,10 +1464,10 @@ model Message {
   reactions      MessageReaction[]
   pins           ConversationPin[]
   poll           Poll?
+  telegram       TelegramMessage?
 
   @@index([conversationId, createdAt])
   @@index([senderId])
-  telegram       TelegramMessage?
 }
 
 // Une réaction (émoji) par membre et par message ; en choisir une nouvelle remplace la précédente.
@@ -1499,27 +1503,50 @@ model MessageReaction {
 // ---------------------------------------------------------------------------
 
 model Team {
-  id           String   @id @default(uuid())
-  name         String   @unique
-  slug         String   @unique
-  tag          String?  @db.VarChar(8)
-  description  String   @default("") @db.Text
-  requirements String?  @db.Text // ce que la team attend d'un candidat
+  id           String       @id @default(uuid())
+  name         String       @unique
+  slug         String       @unique
+  tag          String?      @db.VarChar(8)
+  description  String       @default("") @db.Text
+  requirements String?      @db.Text // ce que la team attend d'un candidat
   logoUrl      String?
-  leaderId     String?  // vide = team sans propriétaire (détectée automatiquement, en attente d'un vrai membre)
-  auto         Boolean  @default(false) // ajoutée par le système d'après le nom des releases partagées
-  releaseCount Int      @default(0) // releases partagées sous son nom
-  recruiting   Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  bannerUrl    String?  // bannière de la page de la team (envoyée par le chef)
+  slogan       String?  @db.VarChar(120)
+  accent       String?  @db.VarChar(9) // couleur de la team (#rrggbb)
+  monthlyGoal  Int      @default(0) // objectif de releases par mois (0 = aucun)
+  leaderId     String? // vide = team sans propriétaire (détectée automatiquement, en attente d'un vrai membre)
+  auto         Boolean      @default(false) // ajoutée par le système d'après le nom des releases partagées
+  releaseCount Int          @default(0) // releases partagées sous son nom
+  recruiting   Boolean      @default(true)
+  createdAt    DateTime     @default(now())
   members      TeamMember[]
+  posts        TeamPost[]
 }
 
+
+/// Annonces et nouvelles d'une team, publiées par son chef ou ses officiers.
+model TeamPost {
+  id         String   @id @default(uuid())
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId     String
+  authorId   String
+  kind       String   @default("ANNOUNCEMENT") @db.VarChar(14) // ANNOUNCEMENT | NEWS | RECRUITING | EVENT
+  title      String   @db.VarChar(160)
+  content    String   @db.Text
+  pinned     Boolean  @default(false)
+  publicPost Boolean  @default(false) // visible par tous les membres du site (sinon : membres de la team)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([teamId, createdAt])
+}
 model TeamMember {
   id       String   @id @default(uuid())
   team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId   String
   userId   String   @unique // un compte ne fait partie que d'une seule team
   role     String   @default("MEMBER") @db.VarChar(8) // LEADER | OFFICER | MEMBER
+  anonymous Boolean  @default(false) // choisi par le chef : ce membre apparaît comme « Anonyme » dans la team
   joinedAt DateTime @default(now())
 
   @@index([teamId])
@@ -1540,16 +1567,15 @@ model TeamApplication {
   @@index([userId, status])
 }
 
-
 // ---------------------------------------------------------------------------
 // SUPPORT — billets (tickets) liés au canal de chat « Support » (assistant IA + équipe) et au wiki.
 // ---------------------------------------------------------------------------
 
 enum TicketStatus {
-  OPEN     // en attente d'une réponse de l'équipe
+  OPEN // en attente d'une réponse de l'équipe
   ANSWERED // l'équipe a répondu : en attente du membre
   RESOLVED // réglé (le membre peut encore répondre pour le rouvrir)
-  CLOSED   // définitif
+  CLOSED // définitif
 }
 
 enum TicketPriority {
@@ -1561,47 +1587,47 @@ enum TicketPriority {
 
 enum TicketMessageKind {
   MEMBER // écrit par le membre
-  STAFF  // écrit par l'équipe (`internal` = note privée, invisible du membre)
-  EVENT  // changement de statut, d'assignation... (`internal` = visible du staff seulement)
-  CHAT   // historique du chat de support joint à l'ouverture du billet
+  STAFF // écrit par l'équipe (`internal` = note privée, invisible du membre)
+  EVENT // changement de statut, d'assignation... (`internal` = visible du staff seulement)
+  CHAT // historique du chat de support joint à l'ouverture du billet
 }
 
 model SupportCategory {
-  id          String   @id @default(uuid())
+  id          String          @id @default(uuid())
   name        String
-  icon        String?  @db.VarChar(8)
-  description String?  @db.VarChar(200)
-  order       Int      @default(0)
-  active      Boolean  @default(true)
+  icon        String?         @db.VarChar(8)
+  description String?         @db.VarChar(200)
+  order       Int             @default(0)
+  active      Boolean         @default(true)
   tickets     SupportTicket[]
 }
 
 model SupportTicket {
-  id              String         @id @default(uuid())
-  number          Int            @unique @default(autoincrement())
-  subject         String         @db.VarChar(140)
-  requester       User           @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  requesterId     String
-  category        SupportCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  categoryId      String?
-  status          TicketStatus   @default(OPEN)
-  priority        TicketPriority @default(NORMAL)
-  assignee        User?          @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  assigneeId      String?
-  source          String         @default("WEB") @db.VarChar(8) // WEB | CHAT | STAFF
+  id                String                 @id @default(uuid())
+  number            Int                    @unique @default(autoincrement())
+  subject           String                 @db.VarChar(140)
+  requester         User                   @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterId       String
+  category          SupportCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId        String?
+  status            TicketStatus           @default(OPEN)
+  priority          TicketPriority         @default(NORMAL)
+  assignee          User?                  @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId        String?
+  source            String                 @default("WEB") @db.VarChar(8) // WEB | CHAT | STAFF
   // Qui doit lire la dernière réponse (pastille « nouveau »)
-  unreadByRequester Boolean      @default(false)
-  unreadByStaff     Boolean      @default(true)
-  firstResponseAt DateTime?
-  lastReplyAt     DateTime       @default(now())
-  lastReplyBy     String         @default("MEMBER") @db.VarChar(8) // MEMBER | STAFF
-  resolvedAt      DateTime?
-  closedAt        DateTime?
-  rating          Int?
-  ratingComment   String?        @db.VarChar(500)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  messages        SupportTicketMessage[]
+  unreadByRequester Boolean                @default(false)
+  unreadByStaff     Boolean                @default(true)
+  firstResponseAt   DateTime?
+  lastReplyAt       DateTime               @default(now())
+  lastReplyBy       String                 @default("MEMBER") @db.VarChar(8) // MEMBER | STAFF
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+  rating            Int?
+  ratingComment     String?                @db.VarChar(500)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  messages          SupportTicketMessage[]
 
   @@index([requesterId, status])
   @@index([status, lastReplyAt])
@@ -1609,16 +1635,16 @@ model SupportTicket {
 }
 
 model SupportTicketMessage {
-  id         String            @id @default(uuid())
-  ticket     SupportTicket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  ticketId   String
-  author     User?             @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  authorId   String?
-  kind       TicketMessageKind
-  internal   Boolean           @default(false)
-  content    String            @db.Text // BBCode (comme les commentaires et le forum)
-  attachments Json?            // [{ url, name, kind: 'image' | 'file', size }]
-  createdAt  DateTime          @default(now())
+  id          String            @id @default(uuid())
+  ticket      SupportTicket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId    String
+  author      User?             @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId    String?
+  kind        TicketMessageKind
+  internal    Boolean           @default(false)
+  content     String            @db.Text // BBCode (comme les commentaires et le forum)
+  attachments Json? // [{ url, name, kind: 'image' | 'file', size }]
+  createdAt   DateTime          @default(now())
 
   @@index([ticketId, createdAt])
 }
@@ -1641,7 +1667,6 @@ model SupportChatEvent {
   @@index([userId, createdAt])
   @@index([kind, createdAt])
 }
-
 
 // Mémoire des torrents ressuscités (récompense de reseed versée) : héros de la page « Réanimation » et torrents revenus à la vie récemment.
 model TorrentRevival {
@@ -1703,14 +1728,14 @@ model TelegramLink {
 
 // Correspondance entre un message Seeduction et le message Telegram qui lui répond / le reproduit (réponses, modifications, suppressions).
 model TelegramMessage {
-  id            String   @id @default(uuid())
-  message       Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  messageId     String   @unique
-  tgChatId      String
-  tgMessageId   Int
+  id           String   @id @default(uuid())
+  message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId    String   @unique
+  tgChatId     String
+  tgMessageId  Int
   // true : écrit sur Telegram par le membre lui-même (le robot ne peut pas le modifier, seulement le supprimer)
-  fromTelegram  Boolean  @default(false)
-  createdAt     DateTime @default(now())
+  fromTelegram Boolean  @default(false)
+  createdAt    DateTime @default(now())
 
   @@unique([tgChatId, tgMessageId])
 }
@@ -1718,27 +1743,27 @@ model TelegramMessage {
 // Suggestions des membres (idées, améliorations, retours) : chaque membre propose, les autres votent ; plus une suggestion a de votes,
 // plus elle monte dans la liste et plus elle a de chances d'être réalisée. Le staff la fait avancer (à l'étude, planifiée, en cours, réalisée...).
 model Suggestion {
-  id           String   @id @default(uuid())
-  title        String   @db.VarChar(120)
-  body         String   @db.Text
+  id            String              @id @default(uuid())
+  title         String              @db.VarChar(120)
+  body          String              @db.Text
   // SITE | TORRENTS | CHAT | PLAYER | COMMUNITY | ECONOMY | OTHER
-  category     String   @default("OTHER") @db.VarChar(16)
+  category      String              @default("OTHER") @db.VarChar(16)
   // OPEN | REVIEW | PLANNED | PROGRESS | DONE | DECLINED | DUPLICATE
-  status       String   @default("OPEN") @db.VarChar(12)
-  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId     String
-  voteCount    Int      @default(0)
-  commentCount Int      @default(0)
+  status        String              @default("OPEN") @db.VarChar(12)
+  author        User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId      String
+  voteCount     Int                 @default(0)
+  commentCount  Int                 @default(0)
   // Réponse du staff affichée sous le titre (pourquoi refusée, ce qui est prévu...).
-  statusNote   String?  @db.Text
-  statusAt     DateTime?
-  statusById   String?
+  statusNote    String?             @db.Text
+  statusAt      DateTime?
+  statusById    String?
   // Doublon : la suggestion qui la remplace (ses votes lui ont été transférés).
   duplicateOfId String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  votes        SuggestionVote[]
-  comments     SuggestionComment[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  votes         SuggestionVote[]
+  comments      SuggestionComment[]
 
   @@index([status, voteCount])
   @@index([authorId, createdAt])
@@ -1885,26 +1910,26 @@ model CheatEvent {
 
 /// Dossier de suspicion d'un membre : score (avec décroissance), niveau, statut de traitement par l'équipe.
 model CheatCase {
-  id              String    @id @default(uuid())
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId          String    @unique
-  score           Float     @default(0)
-  level           String    @default("NONE") @db.VarChar(10) // NONE | WATCH | SUSPECT | LIKELY | CRITICAL
-  confidence      Int       @default(0) // 0-100
-  status          String    @default("OPEN") @db.VarChar(10) // OPEN | REVIEWING | CLEARED | ACTIONED | EXPIRED
-  breakdown       Json?     // par type de signal : points restants après décroissance, nombre, dernier
-  families        String[]  // familles de signaux en jeu (ratio, client, network, bonus)
-  alertedLevel    Int       @default(0)
-  alertedAt       DateTime?
-  clearedScore    Float?    // score au moment où le membre a été innocenté (pour ne rouvrir que sur de nouveaux indices)
-  immuneUntil     DateTime?
-  assigneeName    String?   @db.VarChar(40)
-  reviewedByName  String?   @db.VarChar(40)
-  resolvedAt      DateTime?
-  firstFlaggedAt  DateTime  @default(now())
-  lastEventAt     DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  notes           CheatCaseNote[]
+  id             String          @id @default(uuid())
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String          @unique
+  score          Float           @default(0)
+  level          String          @default("NONE") @db.VarChar(10) // NONE | WATCH | SUSPECT | LIKELY | CRITICAL
+  confidence     Int             @default(0) // 0-100
+  status         String          @default("OPEN") @db.VarChar(10) // OPEN | REVIEWING | CLEARED | ACTIONED | EXPIRED
+  breakdown      Json? // par type de signal : points restants après décroissance, nombre, dernier
+  families       String[] // familles de signaux en jeu (ratio, client, network, bonus)
+  alertedLevel   Int             @default(0)
+  alertedAt      DateTime?
+  clearedScore   Float? // score au moment où le membre a été innocenté (pour ne rouvrir que sur de nouveaux indices)
+  immuneUntil    DateTime?
+  assigneeName   String?         @db.VarChar(40)
+  reviewedByName String?         @db.VarChar(40)
+  resolvedAt     DateTime?
+  firstFlaggedAt DateTime        @default(now())
+  lastEventAt    DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  notes          CheatCaseNote[]
 
   @@index([status, score])
   @@index([level])
@@ -2035,7 +2060,7 @@ model SlotSpin {
   win       Int
   freeSpins Int      @default(0)
   rounds    Json // [{ stops: [a, b, c], mult, win, free }]
-  jackpot   Boolean   @default(false) // gros lot progressif remporté
+  jackpot   Boolean  @default(false) // gros lot progressif remporté
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
@@ -2429,21 +2454,21 @@ model Duel {
 
 /// Don reçu automatiquement d'une plateforme (Ko-fi, Buy Me a Coffee) : un message par paiement, jamais traité deux fois (provider + externalId uniques).
 model DonationEvent {
-  id          String   @id @default(uuid())
-  provider    String   @db.VarChar(12)
-  externalId  String   @db.VarChar(80)
-  kind        String   @db.VarChar(16) // donation | subscription | other
-  status      String   @default("PENDING") @db.VarChar(12) // CREDITED | PENDING | IGNORED | REFUNDED
-  amount      Float
-  currency    String   @db.VarChar(6)
-  payerName   String   @default("") @db.VarChar(80)
-  payerEmail  String   @default("") @db.VarChar(120) // masqué (ma***@gmail.com)
-  message     String   @default("") @db.VarChar(400)
-  suggestion  String?  @db.VarChar(40) // pseudo probable, à confirmer par l'équipe
-  userId      String?
-  donationId  String?
-  note        String   @default("") @db.VarChar(200)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  provider   String   @db.VarChar(12)
+  externalId String   @db.VarChar(80)
+  kind       String   @db.VarChar(16) // donation | subscription | other
+  status     String   @default("PENDING") @db.VarChar(12) // CREDITED | PENDING | IGNORED | REFUNDED
+  amount     Float
+  currency   String   @db.VarChar(6)
+  payerName  String   @default("") @db.VarChar(80)
+  payerEmail String   @default("") @db.VarChar(120) // masqué (ma***@gmail.com)
+  message    String   @default("") @db.VarChar(400)
+  suggestion String?  @db.VarChar(40) // pseudo probable, à confirmer par l'équipe
+  userId     String?
+  donationId String?
+  note       String   @default("") @db.VarChar(200)
+  createdAt  DateTime @default(now())
 
   @@unique([provider, externalId])
   @@index([status, createdAt])
@@ -2451,25 +2476,25 @@ model DonationEvent {
 
 /// Boîte courriel gérée dans l'interface Courriel du site (Purelymail, etc.) : accès IMAP pour lire, SMTP pour envoyer ; le mot de passe est chiffré (jamais renvoyé au navigateur).
 model Mailbox {
-  id             String   @id @default(uuid())
-  label          String   @db.VarChar(60)
-  imapHost       String   @db.VarChar(120)
-  imapPort       Int      @default(993)
-  imapSecure     Boolean  @default(true)
-  smtpHost       String   @db.VarChar(120)
-  smtpPort       Int      @default(465)
-  smtpSecure     Boolean  @default(true)
-  username       String   @db.VarChar(160)
-  passwordSealed String   @db.Text
+  id             String         @id @default(uuid())
+  label          String         @db.VarChar(60)
+  imapHost       String         @db.VarChar(120)
+  imapPort       Int            @default(993)
+  imapSecure     Boolean        @default(true)
+  smtpHost       String         @db.VarChar(120)
+  smtpPort       Int            @default(465)
+  smtpSecure     Boolean        @default(true)
+  username       String         @db.VarChar(160)
+  passwordSealed String         @db.Text
   /// Adresses (alias) qu'on peut choisir comme expéditeur : [{ address, name }]
-  aliases        Json     @default("[]")
-  signature      String   @default("") @db.VarChar(600)
+  aliases        Json           @default("[]")
+  signature      String         @default("") @db.VarChar(600)
   /// Administrateurs autorisés (le propriétaire a toujours accès à toutes les boîtes).
-  allowedUserIds String[] @default([])
+  allowedUserIds String[]       @default([])
   /// L'administrateur qui a ajouté la boîte : il y a toujours accès et peut la régler (le rôle « propriétaire » du site peut tout régler).
   createdById    String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
   templates      MailTemplate[]
 }
 
@@ -2592,19 +2617,19 @@ model TournamentWeek {
 
 /// Correction proposée par un membre sur la fiche d'un torrent (langue, qualité, saison / épisode...) ou signalement d'un détail pas clair : l'équipe l'applique ou la refuse depuis la file de modération.
 model TorrentFix {
-  id           String    @id @default(uuid())
-  torrent      Torrent   @relation(fields: [torrentId], references: [id], onDelete: Cascade)
-  torrentId    String
-  authorId     String
+  id             String    @id @default(uuid())
+  torrent        Torrent   @relation(fields: [torrentId], references: [id], onDelete: Cascade)
+  torrentId      String
+  authorId       String
   /// Valeurs proposées par champ (voir common/utils/torrent-fix.ts) ; vide = simple remarque.
-  changes      Json      @default("{}")
-  note         String?   @db.VarChar(500)
-  status       String    @default("PENDING") @db.VarChar(10) // PENDING | ACCEPTED | REJECTED
-  reviewedById String?
-  reviewedByName String? @db.VarChar(60)
-  reviewNote   String?   @db.VarChar(300)
-  reviewedAt   DateTime?
-  createdAt    DateTime  @default(now())
+  changes        Json      @default("{}")
+  note           String?   @db.VarChar(500)
+  status         String    @default("PENDING") @db.VarChar(10) // PENDING | ACCEPTED | REJECTED
+  reviewedById   String?
+  reviewedByName String?   @db.VarChar(60)
+  reviewNote     String?   @db.VarChar(300)
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
 
   @@index([status, createdAt])
   @@index([torrentId, status])
@@ -2674,7 +2699,7 @@ model LiveSlot {
   title       String?    @db.VarChar(120)
   description String?    @db.VarChar(500) // affichée sur la page Direct (écran du lecteur, calendrier)
   posterUrl   String?    @db.VarChar(500) // image de fond de l'écran avant la diffusion
-  color       String?    @db.VarChar(9)   // couleur dans le calendrier (#rrggbb)
+  color       String?    @db.VarChar(9) // couleur dans le calendrier (#rrggbb)
   startsAt    DateTime
   durationMin Int
   repeat      String     @default("NONE") @db.VarChar(10) // NONE | DAILY | WEEKLY

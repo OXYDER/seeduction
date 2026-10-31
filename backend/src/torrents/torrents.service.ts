@@ -176,7 +176,7 @@ export class TorrentsService implements OnModuleInit {
         fileList: parsed.files,
         categoryId: params.categoryId,
         uploaderId: params.userId,
-        anonymousUpload: params.anonymous,
+        anonymousUpload: params.anonymous || !!(await this.prisma.user.findUnique({ where: { id: params.userId }, select: { anonymousUploads: true } }))?.anonymousUploads,
         coverImage: params.coverImage || null,
         tags: params.tags,
         year: params.year,

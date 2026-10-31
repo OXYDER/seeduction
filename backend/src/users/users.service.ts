@@ -33,7 +33,7 @@ export class UsersService {
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
-        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, chatRail: true, goalSound: true, tipStyle: true,
+        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, chatRail: true, anonymousSelf: true, anonymousUploads: true, anonymousTeam: true, goalSound: true, tipStyle: true,
         parentId: true, profileName: true, profileType: true, profilePerms: true, familyEnabled: true, deletedAt: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
@@ -62,7 +62,7 @@ export class UsersService {
     if (user.profileType === 'BOT' && !isStaff) Object.assign(user, { uploaded: 0n, downloaded: 0n, bonusPoints: 0 });
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, chatBubbles, chatRail, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, defaultView, chatBubbles, chatRail, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     const onlineStatus = this.presence.publicStatus(user.id);
@@ -81,7 +81,7 @@ export class UsersService {
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus,
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, defaultView, chatBubbles, chatRail, goalSound, tipStyle } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, defaultView, chatBubbles, chatRail, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
   }
@@ -105,6 +105,16 @@ export class UsersService {
     const value = enabled === true || enabled === 'true';
     await this.prisma.user.update({ where: { id: userId }, data: { goalSound: value } });
     return { goalSound: value };
+  }
+
+  /** Mon anonymat : sur tout le site, sur mes torrents envoyés (par défaut) et dans ma team. */
+  async setAnonymity(userId: string, body: any) {
+    const data: Record<string, boolean> = {};
+    for (const [k, f] of [['site', 'anonymousSelf'], ['uploads', 'anonymousUploads'], ['team', 'anonymousTeam']] as const) if (typeof body?.[k] === 'boolean') data[f] = body[k];
+    if (Object.keys(data).length === 0) throw new BadRequestException('Aucun changement');
+    const u = await this.prisma.user.update({ where: { id: userId }, data, select: { anonymousSelf: true, anonymousUploads: true, anonymousTeam: true } });
+    await this.anonymity.refresh(); // le masquage prend effet tout de suite
+    return u;
   }
 
   /** Barre des bulles : position, taille et noms (valeurs vérifiées ; le reste est ignoré), mémorisés pour le membre. */

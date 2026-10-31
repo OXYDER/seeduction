@@ -46,6 +46,24 @@ export class TeamsController {
   @Patch(':id/members/:userId')
   setRole(@Param('id') id: string, @Param('userId') userId: string, @Body('role') role: string, @Request() req: any) { return this.teams.setRole(id, viewerOf(req), userId, role); }
 
+  @Patch(':id/members/:userId/anonymous')
+  setMemberAnonymous(@Param('id') id: string, @Param('userId') userId: string, @Body('anonymous') anonymous: boolean, @Request() req: any) { return this.teams.setMemberAnonymous(id, viewerOf(req), userId, anonymous); }
+
+  @Get(':id/posts')
+  posts(@Param('id') id: string, @Request() req: any) { return this.teams.listPosts(id, viewerOf(req)); }
+
+  @Post(':id/posts')
+  createPost(@Param('id') id: string, @Body() body: any, @Request() req: any) { return this.teams.createPost(id, viewerOf(req), body ?? {}); }
+
+  @Patch(':id/posts/:postId')
+  updatePost(@Param('id') id: string, @Param('postId') postId: string, @Body() body: any, @Request() req: any) { return this.teams.updatePost(id, postId, viewerOf(req), body ?? {}); }
+
+  @Delete(':id/posts/:postId')
+  deletePost(@Param('id') id: string, @Param('postId') postId: string, @Request() req: any) { return this.teams.deletePost(id, postId, viewerOf(req)); }
+
+  @Get(':id/dashboard')
+  dashboard(@Param('id') id: string, @Request() req: any) { return this.teams.dashboard(id, viewerOf(req)); }
+
   @Delete(':id/members/:userId')
   removeMember(@Param('id') id: string, @Param('userId') userId: string, @Request() req: any) { return this.teams.removeMember(id, viewerOf(req), userId); }
 }

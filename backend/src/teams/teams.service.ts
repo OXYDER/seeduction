@@ -152,12 +152,16 @@ export class TeamsService implements OnModuleInit {
     const myRole = await this.roleIn(id, v.accountId);
     const manage = this.canManage(team, myRole, v);
     const rows = await this.prisma.teamMember.findMany({ where: { teamId: id }, orderBy: [{ joinedAt: 'asc' }] });
-    const users = await this.prisma.user.findMany({ where: { id: { in: rows.map((r) => r.userId) } }, select: { ...USER_SELECT, uploaded: true, downloaded: true, createdAt: true, _count: { select: { torrentsUploaded: true } } } });
+    const users = await this.prisma.user.findMany({ where: { id: { in: rows.map((r) => r.userId) } }, select: { ...USER_SELECT, anonymousTeam: true, uploaded: true, downloaded: true, createdAt: true, _count: { select: { torrentsUploaded: true } } } });
     const uById = new Map(users.map((u) => [u.id, u]));
     const order = { LEADER: 0, OFFICER: 1, MEMBER: 2 } as Record<string, number>;
     const members = rows.map((r) => {
       const u = uById.get(r.userId);
-      return { userId: r.userId, role: r.role, joinedAt: r.joinedAt, user: u ? { id: u.id, username: u.username, avatarUrl: u.avatarUrl, memberClass: u.memberClass, role: u.role } : null, uploaded: Number(u?.uploaded ?? 0), torrents: u?._count.torrentsUploaded ?? 0 };
+      // Anonyme dans la team : par choix du membre ou du chef. Seuls le chef, les officiers, l'administration et le membre lui-même voient qui c'est.
+      const anon = !!(r.anonymous || u?.anonymousTeam);
+      const hide = anon && !manage && r.userId !== v.accountId;
+      if (hide) return { userId: `anon-${r.id}`, role: r.role, joinedAt: r.joinedAt, anonymous: true, user: { id: `anon-${r.id}`, username: 'Anonyme', avatarUrl: null, memberClass: 'MEMBRE', role: 'USER' }, uploaded: 0, torrents: 0 };
+      return { userId: r.userId, role: r.role, joinedAt: r.joinedAt, anonymous: anon, anonymousByLeader: r.anonymous, user: u ? { id: u.id, username: u.username, avatarUrl: u.avatarUrl, memberClass: u.memberClass, role: u.role } : null, uploaded: Number(u?.uploaded ?? 0), torrents: u?._count.torrentsUploaded ?? 0 };
     }).sort((a, b) => (order[a.role] ?? 9) - (order[b.role] ?? 9));
     const mineApp = await this.prisma.teamApplication.findFirst({ where: { teamId: id, userId: v.accountId, status: 'PENDING' } });
     let applications: any[] = [];
@@ -173,9 +177,9 @@ export class TeamsService implements OnModuleInit {
     const releases = await this.prisma.torrent.findMany({ where: { releaseGroup: team.slug, status: 'APPROVED' }, orderBy: { createdAt: 'desc' }, take: 15, select: { id: true, name: true, size: true, seeders: true, leechers: true, createdAt: true, coverImage: true, resolution: true } });
     const mineTeam = await this.prisma.teamMember.findFirst({ where: { userId: v.accountId } });
     return {
-      id: team.id, name: team.name, tag: team.tag, description: team.description, requirements: team.requirements, logoUrl: team.logoUrl, recruiting: team.recruiting, createdAt: team.createdAt,
+      id: team.id, name: team.name, tag: team.tag, description: team.description, requirements: team.requirements, logoUrl: team.logoUrl, bannerUrl: team.bannerUrl, slogan: team.slogan, accent: team.accent, monthlyGoal: team.monthlyGoal, recruiting: team.recruiting, createdAt: team.createdAt,
       auto: team.auto, hasOwner: !!team.leaderId, releaseCount: team.releaseCount, releases: releases.map((r) => ({ ...r, size: Number(r.size) })),
-      myRole, canManage: manage, canDelete: STAFF.includes(v.role), inOtherTeam: !!mineTeam && mineTeam.teamId !== id, myApplicationId: mineApp?.id ?? null,
+      myRole, isMember: !!myRole || STAFF.includes(v.role), canManage: manage, canDelete: STAFF.includes(v.role), inOtherTeam: !!mineTeam && mineTeam.teamId !== id, myApplicationId: mineApp?.id ?? null,
       members, applications,
     };
   }
@@ -212,7 +216,7 @@ export class TeamsService implements OnModuleInit {
     return { id: teamId };
   }
 
-  async update(id: string, v: Viewer, body: { name?: string; tag?: string | null; description?: string; requirements?: string | null; recruiting?: boolean; logoUrl?: string | null }) {
+  async update(id: string, v: Viewer, body: { name?: string; tag?: string | null; description?: string; requirements?: string | null; recruiting?: boolean; logoUrl?: string | null; bannerUrl?: string | null; slogan?: string | null; accent?: string | null; monthlyGoal?: number }) {
     const team = await this.prisma.team.findUnique({ where: { id } });
     if (!team) throw new NotFoundException('Team introuvable');
     const role = await this.roleIn(id, v.accountId);
@@ -234,8 +238,127 @@ export class TeamsService implements OnModuleInit {
       if (body.logoUrl && !/^\/api\/covers\/[\w.-]+$/.test(body.logoUrl)) throw new BadRequestException('Logo invalide');
       data.logoUrl = body.logoUrl || null;
     }
+    if (body.bannerUrl !== undefined) {
+      if (body.bannerUrl && !/^\/api\/covers\/[\w.-]+$/.test(body.bannerUrl)) throw new BadRequestException('Bannière invalide');
+      data.bannerUrl = body.bannerUrl || null;
+    }
+    if (body.slogan !== undefined) data.slogan = this.clean(body.slogan, 120) || null;
+    if (body.accent !== undefined) { if (body.accent && !/^#[0-9a-fA-F]{6}$/.test(body.accent)) throw new BadRequestException('Couleur invalide (#rrggbb)'); data.accent = body.accent || null; }
+    if (body.monthlyGoal !== undefined) data.monthlyGoal = Math.max(0, Math.min(10000, Math.floor(Number(body.monthlyGoal) || 0)));
     await this.prisma.team.update({ where: { id }, data });
     return { ok: true };
+  }
+
+  // ------------------------------------------------------------------ annonces et nouvelles de la team
+
+  private async asMember(id: string, v: Viewer) {
+    const team = await this.prisma.team.findUnique({ where: { id } });
+    if (!team) throw new NotFoundException('Team introuvable');
+    const role = await this.roleIn(id, v.accountId);
+    return { team, role, member: !!role || STAFF.includes(v.role), manage: this.canManage(team, role, v) };
+  }
+
+  /** Les annonces : les membres de la team voient tout, les autres seulement celles publiées « pour tout le site ». */
+  async listPosts(id: string, v: Viewer) {
+    const { member, manage } = await this.asMember(id, v);
+    const rows = await this.prisma.teamPost.findMany({ where: { teamId: id, ...(member ? {} : { publicPost: true }) }, orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }], take: 50 });
+    const authors = await this.prisma.user.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.authorId))] } }, select: { id: true, username: true, avatarUrl: true, anonymousTeam: true } });
+    const byId = new Map(authors.map((a) => [a.id, a]));
+    return { canPost: manage, items: rows.map((r) => { const a = byId.get(r.authorId); const hide = !!a?.anonymousTeam && !manage && a.id !== v.accountId; return { id: r.id, kind: r.kind, title: r.title, content: r.content, pinned: r.pinned, publicPost: r.publicPost, createdAt: r.createdAt, updatedAt: r.updatedAt, author: a && !hide ? { id: a.id, username: a.username, avatarUrl: a.avatarUrl } : { id: null, username: 'Anonyme', avatarUrl: null } }; }) };
+  }
+
+  private postData(body: any) {
+    const kinds = ['ANNOUNCEMENT', 'NEWS', 'RECRUITING', 'EVENT'];
+    const title = this.clean(body?.title, 160), content = this.clean(body?.content, 8000);
+    if (title.length < 2 || content.length < 2) throw new BadRequestException('Titre et contenu requis');
+    return { title, content, kind: kinds.includes(body?.kind) ? body.kind : 'ANNOUNCEMENT', pinned: !!body?.pinned, publicPost: !!body?.publicPost };
+  }
+
+  async createPost(id: string, v: Viewer, body: any) {
+    const { team, manage } = await this.asMember(id, v);
+    if (!manage) throw new ForbiddenException('Réservé au chef et aux officiers');
+    const data = this.postData(body);
+    const post = await this.prisma.teamPost.create({ data: { ...data, teamId: id, authorId: v.accountId } });
+    if (body?.notify !== false) {
+      const members = await this.prisma.teamMember.findMany({ where: { teamId: id, userId: { not: v.accountId } }, select: { userId: true } });
+      await Promise.all(members.map((m) => this.notifications.notify({ userId: m.userId, type: 'SYSTEM', category: 'social', title: `${team.name} : ${data.title}`, body: data.content.slice(0, 160), link: `/teams/${id}` }).catch(() => undefined)));
+    }
+    return { id: post.id };
+  }
+
+  async updatePost(id: string, postId: string, v: Viewer, body: any) {
+    const { manage } = await this.asMember(id, v);
+    if (!manage) throw new ForbiddenException('Réservé au chef et aux officiers');
+    const post = await this.prisma.teamPost.findFirst({ where: { id: postId, teamId: id } });
+    if (!post) throw new NotFoundException('Annonce introuvable');
+    await this.prisma.teamPost.update({ where: { id: postId }, data: this.postData(body) });
+    return { ok: true };
+  }
+
+  async deletePost(id: string, postId: string, v: Viewer) {
+    const { manage } = await this.asMember(id, v);
+    if (!manage) throw new ForbiddenException('Réservé au chef et aux officiers');
+    await this.prisma.teamPost.deleteMany({ where: { id: postId, teamId: id } });
+    return { ok: true };
+  }
+
+  // ------------------------------------------------------------------ anonymat d'un membre (choisi par le chef, lui compris)
+
+  async setMemberAnonymous(id: string, v: Viewer, userId: string, anonymous: boolean) {
+    const { team, role } = await this.asMember(id, v);
+    if (!(role === 'LEADER' || STAFF.includes(v.role)) || !team) throw new ForbiddenException('Réservé au chef de la team');
+    const m = await this.prisma.teamMember.findFirst({ where: { teamId: id, userId } });
+    if (!m) throw new NotFoundException('Ce membre ne fait pas partie de la team');
+    await this.prisma.teamMember.update({ where: { id: m.id }, data: { anonymous: !!anonymous } });
+    return { ok: true, anonymous: !!anonymous };
+  }
+
+  // ------------------------------------------------------------------ tableau de bord de la team (membres seulement)
+
+  async dashboard(id: string, v: Viewer) {
+    const { team, role, member, manage } = await this.asMember(id, v);
+    if (!member) throw new ForbiddenException('Réservé aux membres de la team');
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const rows = await this.prisma.teamMember.findMany({ where: { teamId: id }, select: { id: true, userId: true, role: true, joinedAt: true, anonymous: true } });
+    const ids = rows.map((r) => r.userId);
+    const users = await this.prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, avatarUrl: true, lastSeenAt: true, anonymousTeam: true } });
+    const uById = new Map(users.map((u) => [u.id, u]));
+    const hidden = (userId: string) => { const r = rows.find((x) => x.userId === userId); return !!(r?.anonymous || uById.get(userId)?.anonymousTeam) && !manage && userId !== v.accountId; };
+    const nameOf = (userId: string) => (hidden(userId) ? 'Anonyme' : uById.get(userId)?.username ?? '(ancien membre)');
+    const base = { releaseGroup: team.slug, status: 'APPROVED' as const };
+    const [monthRel, monthAgg, seedAgg, byUploader, recent, weak] = await Promise.all([
+      this.prisma.torrent.count({ where: { ...base, createdAt: { gte: monthStart } } }),
+      this.prisma.torrent.aggregate({ where: { ...base, createdAt: { gte: monthStart } }, _sum: { size: true } }),
+      this.prisma.torrent.aggregate({ where: base, _sum: { seeders: true, leechers: true } }),
+      this.prisma.torrent.groupBy({ by: ['uploaderId'], where: { ...base, createdAt: { gte: monthStart }, uploaderId: { in: ids } }, _count: { _all: true }, _sum: { size: true }, orderBy: { _count: { uploaderId: 'desc' } }, take: 10 }),
+      this.prisma.torrent.findMany({ where: base, orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, name: true, createdAt: true, uploaderId: true, anonymousUpload: true } }),
+      manage ? this.prisma.torrent.findMany({ where: { ...base, seeders: { lte: 2 } }, orderBy: { seeders: 'asc' }, take: 8, select: { id: true, name: true, seeders: true, leechers: true } }) : Promise.resolve([] as { id: string; name: string; seeders: number; leechers: number }[]),
+    ]);
+    const posts = await this.prisma.teamPost.findMany({ where: { teamId: id }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, title: true, kind: true, createdAt: true } });
+    const online = users.filter((u) => u.lastSeenAt && now.getTime() - u.lastSeenAt.getTime() < 15 * 60_000).length;
+    // fil d'activité : releases, arrivées et annonces, les plus récentes d'abord
+    const activity = [
+      ...recent.map((t) => ({ at: t.createdAt, icon: '📦', text: `Release : ${t.name}`, link: `/torrents/${t.id}`, who: t.anonymousUpload || !t.uploaderId ? 'Anonyme' : nameOf(t.uploaderId) })),
+      ...rows.filter((r) => now.getTime() - r.joinedAt.getTime() < 30 * 86_400_000).map((r) => ({ at: r.joinedAt, icon: '👋', text: `${nameOf(r.userId)} a rejoint la team`, link: null as string | null, who: '' })),
+      ...posts.map((p) => ({ at: p.createdAt, icon: '📣', text: `Annonce : ${p.title}`, link: null as string | null, who: '' })),
+    ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 12);
+    // santé (chef et officiers) : hit & run ouverts des membres, membres inactifs
+    let health: { weakReleases: typeof weak; hnr: { name: string; count: number }[]; inactive: { name: string; days: number }[] } | null = null;
+    if (manage) {
+      const hnr = await this.prisma.snatch.groupBy({ by: ['userId'], where: { userId: { in: ids }, hnr: true, satisfied: false }, _count: { _all: true } });
+      health = {
+        weakReleases: weak,
+        hnr: hnr.map((h) => ({ name: nameOf(h.userId), count: h._count._all })).sort((a, b) => b.count - a.count),
+        inactive: users.filter((u) => !u.lastSeenAt || now.getTime() - u.lastSeenAt.getTime() > 30 * 86_400_000).map((u) => ({ name: nameOf(u.id), days: u.lastSeenAt ? Math.floor((now.getTime() - u.lastSeenAt.getTime()) / 86_400_000) : 999 })),
+      };
+    }
+    return {
+      myRole: role, canSeeHealth: manage,
+      overview: { members: rows.length, online, releasesMonth: monthRel, volumeMonth: Number(monthAgg._sum.size ?? 0), seeders: seedAgg._sum.seeders ?? 0, leechers: seedAgg._sum.leechers ?? 0, goal: { target: team.monthlyGoal, done: monthRel } },
+      contributions: byUploader.map((b) => ({ name: nameOf(b.uploaderId), releases: b._count._all, volume: Number(b._sum.size ?? 0) })),
+      activity, health,
+    };
   }
 
   async remove(id: string, v: Viewer) {

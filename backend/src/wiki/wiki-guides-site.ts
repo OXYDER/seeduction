@@ -1121,6 +1121,10 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Règles à connaître[/b]\n` +
         `• Un compte ne peut appartenir qu'à [b]une seule team[/b] : quitte la tienne avant d'en rejoindre une autre.\n` +
         `• Le chef et ses officiers acceptent ou refusent les candidatures. Ta team s'affiche sur ton profil.\n\n` +
+        `[b]La page d'une team (chef et officiers)[/b]\n` +
+        `Le chef personnalise sa team : [b]logo[/b], [b]bannière[/b], slogan, couleur et [b]objectif de releases par mois[/b] (bouton « Modifier la team »). Le chef et les officiers publient des [b]annonces et nouvelles[/b] (annonce, nouvelle, recrutement, événement) : réservées aux membres de la team ou, au choix, visibles par tout le site ; la team est prévenue à la publication. Les membres ont un [b]tableau de bord[/b] : membres en ligne, releases et volume du mois, objectif, activité récente, contributions ; le chef et les officiers y voient aussi la [b]santé de la team[/b] (torrents à 1-2 seeders, hit & run ouverts, membres inactifs).\n\n` +
+        `[b]Anonymat dans la team[/b]\n` +
+        `Dans Profil > Compte > [b]Mon anonymat[/b], tu peux te cacher : sur tout le site, sur les torrents que tu envoies (par défaut) et dans ta team. Le chef peut aussi rendre un membre — lui compris — anonyme dans la team (bouton 🕶️ Anonymat) : les autres membres voient « Anonyme », seuls le chef, les officiers et l'équipe du site voient le nom.\n\n` +
         `[b]Les teams détectées automatiquement[/b]\n` +
         `Quand une release est partagée, le site lit le nom de la team à la fin du titre (« …x264-TOXIC ») et crée sa page, sans propriétaire. Si tu en fais vraiment partie, ouvre la page de la team pour en demander la reprise. Dans la vue groupée, un badge d'équipe n'apparaît que si toutes les versions affichées viennent de la même.\n\n` +
         `Référence : [url=/wiki/teams]Teams[/url].`,
