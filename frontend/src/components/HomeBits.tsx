@@ -200,7 +200,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
   return (
     <div className="fy-grid">
       <section className="fy-card">
-        <h3>⬇️ Mes téléchargements<Link to="/activity?statut=leeching">Tout voir →</Link></h3>
+        <h3>⬇️ Téléchargements en cours<Link to="/activity?statut=leeching">Tout voir →</Link></h3>
         {leeching.length === 0 && <p className="fy-empty">Aucun téléchargement en cours.</p>}
         {leeching.slice(0, 2).map((t) => (
           <Row key={t.id} to={`/torrents/${t.id}`} cover={t.coverImage} title={t.name} bar={{ pct: t.progress * 100, kind: 'dl' }} sub={`${Math.round(t.progress * 100)} % · ${mb(Number(t.size) || 0)}`} chip={{ text: '⬇️ En cours', tone: 'dl' }} />
@@ -208,8 +208,8 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
       </section>
 
       <section className="fy-card">
-        <h3>✅ Mes téléchargements complétés<Link to="/activity?statut=completed">Tout voir →</Link></h3>
-        {done && done.length === 0 && <p className="fy-empty">Tes téléchargements terminés apparaîtront ici.</p>}
+        <h3>✅ Téléchargements complétés<Link to="/activity?statut=completed">Tout voir →</Link></h3>
+        {done && done.length === 0 && <p className="fy-empty">Tes téléchargements complétés apparaîtront ici.</p>}
         {(done ?? []).slice(0, 2).map((c) => {
           const ok = c.satisfied;
           const left = Math.max(0, c.requiredSeconds - c.seedSeconds);

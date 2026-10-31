@@ -16,6 +16,10 @@ export class PlayersAdminController {
   @Get()
   overview() { return this.players.overview(); }
 
+  /** Qui utilise les lecteurs, et sur quel système. */
+  @Get('usage')
+  usage() { return this.players.usage(); }
+
   /** Gestion de la clé de publication : réservée à une vraie session d'administration (jamais à la clé elle-même). */
   @UseGuards(JwtAuthGuard)
   @Post('key')

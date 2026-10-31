@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { detectReleaseGroup, groupSlug } from '../common/utils/release-group';
@@ -179,7 +180,7 @@ export class TeamsService implements OnModuleInit {
     return {
       id: team.id, name: team.name, tag: team.tag, description: team.description, requirements: team.requirements, logoUrl: team.logoUrl, bannerUrl: team.bannerUrl, slogan: team.slogan, accent: team.accent, monthlyGoal: team.monthlyGoal, recruiting: team.recruiting, createdAt: team.createdAt,
       auto: team.auto, hasOwner: !!team.leaderId, releaseCount: team.releaseCount, releases: releases.map((r) => ({ ...r, size: Number(r.size) })),
-      myRole, isMember: !!myRole || STAFF.includes(v.role), canManage: manage, canDelete: STAFF.includes(v.role), inOtherTeam: !!mineTeam && mineTeam.teamId !== id, myApplicationId: mineApp?.id ?? null,
+      myRole, following: !!(await this.prisma.teamFollow.findFirst({ where: { teamId: id, userId: v.accountId }, select: { id: true } })), isMember: !!myRole || STAFF.includes(v.role), canManage: manage, canDelete: STAFF.includes(v.role), inOtherTeam: !!mineTeam && mineTeam.teamId !== id, myApplicationId: mineApp?.id ?? null,
       members, applications,
     };
   }
@@ -367,6 +368,86 @@ export class TeamsService implements OnModuleInit {
     };
   }
 
+  // ------------------------------------------------------------------ suivre une team (cloche)
+
+  async setFollow(id: string, v: Viewer, follow: boolean) {
+    if (!(await this.prisma.team.findUnique({ where: { id }, select: { id: true } }))) throw new NotFoundException('Team introuvable');
+    if (follow) await this.prisma.teamFollow.upsert({ where: { teamId_userId: { teamId: id, userId: v.accountId } }, create: { teamId: id, userId: v.accountId }, update: {} });
+    else await this.prisma.teamFollow.deleteMany({ where: { teamId: id, userId: v.accountId } });
+    return { following: follow };
+  }
+
+  /** Toutes les 3 minutes : les abonnés d'une team sont prévenus de ses releases approuvées depuis leur dernier avis (un seul avis par team et par passage). */
+  @Cron('*/3 * * * *')
+  async notifyFollowers() {
+    try {
+      const follows = await this.prisma.teamFollow.findMany({ include: { team: { select: { id: true, name: true, slug: true } } } });
+      if (follows.length === 0) return;
+      const byTeam = new Map<string, typeof follows>();
+      for (const f of follows) byTeam.set(f.teamId, [...(byTeam.get(f.teamId) ?? []), f]);
+      const now = new Date();
+      for (const [teamId, list] of byTeam) {
+        const since = new Date(Math.min(...list.map((f) => f.lastNotifiedAt.getTime())));
+        const releases = await this.prisma.torrent.findMany({ where: { releaseGroup: list[0].team.slug, status: 'APPROVED', approvedAt: { gt: since } }, orderBy: { approvedAt: 'asc' }, select: { id: true, name: true, approvedAt: true }, take: 50 });
+        if (releases.length === 0) continue;
+        for (const f of list) {
+          const fresh = releases.filter((r) => r.approvedAt && r.approvedAt > f.lastNotifiedAt);
+          if (fresh.length === 0) continue;
+          await this.notifications.notify({
+            userId: f.userId, type: 'SYSTEM', category: 'social', groupKey: `team-follow-${teamId}`,
+            title: `🔔 ${f.team.name} : ${fresh.length} nouvelle${fresh.length > 1 ? 's' : ''} release${fresh.length > 1 ? 's' : ''}`,
+            body: fresh.slice(0, 3).map((r) => r.name).join(' · ').slice(0, 300), link: fresh.length === 1 ? `/torrents/${fresh[0].id}` : `/teams/${teamId}`,
+          }).catch(() => undefined);
+          await this.prisma.teamFollow.update({ where: { id: f.id }, data: { lastNotifiedAt: now } }).catch(() => undefined);
+        }
+      }
+    } catch (e: any) { this.log.warn(`Avis des abonnés de team : ${e?.message ?? e}`); }
+  }
+
+  // ------------------------------------------------------------------ historique des rôles
+
+  async history(id: string, v: Viewer) {
+    const { member, manage } = await this.asMember(id, v);
+    if (!member) throw new ForbiddenException('Réservé aux membres de la team');
+    const rows = await this.prisma.teamRoleLog.findMany({ where: { teamId: id }, orderBy: { createdAt: 'desc' }, take: 60 });
+    const ids = [...new Set(rows.flatMap((r) => [r.targetId, r.actorId].filter((x): x is string => !!x)))];
+    const users = await this.prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, anonymousTeam: true } });
+    const members = await this.prisma.teamMember.findMany({ where: { teamId: id }, select: { userId: true, anonymous: true } });
+    const u = new Map(users.map((x) => [x.id, x]));
+    const anon = (userId?: string | null) => { if (!userId) return false; const m = members.find((x) => x.userId === userId); return !!(m?.anonymous || u.get(userId)?.anonymousTeam) && !manage && userId !== v.accountId; };
+    const name = (userId?: string | null) => (!userId ? 'le système' : anon(userId) ? 'Anonyme' : u.get(userId)?.username ?? '(ancien membre)');
+    return rows.map((r) => ({ id: r.id, action: r.action, fromRole: r.fromRole, toRole: r.toRole, createdAt: r.createdAt, actor: name(r.actorId), target: name(r.targetId) }));
+  }
+
+  // ------------------------------------------------------------------ chat privé de la team (Messenger)
+
+  /** La conversation de groupe de la team : créée à la demande, puis ses participants sont alignés sur les membres (arrivées et départs). */
+  async chat(id: string, v: Viewer) {
+    const { team, member } = await this.asMember(id, v);
+    if (!member) throw new ForbiddenException('Réservé aux membres de la team');
+    const rows = await this.prisma.teamMember.findMany({ where: { teamId: id }, select: { userId: true, role: true, anonymous: true } });
+    const flags = await this.prisma.user.findMany({ where: { id: { in: rows.map((r) => r.userId) } }, select: { id: true, anonymousTeam: true } });
+    const anonOf = new Map(flags.map((f) => [f.id, f.anonymousTeam]));
+    let convId = team.chatConversationId;
+    if (convId && !(await this.prisma.conversation.findUnique({ where: { id: convId }, select: { id: true } }))) convId = null;
+    if (!convId) {
+      const leader = rows.find((r) => r.role === 'LEADER')?.userId ?? rows[0]?.userId ?? v.accountId;
+      const conv = await this.prisma.conversation.create({ data: { type: 'GROUP', name: `Team ${team.name}`.slice(0, 80), createdById: leader } });
+      convId = conv.id;
+      await this.prisma.team.update({ where: { id }, data: { chatConversationId: convId } });
+    }
+    const current = await this.prisma.conversationMember.findMany({ where: { conversationId: convId }, select: { id: true, userId: true } });
+    const want = new Set(rows.map((r) => r.userId));
+    for (const r of rows) {
+      const nickname = r.anonymous || anonOf.get(r.userId) ? 'Anonyme' : null; // un membre anonyme de la team l'est aussi dans le chat de la team
+      const has = current.find((c) => c.userId === r.userId);
+      if (has) await this.prisma.conversationMember.update({ where: { id: has.id }, data: { nickname, role: r.role === 'LEADER' ? 'OWNER' : r.role === 'OFFICER' ? 'ADMIN' : 'MEMBER' } });
+      else await this.prisma.conversationMember.create({ data: { conversationId: convId, userId: r.userId, nickname, role: r.role === 'LEADER' ? 'OWNER' : r.role === 'OFFICER' ? 'ADMIN' : 'MEMBER' } });
+    }
+    for (const c of current) if (!want.has(c.userId)) await this.prisma.conversationMember.delete({ where: { id: c.id } }).catch(() => undefined);
+    return { conversationId: convId };
+  }
+
   async remove(id: string, v: Viewer) {
     if (!STAFF.includes(v.role)) throw new ForbiddenException('Réservé à l\'administration');
     await this.prisma.teamMember.deleteMany({ where: { teamId: id } });
@@ -419,6 +500,7 @@ export class TeamsService implements OnModuleInit {
         throw new BadRequestException('Ce membre a rejoint une autre team entre-temps');
       }
       await this.prisma.$transaction([
+        this.prisma.teamRoleLog.create({ data: { teamId: team.id, actorId: v.accountId, targetId: app.userId, action: claiming ? 'LEADER' : 'JOIN', toRole: claiming ? 'LEADER' : 'MEMBER' } }),
         this.prisma.teamMember.create({ data: { teamId: team.id, userId: app.userId, role: claiming ? 'LEADER' : 'MEMBER' } }),
         ...(claiming ? [this.prisma.team.update({ where: { id: team.id }, data: { leaderId: app.userId, auto: false } })] : []),
         this.prisma.teamApplication.update({ where: { id: app.id }, data: { status: 'ACCEPTED', decidedAt: new Date(), decidedById: v.accountId } }),
@@ -445,6 +527,7 @@ export class TeamsService implements OnModuleInit {
     if (!target) throw new NotFoundException('Membre introuvable');
     if (target.role === 'LEADER') throw new BadRequestException('Le chef garde son rôle');
     await this.prisma.teamMember.update({ where: { id: target.id }, data: { role } });
+    await this.prisma.teamRoleLog.create({ data: { teamId: id, actorId: v.accountId, targetId: userId, action: role === 'OFFICER' ? 'PROMOTE' : 'DEMOTE', fromRole: target.role, toRole: role } });
     return { ok: true };
   }
 
@@ -458,6 +541,7 @@ export class TeamsService implements OnModuleInit {
     if (target.role === 'LEADER' && !STAFF.includes(v.role)) throw new BadRequestException('Le chef ne peut pas être retiré');
     if (target.role === 'OFFICER' && mine === 'OFFICER' && !STAFF.includes(v.role)) throw new ForbiddenException('Un officier ne peut pas retirer un autre officier');
     await this.prisma.teamMember.delete({ where: { id: target.id } });
+    await this.prisma.teamRoleLog.create({ data: { teamId: id, actorId: v.accountId, targetId: userId, action: 'REMOVE', fromRole: target.role } });
     // L'administration retire le chef : la team redevient sans propriétaire.
     if (target.role === 'LEADER') await this.prisma.team.update({ where: { id }, data: { leaderId: null } });
     await this.notifications.notify({ userId, type: 'SYSTEM', category: 'social', title: 'Tu as été retiré d\'une team', link: '/teams' }).catch(() => undefined);
@@ -469,6 +553,7 @@ export class TeamsService implements OnModuleInit {
     if (!me) throw new NotFoundException('Tu ne fais pas partie de cette team');
     if (me.role === 'LEADER') throw new BadRequestException('Le chef ne peut pas quitter sa team : demande à l\'administration de nommer un autre chef');
     await this.prisma.teamMember.delete({ where: { id: me.id } });
+    await this.prisma.teamRoleLog.create({ data: { teamId: id, actorId: v.accountId, targetId: v.accountId, action: 'LEAVE', fromRole: me.role } });
     return { ok: true };
   }
 

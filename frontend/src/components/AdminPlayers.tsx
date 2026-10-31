@@ -168,3 +168,27 @@ export default function AdminPlayers() {
     </div>
   );
 }
+
+const PLATFORM_LABEL: Record<string, string> = { WINDOWS: '🖥️ Windows', MAC: '🍎 Mac', LINUX: '🐧 Linux', DESKTOP: '🖥️ Ordinateur', ANDROID: '📱 Android' };
+
+/** Qui utilise les lecteurs Seeduction, et sur quel système (d'après le User-Agent envoyé à chaque lecture). */
+export function PlayerUsage() {
+  const [d, setD] = useState<any>(null);
+  useEffect(() => { api.get('/admin/players/usage').then((r) => setD(r.data)).catch(() => setD(null)); }, []);
+  if (!d) return null;
+  return (
+    <div className="panel" style={{ display: 'grid', gap: 10 }}>
+      <h3 style={{ margin: 0 }}>👥 Qui utilise les lecteurs</h3>
+      <div className="act-tiles">
+        <div className="panel act-tile"><div className="muted">Membres</div><div className="act-tile-value">{d.distinctMembers}</div></div>
+        {Object.entries(d.totals).map(([k, t]: [string, any]) => <div key={k} className="panel act-tile"><div className="muted">{PLATFORM_LABEL[k] ?? k}</div><div className="act-tile-value">{t.members}</div><div className="muted" style={{ fontSize: 12 }}>{t.last7d} actif{t.last7d > 1 ? 's' : ''} sur 7 jours</div></div>)}
+      </div>
+      {d.items.length === 0 ? <p className="muted" style={{ margin: 0 }}>Personne n'a encore lu avec un lecteur (l'usage s'enregistre à chaque lecture depuis le lecteur).</p> : (
+        <div style={{ overflowX: 'auto' }}>
+          <table><thead><tr><th>Membre</th><th>Système</th><th>Version</th><th>Lectures</th><th>Dernière</th></tr></thead>
+            <tbody>{d.items.map((r: any) => <tr key={r.id}><td>{r.user.username}</td><td>{PLATFORM_LABEL[r.platform] ?? r.platform}</td><td className="muted">{r.version ?? '—'}</td><td>{r.uses}</td><td className="muted">{new Date(r.lastAt).toLocaleString('fr-CA', { dateStyle: 'medium', timeStyle: 'short' })}</td></tr>)}</tbody></table>
+        </div>
+      )}
+    </div>
+  );
+}

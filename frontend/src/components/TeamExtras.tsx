@@ -136,3 +136,26 @@ export function PublicTeamPosts() {
     </div>
   );
 }
+
+const ACTION_TEXT: Record<string, (a: any) => string> = {
+  JOIN: (a) => `${a.target} a rejoint la team`,
+  LEADER: (a) => `${a.target} est devenu chef de la team`,
+  LEAVE: (a) => `${a.target} a quitté la team`,
+  REMOVE: (a) => `${a.target} a été retiré par ${a.actor}`,
+  PROMOTE: (a) => `${a.actor} a nommé ${a.target} officier`,
+  DEMOTE: (a) => `${a.actor} a remis ${a.target} simple membre`,
+};
+
+/** Historique des arrivées, départs et changements de rôle de la team (membres seulement). */
+export function TeamHistory({ teamId }: { teamId: string }) {
+  const [rows, setRows] = useState<any[] | null>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => { api.get(`/teams/${teamId}/history`).then((r) => setRows(r.data)).catch(() => setRows(null)); }, [teamId]);
+  if (!rows || rows.length === 0) return null;
+  return (
+    <div className="panel" style={{ display: 'grid', gap: 6 }}>
+      <button type="button" className="secondary" style={{ justifySelf: 'start' }} onClick={() => setOpen((v) => !v)}>{open ? '▾' : '▸'} 🧾 Historique des rôles et des membres ({rows.length})</button>
+      {open && rows.map((a) => <div key={a.id} style={{ fontSize: 13 }}>{(ACTION_TEXT[a.action] ?? (() => a.action))(a)} <span className="muted" style={{ fontSize: 11.5 }}>· {timeAgo(a.createdAt)}</span></div>)}
+    </div>
+  );
+}

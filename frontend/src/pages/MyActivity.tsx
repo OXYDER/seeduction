@@ -17,7 +17,7 @@ const hours = (secs: number) => (secs >= 3600 ? `${Math.round(secs / 360) / 10} 
 const dateTime = (iso: string | null) => (iso ? new Date(iso).toLocaleString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
 const dayOnly = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
-const STATUSES: [StatusFilter, string][] = [['all', 'Tout'], ['seeding', '🌱 En seed'], ['leeching', '⬇️ En téléchargement'], ['completed', '✅ Terminés'], ['todo', '⏳ Obligation à terminer'], ['hnr', '🔴 Hit & run'], ['own', '⬆️ Mes envois']];
+const STATUSES: [StatusFilter, string][] = [['all', 'Tout'], ['seeding', '🌱 En seed'], ['leeching', '⬇️ Téléchargements en cours'], ['completed', '✅ Téléchargements complétés'], ['todo', '⏳ Obligation à terminer'], ['hnr', '🔴 Hit & run'], ['own', '⬆️ Mes envois']];
 const SORTS: [SortKey, string][] = [['date', 'Date (fin du téléchargement, sinon ajout)'], ['added', "Date d'ajout sur le site"], ['name', 'Nom'], ['category', 'Catégorie'], ['size', 'Taille'], ['received', 'Reçu'], ['sent', 'Envoyé'], ['ratio', 'Ratio'], ['seedTime', 'Temps de seed'], ['progress', 'Progression'], ['announce', 'Dernière annonce']];
 const COLS: [ColKey, string, SortKey | null][] = [
   ['category', 'Catégorie', 'category'], ['size', 'Taille', 'size'], ['added', 'Ajouté sur le site', 'added'], ['completed', 'Date', 'date'], ['received', 'Reçu ↓', 'received'], ['sent', 'Envoyé ↑', 'sent'],
@@ -153,8 +153,8 @@ export default function MyActivity() {
 
       <div className="act-tiles">
         {tile('En seed', String(rows.filter((r) => r.seedingNow).length), formatBytes(rows.filter((r) => r.seedingNow).reduce((n, r) => n + r.size, 0)))}
-        {tile('En téléchargement', String(rows.filter((r) => r.leechingNow).length))}
-        {tile('Terminés', String(rows.filter((r) => r.completed).length))}
+        {tile('Téléchargements en cours', String(rows.filter((r) => r.leechingNow).length))}
+        {tile('Téléchargements complétés', String(rows.filter((r) => r.completed).length))}
         {tile('Mes envois', String(rows.filter((r) => r.own).length))}
         {tile('Upload total', formatBytes(data.totals.uploadedBytes))}
         {tile('Téléchargé total', formatBytes(data.totals.downloadedBytes), `Ratio ${ratio}`)}

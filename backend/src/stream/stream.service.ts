@@ -1,3 +1,4 @@
+import { playerFromUserAgent } from '../common/utils/player-agent';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { TorrentsService } from '../torrents/torrents.service';
@@ -66,10 +67,20 @@ export class StreamService {
   }
 
   /** Consommé une seule fois par le lecteur desktop : renvoie le .torrent personnalisé (base64) + le fichier choisi. */
-  async resolvePlaySession(token: string) {
+  /** Note qu'un membre se sert d'un lecteur (système et version lus dans le User-Agent) : une ligne par membre et par système. Ne fait jamais échouer une lecture. */
+  async recordPlayerUse(userId: string, userAgent?: string | null) {
+    const p = playerFromUserAgent(userAgent);
+    if (!p) return;
+    try {
+      await this.prisma.playerUse.upsert({ where: { userId_platform: { userId, platform: p.platform } }, create: { userId, platform: p.platform, version: p.version }, update: { uses: { increment: 1 }, lastAt: new Date(), version: p.version } });
+    } catch { /* statistique facultative */ }
+  }
+
+  async resolvePlaySession(token: string, userAgent?: string) {
     const session = this.playSessions.get(token);
     if (!session || session.expiresAt < Date.now()) throw new NotFoundException('Lien de lecture invalide ou expiré : relance « Ouvrir dans le lecteur » depuis Seeduction.');
     this.playSessions.delete(token);
+    void this.recordPlayerUse(session.userId, userAgent);
     const [buffer, summary] = await Promise.all([
       this.torrents.getDownloadFile(session.torrentId, session.userId, { viaStream: true, viewerId: session.viewerId }),
       this.torrents.getSummary(session.torrentId),
@@ -92,9 +103,10 @@ export class StreamService {
    * la lecture à xx:xx » sur la fiche torrent — privé au membre, donc enregistré indépendamment de showWatchingStatus
    * et du filtre contenu adulte ci-dessous, qui ne concernent que le statut PUBLIC.
    */
-  async pingWatching(passkey: string, torrentId: string, positionSeconds?: number, durationSeconds?: number, fileIndex?: number) {
+  async pingWatching(passkey: string, torrentId: string, positionSeconds?: number, durationSeconds?: number, fileIndex?: number, userAgent?: string) {
     const user = await this.prisma.user.findUnique({ where: { passkey } });
     if (!user) return { ok: true };
+    void this.recordPlayerUse(user.id, userAgent);
 
     if (typeof positionSeconds === 'number' && Number.isFinite(positionSeconds) && positionSeconds > 0) {
       const idx = Number.isInteger(fileIndex) && fileIndex! >= 0 ? fileIndex! : 0;

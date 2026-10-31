@@ -1,3 +1,4 @@
+import { PrismaService } from '../common/prisma.service';
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
@@ -36,7 +37,18 @@ export class PlayersService {
   /** Envois en cours (en mémoire) : un envoi interrompu par un redémarrage du serveur recommence simplement. */
   private uploads = new Map<string, { platform: Platform; received: number; bytes: number; at: number }>();
 
-  constructor(private settings: SettingsService) {}
+  constructor(private settings: SettingsService, private prisma: PrismaService) {}
+
+  /** Qui utilise les lecteurs : totaux par système et liste des membres (dernière utilisation d'abord). */
+  async usage() {
+    const rows = await this.prisma.playerUse.findMany({ orderBy: { lastAt: 'desc' }, take: 300 });
+    const users = await this.prisma.user.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.userId))] } }, select: { id: true, username: true, avatarUrl: true } });
+    const byId = new Map(users.map((u) => [u.id, u]));
+    const totals: Record<string, { members: number; last7d: number }> = {};
+    const week = Date.now() - 7 * 86_400_000;
+    for (const r of rows) { const t = (totals[r.platform] ??= { members: 0, last7d: 0 }); t.members++; if (r.lastAt.getTime() > week) t.last7d++; }
+    return { totals, distinctMembers: new Set(rows.map((r) => r.userId)).size, items: rows.map((r) => ({ id: r.id, platform: r.platform, version: r.version, uses: r.uses, firstAt: r.firstAt, lastAt: r.lastAt, user: byId.get(r.userId) ?? { id: r.userId, username: '(supprimé)', avatarUrl: null } })) };
+  }
 
   private dir() { return process.env.PLAYER_DOWNLOADS_DIR ?? './storage/downloads'; }
   private tmpDir() { return path.join(this.dir(), '.tmp'); }

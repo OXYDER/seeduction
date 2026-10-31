@@ -26,7 +26,7 @@ import { ImportAdmin } from '../components/AdminImport';
 import PotAdmin from '../components/AdminPot';
 import AdminJeux from '../components/AdminJeux';
 import AdminLive from '../components/AdminLive';
-import AdminPlayers from '../components/AdminPlayers';
+import AdminPlayers, { PlayerUsage } from '../components/AdminPlayers';
 import AdminSlots from '../components/AdminSlots';
 import AdminHiLo from '../components/AdminHiLo';
 import AdminWheel from '../components/AdminWheel';
@@ -89,7 +89,7 @@ export default function Admin() {
       {tab === 'Dons' && <><AdminDonationsAuto /><AdminDonations /></>}
       {tab === 'Courriel' && <AdminMailboxes />}
       {tab === 'Canadiens en direct' && <AdminLive />}
-      {tab === 'Lecteurs' && <AdminPlayers />}
+      {tab === 'Lecteurs' && <div className="grid" style={{ gap: 16 }}><AdminPlayers /><PlayerUsage /></div>}
       {tab === 'Telegram' && <TelegramAdmin />}
       {tab === 'Anti-triche' && <AdminAntiCheat />}
       {tab === 'Sauvegardes' && <AdminBackup />}

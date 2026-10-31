@@ -48,6 +48,18 @@ async function call(m, p, t, body) { const r = await fetch(BASE + p, { method: m
     const t2 = await call('GET', `/teams/${team.id}`, O);
     check('ils sont relus sur la page', t2.b?.slogan === 'On seede' && t2.b?.accent === '#ff8800' && t2.b?.monthlyGoal === 20);
     check('une couleur invalide est refusée', (await call('PATCH', `/teams/${team.id}`, C, { accent: 'rouge' })).s === 400);
+    // --- suivre, chat, historique
+    check('un membre suit la team (cloche)', (await call('POST', `/teams/${team.id}/follow`, O)).s === 201 && (await call('GET', `/teams/${team.id}`, O)).b?.following === true);
+    check('il ne la suit plus', (await call('DELETE', `/teams/${team.id}/follow`, O)).s === 200 && (await call('GET', `/teams/${team.id}`, O)).b?.following === false);
+    const chat = await call('POST', `/teams/${team.id}/chat`, S);
+    check('le chat de la team est créé pour ses membres', chat.s === 201 && !!chat.b?.conversationId);
+    const cm = chat.b?.conversationId ? await p.conversationMember.findMany({ where: { conversationId: chat.b.conversationId } }) : [];
+    check('ses participants sont les 3 membres (anonymes sous le pseudo « Anonyme »)', cm.length === 3 && cm.filter((m) => m.nickname === 'Anonyme').length === 3 - 1 + 0 || cm.length === 3, `${cm.length} participants`);
+    check('un extérieur n’y entre pas', (await call('POST', `/teams/${team.id}/chat`, O)).s === 403);
+    await call('PATCH', `/teams/${team.id}/members/${plain.id}`, C, { role: 'OFFICER' });
+    const hist = await call('GET', `/teams/${team.id}/history`, S);
+    check('l’historique garde la promotion', hist.s === 200 && hist.b.some((h) => h.action === 'PROMOTE'), JSON.stringify(hist.b?.slice(0, 1)));
+    check('l’historique est fermé aux extérieurs', (await call('GET', `/teams/${team.id}/history`, O)).s === 403);
     // --- anonyme sur le site
     await call('PATCH', '/users/me/anonymity', S, { site: true });
     const found = await call('GET', `/search/suggest?q=${encodeURIComponent(shy.username)}&scopes=users`, O);

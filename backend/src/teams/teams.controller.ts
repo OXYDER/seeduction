@@ -65,6 +65,18 @@ export class TeamsController {
   @Delete(':id/posts/:postId')
   deletePost(@Param('id') id: string, @Param('postId') postId: string, @Request() req: any) { return this.teams.deletePost(id, postId, viewerOf(req)); }
 
+  @Post(':id/follow')
+  follow(@Param('id') id: string, @Request() req: any) { return this.teams.setFollow(id, viewerOf(req), true); }
+
+  @Delete(':id/follow')
+  unfollow(@Param('id') id: string, @Request() req: any) { return this.teams.setFollow(id, viewerOf(req), false); }
+
+  @Get(':id/history')
+  history(@Param('id') id: string, @Request() req: any) { return this.teams.history(id, viewerOf(req)); }
+
+  @Post(':id/chat')
+  chat(@Param('id') id: string, @Request() req: any) { return this.teams.chat(id, viewerOf(req)); }
+
   @Get(':id/dashboard')
   dashboard(@Param('id') id: string, @Request() req: any) { return this.teams.dashboard(id, viewerOf(req)); }
 

@@ -8,7 +8,7 @@ import Avatar from '../components/Avatar';
 import UserLink from '../components/UserLink';
 import { useCrumbTitle } from '../store/crumbs';
 import Loading from '../components/Loading';
-import { TeamDashboard, TeamPosts } from '../components/TeamExtras';
+import { TeamDashboard, TeamHistory, TeamPosts } from '../components/TeamExtras';
 
 const ROLE = { LEADER: '👑 Chef', OFFICER: '⭐ Officier', MEMBER: 'Membre' } as Record<string, string>;
 
@@ -64,6 +64,8 @@ export default function TeamDetail() {
           {team.requirements && <div style={{ marginTop: 10 }}><strong>Ce que la team attend :</strong><p style={{ whiteSpace: 'pre-wrap', margin: '4px 0 0' }}>{team.requirements}</p></div>}
         </div>
         <div className="team-actions">
+          <button type="button" className="secondary" title={team.following ? 'Ne plus être averti des releases de cette team' : 'Être averti (cloche) des nouvelles releases de cette team'} onClick={() => run(() => (team.following ? api.delete(`/teams/${id}/follow`) : api.post(`/teams/${id}/follow`)), team.following ? '✓ Tu ne suis plus cette team' : '✓ Tu suis cette team : tu seras averti de ses releases')}>{team.following ? '🔔 Suivie' : '🔕 Suivre'}</button>
+          {team.isMember && <button type="button" className="secondary" title="Conversation privée réservée aux membres de la team" onClick={async () => { try { const { data } = await api.post(`/teams/${id}/chat`); navigate(`/chat?c=${data.conversationId}`); } catch (e: any) { setError(e.response?.data?.message ?? 'Chat indisponible'); } }}>💬 Chat de la team</button>}
           {team.canManage && <button type="button" className="secondary" onClick={() => { setDraft({ name: team.name, tag: team.tag ?? '', description: team.description, requirements: team.requirements ?? '', slogan: team.slogan ?? '', accent: team.accent ?? '', monthlyGoal: team.monthlyGoal ?? 0 }); setEditing((v) => !v); }}>✏️ Modifier</button>}
           {team.myRole && team.myRole !== 'LEADER' && <button type="button" className="danger" onClick={() => window.confirm('Quitter cette team ?') && run(() => api.post(`/teams/${id}/leave`), 'Tu as quitté la team')}>Quitter</button>}
           {team.canDelete && <button type="button" className="danger" onClick={() => window.confirm(`Supprimer la team ${team.name} ?`) && api.delete(`/teams/${id}`).then(() => navigate('/teams'))}>Supprimer</button>}
@@ -107,6 +109,7 @@ export default function TeamDetail() {
 
       <TeamPosts teamId={team.id} isMember={!!team.isMember} />
       {team.isMember && <TeamDashboard teamId={team.id} />}
+      {team.isMember && <TeamHistory teamId={team.id} />}
 
       {/* Candidature */}
       {!team.myRole && (

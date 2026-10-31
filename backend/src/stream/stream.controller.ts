@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Headers, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { assertPerm } from '../common/utils/account';
 import { Request, Response } from 'express';
 import { PrismaService } from '../common/prisma.service';
@@ -39,8 +39,8 @@ export class StreamController {
 
   /** Consommé une seule fois par le lecteur desktop (pas par le navigateur) : pas d'authentification, le jeton en tient lieu. */
   @Get('session/:token')
-  resolveSession(@Param('token') token: string) {
-    return this.streamService.resolvePlaySession(token);
+  resolveSession(@Param('token') token: string, @Headers('user-agent') ua?: string) {
+    return this.streamService.resolvePlaySession(token, ua);
   }
 
   /**
@@ -48,8 +48,8 @@ export class StreamController {
    * transporte aussi la position de lecture courante (voir StreamService.pingWatching).
    */
   @Post('watching')
-  watching(@Body() body: { passkey: string; torrentId: string; positionSeconds?: number; durationSeconds?: number; fileIndex?: number }) {
-    return this.streamService.pingWatching(body?.passkey, body?.torrentId, body?.positionSeconds, body?.durationSeconds, body?.fileIndex);
+  watching(@Body() body: { passkey: string; torrentId: string; positionSeconds?: number; durationSeconds?: number; fileIndex?: number }, @Headers('user-agent') ua?: string) {
+    return this.streamService.pingWatching(body?.passkey, body?.torrentId, body?.positionSeconds, body?.durationSeconds, body?.fileIndex, ua);
   }
 
   /** Dernière position connue pour ce fichier, identifiée par la passkey (lecteur Android) : la reprise suit le membre d'un appareil à l'autre. */

@@ -1514,6 +1514,7 @@ model Team {
   slogan       String?  @db.VarChar(120)
   accent       String?  @db.VarChar(9) // couleur de la team (#rrggbb)
   monthlyGoal  Int      @default(0) // objectif de releases par mois (0 = aucun)
+  chatConversationId String? // conversation privée de la team (Messenger), créée à la demande
   leaderId     String? // vide = team sans propriétaire (détectée automatiquement, en attente d'un vrai membre)
   auto         Boolean      @default(false) // ajoutée par le système d'après le nom des releases partagées
   releaseCount Int          @default(0) // releases partagées sous son nom
@@ -1521,8 +1522,37 @@ model Team {
   createdAt    DateTime     @default(now())
   members      TeamMember[]
   posts        TeamPost[]
+  follows      TeamFollow[]
 }
 
+
+/// Un membre qui suit une team : il est prévenu de ses nouvelles releases approuvées (cloche).
+model TeamFollow {
+  id             String   @id @default(uuid())
+  team           Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId         String
+  userId         String
+  /// Les releases approuvées après cette date n'ont pas encore été annoncées au membre.
+  lastNotifiedAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+/// Historique des changements de rôle et des arrivées / départs d'une team.
+model TeamRoleLog {
+  id        String   @id @default(uuid())
+  teamId    String
+  actorId   String?
+  targetId  String
+  action    String   @db.VarChar(12) // JOIN | LEAVE | REMOVE | PROMOTE | DEMOTE | LEADER
+  fromRole  String?  @db.VarChar(8)
+  toRole    String?  @db.VarChar(8)
+  createdAt DateTime @default(now())
+
+  @@index([teamId, createdAt])
+}
 
 /// Annonces et nouvelles d'une team, publiées par son chef ou ses officiers.
 model TeamPost {
@@ -2709,4 +2739,18 @@ model LiveSlot {
 
   @@index([streamId])
   @@index([startsAt])
+}
+
+/// Qui utilise les lecteurs Seeduction (bureau, Android) : une ligne par membre et par système, mise à jour à chaque lecture.
+model PlayerUse {
+  id       String   @id @default(uuid())
+  userId   String
+  platform String   @db.VarChar(10) // WINDOWS | MAC | LINUX | DESKTOP | ANDROID
+  version  String?  @db.VarChar(20)
+  uses     Int      @default(1)
+  firstAt  DateTime @default(now())
+  lastAt   DateTime @default(now())
+
+  @@unique([userId, platform])
+  @@index([lastAt])
 }
