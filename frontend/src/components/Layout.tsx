@@ -102,34 +102,38 @@ export const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
   'imprimante-3d': { icon: '🧊', color: '#fb7185' },
 };
 
-type NavGroupId = 'pin' | 'catalogue' | 'communaute' | 'jeux' | 'compte' | 'aide' | 'equipe';
+type NavGroupId = 'accueil' | 'catalogue' | 'bibliotheque' | 'communaute' | 'jeux' | 'perso' | 'aide' | 'equipe';
 interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; group: NavGroupId; staffOnly?: boolean; adminOnly?: boolean; /** Visible seulement pendant une diffusion en direct. */ liveOnly?: boolean; /** Seulement dans le menu latéral groupé (pas dans la barre du haut du thème classique). */ sideOnly?: boolean }
 
-/** Les groupes du menu latéral : « Toujours là » reste visible, les autres se replient (le groupe de la page courante s'ouvre tout seul). */
-const NAV_GROUPS: { id: Exclude<NavGroupId, 'pin'>; icon: string; label: string; color: string }[] = [
+/** Les sections du menu latéral : chacune se replie d'un clic (celle de la page courante s'ouvre tout seul ; les quatre premières sont ouvertes au départ). */
+const NAV_GROUPS: { id: NavGroupId; icon: string; label: string; color: string }[] = [
+  { id: 'accueil', icon: '🏠', label: 'Accueil', color: '#f59e0b' },
   { id: 'catalogue', icon: '🎬', label: 'Catalogue', color: '#38bdf8' },
+  { id: 'bibliotheque', icon: '📚', label: 'Ma bibliothèque', color: '#34d399' },
   { id: 'communaute', icon: '👥', label: 'Communauté', color: '#f472b6' },
   { id: 'jeux', icon: '🎲', label: 'Jeux', color: '#a78bfa' },
-  { id: 'compte', icon: '👤', label: 'Mon compte', color: '#34d399' },
+  { id: 'perso', icon: '👤', label: 'Personnel', color: '#fb923c' },
   { id: 'aide', icon: '❓', label: 'Aide', color: '#2dd4bf' },
   { id: 'equipe', icon: '🛡️', label: 'Équipe', color: '#f87171' },
 ];
+const DEFAULT_OPEN_GROUPS = ['accueil', 'catalogue', 'bibliotheque', 'communaute'];
 
 const starts = (prefix: string) => (p: string) => p === prefix || p.startsWith(`${prefix}/`);
 
 /** Le lien de la section en cours est surligné (les pages de détail comptent dans leur section : un torrent → Parcourir). */
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', icon: '🏠', cls: 'c-home', label: 'Accueil', match: (p) => p === '/', group: 'pin' },
-  { to: '/browse', icon: '🔍', cls: 'c-search', label: 'Parcourir', match: (p) => starts('/browse')(p) || starts('/torrents')(p) || starts('/entities')(p), group: 'pin' },
-  { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat'), group: 'pin' },
-  { to: '/activity', icon: '📈', cls: 'c-search', label: 'Mes torrents', match: starts('/activity'), group: 'pin', sideOnly: true },
-  { to: '/upload', icon: '⬆️', cls: 'c-upload', label: 'Envoyer', match: starts('/upload'), group: 'pin' },
-  { to: '/news', icon: '📰', cls: 'c-rules', label: 'Nouvelles', match: starts('/news'), group: 'catalogue' },
-  { to: '/requests', icon: '💬', cls: 'c-chat', label: 'Demandes', match: starts('/requests'), group: 'catalogue' },
-  { to: '/favorites', icon: '⭐', cls: 'c-collections', label: 'Favoris', match: starts('/favorites'), group: 'catalogue' },
-  { to: '/collections', icon: '📚', cls: 'c-collections', label: 'Collections', match: starts('/collections'), group: 'catalogue' },
+  { to: '/', icon: '🏠', cls: 'c-home', label: 'Tableau de bord', match: (p) => p === '/', group: 'accueil' },
+  { to: '/news', icon: '📰', cls: 'c-rules', label: 'Nouvelles', match: starts('/news'), group: 'accueil' },
+  { to: '/browse', icon: '🔍', cls: 'c-search', label: 'Parcourir', match: (p) => (starts('/browse')(p) && !window.location.search.includes('categoryId=')) || starts('/torrents')(p) || starts('/entities')(p), group: 'catalogue' },
   { to: '/suggestions', icon: '💡', cls: 'c-forum', label: 'Suggestions', match: starts('/suggestions'), group: 'catalogue' },
   { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead'), group: 'catalogue' },
+  { to: '/activity', icon: '📈', cls: 'c-search', label: 'Mes torrents', match: starts('/activity'), group: 'bibliotheque', sideOnly: true },
+  { to: '/seeds', icon: '🌱', cls: 'c-search', label: 'Mes seeds', match: (p) => starts('/seeds')(p) || starts('/hit-and-run')(p), group: 'bibliotheque', sideOnly: true },
+  { to: '/favorites', icon: '⭐', cls: 'c-collections', label: 'Favoris', match: starts('/favorites'), group: 'bibliotheque' },
+  { to: '/collections', icon: '📚', cls: 'c-collections', label: 'Collections', match: starts('/collections'), group: 'bibliotheque' },
+  { to: '/requests', icon: '💬', cls: 'c-chat', label: 'Demandes', match: starts('/requests'), group: 'bibliotheque' },
+  { to: '/upload', icon: '⬆️', cls: 'c-upload', label: 'Envoyer', match: starts('/upload'), group: 'bibliotheque' },
+  { to: '/chat', icon: '🗨️', cls: 'c-livechat', label: 'Chat', match: starts('/chat'), group: 'communaute' },
   { to: '/forum', icon: '👥', cls: 'c-forum', label: 'Forums', match: starts('/forum'), group: 'communaute' },
   { to: '/friends', icon: '👫', cls: 'c-collections', label: 'Amis', match: starts('/friends'), group: 'communaute' },
   { to: '/teams', icon: '🏴', cls: 'c-forum', label: 'Teams', match: starts('/teams'), group: 'communaute' },
@@ -140,10 +144,9 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/jeux/duels', icon: '⚔️', cls: 'c-chat', label: 'Duels', match: starts('/jeux/duels'), group: 'jeux', sideOnly: true },
   { to: '/jeux/defis', icon: '🏆', cls: 'c-chat', label: 'Défis', match: starts('/jeux/defis'), group: 'jeux', sideOnly: true },
   { to: '/jeux/quiz', icon: '❓', cls: 'c-chat', label: 'Quiz', match: starts('/jeux/quiz'), group: 'jeux', sideOnly: true },
-  { to: '/seeds', icon: '🌱', cls: 'c-search', label: 'Mes seeds', match: (p) => starts('/seeds')(p) || starts('/hit-and-run')(p), group: 'compte', sideOnly: true },
-  { to: '/referrals', icon: '🎟️', cls: 'c-rules', label: 'Inviter un ami', match: starts('/referrals'), group: 'compte', sideOnly: true },
-  { to: '/bonus', icon: '✦', cls: 'c-rules', label: 'Points bonus', match: starts('/bonus'), group: 'compte', sideOnly: true },
-  { to: '/profile', icon: '🪪', cls: 'c-home', label: 'Mon profil', match: starts('/profile'), group: 'compte', sideOnly: true },
+  { to: '/profile', icon: '🪪', cls: 'c-home', label: 'Mon profil', match: starts('/profile'), group: 'perso', sideOnly: true },
+  { to: '/bonus', icon: '✦', cls: 'c-rules', label: 'Points bonus', match: starts('/bonus'), group: 'perso', sideOnly: true },
+  { to: '/referrals', icon: '🎟️', cls: 'c-rules', label: 'Inviter un ami', match: starts('/referrals'), group: 'perso', sideOnly: true },
   { to: '/wiki', icon: '📖', cls: 'c-rules', label: 'Wiki', match: (p) => starts('/wiki')(p) || starts('/rules')(p), group: 'aide' },
   { to: '/support', icon: '🛟', cls: 'c-livechat', label: 'Support', match: starts('/support'), group: 'aide' },
   { to: '/soutenir', icon: '❤️', cls: 'c-rules', label: 'Soutenir', match: starts('/soutenir'), group: 'aide' },
@@ -449,11 +452,11 @@ function LayoutInner() {
   };
 
   // Menu en groupes : ceux que le membre a ouverts sont mémorisés ; le groupe de la page courante s'ouvre tout seul.
-  const [openGroups, setOpenGroups] = useState<string[]>(() => { try { const v = JSON.parse(localStorage.getItem('side-groups') ?? '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; } catch { return []; } });
-  const saveGroups = (g: string[]) => { setOpenGroups(g); try { localStorage.setItem('side-groups', JSON.stringify(g)); } catch { /* préférence facultative */ } };
+  const [openGroups, setOpenGroups] = useState<string[]>(() => { try { const raw = localStorage.getItem('side-groups-v2'); if (raw === null) return DEFAULT_OPEN_GROUPS; const v = JSON.parse(raw); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : DEFAULT_OPEN_GROUPS; } catch { return []; } });
+  const saveGroups = (g: string[]) => { setOpenGroups(g); try { localStorage.setItem('side-groups-v2', JSON.stringify(g)); } catch { /* préférence facultative */ } };
   const toggleGroup = (id: string) => saveGroups(openGroups.includes(id) ? openGroups.filter((x) => x !== id) : [...openGroups, id]);
   useEffect(() => {
-    const here = NAV_ITEMS.find((i) => i.group !== 'pin' && i.match(location.pathname));
+    const here = NAV_ITEMS.find((i) => i.match(location.pathname));
     if (here && !openGroups.includes(here.group)) setOpenGroups((g) => (g.includes(here.group) ? g : [...g, here.group]));
   }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
   // Recherche rapide : Ctrl+K (ou ⌘K) depuis n'importe quelle page.
@@ -588,23 +591,23 @@ function LayoutInner() {
               };
               // Menu réduit (icônes seules) : la liste à plat, comme avant.
               if (collapsed) return visibleNav.map(link);
+              // Le catalogue par type : une entrée par catégorie principale (Films, Séries...), sous « Parcourir ».
+              const catItems: NavItem[] = categories.map((c) => ({ to: `/browse?categoryId=${c.id}`, icon: CATEGORY_STYLE[c.slug]?.icon ?? '📁', cls: 'c-search', label: c.name, group: 'catalogue' as const, sideOnly: true, match: (p: string) => starts('/browse')(p) && window.location.search.includes(`categoryId=${c.id}`) }));
               return (
                 <>
-                  <div className="side-label">Toujours là</div>
-                  {visibleNav.filter((i) => i.group === 'pin').map(link)}
-                  <div className="side-label">Explorer</div>
                   {NAV_GROUPS.map((g) => {
-                    const items = visibleNav.filter((i) => i.group === g.id);
+                    let items = visibleNav.filter((i) => i.group === g.id);
+                    if (g.id === 'catalogue') items = [...items.slice(0, 1), ...catItems, ...items.slice(1)];
                     if (items.length === 0) return null;
                     const open = openGroups.includes(g.id);
                     const hasActive = items.some((i) => i.match(location.pathname));
-                    const todo = open ? 0 : items.reduce((n, i) => n + countOf(i), 0);
+                    const todo = open ? 0 : items.reduce((n, i) => n + countOf(i) + (i.to === '/chat' ? privUnread + pubUnread : 0), 0);
                     return (
                       <div key={g.id} className={`side-group${open ? ' open' : ''}${hasActive ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }}>
                         <button type="button" className="side-group-head" onClick={() => toggleGroup(g.id)} aria-expanded={open}>
                           <span className="side-icon">{g.icon}</span>
                           <span>{g.label}</span>
-                          {todo > 0 && <span className="side-badge red" title="À voir dans ce groupe">{todo > 99 ? '99+' : todo}</span>}
+                          {todo > 0 && <span className="side-badge red" title="À voir dans cette section">{todo > 99 ? '99+' : todo}</span>}
                           <span className="side-chev" aria-hidden="true">›</span>
                         </button>
                         {open && <div className="side-group-items">{items.map(link)}</div>}
