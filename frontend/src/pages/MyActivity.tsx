@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
@@ -57,6 +57,12 @@ export default function MyActivity() {
   const [page, setPage] = useState(1);
   const [colsOpen, setColsOpen] = useState(false);
   const f = prefs.filters;
+  // Les liens du menu (?statut=leeching, completed, own, seeding, todo, hnr) ouvrent la liste déjà filtrée.
+  const [urlParams] = useSearchParams();
+  useEffect(() => {
+    const st = urlParams.get('statut') as StatusFilter | null;
+    if (st && STATUSES.some(([k]) => k === st)) { setPrefs((p) => ({ ...p, filters: { ...p.filters, status: st } })); setPage(1); }
+  }, [urlParams]);
 
   useEffect(() => {
     const load = () => api.get('/bonus/my-torrents').then((r) => setData(r.data)).catch(() => setError('Impossible de charger tes torrents'));
