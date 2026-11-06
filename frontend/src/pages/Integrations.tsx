@@ -258,7 +258,7 @@ export default function Integrations() {
               <tr><td><code>name</code></td><td>oui</td><td>le nom de la release</td></tr>
               <tr><td><code>category</code> ou <code>categoryId</code></td><td>oui</td><td>le nom, le slug ou l'identifiant d'une sous-catégorie. La liste : <code>GET {site}/api/public/categories</code> (portée torrents:read)</td></tr>
               <tr><td><code>nfo</code> ou <code>nfoFile</code></td><td>oui</td><td>le NFO ou le MediaInfo de la release (texte, ou fichier .nfo) : 20 caractères au moins</td></tr>
-              <tr><td><code>description</code>, <code>anonymous</code></td><td>non</td><td>la description (BBCode) ; <code>true</code> pour cacher ton nom comme envoyeur</td></tr>
+              <tr><td><code>description</code>, <code>anonymous</code></td><td>non</td><td>la description, en BBCode ou en HTML (<code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;p&gt;</code>, <code>&lt;br&gt;</code>, <code>&lt;a&gt;</code>, <code>&lt;img&gt;</code>, listes, titres, citations, couleurs : le HTML est détecté et converti en BBCode ; <code>descriptionFormat=html</code> ou <code>bbcode</code> force le choix) ; <code>true</code> pour cacher ton nom comme envoyeur</td></tr>
               <tr><td><code>year</code>, <code>language</code>, <code>resolution</code>, <code>source</code>, <code>codec</code>, <code>audio</code>, <code>season</code>, <code>episode</code>, <code>genres</code>, <code>tags</code>, <code>coverImage</code>, <code>metaKind</code> + <code>metaId</code></td><td>non</td><td>les mêmes champs que le formulaire ; ceux que tu n'envoies pas sont détectés à partir du nom et du NFO</td></tr>
             </tbody>
           </table>

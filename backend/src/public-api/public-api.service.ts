@@ -4,6 +4,7 @@ import { AdultService } from '../adult/adult.service';
 import { TorrentsService } from '../torrents/torrents.service';
 import { TrustedUploadersService } from '../admin/trusted-uploaders.service';
 import { NFO_REQUIRED_MESSAGE, hasEnoughNfo, uploadParamsFromBody } from '../torrents/upload-params';
+import { htmlToBbcode, looksLikeHtml } from '../common/utils/html-to-bbcode';
 
 /** Un .nfo est en UTF-8 ou, pour les anciens, en CP437 / latin1. */
 function decodeNfo(buf: Buffer): string {
@@ -73,7 +74,10 @@ export class PublicApiService {
     const nfo = body.nfo?.trim() ? body.nfo : nfoFile ? decodeNfo(nfoFile.buffer) : '';
     if (!hasEnoughNfo(nfo)) throw new BadRequestException(NFO_REQUIRED_MESSAGE.replace('ajoute le fichier .nfo ou colle le texte du MediaInfo', 'envoie-le dans le champ `nfo` (texte) ou `nfoFile` (fichier)'));
     const categoryId = await this.resolveCategory(body);
-    const created = await this.torrents.upload(uploadParamsFromBody(userId, file.buffer, { ...body, nfo }, categoryId));
+    // La description est stockée en BBCode ; un envoi en HTML (détecté, ou forcé par `descriptionFormat=html`) est converti.
+    const format = (body.descriptionFormat ?? '').trim().toLowerCase();
+    const description = body.description && format !== 'bbcode' && (format === 'html' || looksLikeHtml(body.description)) ? htmlToBbcode(body.description) : body.description;
+    const created = await this.torrents.upload(uploadParamsFromBody(userId, file.buffer, { ...body, description, nfo }, categoryId));
     const approved = await this.trusted.autoApproveIfTrusted(userId, created.id);
     return {
       id: created.id, name: created.name, infoHash: (created as any).infoHash ?? null, status: approved ? 'APPROVED' : created.status,
