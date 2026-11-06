@@ -30,29 +30,58 @@ function useNow(skew: number) {
 function Player({ url, muted, overlay }: { url: string; muted: boolean; overlay?: ReactNode }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [problem, setProblem] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const [attempt, setAttempt] = useState(0); // « Réessayer » : relance la connexion sans recharger la page
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
     setProblem('');
+    setConnecting(false);
     // Les navigateurs bloquent la lecture automatique avec le son : si « démarrer sans le son » est désactivé et que le navigateur refuse,
     // on se rabat sur une lecture muette plutôt que de laisser l'image figée.
     v.muted = muted;
     const tryPlay = () => { v.play().catch(() => { v.muted = true; void v.play().catch(() => undefined); }); };
     v.addEventListener('loadedmetadata', tryPlay, { once: true });
-    if (v.canPlayType('application/vnd.apple.mpegurl')) { v.src = url; return () => { v.removeAttribute('src'); v.load(); }; }
+    // Le relais met quelques secondes à se connecter au premier spectateur : tant que l'image n'est pas prête, la liste de lecture n'existe pas encore
+    // (erreur 404 ou délai dépassé). On réessaie donc nous-mêmes toutes les 1 à 5 s, une minute au plus, au lieu d'abandonner (il fallait recharger la page).
+    let tries = 0;
+    let timer: number | undefined;
+    const GIVE_UP = 30;
+    const giveUp = () => { setConnecting(false); setProblem("Le direct ne répond pas pour l'instant. Clique sur « Réessayer » ou recharge la page."); };
+    if (v.canPlayType('application/vnd.apple.mpegurl')) {
+      const start = () => { v.src = url; v.load(); };
+      const onError = () => {
+        if (++tries > GIVE_UP) { giveUp(); return; }
+        setConnecting(true);
+        timer = window.setTimeout(start, Math.min(1000 * tries, 5000));
+      };
+      const ready = () => { tries = 0; setConnecting(false); };
+      v.addEventListener('error', onError);
+      v.addEventListener('playing', ready);
+      start();
+      return () => { window.clearTimeout(timer); v.removeEventListener('error', onError); v.removeEventListener('playing', ready); v.removeAttribute('src'); v.load(); };
+    }
     if (!Hls.isSupported()) { setProblem('Ton navigateur ne peut pas lire ce direct.'); return; }
-    // Le relais met quelques secondes à se connecter au premier spectateur : on patiente plus longtemps que d'habitude.
     const hls = new Hls({ liveSyncDurationCount: 3, manifestLoadingTimeOut: 30_000, manifestLoadingMaxRetry: 6, manifestLoadingRetryDelay: 2_000 });
+    const ready = () => { tries = 0; setConnecting(false); setProblem(''); };
+    hls.on(Hls.Events.MANIFEST_PARSED, ready);
+    hls.on(Hls.Events.FRAG_LOADED, ready);
     hls.on(Hls.Events.ERROR, (_e, d) => {
       if (!d.fatal) return;
-      if (d.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
-      else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-      else setProblem('La lecture a été interrompue. Recharge la page.');
+      if (d.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        if (++tries > GIVE_UP) { giveUp(); return; }
+        setConnecting(true);
+        const manifest = d.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || d.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT || d.details === Hls.ErrorDetails.MANIFEST_PARSING_ERROR;
+        window.clearTimeout(timer);
+        // Une liste de lecture qui a échoué ne se recharge pas avec startLoad() : il faut la redemander.
+        timer = window.setTimeout(() => { if (manifest) hls.loadSource(url); else hls.startLoad(); }, Math.min(1000 * tries, 5000));
+      } else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+      else setProblem('La lecture a été interrompue. Clique sur « Réessayer » ou recharge la page.');
     });
     hls.loadSource(url);
     hls.attachMedia(v);
-    return () => hls.destroy();
-  }, [url, muted]);
+    return () => { window.clearTimeout(timer); hls.destroy(); };
+  }, [url, muted, attempt]);
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       {/* Le plein écran est celui de la scène (lecteur + chat + réactions) : on retire celui du lecteur. */}
@@ -60,7 +89,12 @@ function Player({ url, muted, overlay }: { url: string; muted: boolean; overlay?
         <video ref={ref} controls controlsList="nofullscreen" autoPlay muted={muted} playsInline style={{ width: '100%', maxHeight: '70vh', background: '#000', borderRadius: 10, display: 'block' }} />
         {overlay}
       </div>
-      {problem && <p style={{ color: 'var(--danger)', margin: 0 }}>{problem}</p>}
+      {connecting && !problem && <p className="muted" style={{ margin: 0, fontSize: 13 }}>⏳ Connexion au direct… la première image peut mettre quelques secondes, on réessaie automatiquement.</p>}
+      {problem && (
+        <p style={{ color: 'var(--danger)', margin: 0 }}>
+          {problem} <button type="button" className="secondary" onClick={() => setAttempt((n) => n + 1)}>↻ Réessayer</button>
+        </p>
+      )}
       <p className="muted live-hint" style={{ margin: 0, fontSize: 12.5 }}>
         {muted ? 'La lecture démarre sans le son : clique sur le haut-parleur de la vidéo pour l\'activer. ' : ''}Au tout début, la connexion au direct peut prendre quelques secondes.
       </p>
