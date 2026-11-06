@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { io, type Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/auth';
 import Nick from './Nick';
+import Avatar from './Avatar';
 
 interface RoomConfig { chat: boolean; reactions: boolean; emojis: string[]; slowSeconds: number; maxLen: number; reactionsPerMinute: number }
 interface ChatEntry { id: string; userId: string; username: string; role: string; text: string; at: number }
+interface Who { total: number; hidden: number; more: number; users: { id: string; username: string; avatarUrl?: string | null; role: string; hidden?: boolean }[] }
 interface Floating { id: number; emoji: string; left: number; duration: number }
 
 const STORE_KEY = 'live-interactions';
@@ -68,9 +70,44 @@ function useLiveRoom() {
     on, toggle, viewers, cfg, staff, messages, floats, error,
     send: (text: string) => sock.current?.emit('live:chat', { text }),
     react: (emoji: string) => sock.current?.emit('live:react', { emoji }),
+    who: (cb: (w: Who) => void) => { sock.current?.emit('live:who', (w: Who) => { if (w) cb(w); }); },
     remove: (id: string) => sock.current?.emit('live:delete', { id }),
     mute: (userId: string) => sock.current?.emit('live:mute', { userId, minutes: 10 }),
   };
+}
+
+/** Le compteur de spectateurs : au survol (ou au toucher), la liste de ceux qui regardent. Les membres anonymes ou invisibles ne sont pas nommés. */
+function ViewersBadge({ room }: { room: ReturnType<typeof useLiveRoom> }) {
+  const [open, setOpen] = useState(false);
+  const [who, setWho] = useState<Who | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const load = () => room.who(setWho);
+    load();
+    const t = window.setInterval(load, 5000);
+    return () => window.clearInterval(t);
+  }, [open, room.who]);
+  return (
+    <div className="live-badge" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}>
+      <button type="button" className="live-badge-btn" aria-label="Voir qui regarde" aria-expanded={open} onClick={() => setOpen((o) => !o)}>👁 {room.viewers}</button>
+      {open && (
+        <div className="live-who" role="list" aria-label="Membres qui regardent">
+          {!who && <div className="live-who-empty">Chargement…</div>}
+          {who && who.users.length === 0 && who.hidden === 0 && <div className="live-who-empty">Personne pour l'instant.</div>}
+          {who?.users.map((u) => (
+            <div key={u.id} className="live-who-row" role="listitem">
+              <Avatar user={u} size={22} />
+              <span className="live-who-name">{u.username}</span>
+              {['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(u.role) && <span className="live-who-tag">équipe</span>}
+              {u.hidden && <span className="live-who-tag" title="Anonyme ou invisible : seule l'équipe le voit">🕶</span>}
+            </div>
+          ))}
+          {who && who.more > 0 && <div className="live-who-empty">… et {who.more} autre{who.more > 1 ? 's' : ''}</div>}
+          {who && who.hidden > 0 && <div className="live-who-empty">+ {who.hidden} membre{who.hidden > 1 ? 's' : ''} anonyme{who.hidden > 1 ? 's' : ''} ou discret{who.hidden > 1 ? 's' : ''}</div>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Chat({ room }: { room: ReturnType<typeof useLiveRoom> }) {
@@ -134,7 +171,7 @@ export default function LiveStage({ children }: { children: (overlay: ReactNode)
 
   const overlay = (
     <>
-      {room.on && cfg && <div className="live-badge" title="Membres qui regardent en ce moment">👁 {room.viewers}</div>}
+      {room.on && cfg && <ViewersBadge room={room} />}
       <div className="live-tools">
         <button type="button" onClick={room.toggle} className={room.on ? '' : 'off'} title={room.on ? 'Couper le chat, les réactions et le compteur pour ne pas être dérangé' : 'Réactiver le chat, les réactions et le compteur'}>
           {room.on ? '💬 Chat et réactions : activés' : '🔕 Chat et réactions : coupés'}

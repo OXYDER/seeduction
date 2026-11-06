@@ -111,6 +111,31 @@ function viewer(token) {
     check('…et refusés', late.got.errors.some((e) => /désactivé/.test(e)));
     await call('PUT', '/admin/live/interactions', TA, { chat: true, reactions: true });
 
+    // Qui regarde ? (survol de l'œil) : les anonymes et les invisibles ne sont pas nommés, l'équipe voit tout, chacun se voit
+    const anon = await mk('x'); const dark = await mk('d');
+    await p.user.update({ where: { id: anon.id }, data: { anonymousSelf: true } });
+    await p.user.update({ where: { id: dark.id }, data: { presenceStatus: 'INVISIBLE' } });
+    const X = viewer(tok(anon)), D = viewer(tok(dark)); sockets.push(X.s, D.s);
+    await X.join(); await D.join();
+    await sleep(5200); // la liste est gardée 5 s côté serveur
+    const who = (v) => new Promise((r) => v.s.emit('live:who', r));
+    const names = (w) => w.users.map((u) => u.username);
+    const wa = await who(A);
+    check('la liste nomme les membres visibles', names(wa).includes(a.username) && names(wa).includes(b.username) && names(wa).includes(mod.username), JSON.stringify(names(wa)));
+    check('…sans nommer l\'anonyme ni l\'invisible, juste comptés', !names(wa).includes(anon.username) && !names(wa).includes(dark.username) && wa.hidden === 2 && wa.total === wa.users.length + 2, `hidden=${wa.hidden} total=${wa.total}`);
+    check('…et sans rien laisser fuiter d\'eux dans la réponse', !JSON.stringify(wa).includes(anon.id) && !JSON.stringify(wa).includes(dark.id));
+    const wx = await who(X);
+    check('un anonyme se voit lui-même dans la liste', names(wx).includes(anon.username) && wx.hidden === 1);
+    const wm = await who(M);
+    check('l\'équipe voit tout le monde, les discrets marqués', names(wm).includes(anon.username) && names(wm).includes(dark.username) && wm.hidden === 0 && wm.users.filter((u) => u.hidden).length === 2);
+    check('l\'équipe passe en premier dans la liste', wa.users[0].username === mod.username);
+    check('chaque entrée a un identifiant, un pseudo et un rôle', wa.users.every((u) => u.id && u.username && u.role));
+    const out = io(ORIGIN + '/live', { auth: { token: tok(a) }, transports: ['websocket'], reconnection: false }); sockets.push(out);
+    await sleep(500); const wo = await new Promise((r) => out.emit('live:who', r));
+    check('sans avoir rejoint la salle : liste vide', wo && wo.users.length === 0 && wo.total === 0);
+    X.s.emit('live:leave'); D.s.emit('live:leave');
+    await p.user.deleteMany({ where: { id: { in: [anon.id, dark.id] } } }).catch(() => undefined);
+
     // Plus de diffusion : plus de chat
     await call('DELETE', `/admin/live/slots/${slot.id}`, TA);
     await sleep(5500);

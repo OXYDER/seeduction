@@ -28,6 +28,7 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   private room = new LiveRoomState();
   private timers: NodeJS.Timeout[] = [];
   private lastViewers = -1;
+  private whoCache: { at: number; rows: { id: string; username: string; avatarUrl: string | null; role: string; hidden: boolean }[] } | null = null;
   private wasLive = false;
   private cache: { at: number; live: boolean; cfg: InteractionConfig | null } = { at: 0, live: false, cfg: null };
 
@@ -99,6 +100,39 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       config: { chat: cfg.chat, reactions: cfg.reactions, emojis: cfg.emojis, slowSeconds: cfg.slowSeconds, maxLen: cfg.maxLen, reactionsPerMinute: cfg.reactionsPerMinute },
       staff: STAFF.includes(client.data.role),
     });
+  }
+
+  /**
+   * Qui regarde ? (survol de l'œil du compteur). Les membres anonymes (choix ou équipe), ceux d'un profil famille d'un compte anonyme et ceux qui apparaissent « invisibles » ne sont jamais nommés :
+   * ils comptent dans `hidden`. L'équipe voit tout le monde (avec `hidden: true` pour ceux-là), et chacun se voit toujours lui-même. Résultat gardé 5 s : le survol ne sollicite pas la base à chaque fois.
+   */
+  @SubscribeMessage('live:who')
+  async onWho(@ConnectedSocket() client: LiveSocket) {
+    const empty = { total: 0, hidden: 0, users: [] as unknown[], more: 0 };
+    if (!client.data?.userId || !client.data.joined) return empty;
+    if (!this.whoCache || Date.now() - this.whoCache.at > 5000) {
+      const ids = this.room.ids().slice(0, 500);
+      const rows = ids.length ? await this.prisma.user.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, username: true, avatarUrl: true, role: true, anonymous: true, anonymousSelf: true, presenceStatus: true, parent: { select: { anonymous: true, anonymousSelf: true } } },
+      }) : [];
+      this.whoCache = {
+        at: Date.now(),
+        rows: rows.map((u) => ({ id: u.id, username: u.username, avatarUrl: u.avatarUrl, role: u.role, hidden: !!(u.anonymous || u.anonymousSelf || u.presenceStatus === 'INVISIBLE' || u.parent?.anonymous || u.parent?.anonymousSelf) })),
+      };
+    }
+    const staff = STAFF.includes(client.data.role);
+    const rows = this.whoCache.rows;
+    const shown = rows.filter((u) => staff || !u.hidden || u.id === client.data.userId);
+    const order = (r: string) => (STAFF.includes(r) ? 0 : 1);
+    shown.sort((a, b) => order(a.role) - order(b.role) || a.username.localeCompare(b.username, 'fr', { sensitivity: 'base' }));
+    const MAX = 100;
+    return {
+      total: this.room.count(),
+      hidden: Math.max(0, this.room.count() - shown.length),
+      users: shown.slice(0, MAX).map((u) => ({ id: u.id, username: u.username, avatarUrl: u.avatarUrl, role: u.role, ...(staff && u.hidden ? { hidden: true } : {}) })),
+      more: Math.max(0, shown.length - MAX),
+    };
   }
 
   @SubscribeMessage('live:leave')

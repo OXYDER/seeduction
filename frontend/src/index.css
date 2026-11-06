@@ -4679,3 +4679,14 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .chat-rail[data-size="sm"] .cr-av .dot-badge { transform: scale(.85); }
 .cr-av > .msgr-conv-avatar { display: block; line-height: 0; }
 .home-greet > .home-compose.open { flex-basis: 100%; }
+
+/* Direct : au survol du compteur, la liste de ceux qui regardent. */
+.live-badge { pointer-events: auto; }
+.live-badge-btn { all: unset; cursor: pointer; display: inline-block; }
+.live-badge-btn:focus-visible { outline: 2px solid var(--gold, #e0b84a); outline-offset: 3px; border-radius: 6px; }
+.live-who { position: absolute; top: 100%; left: 0; margin-top: 6px; min-width: 190px; max-width: min(280px, 80vw); max-height: min(260px, 40vw); overflow-y: auto; padding: 6px; border-radius: 12px; background: rgba(10, 10, 16, 0.92); backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); font-weight: 400; z-index: 5; }
+.live-who-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; font-size: 13px; }
+.live-who-row:hover { background: rgba(255, 255, 255, 0.07); }
+.live-who-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-who-tag { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; background: rgba(224, 184, 74, 0.2); color: var(--gold-bright, #f5d67a); }
+.live-who-empty { padding: 4px 8px; font-size: 12px; opacity: 0.7; }

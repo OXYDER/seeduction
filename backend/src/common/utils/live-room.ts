@@ -68,6 +68,7 @@ export class LiveRoomState {
   join(userId: string, socketId: string): void { (this.viewers.get(userId) ?? this.viewers.set(userId, new Set()).get(userId)!).add(socketId); }
   leave(socketId: string): void { for (const [u, s] of this.viewers) { s.delete(socketId); if (!s.size) this.viewers.delete(u); } }
   count(): number { return this.viewers.size; }
+  ids(): string[] { return [...this.viewers.keys()]; }
 
   // ── Chat ──────────────────────────────────────────────────────────────────
   mute(userId: string, minutes: number, now = Date.now()): void { this.muted.set(userId, now + Math.max(1, Math.min(minutes, 1440)) * 60_000); }
