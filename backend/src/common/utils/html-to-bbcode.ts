@@ -6,7 +6,7 @@ import * as sanitizeHtml from 'sanitize-html';
  * Ce que le BBCode du site ne sait pas faire (tableaux, classes, styles libres) est déplié en simple texte.
  */
 
-const HTML_TAG = /<\/?(?:b|strong|i|em|u|s|strike|del|a|img|br|p|div|span|h[1-6]|ul|ol|li|blockquote|pre|code|hr|center|font|table|tr|td|th)\b[^>]*>/i;
+const HTML_TAG = /<\/?(?:b|strong|i|em|u|s|strike|del|a|img|br|p|div|span|h[1-6]|ul|ol|li|blockquote|pre|code|hr|center|font|table|tr|td|th|details|summary|small|mark)\b[^>]*>/i;
 
 /** Le texte est-il du HTML ? (au moins une balise de mise en forme courante) */
 export const looksLikeHtml = (text: string): boolean => HTML_TAG.test(text);
@@ -32,18 +32,21 @@ const SAFE_URL = /^(https?:\/\/|\/(?!\/))/i;
 
 export function htmlToBbcode(html: string): string {
   const clean = sanitizeHtml(html, {
-    allowedTags: ['b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del', 'a', 'img', 'br', 'p', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'hr', 'center', 'font', 'table', 'tbody', 'thead', 'tr', 'td', 'th'],
+    allowedTags: ['b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del', 'a', 'img', 'br', 'p', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'hr', 'center', 'font', 'table', 'tbody', 'thead', 'tr', 'td', 'th', 'details', 'summary', 'small', 'mark'],
     allowedAttributes: { a: ['href'], img: ['src'], span: ['style'], div: ['style'], p: ['style'], font: ['color', 'size'] },
-    allowedStyles: { '*': { color: [/^#[0-9a-f]{3,8}$/i, /^rgba?\([\d\s,.]+\)$/i, /^[a-z]+$/i], 'text-align': [/^(left|center|right)$/], 'font-weight': [/^(bold|[6-9]00)$/], 'font-style': [/^italic$/], 'text-decoration': [/^(underline|line-through)$/] } },
+    allowedStyles: { '*': { color: [/^#[0-9a-f]{3,8}$/i, /^rgba?\([\d\s,.]+\)$/i, /^[a-z]+$/i], 'text-align': [/^(left|center|right)$/], 'font-weight': [/^(bold|[6-9]00)$/], 'font-style': [/^italic$/], 'font-size': [/^\d+(\.\d+)?px$/], 'text-decoration': [/^(underline|line-through)$/] } },
     allowedSchemes: ['http', 'https'],
     allowedSchemesAppliedToAttributes: ['href', 'src'],
     allowProtocolRelative: false,
   });
 
+  // <details><summary>Titre</summary>… → [spoiler=Titre]… : le titre est repris dans un attribut pour la conversion balise par balise.
+  const withSpoilers = clean.replace(/<details[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>/gi, (_m, t: string) => `<details title="${decode(t.replace(/<[^>]*>/g, '')).replace(/[\[\]"\n]/g, ' ').replace(/\s+/g, ' ').trim().replace(/&/g, '&amp;')}">`);
+
   let out = '';
   const stack: string[] = []; // texte de fermeture, dans l'ordre inverse
   let inPre = 0;
-  for (const m of clean.matchAll(/<(\/?)([a-z0-9]+)((?:\s[^>]*)?)\/?>|([^<]+)/gi)) {
+  for (const m of withSpoilers.matchAll(/<(\/?)([a-z0-9]+)((?:\s[^>]*)?)\/?>|([^<]+)/gi)) {
     if (m[4] !== undefined) {
       out += inPre ? m[4] : m[4].replace(/\s+/g, ' ');
       continue;
@@ -76,6 +79,7 @@ export function htmlToBbcode(html: string): string {
       case 'code': open('', ''); break;
       case 'ul': case 'ol': case 'table': case 'tbody': case 'thead': case 'tr': open('', '\n'); break;
       case 'li': open('• ', '\n'); break;
+      case 'details': open(`\n[spoiler=${decode(attrOf(attrs, 'title') ?? '') || 'Dossier'}]\n`, '\n[/spoiler]\n'); break;
       case 'td': case 'th': open('', ' '); break;
       case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': open('\n[b]', '[/b]\n\n'); break;
       case 'a': {
@@ -105,6 +109,8 @@ export function htmlToBbcode(html: string): string {
         if (color) pairs.push([`[color=${color}]`, '[/color]']);
         if (/bold|[6-9]00/.test(styleOf(attrs, 'font-weight') ?? '')) pairs.push(['[b]', '[/b]']);
         if (styleOf(attrs, 'font-style') === 'italic') pairs.push(['[i]', '[/i]']);
+        const px = /^(\d+(?:\.\d+)?)px$/.exec(styleOf(attrs, 'font-size') ?? '');
+        if (px) pairs.push([`[size=${Math.min(7, Math.max(1, Math.round((Number(px[1]) - 8) / 4)))}]`, '[/size]']);
         const deco = styleOf(attrs, 'text-decoration') ?? '';
         if (deco.includes('underline')) pairs.push(['[u]', '[/u]']);
         if (deco.includes('line-through')) pairs.push(['[s]', '[/s]']);
@@ -121,5 +127,7 @@ export function htmlToBbcode(html: string): string {
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n[ \t]+/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
+    .replace(/(\[spoiler=[^\]]*\])\n+/g, '$1\n')
+    .replace(/\n+(\[\/spoiler\])/g, '\n$1')
     .trim();
 }

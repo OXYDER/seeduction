@@ -38,6 +38,19 @@ describe('htmlToBbcode', () => {
     expect(htmlToBbcode('<table><tr><td>a</td><td>b &amp; c</td></tr></table>')).toBe('a b & c');
   });
 
+  it('convertit un dossier repliable et la taille en pixels', () => {
+    expect(htmlToBbcode('<details><summary>Casting</summary><p>Un &amp; deux</p></details>')).toBe('[spoiler=Casting]\nUn & deux\n[/spoiler]');
+    expect(htmlToBbcode('<span style="font-size:24px">gros</span>')).toBe('[size=4]gros[/size]');
+  });
+
+  it('convertit une présentation complète', () => {
+    const out = htmlToBbcode(`<center><h1>Mon Film</h1><img src="https://exemple.org/affiche.jpg"></center>
+      <p><b>Année :</b> 2026<br><b>Langue :</b> <span style="color:#e0b84a">VFF</span></p>
+      <h3>Synopsis</h3><p>Une histoire <i>incroyable</i>.</p><ul><li>Qualité : 1080p</li><li>Audio : <b>E-AC-3</b></li></ul>
+      <p><a href="https://exemple.org/fiche">Voir la fiche</a></p>`);
+    expect(out).toBe('[center]\n[b]Mon Film[/b]\n\n[img]https://exemple.org/affiche.jpg[/img][/center]\n\n[b]Année :[/b] 2026\n[b]Langue :[/b] [color=#e0b84a]VFF[/color]\n\n[b]Synopsis[/b]\n\nUne histoire [i]incroyable[/i].\n\n• Qualité : 1080p\n• Audio : [b]E-AC-3[/b]\n\n[url=https://exemple.org/fiche]Voir la fiche[/url]');
+  });
+
   it('détecte le HTML', () => {
     expect(looksLikeHtml('<p>bonjour</p>')).toBe(true);
     expect(looksLikeHtml('Texte avec <b>gras</b>')).toBe(true);
