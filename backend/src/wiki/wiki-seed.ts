@@ -323,7 +323,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
           `• ce que tu as téléchargé, regardé dans le lecteur Seeduction, mis de côté, remercié, noté ou rangé dans une collection, et ce que tu seedes en ce moment ;\n` +
           `• les acteurs, studios, artistes et genres que tu suis ;\n` +
           `• regarder un film pèse plus que le télécharger, et une mauvaise note joue contre.\n` +
-          `Chaque affiche dit pourquoi elle t'est proposée (« Avec... », « Réalisé par... », « Comme... »). Les contenus que tu as déjà (même dans une autre version) et le contenu adulte masqué ne sont jamais proposés. Sans historique, tu vois ce qui est populaire en ce moment.`,
+          `Chaque affiche dit pourquoi elle t'est proposée (« Avec... », « Réalisé par... », « Comme... »). Les contenus que tu as déjà (même dans une autre version) et le contenu adulte masqué ne sont jamais proposés. Sur une fiche torrent, « Dans la même veine » reste dans [b]l'univers de la fiche[/b] : une série te propose des séries, un film des films, et jamais de contenu adulte à partir d'une fiche qui n'en est pas, même si tu en regardes ailleurs. Sans historique, tu vois ce qui est populaire en ce moment.`,
       },
       {
         title: 'Torrents morts et récompense de reseed',

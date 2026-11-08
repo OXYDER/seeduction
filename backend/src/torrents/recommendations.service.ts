@@ -84,9 +84,16 @@ export class RecommendationsService {
     ]);
 
     // Une fiche masquée pour ce membre (contenu adulte désactivé) ne peut pas orienter les offres ni apparaître dans une raison.
+    // Sur une fiche, les offres restent dans le même univers : la catégorie principale de la fiche (une série ne propose ni film ni contenu adulte,
+    // même si le membre en regarde ailleurs) et seul le goût du membre dans cet univers compte.
+    let family: string[] | null = null;
     if (basedOn) {
-      const base = await this.prisma.torrent.findUnique({ where: { id: basedOn }, select: { categoryId: true, status: true } });
+      const base = await this.prisma.torrent.findUnique({ where: { id: basedOn }, select: { categoryId: true, status: true, category: { select: { id: true, parentId: true } } } });
       if (!base || hidden.includes(base.categoryId)) basedOn = undefined;
+      else {
+        const top = base.category?.parentId ?? base.categoryId;
+        family = (await this.prisma.category.findMany({ where: { OR: [{ id: top }, { parentId: top }] }, select: { id: true } })).map((c) => c.id).filter((id) => !hidden.includes(id));
+      }
     }
 
     // --- Poids de chaque torrent avec lequel le membre a interagi
@@ -105,7 +112,7 @@ export class RecommendationsService {
     const known = new Set<string>([...weight.keys()]);
     const followedEntities = follows.map((f) => f.entityId);
 
-    if (weight.size === 0 && followedEntities.length === 0) return this.popular(userId, hidden, limit);
+    if (weight.size === 0 && followedEntities.length === 0) return this.popular(userId, hidden, limit, family);
 
     // --- Caractéristiques des torrents du profil
     const signalIds = [...weight.entries()].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 200).map(([id]) => id);
@@ -127,6 +134,7 @@ export class RecommendationsService {
     const add = <K,>(m: Map<K, number>, k: K, w: number) => m.set(k, (m.get(k) ?? 0) + w);
 
     for (const t of signalTorrents) {
+      if (family && !family.includes(t.categoryId)) continue; // hors de l'univers de la fiche : n'oriente pas ses offres
       const w = weight.get(t.id) ?? 0;
       if (t.metaSource && t.metaExternalId) knownMeta.add(`${t.metaSource}:${t.metaExternalId}`);
       add(catRaw, t.categoryId, w);
@@ -138,7 +146,7 @@ export class RecommendationsService {
         entityName.set(e.entityId, { name: e.entity.name, role: e.role });
       }
     }
-    for (const id of followedEntities) add(entityRaw, id, 5);
+    if (!family) for (const id of followedEntities) add(entityRaw, id, 5); // sur une fiche, seuls comptent les liens de la fiche et de son univers
 
     const entityScore = normalize(entityRaw);
     const genreScore = normalize(genreRaw);
@@ -150,14 +158,14 @@ export class RecommendationsService {
     const topEntities = top(entityScore, 40);
     const topGenres = top(genreScore, 8);
     const topCats = top(catScore, 5);
-    if (topEntities.length === 0 && topGenres.length === 0 && topCats.length === 0) return this.popular(userId, hidden, limit);
+    if (topEntities.length === 0 && topGenres.length === 0 && topCats.length === 0) return this.popular(userId, hidden, limit, family);
 
     // --- Candidats : un mélange des plus seedés et des plus récents qui touchent au profil
     const baseWhere = {
       status: 'APPROVED' as const,
       id: { notIn: [...known] },
       uploaderId: { not: userId },
-      ...(hidden.length ? { categoryId: { notIn: hidden } } : {}),
+      ...(family ? { categoryId: { in: family } } : hidden.length ? { categoryId: { notIn: hidden } } : {}),
       OR: [
         ...(topEntities.length ? [{ entities: { some: { entityId: { in: topEntities } } } }] : []),
         ...(topGenres.length ? [{ genres: { hasSome: topGenres } }] : []),
@@ -229,17 +237,17 @@ export class RecommendationsService {
       picked.push(s);
       if (picked.length >= limit) break;
     }
-    if (picked.length === 0) return this.popular(userId, hidden, limit);
+    if (picked.length === 0) return this.popular(userId, hidden, limit, family);
     return this.hydrate(picked.map((p) => ({ id: p.c.id, reason: p.reason })));
   }
 
   /** Repli sans historique exploitable : ce qui est populaire en ce moment. */
-  private async popular(userId: string, hidden: string[], limit: number) {
+  private async popular(userId: string, hidden: string[], limit: number, family: string[] | null = null) {
     const rows = await this.prisma.torrent.findMany({
       where: {
         status: 'APPROVED', seeders: { gt: 0 }, uploaderId: { not: userId },
         createdAt: { gt: new Date(Date.now() - 60 * 86_400_000) },
-        ...(hidden.length ? { categoryId: { notIn: hidden } } : {}),
+        ...(family ? { categoryId: { in: family } } : hidden.length ? { categoryId: { notIn: hidden } } : {}),
       },
       orderBy: [{ seeders: 'desc' }, { createdAt: 'desc' }],
       take: limit,
