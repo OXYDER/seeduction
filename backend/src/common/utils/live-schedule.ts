@@ -101,6 +101,19 @@ export function upcoming(slots: SlotLike[], now: Date, days: number, limit: numb
     .slice(0, limit);
 }
 
+/** Clé d'une occurrence (créneau + heure de début) : sert à ne prévenir les membres qu'une fois par diffusion. */
+export const reminderKey = (o: Occurrence): string => `${o.slot.id}:${o.start.getTime()}`;
+
+/** Les diffusions qui commencent dans les `minutes` prochaines minutes et dont les membres n'ont pas encore été prévenus (déjà commencées : jamais). */
+export function dueReminders(slots: SlotLike[], now: Date, minutes: number, timeZone: string, done: Set<string>): Occurrence[] {
+  if (!(minutes > 0)) return [];
+  const limit = now.getTime() + minutes * MIN;
+  return slots
+    .flatMap((s) => occurrencesBetween(s, now, new Date(limit), timeZone))
+    .filter((o) => o.start.getTime() > now.getTime() && o.start.getTime() <= limit && !done.has(reminderKey(o)))
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+}
+
 // ── Réglages du relais ────────────────────────────────────────────────────────
 
 export interface LiveConfig {
@@ -116,6 +129,8 @@ export interface LiveConfig {
   timezone: string;
   /** Compatibilité navigateur : le relais copie le flux tel quel, convertit le son seulement (AAC) ou l'image et le son (H.264 + AAC). */
   transcode: Transcode;
+  /** Prévenir tous les membres N minutes avant le début d'une diffusion du calendrier (0 = ne pas prévenir). */
+  notifyMinutes: number;
   /** Affichage de la page Direct des membres. */
   page: LivePageConfig;
 }
@@ -220,7 +235,7 @@ export function slotImage(v: unknown): string | null | undefined {
 export type Transcode = 'copy' | 'audio' | 'full';
 export const TRANSCODES: Transcode[] = ['copy', 'audio', 'full'];
 
-export const DEFAULT_LIVE_CONFIG: LiveConfig = { enabled: false, controlUrl: '', secret: '', playbackUrl: '', onDemand: true, timezone: DEFAULT_TIMEZONE, transcode: 'audio', page: DEFAULT_LIVE_PAGE };
+export const DEFAULT_LIVE_CONFIG: LiveConfig = { enabled: false, controlUrl: '', secret: '', playbackUrl: '', onDemand: true, timezone: DEFAULT_TIMEZONE, transcode: 'audio', notifyMinutes: 10, page: DEFAULT_LIVE_PAGE };
 
 const cleanUrl = (v: unknown, previous: string): string => {
   if (typeof v !== 'string') return previous;
@@ -241,6 +256,7 @@ export function normalizeLiveConfig(raw: any, previous: LiveConfig = DEFAULT_LIV
     onDemand: typeof r.onDemand === 'boolean' ? r.onDemand : previous.onDemand,
     timezone: isValidTimezone(r.timezone) ? r.timezone : previous.timezone,
     transcode: TRANSCODES.includes(r.transcode) ? r.transcode : previous.transcode ?? 'audio',
+    notifyMinutes: r.notifyMinutes === undefined || r.notifyMinutes === null || r.notifyMinutes === '' ? previous.notifyMinutes ?? 10 : Math.min(120, Math.max(0, Math.round(Number(r.notifyMinutes)) || 0)),
     page: normalizeLivePage(r.page, previous.page ?? DEFAULT_LIVE_PAGE),
   };
 }

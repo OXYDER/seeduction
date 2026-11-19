@@ -3,7 +3,7 @@ import { api } from '../api/client';
 import AdminLivePage, { LivePageCfg } from './AdminLivePage';
 import AdminLiveInteractions from './AdminLiveInteractions';
 
-interface Cfg { enabled: boolean; controlUrl: string; playbackUrl: string; onDemand: boolean; timezone: string; transcode: 'copy' | 'audio' | 'full'; secretSet: boolean; page: LivePageCfg }
+interface Cfg { enabled: boolean; controlUrl: string; playbackUrl: string; onDemand: boolean; timezone: string; notifyMinutes: number; transcode: 'copy' | 'audio' | 'full'; secretSet: boolean; page: LivePageCfg }
 interface Stream { id: string; name: string; url: string; enabled: boolean }
 interface Slot { id: string; streamId: string; title: string | null; description: string | null; posterUrl: string | null; color: string | null; startsAt: string; durationMin: number; repeat: 'NONE' | 'DAILY' | 'WEEKLY'; repeatUntil: string | null; enabled: boolean; stream: { id: string; name: string } }
 interface Occ { slotId: string; streamName: string; title: string | null; start: string; end: string }
@@ -90,6 +90,10 @@ export default function AdminLive() {
             <option value="full">Convertir l'image et le son (H.264 + AAC)</option>
           </select>
           <span className="muted" style={{ fontSize: 12 }}>Un navigateur lit l'image en H.264 et le son en AAC. Un navigateur lit mal l'AC3, l'E-AC3 ou le DTS : « le son seulement » règle le plus souvent l'absence de son. Si l'image reste noire, choisis « l'image et le son », qui demande beaucoup plus de processeur sur le relais (environ 1 à 4 cœurs par flux selon la taille de l'image).</span>
+        </label>
+        <label style={{ display: 'grid', gap: 3, fontSize: 13, maxWidth: 280 }}>Prévenir les membres avant le début (minutes)
+          <input type="number" min={0} max={120} value={cfg.notifyMinutes ?? 10} onChange={(e) => setCfg({ ...cfg, notifyMinutes: Number(e.target.value) })} />
+          <span className="muted" style={{ fontSize: 12 }}>Chaque diffusion du calendrier (match, émission...) envoie une notification (et un avis sur le téléphone si activé) avec le lien vers « Canadiens en direct ». 0 = ne pas prévenir. Les membres peuvent le couper dans « Nouvelles et événements ».</span>
         </label>
         <label style={{ display: 'grid', gap: 3, fontSize: 13, maxWidth: 280 }}>Fuseau horaire des répétitions
           <input value={cfg.timezone} onChange={(e) => setCfg({ ...cfg, timezone: e.target.value })} />

@@ -868,6 +868,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
       content:
         `La page [b]Canadiens en direct[/b] diffuse les émissions en direct planifiées par l'équipe, directement dans le site.\n` +
         `\n` +
+        `[b]Être prévenu avant le début[/b] : environ [b]10 minutes avant[/b] chaque diffusion du calendrier (un match du Canadien, une émission...), tu reçois une notification (et un avis sur ton téléphone si tu les as activés) avec le lien vers [url=/canadiens-en-direct]Canadiens en direct[/url]. Tu peux la couper dans les préférences de notifications, sous [b]Nouvelles et événements[/b]. L'équipe règle le délai (ou le coupe) dans Admin > Direct.\n\n` +
         `[b]Où le trouver ?[/b]\n` +
         `Un lien [b]🔴 Canadiens en direct[/b] apparaît dans le menu [b]seulement pendant une diffusion[/b]. Tu peux aussi ouvrir la page [url=/canadiens-en-direct]Canadiens en direct[/url] à tout moment : elle affiche la diffusion en cours ou, sinon, les prochaines émissions prévues, et elle se met à jour toute seule.\n` +
         `\n` +
@@ -1110,6 +1111,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `4. Dans un forum d'entraide (✅), l'auteur du sujet marque la réponse qui l'a aidé avec « C'est la solution » : le sujet devient [b]Résolu[/b]. Le bouton [b]🔔 Suivre[/b] te prévient de chaque réponse ; la pastille rouge de « Forums » compte les sujets non lus, et « ✓ Marquer comme lu » les efface. Certains forums sont réservés à un rang, aux uploaders, aux donateurs ou au 18+ : la page dit toujours pourquoi tu ne peux pas y écrire.\n\n` +
         `[b]Écrire avec l'éditeur[/b]\n` +
         `Tous les champs de texte (forum, commentaires, messages, nouvelles) utilisent le même éditeur : gras, italique, listes, citations, images. Le français est [b]corrigé pendant que tu écris[/b] (accents courants, majuscules, guillemets « », espace avant ? et !) : voir [url=/wiki/notes-merci-commentaires]Notes, Merci et commentaires[/url].\n\n` +
+        `[b]Coller depuis ailleurs[/b] : ce que tu copies d'une page web, de Word, de Google Docs ou d'un courriel garde sa mise en forme quand tu le colles (gras, italique, souligné, barré, titres, listes, citations, liens, images et couleurs lisibles). Le texte est nettoyé : aucune police, taille, couleur foncée ni fond de l'autre page, et rien d'exécutable. Dans le chat privé, la mise en forme devient celle du chat (gras, italique, barré, citation) et un lien garde son adresse. Du [b]Markdown[/b] collé (titres #, **gras**, listes, liens, blocs de code) est lui aussi converti. Du code copié depuis un éditeur reste du texte simple.\n\n` +
         `[b]Commenter un torrent[/b]\n` +
         `Sur la fiche, l'onglet [b]Commentaires[/b] sert à poser une question, signaler un souci avec le fichier ou remercier. Tu peux aussi noter (étoiles) et dire merci (👍).\n\n` +
         `[b]Bonnes manières[/b]\n` +

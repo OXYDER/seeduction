@@ -4,6 +4,8 @@ import { api } from '../api/client';
 import { bbcodeToHtml } from '../lib/bbcode';
 import { htmlToBbcode } from '../lib/htmlToBbcode';
 import { autocorrectKey } from '../lib/autocorrect';
+import { hasFormatting, looksLikeCode, pastedHtmlToBbcode } from '../lib/richPaste';
+import { looksLikeMarkdown, markdownToBbcode } from '../lib/markdownToBbcode';
 
 interface WysiwygEditorProps {
   /** Contenu en BBCode (format stocké). */
@@ -340,7 +342,20 @@ export default function WysiwygEditor({ value, onChange, placeholder, minHeight 
           const img = dropImages ? Array.from(e.clipboardData.files).find((f) => /^image\/(png|jpeg|webp)$/.test(f.type)) : undefined;
           if (img) { e.preventDefault(); void uploadFile(img); return; }
           e.preventDefault();
-          document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+          const plain = e.clipboardData.getData('text/plain');
+          // Un texte copié d'une page web, de Word, de Google Docs ou d'un courriel garde sa mise en forme (gras, liens, listes, titres, images...), nettoyée.
+          const html = e.clipboardData.getData('text/html');
+          if (html && !looksLikeCode(html)) {
+            try {
+              const bb = pastedHtmlToBbcode(html);
+              if (hasFormatting(bb, plain)) { document.execCommand('insertHTML', false, bbcodeToHtml(bb, { mentions: false })); sync(); return; }
+            } catch { /* repli : texte simple */ }
+          }
+          // Du Markdown collé (un fichier .md, une réponse d'assistant...) devient de la vraie mise en forme.
+          if (looksLikeMarkdown(plain)) {
+            try { document.execCommand('insertHTML', false, bbcodeToHtml(markdownToBbcode(plain), { mentions: false })); sync(); return; } catch { /* repli : texte simple */ }
+          }
+          document.execCommand('insertText', false, plain);
         }}
         style={{ minHeight, display: sourceMode ? 'none' : 'block' }}
       />

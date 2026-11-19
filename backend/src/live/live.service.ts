@@ -3,10 +3,11 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { jobMonitor } from '../common/utils/job-monitor';
 import { DEFAULT_INTERACTIONS, InteractionConfig, normalizeInteractions } from '../common/utils/live-room';
 import {
-  activeAt, LiveConfig, normalizeLiveConfig, occurrencesBetween, Repeat, slotColor, slotImage, SlotLike, upcoming, validStreamUrl, zonedParts, zonedToUtc,
+  activeAt, dueReminders, LiveConfig, normalizeLiveConfig, occurrencesBetween, Repeat, slotColor, slotImage, SlotLike, upcoming, validStreamUrl, zonedParts, zonedToUtc,
 } from '../common/utils/live-schedule';
 
 const KEY = 'liveRelay';
@@ -38,7 +39,10 @@ export class LiveService {
   /** Jetons à usage unique remis au lecteur desktop (seeduction://live/<jeton>) : il n'a pas de session web. */
   private playerTokens = new Map<string, number>();
 
-  constructor(private prisma: PrismaService, private settings: SettingsService) {}
+  /** Diffusions dont les membres ont déjà été prévenus (clé créneau + début) : gardées en réglage pour ne pas répéter l'avis après un redémarrage. */
+  private reminded: Set<string> | null = null;
+
+  constructor(private prisma: PrismaService, private settings: SettingsService, private notifications: NotificationsService) {}
 
   // ── Réglages du relais ──────────────────────────────────────────────────────
 
@@ -301,6 +305,31 @@ export class LiveService {
   async tick() {
     jobMonitor.run('direct.relais', 20_000);
     try { await this.sync(); } catch (e) { jobMonitor.fail('direct.relais', e); this.log.warn(`Direct : ${(e as Error).message}`); }
+    try { await this.remind(); } catch (e) { this.log.warn(`Direct, avis de début : ${(e as Error).message}`); }
+  }
+
+  /**
+   * Prévient tous les membres (notification + notification push) quelques minutes avant le début d'une diffusion du calendrier (un match du Canadien, une émission...),
+   * avec le lien vers « Canadiens en direct ». Une seule fois par diffusion ; réglable (ou coupé) dans Admin > Direct ; chaque membre peut le couper dans ses notifications (« Nouvelles et événements »).
+   */
+  async remind(now = new Date()) {
+    const cfg = await this.config();
+    if (!cfg.enabled || !cfg.notifyMinutes) return [];
+    const [rows, streams] = await Promise.all([this.prisma.liveSlot.findMany(), this.prisma.liveStream.findMany()]);
+    const visible = this.slotLikes(rows).filter((s) => streams.find((x) => x.id === s.streamId)?.enabled);
+    if (!this.reminded) this.reminded = new Set(((await this.settings.get('liveReminded')) as string[] | null) ?? []);
+    const due = dueReminders(visible, now, cfg.notifyMinutes, cfg.timezone, this.reminded);
+    if (!due.length) return [];
+    // On note d'abord : mieux vaut manquer un avis que le répéter toutes les 20 secondes si l'envoi échoue.
+    for (const o of due) this.reminded.add(`${o.slot.id}:${o.start.getTime()}`);
+    this.reminded = new Set([...this.reminded].slice(-100));
+    await this.settings.set('liveReminded', [...this.reminded]);
+    for (const o of due) {
+      const title = o.slot.title ?? streams.find((x) => x.id === o.slot.streamId)?.name ?? 'Direct';
+      const mins = Math.max(1, Math.round((o.start.getTime() - now.getTime()) / 60_000));
+      await this.notifications.notifyAll({ type: 'ANNOUNCEMENT', title: `📺 ${title} : ça commence dans ${mins} min`, body: 'Clique pour regarder en direct dans « Canadiens en direct ».', link: '/canadiens-en-direct' });
+    }
+    return due;
   }
 
   async sync(force = false) {

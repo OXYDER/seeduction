@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { normalizeOrigin } from '../common/utils/facets';
+import { descriptionToBbcode } from '../common/utils/description-format';
 import type { TorrentsService } from './torrents.service';
 
 type UploadParams = Parameters<TorrentsService['upload']>[0];
@@ -20,7 +21,8 @@ export function uploadParamsFromBody(userId: string, fileBuffer: Buffer, body: R
     userId,
     fileBuffer,
     name: body.name as string,
-    description: body.description,
+    // Stockée en BBCode ; écrite en BBCode, HTML, Markdown ou texte simple (reconnu tout seul, ou forcé par `descriptionFormat`) : formulaire et API acceptent tout.
+    description: descriptionToBbcode(body.description, body.descriptionFormat),
     categoryId,
     tags: body.tags ? body.tags.split(',').map((t) => t.trim()) : [],
     anonymous: body.anonymous === 'true',

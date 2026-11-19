@@ -54,6 +54,16 @@ async function send(key, fields, files = {}) {
     const name2 = `Autre.Film.2026.${tag}`;
     const viaFile = await send(up, { name: name2, categoryId: cat.id }, { torrentFile: { data: makeTorrent(name2), name: name2 + '.torrent' }, nfoFile: { data: Buffer.from(NFO), name: 'a.nfo' } });
     check('NFO envoyé en fichier (nfoFile) : accepté', viaFile.s === 201, JSON.stringify(viaFile.b));
+    // Description en tout format : reconnue et convertie en BBCode. (L'API limite à 20 envois par minute : on attend que la fenêtre se vide.)
+    await new Promise((r) => setTimeout(r, 61_000));
+    const descOf = async (desc, extra = {}) => {
+      const n = `Desc.${Math.random().toString(36).slice(2, 7)}.${tag}`;
+      const r = await send(up, { name: n, categoryId: cat.id, description: desc, nfo: NFO, ...extra }, { torrentFile: { data: makeTorrent(n), name: n + '.torrent' } });
+      return r.b?.id ? (await p.torrent.findUnique({ where: { id: r.b.id } }))?.description : `(erreur ${r.s})`;
+    };
+    check('description en HTML : convertie en BBCode', (await descOf('<h2>Synopsis</h2><p>Un <b>film</b> <a href="https://exemple.org/f">ici</a></p><script>alert(1)</script>')) === '[b]Synopsis[/b]\n\nUn [b]film[/b] [url=https://exemple.org/f]ici[/url]');
+    check('description en Markdown : convertie en BBCode', (await descOf('# Synopsis\n\nUn **film**\n- un\n- deux')) === '[b]Synopsis[/b]\n\nUn [b]film[/b]\n• un\n• deux');
+    check('description en BBCode : inchangée ; descriptionFormat=text force le texte simple', (await descOf('[b]Déjà[/b] du BBCode')) === '[b]Déjà[/b] du BBCode' && (await descOf('**x**', { descriptionFormat: 'text' })) === '**x**');
     const dup = await send(up, { name, category: cat.name, nfo: NFO }, { torrentFile: { data: makeTorrent(name), name: name + '.torrent' } });
     check('un torrent identique ou invalide ne plante pas (erreur claire)', dup.s === 201 || dup.s === 400 || dup.s === 409, String(dup.s));
     const junk = await send(up, { name: 'junk', categoryId: cat.id, nfo: NFO }, { torrentFile: { data: Buffer.from('ceci n est pas un torrent'), name: 'junk.torrent' } });

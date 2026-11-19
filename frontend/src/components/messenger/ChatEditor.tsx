@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from 'react';
 import { AUTO_FORMATS, QUOTE_CLASS, SPOILER_CLASS, ZW, editorToMd, mdToEditorHtml } from '../../lib/chatEditorFormat';
+import { looksLikeCode, pastedHtmlToChatMarkdown } from '../../lib/richPaste';
 
 export type ChatFormat = 'bold' | 'italic' | 'strike' | 'code' | 'spoiler' | 'quote';
 
@@ -285,10 +286,13 @@ const ChatEditor = forwardRef<ChatEditorHandle, Props>(function ChatEditor({ val
 
   function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
     if (e.clipboardData.files.length) { onPaste?.(e); return; }
-    // Texte seulement : on ne garde jamais la mise en forme d'une autre page.
+    // Un texte copié d'ailleurs garde sa mise en forme (gras, italique, barré, citation, adresse des liens), nettoyée et ramenée au Markdown léger du chat.
     e.preventDefault();
     const room = maxLength - (ref.current?.textContent?.length ?? 0);
-    const text = e.clipboardData.getData('text/plain').replace(/\r\n?/g, '\n').slice(0, Math.max(0, room));
+    const html = e.clipboardData.getData('text/html');
+    let source = e.clipboardData.getData('text/plain');
+    if (html && !looksLikeCode(html)) { try { source = pastedHtmlToChatMarkdown(html) || source; } catch { /* repli : texte simple */ } }
+    const text = source.replace(/\r\n?/g, '\n').slice(0, Math.max(0, room));
     // Du Markdown collé (« **gras** ») s'affiche mis en forme, comme s'il avait été tapé.
     if (text) { if (/[*_~|`>]/.test(text)) exec('insertHTML', mdToEditorHtml(text)); else exec('insertText', text); }
   }

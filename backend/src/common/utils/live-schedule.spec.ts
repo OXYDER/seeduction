@@ -1,4 +1,4 @@
-import { activeAt, occurrencesBetween, normalizeLiveConfig, normalizeLivePage, slotColor, slotImage, DEFAULT_LIVE_PAGE, upcoming, validStreamUrl, zonedToUtc, SlotLike } from './live-schedule';
+import { activeAt, dueReminders, reminderKey, occurrencesBetween, normalizeLiveConfig, normalizeLivePage, slotColor, slotImage, DEFAULT_LIVE_PAGE, upcoming, validStreamUrl, zonedToUtc, SlotLike } from './live-schedule';
 
 const TZ = 'America/Toronto';
 const slot = (over: Partial<SlotLike> = {}): SlotLike => ({ id: 's1', streamId: 'a', startsAt: new Date('2026-01-06T01:00:00Z'), durationMin: 120, repeat: 'NONE', enabled: true, ...over });
@@ -139,5 +139,47 @@ describe('validStreamUrl', () => {
     expect(slotImage('/api/covers/a.jpg')).toBe('/api/covers/a.jpg');
     expect(slotImage('https://x.ca/a.png')).toBe('https://x.ca/a.png');
     expect(slotImage('javascript:alert(1)')).toBeNull();
+  });
+});
+
+describe('dueReminders (avis avant le début)', () => {
+  const start = new Date('2026-01-06T01:00:00Z');
+  const at = (min: number) => new Date(start.getTime() + min * 60_000);
+
+  it('prévient dans la fenêtre, pas avant, pas après le début', () => {
+    expect(dueReminders([slot()], at(-30), 10, TZ, new Set())).toHaveLength(0); // trop tôt
+    expect(dueReminders([slot()], at(-10), 10, TZ, new Set())).toHaveLength(1); // pile à la limite
+    expect(dueReminders([slot()], at(-3), 10, TZ, new Set())).toHaveLength(1);
+    expect(dueReminders([slot()], at(0), 10, TZ, new Set())).toHaveLength(0); // déjà commencée
+    expect(dueReminders([slot()], at(30), 10, TZ, new Set())).toHaveLength(0);
+  });
+
+  it('une seule fois par diffusion', () => {
+    const [o] = dueReminders([slot()], at(-5), 10, TZ, new Set());
+    expect(dueReminders([slot()], at(-4), 10, TZ, new Set([reminderKey(o)]))).toHaveLength(0);
+  });
+
+  it('0 minute : jamais ; un créneau désactivé : jamais', () => {
+    expect(dueReminders([slot()], at(-5), 0, TZ, new Set())).toHaveLength(0);
+    expect(dueReminders([slot({ enabled: false })], at(-5), 10, TZ, new Set())).toHaveLength(0);
+  });
+
+  it('une répétition hebdomadaire prévient chaque semaine, avec une clé différente', () => {
+    const weekly = slot({ repeat: 'WEEKLY' });
+    const first = dueReminders([weekly], at(-5), 10, TZ, new Set())[0];
+    const next = dueReminders([weekly], at(-5 + 7 * 24 * 60), 10, TZ, new Set())[0];
+    expect(first && next).toBeTruthy();
+    expect(reminderKey(first)).not.toBe(reminderKey(next));
+  });
+});
+
+describe('notifyMinutes', () => {
+  it('10 par défaut, borné entre 0 et 120, conservé si absent', () => {
+    expect(normalizeLiveConfig({}).notifyMinutes).toBe(10);
+    expect(normalizeLiveConfig({ notifyMinutes: 0 }).notifyMinutes).toBe(0);
+    expect(normalizeLiveConfig({ notifyMinutes: 999 }).notifyMinutes).toBe(120);
+    expect(normalizeLiveConfig({ notifyMinutes: -5 }).notifyMinutes).toBe(0);
+    expect(normalizeLiveConfig({ notifyMinutes: 'abc' }).notifyMinutes).toBe(0);
+    expect(normalizeLiveConfig({ enabled: true }, normalizeLiveConfig({ notifyMinutes: 25 })).notifyMinutes).toBe(25);
   });
 });
