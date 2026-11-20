@@ -28,6 +28,7 @@ import Loading from '../components/Loading';
 import { rankClass, rankKeyOf } from '../store/ranks';
 import { lastSeenText } from '../lib/time';
 import LastSeenPanel from '../components/LastSeenPanel';
+import NavPrefsPanel from '../components/NavPrefsPanel';
 
 export default function Profile() {
   const { id } = useParams();
@@ -219,6 +220,7 @@ export default function Profile() {
       {showTab('account') && <BrowserNotifyPanel />}
       {showTab('account') && <ChatMutesPanel />}
       {showTab('account') && <TipStylePanel />}
+      {showTab('account') && <NavPrefsPanel />}
       {showTab('account') && <WatchingVisibilityPanel value={profile.showWatchingStatus !== false} />}
       {showTab('account') && <LastSeenPanel value={profile.showLastSeen !== false} />}
       {showTab('account') && <AdultPreference enabled={!!profile.showAdult} />}

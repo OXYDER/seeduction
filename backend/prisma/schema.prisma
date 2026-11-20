@@ -134,6 +134,8 @@ model User {
   chatBubbles        Boolean        @default(true)
   /// Barre des bulles de chat : position (left, right, top, bottom), taille (sm, md, lg) et noms affichés. Suit le membre d'un appareil à l'autre.
   chatRail           Json?
+  /// Réglages du menu de gauche (style classique ou en groupes, taille des liens, liens cachés, ordre) : voir common/utils/nav-prefs.ts.
+  navPrefs           Json?
   // Sirène quand le Canadien marque : désactivée par défaut, le membre l'active (le réglage suit son compte, sur tous ses appareils).
   goalSound          Boolean        @default(false)
   // Style des info-bulles de torrents au survol : poster | classic | cinema | minimal | off (voir frontend/src/lib/tipStyle.ts).

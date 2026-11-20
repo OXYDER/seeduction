@@ -4690,3 +4690,26 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .live-who-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .live-who-tag { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; background: rgba(224, 184, 74, 0.2); color: var(--gold-bright, #f5d67a); }
 .live-who-empty { padding: 4px 8px; font-size: 12px; opacity: 0.7; }
+
+/* Menu de gauche : taille des liens, sans icônes, « Personnaliser le menu » (réglages du membre : Profil > Compte > Menu de gauche). */
+:root .shell:not(.collapsed) .side-links.size-large > a, :root .shell:not(.collapsed) .side-links.size-large .side-group-head { padding: 12px 14px; font-size: 16px; gap: 14px; }
+:root .shell:not(.collapsed) .side-links.size-xl > a, :root .shell:not(.collapsed) .side-links.size-xl .side-group-head { padding: 15px 16px; font-size: 18px; gap: 16px; }
+:root .shell:not(.collapsed) .side-links.size-large > .side-group .side-group-items a { padding: 9px 12px; font-size: 15px; }
+:root .shell:not(.collapsed) .side-links.size-xl > .side-group .side-group-items a { padding: 12px 14px; font-size: 17px; }
+:root .shell:not(.collapsed) .side-links.size-large .side-icon { width: 34px; height: 34px; font-size: 18px; }
+:root .shell:not(.collapsed) .side-links.size-xl .side-icon { width: 40px; height: 40px; font-size: 21px; }
+.shell:not(.collapsed) .side-links.size-large { gap: 4px; }
+.shell:not(.collapsed) .side-links.size-xl { gap: 6px; }
+.side-links .side-customize { margin-top: 10px; padding: 8px 12px; font-size: 12.5px; font-weight: 500; opacity: 0.65; }
+.side-links .side-customize:hover { opacity: 1; }
+.shell.collapsed .side-links .side-customize { display: none; }
+.nav-prefs .np-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.nav-prefs .np-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.nav-prefs .np-card { text-align: left; display: grid; gap: 4px; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: inherit; cursor: pointer; box-shadow: none; }
+.nav-prefs .np-card.on { border-color: var(--gold, #e0b84a); background: rgba(224, 184, 74, 0.12); }
+.nav-prefs .np-list { display: grid; gap: 4px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+.nav-prefs .np-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); }
+.nav-prefs .np-row.off { opacity: 0.5; }
+.nav-prefs .np-row label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.nav-prefs .np-row button { padding: 2px 8px; }
+:root .shell:not(.collapsed) .side-links > a.side-customize { padding: 8px 12px; font-size: 12.5px; gap: 8px; }

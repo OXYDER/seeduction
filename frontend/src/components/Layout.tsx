@@ -2,6 +2,7 @@ import Nick from './Nick';
 import { applyDefaultView } from '../lib/viewMode';
 import { applyTipStyle } from '../lib/tipStyle';
 import { useEventTheme } from '../store/eventTheme';
+import { applyOrder, classicSort, NAV_CLASSIC_LABELS, useNavPrefs } from '../lib/navPrefs';
 import { Suspense, useCallback, useEffect, useState, FormEvent } from 'react';
 import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
@@ -103,10 +104,10 @@ export const CATEGORY_STYLE: Record<string, { icon: string; color: string }> = {
 };
 
 type NavGroupId = 'accueil' | 'catalogue' | 'bibliotheque' | 'communaute' | 'jeux' | 'perso' | 'aide' | 'equipe';
-interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; group: NavGroupId; staffOnly?: boolean; adminOnly?: boolean; /** Visible seulement pendant une diffusion en direct. */ liveOnly?: boolean; /** Seulement dans le menu latéral groupé (pas dans la barre du haut du thème classique). */ sideOnly?: boolean }
+export interface NavItem { to: string; icon: string; cls: string; label: string; match: (path: string) => boolean; group: NavGroupId; staffOnly?: boolean; adminOnly?: boolean; /** Visible seulement pendant une diffusion en direct. */ liveOnly?: boolean; /** Seulement dans le menu latéral groupé (pas dans la barre du haut du thème classique). */ sideOnly?: boolean }
 
 /** Les sections du menu latéral : chacune se replie d'un clic (celle de la page courante s'ouvre tout seul ; les quatre premières sont ouvertes au départ). */
-const NAV_GROUPS: { id: NavGroupId; icon: string; label: string; color: string }[] = [
+export const NAV_GROUPS: { id: NavGroupId; icon: string; label: string; color: string }[] = [
   { id: 'accueil', icon: '🏠', label: 'Accueil', color: '#f59e0b' },
   { id: 'catalogue', icon: '🎬', label: 'Catalogue', color: '#38bdf8' },
   { id: 'bibliotheque', icon: '📚', label: 'Ma bibliothèque', color: '#34d399' },
@@ -121,7 +122,7 @@ const DEFAULT_OPEN_GROUPS = ['accueil', 'catalogue', 'bibliotheque', 'communaute
 const starts = (prefix: string) => (p: string) => p === prefix || p.startsWith(`${prefix}/`);
 
 /** Le lien de la section en cours est surligné (les pages de détail comptent dans leur section : un torrent → Parcourir). */
-const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEMS: NavItem[] = [
   { to: '/', icon: '🏠', cls: 'c-home', label: 'Tableau de bord', match: (p) => p === '/', group: 'accueil' },
   { to: '/news', icon: '📰', cls: 'c-rules', label: 'Nouvelles', match: starts('/news'), group: 'accueil' },
   { to: '/browse', icon: '🔍', cls: 'c-search', label: 'Parcourir', match: (p) => (starts('/browse')(p) && !window.location.search.includes('categoryId=')) || starts('/torrents')(p) || starts('/entities')(p), group: 'catalogue' },
@@ -177,6 +178,7 @@ function LayoutInner() {
   const navigate = useNavigate();
   const location = useLocation();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const navPrefs = useNavPrefs((st) => st.prefs); // style, taille et liens du menu de gauche (Profil > Compte > Menu de gauche)
   const [categories, setCategories] = useState<Category[]>([]);
   // Torrents sans seeder que ce membre a déjà téléchargés : la pastille « Réanimation » l'invite à les remettre en seed.
   const [deadMine, setDeadMine] = useState(0);
@@ -325,7 +327,7 @@ function LayoutInner() {
 
   useEffect(() => {
     if (accessToken) {
-      api.get('/users/me').then((r) => { setProfile(r.data); applyDefaultView(r.data.defaultView); applyTipStyle(r.data.tipStyle); useEventTheme.getState().applyAccountMtlSound(r.data.goalSound === true); useMessenger.getState().setBubbles(r.data.chatBubbles !== false); }).catch(() => {});
+      api.get('/users/me').then((r) => { setProfile(r.data); useNavPrefs.getState().hydrate(r.data.navPrefs); applyDefaultView(r.data.defaultView); applyTipStyle(r.data.tipStyle); useEventTheme.getState().applyAccountMtlSound(r.data.goalSound === true); useMessenger.getState().setBubbles(r.data.chatBubbles !== false); }).catch(() => {});
     } else {
       setProfile(null);
     }
@@ -464,6 +466,8 @@ function LayoutInner() {
     const here = NAV_ITEMS.find((i) => i.match(location.pathname));
     if (here && !openGroups.includes(here.group)) setOpenGroups((g) => (g.includes(here.group) ? g : [...g, here.group]));
   }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Style Groupes avec « tout ouvert » : toutes les sections s'ouvrent.
+  useEffect(() => { if (navPrefs.style === 'groups' && navPrefs.openAll) setOpenGroups(NAV_GROUPS.map((g) => g.id)); }, [navPrefs.style, navPrefs.openAll]);
   // Recherche rapide : Ctrl+K (ou ⌘K) depuis n'importe quelle page.
   const [quickOpen, setQuickOpen] = useState(false);
   useEffect(() => {
@@ -582,27 +586,39 @@ function LayoutInner() {
               {(!user?.profile || user.profile.isMaster) && <Link to="/family" className={`secondary${starts('/family')(location.pathname) ? ' active' : ''}`} title="Compte famille : profils, activité, conversations des enfants">👨‍👩‍👧 Famille</Link>}
             </div>
           )}
-          <nav className="side-links">
+          <nav className={`side-links size-${navPrefs.size}${navPrefs.icons ? '' : ' no-icons'}`}>
             {(() => {
+              const classic = navPrefs.style === 'classic';
               const link = (item: NavItem) => {
                 const active = item.match(location.pathname);
+                const label = classic ? NAV_CLASSIC_LABELS[item.to] ?? item.label : item.label;
                 return (
-                  <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={item.label}>
-                    <span className="side-icon">{item.icon}</span>
-                    <span>{item.label}</span>
+                  <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={label}>
+                    {(navPrefs.icons || collapsed) && <span className="side-icon">{item.icon}</span>}
+                    <span>{label}</span>
                     {evNav(item.to)}{badgesFor(item)}
                   </Link>
                 );
               };
-              // Menu réduit (icônes seules) : la liste à plat, comme avant.
-              if (collapsed) return visibleNav.map(link);
+              // Les liens supplémentaires et les catégories : « automatique » = affichés avec les groupes, cachés avec le menu classique.
+              const withExtras = navPrefs.extras ?? !classic;
+              const withCats = navPrefs.categories ?? !classic;
+              const pool = visibleNav.filter((i) => (withExtras || !i.sideOnly) && !navPrefs.hidden.includes(i.to));
               // Le catalogue par type : une entrée par catégorie principale (Films, Séries...), sous « Parcourir ».
-              const catItems: NavItem[] = categories.map((c) => ({ to: `/browse?categoryId=${c.id}`, icon: CATEGORY_STYLE[c.slug]?.icon ?? '📁', cls: 'c-search', label: c.name, group: 'catalogue' as const, sideOnly: true, match: (p: string) => starts('/browse')(p) && window.location.search.includes(`categoryId=${c.id}`) }));
+              const catItems: NavItem[] = !withCats ? [] : categories.map((c) => ({ to: `/browse?categoryId=${c.id}`, icon: CATEGORY_STYLE[c.slug]?.icon ?? '📁', cls: 'c-search', label: c.name, group: 'catalogue' as const, sideOnly: true, match: (p: string) => starts('/browse')(p) && window.location.search.includes(`categoryId=${c.id}`) })).filter((c) => !navPrefs.hidden.includes(c.to));
+              // Menu réduit (icônes seules) ou style Classique : la liste à plat, dans l'ordre d'origine (ou celui choisi par le membre).
+              if (collapsed || classic) {
+                const flat = classicSort(pool);
+                const at = flat.findIndex((i) => i.to === '/browse');
+                const withCat = catItems.length ? [...flat.slice(0, at + 1), ...catItems, ...flat.slice(at + 1)] : flat;
+                return applyOrder(withCat, navPrefs.order).map(link);
+              }
               return (
                 <>
                   {NAV_GROUPS.map((g) => {
-                    let items = visibleNav.filter((i) => i.group === g.id);
+                    let items = pool.filter((i) => i.group === g.id);
                     if (g.id === 'catalogue') items = [...items.slice(0, 1), ...catItems, ...items.slice(1)];
+                    items = applyOrder(items, navPrefs.order);
                     if (items.length === 0) return null;
                     const open = openGroups.includes(g.id);
                     const hasActive = items.some((i) => i.match(location.pathname));
@@ -610,7 +626,7 @@ function LayoutInner() {
                     return (
                       <div key={g.id} className={`side-group${open ? ' open' : ''}${hasActive ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }}>
                         <button type="button" className="side-group-head" onClick={() => toggleGroup(g.id)} aria-expanded={open}>
-                          <span className="side-icon">{g.icon}</span>
+                          {navPrefs.icons && <span className="side-icon">{g.icon}</span>}
                           <span>{g.label}</span>
                           {todo > 0 && <span className="side-badge red" title="À voir dans cette section">{todo > 99 ? '99+' : todo}</span>}
                           <span className="side-chev" aria-hidden="true">›</span>
@@ -622,6 +638,7 @@ function LayoutInner() {
                 </>
               );
             })()}
+            {!collapsed && <Link to="/profile?tab=account#menu-gauche" className="side-customize" title="Style du menu, taille des liens, liens cachés, ordre">⚙ Personnaliser le menu</Link>}
           </nav>
           {version && <Link to="/roadmap" className="side-version" title="Roadmap et journal des modifications">v{version}</Link>}
 
