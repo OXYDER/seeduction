@@ -157,3 +157,54 @@
 :root[data-theme="prestige"] .home-compose-bar { width: 100%; max-width: 100%; box-sizing: border-box; border-radius: 16px; }
 @media (max-width: 560px) { :root[data-theme="prestige"] .home-compose-bar .icon-btn { width: 34px; height: 34px; flex: none; } }
 :root[data-theme="prestige"] .home-compose { grid-template-columns: minmax(0, 1fr); }
+
+/* ==========================================================================
+   En-tête identique à la maquette : icônes vectorielles, puces nettes, boutons carrés arrondis,
+   compte en pastille, recherche en pilule avec « Ctrl K » et « Rechercher » dans la case.
+   ========================================================================== */
+.s5i { flex: none; display: block; }
+
+/* Rubriques du menu : icône vectorielle qui prend l'accent */
+:root[data-theme="prestige"] .top-grp-btn .top-ico { display: inline-grid; place-items: center; color: var(--text-dim); transition: color .18s; }
+:root[data-theme="prestige"] .top-grp:hover .top-ico, :root[data-theme="prestige"] .top-grp.here .top-ico, :root[data-theme="prestige"] .top-grp.open .top-ico { color: var(--acc-light); }
+:root[data-theme="prestige"] .top-grp-btn { font-weight: 600; gap: 8px; }
+
+/* Recherche : pilule, loupe à gauche, « Ctrl K » et « Rechercher » à droite */
+:root[data-theme="prestige"] .side-search { position: relative; }
+:root[data-theme="prestige"] .ss-lead { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-dim); pointer-events: none; z-index: 1; }
+:root[data-theme="prestige"] .side-search .sb-wrap input { padding-left: 46px; }
+:root[data-theme="prestige"] .nav-top .side-search input { height: 44px; border-radius: 999px; border: 1px solid rgba(var(--acc-rgb), 0.42); background: rgba(8, 10, 20, 0.88); box-shadow: 0 0 0 4px rgba(var(--acc-rgb), 0.07); font-weight: 500; }
+:root[data-theme="prestige"] .nav-top .side-search input:focus { border-color: var(--acc1); box-shadow: 0 0 0 4px rgba(var(--acc-rgb), 0.22), 0 12px 34px -10px rgba(var(--acc-rgb), 0.5); }
+:root[data-theme="prestige"] .sb-trailing { right: 5px; }
+:root[data-theme="prestige"] .side-search .ss-kbd { font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 7px; background: rgba(255, 255, 255, 0.07); border: 1px solid var(--s5-line2); color: var(--text-dim); }
+:root[data-theme="prestige"] .side-search .ss-go { height: 34px; padding: 0 16px; border-radius: 999px; display: inline-flex; align-items: center; gap: 7px; font-weight: 750; font-size: 13px; background: linear-gradient(135deg, var(--acc1), color-mix(in srgb, var(--acc1) 55%, #fff 45%)); color: var(--on-acc, #fff); box-shadow: none; }
+
+/* Puces de statistiques : texte neutre, icône colorée */
+:root[data-theme="prestige"] .side-topbar .pill { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--s5-line); color: var(--text); font-weight: 650; font-size: 13px; }
+:root[data-theme="prestige"] .side-topbar .pill .s5i { width: 16px; height: 16px; }
+:root[data-theme="prestige"] .side-topbar .pill.up, :root[data-theme="prestige"] .side-topbar .pill.down, :root[data-theme="prestige"] .side-topbar .pill.gold { color: var(--text); }
+:root[data-theme="prestige"] .side-topbar .pill.up .s5i { color: var(--success); }
+:root[data-theme="prestige"] .side-topbar .pill.down .s5i { color: var(--danger); }
+:root[data-theme="prestige"] .side-topbar .pill.gold .s5i { color: #ffc45d; }
+:root[data-theme="prestige"] .side-topbar a.pill:hover { border-color: rgba(var(--acc-rgb), 0.55); background: rgba(var(--acc-rgb), 0.1); }
+
+/* Boutons d'icônes : carrés arrondis, accent au survol */
+:root[data-theme="prestige"] .side-topbar :is(.icon-pill, button.secondary:not(.side-burger)) { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; border-radius: 11px; border: 1px solid var(--s5-line); background: rgba(255, 255, 255, 0.04); color: var(--text-dim); box-shadow: none; position: relative; font-size: 15px; }
+:root[data-theme="prestige"] .side-topbar :is(.icon-pill, button.secondary):hover, :root[data-theme="prestige"] .side-topbar .icon-pill.active { color: #fff; border-color: rgba(var(--acc-rgb), 0.55); background: rgba(var(--acc-rgb), 0.12); }
+:root[data-theme="prestige"] .side-topbar .seedob-btn { width: auto; min-width: 38px; padding: 0 8px; gap: 4px; display: inline-flex; align-items: center; justify-content: center; }
+:root[data-theme="prestige"] .side-topbar .seedob-btn .seedob-badge { position: static; }
+:root[data-theme="prestige"] .dot-badge { min-width: 17px; height: 17px; border-radius: 9px; font-size: 10px; top: -6px; right: -6px; box-shadow: 0 0 0 2px #0a0c16; background: var(--danger); }
+
+/* Pastille du match des Canadiens */
+:root[data-theme="prestige"] .side-topbar .mtl-pill { height: 38px; border-radius: 999px; padding: 0 12px 0 6px; border: 1px solid rgba(255, 59, 92, 0.4); background: linear-gradient(135deg, rgba(255, 59, 92, 0.16), rgba(255, 255, 255, 0.03)); font-weight: 700; font-size: 12.5px; box-shadow: none; }
+:root[data-theme="prestige"] .side-topbar .mtl-pill:hover { border-color: rgba(255, 59, 92, 0.7); }
+
+/* Compte du membre : pastille avec avatar, nom (doré brillant pour un Fondateur) et ratio */
+:root[data-theme="prestige"] .top-menu .side-user-card { padding: 4px 12px 4px 4px; border-radius: 999px; border: 1px solid var(--s5-line); background: rgba(255, 255, 255, 0.035); transition: border-color .2s, background .2s; }
+:root[data-theme="prestige"] .top-menu .side-user-card:hover { border-color: rgba(var(--acc-rgb), 0.5); background: rgba(var(--acc-rgb), 0.08); }
+:root[data-theme="prestige"] .top-menu .side-user-name { font-size: 13px; font-weight: 750; }
+:root[data-theme="prestige"] .top-menu .side-user-sub { font-size: 11px; }
+:root[data-theme="prestige"] .top-menu .side-logout { width: 36px; height: 36px; padding: 0; border-radius: 11px; display: inline-grid; place-items: center; }
+:root[data-theme="prestige"] .top-menu .top-customize { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 11px; }
+
+:root[data-theme="prestige"] .side-topbar .side-burger { width: 38px; height: 38px; padding: 0; border-radius: 11px; border: 1px solid var(--s5-line); background: rgba(255, 255, 255, 0.04); box-shadow: none; }

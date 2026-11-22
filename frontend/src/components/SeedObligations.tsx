@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Ic from './Ic';
 import HeaderPopover from './HeaderPopover';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -52,7 +53,7 @@ export default function SeedObligations() {
         aria-expanded={open}
         onClick={() => { if (!open) load(); setOpen((v) => !v); }}
       >
-        🌱<span className={`seedob-badge ${tone}`}>{data.counts.total}</span>
+        <Ic n="seed" /><span className={`seedob-badge ${tone}`}>{data.counts.total}</span>
       </button>
       <HeaderPopover open={open} anchorRef={ref} onClose={close} width={400} label="Seeds à terminer">
         <div className="seedob-pop-inner">

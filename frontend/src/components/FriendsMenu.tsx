@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Ic from './Ic';
 import { Link } from 'react-router-dom';
 import Nick from './Nick';
 import { api } from '../api/client';
@@ -34,7 +35,7 @@ export default function FriendsMenu({ pending, online, active }: { pending: numb
   return (
     <>
       <button ref={btnRef} type="button" className={`icon-pill${active ? ' active' : ''}`} title="Amis" aria-label="Amis" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        👫{pending > 0 && <span className="dot-badge" title="Demandes d'ami">{pending > 99 ? '99+' : pending}</span>}{online > 0 && <span className="dot-badge green" title={`${online} ami${online > 1 ? 's' : ''} en ligne`}>{online > 99 ? '99+' : online}</span>}
+        <Ic n="users" />{pending > 0 && <span className="dot-badge" title="Demandes d'ami">{pending > 99 ? '99+' : pending}</span>}{online > 0 && <span className="dot-badge green" title={`${online} ami${online > 1 ? 's' : ''} en ligne`}>{online > 99 ? '99+' : online}</span>}
       </button>
       <HeaderPopover open={open} anchorRef={btnRef} onClose={close} width={340} label="Amis en ligne">
         <div className="hp-head">

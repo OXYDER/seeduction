@@ -1,4 +1,5 @@
 import Nick from './Nick';
+import Ic, { GROUP_IC } from './Ic';
 import { applyDefaultView } from '../lib/viewMode';
 import { applyTipStyle } from '../lib/tipStyle';
 import { useEventTheme } from '../store/eventTheme';
@@ -201,11 +202,15 @@ function LayoutInner() {
   const topRef = useRef<HTMLElement | null>(null);
   const [topFit, setTopFit] = useState(0);
   const topOn = navPrefs.style === 'top' && wide;
+  const fitKey = [compact, topOn, navPrefs.size, navPrefs.icons, navPrefs.spacing, navPrefs.hidden.join(','), navPrefs.order.join(','), profile?.statusText ?? '', profile?.watching ?? '', user?.username ?? ''].join('|');
+  const [fitTick, setFitTick] = useState(0);
+  useEffect(() => { const r = () => { setTopFit(0); setFitTick((t) => t + 1); }; window.addEventListener('resize', r); return () => window.removeEventListener('resize', r); }, []);
+  useEffect(() => { setTopFit(0); }, [fitKey]);
+  // Mesure après chaque palier (et non à chaque rendu) : pas de boucle possible.
   useLayoutEffect(() => {
     const el = topRef.current;
     if (topOn && el && topFit < 3 && el.scrollWidth > el.clientWidth + 1) setTopFit((f) => f + 1);
-  });
-  useEffect(() => { const r = () => setTopFit(0); window.addEventListener('resize', r); return () => window.removeEventListener('resize', r); }, []);
+  }, [topFit, topOn, fitKey, fitTick]);
   // Le soulignement de la rubrique en cours glisse d'un menu à l'autre.
   const [ind, setInd] = useState<{ left: number; width: number } | null>(null);
   useLayoutEffect(() => {
@@ -216,8 +221,7 @@ function LayoutInner() {
     const n = nav.getBoundingClientRect(), r = b.getBoundingClientRect();
     const left = Math.round(r.left - n.left + 12), width = Math.max(0, Math.round(r.width - 24));
     setInd((c) => (c && c.left === left && c.width === width ? c : { left, width }));
-  });
-  useEffect(() => { setTopFit(0); }, [compact, topOn, navPrefs, profile?.statusText, profile?.watching, user?.username]);
+  }, [topFit, topOn, fitKey, fitTick, location.pathname]);
   useEffect(() => {
     const h = () => setCompact(window.scrollY > 48);
     h();
@@ -677,7 +681,7 @@ function LayoutInner() {
                 return (
                   <div key={g.id} className={`top-grp${open ? ' open' : ''}${g.id === hereGroup ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }} onMouseEnter={() => setTopOpen(g.id)} onMouseLeave={() => setTopOpen((o) => (o === g.id ? null : o))}>
                     <button type="button" className={`top-grp-btn${navPrefs.icons ? ' has-ico' : ''}`} title={g.label} aria-expanded={open} onClick={() => setTopOpen(open ? null : g.id)}>
-                      {navPrefs.icons && <span className="top-ico" aria-hidden="true">{g.icon}</span>}
+                      {navPrefs.icons && <span className="top-ico" aria-hidden="true">{GROUP_IC[g.id] ? <Ic n={GROUP_IC[g.id]} /> : g.icon}</span>}
                       <span className="top-lbl">{g.label}</span>
                       {todo > 0 && <span className="side-badge red">{todo > 99 ? '99+' : todo}</span>}
                       <span className="top-chev" aria-hidden="true">▾</span>
@@ -687,7 +691,7 @@ function LayoutInner() {
                 );
               })}
               <span className="top-spacer" />
-              <Link to="/profile?tab=account#menu-gauche" className="top-customize" title="Personnaliser le menu" aria-label="Personnaliser le menu">⚙</Link>
+              <Link to="/profile?tab=account#menu-gauche" className="top-customize" title="Personnaliser le menu" aria-label="Personnaliser le menu"><Ic n="gear" /></Link>
               {userCard}
             </nav>
     );
@@ -695,6 +699,7 @@ function LayoutInner() {
           <header className="side-topbar">
             <button type="button" className="secondary side-burger" onClick={() => setDrawer(true)} aria-label="Ouvrir le menu">☰</button>
             <form className="side-search" onSubmit={submitSearch}>
+              <Ic n="search" className="ss-lead" />
               <SearchBox
                 placeholder="Rechercher un torrent, un acteur, un producteur, un genre, un membre..."
                 value={search}
@@ -705,7 +710,7 @@ function LayoutInner() {
                 trailing={(
                   <>
                     <button type="button" className="ss-kbd" onClick={() => setQuickOpen(true)} title="Recherche rapide : pages, torrents, membres (Ctrl+K)">Ctrl K</button>
-                    <button type="submit" className="ss-go" title="Lancer la recherche"><span aria-hidden="true">🔍</span><span className="ss-go-lbl"> Rechercher</span></button>
+                    <button type="submit" className="ss-go" title="Lancer la recherche"><Ic n="search" size={15} /><span className="ss-go-lbl"> Rechercher</span></button>
                   </>
                 )}
               />

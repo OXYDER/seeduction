@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import Ic from './Ic';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -116,7 +117,7 @@ export default function NotificationsBell() {
   return (
     <div style={{ position: 'relative' }}>
       <button ref={btnRef} type="button" className="secondary" onClick={toggle} style={{ position: 'relative' }} aria-label="Notifications" aria-expanded={open}>
-        🔔
+        <Ic n="bell" />
         {unread > 0 && (
           <span style={{
             position: 'absolute', top: -6, right: -6, background: 'var(--danger)', color: 'white',

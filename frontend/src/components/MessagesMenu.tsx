@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Ic from './Ic';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useMessenger, statusOf } from '../store/messenger';
@@ -54,7 +55,7 @@ export default function MessagesMenu({ unread, active }: { unread: number; activ
   return (
     <>
       <button ref={btnRef} type="button" className={`icon-pill${active ? ' active' : ''}`} title="Messages privés" aria-label="Messages privés" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        ✉️{unread > 0 && <span className="dot-badge">{unread > 99 ? '99+' : unread}</span>}
+        <Ic n="mail" />{unread > 0 && <span className="dot-badge">{unread > 99 ? '99+' : unread}</span>}
       </button>
       <HeaderPopover open={open} anchorRef={btnRef} onClose={close} width={380} label="Messages privés">
         <div className="hp-head">
