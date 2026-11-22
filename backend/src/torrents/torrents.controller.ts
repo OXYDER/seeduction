@@ -53,6 +53,7 @@ export class TorrentsController {
       minSize: query.minSize ? Number(query.minSize) : undefined,
       maxSize: query.maxSize ? Number(query.maxSize) : undefined,
       minSeeders: query.minSeeders ? Number(query.minSeeders) : undefined,
+      freeleechOnly: query.freeleech === 'true' || query.freeleech === '1' ? true : undefined,
       maxSeeders: query.maxSeeders ? Number(query.maxSeeders) : undefined,
       year: query.year ? Number(query.year) : undefined,
       language: query.language,

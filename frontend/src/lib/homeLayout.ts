@@ -13,6 +13,7 @@ export const DEFAULT_HOME_LAYOUT: HomeLayout = { order: [], hidden: [], collapse
 export const HOME_SECTIONS: { id: string; icon: string; label: string; fixed?: boolean }[] = [
   { id: 'composer', icon: '✍️', label: 'Publier : « Qu\'avez-vous en tête ? »', fixed: true },
   { id: 'actions', icon: '⚡', label: 'Actions rapides (Envoyer, Demander, Inviter, Mes seeds)' },
+  { id: 'featured', icon: '⭐', label: 'À la une (grande affiche en vedette)' },
   { id: 'foryou', icon: '🎯', label: 'Téléchargements en cours, complétés et épisode suivant' },
   { id: 'moderation', icon: '🛡️', label: 'Modération (équipe)' },
   { id: 'strip', icon: '🎉', label: 'Niveau, badges, pot commun et freeleech' },
@@ -21,7 +22,9 @@ export const HOME_SECTIONS: { id: string; icon: string; label: string; fixed?: b
   { id: 'continue', icon: '▶️', label: 'Reprendre la lecture' },
   { id: 'recommended', icon: '⭐', label: 'Recommandé pour toi (ou les plus populaires)' },
   { id: 'top5', icon: '🏆', label: 'Top 5' },
-  { id: 'latest', icon: '🆕', label: 'Derniers ajouts' },
+  { id: 'latest', icon: '🆕', label: 'Nouveautés (ajoutés récemment)' },
+  { id: 'popular', icon: '🔥', label: 'Plus populaires' },
+  { id: 'freeleech', icon: '🎁', label: 'Freeleech en ce moment' },
   { id: 'atrisk', icon: '⚠️', label: 'À seeder (torrents à 1-2 seeders)' },
   { id: 'rail', icon: '🏒', label: 'Colonne de droite (Canadiens, amis, chat, défi)', fixed: true },
 ];
@@ -112,8 +115,14 @@ export const useHomeLayout = create<HomeLayoutState>((set, get) => {
   };
 });
 
-/** Les identifiants dans l'ordre voulu : ceux choisis par le membre d'abord, les autres à la suite dans l'ordre d'origine. */
+/** Les identifiants dans l'ordre voulu : ceux choisis par le membre d'abord ; une section nouvelle (absente de son ordre) se glisse à sa place d'origine, juste après la section qui la précède. */
 export function orderIds(defaults: string[], order: string[]): string[] {
-  const rank = new Map(order.map((id, i) => [id, i]));
-  return defaults.map((id, n) => ({ id, n })).sort((a, b) => (rank.get(a.id) ?? 100_000 + a.n) - (rank.get(b.id) ?? 100_000 + b.n)).map((x) => x.id);
+  const out = [...new Set(order.filter((id) => defaults.includes(id)))];
+  defaults.forEach((id, i) => {
+    if (out.includes(id)) return;
+    let at = 0;
+    for (let j = i - 1; j >= 0; j--) { const k = out.indexOf(defaults[j]); if (k >= 0) { at = k + 1; break; } }
+    out.splice(at, 0, id);
+  });
+  return out;
 }

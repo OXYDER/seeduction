@@ -5,6 +5,7 @@ import App from './App';
 import '@fontsource-variable/inter/wght.css';
 import '@fontsource-variable/cinzel';
 import './index.css';
+import './skin5.css';
 import './store/sessionCleanup';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

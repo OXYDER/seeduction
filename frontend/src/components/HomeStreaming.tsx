@@ -90,6 +90,23 @@ function TimeRangeRail({ title, sort, allowCount, icon }: { title: string; sort:
   );
 }
 
+/** Plus populaires : les torrents les plus téléchargés, avec le choix de la période (24 h, semaine, mois ou depuis toujours). */
+function PopularRail() {
+  const [period, setPeriod] = useState<'' | 'day' | 'week' | 'month'>('');
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => {
+    let off = false;
+    api.get('/torrents', { params: { pageSize: 18, sort: 'popularite', ...(period ? { period } : {}) } }).then((r) => { if (!off) setItems(r.data.items); }).catch(() => { if (!off) setItems([]); });
+    return () => { off = true; };
+  }, [period]);
+  const toolbar = (
+    <div className="home-catlinks" role="group" aria-label="Période">
+      {([['day', '24 h'], ['week', 'Semaine'], ['month', 'Mois'], ['', 'Tout']] as ['' | 'day' | 'week' | 'month', string][]).map(([v, l]) => <button key={l} type="button" className={`hs-cat${period === v ? ' on' : ''}`} onClick={() => setPeriod(v)}>{l}</button>)}
+    </div>
+  );
+  return <Rail icon="🔥" title="Plus populaires" to="/decouvrir?s=populaires" items={items} toolbar={toolbar} />;
+}
+
 /** « Continuer » : un torrent en cours de téléchargement ou de seed, avec sa barre de progression. */
 function ContinueCard({ t }: { t: any }) {
   const percent = Math.round(t.progress * 100);
@@ -144,6 +161,7 @@ export default function HomeStreaming() {
   const [followed, setFollowed] = useState<any[]>([]);
   const [recommended, setRecommended] = useState<any[]>([]);
   const [atRisk, setAtRisk] = useState<any[]>([]);
+  const [free, setFree] = useState<any[]>([]);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
 
@@ -159,6 +177,7 @@ export default function HomeStreaming() {
     // Torrents encore vivants mais fragiles (1-2 seeders) : les surfacer ici pour qu'on les reseede
     // avant qu'ils tombent à 0 et passent DEAD (voir ECONOMY.deadAfterHours côté backend).
     api.get('/torrents', { params: { pageSize: 18, minSeeders: 1, maxSeeders: 2, sort: 'seeders', order: 'asc' } }).then((r) => setAtRisk(r.data.items)).catch(() => {});
+    api.get('/torrents', { params: { pageSize: 18, sort: 'date', freeleech: 'true' } }).then((r) => setFree(r.data.items)).catch(() => {});
     api.get('/torrents/mine/active').then((r) => setActive(r.data)).catch(() => {});
     api.get('/torrents/mine/followed').then((r) => setFollowed(r.data)).catch(() => {});
     api.get('/torrents/mine/recommended').then((r) => setRecommended(r.data)).catch(() => {});
@@ -320,6 +339,7 @@ export default function HomeStreaming() {
   // Les sections de la colonne principale, dans l'ordre d'origine ; le membre les déplace, les cache et les réduit (Personnaliser l'accueil, ou « Organiser »).
   const blocks: { id: string; node: React.ReactNode; collapsible?: boolean }[] = [
     { id: 'actions', node: <HomeActions canUpload={canUpload} /> },
+    { id: 'featured', node: heroNode, collapsible: false },
     { id: 'foryou', node: <ForYouGrid active={active} /> },
     { id: 'moderation', node: <ModerationRail /> },
     { id: 'strip', node: <HomeStrip /> },
@@ -328,9 +348,11 @@ export default function HomeStreaming() {
     // La dernière nouvelle reste toujours affichée, en grand ; les précédentes en petites cartes (au choix).
     { id: 'news', node: <NewsPanel heroOnly={!layout.prevNews} /> },
     { id: 'continue', node: <ContinueWatching hideNext /> },
-    { id: 'recommended', node: recommended.length > 0 ? <Rail icon="⭐" title="Recommandé pour toi" to="/browse" items={recommended} /> : <Rail icon="🔥" title="Les plus populaires" to="/browse?sort=seeders" items={popular} /> },
+    ...(recommended.length > 0 ? [{ id: 'recommended', node: <Rail icon="✨" title="Recommandé pour toi" to="/decouvrir?s=pour-toi" items={recommended} /> }] : []),
     { id: 'top5', node: <Top5 items={popular} /> },
     { id: 'latest', node: <LatestRail latest={latest} /> },
+    { id: 'popular', node: <PopularRail /> },
+    ...(free.length > 0 ? [{ id: 'freeleech', node: <Rail icon="🎁" title="Freeleech en ce moment : ne compte pas dans ton ratio" to="/decouvrir?s=freeleech" items={free} /> }] : []),
     ...(atRisk.length > 0 ? [{ id: 'atrisk', node: <Rail icon="⚠️" title="À seeder : torrents à 1-2 seeders, un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} /> }] : []),
   ];
   const movableIds = HOME_SECTIONS.filter((x) => !x.fixed).map((x) => x.id);

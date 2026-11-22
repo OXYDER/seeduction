@@ -127,6 +127,10 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/', icon: '🏠', cls: 'c-home', label: 'Tableau de bord', match: (p) => p === '/', group: 'accueil' },
   { to: '/news', icon: '📰', cls: 'c-rules', label: 'Nouvelles', match: starts('/news'), group: 'accueil' },
   { to: '/browse', icon: '🔍', cls: 'c-search', label: 'Parcourir', match: (p) => (starts('/browse')(p) && !window.location.search.includes('categoryId=')) || starts('/torrents')(p) || starts('/entities')(p), group: 'catalogue' },
+  { to: '/decouvrir', icon: '🆕', cls: 'c-search', label: 'Nouveautés', match: (p) => starts('/decouvrir')(p) && (!window.location.search.includes('s=') || window.location.search.includes('s=nouveautes')), group: 'catalogue' },
+  { to: '/decouvrir?s=populaires', icon: '🔥', cls: 'c-search', label: 'Plus populaires', match: (p) => starts('/decouvrir')(p) && window.location.search.includes('s=populaires'), group: 'catalogue' },
+  { to: '/decouvrir?s=pour-toi', icon: '✨', cls: 'c-search', label: 'Recommandé pour toi', match: (p) => starts('/decouvrir')(p) && window.location.search.includes('s=pour-toi'), group: 'catalogue' },
+  { to: '/decouvrir?s=freeleech', icon: '🎁', cls: 'c-search', label: 'Freeleech', match: (p) => starts('/decouvrir')(p) && window.location.search.includes('s=freeleech'), group: 'catalogue' },
   { to: '/suggestions', icon: '💡', cls: 'c-forum', label: 'Suggestions', match: starts('/suggestions'), group: 'communaute' },
   { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead'), group: 'catalogue' },
   { to: '/activity', icon: '📈', cls: 'c-search', label: 'Mes torrents', match: (p) => starts('/activity')(p) && !window.location.search.includes('statut='), group: 'bibliotheque', sideOnly: true },
@@ -202,6 +206,17 @@ function LayoutInner() {
     if (topOn && el && topFit < 3 && el.scrollWidth > el.clientWidth + 1) setTopFit((f) => f + 1);
   });
   useEffect(() => { const r = () => setTopFit(0); window.addEventListener('resize', r); return () => window.removeEventListener('resize', r); }, []);
+  // Le soulignement de la rubrique en cours glisse d'un menu à l'autre.
+  const [ind, setInd] = useState<{ left: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const nav = topRef.current;
+    if (!topOn || !nav) return;
+    const b = nav.querySelector('.top-grp.here .top-grp-btn') as HTMLElement | null;
+    if (!b) { setInd((c) => (c === null ? c : null)); return; }
+    const n = nav.getBoundingClientRect(), r = b.getBoundingClientRect();
+    const left = Math.round(r.left - n.left + 12), width = Math.max(0, Math.round(r.width - 24));
+    setInd((c) => (c && c.left === left && c.width === width ? c : { left, width }));
+  });
   useEffect(() => { setTopFit(0); }, [compact, topOn, navPrefs, profile?.statusText, profile?.watching, user?.username]);
   useEffect(() => {
     const h = () => setCompact(window.scrollY > 48);
@@ -654,6 +669,7 @@ function LayoutInner() {
 
     const topNavEl = (
             <nav ref={topRef} className={`top-menu fit-${topFit} size-${navPrefs.size}${navPrefs.icons ? '' : ' no-icons'} sp-${navPrefs.spacing}`} aria-label="Menu principal">
+              <i className="top-ind" aria-hidden="true" style={ind ? { left: ind.left, width: ind.width, opacity: 1 } : { opacity: 0 }} />
               <Link to="/" className="top-brand" title="Accueil"><img src="/logo-icon.png" alt="" width={30} height={30} /><span>SEEDUCTION</span></Link>
               {groupList.map(({ g, items }) => {
                 const open = topOpen === g.id;
@@ -713,6 +729,7 @@ function LayoutInner() {
 
     return (
       <div style={navPrefs.width && !topBar && !collapsed ? ({ ['--side-w' as string]: `${navPrefs.width}px` } as React.CSSProperties) : undefined} className={`shell${collapsed && !topBar ? ' collapsed' : ''}${navPrefs.side === 'right' && !topBar ? ' side-right' : ''}${style === 'rail' && !collapsed && !topBar ? ' nav-rail' : ''}${topBar ? ' nav-top' : ''}`}>
+        <div key={location.pathname} className="nprog" aria-hidden="true" />
         {drawer && <div className="shell-overlay" onClick={() => setDrawer(false)} />}
         {!topBar && (
         <aside className={`side-nav${drawer ? ' open' : ''}`}>

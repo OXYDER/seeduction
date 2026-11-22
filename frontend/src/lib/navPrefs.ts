@@ -83,7 +83,7 @@ export const useNavPrefs = create<NavPrefsState>((set, get) => {
 });
 
 /** Ordre d'origine du menu (la liste à plat d'avant les groupes) ; les autres liens suivent dans l'ordre du code. */
-export const NAV_CLASSIC_ORDER = ['/', '/browse', '/news', '/upload', '/requests', '/favorites', '/collections', '/friends', '/teams', '/chat', '/forum', '/suggestions', '/jeux', '/canadiens-en-direct', '/stats', '/dead', '/soutenir', '/wiki', '/support', '/staff-board', '/moderation', '/equipe', '/admin'];
+export const NAV_CLASSIC_ORDER = ['/', '/browse', '/decouvrir', '/decouvrir?s=populaires', '/decouvrir?s=pour-toi', '/decouvrir?s=freeleech', '/news', '/upload', '/requests', '/favorites', '/collections', '/friends', '/teams', '/chat', '/forum', '/suggestions', '/jeux', '/canadiens-en-direct', '/stats', '/dead', '/soutenir', '/wiki', '/support', '/staff-board', '/moderation', '/equipe', '/admin'];
 /** Style Épinglés : les liens montrés tant que le membre n'a rien épinglé. */
 export const NAV_DEFAULT_PINNED = ['/', '/browse', '/news', '/upload', '/chat', '/forum'];
 

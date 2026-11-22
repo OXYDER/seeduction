@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 const Browse = lazyPage(() => import('./pages/Browse'));
+const Discover = lazyPage(() => import('./pages/Discover'));
 const Favorites = lazyPage(() => import('./pages/Favorites'));
 const Bonus = lazyPage(() => import('./pages/Bonus'));
 const Donate = lazyPage(() => import('./pages/Donate'));
@@ -115,6 +116,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/browse" element={<Browse />} />
+          <Route path="/decouvrir" element={<Discover />} />
           <Route path="/torrents/:id" element={<TorrentDetail />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/profile" element={<Profile />} />

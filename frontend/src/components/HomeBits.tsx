@@ -288,5 +288,5 @@ export function LatestRail({ latest }: { latest: any[] }) {
       {subs.map((c) => <button key={c.id} type="button" className={`hs-cat${sel === c.id ? ' on' : ''}`} onClick={() => setSel(c.id)}>{c.name}</button>)}
     </div>
   ) : undefined;
-  return <Rail icon="🆕" title="Derniers ajouts" to={sel ? `/browse?categoryId=${sel}&sort=date` : '/browse?sort=date'} items={sel ? rows ?? [] : latest} loading={!!sel && rows === null} toolbar={toolbar} />;
+  return <Rail icon="🆕" title="Nouveautés : ajoutés récemment" to={sel ? `/browse?categoryId=${sel}&sort=date` : '/decouvrir'} items={sel ? rows ?? [] : latest} loading={!!sel && rows === null} toolbar={toolbar} />;
 }
