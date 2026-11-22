@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Ic, { type IcName } from './Ic';
 import { Link } from 'react-router-dom';
 import { create } from 'zustand';
 import { api } from '../api/client';
@@ -159,17 +160,17 @@ export function HomeActions({ canUpload }: { canUpload: boolean }) {
     api.get('/requests').then((r) => setOpen(r.data?.stats?.open ?? null)).catch(() => undefined);
     api.get('/bonus/seeds').then((r) => setSeeds(r.data?.counts?.total ?? null)).catch(() => undefined);
   }, []);
-  const ACTIONS: { to: string; icon: string; label: string; hint: string }[] = [
-    ...(canUpload ? [{ to: '/upload', icon: '⬆️', label: 'Envoyer un torrent', hint: 'Partager un nouveau torrent' }] : []),
-    { to: '/requests', icon: '🙋', label: 'Faire une demande', hint: open === null ? 'Ce que la communauté cherche' : `${open} demande${open > 1 ? 's' : ''} ouverte${open > 1 ? 's' : ''}` },
-    { to: '/referrals', icon: '🎟️', label: 'Inviter un ami', hint: 'Code ou achat en points' },
-    { to: '/activity?statut=seeding', icon: '🌱', label: 'Mes seeds', hint: seeds === null ? 'Obligations et téléchargements' : seeds === 0 ? 'Aucune obligation à terminer' : `${seeds} obligation${seeds > 1 ? 's' : ''} à terminer` },
+  const ACTIONS: { to: string; icon: IcName; label: string; hint: string }[] = [
+    ...(canUpload ? [{ to: '/upload', icon: 'up' as IcName, label: 'Envoyer un torrent', hint: 'Partager un nouveau torrent' }] : []),
+    { to: '/requests', icon: 'msg' as IcName, label: 'Faire une demande', hint: open === null ? 'Ce que la communauté cherche' : `${open} demande${open > 1 ? 's' : ''} ouverte${open > 1 ? 's' : ''}` },
+    { to: '/referrals', icon: 'users' as IcName, label: 'Inviter un ami', hint: 'Code ou achat en points' },
+    { to: '/activity?statut=seeding', icon: 'seed' as IcName, label: 'Mes seeds', hint: seeds === null ? 'Obligations et téléchargements' : seeds === 0 ? 'Aucune obligation à terminer' : `${seeds} obligation${seeds > 1 ? 's' : ''} à terminer` },
   ];
   return (
     <section className="home-actions" aria-label="Actions rapides">
       <div className="ha-grid">
         {ACTIONS.map((a) => (
-          <Link key={a.to} to={a.to} className="ha-btn"><span className="ha-icon" aria-hidden="true">{a.icon}</span><span><strong>{a.label}</strong><small>{a.hint}</small></span></Link>
+          <Link key={a.to} to={a.to} className="ha-btn"><span className="ha-icon" aria-hidden="true"><Ic n={a.icon} size={22} /></span><span><strong>{a.label}</strong><small>{a.hint}</small></span></Link>
         ))}
       </div>
     </section>
@@ -216,7 +217,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
   return (
     <div className="fy-grid">
       <section className="fy-card">
-        <h3>⬇️ Téléchargements en cours<Link to="/activity?statut=leeching">Tout voir →</Link></h3>
+        <h3><span className="hc-ic"><Ic n="down" size={16} /></span>Téléchargements en cours<Link to="/activity?statut=leeching">Tout voir →</Link></h3>
         {leeching.length === 0 && <p className="fy-empty">Aucun téléchargement en cours.</p>}
         {leeching.slice(0, 2).map((t) => (
           <Row key={t.id} to={`/torrents/${t.id}`} cover={t.coverImage} title={t.name} bar={{ pct: t.progress * 100, kind: 'dl' }} sub={`${Math.round(t.progress * 100)} % · ${mb(Number(t.size) || 0)}`} chip={{ text: '⬇️ En cours', tone: 'dl' }} />
@@ -224,7 +225,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
       </section>
 
       <section className="fy-card">
-        <h3>✅ Téléchargements complétés<Link to="/activity?statut=completed">Tout voir →</Link></h3>
+        <h3><span className="hc-ic"><Ic n="check" size={16} /></span>Téléchargements complétés<Link to="/activity?statut=completed">Tout voir →</Link></h3>
         {done && done.length === 0 && <p className="fy-empty">Tes téléchargements complétés apparaîtront ici.</p>}
         {(done ?? []).slice(0, 2).map((c) => {
           const ok = c.satisfied;
@@ -235,7 +236,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
       </section>
 
       <section className="fy-card">
-        <h3>⏯️ Épisode suivant<Link to="/series">Mes séries →</Link></h3>
+        <h3><span className="hc-ic"><Ic n="cal" size={16} /></span>Épisode suivant<Link to="/series">Mes séries →</Link></h3>
         {next && next.length === 0 && <p className="fy-empty">Quand tu finis un épisode, le suivant apparaît ici dès qu'il est disponible.</p>}
         {(next ?? []).slice(0, 2).map((t) => <Row key={t.torrentId} to={`/torrents/${t.torrentId}`} cover={t.cover} title={t.title} sub={`${epCode(t.season, t.episode)} est disponible`} chip={{ text: 'Nouveau', tone: 'ok' }} />)}
       </section>
@@ -251,7 +252,7 @@ export function Top5({ items }: { items: any[] }) {
   if (!items || items.length === 0) return null;
   return (
     <section>
-      <h3 className="h2row">🔥 Tendances cette semaine<Link to="/browse?sort=seeders&period=week">Voir tout →</Link></h3>
+      <h3 className="h2row"><span className="hc-ic"><Ic n="flame" size={16} /></span>Tendances cette semaine<Link to="/browse?sort=seeders&period=week">Voir tout →</Link></h3>
       <div className="top5">
         {items.slice(0, 5).map((t, i) => (
           <Link key={t.id} to={`/torrents/${t.id}`} className="t5">

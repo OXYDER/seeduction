@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Ic, { type IcName } from './Ic';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useEventTheme } from '../store/eventTheme';
@@ -48,7 +49,7 @@ function CanadiensCard() {
   };
   return (
     <section className="hr-card">
-      <h4>🏒 Canadiens<Link to="/canadiens-en-direct">Direct →</Link></h4>
+      <h4><span className="hc-ic"><Ic n="trophy" size={16} /></span>Canadiens<Link to="/canadiens-en-direct">Direct →</Link></h4>
       {now && row(now, now.state === 'FINAL' ? 'Dernier match' : now.state === 'LIVE' ? 'En ce moment' : when(now.startUtc))}
       {next && next.id !== now?.id && row(next, `Prochain : ${when(next.startUtc)}`)}
     </section>
@@ -72,7 +73,7 @@ function FriendsCard() {
   const online = friends.map((f) => ({ ...f, status: (onlineMap[f.id] ?? f.status ?? 'OFFLINE') as PublicStatus })).filter((f) => f.status !== 'OFFLINE').sort((a, b) => a.username.localeCompare(b.username, 'fr', { sensitivity: 'base' }));
   return (
     <section className="hr-card">
-      <h4>👫 Amis en ligne ({online.length})<Link to="/friends">Tous →</Link></h4>
+      <h4><span className="hc-ic"><Ic n="users" size={16} /></span>Amis en ligne ({online.length})<Link to="/friends">Tous →</Link></h4>
       {online.length === 0 && <p className="hr-empty">{friends.length === 0 ? "Tu n'as pas encore d'amis. " : 'Aucun ami en ligne pour le moment.'}{friends.length === 0 && <Link to="/members">Trouver des membres →</Link>}</p>}
       {online.slice(0, 6).map((f) => (
         <div key={f.id} className="hr-friend">
@@ -94,7 +95,7 @@ function ChatCard() {
   const name = (c: (typeof list)[number]) => (c.type === 'DIRECT' ? c.other?.username ?? 'Message privé' : c.name ? `#${c.name}` : 'Discussion');
   return (
     <section className="hr-card">
-      <h4>💬 Dans le chat<Link to="/chat">Ouvrir →</Link></h4>
+      <h4><span className="hc-ic"><Ic n="msg" size={16} /></span>Dans le chat<Link to="/chat">Ouvrir →</Link></h4>
       {list.map((c) => (
         <button key={c.id} type="button" className="hr-chat" onClick={() => openWindow(c.id)}>
           <span className="hr-chat-top"><b>{name(c)}</b>{c.unread > 0 && <span className="hr-badge">{c.unread}</span>}<small>{timeAgo(c.lastMessageAt)}</small></span>
@@ -122,7 +123,7 @@ function ChallengeCard() {
   const c = ch.item, pct = Math.round((c.progress / c.target) * 100);
   return (
     <section className="hr-card">
-      <h4>🏆 Défi de la semaine<Link to="/jeux/defis">Tous →</Link></h4>
+      <h4><span className="hc-ic"><Ic n="trophy" size={16} /></span>Défi de la semaine<Link to="/jeux/defis">Tous →</Link></h4>
       <div className="hr-ch"><span aria-hidden="true">{c.icon}</span><span><b>{c.title}</b><span className="hr-sub">{c.progress} / {c.target}{c.points > 0 ? ` · +${c.points} pts` : ''}{ch.left > 1 ? ` · ${ch.left - 1} autre${ch.left > 2 ? 's' : ''}` : ''}</span></span></div>
       <div className="hr-bar"><i style={{ width: `${pct}%` }} /></div>
     </section>
@@ -175,7 +176,7 @@ export function TodoCard() {
   ].slice(0, 5);
   return (
     <section className="hr-card hr-todo">
-      <h4>✅ À faire</h4>
+      <h4><span className="hc-ic"><Ic n="check" size={16} /></span>À faire</h4>
       {items.length === 0 && <p className="hr-empty">Tout est en ordre : rien à régler ✓</p>}
       {items.map((i) => (
         <Link key={i.key} to={i.to} className={`hr-todo-row ${i.tone}`}><span aria-hidden="true">{i.icon}</span><span>{i.text}</span><span className="hr-go" aria-hidden="true">→</span></Link>
