@@ -4,6 +4,7 @@ import { MemberClass } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CLASS_LABELS, MEMBER_CLASSES, rankProgress } from '../common/utils/economy';
+import { keepFounderRank } from '../common/utils/founders';
 
 /**
  * Rangs automatiques : chaque nuit, chaque membre reçoit la plus haute classe
@@ -46,7 +47,7 @@ export class RanksService implements OnModuleInit {
   async recompute(notify: boolean) {
     const users = await this.prisma.user.findMany({
       where: { status: 'ACTIVE' },
-      select: { id: true, createdAt: true, uploaded: true, downloaded: true, memberClass: true },
+      select: { id: true, createdAt: true, uploaded: true, downloaded: true, memberClass: true, founderAt: true },
     });
     const order = MEMBER_CLASSES.map((c) => c.id as string).reverse().concat([]); // du plus bas au plus haut
     const rank = (c: string) => (c === 'NOUVEAU' ? -1 : order.indexOf(c));
@@ -54,6 +55,7 @@ export class RanksService implements OnModuleInit {
     for (const u of users) {
       const next = this.classFor(u);
       if (next === u.memberClass) continue;
+      if (keepFounderRank(!!u.founderAt, rank(u.memberClass), rank(next))) continue; // un fondateur ne perd jamais son rang
       await this.prisma.user.update({ where: { id: u.id }, data: { memberClass: next } });
       changed++;
       if (notify) {

@@ -9,6 +9,7 @@ import { TrackerService } from '../tracker/tracker.service';
 import { downloadMarginBytes } from '../common/utils/download-margin';
 import { SeededTorrent, memberHourly } from '../common/utils/bonus-rate';
 import { dropHnrWarnings, ECONOMY, hnrAbandoned, SEED_FRESH_MS, SHOP_ITEMS } from '../common/utils/economy';
+import { FOUNDER } from '../common/utils/founders';
 import { STAFF_ROLES } from '../common/utils/staff-2fa';
 import { setSource } from '../common/utils/ledger';
 
@@ -46,7 +47,9 @@ export class EconomyService {
   async accrueBonus() {
     const seeding = await this.seededTorrents();
     if (seeding.size === 0) return;
-    const pays = [...seeding].map(([userId, list]) => ({ userId, points: memberHourly(list, ECONOMY.bonusPerTorrentHour, ECONOMY.bonusMaxTorrents) })).filter((p) => p.points > 0);
+    // Les membres fondateurs gagnent un peu plus de points en seedant (+5 %).
+    const founders = new Set((await this.prisma.user.findMany({ where: { founderAt: { not: null } }, select: { id: true } })).map((f) => f.id));
+    const pays = [...seeding].map(([userId, list]) => ({ userId, points: Math.round(memberHourly(list, ECONOMY.bonusPerTorrentHour, ECONOMY.bonusMaxTorrents) * (founders.has(userId) ? FOUNDER.bonusMultiplier : 1) * 100) / 100 })).filter((p) => p.points > 0);
     if (pays.length === 0) return;
     await this.prisma.$transaction([setSource(this.prisma, 'seed'), ...pays.map((p) => this.prisma.user.update({ where: { id: p.userId }, data: { bonusPoints: { increment: p.points } } }))]);
     this.logger.log(`Bonus crédité à ${pays.length} membre(s)`);

@@ -28,7 +28,7 @@ export default function AdminEventThemes() {
   const [dirty, setDirty] = useState(false);
   const [hours, setHours] = useState<Record<string, string>>({});
   const [sound, setSound] = useState<{ name: string; url: string | null; mode: 'custom' | 'default' | 'synth' } | null>(null);
-  const [sports, setSports] = useState<{ enabled: boolean; goalBonus: { enabled: boolean; points: number; dailyMax: number; minAccountDays: number } } | null>(null);
+  const [sports, setSports] = useState<{ enabled: boolean; goalBonus: { enabled: boolean; points: number; dailyMax: number; minAccountDays: number }; preGame?: { enabled: boolean; minutes: number } } | null>(null);
   const decor = useEventDecor();
   const preview = useEventTheme((s) => s.preview);
   const setPreview = useEventTheme((s) => s.setPreview);
@@ -60,6 +60,13 @@ export default function AdminEventThemes() {
   }
   async function useSynth() {
     try { setSound((await api.post('/sports/admin/sound/synth')).data); setMsg('✓ La sirène synthétisée du navigateur est utilisée.'); } catch (e) { setErr(errorOf(e)); }
+  }
+
+  async function savePreGame(patch: Partial<{ enabled: boolean; minutes: number }>) {
+    if (!sports) return;
+    const next = { enabled: true, minutes: 15, ...(sports.preGame ?? {}), ...patch };
+    setSports({ ...sports, preGame: next });
+    try { setSports((await api.put('/sports/admin', { preGame: next })).data); setMsg('✓ Avant-match enregistré.'); } catch (e) { setErr(errorOf(e)); }
   }
 
   async function saveGoal(patch: Partial<NonNullable<typeof sports>['goalBonus']>) {
@@ -117,6 +124,11 @@ export default function AdminEventThemes() {
         </div>
         {sports && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flexBasis: '100%', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={sports.preGame?.enabled ?? true} onChange={(e) => savePreGame({ enabled: e.target.checked })} /> ⏰ Prévenir les membres avant la mise au jeu</label>
+              <span style={{ fontSize: 13 }}><input type="number" min={0} max={120} defaultValue={sports.preGame?.minutes ?? 15} key={`pg${sports.preGame?.minutes ?? 15}`} onBlur={(e) => savePreGame({ minutes: Number(e.target.value) || 0 })} style={{ width: 70 }} /> minutes avant</span>
+              <span className="muted" style={{ fontSize: 12.5 }}>Notification avec le lien « Canadiens en direct » (et avis sur le téléphone si activé). Chaque membre peut la couper dans ses notifications (« Avant-match du Canadien »). Pas de doublon quand une diffusion du calendrier Direct commence au même moment : son propre avis s'en charge.</span>
+            </div>
             <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={sports.goalBonus.enabled} onChange={(e) => saveGoal({ enabled: e.target.checked })} /> 🥅 Points bonus à chaque but du Canadien</label>
             <span style={{ fontSize: 13 }}><input type="number" min={0} max={1000} defaultValue={sports.goalBonus.points} key={`p${sports.goalBonus.points}`} onBlur={(e) => saveGoal({ points: Number(e.target.value) || 0 })} style={{ width: 70 }} aria-label="Points par but" /> points par but, au plus <input type="number" min={0} max={100000} defaultValue={sports.goalBonus.dailyMax} key={`d${sports.goalBonus.dailyMax}`} onBlur={(e) => saveGoal({ dailyMax: Number(e.target.value) || 0 })} style={{ width: 80 }} aria-label="Maximum par 24 heures" /> par membre sur 24 h</span>
             <div style={{ flexBasis: '100%', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

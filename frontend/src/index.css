@@ -4781,3 +4781,19 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .shell:not(.collapsed) .side-links.sp-airy a, .top-menu.sp-airy .top-drop a { padding-top: 14px; padding-bottom: 14px; }
 .top-menu.sp-airy .top-drop { gap: 6px; }
 .top-menu.sp-airy { gap: 10px; }
+
+/* Membres fondateurs : pseudo en or brillant (passe avant tous les autres rangs), étiquette et mur. */
+.user-link.rank-FOUNDER, .nick.rank-FOUNDER, html a.user-link.rank-FOUNDER, html a .nick.rank-FOUNDER {
+  font-weight: 800; color: #ffd24a;
+  background: linear-gradient(110deg, #b8860b 0%, #ffd700 25%, #fff6c2 45%, #ffd700 60%, #b8860b 100%); background-size: 240% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: founderShine 3.4s linear infinite; filter: drop-shadow(0 0 5px rgba(255, 196, 40, 0.45));
+}
+@keyframes founderShine { to { background-position: -240% 0; } }
+@media (prefers-reduced-motion: reduce) { .user-link.rank-FOUNDER, .nick.rank-FOUNDER { animation: none; } }
+.founder-tag { background: linear-gradient(135deg, #f5d67a, #c99a2e) !important; color: #2b1d00 !important; font-weight: 700; }
+.founder-me { border-color: #e0b84a; background: linear-gradient(135deg, rgba(224, 184, 74, 0.12), rgba(224, 184, 74, 0.03)); }
+.founder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.founder-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(224, 184, 74, 0.35); background: rgba(224, 184, 74, 0.06); }
+.founder-card:hover { background: rgba(224, 184, 74, 0.14); }
+.founder-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -113,6 +113,7 @@ export default function Profile() {
           )}
         </span>
         <h1 className={`user-link${rankClass(rankKeyOf(profile))}`} style={{ margin: 0 }}>{profile.username}</h1>
+        {profile.founder && <Link to="/fondateurs" className="badge founder-tag" title="Membre fondateur : a aidé à bâtir Seeduction pendant la bêta">🏅 Fondateur</Link>}
         {profile.deleted && <span className="badge" title="Le pseudo, les statistiques et les actions restent, mais les données personnelles ont été effacées" style={{ background: 'rgba(150,150,150,0.2)' }}>🗑️ Compte supprimé</span>}
         {profile.onlineStatus && <span className="muted" style={{ fontSize: 13 }}>{STATUS_LABEL[profile.onlineStatus as keyof typeof STATUS_LABEL]}</span>}
         {profile.role && <span className="badge double">{displayRank(profile, ROLE_LABEL)}</span>}

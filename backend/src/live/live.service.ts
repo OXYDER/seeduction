@@ -312,6 +312,16 @@ export class LiveService {
    * Prévient tous les membres (notification + notification push) quelques minutes avant le début d'une diffusion du calendrier (un match du Canadien, une émission...),
    * avec le lien vers « Canadiens en direct ». Une seule fois par diffusion ; réglable (ou coupé) dans Admin > Direct ; chaque membre peut le couper dans ses notifications (« Nouvelles et événements »).
    */
+  /** Une diffusion du calendrier commence-t-elle autour de cet instant ? (le rappel du direct s'occupe alors d'avertir les membres : pas de doublon avec l'avant-match de la LNH) */
+  async hasBroadcastNear(at: Date, windowMin = 45): Promise<boolean> {
+    const cfg = await this.config();
+    if (!cfg.enabled) return false;
+    const [rows, streams] = await Promise.all([this.prisma.liveSlot.findMany(), this.prisma.liveStream.findMany()]);
+    const visible = this.slotLikes(rows).filter((s) => streams.find((x) => x.id === s.streamId)?.enabled);
+    const from = new Date(at.getTime() - windowMin * 60_000), to = new Date(at.getTime() + windowMin * 60_000);
+    return visible.some((s) => occurrencesBetween(s, from, to, cfg.timezone).some((o) => o.start.getTime() >= from.getTime() && o.start.getTime() <= to.getTime()));
+  }
+
   async remind(now = new Date()) {
     const cfg = await this.config();
     if (!cfg.enabled || !cfg.notifyMinutes) return [];

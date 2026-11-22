@@ -12,7 +12,7 @@ describe('badges', () => {
     expect(evaluateBadges(base)).toEqual([]);
   });
   it('le test et la progression disent la même chose', () => {
-    const rich: BadgeStats = { ...base, uploadsApproved: 300, uploadedBytes: BigInt(6e13), ratio: 12, bonusPoints: 30000, invitees: 30, forumPosts: 600, accountAgeDays: 2000, requestFills: 30, seedHours: 25000, seedOk: 300, snatches: 600, subtitles: 120, comments: 600, mentored: 12, ratings: 250, watched: 60, quizzes: 60, wheelSpins: 200, picksWon: 60, badgesEarned: 60 };
+    const rich: BadgeStats = { ...base, founder: true, uploadsApproved: 300, uploadedBytes: BigInt(6e13), ratio: 12, bonusPoints: 30000, invitees: 30, forumPosts: 600, accountAgeDays: 2000, requestFills: 30, seedHours: 25000, seedOk: 300, snatches: 600, subtitles: 120, comments: 600, mentored: 12, ratings: 250, watched: 60, quizzes: 60, wheelSpins: 200, picksWon: 60, badgesEarned: 60 };
     expect(evaluateBadges(rich).sort()).toEqual(BADGES.map((b) => b.code).sort());
     for (const b of BADGES) { const p = b.progress(rich); expect(p.value).toBe(p.target); }
     for (const b of BADGES) { const p = b.progress(base); expect(p.value).toBeLessThan(p.target); expect(p.value).toBeGreaterThanOrEqual(0); }
@@ -36,7 +36,9 @@ describe('badges', () => {
 
 describe('points des badges', () => {
   it('chaque badge rapporte des points, et les plus difficiles rapportent davantage', () => {
-    for (const b of BADGES) expect(b.points).toBeGreaterThan(0);
+    // « Fondateur » est attribué par l'équipe : il ne verse pas de points (ses avantages sont ailleurs).
+    for (const b of BADGES.filter((x) => x.code !== 'FONDATEUR')) expect(b.points).toBeGreaterThan(0);
+    expect(BADGES.find((b) => b.code === 'FONDATEUR')!.points).toBe(0);
     const pts = (code: string) => BADGES.find((b) => b.code === code)!.points;
     expect(pts('PREMIER_PAS')).toBeLessThan(pts('UPLOADER_CONFIRME'));
     expect(pts('UPLOADER_CONFIRME')).toBeLessThan(pts('UPLOADER_LEGENDAIRE'));

@@ -870,7 +870,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
       content:
         `La page [b]Canadiens en direct[/b] diffuse les émissions en direct planifiées par l'équipe, directement dans le site.\n` +
         `\n` +
-        `[b]Être prévenu avant le début[/b] : environ [b]10 minutes avant[/b] chaque diffusion du calendrier (un match du Canadien, une émission...), tu reçois une notification (et un avis sur ton téléphone si tu les as activés) avec le lien vers [url=/canadiens-en-direct]Canadiens en direct[/url]. Tu peux la couper dans les préférences de notifications, sous [b]Nouvelles et événements[/b]. L'équipe règle le délai (ou le coupe) dans Admin > Direct.\n\n` +
+        `[b]Être prévenu avant le début[/b] : environ [b]10 minutes avant[/b] chaque diffusion du calendrier (un match du Canadien, une émission...), tu reçois une notification (et un avis sur ton téléphone si tu les as activés) avec le lien vers [url=/canadiens-en-direct]Canadiens en direct[/url]. Tu peux la couper dans les préférences de notifications, sous [b]Nouvelles et événements[/b]. L'équipe règle le délai (ou le coupe) dans Admin > Direct. Pour un [b]match du Canadien[/b] du calendrier de la LNH, un [b]avis d'avant-match[/b] part aussi environ 15 minutes avant la mise au jeu, avec le même lien (sauf quand une diffusion du calendrier Direct commence au même moment : un seul avis) ; tu le coupes à part dans tes notifications, sous [b]Avant-match du Canadien[/b], sans toucher aux buts du Canadien.\n\n` +
         `[b]Où le trouver ?[/b]\n` +
         `Un lien [b]🔴 Canadiens en direct[/b] apparaît dans le menu [b]seulement pendant une diffusion[/b]. Tu peux aussi ouvrir la page [url=/canadiens-en-direct]Canadiens en direct[/url] à tout moment : elle affiche la diffusion en cours ou, sinon, les prochaines émissions prévues, et elle se met à jour toute seule.\n` +
         `\n` +
@@ -1118,6 +1118,25 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Sur la fiche, l'onglet [b]Commentaires[/b] sert à poser une question, signaler un souci avec le fichier ou remercier. Tu peux aussi noter (étoiles) et dire merci (👍).\n\n` +
         `[b]Bonnes manières[/b]\n` +
         `Respecte le [url=/wiki/reglement-general]règlement[/url]. Un message inapproprié ? Utilise le bouton de signalement ([url=/wiki/signaler-un-probleme]Signaler un problème[/url]) plutôt que de répondre.`,
+    },
+    {
+      title: 'Membres fondateurs',
+      slug: 'guide-fondateurs',
+      keywords: 'fondateur, fondateurs, bêta, beta, statut, pseudo en or, salon, avantages, invitations, jetons freeleech',
+      content:
+        `Les [b]membres fondateurs[/b] sont les membres de la bêta qui ont aidé à bâtir Seeduction. Ce guide explique le statut, ses avantages et comment il est attribué.\n\n` +
+        `[b]Le statut[/b]\n` +
+        `Leur pseudo [b]brille en or[/b] partout sur le site (chat, forum, profil, classements), avec le badge [b]🏅 Fondateur[/b] et une place sur le [url=/fondateurs]mur des fondateurs[/url] (menu Communauté).\n\n` +
+        `[b]Les avantages[/b]\n` +
+        `• Un [b]salon de chat privé[/b] réservé aux fondateurs : le bouton se trouve sur la page [url=/fondateurs]Fondateurs[/url].\n` +
+        `• [b]3 invitations de plus[/b] que celles de ton rang.\n` +
+        `• Ton [b]rang est protégé[/b] : il ne baisse jamais à cause d'une inactivité (il monte normalement).\n` +
+        `• [b]3 jetons freeleech par an[/b], versés à l'arrivée du statut puis chaque année.\n` +
+        `• [b]+5 % de points[/b] gagnés en seedant, en permanence.\n` +
+        `• [b]Un changement de pseudo gratuit[/b] (une seule fois ; tu es déconnecté ensuite pour que le nouveau pseudo s'affiche partout).\n` +
+        `• Les nouveautés annoncées en premier dans le salon.\n\n` +
+        `[b]Comment le statut est attribué[/b]\n` +
+        `Il est réservé aux membres inscrits [b]avant la fin de la bêta[/b] et qui ont été [b]actifs[/b] : le site propose les candidats d'après leur activité (jours de connexion, messages au forum et commentaires, torrents envoyés, suggestions et billets de support, temps de seed, et une présence récente), puis l'administration [b]valide chaque fondateur[/b] (Admin > Fondateurs). Le statut peut être retiré par l'administration.`,
     },
     {
       title: 'Rejoindre ou suivre une Team',

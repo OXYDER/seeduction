@@ -16,6 +16,7 @@ export const NOTIFICATION_CATEGORIES = [
   { key: 'social', label: 'Amis, équipes et suivis', icon: '👥', hint: 'Demandes d\'ami, équipes, invitations utilisées, nouveaux torrents des acteurs et studios que tu suis.', locked: false },
   { key: 'announcements', label: 'Nouvelles et événements', icon: '📯', hint: 'Nouvelles du site, freeleech et événements.', locked: false },
   { key: 'games', label: 'Jeux et buts du Canadien', icon: '🏒', hint: 'Buts du Canadien (avec les points bonus offerts aux membres en ligne), résultats de tes paris Mise-O-jeu.', locked: false },
+  { key: 'prematch', label: 'Avant-match du Canadien', icon: '⏰', hint: "Un rappel quelques minutes avant la mise au jeu d'un match du Canadien, avec le lien pour le regarder en direct.", locked: false },
   { key: 'alerts', label: 'Alertes de recherche', icon: '🔔', hint: 'Nouveaux torrents qui correspondent à tes recherches enregistrées (page Alertes).', locked: false },
   { key: 'pot', label: 'Pot commun', icon: '🍯', hint: 'Étapes et récompenses du pot commun.', locked: false },
   { key: 'support', label: 'Support', icon: '🎫', hint: 'Réponses à tes billets de support.', locked: false },

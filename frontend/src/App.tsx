@@ -71,6 +71,7 @@ const Requests = lazyPage(() => import('./pages/Requests'));
 const Friends = lazyPage(() => import('./pages/Friends'));
 const PlayerDownload = lazyPage(() => import('./pages/PlayerDownload'));
 const Wiki = lazyPage(() => import('./pages/Wiki'));
+const Founders = lazyPage(() => import('./pages/Founders'));
 const Alerts = lazyPage(() => import('./pages/Alerts'));
 const Achievements = lazyPage(() => import('./pages/Achievements'));
 const Referrals = lazyPage(() => import('./pages/Referrals'));
@@ -143,6 +144,7 @@ export default function App() {
           <Route path="/collections" element={<Collections />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/wiki" element={<Wiki />} />
+          <Route path="/fondateurs" element={<Founders />} />
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/referrals" element={<Referrals />} />

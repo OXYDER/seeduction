@@ -33,6 +33,8 @@ export interface BadgeStats {
   picksWon: number;
   /** Badges déjà obtenus (pour les badges de collection). */
   badgesEarned: number;
+  /** Membre fondateur (voir common/utils/founders.ts). */
+  founder?: boolean;
 }
 
 export type BadgeCategory = 'envoi' | 'partage' | 'communaute' | 'entraide' | 'anciennete';
@@ -163,6 +165,11 @@ const DEFINITIONS: BadgeDefinition[] = [
   // ---- ancienneté
   threshold('GARDIEN_DU_TEMPLE', 'Gardien du temple', '🏯', 'Membre depuis 4 ans', 'anciennete', (s) => s.accountAgeDays, 1460, 'jours'),
   threshold('MONUMENT', 'Monument', '🗽', 'Membre depuis 5 ans', 'anciennete', (s) => s.accountAgeDays, 1825, 'jours'),
+  {
+    code: 'FONDATEUR', points: 0, name: 'Fondateur', icon: '🏅', description: 'Membre fondateur : a aidé à bâtir Seeduction pendant la bêta', category: 'anciennete',
+    check: (s) => !!s.founder,
+    progress: (s) => ({ value: s.founder ? 1 : 0, target: 1 }),
+  },
 ];
 
 /**

@@ -8,6 +8,7 @@ import { PresenceService } from '../presence/presence.service';
 import { ALL_PERMS, permsOf, type Perms } from '../common/utils/family-perms';
 import { COLORED_CLASSES, COLORED_ROLES, rankKeyOf } from '../common/utils/rank';
 import { lastSeenVisible } from '../common/utils/last-seen';
+import { SettingsService } from '../settings/settings.service';
 import { normalizeNavPrefs } from '../common/utils/nav-prefs';
 
 const PRESENCE_VALUES: PresenceStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'INVISIBLE'];
@@ -17,7 +18,7 @@ const TIP_STYLES = ['poster', 'classic', 'cinema', 'minimal', 'off'];
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService, private friends: FriendsService, private presence: PresenceService, private anonymity: AnonymityService) {}
+  constructor(private prisma: PrismaService, private friends: FriendsService, private presence: PresenceService, private anonymity: AnonymityService, private settings: SettingsService) {}
 
   /**
    * Profil complet pour soi-même ; le staff voit en plus l'e-mail ; les autres
@@ -35,7 +36,7 @@ export class UsersService {
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, showLastSeen: true, anonymous: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
-        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, chatRail: true, navPrefs: true, anonymousSelf: true, anonymousUploads: true, anonymousTeam: true, goalSound: true, tipStyle: true,
+        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, chatRail: true, navPrefs: true, founderAt: true, anonymousSelf: true, anonymousUploads: true, anonymousTeam: true, goalSound: true, tipStyle: true,
         parentId: true, profileName: true, profileType: true, profilePerms: true, familyEnabled: true, deletedAt: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
@@ -64,7 +65,7 @@ export class UsersService {
     if (user.profileType === 'BOT' && !isStaff) Object.assign(user, { uploaded: 0n, downloaded: 0n, bonusPoints: 0 });
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, showLastSeen, anonymous: adminAnonymous, defaultView, chatBubbles, chatRail, navPrefs, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, showLastSeen, anonymous: adminAnonymous, defaultView, chatBubbles, chatRail, navPrefs, founderAt, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     const onlineStatus = this.presence.publicStatus(user.id);
@@ -81,6 +82,7 @@ export class UsersService {
       ratio,
       watching,
       deleted: !!user.deletedAt,
+      founder: !!founderAt,
       // « onlineStatus » est ce que voient les autres (ONLINE/AWAY/BUSY/OFFLINE, jamais INVISIBLE tel quel) ;
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus,
@@ -233,15 +235,17 @@ export class UsersService {
   private rankCache: { at: number; value: { byId: Record<string, string[]>; byName: Record<string, string[]> } } | null = null;
   /** Rang coloré → identifiants des membres (staff, Uploadeur, Power User, Élite, Vétéran) : sert à colorer les pseudos partout, sans alourdir chaque réponse. Mis en cache une minute. */
   async rankColors(): Promise<{ byId: Record<string, string[]>; byName: Record<string, string[]> }> {
-    if (this.rankCache && Date.now() - this.rankCache.at < 60_000) return this.rankCache.value;
+    // Un changement de statut (fondateur...) remet la liste à jour tout de suite : le réglage « ranksBump » en garde l'heure.
+    const bump = Number(await this.settings.get('ranksBump')) || 0;
+    if (this.rankCache && Date.now() - this.rankCache.at < 60_000 && bump <= this.rankCache.at) return this.rankCache.value;
     const rows = await this.prisma.user.findMany({
-      where: { deletedAt: null, status: { not: 'DISABLED' }, OR: [{ role: { in: COLORED_ROLES as any } }, { memberClass: { in: COLORED_CLASSES as any } }] },
-      select: { id: true, username: true, role: true, memberClass: true },
+      where: { deletedAt: null, status: { not: 'DISABLED' }, OR: [{ role: { in: COLORED_ROLES as any } }, { memberClass: { in: COLORED_CLASSES as any } }, { founderAt: { not: null } }] },
+      select: { id: true, username: true, role: true, memberClass: true, founderAt: true },
     });
     // Par identifiant (partout où on a le membre) et par pseudo en minuscules (classements et listes qui ne donnent que le pseudo).
     const value = { byId: {} as Record<string, string[]>, byName: {} as Record<string, string[]> };
     for (const u of rows) {
-      const key = rankKeyOf(u.role, u.memberClass);
+      const key = rankKeyOf(u.role, u.memberClass, !!u.founderAt);
       if (!key) continue;
       (value.byId[key] ??= []).push(u.id);
       (value.byName[key] ??= []).push(u.username.toLowerCase());

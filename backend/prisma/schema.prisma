@@ -136,6 +136,12 @@ model User {
   chatRail           Json?
   /// Réglages du menu de gauche (style classique ou en groupes, taille des liens, liens cachés, ordre) : voir common/utils/nav-prefs.ts.
   navPrefs           Json?
+  /// Membre fondateur (a aidé à bâtir le site pendant la bêta) : depuis quand ; pseudo en or, badge, salon, avantages (voir common/utils/founders.ts).
+  founderAt          DateTime?
+  /// Dernière année du cadeau annuel de fondateur (jetons freeleech).
+  founderGiftYear    Int?
+  /// Le changement de pseudo gratuit des fondateurs a été utilisé.
+  founderRenameUsed  Boolean        @default(false)
   // Sirène quand le Canadien marque : désactivée par défaut, le membre l'active (le réglage suit son compte, sur tous ses appareils).
   goalSound          Boolean        @default(false)
   // Style des info-bulles de torrents au survol : poster | classic | cinema | minimal | off (voir frontend/src/lib/tipStyle.ts).

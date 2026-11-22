@@ -27,8 +27,9 @@ export const useRanks = create<RanksState>((set) => ({
 export const rankClass = (rank?: string) => (rank ? ` rank-${rank}` : '');
 
 /** Rang coloré d'après un profil complet (rôle du staff, Uploadeur, puis classe automatique). */
-export function rankKeyOf(u: { role?: string; memberClass?: string } | null | undefined): string | undefined {
+export function rankKeyOf(u: { role?: string; memberClass?: string; founder?: boolean } | null | undefined): string | undefined {
   if (!u) return undefined;
+  if (u.founder) return 'FOUNDER'; // membre fondateur : pseudo en or brillant, avant tout autre rang
   if (u.role && ['OWNER', 'ADMIN', 'SUPER_MODERATOR', 'MODERATOR', 'UPLOADER'].includes(u.role)) return u.role;
   return u.memberClass && ['POWER_USER', 'ELITE', 'VETERAN'].includes(u.memberClass) ? u.memberClass : undefined;
 }

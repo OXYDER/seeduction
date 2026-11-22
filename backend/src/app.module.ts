@@ -64,6 +64,7 @@ import { BackupModule } from './backup/backup.module';
 import { EventThemesModule } from './event-themes/event-themes.module';
 import { SportsModule } from './sports/sports.module';
 import { LiveModule } from './live/live.module';
+import { FoundersModule } from './founders/founders.module';
 import { PlayersModule } from './players/players.module';
 import { GamesModule } from './games/games.module';
 import { UploadCreditModule } from './upload-credit/upload-credit.module';
@@ -140,6 +141,7 @@ import { WebmailModule } from './webmail/webmail.module';
     EventThemesModule,
     SportsModule,
     LiveModule,
+    FoundersModule,
     PlayersModule,
     GamesModule,
     UploadCreditModule,

@@ -5,7 +5,9 @@
 export const COLORED_CLASSES = ['POWER_USER', 'ELITE', 'VETERAN'];
 export const COLORED_ROLES = ['OWNER', 'ADMIN', 'SUPER_MODERATOR', 'MODERATOR', 'UPLOADER'];
 
-export function rankKeyOf(role: string | null | undefined, memberClass: string | null | undefined): string | null {
+/** Un membre fondateur passe avant tout : son pseudo est en or brillant (clé « FOUNDER »). */
+export function rankKeyOf(role: string | null | undefined, memberClass: string | null | undefined, founder = false): string | null {
+  if (founder) return 'FOUNDER';
   if (role && COLORED_ROLES.includes(role)) return role;
   if (memberClass && COLORED_CLASSES.includes(memberClass)) return memberClass;
   return null;

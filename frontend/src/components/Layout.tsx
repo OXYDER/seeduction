@@ -143,6 +143,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/fil', icon: '🧱', cls: 'c-collections', label: 'Fil des membres', match: starts('/fil'), group: 'communaute' },
   { to: '/friends', icon: '👫', cls: 'c-collections', label: 'Amis', match: starts('/friends'), group: 'communaute' },
   { to: '/teams', icon: '🏴', cls: 'c-forum', label: 'Teams', match: starts('/teams'), group: 'communaute' },
+  { to: '/fondateurs', icon: '🏅', cls: 'c-collections', label: 'Fondateurs', match: starts('/fondateurs'), group: 'communaute', sideOnly: true },
   { to: '/canadiens-en-direct', icon: '🔴', cls: 'c-livechat', label: 'Canadiens en direct', match: starts('/canadiens-en-direct'), liveOnly: true, group: 'communaute' },
   { to: '/stats', icon: '📊', cls: 'c-search', label: 'Stats et classements', match: (p) => starts('/stats')(p) || starts('/leaderboard')(p) || starts('/hall-of-fame')(p), group: 'communaute' },
   { to: '/jeux', icon: '🎲', cls: 'c-chat', label: 'Tous les jeux', match: (p) => p === '/jeux', group: 'jeux' },

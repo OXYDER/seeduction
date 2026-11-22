@@ -9,6 +9,8 @@ import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
 import { Game, Summary, inLiveWindow, normalizeGame, summarize } from '../common/utils/nhl';
 import { TeamRecord, recordOf } from '../common/utils/picks';
+import { NotificationsService } from '../notifications/notifications.service';
+import { LiveService } from '../live/live.service';
 import { DEFAULT_GOAL_BONUS, GoalBonusConfig, GoalBonusService, normalizeGoalBonus } from './goal-bonus.service';
 
 const KEY = 'sports';
@@ -19,7 +21,16 @@ const SCORE_TTL = 5_000;
 const RESULT_TTL = 4_000;
 const TIMEOUT_MS = 8_000;
 
-export interface SportsConfig { enabled: boolean; team: string; goalBonus: GoalBonusConfig }
+/** Avant-match : avertir les membres quelques minutes avant la mise au jeu (lien vers « Canadiens en direct »). */
+export interface PreGameConfig { enabled: boolean; minutes: number }
+export const DEFAULT_PRE_GAME: PreGameConfig = { enabled: true, minutes: 15 };
+export interface SportsConfig { enabled: boolean; team: string; goalBonus: GoalBonusConfig; preGame: PreGameConfig }
+
+export function normalizePreGame(raw: any, previous: PreGameConfig = DEFAULT_PRE_GAME): PreGameConfig {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const n = Number(r.minutes);
+  return { enabled: typeof r.enabled === 'boolean' ? r.enabled : previous.enabled, minutes: r.minutes !== undefined && r.minutes !== '' && Number.isFinite(n) ? Math.min(120, Math.max(0, Math.round(n))) : previous.minutes };
+}
 export interface Actor { userId: string; username: string }
 export interface GoalSound { file: string; name: string; mime: string; at: string }
 
@@ -38,6 +49,7 @@ export function normalizeSportsConfig(raw: any, previous?: SportsConfig): Sports
     enabled: r.enabled === undefined ? previous?.enabled ?? true : r.enabled === true,
     team: typeof r.team === 'string' && TEAMS[r.team] ? r.team : previous?.team ?? 'MTL',
     goalBonus: normalizeGoalBonus(r.goalBonus, previous?.goalBonus ?? DEFAULT_GOAL_BONUS),
+    preGame: normalizePreGame(r.preGame, previous?.preGame ?? DEFAULT_PRE_GAME),
   };
 }
 
@@ -61,7 +73,7 @@ export class SportsService {
   readonly nhl = { lastOkAt: null as number | null, lastErrorAt: null as number | null, lastError: null as string | null };
   private standingsCache: { at: number; map: Map<string, TeamRecord> } | null = null;
 
-  constructor(private settings: SettingsService, private audit: AuditService, private goals: GoalBonusService) {}
+  constructor(private settings: SettingsService, private audit: AuditService, private goals: GoalBonusService, private notifications: NotificationsService, private live: LiveService) {}
 
   async config(): Promise<SportsConfig> { return normalizeSportsConfig(await this.settings.get(KEY)); }
 
@@ -266,6 +278,40 @@ export class SportsService {
       if (!inLiveWindow(this.schedule.games, new Date())) return;
       await this.canadiens();
     } catch { /* la prochaine lecture réessaiera */ }
+  }
+
+  /**
+   * Avant-match : quelques minutes avant la mise au jeu d'un match du Canadien (calendrier de la LNH), tous les membres reçoivent une notification avec le lien vers
+   * « Canadiens en direct » (catégorie « Avant-match du Canadien » : chaque membre peut la couper). Une seule fois par match, et pas quand une diffusion du calendrier
+   * du site commence au même moment (son propre avis prévient déjà les membres). Réglable dans Admin > Événements (délai, ou coupé).
+   */
+  @Interval(30_000)
+  async preGame() {
+    try {
+      const cfg = await this.config();
+      if (!cfg.enabled || !cfg.preGame.enabled || cfg.preGame.minutes <= 0) return;
+      const games = this.schedule?.games ?? (await this.seasonGames());
+      const now = Date.now(), limit = now + cfg.preGame.minutes * 60_000;
+      const due = games.filter((g) => (g.state === 'FUT' || g.state === 'PRE') && new Date(g.startUtc).getTime() > now && new Date(g.startUtc).getTime() <= limit);
+      if (due.length === 0) return;
+      const sent = new Set<string>(((await this.settings.get('sportsPreGameSent')) as string[] | null) ?? []);
+      const fresh = due.filter((g) => !sent.has(String(g.id)));
+      if (fresh.length === 0) return;
+      // On note d'abord : mieux vaut manquer un avis que le répéter toutes les 30 secondes si l'envoi échoue.
+      for (const g of fresh) sent.add(String(g.id));
+      await this.settings.set('sportsPreGameSent', [...sent].slice(-60));
+      for (const g of fresh) {
+        const start = new Date(g.startUtc);
+        if (await this.live.hasBroadcastNear(start)) continue;
+        const opp = g.side === 'home' ? g.away : g.home;
+        const mins = Math.max(1, Math.round((start.getTime() - now) / 60_000));
+        await this.notifications.notifyAll({
+          type: 'ANNOUNCEMENT', category: 'prematch',
+          title: `🏒 Canadiens ${g.side === 'home' ? 'contre' : 'à'} ${opp.name} : mise au jeu dans ${mins} min`,
+          body: 'Clique pour regarder le match en direct.', link: '/canadiens-en-direct',
+        });
+      }
+    } catch (e) { this.logger.warn(`Avant-match : ${(e as Error).message}`); }
   }
 
   async canadiens() {

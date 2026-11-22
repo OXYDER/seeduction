@@ -12,7 +12,7 @@ export class BadgesService {
     const [user, uploadsApproved, forumPosts, requestFills, seed, seedOk, hnrOpen, subtitles, comments, mentored, ratings, watched, quizzes, wheelSpins, picksWon, badgesEarned] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
-        select: { uploaded: true, downloaded: true, bonusPoints: true, createdAt: true, _count: { select: { invitees: true } } },
+        select: { uploaded: true, downloaded: true, bonusPoints: true, createdAt: true, founderAt: true, _count: { select: { invitees: true } } },
       }),
       this.prisma.torrent.count({ where: { uploaderId: userId, status: 'APPROVED' } }),
       this.prisma.forumPost.count({ where: { authorId: userId } }),
@@ -54,6 +54,7 @@ export class BadgesService {
       wheelSpins,
       picksWon,
       badgesEarned,
+      founder: !!user.founderAt,
     };
   }
 
