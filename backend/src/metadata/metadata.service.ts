@@ -1,3 +1,4 @@
+import { isExtraId, mergeResults, richExtra, searchExtra } from './extra-providers';
 import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
@@ -51,7 +52,7 @@ interface RichMetadata {
 const TMDB_IMG = (process.env.TMDB_IMAGE_BASE_URL || 'https://image.tmdb.org/t/p').replace(/\/$/, ''); // modifiable pour les essais en local
 const TMDB_API = (process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3').replace(/\/$/, ''); // modifiable pour les essais en local
 const PORNDB_API = (process.env.THEPORNDB_BASE_URL || 'https://api.theporndb.net').replace(/\/$/, ''); // modifiable pour les essais en local
-const SEARCHABLE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'XXX'] as const;
+const SEARCHABLE_KINDS = ['FILM', 'SERIE', 'MUSIQUE', 'LIVRE', 'JEU', 'LOGICIEL', 'XXX'] as const;
 
 /** Retire les accents : « Amélie » devient « Amelie » (pour retrouver un titre saisi sans accents). */
 export const deaccent = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -94,9 +95,9 @@ export class MetadataService {
   constructor(private coversService: CoversService, private prisma: PrismaService, private translate: TranslateService) {}
 
   get supportedKinds(): string[] {
-    const kinds: string[] = ['MUSIQUE', 'LIVRE'];
-    if (this.tmdbKey) kinds.push('FILM', 'SERIE');
-    if (this.rawgKey) kinds.push('JEU');
+    // Les fournisseurs en arrière-plan (extra-providers.ts, sans clé) assurent déjà les séries, les jeux, la musique, les livres et les logiciels ; les films et le XXX demandent leur clé.
+    const kinds: string[] = ['MUSIQUE', 'LIVRE', 'SERIE', 'JEU', 'LOGICIEL'];
+    if (this.tmdbKey) kinds.push('FILM');
     if (this.porndbKey) kinds.push('XXX');
     return kinds;
   }
@@ -123,33 +124,46 @@ export class MetadataService {
     if (!(SEARCHABLE_KINDS as readonly string[]).includes(kind)) {
       throw new BadRequestException(`Recherche non disponible pour la catégorie ${kind}`);
     }
-    if ((kind === 'FILM' || kind === 'SERIE') && !this.tmdbKey) {
-      throw new ServiceUnavailableException("La recherche Film/Série n'est pas configurée (clé TMDB manquante).");
+    if (kind === 'FILM' && !this.tmdbKey) {
+      throw new ServiceUnavailableException("La recherche de films n'est pas configurée (clé TMDB manquante).");
     }
     if (kind === 'XXX' && !this.porndbKey) {
       throw new ServiceUnavailableException("La recherche XXX n'est pas configurée (clé ThePornDB manquante).");
-    }
-    if (kind === 'JEU' && !this.rawgKey) {
-      throw new ServiceUnavailableException("La recherche de jeux n'est pas configurée (clé RAWG manquante).");
     }
   }
 
   // ------------------------------------------------------------------ recherche
 
+  /**
+   * Recherche de fiches : le fournisseur principal du type de contenu (TMDB, Deezer, Google Books, RAWG, ThePornDB), puis d'autres fournisseurs en arrière-plan (voir
+   * extra-providers.ts) fusionnés dans la même liste, sans doublon : le membre ne voit jamais d'où vient une fiche, il a seulement plus de chances d'en trouver une.
+   * Un fournisseur en panne ou sans clé est ignoré ; l'erreur n'est signalée que si aucun fournisseur ne répond.
+   */
   async search(kind: string, query: string, year?: string): Promise<SearchResult[]> {
     if (!query?.trim()) throw new BadRequestException('Requête de recherche vide');
     this.assertSearchable(kind);
+    let primaryError: unknown = null;
+    const [primary, extra] = await Promise.all([
+      this.searchPrimary(kind, query, year).catch((e) => { primaryError = e; return [] as SearchResult[]; }),
+      searchExtra(kind, query, (u, n, h, b) => this.fetchJson(u, n, h, b)).catch(() => [] as SearchResult[]),
+    ]);
+    const merged = mergeResults(primary, extra);
+    if (merged.length === 0 && primaryError) throw primaryError;
+    return merged;
+  }
+
+  private async searchPrimary(kind: string, query: string, year?: string): Promise<SearchResult[]> {
     switch (kind) {
       case 'FILM':
         return this.searchTmdb('movie', query, year);
       case 'SERIE':
-        return this.searchTmdb('tv', query, year);
+        return this.tmdbKey ? this.searchTmdb('tv', query, year) : [];
       case 'MUSIQUE':
         return this.searchDeezer(query);
       case 'LIVRE':
         return this.searchBooks(query);
       case 'JEU':
-        return this.searchRawg(query);
+        return this.rawgKey ? this.searchRawg(query) : [];
       case 'XXX':
         return this.searchPorndb(query);
       default:
@@ -391,6 +405,8 @@ export class MetadataService {
   }
 
   private richRaw(kind: string, id: string): Promise<RichMetadata> {
+    // Une fiche d'un fournisseur en arrière-plan (identifiant à préfixe : « steam:… », « tvm:… »).
+    if (isExtraId(id)) return richExtra(kind, id, (u, n, h) => this.fetchJson(u, n, h)) as Promise<RichMetadata>;
     switch (kind) {
       case 'FILM':
         return this.richTmdb('movie', id);
@@ -1112,10 +1128,10 @@ export class MetadataService {
     }
   }
 
-  private async fetchJson(url: string, sourceName: string, headers?: Record<string, string>): Promise<any> {
+  private async fetchJson(url: string, sourceName: string, headers?: Record<string, string>, body?: unknown): Promise<any> {
     let res: Response;
     try {
-      res = await fetch(url, headers ? { headers } : undefined);
+      res = await fetch(url, body !== undefined ? { method: 'POST', headers: { ...(headers ?? {}), 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : headers ? { headers } : undefined);
     } catch {
       throw new ServiceUnavailableException(`Impossible de joindre ${sourceName}.`);
     }

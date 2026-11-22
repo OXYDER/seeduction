@@ -87,15 +87,14 @@ export const GUIDES_SHARE: WikiSeedCategory = {
         `Référence complète : [url=/wiki/envoyer-un-torrent]Envoyer un torrent[/url]. Pour choisir la fiche : [url=/wiki/guide-fiches]Les fiches[/url].`,
     },
     {
-      title: 'Les fiches : TMDB, Deezer, livres, jeux et ThePornDB',
+      title: 'Les fiches : films, séries, musique, livres, jeux, logiciels et XXX',
       slug: 'guide-fiches',
-      keywords: 'fiche, métadonnées, tmdb, deezer, rawg, google books, openlibrary, theporndb, xxx, studio, pack, scène, synopsis, pochette, affiche, modifier la fiche',
+      keywords: 'fiche, métadonnées, recherche de fiche, films, séries, animés, musique, livres, jeux, applications, logiciels, xxx, studio, pack, scène, synopsis, pochette, affiche, modifier la fiche',
       content:
         `La fiche est la carte d'identité d'un torrent : affiche, synopsis, distribution, genres, date de sortie. Elle vient d'une base de données externe, choisie selon le type de contenu.\n\n` +
         `[b]D'où vient la fiche ?[/b]\n` +
-        `• [b]Films et séries[/b] : TMDB.\n` +
-        `• [b]Musique[/b] : Deezer. [b]Livres[/b] : Google Books et Open Library. [b]Jeux[/b] : RAWG.\n` +
-        `• [b]Adulte (XXX)[/b] : ThePornDB (scènes, films et studios), si le site est configuré pour.\n\n` +
+        `• [b]Films, séries et animés[/b], [b]musique[/b], [b]livres[/b], [b]jeux[/b], [b]applications et logiciels[/b] : le site cherche dans plusieurs bases de données à la fois, en arrière-plan, et réunit les résultats dans une seule liste (sans doublon). Tu n'as rien à choisir : plus il y a de sources, plus tu as de chances de trouver ta fiche.\n` +
+        `• [b]Adulte (XXX)[/b] : scènes, films et studios, si le site est configuré pour.\n\n` +
         `[b]Choisir la bonne fiche à l'envoi[/b]\n` +
         `1. Le site cherche automatiquement avec le titre du torrent. Les résultats s'affichent avec leur affiche.\n` +
         `2. Clique sur la bonne. Si la recherche ne trouve rien : corrige le titre (titre original, sans l'année), ou colle l'adresse de la fiche TMDB.\n` +
