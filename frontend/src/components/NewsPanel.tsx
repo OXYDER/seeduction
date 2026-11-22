@@ -52,17 +52,17 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
 
   return (
     <div className="panel ornate">
-      <div className="panel-title">
+      <div className="panel-title news-head">
         <span className="title-icon">📰</span>{heroOnly ? 'Dernière nouvelle' : 'Actualités & Événements'}
+        {!heroOnly && items && items.length > 0 && (
+          <div className="news-tabs" role="tablist">
+            {NEWS_TABS.filter((t) => !t.kinds || items.some((n) => t.kinds!.includes(n.kind ?? 'NEWS'))).map((t) => (
+              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
+            ))}
+          </div>
+        )}
         <Link to="/news" style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: 13 }}>Toutes les nouvelles →</Link>
       </div>
-      {!heroOnly && items && items.length > 0 && (
-        <div className="news-tabs" role="tablist">
-          {NEWS_TABS.filter((t) => !t.kinds || items.some((n) => t.kinds!.includes(n.kind ?? 'NEWS'))).map((t) => (
-            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
-          ))}
-        </div>
-      )}
       {items === null && <Loading />}
       {items?.length === 0 && !heroOnly && <p className="muted">Aucune nouvelle pour l'instant.</p>}
 
@@ -96,10 +96,12 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
           {rest.slice(0, 4).map((n) => {
             const nk = kindOf(n.kind);
             return (
-              <Link key={n.id} to={`/news/${n.id}`} className="news-side-item">
-                <span className={`news-kind k-${(n.kind ?? 'NEWS').toLowerCase()}`}>{nk.icon} {nk.label}</span>
-                <strong>{n.title}</strong>
-                <span className="muted news-tile-meta">{timeAgo(n.createdAt)} · 💬 {n._count?.comments ?? 0}</span>
+              <Link key={n.id} to={`/news/${n.id}`} className={`news-side-item k-${(n.kind ?? 'NEWS').toLowerCase()}`}>
+                <span className="ns-ic" aria-hidden="true">{nk.icon}</span>
+                <span className="ns-t">
+                  <strong>{n.title}</strong>
+                  <span className="muted news-tile-meta">{nk.label} · {timeAgo(n.createdAt)} · 💬 {n._count?.comments ?? 0}</span>
+                </span>
               </Link>
             );
           })}

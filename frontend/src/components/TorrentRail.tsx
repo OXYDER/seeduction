@@ -18,6 +18,7 @@ export function PosterCard({ t }: { t: any }) {
             ? <img className="poster" src={t.coverImage} alt="" loading="lazy" />
             : <div className="poster-fallback">{catStyle?.icon ?? '📦'}</div>}
           <PosterTags t={t} />
+          <span className="po-sd" title="Seeders">▲ {t.seeders ?? 0}</span>
         </div>
         <div className="poster-badges">
           <CategoryTag category={t.category} />

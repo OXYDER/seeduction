@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { create } from 'zustand';
 import { api } from '../api/client';
 import { Rail } from './TorrentRail';
+import { formatNumber } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { useCountdown } from './FreeleechCalendar';
 import { useAuthStore } from '../store/auth';
@@ -77,22 +78,31 @@ function FreeleechItem({ state }: { state: any }) {
   const end = state?.until ? new Date(state.until).getTime() : null;
   const pct = start && end && end > start ? Math.max(0, Math.min(100, ((Date.now() - start) / (end - start)) * 100)) : 100;
   return (
-    <Link to="/freeleech" className={`bc${state?.until ? ' live' : ''}`}>
-      <div className="bt"><span>🎉 {state?.until ? <>Freeleech en cours : <b>{state.event?.title ?? 'freeleech global'}</b></> : <>Freeleech</>}</span><span>{state?.until ? `se termine dans ${left}` : 'aucune période en cours'}</span></div>
-      <div className="pb"><i style={{ width: `${state?.until ? pct : 0}%`, background: 'linear-gradient(90deg,#10b981,#34d399)' }} /></div>
-      <div className="bn">{next ? <>Prochain : <b>{next.title}</b> · dans {untilNext} · <u>Calendrier</u></> : <>Aucun freeleech prévu · <u>Calendrier</u></>}</div>
-    </Link>
+    <div className={`sc sc-fl${state?.until ? ' live' : ''}`}>
+      <div className="sc-head"><span className="hc-ic"><Ic n="gift" size={16} /></span><b>Freeleech</b>{state?.until && <span className="sc-chip">EN COURS</span>}</div>
+      <p className="sc-txt">
+        {state?.until ? <><b>{state.event?.title ?? 'Freeleech global'}</b> · se termine dans <b>{left}</b></> : next ? <>Prochain : <b>{next.title}</b> · dans {untilNext}</> : 'Aucun freeleech prévu pour le moment.'}
+      </p>
+      {state?.until && <div className="sc-bar"><i style={{ width: `${pct}%` }} /></div>}
+      <Link to="/freeleech" className="sc-btn">Calendrier</Link>
+    </div>
   );
 }
 
 function PotItem({ pot }: { pot: any }) {
   const left = useCountdown(pot?.active?.endsAt ?? null);
   const { cycle } = pot;
+  const open = cycle.status === 'OPEN';
   return (
-    <Link to="/pot" className="bc">
-      <div className="bt"><span>{pot.icon ?? '🍯'} <b>{pot.name}</b>{pot.active ? ` · 🎉 freeleech global, encore ${left}` : ''}</span><span>{cycle.percent} % · <u>{cycle.status === 'OPEN' ? 'Donner' : 'Voir'}</u></span></div>
-      <div className="pb"><i style={{ width: `${Math.min(100, cycle.percent)}%`, background: 'linear-gradient(90deg,#f59e0b,#f5c542)' }} /></div>
-    </Link>
+    <div className="sc sc-pot">
+      <div className="sc-head"><span className="hc-ic"><Ic n="heart" size={16} /></span><b>{pot.name}</b>{pot.active && <span className="sc-chip">FREELEECH GLOBAL</span>}</div>
+      <div className="sc-big">{formatNumber(Math.round(cycle.collected ?? 0))} <small>points</small></div>
+      <div className="sc-bar"><i style={{ width: `${Math.min(100, cycle.percent)}%` }} /></div>
+      <div className="sc-foot">
+        <small>{pot.active ? `Encore ${left} · ${cycle.percent} %` : `${cycle.percent} % de l'objectif`}</small>
+        <Link to="/pot" className="sc-btn">{open ? 'Participer' : 'Voir'}</Link>
+      </div>
+    </div>
   );
 }
 
@@ -104,10 +114,10 @@ function RankItem() {
   if (!r || !r.next || ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(role ?? '')) return null;
   const fmt = (p: any) => `${String(p.have).replace('.', ',')} / ${String(p.need).replace('.', ',')}`;
   return (
-    <Link to="/wiki/guide-ratio-seed" className="bc" title={r.parts.map((p: any) => `${p.label} : ${fmt(p)}${p.ok ? ' ✓' : ''}`).join(' · ')}>
-      <div className="bt"><span>🏅 Niveau suivant : <b>{r.nextLabel}</b></span><span>{r.pct} %</span></div>
-      <div className="pb"><i style={{ width: `${r.pct}%`, background: 'linear-gradient(90deg,#8b5cf6,#c084fc)' }} /></div>
-      <div className="bn">{r.parts.filter((p: any) => !p.ok).map((p: any) => `${p.label} ${fmt(p)}`).join(' · ') || 'Conditions remplies : le rang arrive cette nuit'}</div>
+    <Link to="/wiki/guide-ratio-seed" className="sc sc-rank" title={r.parts.map((p: any) => `${p.label} : ${fmt(p)}${p.ok ? ' ✓' : ''}`).join(' · ')}>
+      <div className="sc-head"><span className="hc-ic"><Ic n="crown" size={16} /></span><b>Niveau suivant : {r.nextLabel}</b><span className="sc-chip plain">{r.pct} %</span></div>
+      <div className="sc-bar"><i style={{ width: `${r.pct}%` }} /></div>
+      <div className="sc-txt small">{r.parts.filter((p: any) => !p.ok).map((p: any) => `${p.label} ${fmt(p)}`).join(' · ') || 'Conditions remplies : le rang arrive cette nuit'}</div>
     </Link>
   );
 }
@@ -120,10 +130,14 @@ function BadgesItem() {
   const pct = Math.round((d.earnedCount / Math.max(1, d.total)) * 100);
   const next = (d.items ?? []).filter((i: any) => !i.earned && i.target > 0).sort((a: any, b: any) => b.value / b.target - a.value / a.target)[0];
   return (
-    <Link to="/achievements" className="bc">
-      <div className="bt"><span>🏅 <b>{d.earnedCount} / {d.total}</b> badges obtenus</span><span>{pct} %</span></div>
-      <div className="pb"><i style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f59e0b,#fde68a)' }} /></div>
-      <div className="bn">{next ? <>Prochain : <b>{next.icon} {next.name}</b> · {next.value} / {next.target}{next.unit ? ` ${next.unit}` : ''}</> : <>{d.pointsToWin ? `${d.pointsToWin} points bonus encore à gagner` : 'Tous les badges sont obtenus !'}</>}</div>
+    <Link to="/achievements" className="sc sc-lvl">
+      <span className="sc-medal" aria-hidden="true">🏅</span>
+      <span className="sc-lvl-body">
+        <b>Badges obtenus</b>
+        <span className="sc-big">{d.earnedCount} <small>/ {d.total} · {pct} %</small></span>
+        <span className="sc-bar"><i style={{ width: `${pct}%` }} /></span>
+        <small className="sc-txt small">{next ? <>Prochain : {next.icon} {next.name} · {next.value} / {next.target}{next.unit ? ` ${next.unit}` : ''}</> : d.pointsToWin ? `${d.pointsToWin} points bonus encore à gagner` : 'Tous les badges sont obtenus !'}</small>
+      </span>
     </Link>
   );
 }
@@ -141,9 +155,9 @@ export function HomeStrip() {
   }, []);
   if (!fl && !pot?.enabled) return null;
   return (
-    <div className="bars">
-      <RankItem />
+    <div className="bars sc-grid">
       <BadgesItem />
+      <RankItem />
       {fl && <FreeleechItem state={fl} />}
       {pot?.enabled && <PotItem pot={pot} />}
     </div>
@@ -215,32 +229,32 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
   const mb = (n: number) => { const g = n / 1024 ** 3; return g >= 1 ? `${g.toFixed(1).replace('.', ',')} Go` : `${Math.round(n / 1024 ** 2)} Mo`; };
 
   return (
-    <div className="fy-grid">
+    <div className="fy-grid fy-2">
       <section className="fy-card">
-        <h3><span className="hc-ic"><Ic n="down" size={16} /></span>Téléchargements en cours<Link to="/activity?statut=leeching">Tout voir →</Link></h3>
-        {leeching.length === 0 && <p className="fy-empty">Aucun téléchargement en cours.</p>}
+        <h3><span className="hc-ic"><Ic n="down" size={16} /></span>Téléchargements<Link to="/activity?statut=leeching">Tout voir →</Link></h3>
+        {leeching.length === 0 && (done ?? []).length === 0 && <p className="fy-empty">Aucun téléchargement pour le moment : tes téléchargements en cours et complétés apparaîtront ici.</p>}
         {leeching.slice(0, 2).map((t) => (
-          <Row key={t.id} to={`/torrents/${t.id}`} cover={t.coverImage} title={t.name} bar={{ pct: t.progress * 100, kind: 'dl' }} sub={`${Math.round(t.progress * 100)} % · ${mb(Number(t.size) || 0)}`} chip={{ text: '⬇️ En cours', tone: 'dl' }} />
+          <Row key={t.id} to={`/torrents/${t.id}`} cover={t.coverImage} title={t.name} bar={{ pct: t.progress * 100, kind: 'dl' }} sub={`${mb(Number(t.size) || 0)} · ${Math.round(t.progress * 100)} %`} chip={{ text: 'En cours', tone: 'dl' }} />
         ))}
-      </section>
-
-      <section className="fy-card">
-        <h3><span className="hc-ic"><Ic n="check" size={16} /></span>Téléchargements complétés<Link to="/activity?statut=completed">Tout voir →</Link></h3>
-        {done && done.length === 0 && <p className="fy-empty">Tes téléchargements complétés apparaîtront ici.</p>}
-        {(done ?? []).slice(0, 2).map((c) => {
+        {(done ?? []).slice(0, leeching.length > 0 ? 2 : 3).map((c) => {
           const ok = c.satisfied;
           const left = Math.max(0, c.requiredSeconds - c.seedSeconds);
-          const chip = ok ? { text: '✅ Seed terminé', tone: 'ok' as const } : c.hnr ? { text: '🔴 Hit & run', tone: 'bad' as const } : { text: `⏳ Encore ${hoursOf(left)}`, tone: 'warn' as const };
+          const chip = ok ? { text: 'Seed ✓', tone: 'ok' as const } : c.hnr ? { text: 'Hit & run', tone: 'bad' as const } : { text: `Encore ${hoursOf(left)}`, tone: 'warn' as const };
           return <Row key={c.torrentId} to={`/torrents/${c.torrentId}`} cover={c.coverImage} title={c.name} bar={{ pct: ok ? 100 : Math.min(100, (c.seedSeconds / Math.max(1, c.requiredSeconds)) * 100), kind: ok ? 'done' : c.hnr ? 'hnr' : 'seeding' }} sub={`${mb(Number(c.size) || 0)} · terminé ${timeAgo(c.completedAt)}`} chip={chip} />;
         })}
       </section>
 
-      <section className="fy-card">
+      <section className="fy-card fy-next">
         <h3><span className="hc-ic"><Ic n="cal" size={16} /></span>Épisode suivant<Link to="/series">Mes séries →</Link></h3>
         {next && next.length === 0 && <p className="fy-empty">Quand tu finis un épisode, le suivant apparaît ici dès qu'il est disponible.</p>}
-        {(next ?? []).slice(0, 2).map((t) => <Row key={t.torrentId} to={`/torrents/${t.torrentId}`} cover={t.cover} title={t.title} sub={`${epCode(t.season, t.episode)} est disponible`} chip={{ text: 'Nouveau', tone: 'ok' }} />)}
+        {(next ?? []).slice(0, 1).map((t) => (
+          <div key={t.torrentId} className="ep">
+            {t.cover ? <img className="ep-th" src={t.cover} alt="" loading="lazy" /> : <span className="ep-th none" aria-hidden="true">🎬</span>}
+            <div className="ep-t"><b title={t.title}>{t.title}</b><span className="muted">Saison {t.season} · Épisode {t.episode}</span><span className="chip-ok">{epCode(t.season, t.episode)} est disponible</span><Link to={`/torrents/${t.torrentId}`} className="sc-btn">Voir la série</Link></div>
+          </div>
+        ))}
+        {(next ?? []).slice(1, 3).map((t) => <Row key={t.torrentId} to={`/torrents/${t.torrentId}`} cover={t.cover} title={t.title} sub={`${epCode(t.season, t.episode)} est disponible`} chip={{ text: 'Nouveau', tone: 'ok' }} />)}
       </section>
-
     </div>
   );
 }

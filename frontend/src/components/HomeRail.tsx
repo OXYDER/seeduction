@@ -32,26 +32,23 @@ function CanadiensCard() {
     return () => clearInterval(t);
   }, [enabled]);
   if (!enabled || !d || d.enabled === false) return null;
-  const now = d.live ?? d.featured ?? d.last?.[0] ?? null;
-  const next = d.live ? null : d.next?.[0] ?? null;
-  if (!now && !next) return null;
-  const row = (g: Game, label: string) => {
-    const m = mine(g), o = other(g);
-    const played = g.state === 'LIVE' || g.state === 'FINAL';
-    return (
-      <div className="hr-game">
-        <span className="hr-teams"><TeamLogo abbrev={m.abbrev} name={m.name} size={24} /><strong>{played ? `${m.score ?? 0} – ${o.score ?? 0}` : g.side === 'home' ? 'vs' : '@'}</strong><TeamLogo abbrev={o.abbrev} name={o.name} size={24} /></span>
-        <span className="hr-sub">{label}</span>
-        {g.state === 'FINAL' && <span className={`hr-chip ${g.won ? 'ok' : 'ko'}`}>{g.won ? 'Victoire' : 'Défaite'}</span>}
-        {g.state === 'LIVE' && <span className="hr-chip live">En cours{g.period ? ` · ${g.period}` : ''}{g.clock ? ` ${g.clock.remaining}` : ''}</span>}
-      </div>
-    );
-  };
+  const last = d.last?.[0] ?? null;
+  const show = d.live ?? d.featured ?? d.next?.[0] ?? last;
+  if (!show) return null;
+  const m = mine(show), o = other(show);
+  const played = show.state === 'LIVE' || show.state === 'FINAL';
+  const lm = last ? mine(last) : null, lo = last ? other(last) : null;
+  const tag = show.state === 'LIVE' ? { text: 'EN DIRECT', cls: 'live' } : show.state === 'FINAL' ? { text: 'FINAL', cls: '' } : { text: new Date(show.startUtc).toDateString() === new Date().toDateString() ? 'CE SOIR' : 'PROCHAIN', cls: 'live' };
   return (
-    <section className="hr-card">
-      <h4><span className="hc-ic"><Ic n="trophy" size={16} /></span>Canadiens<Link to="/canadiens-en-direct">Direct →</Link></h4>
-      {now && row(now, now.state === 'FINAL' ? 'Dernier match' : now.state === 'LIVE' ? 'En ce moment' : when(now.startUtc))}
-      {next && next.id !== now?.id && row(next, `Prochain : ${when(next.startUtc)}`)}
+    <section className="hr-card hr-mtl">
+      <h4><span className="hc-ic"><Ic n="trophy" size={16} /></span>Canadiens<span className={`sc-chip ${tag.cls}`}>{tag.cls === 'live' && <i className="sc-dot" />}{tag.text}</span></h4>
+      <div className="mtl-row">
+        <span className="mtl-team"><TeamLogo abbrev={m.abbrev} name={m.name} size={48} /><small>{m.name}</small></span>
+        <span className="mtl-mid"><strong>{played ? `${m.score ?? 0} : ${o.score ?? 0}` : '— : —'}</strong><small>{show.state === 'LIVE' ? `${show.period ?? ''}${show.clock ? ` ${show.clock.remaining}` : ''}` : when(show.startUtc)}</small></span>
+        <span className="mtl-team"><TeamLogo abbrev={o.abbrev} name={o.name} size={48} /><small>{o.name}</small></span>
+      </div>
+      {last && lm && lo && <p className="mtl-last">Dernier match : <b className={last.won ? 'ok' : 'bad'}>{last.won ? 'victoire' : 'défaite'} {lm.score ?? 0} – {lo.score ?? 0}</b></p>}
+      <Link to="/canadiens-en-direct" className="sc-btn full">Regarder en direct</Link>
     </section>
   );
 }
@@ -75,13 +72,16 @@ function FriendsCard() {
     <section className="hr-card">
       <h4><span className="hc-ic"><Ic n="users" size={16} /></span>Amis en ligne ({online.length})<Link to="/friends">Tous →</Link></h4>
       {online.length === 0 && <p className="hr-empty">{friends.length === 0 ? "Tu n'as pas encore d'amis. " : 'Aucun ami en ligne pour le moment.'}{friends.length === 0 && <Link to="/members">Trouver des membres →</Link>}</p>}
-      {online.slice(0, 6).map((f) => (
-        <div key={f.id} className="hr-friend">
-          <Link to={`/users/${f.id}`} className="hr-fmain"><span className="hr-av"><Avatar user={f} size={26} /><i style={{ background: STATUS_COLOR[f.status] }} title={STATUS_LABEL[f.status]} /></span><Nick id={f.id} name={f.username} /></Link>
-          <button type="button" className="hr-msg" title={`Écrire à ${f.username}`} aria-label={`Écrire à ${f.username}`} onClick={() => { void openDirect({ id: f.id, username: f.username, avatarUrl: f.avatarUrl }); }}>💬</button>
+      {online.length > 0 && (
+        <div className="faces">
+          {online.slice(0, 6).map((f) => (
+            <button key={f.id} type="button" className="face" title={`Écrire à ${f.username}`} aria-label={`Écrire à ${f.username}`} onClick={() => { void openDirect({ id: f.id, username: f.username, avatarUrl: f.avatarUrl }); }}>
+              <Avatar user={f} size={34} /><i style={{ background: STATUS_COLOR[f.status] }} title={STATUS_LABEL[f.status]} />
+            </button>
+          ))}
+          {online.length > 6 && <Link to="/friends" className="hr-more">+{online.length - 6}</Link>}
         </div>
-      ))}
-      {online.length > 6 && <Link to="/friends" className="hr-more">+ {online.length - 6} autres →</Link>}
+      )}
     </section>
   );
 }
@@ -98,10 +98,15 @@ function ChatCard() {
       <h4><span className="hc-ic"><Ic n="msg" size={16} /></span>Dans le chat<Link to="/chat">Ouvrir →</Link></h4>
       {list.map((c) => (
         <button key={c.id} type="button" className="hr-chat" onClick={() => openWindow(c.id)}>
-          <span className="hr-chat-top"><b>{name(c)}</b>{c.unread > 0 && <span className="hr-badge">{c.unread}</span>}<small>{timeAgo(c.lastMessageAt)}</small></span>
-          <span className="hr-chat-prev">{c.last?.senderUsername ? `${c.last.senderUsername} : ` : ''}{c.last?.preview}</span>
+          <span className="hr-chat-av">{c.type === 'DIRECT' && c.other ? <Avatar user={c.other} size={30} /> : <span className="hr-hash" aria-hidden="true">#</span>}</span>
+          <span className="hr-chat-mid">
+            <span className="hr-chat-top"><b>{name(c)}</b>{c.unread > 0 && <span className="hr-badge">{c.unread}</span>}</span>
+            <span className="hr-chat-prev">{c.last?.senderUsername && c.type !== 'DIRECT' ? `${c.last.senderUsername} : ` : ''}{c.last?.preview}</span>
+          </span>
+          <small>{timeAgo(c.lastMessageAt)}</small>
         </button>
       ))}
+      <Link to="/chat" className="hr-compose">Écrire un message… <span aria-hidden="true">🙂</span></Link>
     </section>
   );
 }
