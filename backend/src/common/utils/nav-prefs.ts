@@ -41,7 +41,7 @@ export interface NavPrefs {
   order: string[];
 }
 
-export const DEFAULT_NAV_PREFS: NavPrefs = { style: 'classic', side: 'left', pinned: [], width: 0, spacing: 'normal', size: 'large', icons: true, extras: null, categories: null, openAll: false, hidden: [], order: [] };
+export const DEFAULT_NAV_PREFS: NavPrefs = { style: 'top', side: 'left', pinned: [], width: 0, spacing: 'normal', size: 'large', icons: true, extras: null, categories: null, openAll: false, hidden: [], order: [] };
 
 const cleanList = (v: unknown): string[] => {
   if (!Array.isArray(v)) return [];

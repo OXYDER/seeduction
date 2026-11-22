@@ -25,7 +25,7 @@ export interface NavPrefs {
   order: string[];
 }
 
-export const DEFAULT_NAV_PREFS: NavPrefs = { style: 'classic', side: 'left', pinned: [], width: 0, spacing: 'normal', size: 'large', icons: true, extras: null, categories: null, openAll: false, hidden: [], order: [] };
+export const DEFAULT_NAV_PREFS: NavPrefs = { style: 'top', side: 'left', pinned: [], width: 0, spacing: 'normal', size: 'large', icons: true, extras: null, categories: null, openAll: false, hidden: [], order: [] };
 
 const KEY = 'nav-prefs-v1';
 const list = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.startsWith('/')).slice(0, 120) : []);
@@ -34,7 +34,7 @@ export function normalizeNavPrefs(raw: unknown): NavPrefs {
   const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const tri = (v: unknown): boolean | null => (typeof v === 'boolean' ? v : null);
   return {
-    style: r.style === 'groups' || r.style === 'pinned' || r.style === 'rail' || r.style === 'top' ? r.style : 'classic',
+    style: r.style === 'classic' || r.style === 'groups' || r.style === 'pinned' || r.style === 'rail' || r.style === 'top' ? r.style : 'top',
     side: r.side === 'right' ? 'right' : 'left',
     pinned: list(r.pinned).filter((x, i, a) => a.indexOf(x) === i),
     width: typeof r.width === 'number' && Number.isFinite(r.width) && r.width > 0 ? Math.min(420, Math.max(200, Math.round(r.width))) : 0,

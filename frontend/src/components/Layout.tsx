@@ -190,6 +190,14 @@ function LayoutInner() {
   const [allOpen, setAllOpen] = useState(() => { try { return localStorage.getItem('side-pinned-all') === '1'; } catch { return false; } });
   const toggleAll = () => setAllOpen((v) => { const n = !v; try { localStorage.setItem('side-pinned-all', n ? '1' : '0'); } catch { /* idem */ } return n; });
   const [topOpen, setTopOpen] = useState<string | null>(null);
+  // Barre du haut : elle reste collée en haut de l'écran et se compacte dès qu'on défile (menu, recherche et infos du membre restent visibles).
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const h = () => setCompact(window.scrollY > 48);
+    h();
+    window.addEventListener('scroll', h, { passive: true });
+    return () => window.removeEventListener('scroll', h);
+  }, []);
   useEffect(() => { setTopOpen(null); }, [location.pathname]);
   useEffect(() => {
     if (!topOpen) return;
@@ -632,6 +640,60 @@ function LayoutInner() {
       </>
     );
 
+    const topNavEl = (
+            <nav className={`top-menu size-${navPrefs.size}${navPrefs.icons ? '' : ' no-icons'} sp-${navPrefs.spacing}`} aria-label="Menu principal">
+              <Link to="/" className="top-brand" title="Accueil"><img src="/logo-icon.png" alt="" width={30} height={30} /><span>SEEDUCTION</span></Link>
+              {groupList.map(({ g, items }) => {
+                const open = topOpen === g.id;
+                const todo = todoOf(items);
+                return (
+                  <div key={g.id} className={`top-grp${open ? ' open' : ''}${g.id === hereGroup ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }} onMouseEnter={() => setTopOpen(g.id)} onMouseLeave={() => setTopOpen((o) => (o === g.id ? null : o))}>
+                    <button type="button" className={`top-grp-btn${navPrefs.icons ? ' has-ico' : ''}`} title={g.label} aria-expanded={open} onClick={() => setTopOpen(open ? null : g.id)}>
+                      {navPrefs.icons && <span className="top-ico" aria-hidden="true">{g.icon}</span>}
+                      <span className="top-lbl">{g.label}</span>
+                      {todo > 0 && <span className="side-badge red">{todo > 99 ? '99+' : todo}</span>}
+                      <span className="top-chev" aria-hidden="true">▾</span>
+                    </button>
+                    {open && <div className="top-drop side-links">{items.map(navLink)}</div>}
+                  </div>
+                );
+              })}
+              <span className="top-spacer" />
+              <Link to="/profile?tab=account#menu-gauche" className="top-customize" title="Personnaliser le menu" aria-label="Personnaliser le menu">⚙</Link>
+              {userCard}
+            </nav>
+    );
+    const headerEl = (
+          <header className="side-topbar">
+            <button type="button" className="secondary side-burger" onClick={() => setDrawer(true)} aria-label="Ouvrir le menu">☰</button>
+            <form className="side-search" onSubmit={submitSearch}>
+              <SearchBox
+                placeholder="Rechercher un torrent, un acteur, un producteur, un genre, un membre..."
+                value={search}
+                onChange={setSearch}
+                onSubmit={goSearch}
+                scopes={['torrents', 'users', 'categories', 'entities']}
+                history
+              />
+            </form>
+            <button type="button" className="secondary side-kbd" onClick={() => setQuickOpen(true)} title="Recherche rapide : pages, torrents, membres">Ctrl K</button>
+            {profile && (
+              <HeaderStats profile={profile} econ={econ} teamExempt={['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role)} />
+            )}
+            <div className="row" style={{ gap: 8 }}>
+              <NewYearCountdown />
+              <CanadiensPill />
+              <ThemeSwitcher />
+              <SeedObligations />
+              <TelegramHeaderLink />
+              <NotificationsBell />
+              <MyUploadsIcon />
+              <MessagesMenu unread={unreadMessages} active={starts('/messages')(location.pathname)} />
+              <FriendsMenu pending={pendingFriendRequests} online={friendsOnline} active={starts('/friends')(location.pathname)} />
+            </div>
+          </header>
+    );
+
     return (
       <div style={navPrefs.width && !topBar && !collapsed ? ({ ['--side-w' as string]: `${navPrefs.width}px` } as React.CSSProperties) : undefined} className={`shell${collapsed && !topBar ? ' collapsed' : ''}${navPrefs.side === 'right' && !topBar ? ' side-right' : ''}${style === 'rail' && !collapsed && !topBar ? ' nav-rail' : ''}${topBar ? ' nav-top' : ''}`}>
         {drawer && <div className="shell-overlay" onClick={() => setDrawer(false)} />}
@@ -733,56 +795,12 @@ function LayoutInner() {
 
         <div className="shell-main">
           {topBar && (
-            <nav className={`top-menu size-${navPrefs.size}${navPrefs.icons ? '' : ' no-icons'} sp-${navPrefs.spacing}`} aria-label="Menu principal">
-              <Link to="/" className="top-brand" title="Accueil"><img src="/logo-icon.png" alt="" width={30} height={30} /><span>SEEDUCTION</span></Link>
-              {groupList.map(({ g, items }) => {
-                const open = topOpen === g.id;
-                const todo = todoOf(items);
-                return (
-                  <div key={g.id} className={`top-grp${open ? ' open' : ''}${g.id === hereGroup ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }} onMouseEnter={() => setTopOpen(g.id)} onMouseLeave={() => setTopOpen((o) => (o === g.id ? null : o))}>
-                    <button type="button" className="top-grp-btn" aria-expanded={open} onClick={() => setTopOpen(open ? null : g.id)}>
-                      {navPrefs.icons && <span aria-hidden="true">{g.icon}</span>}
-                      <span>{g.label}</span>
-                      {todo > 0 && <span className="side-badge red">{todo > 99 ? '99+' : todo}</span>}
-                      <span className="top-chev" aria-hidden="true">▾</span>
-                    </button>
-                    {open && <div className="top-drop side-links">{items.map(navLink)}</div>}
-                  </div>
-                );
-              })}
-              <span className="top-spacer" />
-              <Link to="/profile?tab=account#menu-gauche" className="top-customize" title="Personnaliser le menu" aria-label="Personnaliser le menu">⚙</Link>
-              {userCard}
-            </nav>
-          )}
-          <header className="side-topbar">
-            <button type="button" className="secondary side-burger" onClick={() => setDrawer(true)} aria-label="Ouvrir le menu">☰</button>
-            <form className="side-search" onSubmit={submitSearch}>
-              <SearchBox
-                placeholder="Rechercher un torrent, un acteur, un producteur, un genre, un membre..."
-                value={search}
-                onChange={setSearch}
-                onSubmit={goSearch}
-                scopes={['torrents', 'users', 'categories', 'entities']}
-                history
-              />
-            </form>
-            <button type="button" className="secondary side-kbd" onClick={() => setQuickOpen(true)} title="Recherche rapide : pages, torrents, membres">Ctrl K</button>
-            {profile && (
-              <HeaderStats profile={profile} econ={econ} teamExempt={['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role)} />
-            )}
-            <div className="row" style={{ gap: 8 }}>
-              <NewYearCountdown />
-              <CanadiensPill />
-              <ThemeSwitcher />
-              <SeedObligations />
-              <TelegramHeaderLink />
-              <NotificationsBell />
-              <MyUploadsIcon />
-              <MessagesMenu unread={unreadMessages} active={starts('/messages')(location.pathname)} />
-              <FriendsMenu pending={pendingFriendRequests} online={friendsOnline} active={starts('/friends')(location.pathname)} />
+            <div className={`top-sticky${compact ? ' compact' : ''}`}>
+              {topNavEl}
+              {headerEl}
             </div>
-          </header>
+          )}
+          {!topBar && headerEl}
 
           <QuickSearch open={quickOpen} onClose={() => setQuickOpen(false)} pages={visibleNav.map((i) => ({ to: i.to, icon: i.icon, label: i.label }))} />
           <main className="container">

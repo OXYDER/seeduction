@@ -1,11 +1,11 @@
 import { DEFAULT_NAV_PREFS, normalizeNavPrefs } from './nav-prefs';
 
 describe('normalizeNavPrefs', () => {
-  it('rien ou n\'importe quoi : les valeurs par défaut (menu classique, gros liens)', () => {
+  it('rien ou n\'importe quoi : les valeurs par défaut (barre du haut, gros liens)', () => {
     expect(normalizeNavPrefs(undefined)).toEqual(DEFAULT_NAV_PREFS);
     expect(normalizeNavPrefs('x')).toEqual(DEFAULT_NAV_PREFS);
     expect(normalizeNavPrefs({ style: 'autre', size: 'énorme' })).toEqual(DEFAULT_NAV_PREFS);
-    expect(DEFAULT_NAV_PREFS.style).toBe('classic');
+    expect(DEFAULT_NAV_PREFS.style).toBe('top');
   });
 
   it('garde les choix valides', () => {
@@ -15,7 +15,7 @@ describe('normalizeNavPrefs', () => {
 
   it('les cinq styles, le côté et les liens épinglés', () => {
     for (const style of ['classic', 'groups', 'pinned', 'rail', 'top']) expect(normalizeNavPrefs({ style }).style).toBe(style);
-    expect(normalizeNavPrefs({ style: 'tuiles' }).style).toBe('classic');
+    expect(normalizeNavPrefs({ style: 'tuiles' }).style).toBe('top');
     expect(normalizeNavPrefs({ side: 'right' }).side).toBe('right');
     expect(normalizeNavPrefs({ side: 'haut' }).side).toBe('left');
     expect(normalizeNavPrefs({ pinned: ['/chat', '/chat', 'javascript:x', '/forum'] }).pinned).toEqual(['/chat', '/forum']);
