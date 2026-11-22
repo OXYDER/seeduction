@@ -715,6 +715,7 @@ function LayoutInner() {
                 )}
               />
             </form>
+            <div className="hb-wrap">
             {profile && (
               <HeaderStats profile={profile} econ={econ} teamExempt={['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role)} />
             )}
@@ -728,6 +729,7 @@ function LayoutInner() {
               <MyUploadsIcon />
               <MessagesMenu unread={unreadMessages} active={starts('/messages')(location.pathname)} />
               <FriendsMenu pending={pendingFriendRequests} online={friendsOnline} active={starts('/friends')(location.pathname)} />
+            </div>
             </div>
           </header>
     );
