@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, UseGuards, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { accountOf, assertMaster } from '../common/utils/account';
 
 const ipOf = (req: any): string | null => (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? null;
@@ -21,6 +23,21 @@ const trustedIpOf = (req: any): string | null => {
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
+
+  /** Administration : réglages des inscriptions ouvertes sans code. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Get('open-registration')
+  openRegistration() {
+    return this.authService.openRegistrationAdmin();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OWNER')
+  @Put('open-registration')
+  setOpenRegistration(@Body() body: any, @Request() req: any) {
+    return this.authService.setOpenRegistration(req.user.userId, body, ipOf(req));
+  }
 
   @Post('register')
   register(@Body() body: { inviteCode: string; username: string; email: string; password: string }, @Request() req: any) {
@@ -93,8 +110,9 @@ export class AuthController {
   }
 
   @Get('features')
-  features() {
-    return { emailReset: this.authService.emailResetAvailable, emailVerification: this.authService.emailVerificationRequired };
+  async features() {
+    // openRegistration : les inscriptions sont ouvertes sans code d'invitation (la page d'inscription en dépend).
+    return { emailReset: this.authService.emailResetAvailable, emailVerification: this.authService.emailVerificationRequired, openRegistration: (await this.authService.openRegistration()).enabled };
   }
 
   @Post('forgot-password')

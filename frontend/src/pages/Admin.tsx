@@ -11,6 +11,7 @@ import { NewsAdmin, FreeleechAdmin } from '../components/AdminNewsFreeleech';
 import { WikiAdmin } from '../components/AdminWiki';
 import { ChannelsAdmin } from '../components/AdminChannels';
 import { InvitesAdmin } from '../components/AdminInvites';
+import OpenRegistrationAdmin from '../components/OpenRegistrationAdmin';
 import { ConfigAdmin } from '../components/AdminConfig';
 import MaintenanceAdmin from '../components/MaintenanceAdmin';
 import AdminDonations from '../components/AdminDonations';
@@ -79,7 +80,7 @@ export default function Admin() {
       {tab === 'Wiki' && <WikiAdmin />}
       {tab === 'Support' && <SupportAdmin />}
       {tab === 'Paramètres' && <><MaintenanceAdmin /><ConfigAdmin /><AdminUploadCredit /></>}
-      {tab === 'Invitations' && <><AdminReferral /><InvitesAdmin /></>}
+      {tab === 'Invitations' && <><OpenRegistrationAdmin /><AdminReferral /><InvitesAdmin /></>}
       {tab === 'Canaux' && <ChannelsAdmin />}
       {tab === 'Journal' && <AuditAdmin />}
       {tab === 'Monitoring' && <MonitoringAdmin />}

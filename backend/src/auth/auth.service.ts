@@ -14,6 +14,8 @@ import { EmailVerificationService, maskEmail } from './email-verification.servic
 import { CLASS_LABELS, ECONOMY, INVITE_QUOTA, SITE } from '../common/utils/economy';
 import { passwordProblem } from '../common/utils/password-policy';
 import { forgetIdentity } from '../common/utils/session-identity';
+import { SettingsService } from '../settings/settings.service';
+import { DEFAULT_OPEN_REGISTRATION, normalizeOpenRegistration, OPEN_REGISTRATION_KEY, type OpenRegistration } from '../common/utils/open-registration';
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
@@ -57,6 +59,7 @@ export class AuthService {
     private audit: AuditService,
     private mail: MailService,
     private verification: EmailVerificationService,
+    private settings: SettingsService,
   ) {}
 
   private assertPassword(password: string, who: { username?: string | null; email?: string | null } = {}) {
@@ -67,7 +70,8 @@ export class AuthService {
   /**
    * Inscription : nécessite un code d'invitation valide et non utilisé —
    * SAUF pour le tout premier compte du tracker (base vide), qui devient
-   * automatiquement ADMIN sans invitation, pour amorcer le premier accès.
+   * automatiquement ADMIN sans invitation, pour amorcer le premier accès,
+   * et quand l'administration a ouvert les inscriptions sans code (voir openRegistration).
    */
   async register(inviteCode: string, username: string, email: string, password: string, ip: string | null = null) {
     email = String(email ?? '').trim();
@@ -96,6 +100,11 @@ export class AuthService {
     }
 
     const typed = (inviteCode ?? '').trim();
+    // Inscriptions ouvertes (Admin > Invitations) : sans code, on passe par les limites de l'inscription libre ; avec un code, le code est vérifié comme d'habitude.
+    if (!typed) {
+      const open = await this.openRegistration();
+      if (open.enabled) return this.registerOpen(open, username, email, passwordHash, welcomeGift, ip);
+    }
     const invite = (await this.prisma.inviteCode.findUnique({ where: { code: typed } }))
       ?? (typed ? await this.prisma.inviteCode.findUnique({ where: { code: typed.toUpperCase() } }) : null); // les codes de l'administration sont en majuscules
     if (!invite || invite.used || invite.disabled || invite.useCount >= invite.maxUses) throw new BadRequestException('Code d\'invitation invalide ou déjà utilisé');
@@ -153,6 +162,64 @@ export class AuthService {
       return { id: user.id, username: user.username, pendingVerification: true, challengeId, email: maskEmail(user.email) };
     }
     await this.welcome(user, invite);
+    return { id: user.id, username: user.username, passkey: user.passkey };
+  }
+
+  /** Les réglages des inscriptions ouvertes sans code (fermées tant que l'administration ne les a pas ouvertes). */
+  async openRegistration(): Promise<OpenRegistration> {
+    return normalizeOpenRegistration(await this.settings.get(OPEN_REGISTRATION_KEY), DEFAULT_OPEN_REGISTRATION);
+  }
+
+  /** Administration : les réglages, le nombre d'inscriptions libres des dernières 24 h et si la confirmation du courriel est active. */
+  async openRegistrationAdmin() {
+    const open = await this.openRegistration();
+    const today = await this.prisma.activityLog.count({ where: { action: 'SIGNUP_OPEN', createdAt: { gt: new Date(Date.now() - 86_400_000) } } });
+    return { ...open, today, emailConfirmation: this.verification.required };
+  }
+
+  async setOpenRegistration(adminId: string, body: unknown, ip?: string | null) {
+    const next = normalizeOpenRegistration(body, await this.openRegistration());
+    await this.settings.set(OPEN_REGISTRATION_KEY, next);
+    await this.audit.log(adminId, 'OPEN_REGISTRATION_SET', { ...next }, ip);
+    return this.openRegistrationAdmin();
+  }
+
+  /** Inscription libre, sans code : mêmes règles qu'une inscription invitée (courriel à confirmer si l'envoi est configuré), plus des limites par IP et par jour. */
+  private async registerOpen(open: OpenRegistration, username: string, email: string, passwordHash: string, gift: { uploaded: bigint; freeleechUntil: Date }, ip: string | null) {
+    const since = new Date(Date.now() - 86_400_000);
+    if (open.perIpPerDay > 0) {
+      if (!ip) throw new BadRequestException("Impossible de vérifier ton adresse IP : réessaie, ou demande un code d'invitation");
+      if ((await this.prisma.activityLog.count({ where: { action: 'SIGNUP_OPEN', ip, createdAt: { gt: since } } })) >= open.perIpPerDay) {
+        throw new BadRequestException("Trop d'inscriptions depuis cette connexion aujourd'hui : réessaie demain, ou utilise un code d'invitation");
+      }
+    }
+    if (open.maxPerDay > 0 && (await this.prisma.activityLog.count({ where: { action: 'SIGNUP_OPEN', createdAt: { gt: since } } })) >= open.maxPerDay) {
+      throw new BadRequestException("Les inscriptions libres du jour sont complètes : réessaie demain, ou utilise un code d'invitation");
+    }
+    let user;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          username, email, passwordHash, minRatio: SITE.defaultMinRatio,
+          ...(this.verification.required ? { status: 'PENDING_EMAIL' as const } : {}),
+          ...gift,
+        },
+      });
+    } catch (err: any) {
+      if (err?.code === 'P2002' && String(err?.meta?.target ?? '').includes('username')) throw new BadRequestException("Ce nom d'utilisateur est déjà pris");
+      if (err?.code === 'P2002' && String(err?.meta?.target ?? '').includes('email')) throw new BadRequestException('Ce courriel est déjà utilisé');
+      throw err;
+    }
+    await this.audit.log(user.id, 'SIGNUP_OPEN', { username: user.username }, ip);
+    if (user.status === 'PENDING_EMAIL') {
+      const challengeId = await this.verification.issue(user, 'SIGNUP', user.email);
+      await this.audit.log(user.id, 'SIGNUP_VERIFICATION_SENT', undefined, ip);
+      return { id: user.id, username: user.username, pendingVerification: true, challengeId, email: maskEmail(user.email) };
+    }
+    await this.notifications.notify({
+      userId: user.id, type: 'SYSTEM', title: `Bienvenue sur Seeduction, ${user.username} !`,
+      body: `Cadeau de bienvenue : ${ECONOMY.welcomeUploadGb} Go d'upload offerts et ${ECONOMY.welcomeFreeleechDays} jours de freeleech personnel.`, link: '/profile',
+    });
     return { id: user.id, username: user.username, passkey: user.passkey };
   }
 

@@ -45,6 +45,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
         content:
           `Seeduction fonctionne par invitation : il faut un code fourni par un membre qui a déjà un compte (sauf le tout premier compte du tracker, qui devient automatiquement administrateur).\n\n` +
           `• Chaque code d'invitation n'est utilisable qu'une seule fois et peut avoir une date d'expiration.\n` +
+          `• [b]Inscriptions ouvertes[/b] : l'administration peut ouvrir les inscriptions à tous (Admin > Invitations). Le code d'invitation devient alors facultatif sur la page d'inscription ; le courriel doit quand même être confirmé quand l'envoi de courriels est configuré, et des limites par adresse IP et par jour protègent le site. Un code saisi garde son effet.\n` +
           `• Le nombre d'invitations que tu peux créer toi-même dépend de ton rang (voir [url=/wiki/rangs-et-classes]Rangs et classes[/url]) : 0 pour un Nouveau ou un Membre, 2 pour un Power User, 5 pour un Élite, 10 pour un Vétéran. Le staff n'a pas de limite.\n` +
           `• [b]Tu es responsable des membres que tu invites[/b] : des abus répétés de leur part peuvent retomber sur ton propre compte.\n\n` +
           `Pour inviter quelqu'un, va dans ton profil et génère un code depuis l'onglet Invitations (si ton rang le permet).

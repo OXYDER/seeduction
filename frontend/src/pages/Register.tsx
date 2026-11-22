@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
@@ -10,6 +10,9 @@ export default function Register() {
   const [form, setForm] = useState({ inviteCode: params.get('code') ?? '', username: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  // Inscriptions ouvertes par l'administration : le code d'invitation devient facultatif.
+  const [open, setOpen] = useState(false);
+  useEffect(() => { api.get('/auth/features').then((r) => setOpen(!!r.data.openRegistration)).catch(() => undefined); }, []);
   const [pending, setPending] = useState<{ challengeId: string; email: string } | null>(null);
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
@@ -43,7 +46,7 @@ export default function Register() {
         <img src="/logo-full.png" alt="Seeduction" className="auth-art-logo" />
         <div className="auth-art-caption">
           <strong>Rejoins la légende</strong>
-          <p>Un code d'invitation valide est requis — le tracker est fermé.</p>
+          <p>{open ? "Les inscriptions sont ouvertes : le code d'invitation est facultatif." : "Un code d'invitation valide est requis — le tracker est fermé."}</p>
         </div>
       </div>
 
@@ -65,7 +68,7 @@ export default function Register() {
             <p style={{ color: 'var(--success)', textAlign: 'center' }}>Compte créé ! Redirection...</p>
           ) : (
             <form onSubmit={submit} className="grid">
-              <input placeholder="Code d'invitation" value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value })} />
+              <input placeholder={open ? "Code d'invitation (facultatif)" : "Code d'invitation"} value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value })} />
               <input placeholder="Nom d'utilisateur" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
               <input placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               <input placeholder="Mot de passe" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
