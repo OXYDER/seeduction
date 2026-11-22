@@ -7,8 +7,15 @@ import { create } from 'zustand';
 import { api } from '../api/client';
 
 export interface NavPrefs {
-  style: 'classic' | 'groups';
+  style: 'classic' | 'groups' | 'pinned' | 'rail' | 'top';
+  side: 'left' | 'right';
+  /** Style Épinglés : adresses des liens épinglés, dans l'ordre ; vide = une sélection de départ. */
+  pinned: string[];
   size: 'normal' | 'large' | 'xl';
+  /** Largeur du menu latéral (px) ; 0 = automatique. */
+  width: number;
+  /** Entre les liens : normal, séparés par une fine ligne, ou aérés. */
+  spacing: 'normal' | 'lines' | 'airy';
   icons: boolean;
   /** null = automatique : affichés avec le style Groupes, cachés avec le style Classique. */
   extras: boolean | null;
@@ -18,7 +25,7 @@ export interface NavPrefs {
   order: string[];
 }
 
-export const DEFAULT_NAV_PREFS: NavPrefs = { style: 'classic', size: 'large', icons: true, extras: null, categories: null, openAll: false, hidden: [], order: [] };
+export const DEFAULT_NAV_PREFS: NavPrefs = { style: 'classic', side: 'left', pinned: [], width: 0, spacing: 'normal', size: 'large', icons: true, extras: null, categories: null, openAll: false, hidden: [], order: [] };
 
 const KEY = 'nav-prefs-v1';
 const list = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.startsWith('/')).slice(0, 120) : []);
@@ -27,7 +34,11 @@ export function normalizeNavPrefs(raw: unknown): NavPrefs {
   const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const tri = (v: unknown): boolean | null => (typeof v === 'boolean' ? v : null);
   return {
-    style: r.style === 'groups' ? 'groups' : 'classic',
+    style: r.style === 'groups' || r.style === 'pinned' || r.style === 'rail' || r.style === 'top' ? r.style : 'classic',
+    side: r.side === 'right' ? 'right' : 'left',
+    pinned: list(r.pinned).filter((x, i, a) => a.indexOf(x) === i),
+    width: typeof r.width === 'number' && Number.isFinite(r.width) && r.width > 0 ? Math.min(420, Math.max(200, Math.round(r.width))) : 0,
+    spacing: r.spacing === 'lines' || r.spacing === 'airy' ? r.spacing : 'normal',
     size: r.size === 'normal' || r.size === 'xl' ? r.size : 'large',
     icons: r.icons !== false,
     extras: tri(r.extras),
@@ -73,6 +84,9 @@ export const useNavPrefs = create<NavPrefsState>((set, get) => {
 
 /** Ordre d'origine du menu (la liste à plat d'avant les groupes) ; les autres liens suivent dans l'ordre du code. */
 export const NAV_CLASSIC_ORDER = ['/', '/browse', '/news', '/upload', '/requests', '/favorites', '/collections', '/friends', '/teams', '/chat', '/forum', '/suggestions', '/jeux', '/canadiens-en-direct', '/stats', '/dead', '/soutenir', '/wiki', '/support', '/staff-board', '/moderation', '/equipe', '/admin'];
+/** Style Épinglés : les liens montrés tant que le membre n'a rien épinglé. */
+export const NAV_DEFAULT_PINNED = ['/', '/browse', '/news', '/upload', '/chat', '/forum'];
+
 /** Noms d'origine de quelques liens, repris avec le style Classique. */
 export const NAV_CLASSIC_LABELS: Record<string, string> = { '/': 'Accueil', '/jeux': 'Jeux', '/stats': 'Stats' };
 

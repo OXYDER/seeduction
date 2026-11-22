@@ -2,7 +2,7 @@ import Nick from './Nick';
 import { applyDefaultView } from '../lib/viewMode';
 import { applyTipStyle } from '../lib/tipStyle';
 import { useEventTheme } from '../store/eventTheme';
-import { applyOrder, classicSort, NAV_CLASSIC_LABELS, useNavPrefs } from '../lib/navPrefs';
+import { applyOrder, classicSort, NAV_CLASSIC_LABELS, NAV_DEFAULT_PINNED, useNavPrefs } from '../lib/navPrefs';
 import { Suspense, useCallback, useEffect, useState, FormEvent } from 'react';
 import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
@@ -179,6 +179,22 @@ function LayoutInner() {
   const location = useLocation();
   const [profile, setProfile] = useState<Profile | null>(null);
   const navPrefs = useNavPrefs((st) => st.prefs); // style, taille et liens du menu de gauche (Profil > Compte > Menu de gauche)
+  // Grand écran (menu latéral ou barre du haut) ou petit écran (tiroir) : la limite est celle de la mise en page mobile (980 px).
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 981px)').matches);
+  useEffect(() => { const m = window.matchMedia('(min-width: 981px)'); const h = () => setWide(m.matches); m.addEventListener('change', h); return () => m.removeEventListener('change', h); }, []);
+  // Style « Deux niveaux » : la section choisie ; style « Épinglés » : le menu complet ouvert ou non ; barre du haut : le menu déroulant ouvert.
+  const [railGroup, setRailGroup] = useState(() => { try { return localStorage.getItem('side-rail-group') ?? ''; } catch { return ''; } });
+  const pickRail = (id: string) => { setRailGroup(id); try { localStorage.setItem('side-rail-group', id); } catch { /* préférence facultative */ } };
+  const [allOpen, setAllOpen] = useState(() => { try { return localStorage.getItem('side-pinned-all') === '1'; } catch { return false; } });
+  const toggleAll = () => setAllOpen((v) => { const n = !v; try { localStorage.setItem('side-pinned-all', n ? '1' : '0'); } catch { /* idem */ } return n; });
+  const [topOpen, setTopOpen] = useState<string | null>(null);
+  useEffect(() => { setTopOpen(null); }, [location.pathname]);
+  useEffect(() => {
+    if (!topOpen) return;
+    const h = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.top-grp')) setTopOpen(null); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [topOpen]);
   const [categories, setCategories] = useState<Category[]>([]);
   // Torrents sans seeder que ce membre a déjà téléchargés : la pastille « Réanimation » l'invite à les remettre en seed.
   const [deadMine, setDeadMine] = useState(0);
@@ -509,27 +525,38 @@ function LayoutInner() {
     const visibleNav = NAV_ITEMS.filter((item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin) && (!item.liveOnly || liveNow || starts('/canadiens-en-direct')(location.pathname)) && !(item.to === '/upload' && user?.profile && !user.profile.perms?.upload)); // sans le droit d'envoi accordé par le profil principal
     const tabs = ['/', '/browse', '/upload', '/forum'].map((to) => NAV_ITEMS.find((i) => i.to === to)!);
 
-    return (
-      <div className={`shell${collapsed ? ' collapsed' : ''}`}>
-        {drawer && <div className="shell-overlay" onClick={() => setDrawer(false)} />}
-        <aside className={`side-nav${drawer ? ' open' : ''}`}>
-          <div className="side-head">
-            <Link to="/" className="side-brand" title="Accueil">
-              <img src="/logo-icon.png" alt="" width={34} height={34} />
-              <span>SEEDUCTION</span>
-            </Link>
-            <button
-              type="button"
-              className="secondary side-collapse"
-              onClick={toggleCollapsed}
-              title={collapsed ? 'Agrandir le menu' : 'Réduire le menu (icônes seules)'}
-              aria-label={collapsed ? 'Agrandir le menu' : 'Réduire le menu'}
-              aria-expanded={!collapsed}
-            >
-              {collapsed ? '❯' : '❮'}
-            </button>
-          </div>
-
+    // ---- Style du menu de gauche (Profil > Compte > Menu de gauche) ----
+    const style = navPrefs.style;
+    const topBar = style === 'top' && wide; // barre du haut sur grand écran ; sur petit écran, le tiroir habituel
+    const flat = style === 'classic' || style === 'top'; // liste à plat de gros liens
+    const groupish = style === 'groups' || style === 'pinned' || style === 'rail';
+    // Liens supplémentaires et catégories : « automatique » = affichés avec les styles à sections, cachés avec la liste à plat.
+    const withExtras = navPrefs.extras ?? groupish;
+    const withCats = navPrefs.categories ?? groupish;
+    const pool = visibleNav.filter((i) => (withExtras || !i.sideOnly) && !navPrefs.hidden.includes(i.to));
+    // Le catalogue par type : une entrée par catégorie principale (Films, Séries...), sous « Parcourir ».
+    const catItems: NavItem[] = !withCats ? [] : categories.map((c) => ({ to: `/browse?categoryId=${c.id}`, icon: CATEGORY_STYLE[c.slug]?.icon ?? '📁', cls: 'c-search', label: c.name, group: 'catalogue' as const, sideOnly: true, match: (p: string) => starts('/browse')(p) && window.location.search.includes(`categoryId=${c.id}`) })).filter((c) => !navPrefs.hidden.includes(c.to));
+    const navLink = (item: NavItem) => {
+      const active = item.match(location.pathname);
+      const label = flat ? NAV_CLASSIC_LABELS[item.to] ?? item.label : item.label;
+      return (
+        <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={label}>
+          {(navPrefs.icons || collapsed) && <span className="side-icon">{item.icon}</span>}
+          <span>{label}</span>
+          {evNav(item.to)}{badgesFor(item)}
+        </Link>
+      );
+    };
+    const groupList = NAV_GROUPS.map((g) => {
+      let items = pool.filter((i) => i.group === g.id);
+      if (g.id === 'catalogue') items = [...items.slice(0, 1), ...catItems, ...items.slice(1)];
+      return { g, items: applyOrder(items, navPrefs.order) };
+    }).filter((x) => x.items.length > 0);
+    const todoOf = (items: NavItem[]) => items.reduce((n, i) => n + countOf(i) + (i.to === '/chat' ? privUnread + pubUnread : 0), 0);
+    const hereGroup = groupList.find((x) => x.items.some((i) => i.match(location.pathname)))?.g.id;
+    // Carte du compte et boutons du compte famille : dans le menu latéral, ou dans la barre du haut.
+    const userCard = (
+      <>
           <div className="side-user">
             <div
               className="side-user-card"
@@ -580,71 +607,142 @@ function LayoutInner() {
             />
             <button className="secondary side-logout" onClick={() => { logout(); window.location.assign('/login'); }} title="Se déconnecter">⎋</button>
           </div>
+      </>
+    );
+    const familyBlock = (
+      <>
           {user && (
             <div className="side-family">
               {user?.profile && <button type="button" className="secondary" onClick={switchProfile} title="Changer de profil (PIN demandé)">↔ Changer de profil</button>}
               {(!user?.profile || user.profile.isMaster) && <Link to="/family" className={`secondary${starts('/family')(location.pathname) ? ' active' : ''}`} title="Compte famille : profils, activité, conversations des enfants">👨‍👩‍👧 Famille</Link>}
             </div>
           )}
-          <nav className={`side-links size-${navPrefs.size}${navPrefs.icons ? '' : ' no-icons'}`}>
+      </>
+    );
+
+    return (
+      <div style={navPrefs.width && !topBar && !collapsed ? ({ ['--side-w' as string]: `${navPrefs.width}px` } as React.CSSProperties) : undefined} className={`shell${collapsed && !topBar ? ' collapsed' : ''}${navPrefs.side === 'right' && !topBar ? ' side-right' : ''}${style === 'rail' && !collapsed && !topBar ? ' nav-rail' : ''}${topBar ? ' nav-top' : ''}`}>
+        {drawer && <div className="shell-overlay" onClick={() => setDrawer(false)} />}
+        {!topBar && (
+        <aside className={`side-nav${drawer ? ' open' : ''}`}>
+          <div className="side-head">
+            <Link to="/" className="side-brand" title="Accueil">
+              <img src="/logo-icon.png" alt="" width={34} height={34} />
+              <span>SEEDUCTION</span>
+            </Link>
+            <button
+              type="button"
+              className="secondary side-collapse"
+              onClick={toggleCollapsed}
+              title={collapsed ? 'Agrandir le menu' : 'Réduire le menu (icônes seules)'}
+              aria-label={collapsed ? 'Agrandir le menu' : 'Réduire le menu'}
+              aria-expanded={!collapsed}
+            >
+              {collapsed ? '❯' : '❮'}
+            </button>
+          </div>
+
+          {userCard}
+          {familyBlock}
+          <nav className={`side-links size-${navPrefs.size}${navPrefs.icons ? '' : ' no-icons'} sp-${navPrefs.spacing}`}>
             {(() => {
-              const classic = navPrefs.style === 'classic';
-              const link = (item: NavItem) => {
-                const active = item.match(location.pathname);
-                const label = classic ? NAV_CLASSIC_LABELS[item.to] ?? item.label : item.label;
-                return (
-                  <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={label}>
-                    {(navPrefs.icons || collapsed) && <span className="side-icon">{item.icon}</span>}
-                    <span>{label}</span>
-                    {evNav(item.to)}{badgesFor(item)}
-                  </Link>
-                );
-              };
-              // Les liens supplémentaires et les catégories : « automatique » = affichés avec les groupes, cachés avec le menu classique.
-              const withExtras = navPrefs.extras ?? !classic;
-              const withCats = navPrefs.categories ?? !classic;
-              const pool = visibleNav.filter((i) => (withExtras || !i.sideOnly) && !navPrefs.hidden.includes(i.to));
-              // Le catalogue par type : une entrée par catégorie principale (Films, Séries...), sous « Parcourir ».
-              const catItems: NavItem[] = !withCats ? [] : categories.map((c) => ({ to: `/browse?categoryId=${c.id}`, icon: CATEGORY_STYLE[c.slug]?.icon ?? '📁', cls: 'c-search', label: c.name, group: 'catalogue' as const, sideOnly: true, match: (p: string) => starts('/browse')(p) && window.location.search.includes(`categoryId=${c.id}`) })).filter((c) => !navPrefs.hidden.includes(c.to));
-              // Menu réduit (icônes seules) ou style Classique : la liste à plat, dans l'ordre d'origine (ou celui choisi par le membre).
-              if (collapsed || classic) {
-                const flat = classicSort(pool);
-                const at = flat.findIndex((i) => i.to === '/browse');
-                const withCat = catItems.length ? [...flat.slice(0, at + 1), ...catItems, ...flat.slice(at + 1)] : flat;
-                return applyOrder(withCat, navPrefs.order).map(link);
+              // Menu réduit (icônes seules), style Classique (et tiroir de la barre du haut) : la liste à plat, dans l'ordre d'origine ou celui choisi.
+              if (collapsed || flat) {
+                const list = classicSort(pool);
+                const at = list.findIndex((i) => i.to === '/browse');
+                const withCat = catItems.length ? [...list.slice(0, at + 1), ...catItems, ...list.slice(at + 1)] : list;
+                return applyOrder(withCat, navPrefs.order).map(navLink);
               }
-              return (
-                <>
-                  {NAV_GROUPS.map((g) => {
-                    let items = pool.filter((i) => i.group === g.id);
-                    if (g.id === 'catalogue') items = [...items.slice(0, 1), ...catItems, ...items.slice(1)];
-                    items = applyOrder(items, navPrefs.order);
-                    if (items.length === 0) return null;
-                    const open = openGroups.includes(g.id);
-                    const hasActive = items.some((i) => i.match(location.pathname));
-                    const todo = open ? 0 : items.reduce((n, i) => n + countOf(i) + (i.to === '/chat' ? privUnread + pubUnread : 0), 0);
-                    return (
-                      <div key={g.id} className={`side-group${open ? ' open' : ''}${hasActive ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }}>
-                        <button type="button" className="side-group-head" onClick={() => toggleGroup(g.id)} aria-expanded={open}>
-                          {navPrefs.icons && <span className="side-icon">{g.icon}</span>}
-                          <span>{g.label}</span>
-                          {todo > 0 && <span className="side-badge red" title="À voir dans cette section">{todo > 99 ? '99+' : todo}</span>}
-                          <span className="side-chev" aria-hidden="true">›</span>
-                        </button>
-                        {open && <div className="side-group-items">{items.map(link)}</div>}
+              // Sections repliables (style Groupes, et « Tout le menu » du style Épinglés).
+              const groupsView = () => groupList.map(({ g, items }) => {
+                const open = openGroups.includes(g.id);
+                const hasActive = items.some((i) => i.match(location.pathname));
+                const todo = open ? 0 : todoOf(items);
+                return (
+                  <div key={g.id} className={`side-group${open ? ' open' : ''}${hasActive ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }}>
+                    <button type="button" className="side-group-head" onClick={() => toggleGroup(g.id)} aria-expanded={open}>
+                      {navPrefs.icons && <span className="side-icon">{g.icon}</span>}
+                      <span>{g.label}</span>
+                      {todo > 0 && <span className="side-badge red" title="À voir dans cette section">{todo > 99 ? '99+' : todo}</span>}
+                      <span className="side-chev" aria-hidden="true">›</span>
+                    </button>
+                    {open && <div className="side-group-items">{items.map(navLink)}</div>}
+                  </div>
+                );
+              });
+              // Épinglés : seulement les liens choisis ; le reste sous « Tout le menu ».
+              if (style === 'pinned') {
+                const byTo = new Map(visibleNav.map((i) => [i.to, i]));
+                const pins = (navPrefs.pinned.length ? navPrefs.pinned : NAV_DEFAULT_PINNED).map((to) => byTo.get(to)).filter((i): i is NavItem => !!i && !navPrefs.hidden.includes(i.to));
+                return (
+                  <>
+                    <div className="side-label">⭐ Mes liens</div>
+                    {pins.map(navLink)}
+                    <button type="button" className="side-all-toggle" onClick={toggleAll} aria-expanded={allOpen}>{allOpen ? '▾ Masquer le reste' : '☰ Tout le menu'}</button>
+                    {allOpen && groupsView()}
+                  </>
+                );
+              }
+              // Deux niveaux : une colonne d'icônes de sections et les liens de la section choisie.
+              if (style === 'rail') {
+                const activeId = groupList.some((x) => x.g.id === railGroup) ? railGroup : (hereGroup ?? groupList[0]?.g.id);
+                const cur = groupList.find((x) => x.g.id === activeId);
+                return (
+                  <div className="side-rail2">
+                    <div className="rail-col" role="tablist" aria-label="Sections du menu">
+                      {groupList.map(({ g, items }) => {
+                        const todo = todoOf(items);
+                        return (
+                          <button key={g.id} type="button" role="tab" aria-selected={g.id === activeId} className={`rail-btn${g.id === activeId ? ' on' : ''}${g.id === hereGroup ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }} title={g.label} onClick={() => pickRail(g.id)}>
+                            <span className="rail-ico">{g.icon}</span>
+                            <small>{g.label}</small>
+                            {todo > 0 && <span className="side-badge red">{todo > 99 ? '99+' : todo}</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {cur && (
+                      <div className="rail-list" style={{ ['--gc' as string]: cur.g.color }}>
+                        <div className="rail-title">{cur.g.label}</div>
+                        {cur.items.map(navLink)}
                       </div>
-                    );
-                  })}
-                </>
-              );
+                    )}
+                  </div>
+                );
+              }
+              return groupsView();
             })()}
             {!collapsed && <Link to="/profile?tab=account#menu-gauche" className="side-customize" title="Style du menu, taille des liens, liens cachés, ordre">⚙ Personnaliser le menu</Link>}
           </nav>
           {version && <Link to="/roadmap" className="side-version" title="Roadmap et journal des modifications">v{version}</Link>}
 
         </aside>
+        )}
 
         <div className="shell-main">
+          {topBar && (
+            <nav className={`top-menu size-${navPrefs.size}${navPrefs.icons ? '' : ' no-icons'} sp-${navPrefs.spacing}`} aria-label="Menu principal">
+              <Link to="/" className="top-brand" title="Accueil"><img src="/logo-icon.png" alt="" width={30} height={30} /><span>SEEDUCTION</span></Link>
+              {groupList.map(({ g, items }) => {
+                const open = topOpen === g.id;
+                const todo = todoOf(items);
+                return (
+                  <div key={g.id} className={`top-grp${open ? ' open' : ''}${g.id === hereGroup ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }} onMouseEnter={() => setTopOpen(g.id)} onMouseLeave={() => setTopOpen((o) => (o === g.id ? null : o))}>
+                    <button type="button" className="top-grp-btn" aria-expanded={open} onClick={() => setTopOpen(open ? null : g.id)}>
+                      {navPrefs.icons && <span aria-hidden="true">{g.icon}</span>}
+                      <span>{g.label}</span>
+                      {todo > 0 && <span className="side-badge red">{todo > 99 ? '99+' : todo}</span>}
+                      <span className="top-chev" aria-hidden="true">▾</span>
+                    </button>
+                    {open && <div className="top-drop side-links">{items.map(navLink)}</div>}
+                  </div>
+                );
+              })}
+              <span className="top-spacer" />
+              <Link to="/profile?tab=account#menu-gauche" className="top-customize" title="Personnaliser le menu" aria-label="Personnaliser le menu">⚙</Link>
+              {userCard}
+            </nav>
+          )}
           <header className="side-topbar">
             <button type="button" className="secondary side-burger" onClick={() => setDrawer(true)} aria-label="Ouvrir le menu">☰</button>
             <form className="side-search" onSubmit={submitSearch}>

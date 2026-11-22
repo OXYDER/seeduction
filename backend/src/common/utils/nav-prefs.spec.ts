@@ -10,7 +10,26 @@ describe('normalizeNavPrefs', () => {
 
   it('garde les choix valides', () => {
     const p = normalizeNavPrefs({ style: 'groups', size: 'xl', icons: false, extras: true, categories: false, openAll: true, hidden: ['/dead'], order: ['/chat', '/'] });
-    expect(p).toEqual({ style: 'groups', size: 'xl', icons: false, extras: true, categories: false, openAll: true, hidden: ['/dead'], order: ['/chat', '/'] });
+    expect(p).toEqual({ style: 'groups', side: 'left', pinned: [], width: 0, spacing: 'normal', size: 'xl', icons: false, extras: true, categories: false, openAll: true, hidden: ['/dead'], order: ['/chat', '/'] });
+  });
+
+  it('les cinq styles, le côté et les liens épinglés', () => {
+    for (const style of ['classic', 'groups', 'pinned', 'rail', 'top']) expect(normalizeNavPrefs({ style }).style).toBe(style);
+    expect(normalizeNavPrefs({ style: 'tuiles' }).style).toBe('classic');
+    expect(normalizeNavPrefs({ side: 'right' }).side).toBe('right');
+    expect(normalizeNavPrefs({ side: 'haut' }).side).toBe('left');
+    expect(normalizeNavPrefs({ pinned: ['/chat', '/chat', 'javascript:x', '/forum'] }).pinned).toEqual(['/chat', '/forum']);
+  });
+
+  it('largeur (bornée, 0 = automatique) et espacement des liens', () => {
+    expect(normalizeNavPrefs({ width: 300 }).width).toBe(300);
+    expect(normalizeNavPrefs({ width: 50 }).width).toBe(200);
+    expect(normalizeNavPrefs({ width: 9999 }).width).toBe(420);
+    expect(normalizeNavPrefs({ width: 0 }).width).toBe(0);
+    expect(normalizeNavPrefs({ width: 'large' }).width).toBe(0);
+    expect(normalizeNavPrefs({ width: NaN }).width).toBe(0);
+    for (const spacing of ['normal', 'lines', 'airy']) expect(normalizeNavPrefs({ spacing }).spacing).toBe(spacing);
+    expect(normalizeNavPrefs({ spacing: 'serré' }).spacing).toBe('normal');
   });
 
   it('« automatique » (null) pour les liens supplémentaires et les catégories tant que rien n\'est choisi', () => {
