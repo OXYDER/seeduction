@@ -3497,7 +3497,7 @@ tr.rel-click:hover td { background: rgba(255,255,255,0.03); }
 a.community-tile { cursor: pointer; }
 
 /* Bulles de discussion à gauche, à droite du menu et sous l'en-tête (ordinateur seulement) */
-.chat-rail { position: fixed; left: 252px; bottom: 0; width: 76px; z-index: 60; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px 12px; overflow-y: auto; scrollbar-width: none; }
+.chat-rail { position: fixed; left: var(--nav-l, 252px); bottom: 0; width: 76px; z-index: 60; display: none; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px 12px; overflow-y: auto; scrollbar-width: none; }
 .chat-rail::-webkit-scrollbar { display: none; }
 @media (min-width: 981px) { .chat-rail { display: flex; } }
 .cr-group-title { font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #c3c9de; background: rgba(8, 10, 22, 0.78); border-radius: 999px; padding: 2px 8px; }
@@ -3524,7 +3524,7 @@ a.community-tile { cursor: pointer; }
 .cr-all:hover { border-color: var(--gold, #e0b84a); }
 /* le contenu et les fenêtres de discussion se décalent à droite des bulles */
 :root body.has-chat-rail .shell main.container { margin-left: 80px; }
-body.has-chat-rail .dm-dock { right: auto; left: calc(252px + 88px); }
+body.has-chat-rail .dm-dock { right: auto; left: calc(var(--nav-l, 252px) + 88px); }
 body.has-chat-rail .dm-bubble-avatar { display: none; }
 /* Sur petit écran, l'en-tête garde au moins le ratio (les autres pastilles restent masquées) */
 @media (max-width: 980px) { .stat-pills { display: flex; margin-left: auto; } .stat-pills .pill:not(.ratio) { display: none; } }
@@ -3625,8 +3625,6 @@ body.has-chat-rail .dm-bubble-avatar { display: none; }
 .rn-missing { font-size: 12px; }
 /* Menu de gauche réduit (82 px au lieu de 252 px) : les bulles et les fenêtres de discussion le suivent */
 @media (min-width: 981px) {
-  body.side-collapsed .chat-rail { left: 82px; }
-  body.side-collapsed.has-chat-rail .dm-dock { left: calc(82px + 88px); }
 }
 /* Bandeau d'état du site : mise à jour en cours, serveur injoignable, nouvelle version */
 .maint-bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 10px; width: min(760px, calc(100vw - 24px)); padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.35; color: #fff; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.28); }
@@ -4597,20 +4595,19 @@ html a.user-link.rank-POWER_USER, html a .nick.rank-POWER_USER { color: #a5b4fc;
 .chat-rail[data-size="sm"] { width: 64px; } .chat-rail[data-size="sm"] .cr-av { width: 34px; height: 34px; } .chat-rail[data-size="sm"] .cr-bubble, .chat-rail[data-size="sm"] .cr-item { width: 56px; } .chat-rail[data-size="sm"] .cr-name { max-width: 56px; font-size: 9.5px; } .chat-rail[data-size="sm"] .cr-hash { font-size: 17px; }
 .chat-rail[data-size="lg"] { width: 96px; } .chat-rail[data-size="lg"] .cr-av { width: 58px; height: 58px; } .chat-rail[data-size="lg"] .cr-bubble, .chat-rail[data-size="lg"] .cr-item { width: 84px; } .chat-rail[data-size="lg"] .cr-name { max-width: 84px; font-size: 11.5px; } .chat-rail[data-size="lg"] .cr-hash { font-size: 27px; }
 /* droite */
-.chat-rail[data-pos="right"] { left: auto; right: 0; }
+.chat-rail[data-pos="right"] { left: auto; right: var(--nav-r, 0px); }
 :root body.has-chat-rail.chat-rail-right .shell main.container { margin-left: 0; margin-right: var(--cr-thick, 80px); }
-body.has-chat-rail.chat-rail-right .dm-dock { left: auto; right: calc(var(--cr-thick, 80px) + 8px); }
+body.has-chat-rail.chat-rail-right .dm-dock { left: auto; right: calc(var(--cr-thick, 80px) + 8px + var(--nav-r, 0px)); }
 /* haut et bas : une rangée horizontale entre le menu et le bord droit */
-.chat-rail[data-pos="top"], .chat-rail[data-pos="bottom"] { left: 252px; right: 0; width: auto; height: var(--cr-thick, 80px); flex-direction: row; align-items: center; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; padding: 4px 10px; gap: 8px; background: rgba(8, 10, 22, 0.55); border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.chat-rail[data-pos="top"], .chat-rail[data-pos="bottom"] { left: var(--nav-l, 252px); right: var(--nav-r, 0px); width: auto; height: var(--cr-thick, 80px); flex-direction: row; align-items: center; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; padding: 4px 10px; gap: 8px; background: rgba(8, 10, 22, 0.55); border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .chat-rail[data-pos="top"] .cr-group-title, .chat-rail[data-pos="bottom"] .cr-group-title { margin: 0 2px 0 6px; flex: none; }
 .chat-rail[data-pos="bottom"] { top: auto; bottom: 0; border-bottom: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .chat-rail[data-pos="top"] .cr-all, .chat-rail[data-pos="bottom"] .cr-all { margin-top: 0; flex: none; }
 :root body.has-chat-rail.chat-rail-top .shell main.container, :root body.has-chat-rail.chat-rail-bottom .shell main.container { margin-left: 0; }
 :root body.has-chat-rail.chat-rail-top .shell main.container { margin-top: var(--cr-thick, 80px); }
 :root body.has-chat-rail.chat-rail-bottom .shell main.container { margin-bottom: var(--cr-thick, 80px); }
-body.has-chat-rail.chat-rail-top .dm-dock { left: calc(252px + 12px); }
-body.has-chat-rail.chat-rail-bottom .dm-dock { left: calc(252px + 12px); bottom: var(--cr-thick, 80px); }
-body.side-collapsed .chat-rail[data-pos="top"], body.side-collapsed .chat-rail[data-pos="bottom"] { left: 82px; }
+body.has-chat-rail.chat-rail-top .dm-dock { left: calc(var(--nav-l, 252px) + 12px); }
+body.has-chat-rail.chat-rail-bottom .dm-dock { left: calc(var(--nav-l, 252px) + 12px); bottom: var(--cr-thick, 80px); }
 /* réglages et zones de dépôt */
 .cr-menu { position: fixed; z-index: 3000; display: grid; gap: 10px; width: 270px; padding: 14px; border-radius: 14px; background: #0c1230; border: 1px solid var(--gold, #f5c542); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); left: 350px; bottom: 80px; }
 .cr-menu[data-pos="right"] { left: auto; right: 100px; } .cr-menu[data-pos="top"] { left: 270px; bottom: auto; top: 160px; } .cr-menu[data-pos="bottom"] { left: 270px; bottom: 110px; }

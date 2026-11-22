@@ -1,3 +1,4 @@
+import { useNavPrefs } from '../lib/navPrefs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMessenger, type ConvSummary } from '../store/messenger';
@@ -43,6 +44,7 @@ export default function ChatRail() {
   const navigate = useNavigate();
   const [wide, setWide] = useState(() => window.innerWidth >= 981);
   const [top, setTop] = useState(72);
+  const navStyle = useNavPrefs((st) => st.prefs.style); // le menu choisi (la barre du haut change l'endroit où les bulles commencent)
   const [hidden, setHidden] = useState<Record<string, string>>(readHidden);
   const [prefs, setPrefs] = useState<RailPrefs>(readPrefs);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -91,7 +93,9 @@ export default function ChatRail() {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const h = document.querySelector('.side-topbar')?.getBoundingClientRect();
-        setTop(Math.max(0, Math.round(h ? h.bottom : 0)));
+        // Avec le menu « Barre du haut », les bulles se placent aussi sous cette barre (elle reste collée en haut de l'écran).
+        const m = document.querySelector('.top-menu')?.getBoundingClientRect();
+        setTop(Math.max(0, Math.round(Math.max(h ? h.bottom : 0, m ? m.bottom : 0))));
       });
     };
     measure();
@@ -100,8 +104,10 @@ export default function ChatRail() {
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     const bar = document.querySelector('.side-topbar');
     if (bar && ro) ro.observe(bar);
+    const menu = document.querySelector('.top-menu');
+    if (menu && ro) ro.observe(menu);
     return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', measure); window.removeEventListener('resize', measure); ro?.disconnect(); };
-  }, [wide, location.pathname]);
+  }, [wide, location.pathname, navStyle]);
 
   function hide(c: ConvSummary) {
     const next = { ...hidden, [c.id]: c.last?.createdAt ?? '' };

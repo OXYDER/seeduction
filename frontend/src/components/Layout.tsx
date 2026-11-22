@@ -236,6 +236,16 @@ function LayoutInner() {
     document.body.classList.toggle('side-collapsed', collapsed);
     return () => document.body.classList.remove('side-collapsed');
   }, [collapsed]);
+  // Les bulles de discussion et les fenêtres de chat se placent d'après le menu choisi : --nav-l / --nav-r = la place prise par le menu à gauche / à droite
+  // (sa largeur réelle, réduite ou réglée par le membre ; rien avec la barre du haut ni sur petit écran), lues par index.css.
+  useEffect(() => {
+    const top = navPrefs.style === 'top' && wide;
+    const side = top || !wide ? 0 : collapsed ? 82 : navPrefs.width || (navPrefs.style === 'rail' ? 340 : 252);
+    const b = document.body;
+    b.style.setProperty('--nav-l', navPrefs.side === 'left' ? `${side}px` : '0px');
+    b.style.setProperty('--nav-r', navPrefs.side === 'right' ? `${side}px` : '0px');
+    return () => { b.style.removeProperty('--nav-l'); b.style.removeProperty('--nav-r'); };
+  }, [navPrefs.style, navPrefs.side, navPrefs.width, collapsed, wide]);
   function toggleCollapsed() {
     setCollapsed((v) => {
       try { localStorage.setItem('sideCollapsed', v ? '0' : '1'); } catch { /* stockage indisponible */ }
