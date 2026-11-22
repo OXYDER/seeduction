@@ -8,23 +8,15 @@ import { useCountdown } from './FreeleechCalendar';
 import { useAuthStore } from '../store/auth';
 import { releaseTitle } from './TorrentGroups';
 import { episodeCode } from '../lib/frText';
+import { HOME_SECTIONS, orderIds, useHomeLayout } from '../lib/homeLayout';
 
-// ------------------------------------------------------------------ préférences de l'accueil (propres à l'appareil)
+// ------------------------------------------------------------------ mise en page de l'accueil (propre au compte : voir lib/homeLayout.ts)
 
-const KEY = 'home-prefs';
-export interface HomePrefs { strip: boolean; prevNews: boolean; rail: boolean; actions: boolean }
-const DEFAULTS: HomePrefs = { strip: true, prevNews: true, rail: true, actions: true };
-const read = (): HomePrefs => { try { return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<HomePrefs>) }; } catch { return DEFAULTS; } };
-export const useHomePrefs = create<{ prefs: HomePrefs; set: (patch: Partial<HomePrefs>) => void }>((set, get) => ({
-  prefs: read(),
-  set(patch) { const next = { ...get().prefs, ...patch }; try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* préférence facultative */ } set({ prefs: next }); },
-}));
-
-const OPTIONS: [keyof HomePrefs, string][] = [['strip', 'Freeleech et pot commun'], ['prevNews', 'Nouvelles précédentes'], ['rail', 'Colonne de droite (Canadiens, amis, chat, défi)'], ['actions', 'Actions rapides (en haut)']];
-
-/** Bouton « Personnaliser l'accueil » : le membre choisit ce qu'il garde. La dernière nouvelle reste toujours affichée. */
+/** Bouton « Personnaliser l'accueil » : le membre choisit ce qui s'affiche, l'ordre des sections et ce qui est réduit. La dernière nouvelle reste toujours affichée. */
 export function HomeCustomize() {
-  const { prefs, set } = useHomePrefs();
+  const layout = useHomeLayout((s) => s.layout);
+  const editing = useHomeLayout((s) => s.editing);
+  const { toggleHidden, toggleCollapsed, move, update, reset, setEditing } = useHomeLayout.getState();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -34,14 +26,38 @@ export function HomeCustomize() {
     document.addEventListener('mousedown', away); document.addEventListener('keydown', esc);
     return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
   }, [open]);
+  const movable = HOME_SECTIONS.filter((x) => !x.fixed);
+  const order = orderIds(movable.map((x) => x.id), layout.order);
+  const rows = [...HOME_SECTIONS.filter((x) => x.id === 'composer'), ...order.map((id) => movable.find((x) => x.id === id)!), ...HOME_SECTIONS.filter((x) => x.id === 'rail')];
+  const visible = order.filter((id) => !layout.hidden.includes(id));
   return (
     <div className="home-cust" ref={ref}>
       <button type="button" className="secondary" aria-expanded={open} onClick={() => setOpen((v) => !v)}>⚙️ Personnaliser l'accueil</button>
       {open && (
         <div className="home-cust-panel" role="dialog" aria-label="Personnaliser l'accueil">
-          <strong>Afficher sur mon accueil</strong>
-          {OPTIONS.map(([k, label]) => <label key={k}><input type="checkbox" checked={prefs[k]} onChange={(e) => set({ [k]: e.target.checked })} /> {label}</label>)}
-          <small className="muted">La dernière nouvelle reste toujours affichée. Ton choix est mémorisé sur cet appareil.</small>
+          <strong>Mon accueil</strong>
+          <small className="muted">Coche ce qui s'affiche, change l'ordre avec les flèches, et réduis (−) ce que tu veux garder sous la main. Tout est mémorisé sur ton compte.</small>
+          <div className="hc-list">
+            {rows.map((r) => {
+              const off = layout.hidden.includes(r.id);
+              const mv = !r.fixed;
+              const vi = visible.indexOf(r.id);
+              return (
+                <div key={r.id} className={`hc-row${off ? ' off' : ''}`}>
+                  <label><input type="checkbox" checked={!off} onChange={() => toggleHidden(r.id)} /> <span aria-hidden>{r.icon}</span> {r.label}</label>
+                  {mv && <button type="button" className="secondary" title={layout.collapsed.includes(r.id) ? 'Réduite : cliquer pour la garder ouverte' : 'Ouverte : cliquer pour la garder réduite'} onClick={() => toggleCollapsed(r.id)} aria-pressed={layout.collapsed.includes(r.id)}>{layout.collapsed.includes(r.id) ? '＋' : '−'}</button>}
+                  {mv && <button type="button" className="secondary" onClick={() => move(r.id, -1, order, visible)} disabled={off || vi <= 0} aria-label={`Monter : ${r.label}`}>↑</button>}
+                  {mv && <button type="button" className="secondary" onClick={() => move(r.id, 1, order, visible)} disabled={off || vi < 0 || vi >= visible.length - 1} aria-label={`Descendre : ${r.label}`}>↓</button>}
+                </div>
+              );
+            })}
+          </div>
+          <label><input type="checkbox" checked={layout.prevNews} onChange={(e) => update({ prevNews: e.target.checked })} /> Nouvelles précédentes (petites cartes sous la dernière nouvelle)</label>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className={editing ? '' : 'secondary'} onClick={() => { setEditing(!editing); setOpen(false); }}>{editing ? '✓ Terminer l\'organisation' : '↕ Organiser sur la page'}</button>
+            <button type="button" className="secondary" onClick={reset}>↺ Rétablir l'accueil d'origine</button>
+          </div>
+          <small className="muted">La dernière nouvelle reste toujours affichée.</small>
         </div>
       )}
     </div>

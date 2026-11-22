@@ -1,29 +1,11 @@
 import { useEffect, type ReactNode } from 'react';
 import { create } from 'zustand';
+import { useHomeLayout } from '../lib/homeLayout';
 
-const KEY = 'home-collapsed';
-const read = (): string[] => { try { const v = JSON.parse(localStorage.getItem(KEY) ?? '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; } catch { return []; } };
-const write = (ids: string[]) => { try { localStorage.setItem(KEY, JSON.stringify(ids)); } catch { /* préférence facultative : valable pour cette visite seulement */ } };
-
-/** Sections de l'accueil réduites par le membre (mémorisées sur cet appareil) et liste des sections présentes (pour « Tout réduire »). */
-interface SectionsState {
-  collapsed: string[];
-  known: string[];
-  toggle: (id: string) => void;
-  register: (id: string) => void;
-  collapseAll: () => void;
-  expandAll: () => void;
-}
-export const useHomeSections = create<SectionsState>((set, get) => ({
-  collapsed: read(),
+/** Liste des sections présentes à l'écran (pour « Tout réduire »). Ce qui est réduit, caché ou déplacé est dans la mise en page du membre (lib/homeLayout.ts). */
+export const useHomeSections = create<{ known: string[]; register: (id: string) => void }>((set, get) => ({
   known: [],
-  toggle(id) {
-    const next = get().collapsed.includes(id) ? get().collapsed.filter((x) => x !== id) : [...get().collapsed, id];
-    write(next); set({ collapsed: next });
-  },
   register(id) { if (!get().known.includes(id)) set({ known: [...get().known, id] }); },
-  collapseAll() { const next = [...new Set([...get().collapsed, ...get().known])]; write(next); set({ collapsed: next }); },
-  expandAll() { write([]); set({ collapsed: [] }); },
 }));
 
 /**
@@ -31,8 +13,8 @@ export const useHomeSections = create<SectionsState>((set, get) => ({
  * et un + pour la rouvrir. Le contenu reste monté (rien ne se recharge) ; une section vide (rien à afficher) disparaît tout entière.
  */
 export default function HomeSection({ id, label, icon, children }: { id: string; label: string; icon: string; children: ReactNode }) {
-  const collapsed = useHomeSections((s) => s.collapsed.includes(id));
-  const toggle = useHomeSections((s) => s.toggle);
+  const collapsed = useHomeLayout((s) => s.layout.collapsed.includes(id));
+  const toggle = useHomeLayout((s) => s.toggleCollapsed);
   const register = useHomeSections((s) => s.register);
   useEffect(() => { register(id); }, [id, register]);
 
@@ -47,15 +29,43 @@ export default function HomeSection({ id, label, icon, children }: { id: string;
   );
 }
 
-/** Petit bandeau au-dessus de l'accueil : tout réduire / tout afficher. */
+/**
+ * Une section déplaçable de l'accueil : réductible, et en mode « organiser » une barre avec les flèches pour la monter ou la descendre et un bouton pour la cacher.
+ * `order` : l'ordre actuel de toutes les sections déplaçables ; `visible` : celles qui sont à l'écran.
+ */
+export function HomeBlock({ id, label, icon, order, visible, collapsible = true, children }: { id: string; label: string; icon: string; order: string[]; visible: string[]; collapsible?: boolean; children: ReactNode }) {
+  const editing = useHomeLayout((s) => s.editing);
+  const move = useHomeLayout((s) => s.move);
+  const toggleHidden = useHomeLayout((s) => s.toggleHidden);
+  const i = visible.indexOf(id);
+  return (
+    <div className={`hblock${editing ? ' editing' : ''}`}>
+      {editing && (
+        <div className="hb-tools">
+          <span className="hb-name"><span aria-hidden>{icon}</span> {label}</span>
+          <button type="button" className="secondary" onClick={() => move(id, -1, order, visible)} disabled={i <= 0} aria-label={`Monter : ${label}`}>↑</button>
+          <button type="button" className="secondary" onClick={() => move(id, 1, order, visible)} disabled={i < 0 || i >= visible.length - 1} aria-label={`Descendre : ${label}`}>↓</button>
+          <button type="button" className="secondary" onClick={() => toggleHidden(id)} aria-label={`Cacher : ${label}`}>🙈 Cacher</button>
+        </div>
+      )}
+      {collapsible ? <HomeSection id={id} label={label} icon={icon}>{children}</HomeSection> : children}
+    </div>
+  );
+}
+
+/** Petit bandeau au-dessus de l'accueil : tout réduire / tout afficher, et le mode « organiser ». */
 export function HomeSectionsControls() {
-  const collapsedCount = useHomeSections((s) => s.collapsed.length);
-  const collapseAll = useHomeSections((s) => s.collapseAll);
-  const expandAll = useHomeSections((s) => s.expandAll);
+  const collapsedCount = useHomeLayout((s) => s.layout.collapsed.length);
+  const known = useHomeSections((s) => s.known);
+  const collapseAll = useHomeLayout((s) => s.collapseAll);
+  const expandAll = useHomeLayout((s) => s.expandAll);
+  const editing = useHomeLayout((s) => s.editing);
+  const setEditing = useHomeLayout((s) => s.setEditing);
   return (
     <div className="hs-controls">
-      <button type="button" onClick={collapseAll} title="Réduire toutes les sections de l'accueil">− Tout réduire</button>
+      <button type="button" onClick={() => collapseAll(known)} title="Réduire toutes les sections de l'accueil">− Tout réduire</button>
       {collapsedCount > 0 && <button type="button" onClick={expandAll} title="Afficher toutes les sections">＋ Tout afficher ({collapsedCount})</button>}
+      <button type="button" className={editing ? '' : 'secondary'} onClick={() => setEditing(!editing)} title="Monter, descendre ou cacher les sections directement sur l'accueil">{editing ? '✓ Terminer' : '↕ Organiser'}</button>
     </div>
   );
 }

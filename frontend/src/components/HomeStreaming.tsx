@@ -13,8 +13,9 @@ import NewsPanel from './NewsPanel';
 import TelegramLogo from './TelegramLogo';
 import ModerationRail from './ModerationRail';
 import HomeRail from './HomeRail';
-import { ForYouGrid, HomeActions, HomeCustomize, HomeStrip, LatestRail, Top5, useHomePrefs } from './HomeBits';
-import HomeSection, { HomeSectionsControls } from './HomeSection';
+import { ForYouGrid, HomeActions, HomeCustomize, HomeStrip, LatestRail, Top5 } from './HomeBits';
+import { HOME_SECTIONS, orderIds, useHomeLayout } from '../lib/homeLayout';
+import HomeSection, { HomeBlock, HomeSectionsControls } from './HomeSection';
 import HomeTabs, { type HomeTab } from './HomeTabs';
 import ContinueWatching from './ContinueWatching';
 import UserLink from './UserLink';
@@ -313,32 +314,48 @@ export default function HomeStreaming() {
     { id: 'stats', label: 'Dernières activités et stats', icon: '📊', color: '#2dd4bf', badge: topics.some((t) => t.unread) ? '●' : null, content: statsNode },
   ];
 
-  const { prefs } = useHomePrefs();
+  const layout = useHomeLayout((st) => st.layout);
   const canUpload = !user?.profile || user.profile.perms?.upload !== false;
+
+  // Les sections de la colonne principale, dans l'ordre d'origine ; le membre les déplace, les cache et les réduit (Personnaliser l'accueil, ou « Organiser »).
+  const blocks: { id: string; node: React.ReactNode; collapsible?: boolean }[] = [
+    { id: 'actions', node: <HomeActions canUpload={canUpload} /> },
+    { id: 'foryou', node: <ForYouGrid active={active} /> },
+    { id: 'moderation', node: <ModerationRail /> },
+    { id: 'strip', node: <HomeStrip /> },
+    // Forum, top uploaders et chiffres de la communauté : trois cases de même hauteur, chacune réductible.
+    { id: 'stats', node: statsNode, collapsible: false },
+    // La dernière nouvelle reste toujours affichée, en grand ; les précédentes en petites cartes (au choix).
+    { id: 'news', node: <NewsPanel heroOnly={!layout.prevNews} /> },
+    { id: 'continue', node: <ContinueWatching hideNext /> },
+    { id: 'recommended', node: recommended.length > 0 ? <Rail icon="⭐" title="Recommandé pour toi" to="/browse" items={recommended} /> : <Rail icon="🔥" title="Les plus populaires" to="/browse?sort=seeders" items={popular} /> },
+    { id: 'top5', node: <Top5 items={popular} /> },
+    { id: 'latest', node: <LatestRail latest={latest} /> },
+    ...(atRisk.length > 0 ? [{ id: 'atrisk', node: <Rail icon="⚠️" title="À seeder : torrents à 1-2 seeders, un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} /> }] : []),
+  ];
+  const movableIds = HOME_SECTIONS.filter((x) => !x.fixed).map((x) => x.id);
+  const order = orderIds(movableIds, layout.order);
+  const shown = blocks.filter((b) => !layout.hidden.includes(b.id));
+  const visible = order.filter((id) => shown.some((b) => b.id === id));
+  const meta = (id: string) => HOME_SECTIONS.find((x) => x.id === id)!;
+  const showRail = !layout.hidden.includes('rail');
 
   return (
     <div className="home-plex">
       <HomeSectionsControls />
-      <div className={`home-layout${prefs.rail ? ' with-rail' : ''}`}>
+      <div className={`home-layout${showRail ? ' with-rail' : ''}`}>
         <div className="home-col">
         {/* Un profil famille (non principal) garde la salutation : la publication sur le mur est réservée au compte principal. */}
-        <div className="home-greet">{user?.profile && !user.profile.isMaster ? <h1>{greeting} {user?.profile?.name ?? user?.username} 👋</h1> : <HomeComposer />}<HomeCustomize /></div>
-        {prefs.actions && <HomeActions canUpload={canUpload} />}
-        {prefs.actions && <ForYouGrid active={active} />}
-        <HomeSection id="moderation" label="Modération" icon="🛡️"><ModerationRail /></HomeSection>
-          {/* La dernière nouvelle reste toujours affichée, en grand ; les précédentes en petites cartes (au choix). */}
-          {prefs.strip && <HomeStrip />}
-          {/* Forum, top uploaders et chiffres de la communauté : juste sous les barres (niveau, badges, pot, freeleech), en trois cases de même hauteur. */}
-          {statsNode}
-          <NewsPanel heroOnly={!prefs.prevNews} />
-          {/* Les sections se suivent, comme dans l'aperçu validé (plus d'onglets) : reprendre la lecture, recommandations, tendances, derniers ajouts, mon activité, catégories, à seeder, forum et chiffres. */}
-          <ContinueWatching hideNext />
-          {recommended.length > 0 ? <Rail icon="⭐" title="Recommandé pour toi" to="/browse" items={recommended} /> : <Rail icon="🔥" title="Les plus populaires" to="/browse?sort=seeders" items={popular} />}
-          <Top5 items={popular} />
-          <LatestRail latest={latest} />
-          {atRisk.length > 0 && <Rail icon="⚠️" title="À seeder : torrents à 1-2 seeders, un petit seed les sauve" to="/browse?minSeeders=1&maxSeeders=2&sort=seeders&order=asc" items={atRisk} />}
+        <div className="home-greet">
+          {user?.profile && !user.profile.isMaster ? <h1>{greeting} {user?.profile?.name ?? user?.username} 👋</h1> : layout.hidden.includes('composer') ? <span style={{ flex: 1 }} /> : <HomeComposer />}
+          <HomeCustomize />
         </div>
-        {prefs.rail && <HomeRail />}
+        {order.map((id) => {
+          const b = shown.find((x) => x.id === id);
+          return b ? <HomeBlock key={id} id={id} label={meta(id).label} icon={meta(id).icon} order={order} visible={visible} collapsible={b.collapsible}>{b.node}</HomeBlock> : null;
+        })}
+        </div>
+        {showRail && <HomeRail />}
       </div>
     </div>
   );

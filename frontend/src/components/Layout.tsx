@@ -3,6 +3,7 @@ import { applyDefaultView } from '../lib/viewMode';
 import { applyTipStyle } from '../lib/tipStyle';
 import { useEventTheme } from '../store/eventTheme';
 import { applyOrder, classicSort, NAV_CLASSIC_LABELS, NAV_DEFAULT_PINNED, useNavPrefs } from '../lib/navPrefs';
+import { useHomeLayout } from '../lib/homeLayout';
 import { Suspense, useCallback, useEffect, useState, FormEvent } from 'react';
 import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
@@ -344,7 +345,7 @@ function LayoutInner() {
 
   useEffect(() => {
     if (accessToken) {
-      api.get('/users/me').then((r) => { setProfile(r.data); useNavPrefs.getState().hydrate(r.data.navPrefs); applyDefaultView(r.data.defaultView); applyTipStyle(r.data.tipStyle); useEventTheme.getState().applyAccountMtlSound(r.data.goalSound === true); useMessenger.getState().setBubbles(r.data.chatBubbles !== false); }).catch(() => {});
+      api.get('/users/me').then((r) => { setProfile(r.data); useNavPrefs.getState().hydrate(r.data.navPrefs); useHomeLayout.getState().hydrate(r.data.homeLayout); applyDefaultView(r.data.defaultView); applyTipStyle(r.data.tipStyle); useEventTheme.getState().applyAccountMtlSound(r.data.goalSound === true); useMessenger.getState().setBubbles(r.data.chatBubbles !== false); }).catch(() => {});
     } else {
       setProfile(null);
     }

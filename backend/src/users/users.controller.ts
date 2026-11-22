@@ -45,6 +45,12 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/home-layout')
+  setHomeLayout(@Body() body: any, @Request() req: any) {
+    return this.usersService.setHomeLayout(req.user.userId, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('me/nav-prefs')
   setNavPrefs(@Body() body: any, @Request() req: any) {
     return this.usersService.setNavPrefs(req.user.userId, body);

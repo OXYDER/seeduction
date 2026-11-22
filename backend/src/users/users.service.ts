@@ -10,6 +10,7 @@ import { COLORED_CLASSES, COLORED_ROLES, rankKeyOf } from '../common/utils/rank'
 import { lastSeenVisible } from '../common/utils/last-seen';
 import { SettingsService } from '../settings/settings.service';
 import { normalizeNavPrefs } from '../common/utils/nav-prefs';
+import { normalizeHomeLayout } from '../common/utils/home-layout';
 
 const PRESENCE_VALUES: PresenceStatus[] = ['ONLINE', 'AWAY', 'BUSY', 'INVISIBLE'];
 const DM_PRIVACY_VALUES: DmPrivacy[] = ['EVERYONE', 'FRIENDS_ONLY'];
@@ -36,7 +37,7 @@ export class UsersService {
         downloaded: true, bonusPoints: true, minRatio: true, createdAt: true,
         lastSeenAt: true, showLastSeen: true, anonymous: true, passkey: true, status: true, memberClass: true, avatarUrl: true, signature: true, showAdult: true,
         presenceStatus: true, dmPrivacy: true, statusText: true, freeleechUntil: true,
-        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, chatRail: true, navPrefs: true, founderAt: true, anonymousSelf: true, anonymousUploads: true, anonymousTeam: true, goalSound: true, tipStyle: true,
+        watchingTitle: true, watchingUntil: true, showWatchingStatus: true, defaultView: true, chatBubbles: true, chatRail: true, navPrefs: true, homeLayout: true, founderAt: true, anonymousSelf: true, anonymousUploads: true, anonymousTeam: true, goalSound: true, tipStyle: true,
         parentId: true, profileName: true, profileType: true, profilePerms: true, familyEnabled: true, deletedAt: true,
         _count: { select: { torrentsUploaded: true, invitees: true } },
       },
@@ -65,7 +66,7 @@ export class UsersService {
     if (user.profileType === 'BOT' && !isStaff) Object.assign(user, { uploaded: 0n, downloaded: 0n, bonusPoints: 0 });
     const ratio = user.downloaded > 0n ? Number(user.uploaded) / Number(user.downloaded) : null;
     const isSelf = viewer?.userId === user.id;
-    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, showLastSeen, anonymous: adminAnonymous, defaultView, chatBubbles, chatRail, navPrefs, founderAt, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
+    const { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil, watchingTitle, watchingUntil, showWatchingStatus, showLastSeen, anonymous: adminAnonymous, defaultView, chatBubbles, chatRail, navPrefs, homeLayout, founderAt, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle, parentId, profileName, profileType, profilePerms, familyEnabled, ...publicInfo } = user;
     const friend = viewer && !isSelf ? await this.friends.statusWith(viewer.userId, user.id) : undefined;
     const activeFreeleechUntil = freeleechUntil && freeleechUntil > new Date() ? freeleechUntil : null;
     const onlineStatus = this.presence.publicStatus(user.id);
@@ -87,7 +88,7 @@ export class UsersService {
       // « presenceStatus » (préférence brute, y compris INVISIBLE) et « dmPrivacy » ne sont renvoyés qu'à l'intéressé.
       onlineStatus,
       ...(friend ? { friendStatus: friend.status, friendshipId: friend.friendshipId } : {}),
-      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, showLastSeen, defaultView, chatBubbles, chatRail, navPrefs: normalizeNavPrefs(navPrefs), anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle } : {}),
+      ...(isSelf ? { email, passkey, minRatio, showAdult, presenceStatus, dmPrivacy, freeleechUntil: activeFreeleechUntil, showWatchingStatus, showLastSeen, defaultView, chatBubbles, chatRail, navPrefs: normalizeNavPrefs(navPrefs), homeLayout: homeLayout ? normalizeHomeLayout(homeLayout) : null, anonymousSelf, anonymousUploads, anonymousTeam, goalSound, tipStyle } : {}),
       ...(isStaff && !isSelf ? { email } : {}),
     };
   }
@@ -121,6 +122,13 @@ export class UsersService {
     const u = await this.prisma.user.update({ where: { id: userId }, data, select: { anonymousSelf: true, anonymousUploads: true, anonymousTeam: true } });
     await this.anonymity.refresh(); // le masquage prend effet tout de suite
     return u;
+  }
+
+  /** Accueil : sections affichées, ordre et sections réduites (valeurs vérifiées), mémorisés pour le membre. */
+  async setHomeLayout(userId: string, body: any) {
+    const value = normalizeHomeLayout(body);
+    await this.prisma.user.update({ where: { id: userId }, data: { homeLayout: value as any } });
+    return { homeLayout: value };
   }
 
   /** Menu de gauche : style (classique / groupes), taille des liens, icônes, liens cachés et ordre (valeurs vérifiées), mémorisés pour le membre. */

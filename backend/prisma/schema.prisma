@@ -136,6 +136,8 @@ model User {
   chatRail           Json?
   /// Réglages du menu de gauche (style classique ou en groupes, taille des liens, liens cachés, ordre) : voir common/utils/nav-prefs.ts.
   navPrefs           Json?
+  /// Mise en page de l'accueil (sections affichées, ordre, réduites) : voir common/utils/home-layout.ts.
+  homeLayout         Json?
   /// Membre fondateur (a aidé à bâtir le site pendant la bêta) : depuis quand ; pseudo en or, badge, salon, avantages (voir common/utils/founders.ts).
   founderAt          DateTime?
   /// Dernière année du cadeau annuel de fondateur (jetons freeleech).
