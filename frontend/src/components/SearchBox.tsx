@@ -31,7 +31,7 @@ interface Entry { key: string; scope: SuggestScope; data: any }
  * pochette), des membres (avec leur avatar), des catégories, etc. Flèches + Entrée au clavier.
  */
 export default function SearchBox({
-  value, onChange, scopes = ['torrents', 'users', 'categories'], placeholder, onSubmit, onPickUser, autoFocus, inputStyle, history,
+  value, onChange, scopes = ['torrents', 'users', 'categories'], placeholder, onSubmit, onPickUser, autoFocus, inputStyle, history, trailing,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -45,6 +45,8 @@ export default function SearchBox({
   onPickUser?: (user: { id: string; username: string }) => void;
   autoFocus?: boolean;
   inputStyle?: React.CSSProperties;
+  /** Boutons placés dans la case, à droite (Ctrl K, Rechercher). */
+  trailing?: React.ReactNode;
 }) {
   const navigate = useNavigate();
   const [data, setData] = useState<Record<string, any[]>>({});
@@ -215,6 +217,7 @@ export default function SearchBox({
         }}
         onBlur={(e) => { if (!wrapRef.current?.contains(e.relatedTarget as Node | null)) setFocused(false); }}
       />
+      {trailing && <div className="sb-trailing">{trailing}</div>}
       {showHistory && (
         <div className="sb-menu" role="listbox" aria-label="Recherches récentes">
           <div className="sb-group sb-hist-head">

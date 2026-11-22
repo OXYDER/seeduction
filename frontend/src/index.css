@@ -4812,7 +4812,8 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .top-sticky { position: sticky; top: 0; z-index: 70; background: linear-gradient(180deg, rgba(6, 8, 18, 0.97), rgba(6, 8, 18, 0.88)); backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); border-bottom: 1px solid rgba(224, 184, 74, 0.2); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
 .top-sticky .top-menu { position: static; background: none; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .top-sticky .side-topbar { position: static !important; background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border: 0 !important; padding: 4px 24px 10px !important; }
-.nav-top .side-search { flex: 1 1 520px; max-width: 860px; margin: 0 auto; }
+.nav-top .side-search { flex: 1 1 460px; max-width: 780px; margin: 0; }
+.nav-top .side-search + * { margin-left: auto; }
 .nav-top .side-search input { height: 46px; padding: 0 22px; font-size: 15.5px; border-radius: 999px; border: 1px solid rgba(224, 184, 74, 0.55); background: rgba(10, 12, 28, 0.88); box-shadow: 0 0 0 4px rgba(224, 184, 74, 0.08), 0 8px 26px rgba(0, 0, 0, 0.35); transition: box-shadow .2s, border-color .2s; }
 .nav-top .side-search input:focus { border-color: var(--gold-bright, #f5d67a); box-shadow: 0 0 0 4px rgba(224, 184, 74, 0.22), 0 10px 30px rgba(0, 0, 0, 0.45); }
 .top-sticky.compact { box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5); }
@@ -4821,17 +4822,48 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .top-sticky.compact .top-brand span { display: none; }
 .top-sticky.compact .side-topbar { padding: 2px 24px 6px !important; }
 .top-sticky.compact .side-search input { height: 38px; font-size: 14.5px; }
-@media (max-width: 1320px) {
-  .top-grp-btn.has-ico .top-lbl { display: none; }
-  .top-grp.here .top-grp-btn.has-ico .top-lbl, .top-grp.open .top-grp-btn.has-ico .top-lbl { display: inline; }
-  .top-chev { display: none; }
-  .top-menu { padding-left: 12px; padding-right: 12px; }
-}
 @media (max-width: 1180px) {
-  .top-brand span { display: none; }
-  .top-menu .side-user-sub { display: none; }
-  .top-menu .side-user-name { max-width: 90px; }
   .top-sticky .side-topbar { flex-wrap: wrap; row-gap: 6px; padding-left: 12px !important; padding-right: 12px !important; }
   .nav-top .side-search { flex-basis: 100%; order: -1; max-width: none; }
 }
 @media (max-width: 1180px) { .nav-top .top-sticky.compact .side-search { flex-basis: 42%; max-width: 560px; order: 0; } }
+
+/* Barre du haut : jamais de saut de ligne, l'avatar et ses infos gardent leur taille (texte coupé par « … »), la barre se resserre par paliers (voir Layout.tsx). */
+.top-menu { flex-wrap: nowrap; }
+.top-menu .top-grp, .top-menu .top-brand, .top-menu .top-customize, .top-menu .side-user { flex: none; }
+.top-menu .top-grp-btn, .top-menu .top-lbl, .top-menu .top-brand span { white-space: nowrap; }
+.top-menu .side-user-card { flex: none; max-width: 230px; }
+.top-menu .side-user-txt { max-width: 170px; }
+.top-menu .side-user-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+.top-menu.fit-1 .top-brand span, .top-menu.fit-1 .top-chev, .top-menu.fit-1 .side-user-sub + .side-user-sub { display: none; }
+.top-menu.fit-2 .top-brand span, .top-menu.fit-2 .top-chev, .top-menu.fit-2 .side-user-sub + .side-user-sub { display: none; }
+.top-menu.fit-2 .top-grp-btn { padding-left: 10px; padding-right: 10px; }
+.top-menu.fit-2 .top-grp-btn.has-ico .top-lbl { display: none; }
+.top-menu.fit-2 .top-grp.here .top-grp-btn.has-ico .top-lbl, .top-menu.fit-2 .top-grp.open .top-grp-btn.has-ico .top-lbl { display: inline; }
+.top-menu.fit-3 .top-brand span, .top-menu.fit-3 .top-chev, .top-menu.fit-3 .top-customize, .top-menu.fit-3 .side-user-txt { display: none; }
+.top-menu.fit-3 .top-grp-btn { padding-left: 8px; padding-right: 8px; }
+.top-menu.fit-3 .top-grp-btn.has-ico .top-lbl { display: none; }
+.top-menu.fit-3 .top-grp.here .top-grp-btn.has-ico .top-lbl, .top-menu.fit-3 .top-grp.open .top-grp-btn.has-ico .top-lbl { display: inline; }
+
+/* Moteur de recherche : « Ctrl K » et « Rechercher » sont dans la case, à droite. */
+.side-search .sb-wrap input { padding-right: 196px; text-overflow: ellipsis; }
+.sb-trailing { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 6px; }
+:root .side-search .ss-kbd { padding: 3px 8px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); color: var(--text-dim); box-shadow: none; transform: none; white-space: nowrap; line-height: 1.4; }
+:root .side-search .ss-kbd:hover { color: var(--text); border-color: var(--gold, #e0b84a); filter: none; }
+:root .side-search .ss-go { padding: 6px 14px; font-size: 13px; font-weight: 800; border-radius: 999px; white-space: nowrap; line-height: 1.3; border: 0; background: linear-gradient(135deg, var(--gold-bright, #f5d67a), var(--gold, #e0b84a)); color: #1a1405; box-shadow: none; transform: none; }
+:root .side-search .ss-go:hover { filter: brightness(1.08); }
+.top-sticky.compact .side-search .ss-go { padding: 4px 12px; }
+@media (max-width: 1100px) { .side-search .sb-wrap input { padding-right: 150px; } .ss-go-lbl { display: none; } }
+@media (max-width: 800px) { .side-search .sb-wrap input { padding-right: 52px; } .ss-kbd { display: none; } }
+
+/* Accueil : glisser-déposer des sections (poignée ⠿) ; la zone de dépôt s'illumine. */
+.hb-grip { cursor: grab; padding: 0 8px 0 4px; font-size: 20px; line-height: 1; letter-spacing: -3px; color: var(--gold, #e0b84a); user-select: none; touch-action: none; }
+.hb-grip:active { cursor: grabbing; }
+.hblock.dragging { opacity: 0.4; }
+.hblock.drop-before { box-shadow: 0 -4px 0 0 var(--gold, #e0b84a); }
+.hblock.drop-after { box-shadow: 0 4px 0 0 var(--gold, #e0b84a); }
+
+/* Bulles de discussion : jamais de barre de défilement (le thème Prestige en ajoutait une sur toute la page). */
+:root[data-theme] .chat-rail { overflow-x: hidden; scrollbar-width: none; }
+:root[data-theme] .chat-rail::-webkit-scrollbar { display: none; width: 0; height: 0; }
+:root[data-theme] .chat-rail[data-pos="top"], :root[data-theme] .chat-rail[data-pos="bottom"] { overflow-x: auto; overflow-y: hidden; }

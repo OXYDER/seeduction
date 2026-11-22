@@ -67,6 +67,8 @@ interface HomeLayoutState {
   expandAll: () => void;
   /** Descend ou monte une section : elle échange sa place avec sa voisine visible (`order` : l'ordre actuel de toutes les sections déplaçables, cachées comprises ; `visible` : celles qu'on voit). */
   move: (id: string, dir: -1 | 1, order: string[], visible?: string[]) => void;
+  /** Glisser-déposer : met la section `id` juste avant (ou juste après) la section `target`. */
+  moveTo: (id: string, target: string, after: boolean, order: string[]) => void;
   reset: () => void;
 }
 
@@ -98,6 +100,12 @@ export const useHomeLayout = create<HomeLayoutState>((set, get) => {
       if (visible.indexOf(id) < 0 || a < 0 || b < 0) return;
       const next = [...order];
       [next[a], next[b]] = [next[b], next[a]];
+      apply({ order: next });
+    },
+    moveTo: (id, target, after, order) => {
+      if (id === target || !order.includes(id) || !order.includes(target)) return;
+      const next = order.filter((x) => x !== id);
+      next.splice(next.indexOf(target) + (after ? 1 : 0), 0, id);
       apply({ order: next });
     },
     reset: () => { set({ layout: DEFAULT_HOME_LAYOUT }); save(DEFAULT_HOME_LAYOUT); },

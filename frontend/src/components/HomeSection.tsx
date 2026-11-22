@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type DragEvent, type ReactNode } from 'react';
 import { create } from 'zustand';
 import { useHomeLayout } from '../lib/homeLayout';
 
@@ -33,15 +33,51 @@ export default function HomeSection({ id, label, icon, children }: { id: string;
  * Une section déplaçable de l'accueil : réductible, et en mode « organiser » une barre avec les flèches pour la monter ou la descendre et un bouton pour la cacher.
  * `order` : l'ordre actuel de toutes les sections déplaçables ; `visible` : celles qui sont à l'écran.
  */
+let dragId: string | null = null; // la section qu'on est en train de déplacer (une seule à la fois)
+
 export function HomeBlock({ id, label, icon, order, visible, collapsible = true, children }: { id: string; label: string; icon: string; order: string[]; visible: string[]; collapsible?: boolean; children: ReactNode }) {
   const editing = useHomeLayout((s) => s.editing);
   const move = useHomeLayout((s) => s.move);
+  const moveTo = useHomeLayout((s) => s.moveTo);
   const toggleHidden = useHomeLayout((s) => s.toggleHidden);
   const i = visible.indexOf(id);
+  const [over, setOver] = useState<'before' | 'after' | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const onOver = (e: DragEvent<HTMLDivElement>) => {
+    if (!editing || !dragId || dragId === id) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const r = e.currentTarget.getBoundingClientRect();
+    setOver(e.clientY > r.top + r.height / 2 ? 'after' : 'before');
+  };
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    if (!editing || !dragId) return;
+    e.preventDefault();
+    const from = dragId, pos = over;
+    dragId = null; setOver(null);
+    if (from !== id) moveTo(from, id, pos === 'after', order);
+  };
   return (
-    <div className={`hblock${editing ? ' editing' : ''}`}>
+    <div
+      className={`hblock${editing ? ' editing' : ''}${dragging ? ' dragging' : ''}${over ? ` drop-${over}` : ''}`}
+      onDragOver={onOver}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null); }}
+      onDrop={onDrop}
+    >
       {editing && (
         <div className="hb-tools">
+          <span
+            className="hb-grip"
+            draggable
+            title="Glisse pour déplacer cette section"
+            aria-hidden="true"
+            onDragStart={(e) => {
+              dragId = id; setDragging(true);
+              e.dataTransfer.effectAllowed = 'move';
+              try { e.dataTransfer.setData('text/plain', id); const bar = e.currentTarget.closest('.hb-tools'); if (bar) e.dataTransfer.setDragImage(bar, 16, 16); } catch { /* facultatif */ }
+            }}
+            onDragEnd={() => { dragId = null; setDragging(false); setOver(null); }}
+          >⠿</span>
           <span className="hb-name"><span aria-hidden>{icon}</span> {label}</span>
           <button type="button" className="secondary" onClick={() => move(id, -1, order, visible)} disabled={i <= 0} aria-label={`Monter : ${label}`}>↑</button>
           <button type="button" className="secondary" onClick={() => move(id, 1, order, visible)} disabled={i < 0 || i >= visible.length - 1} aria-label={`Descendre : ${label}`}>↓</button>

@@ -4,7 +4,7 @@ import { applyTipStyle } from '../lib/tipStyle';
 import { useEventTheme } from '../store/eventTheme';
 import { applyOrder, classicSort, NAV_CLASSIC_LABELS, NAV_DEFAULT_PINNED, useNavPrefs } from '../lib/navPrefs';
 import { useHomeLayout } from '../lib/homeLayout';
-import { Suspense, useCallback, useEffect, useState, FormEvent } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, FormEvent } from 'react';
 import { Outlet, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
@@ -192,6 +192,17 @@ function LayoutInner() {
   const [topOpen, setTopOpen] = useState<string | null>(null);
   // Barre du haut : elle reste collée en haut de l'écran et se compacte dès qu'on défile (menu, recherche et infos du membre restent visibles).
   const [compact, setCompact] = useState(false);
+  // La barre du haut s'adapte à la largeur sans jamais sauter de ligne : si elle déborde, elle se resserre par paliers (0 = complète ; 1 = sans nom du site ni chevrons ;
+  // 2 = icônes seules ; 3 = encore plus serrée). On repart du palier 0 quand la fenêtre ou le contenu change.
+  const topRef = useRef<HTMLElement | null>(null);
+  const [topFit, setTopFit] = useState(0);
+  const topOn = navPrefs.style === 'top' && wide;
+  useLayoutEffect(() => {
+    const el = topRef.current;
+    if (topOn && el && topFit < 3 && el.scrollWidth > el.clientWidth + 1) setTopFit((f) => f + 1);
+  });
+  useEffect(() => { const r = () => setTopFit(0); window.addEventListener('resize', r); return () => window.removeEventListener('resize', r); }, []);
+  useEffect(() => { setTopFit(0); }, [compact, topOn, navPrefs, profile?.statusText, profile?.watching, user?.username]);
   useEffect(() => {
     const h = () => setCompact(window.scrollY > 48);
     h();
@@ -533,6 +544,7 @@ function LayoutInner() {
 
   function submitSearch(e: FormEvent) {
     e.preventDefault();
+    if (!search.trim()) { setQuickOpen(true); return; } // bouton « Rechercher » sans texte : la recherche rapide s'ouvre
     goSearch();
   }
 
@@ -597,7 +609,7 @@ function LayoutInner() {
                   }}
                 />
               </span>
-              <div style={{ minWidth: 0 }}>
+              <div className="side-user-txt" style={{ minWidth: 0 }}>
                 <div className="side-user-name">{user?.username ? <ProfileName username={user.username} /> : null}</div>
                 <div className="side-user-sub">
                   Ratio <strong style={{ color: profile?.ratio != null && profile.ratio < 1 ? 'var(--danger)' : 'var(--success)' }}>{profile?.ratio != null ? profile.ratio.toFixed(2) : '∞'}</strong>
@@ -641,7 +653,7 @@ function LayoutInner() {
     );
 
     const topNavEl = (
-            <nav className={`top-menu size-${navPrefs.size}${navPrefs.icons ? '' : ' no-icons'} sp-${navPrefs.spacing}`} aria-label="Menu principal">
+            <nav ref={topRef} className={`top-menu fit-${topFit} size-${navPrefs.size}${navPrefs.icons ? '' : ' no-icons'} sp-${navPrefs.spacing}`} aria-label="Menu principal">
               <Link to="/" className="top-brand" title="Accueil"><img src="/logo-icon.png" alt="" width={30} height={30} /><span>SEEDUCTION</span></Link>
               {groupList.map(({ g, items }) => {
                 const open = topOpen === g.id;
@@ -674,9 +686,14 @@ function LayoutInner() {
                 onSubmit={goSearch}
                 scopes={['torrents', 'users', 'categories', 'entities']}
                 history
+                trailing={(
+                  <>
+                    <button type="button" className="ss-kbd" onClick={() => setQuickOpen(true)} title="Recherche rapide : pages, torrents, membres (Ctrl+K)">Ctrl K</button>
+                    <button type="submit" className="ss-go" title="Lancer la recherche"><span aria-hidden="true">🔍</span><span className="ss-go-lbl"> Rechercher</span></button>
+                  </>
+                )}
               />
             </form>
-            <button type="button" className="secondary side-kbd" onClick={() => setQuickOpen(true)} title="Recherche rapide : pages, torrents, membres">Ctrl K</button>
             {profile && (
               <HeaderStats profile={profile} econ={econ} teamExempt={['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role)} />
             )}
