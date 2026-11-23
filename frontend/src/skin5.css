@@ -549,3 +549,31 @@ a.sc:hover { border-color: rgba(var(--acc-rgb), 0.4); transform: translateY(-2px
 :root[data-theme="prestige"] .forum-num { font-weight: 700; font-variant-numeric: tabular-nums; }
 :root[data-theme="prestige"] .chat-rail .cr-group-title.fond { letter-spacing: 0.02em; font-size: 8.5px; border-color: rgba(250, 204, 21, 0.65); background: rgba(250, 204, 21, 0.18); color: #fde68a; }
 :root[data-theme="prestige"] .chat-rail .cr-group-title.fond::before { content: "🏅"; font-size: 9px; }
+
+/* ───── Forum : messages compacts (auteur en bandeau au-dessus du texte, plus de grande colonne vide) ───── */
+.fp-sep { display: none; }
+@media (min-width: 761px) {
+  :root[data-theme="prestige"] .forum-post { grid-template-columns: minmax(0, 1fr); }
+  :root[data-theme="prestige"] .forum-post-author { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 18px; border-right: 0; border-bottom: 1px solid var(--s5-line); background: linear-gradient(90deg, rgba(var(--acc-rgb), 0.12), rgba(255, 255, 255, 0.02) 60%); }
+  :root[data-theme="prestige"] .forum-post-author > :first-child { width: 44px !important; height: 44px !important; flex: none; margin: 0; box-shadow: 0 0 0 2px rgba(var(--acc-rgb), 0.45); }
+  :root[data-theme="prestige"] .forum-post-author .badge { margin-top: 0 !important; }
+  :root[data-theme="prestige"] .forum-post-author > .muted { margin: 0 0 0 auto !important; font-size: 12px !important; line-height: 1.4 !important; text-align: right; }
+  .fp-sep { display: inline; }
+  .fp-br { display: none; }
+  :root[data-theme="prestige"] .forum-post-body { padding: 14px 20px 12px; }
+  :root[data-theme="prestige"] .forum-post-actions { padding-top: 10px; }
+}
+
+/* ───── Messagerie : bulles de message nettes, les miennes en dégradé d'accent ───── */
+:root[data-theme="prestige"] .msgr-bubble { padding: 9px 14px; border-radius: 18px; background: rgba(255, 255, 255, 0.07); border: 1px solid var(--s5-line); }
+:root[data-theme="prestige"] .msgr-row.mine .msgr-bubble { background: linear-gradient(135deg, var(--acc1), var(--acc2, var(--acc1))); border-color: transparent; color: var(--on-acc, #fff); box-shadow: 0 8px 22px -10px rgba(var(--acc-rgb), 0.75); }
+:root[data-theme="prestige"] .msgr-row.them:not(.first) .msgr-bubble { border-top-left-radius: 6px; }
+:root[data-theme="prestige"] .msgr-row.them:not(.last) .msgr-bubble { border-bottom-left-radius: 6px; }
+:root[data-theme="prestige"] .msgr-row.mine:not(.first) .msgr-bubble { border-top-right-radius: 6px; }
+:root[data-theme="prestige"] .msgr-row.mine:not(.last) .msgr-bubble { border-bottom-right-radius: 6px; }
+:root[data-theme="prestige"] .msgr-bubble.big-emoji { background: none !important; border: 0; box-shadow: none !important; }
+:root[data-theme="prestige"] .msgr-bubble.deleted { background: none; border: 1px dashed rgba(255, 255, 255, 0.22); box-shadow: none; }
+:root[data-theme="prestige"] .msgr-row.mine .msgr-bubble.failed { background: rgba(224, 90, 90, 0.35) !important; box-shadow: none; }
+:root[data-theme="prestige"] .msgr-row.flash .msgr-bubble { box-shadow: 0 0 0 2px var(--acc-light); }
+/* Les invitations flottantes (installer, notifications) ne cachent plus le champ d'écriture du chat : elles passent en bas à gauche, sous la liste. */
+body:has(.msgr-main) .install-prompt, body:has(.msgr-main) .panel.notify-prompt { right: auto !important; left: 96px !important; bottom: 16px !important; width: 280px; max-width: calc(100vw - 112px); }

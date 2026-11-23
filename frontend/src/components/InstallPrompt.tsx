@@ -22,7 +22,7 @@ export default function InstallPrompt() {
   }
 
   return (
-    <div className="panel ornate" style={{ position: 'fixed', bottom: 16, right: 16, zIndex: 100, width: 280, padding: 14 }}>
+    <div className="panel ornate install-prompt" style={{ position: 'fixed', bottom: 16, right: 16, zIndex: 100, width: 280, padding: 14 }}>
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
         <strong>📲 Installer Seeduction</strong>
         <button className="secondary" style={{ padding: '2px 8px' }} onClick={() => setDismissed(true)}>✕</button>

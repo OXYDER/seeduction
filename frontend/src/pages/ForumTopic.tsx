@@ -180,7 +180,7 @@ export default function ForumTopic() {
               {p.author && <div className="badge double" style={{ marginTop: 4 }}>{displayRank(p.author, ROLE_LABEL)}</div>}
               {p.author && (
                 <div className="muted" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.6 }}>
-                  Messages : {p.author.postCount}<br />
+                  Messages : {p.author.postCount}<span className="fp-sep"> · </span><br className="fp-br" />
                   Inscrit : {new Date(p.author.createdAt).toLocaleDateString('fr-FR')}
                 </div>
               )}
