@@ -26,6 +26,7 @@ export function uploadParamsFromBody(userId: string, fileBuffer: Buffer, body: R
     categoryId,
     tags: body.tags ? body.tags.split(',').map((t) => t.trim()) : [],
     anonymous: body.anonymous === 'true',
+    freeleech: body.freeleech === 'true',
     coverImage: body.coverImage || undefined,
     metaKind: body.metaKind || undefined,
     metaId: body.metaId || undefined,

@@ -138,6 +138,8 @@ export class TorrentsService implements OnModuleInit {
     attrs?: unknown;
     /** Import automatique : un nom mal formé (espaces, résolution en majuscule, team isolée...) est remplacé par le nom standard proposé d'après les fichiers et le NFO. */
     standardizeName?: boolean;
+    /** Torrent en freeleech : au choix de l'envoyeur, gratuit. */
+    freeleech?: boolean;
   }) {
     // PostgreSQL refuse l'octet 0x00 : un NFO binaire ou un nom mal formé ferait échouer l'enregistrement.
     params = Object.fromEntries(Object.entries(params).map(([k, v]) => [k, typeof v === 'string' ? stripNul(v) : Array.isArray(v) ? v.map((x) => (typeof x === 'string' ? stripNul(x) : x)) : v])) as typeof params;
@@ -182,6 +184,7 @@ export class TorrentsService implements OnModuleInit {
         uploaderId: params.userId,
         anonymousUpload: params.anonymous || !!(await this.prisma.user.findUnique({ where: { id: params.userId }, select: { anonymousUploads: true } }))?.anonymousUploads,
         coverImage: params.coverImage || null,
+        freeleech: !!params.freeleech,
         tags: params.tags,
         year: params.year,
         language: normalizeLanguage(params.language),

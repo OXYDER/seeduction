@@ -35,7 +35,7 @@ export const GUIDES_SHARE: WikiSeedCategory = {
         `[b]Étape 6 : vérifier la langue[/b]\n` +
         `La langue doit être exacte (VFQ, VFF, MULTI.VFQ, VOSTFR, VO…). Règles complètes : [url=/wiki/guide-nommer-releases]Bien nommer une release[/url].\n\n` +
         `[b]Étape 7 : description, étiquettes et envoi[/b]\n` +
-        `Ajoute une description (elle peut être générée à partir de la fiche) et des tags si tu veux. L'option [b]Upload anonyme[/b] cache ton pseudo aux autres membres. Clique sur [b]Uploader[/b].\n\n` +
+        `Ajoute une description (elle peut être générée à partir de la fiche) et des tags si tu veux. L'option [b]Upload anonyme[/b] cache ton pseudo aux autres membres. La case [b]🎁 Torrent en freeleech[/b] est à ton choix, gratuite : les téléchargements de ton torrent ne comptent alors pas dans le ratio des membres (ton upload, lui, est compté) ; tu peux la cocher ou la décocher plus tard dans « Modifier mon torrent ». Clique sur [b]Uploader[/b].\n\n` +
         `[b]Étape 8 : le plus important, remettre le torrent en seed[/b]\n` +
         `Après l'envoi, une bannière te l'explique : [b]télécharge le .torrent de Seeduction[/b] (il contient ta passkey) et ajoute-le à ton client en choisissant [b]le même dossier[/b] que tes fichiers. Le client vérifie les fichiers et se met à seeder. Sans seeder, personne ne peut télécharger ton torrent. Pour automatiser tout ça avec plusieurs torrents : [url=/wiki/guide-envoyer-plusieurs]Envoyer plusieurs torrents depuis ton client[/url].\n\n` +
         `[b]Étape 9 : la modération[/b]\n` +

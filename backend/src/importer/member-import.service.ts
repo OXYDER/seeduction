@@ -317,6 +317,7 @@ export class MemberImportService {
       o.noMeta = !metaId && body.noMeta === true;
     }
     if ('language' in (body ?? {})) o.language = str(body.language, 20) || null;
+    if ('freeleech' in (body ?? {})) o.freeleech = body.freeleech === true; // au choix de l'envoyeur
     let nfo = it.nfo;
     if (typeof body?.nfo === 'string') {
       const text = body.nfo.slice(0, 200_000);
@@ -426,6 +427,7 @@ export class MemberImportService {
         const created = await this.torrents.upload({
           userId: box.userId, fileBuffer: buf, name: t.name, categoryId, tags: [], anonymous: false, nfo, standardizeName: true, ...meta, ...(language ? { language } : {}),
           ...(metaKind && metaId ? { metaKind, metaId } : {}),
+          ...(o.freeleech ? { freeleech: true } : {}),
         });
         // Le choix fait (catégorie + fiche) est gardé : quand la modération acceptera ce torrent, il gagnera du poids pour les releases qui ressemblent.
         const catName = o.categoryName ?? d.category?.name ?? '';

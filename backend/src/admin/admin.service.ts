@@ -278,9 +278,10 @@ export class AdminService {
       if (cover && opts.owner && !/^\/api\/covers\/[\w.-]+$/.test(cover)) throw new BadRequestException('Pochette invalide : téléverse une image');
       data.coverImage = cover;
     }
+    // Le freeleech est au choix de l'envoyeur (gratuit, sans point à dépenser) comme de l'équipe.
+    if (typeof body.freeleech === 'boolean') data.freeleech = body.freeleech;
     if (!opts.owner) {
-      // Réservé à l'équipe : mise en avant (freeleech, double upload) et statut.
-      if (typeof body.freeleech === 'boolean') data.freeleech = body.freeleech;
+      // Réservé à l'équipe : double upload et statut.
       if (typeof body.doubleUpload === 'boolean') data.doubleUpload = body.doubleUpload;
       if (TORRENT_STATUSES.includes(body.status)) data.status = body.status;
     }

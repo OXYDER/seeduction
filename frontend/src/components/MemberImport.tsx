@@ -411,6 +411,7 @@ function ItemCard({ item, options, checked, onCheck, onUpdated, reload, setMsg }
           <option value="">Langue ? (non précisée)</option>
           {LANGUAGE_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.values.map((l) => <option key={l} value={l}>{LANGUAGE_LABELS[l] ?? l}</option>)}</optgroup>)}
         </select>
+        <label className="row" style={{ gap: 6, fontSize: 13 }} title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres (gratuit, modifiable plus tard)"><input type="checkbox" style={{ width: 'auto' }} checked={!!o.freeleech} disabled={busy} onChange={(e) => save({ freeleech: e.target.checked })} /> 🎁 Freeleech</label>
       </div>
 
       {!(d.wantsFiche || problems.includes('fiche') || showFiche || o.metaId) && (

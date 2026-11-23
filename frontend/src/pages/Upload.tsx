@@ -43,6 +43,7 @@ function UploadOne() {
   const [categories, setCategories] = useState<any[]>([]);
   const [tags, setTags] = useState('');
   const [anonymous, setAnonymous] = useState(false);
+  const [freeleech, setFreeleech] = useState(false); // au choix de l'envoyeur : gratuit, sans point à dépenser
   useEffect(() => { api.get('/users/me').then((r) => { if (r.data?.anonymousUploads) setAnonymous(true); }).catch(() => undefined); }, []); // réglage « mes torrents sont anonymes »
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
@@ -315,6 +316,7 @@ function UploadOne() {
     form.append('categoryId', categoryId);
     form.append('tags', tags);
     form.append('anonymous', String(anonymous));
+    form.append('freeleech', String(freeleech));
     if (coverImage) form.append('coverImage', coverImage);
     if (meta) { form.append('metaKind', meta.kind); form.append('metaId', meta.id); }
     if (year) form.append('year', year);
@@ -587,6 +589,7 @@ function UploadOne() {
 
           <Step n={5} title="Envoi" done={false} locked={!step4} hint="Ajoute une description à l'étape 4.">
           <label className="row"><input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} style={{ width: 'auto' }} /> Upload anonyme</label>
+          <label className="row" title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres (ton upload, lui, est compté). Gratuit, tu peux le changer plus tard."><input type="checkbox" checked={freeleech} onChange={(e) => setFreeleech(e.target.checked)} style={{ width: 'auto' }} /> 🎁 Torrent en freeleech</label>
             {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
             <button type="submit" disabled={!step4}>Uploader</button>
           </Step>

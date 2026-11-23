@@ -108,7 +108,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
     const overviewChanged = overview !== (torrent.metadata?.overview ?? '');
     const list = (v: string) => v.split(',').map((x) => x.trim()).filter(Boolean);
     const tech = { year: year.trim() ? Number(year) : null, resolution, source, codec, audio, containerFormat, hdr, season, episode, origin, releaseDate: releaseDate.trim(), genres: list(genres), tags: list(tags), subtitles: list(subtitles), anonymousUpload: anonymous };
-    const patch = { name, categoryId, description, coverImage: coverImage || null, attrs, language: language || null, ...tech, ...(owner ? {} : { status, freeleech, doubleUpload }) };
+    const patch = { name, categoryId, description, coverImage: coverImage || null, attrs, language: language || null, ...tech, freeleech, ...(owner ? {} : { status, doubleUpload }) };
     try {
       const { data: saved } = await api.patch(`${base}/${torrent.id}`, { ...patch, language, ...(overviewChanged ? { overview } : {}), ...(nfoLoaded && nfo.trim() ? { nfo } : {}) });
       const category = categories.find((c) => c.id === categoryId);
@@ -176,11 +176,11 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
                 ))}
               </select>
             </div>
+            <label className="row muted" style={{ gap: 6 }}>
+              <input type="checkbox" style={{ width: 'auto' }} checked={freeleech} onChange={(e) => setFreeleech(e.target.checked)} /> 🎁 Freeleech
+            </label>
             {!owner && (
               <>
-                <label className="row muted" style={{ gap: 6 }}>
-                  <input type="checkbox" style={{ width: 'auto' }} checked={freeleech} onChange={(e) => setFreeleech(e.target.checked)} /> Freeleech
-                </label>
                 <label className="row muted" style={{ gap: 6 }}>
                   <input type="checkbox" style={{ width: 'auto' }} checked={doubleUpload} onChange={(e) => setDoubleUpload(e.target.checked)} /> Double upload
                 </label>
