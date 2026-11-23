@@ -122,3 +122,42 @@ export function useTheme(): string {
   }, []);
   return theme;
 }
+
+/** Apparence : sombre (par défaut), clair, ou « auto » (suit le réglage du système). Indépendant de la couleur d'accent. */
+export type Mode = 'dark' | 'light' | 'auto';
+export const MODE_STORAGE_KEY = 'seeduction-mode';
+
+export function getMode(): Mode {
+  try { const v = localStorage.getItem(MODE_STORAGE_KEY); return v === 'light' || v === 'auto' ? v : 'dark'; } catch { return 'dark'; }
+}
+
+/** Applique l'apparence sur <html> (attribut data-mode="light" quand le clair est actif). */
+export function applyMode(mode: Mode = getMode()) {
+  const light = mode === 'light' || (mode === 'auto' && !!window.matchMedia?.('(prefers-color-scheme: light)').matches);
+  if (light) document.documentElement.setAttribute('data-mode', 'light');
+  else document.documentElement.removeAttribute('data-mode');
+}
+
+export function setMode(mode: Mode) {
+  try { localStorage.setItem(MODE_STORAGE_KEY, mode); } catch { /* stockage indisponible : le choix vaut pour cette visite */ }
+  applyMode(mode);
+  window.dispatchEvent(new Event('seeduction-theme'));
+}
+
+export function useMode(): Mode {
+  const [mode, setM] = useState<Mode>(getMode);
+  useEffect(() => {
+    const update = () => setM(getMode());
+    window.addEventListener('seeduction-theme', update);
+    return () => window.removeEventListener('seeduction-theme', update);
+  }, []);
+  return mode;
+}
+
+/** En mode « auto », suit le système en direct (à appeler une fois au démarrage). */
+export function watchSystemMode() {
+  const mq = window.matchMedia?.('(prefers-color-scheme: light)');
+  if (!mq) return;
+  const on = () => { if (getMode() === 'auto') applyMode('auto'); };
+  mq.addEventListener?.('change', on);
+}

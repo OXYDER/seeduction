@@ -2,7 +2,7 @@ import { playGoalHorn } from '../lib/goalHorn';
 import Ic from './Ic';
 import { useCallback, useRef, useState } from 'react';
 import HeaderPopover from './HeaderPopover';
-import { ACCENTS, setAccent, useAccent, useCategoryAccentEnabled, setCategoryAccentEnabled } from '../lib/theme';
+import { ACCENTS, setAccent, useAccent, useCategoryAccentEnabled, setCategoryAccentEnabled, setMode, useMode, type Mode } from '../lib/theme';
 import { useEventTheme } from '../store/eventTheme';
 import { ART } from '../lib/eventArt';
 
@@ -12,6 +12,7 @@ export { THEME_STORAGE_KEY } from '../lib/theme';
 export default function ThemeSwitcher() {
   const [open, setOpen] = useState(false);
   const accent = useAccent();
+  const mode = useMode();
   const categoryAccent = useCategoryAccentEnabled();
   const ref = useRef<HTMLButtonElement>(null);
   const ev = useEventTheme();
@@ -22,6 +23,14 @@ export default function ThemeSwitcher() {
       <button ref={ref} type="button" className="secondary" onClick={() => setOpen((v) => !v)} title="Couleur d'accent" aria-label="Couleur d'accent" aria-expanded={open}><Ic n="palette" /></button>
       <HeaderPopover open={open} anchorRef={ref} onClose={close} width={280} label="Couleur d'accent">
         <div className="theme-menu" style={{ padding: 12, overflowY: 'auto' }}>
+          <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Apparence</div>
+          <div className="view-toggle mode-toggle" role="group" aria-label="Apparence du site" style={{ marginBottom: 12, width: '100%' }}>
+            {([['dark', '🌙', 'Sombre'], ['light', '☀️', 'Clair'], ['auto', '🖥️', 'Auto']] as [Mode, string, string][]).map(([m, icon, label]) => (
+              <button key={m} type="button" className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => setMode(m)} title={m === 'auto' ? 'Suit le réglage de ton appareil' : undefined} style={{ flex: 1, justifyContent: 'center' }}>
+                <span aria-hidden="true">{icon}</span> {label}
+              </button>
+            ))}
+          </div>
           <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Couleur d'accent</div>
           <div className="accent-grid">
             {ACCENTS.map((a) => (

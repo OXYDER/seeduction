@@ -6,7 +6,12 @@ import '@fontsource-variable/inter/wght.css';
 import '@fontsource-variable/cinzel';
 import './index.css';
 import './skin5.css';
+import './skin-light.css';
+import './skin-light-fixes.css';
 import './store/sessionCleanup';
+import { watchSystemMode } from './lib/theme';
+
+watchSystemMode(); // « Auto » : suit le système en direct
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

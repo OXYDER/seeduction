@@ -1,0 +1,54 @@
+/* ==========================================================================
+   THÈME CLAIR : variables et retouches à la main (le gros du travail est généré dans skin-light.css, voir scripts/make-light.mjs).
+   S'applique quand <html data-mode="light"> (choix « Clair » ou « Auto » avec un système en mode clair, dans le menu de la palette).
+   ========================================================================== */
+:root[data-mode="light"] { color-scheme: light; }
+:root[data-mode="light"][data-theme="prestige"] {
+  --s5-bg: #eef0f6;
+  --s5-surf: rgba(255, 255, 255, 0.86);
+  --s5-surf2: rgba(247, 248, 252, 0.92);
+  --s5-line: rgba(15, 23, 42, 0.1);
+  --s5-line2: rgba(15, 23, 42, 0.2);
+  --s5-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 34px -18px rgba(15, 23, 42, 0.28);
+  --bg: #eef0f6;
+  --bg-panel: #ffffff;
+  --bg-panel-raised: #f5f6fb;
+  --border: rgba(15, 23, 42, 0.12);
+  --text: #131828;
+  --text-dim: #5a6480;
+  --on-acc: #ffffff;
+  --acc-light: color-mix(in srgb, var(--acc1) 72%, #0a0f1e);
+  --acc-link: color-mix(in srgb, var(--acc1) 72%, #0a0f1e);
+}
+
+/* ── Fond de page : une teinte d'accent très légère au lieu des aurores saturées du thème sombre ── */
+:root[data-mode="light"][data-theme="prestige"] body { background: radial-gradient(70% 55% at 85% -5%, rgba(var(--acc-rgb), 0.12), transparent 70%), radial-gradient(60% 50% at 8% 0%, rgba(var(--acc-rgb), 0.07), transparent 70%), var(--s5-bg); }
+:root[data-mode="light"][data-theme="prestige"] .shell::before, :root[data-mode="light"][data-theme="prestige"] [style*="--backdrop"] .shell::before { opacity: 0.16 !important; }
+
+/* ── États « actif » des pastilles : accent plein, texte blanc (lisible sur fond clair) ── */
+:root[data-mode="light"] :is(.dc-tabs a.on, .dc-tabs button.on, .dc-seg button.on, .view-toggle button.on, .tabs.admin-tabs button.on, .news-head .news-tabs button.on, .hero-nav .hero-dots button.on) { background: linear-gradient(135deg, var(--acc1), color-mix(in srgb, var(--acc1) 68%, #000)) !important; color: #fff !important; }
+:root[data-mode="light"] .dc-tabs a.on { box-shadow: 0 8px 22px -8px rgba(var(--acc-rgb), 0.7) !important; }
+:root[data-mode="light"] .sc-chip, :root[data-mode="light"] .hr-badge { color: #fff; }
+
+/* ── Fenêtres flottantes : fond opaque (elles passent par-dessus des affiches) ── */
+:root[data-mode="light"] :is(.install-prompt, .panel.notify-prompt, .dm-window, .account-menu, .trailer-modal-inner) { background: rgba(255, 255, 255, 0.97) !important; color: var(--text); }
+:root[data-mode="light"] .tg-lightbox, :root[data-mode="light"] .trailer-modal { background: rgba(10, 14, 28, 0.88); }
+:root[data-mode="light"] .tg-lightbox *, :root[data-mode="light"] .tg-x, :root[data-mode="light"] .tg-nav, :root[data-mode="light"] .tg-pos { color: #fff; }
+
+/* ── Textes qui doivent rester clairs : sur des images ou des fonds d'accent pleins ── */
+:root[data-mode="light"] .hero-poster, :root[data-mode="light"] .poster-card .poster-art { color: #fff; }
+:root[data-mode="light"] .poster-tags .vr-chip { color: #fff; background: rgba(8, 10, 22, 0.74); }
+:root[data-mode="light"] .po-sd { color: #fff; background: rgba(8, 10, 22, 0.7); }
+
+/* ── Champs de saisie : blancs, bien cernés ── */
+:root[data-mode="light"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) { background-color: rgba(255, 255, 255, 0.92); color: var(--text); border-color: rgba(15, 23, 42, 0.18); }
+:root[data-mode="light"] ::placeholder { color: rgba(15, 23, 42, 0.45); }
+
+/* ── Titres de groupe des bulles : texte foncé de la couleur du groupe ── */
+:root[data-mode="light"][data-theme="prestige"] .chat-rail .cr-group-title { color: color-mix(in srgb, var(--acc1) 60%, #0a0f1e); text-shadow: none; }
+:root[data-mode="light"][data-theme="prestige"] .chat-rail .cr-group-title.priv { color: #047857; }
+:root[data-mode="light"][data-theme="prestige"] .chat-rail .cr-group-title.fond { color: #a16207; }
+:root[data-mode="light"][data-theme="prestige"] .chat-rail .cr-name { color: var(--text-dim); }
+
+/* ── Onglets actifs (liste du chat, etc.) : texte d'accent foncé sur teinte légère ── */
+:root[data-mode="light"] [role="tab"][aria-selected="true"]:not(.dc-tabs *):not(.hero-dots *):not(.admin-tabs *):not(.news-tabs *) { color: var(--acc-light); background: rgba(var(--acc-rgb), 0.14); font-weight: 700; }
