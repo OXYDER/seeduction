@@ -13,7 +13,7 @@ const MAP: Record<string, IcName> = {
   '⚔': 'swords', '🪪': 'idcard', '🎟': 'ticket', '📖': 'bookopen', '🛟': 'lifebuoy', '📋': 'clipboard', '🎵': 'music', '🎮': 'gamepad', '💻': 'laptop',
   '🌸': 'flower', '🔞': 'adult', '🧸': 'smile', '🎭': 'mask', '🎓': 'cap', '🕹': 'joystick', '🧭': 'compass', '🧩': 'puzzle', '🧊': 'cube', '👁': 'eye', '🌐': 'globe',
   '🔗': 'link', '🖼': 'image', '✏': 'pencil', '🗑': 'trash', '✕': 'x', '❌': 'x', '➕': 'plus', '🔒': 'lock', '🔐': 'lock', '🔑': 'lock', '👍': 'thumb', '⚡': 'bolt',
-  '⏰': 'clock', '⏱': 'clock', '🕒': 'clock', '🔧': 'wrench', '🛠': 'wrench', '📍': 'pin', '🛒': 'cart', '🚀': 'rocket', '🎉': 'party', '🎊': 'party', '✦': 'sparkles',
+  '⏰': 'clock', '⏱': 'clock', '🕒': 'clock', '🔧': 'wrench', '🛠': 'wrench', '📍': 'pin', '🛒': 'cart', '🚀': 'rocket', '🎉': 'party', '🎊': 'party', '✦': 'sparkles', '☀': 'sun', '🌙': 'moon', '🚪': 'logout',
 };
 
 const bare = (e: string) => e.replace(/️/g, '').trim();

@@ -1167,6 +1167,10 @@
 :root[data-mode="light"] .tg-play { color: rgb(0, 0, 0); background: linear-gradient(180deg, rgba(246, 246, 246, 0.1), rgba(246, 246, 246, 0.55)); }
 :root[data-mode="light"] .tg-play em { text-shadow: 0 1px 6px rgba(15, 23, 42, 0.224); }
 :root[data-mode="light"] .tg-player { background: rgb(246, 246, 246); box-shadow: 0 30px 90px rgba(15, 23, 42, 0.196); }
+:root[data-mode="light"][data-theme="prestige"] .qs-overlay { background: rgba(245, 245, 247, 0.62); }
+:root[data-mode="light"][data-theme="prestige"] .qs-box { background: rgba(245, 245, 247, 0.92); box-shadow: 0 40px 100px -20px rgba(15, 23, 42, 0.224), 0 0 0 1px rgba(var(--acc-rgb), 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.07); }
+:root[data-mode="light"] .qs-ico { background: rgba(0, 0, 0, 0.06); }
+:root[data-mode="light"] .qs-foot span { background: rgba(0, 0, 0, 0.06); }
 
 /* ── games.css ── */
 :root[data-mode="light"] .wh-stage { background: radial-gradient(circle at 50% 38%, #4a1672 0%, rgb(246, 245, 247) 55%, rgb(246, 245, 247) 100%); box-shadow: 0 10px 40px rgba(15, 23, 42, 0.14), inset 0 0 0 2px rgba(255, 220, 120, 0.35); }
