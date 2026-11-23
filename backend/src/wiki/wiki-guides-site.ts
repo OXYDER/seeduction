@@ -94,7 +94,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]6. La vue Groupé : une seule ligne par film ou série[/b]\n` +
         `Elle réunit toutes les versions d'un même contenu. Un clic dépliant montre chaque release (langue, qualité, source, taille, seeders), et pour une série le nombre d'épisodes. Quand un épisode manque, un lien « faire une demande » apparaît.\n\n` +
         `[b]7. Pagination[/b]\n` +
-        `Par défaut, la liste est en [b]défilement continu[/b] : la suite se charge toute seule quand tu descends dans la page, par lots de 25 / 50 / 75 / 100 torrents (réglage « Par lot » dans la barre d'outils). Le bouton [b]Pages[/b] revient aux numéros de page cliquables, en haut et en bas de la liste, avec le choix du nombre de résultats par page. Ce réglage est retenu dans ton navigateur.\n\n` +
+        `Par défaut, la liste est en [b]défilement continu[/b] : la suite se charge toute seule quand tu descends dans la page, par lots de 25 / 50 / 75 / 100 torrents (réglage « Par lot » dans la barre d'outils). Le bouton [b]Pages[/b] revient aux numéros de page cliquables, en haut et en bas de la liste, avec le choix du nombre de résultats par page. Ce réglage est retenu dans ton navigateur. La page [b]Catalogue complet[/b] (ancien « Parcourir ») est la liste de tout le site ; tes [url=/favorites]favoris[/url] et les collections longues s'affichent aussi par lots, avec le même réglage.\n\n` +
         `[b]8. Quand rien n'apparaît[/b]\n` +
         `• Enlève un filtre à la fois (le compteur des boutons te guide).\n` +
         `• Cherche un seul mot, sans année.\n` +
