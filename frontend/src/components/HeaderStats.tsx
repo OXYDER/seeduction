@@ -25,7 +25,7 @@ export default function HeaderStats({ profile, econ, teamExempt = false }: { pro
     return (
       <div className="stat-pills">
         <StatTip card={<TipCard icon="🛡️" title="Équipe" intro="Les membres de l'équipe ne sont pas comptabilisés : ni ratio, ni upload, ni téléchargé, ni obligation de seed (hit & run), et ils ne figurent pas dans les classements." rows={[]} />}>
-          <span className="pill"><Ic n="shield" size={15} /> Équipe : transferts non comptabilisés</span>
+          <span className="pill"><Ic n="shield" size={15} /> <span className="hide-sm">Équipe : transferts non comptabilisés</span><span className="show-sm">Équipe</span></span>
         </StatTip>
         <StatTip card={<TipCard icon="✦" title="Points bonus" intro="Gagnés en seedant (et en jouant) : à dépenser dans la boutique." rows={[]} link={{ to: '/bonus', label: 'Boutique bonus →' }} />}>
           <Link to="/bonus" className="pill gold"><Ic n="star" size={15} /> {formatNumber(Math.round(profile.bonusPoints))}</Link>

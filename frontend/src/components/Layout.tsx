@@ -875,7 +875,7 @@ function LayoutInner() {
             return (
               <Link key={item.to} to={item.to} className={active ? 'active' : ''}>
                 <span>{item.icon}</span>
-                <small>{item.label}</small>
+                <small>{item.to === '/' ? 'Accueil' : item.label}</small>
               </Link>
             );
           })}

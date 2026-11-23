@@ -8,6 +8,7 @@ import { useViewMode } from '../lib/viewMode';
 import TorrentView, { ViewSwitcher } from '../components/TorrentView';
 import Recommended from '../components/Recommended';
 import Loading from '../components/Loading';
+import { ClientLots } from '../components/InfiniteList';
 
 export default function Favorites() {
   const [items, setItems] = useState<any[] | null>(null);
@@ -50,13 +51,17 @@ export default function Favorites() {
           </p>
         )}
         {items && items.length > 0 && (
-          <TorrentView
-            items={items}
-            view={view}
-            hideUploader
-            leading={(t) => <FavoriteStar active onToggle={() => remove(t.id)} />}
-            extraColumns={[{ header: 'Ajouté', render: (t) => (t.favoritedAt ? timeAgo(t.favoritedAt) : '') }]}
-          />
+          <ClientLots items={items}>
+            {(shown) => (
+              <TorrentView
+                items={shown}
+                view={view}
+                hideUploader
+                leading={(t) => <FavoriteStar active onToggle={() => remove(t.id)} />}
+                extraColumns={[{ header: 'Ajouté', render: (t) => (t.favoritedAt ? timeAgo(t.favoritedAt) : '') }]}
+              />
+            )}
+          </ClientLots>
         )}
       </div>
 

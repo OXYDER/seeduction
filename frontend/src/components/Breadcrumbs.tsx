@@ -5,7 +5,7 @@ interface Node { path: string; label: string; parent?: string }
 
 /** Arbre des sections du site : chaque page connaît son parent. Les pages de détail complètent leur libellé via useCrumbTitle. */
 const NODES: Node[] = [
-  { path: '/browse', label: 'Parcourir' },
+  { path: '/browse', label: 'Catalogue complet' },
   { path: '/torrents/:id', label: 'Torrent', parent: '/browse' },
   { path: '/entities/:id', label: 'Fiche', parent: '/browse' },
   { path: '/news', label: 'Nouvelles' },

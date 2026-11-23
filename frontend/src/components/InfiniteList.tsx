@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { BATCH_SIZES, type ListPrefs } from '../lib/listMode';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { BATCH_SIZES, useListPrefs, type ListPrefs } from '../lib/listMode';
 
 /** Réglage « défilement continu / pages » + taille des lots, à mettre dans la barre d'outils d'une liste de torrents. */
 export function ListModeBar({ prefs, onChange, manual }: { prefs: ListPrefs; onChange: (p: Partial<ListPrefs>) => void; /** Sans pages numérotées (ex. Découvrir) : le second choix est « Sur demande », avec un bouton pour la suite. */ manual?: boolean }) {
@@ -50,5 +50,24 @@ export function InfiniteFooter({ shown, total, loading, onMore, unit = 'résulta
       {more && !loading && <button type="button" className="secondary" onClick={onMore}>Charger la suite</button>}
       {shown > 24 && <button type="button" className="secondary lm-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>↑ Haut de la page</button>}
     </div>
+  );
+}
+
+/**
+ * Liste déjà chargée en entier (favoris, collection...) : n'en affiche qu'un lot à la fois et révèle la suite en descendant,
+ * avec le même réglage « défilement continu / lots de 25-50-75-100 » que Parcourir. Les courtes listes restent telles quelles.
+ */
+export function ClientLots<T>({ items, children }: { items: T[]; children: (shown: T[]) => ReactNode }) {
+  const [prefs, setPrefs] = useListPrefs();
+  const [n, setN] = useState(prefs.size);
+  useEffect(() => { setN(prefs.size); }, [prefs.size]);
+  const long = items.length > prefs.size;
+  const shown = prefs.infinite ? items.slice(0, n) : items;
+  return (
+    <>
+      {long && <div style={{ marginBottom: 10 }}><ListModeBar prefs={prefs} onChange={setPrefs} manual /></div>}
+      {children(shown)}
+      {long && prefs.infinite && <InfiniteFooter shown={shown.length} total={items.length} loading={false} onMore={() => setN((v) => v + prefs.size)} />}
+    </>
   );
 }

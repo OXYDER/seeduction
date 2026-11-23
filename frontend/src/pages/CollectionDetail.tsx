@@ -9,6 +9,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { useCrumbTitle } from '../store/crumbs';
 import Loading from '../components/Loading';
+import { ClientLots } from '../components/InfiniteList';
 
 const VISIBILITY_LABEL: Record<string, string> = {
   PRIVATE: '🔒 Privée',
@@ -91,8 +92,10 @@ export default function CollectionDetail() {
             <h3 style={{ margin: 0 }}>Torrents ({collection.items.length})</h3>
             <ViewSwitcher value={view} onChange={setView} />
           </div>
+          <ClientLots items={rows}>
+            {(shown) => (
           <TorrentView
-            items={rows}
+            items={shown}
             view={view}
             empty="Aucun torrent dans cette collection."
             extraColumns={[
@@ -101,6 +104,8 @@ export default function CollectionDetail() {
             ]}
             rowActions={canEditItems ? (t) => <button className="secondary" onClick={() => removeItem(t.id)}>Retirer</button> : undefined}
           />
+            )}
+          </ClientLots>
           {canEditItems && (
             <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
               Ajoute des torrents depuis leur page de détail via « Ajouter à une collection ».

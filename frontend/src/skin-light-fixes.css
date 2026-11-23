@@ -69,3 +69,9 @@ html:root[data-mode="light"][data-theme="prestige"][data-ev][data-evc] {
 /* ── Onglets inactifs (Membres : En ligne / Seeders, etc.) : texte lisible sur fond clair ── */
 :root[data-mode="light"][data-theme="prestige"] .tabs button:not(.on):not(.admin-tabs *), :root[data-mode="light"][data-theme="prestige"] .tabs a:not(.on) { color: var(--text-dim); }
 :root[data-mode="light"][data-theme="prestige"] .tabs button:not(.on):hover:not(:disabled) { color: var(--text); }
+
+/* ── Écrits en dur dans le code des pages (style en ligne) : fenêtres de dossier à fond bleu nuit, infobulles des graphiques ── */
+:root[data-mode="light"] [style*="rgb(13, 18, 36)"], :root[data-mode="light"] [style*="rgb(12, 25, 18)"] { background: var(--bg-panel) !important; color: var(--text); }
+:root[data-mode="light"] .recharts-default-tooltip { background: #fff !important; border-color: rgba(15, 23, 42, 0.16) !important; color: #131828 !important; box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.35); }
+:root[data-mode="light"] .recharts-default-tooltip .recharts-tooltip-label { color: #131828 !important; }
+:root[data-mode="light"] .recharts-cartesian-axis-tick-value { fill: #5a6480; }

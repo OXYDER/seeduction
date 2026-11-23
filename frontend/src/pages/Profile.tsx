@@ -170,13 +170,13 @@ export default function Profile() {
       {!profile.deleted && <Wall source={{ kind: 'user', id: targetId as string }} title={own ? '🧱 Mon mur' : `🧱 Le mur de ${profile.username}`} empty={own ? 'Ton mur est vide : écris ton premier statut ou partage un torrent depuis sa fiche.' : "Rien à voir pour l'instant."} />}
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
         {['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(profile.role)
-          ? <Card label="Transferts" value="Non comptabilisés (équipe)" />
+          ? <Card label="Transferts" value="Non comptabilisés (équipe)" icon="🛡️" tone="team" />
           : <>
-            <Card label="Ratio" value={profile.ratio ? profile.ratio.toFixed(2) : '∞'} />
-            <Card label="Upload" value={`${(Number(profile.uploaded) / 1e9).toFixed(2)} Go`} />
-            <Card label="Download" value={`${(Number(profile.downloaded) / 1e9).toFixed(2)} Go`} />
+            <Card label="Ratio" value={profile.ratio ? profile.ratio.toFixed(2) : '∞'} icon="⚖️" tone="gold" />
+            <Card label="Upload" value={`${(Number(profile.uploaded) / 1e9).toFixed(2)} Go`} icon="▲" tone="up" />
+            <Card label="Download" value={`${(Number(profile.downloaded) / 1e9).toFixed(2)} Go`} icon="▼" tone="down" />
           </>}
-        <Card label="Bonus points" value={profile.bonusPoints?.toFixed(0) ?? 0} />
+        <Card label="Bonus points" value={profile.bonusPoints?.toFixed(0) ?? 0} icon="✦" tone="acc" />
       </div>
       {own && profile.freeleechUntil && (
         <div className="panel" style={{ borderColor: 'var(--gold)', color: 'var(--gold-bright)' }}>
@@ -188,8 +188,8 @@ export default function Profile() {
         {badges.length === 0 && <p className="muted">Aucun badge obtenu pour l'instant.</p>}
         <div className="row" style={{ flexWrap: 'wrap', gap: 14 }}>
           {badges.map((b) => (
-            <div key={b.code} className="row" style={{ gap: 8, alignItems: 'center' }} title={b.description}>
-              <span style={{ fontSize: 22 }}>{b.icon}</span>
+            <div key={b.code} className="badge-tile" title={b.description}>
+              <span className="badge-tile-ico">{b.icon}</span>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>{b.name}</div>
                 <div className="muted" style={{ fontSize: 11 }}>{b.description}</div>
@@ -286,11 +286,12 @@ export default function Profile() {
   );
 }
 
-function Card({ label, value }: { label: string; value: string | number }) {
+function Card({ label, value, icon, tone }: { label: string; value: string | number; icon?: string; tone?: 'gold' | 'up' | 'down' | 'acc' | 'team' }) {
   return (
-    <div className="panel">
-      <div className="muted">{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700 }}>{value}</div>
+    <div className={`panel stat-tile${tone ? ` t-${tone}` : ''}`}>
+      {icon && <span className="stat-tile-ico" aria-hidden="true">{icon}</span>}
+      <div className="muted stat-tile-label">{label}</div>
+      <div className="stat-tile-val">{value}</div>
     </div>
   );
 }

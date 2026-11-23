@@ -57,6 +57,7 @@ export default function TorrentDetail() {
   const [trailerOpen, setTrailerOpen] = useState(false);
   const downloadAnchorRef = useRef<HTMLDivElement>(null);
   usePageBackdrop(torrent ? (torrent.metadata?.backdrop ?? torrent.coverImage ?? null) : null);
+  const bannerUrl = torrent ? ((torrent.metadata?.backdrop ?? torrent.coverImage ?? '') as string).replace(/["'()\s]/g, '') : '';
   const user = useAuthStore((s) => s.user);
   const favorites = useFavorites();
   const [searchParams] = useSearchParams();
@@ -120,7 +121,7 @@ export default function TorrentDetail() {
       <div className="panel">
         <p>{loadError}</p>
         <Link to="/profile"><button type="button">Aller à mon profil</button></Link>{' '}
-        <Link to="/browse" className="muted">← Retour à Parcourir</Link>
+        <Link to="/browse" className="muted">← Retour au catalogue</Link>
       </div>
     );
   }
@@ -234,7 +235,7 @@ export default function TorrentDetail() {
         {staffBanner}
         {ownerBanner}
         {uploadedBanner}
-        <section className="detail-head">
+        <section className="detail-head" style={{ ['--bd' as string]: bannerUrl ? `url("${bannerUrl}")` : 'none' }}>
           <div className="detail-poster">
             {torrent.coverImage ? <img src={torrent.coverImage} alt="" /> : <div className="poster-fallback">🎬</div>}
           </div>

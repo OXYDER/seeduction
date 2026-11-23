@@ -673,3 +673,65 @@ button.install-never:hover:not(:disabled) { background: none; box-shadow: none; 
 .role-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; background: rgba(255, 255, 255, 0.08); color: var(--text-dim); }
 .role-chip.r-leader { background: linear-gradient(135deg, rgba(250, 204, 21, 0.28), rgba(245, 158, 11, 0.14)); color: #fde68a; box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.55); }
 .role-chip.r-officer { background: rgba(148, 163, 184, 0.2); color: #e2e8f0; box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.5); }
+
+/* ───── Mobile : barre d'onglets flottante, invitations au-dessus de la barre, rangée d'icônes de l'en-tête qui défile avec fondu ───── */
+@media (max-width: 800px) {
+  :root[data-theme="prestige"] .tabbar {
+    left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); padding: 6px; gap: 2px; border-radius: 24px;
+    background: rgba(8, 10, 22, 0.86); border: 1px solid var(--s5-line2);
+    box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  :root[data-theme="prestige"] .tabbar a, :root[data-theme="prestige"] .tabbar button { border-radius: 18px; padding: 8px 0 6px; transition: background 0.2s, color 0.2s; }
+  :root[data-theme="prestige"] .tabbar a.active { background: rgba(var(--acc-rgb), 0.22); color: var(--text); box-shadow: inset 0 0 0 1px rgba(var(--acc-rgb), 0.45); }
+  :root[data-theme="prestige"] .tabbar a.active small { color: var(--acc-light); }
+  :root[data-theme="prestige"] .tabbar small { font-size: 10.5px; letter-spacing: 0.01em; }
+  .shell .container { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+  .install-prompt, body:has(.msgr-main) .install-prompt, .panel.notify-prompt, :root[data-theme="prestige"] .panel.notify-prompt, body:has(.msgr-main) .panel.notify-prompt {
+    left: 12px !important; right: 12px !important; width: auto !important; max-width: none !important; bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+  }
+  :root[data-theme="prestige"] .side-topbar > .row { -webkit-mask-image: linear-gradient(90deg, #000 90%, transparent); mask-image: linear-gradient(90deg, #000 90%, transparent); }
+}
+.show-sm { display: none; }
+@media (max-width: 800px) {
+  .hide-sm { display: none; } .show-sm { display: inline; }
+  .hero-feature h1, .hero-feature-body h1 { font-size: clamp(22px, 7vw, 30px); overflow-wrap: anywhere; line-height: 1.12; }
+}
+
+/* ───── Fiche d'un torrent : bandeau flou tiré de l'image du film (ou de la pochette) derrière l'affiche et le titre ───── */
+:root[data-theme="prestige"] .detail-head { position: relative; isolation: isolate; overflow: hidden; padding: 28px; border-radius: 24px; border: 1px solid var(--s5-line2); background: var(--s5-surf); box-shadow: var(--s5-shadow); }
+:root[data-theme="prestige"] .detail-head::before { content: ''; position: absolute; inset: -40px; z-index: -2; background: var(--bd, none) center / cover no-repeat; filter: blur(30px) saturate(1.5); opacity: 0.34; transform: scale(1.05); }
+:root[data-theme="prestige"] .detail-head::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(100deg, rgba(7, 9, 20, 0.72) 0%, rgba(7, 9, 20, 0.38) 55%, rgba(7, 9, 20, 0.2) 100%); }
+:root[data-theme="prestige"] .detail-poster img, :root[data-theme="prestige"] .detail-poster .poster-fallback { border-radius: 16px; box-shadow: 0 26px 60px -16px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.14); }
+@media (max-width: 800px) {
+  :root[data-theme="prestige"] .detail-head { padding: 18px; border-radius: 20px; }
+  :root[data-theme="prestige"] .detail-poster { display: flex; justify-content: center; }
+  :root[data-theme="prestige"] .detail-poster img, :root[data-theme="prestige"] .detail-poster .poster-fallback { width: min(58%, 210px); }
+}
+
+/* ───── Profil : chiffres en tuiles, badges en cartes ───── */
+:root[data-theme="prestige"] .stat-tile { position: relative; overflow: hidden; padding: 16px 18px 14px; border-radius: 18px; }
+:root[data-theme="prestige"] .stat-tile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tile, linear-gradient(90deg, var(--acc1), var(--acc2))); }
+:root[data-theme="prestige"] .stat-tile-ico { position: absolute; right: 14px; top: 12px; font-size: 22px; opacity: 0.55; }
+:root[data-theme="prestige"] .stat-tile-label { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+:root[data-theme="prestige"] .stat-tile-val { margin-top: 4px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+:root[data-theme="prestige"] .stat-tile.t-gold { --tile: linear-gradient(90deg, #f59e0b, #fde047); } :root[data-theme="prestige"] .stat-tile.t-gold .stat-tile-val { color: #fbbf24; }
+:root[data-theme="prestige"] .stat-tile.t-up { --tile: linear-gradient(90deg, #22c55e, #86efac); } :root[data-theme="prestige"] .stat-tile.t-up .stat-tile-val { color: #4ade80; }
+:root[data-theme="prestige"] .stat-tile.t-down { --tile: linear-gradient(90deg, #ef4444, #fda4af); } :root[data-theme="prestige"] .stat-tile.t-down .stat-tile-val { color: #ff8a98; }
+:root[data-theme="prestige"] .stat-tile.t-acc .stat-tile-val { color: var(--acc-light); }
+:root[data-theme="prestige"] .stat-tile.t-team .stat-tile-val { font-size: 17px; }
+.badge-tile { display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-width: 220px; border-radius: 16px; background: linear-gradient(135deg, rgba(var(--acc-rgb), 0.14), rgba(255, 255, 255, 0.03)); border: 1px solid var(--s5-line2); transition: transform 0.2s, border-color 0.2s; }
+.badge-tile:hover { transform: translateY(-2px); border-color: rgba(var(--acc-rgb), 0.6); }
+.badge-tile-ico { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; font-size: 24px; background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 0 0 1px var(--s5-line); }
+
+/* ───── Accessibilité et mouvement ───── */
+:root[data-theme="prestige"] :is(a, button, input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible { outline: 2px solid var(--acc-light); outline-offset: 2px; }
+@keyframes s5-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme="prestige"] .shell .container > * { animation: s5-rise 0.38s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
+  :root[data-theme="prestige"] .shell .container > *:nth-child(2) { animation-delay: 0.04s; }
+  :root[data-theme="prestige"] .shell .container > *:nth-child(3) { animation-delay: 0.08s; }
+  :root[data-theme="prestige"] .shell .container > *:nth-child(n + 4) { animation-delay: 0.12s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="prestige"] *, :root[data-theme="prestige"] *::before, :root[data-theme="prestige"] *::after { scroll-behavior: auto !important; }
+}

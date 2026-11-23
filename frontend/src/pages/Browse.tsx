@@ -369,7 +369,7 @@ export default function Browse() {
     <div className="grid">
       {!uploaderId && <CatalogTabs active="catalogue" />}
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
-        <h1>{uploaderId ? (uploaderId === currentUserId ? 'Mes uploads' : 'Torrents de ce membre') : 'Parcourir'}</h1>
+        <h1>{uploaderId ? (uploaderId === currentUserId ? 'Mes uploads' : 'Torrents de ce membre') : 'Catalogue complet'}</h1>
         <div className="list-toolbar">
           <div style={{ width: 320, maxWidth: '100%' }}>
             <SearchBox
