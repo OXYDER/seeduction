@@ -14,6 +14,8 @@ export interface ExtraRich {
   entities: { type: 'PERSON' | 'COMPANY' | 'GENRE' | 'PLATFORM'; role: string; name: string; source: string; externalId: string; imageUrl?: string | null; detail?: string; position: number }[];
   coverUrl: string | null;
   backdropUrl: string | null;
+  /** Autres images de la fiche (captures d'écran, fonds, jaquette arrière...) : une galerie sur la page du torrent. */
+  gallery?: string[];
   overviewOk?: boolean;
 }
 export type FetchJson = (url: string, name: string, headers?: Record<string, string>, body?: unknown) => Promise<any>;
@@ -28,6 +30,8 @@ export const stripHtml = (html: unknown): string => String(html ?? '')
   .split('\n').map((l) => l.replace(/[ \t]+/g, ' ').trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
 const yearOf = (d: unknown): string => (/^\d{4}/.test(String(d ?? '')) ? String(d).slice(0, 4) : '');
 const genreDrafts = (names: string[], source: string): ExtraRich['entities'] => names.filter(Boolean).slice(0, 8).map((name, position) => ({ type: 'GENRE', role: 'GENRE', name, source: 'seeduction', externalId: clean(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || source, position }));
+/** Galerie : adresses d'images valides, sans doublon, au plus `max` (http est remonté en https). */
+export const gal = (urls: unknown[], max = 10): string[] => [...new Set(urls.filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)).map((u) => u.replace(/^http:\/\//, 'https://')))].slice(0, max);
 const UA = { 'User-Agent': 'Seeduction/1.0 (fiches de torrents)', Accept: 'application/json' };
 
 // ── TVmaze (séries) ───────────────────────────────────────────────────────────
@@ -117,6 +121,7 @@ export function mapSteamApp(res: any, id: string): ExtraRich {
       ...platforms.map((name, i): ExtraRich['entities'][number] => ({ type: 'PLATFORM', role: 'PLATFORM', name, source: 'seeduction', externalId: name.toLowerCase(), position: i })),
     ].filter((e) => e.name && e.externalId),
     coverUrl: d.header_image ?? null, backdropUrl: d.background_raw ?? d.background ?? null,
+    gallery: gal((d.screenshots ?? []).map((x: any) => x?.path_full ?? x?.path_thumbnail)),
   };
 }
 
@@ -161,6 +166,7 @@ export function mapItunesApp(res: any): ExtraRich {
     info: { released: a.releaseDate ? String(a.releaseDate).slice(0, 10) : null, version: a.version ?? null, website: a.sellerUrl ?? null, itunesId: a.trackId ?? null },
     entities: [...genreDrafts(genres, 'itunes'), ...platforms.map((name, i): ExtraRich['entities'][number] => ({ type: 'PLATFORM', role: 'PLATFORM', name, source: 'seeduction', externalId: name.toLowerCase(), position: i }))],
     coverUrl: a.artworkUrl512 ?? a.artworkUrl100 ?? null, backdropUrl: null,
+    gallery: gal([...(a.screenshotUrls ?? []), ...(a.ipadScreenshotUrls ?? [])]),
   };
 }
 
@@ -206,6 +212,7 @@ export function mapFlathubApp(a: any, id: string): ExtraRich {
     info: { website: a.urls?.homepage ?? null, license: a.project_license ?? null, flathubId: id },
     entities: [...genreDrafts(cats, 'flathub'), { type: 'PLATFORM', role: 'PLATFORM', name: 'Linux', source: 'seeduction', externalId: 'linux', position: 0 }],
     coverUrl: a.icon ?? null, backdropUrl: a.screenshots?.[0]?.sizes?.[0]?.src ?? null,
+    gallery: gal((a.screenshots ?? []).map((sh: any) => [...(sh?.sizes ?? [])].sort((x: any, y: any) => Number(y?.width ?? 0) - Number(x?.width ?? 0))[0]?.src)),
   };
 }
 
@@ -231,6 +238,25 @@ export function mapWikipediaSummary(s: any, kind: ExtraKind): ExtraRich {
     entities: genreDrafts(s.description ? [clean(s.description)] : [], 'wikipedia'),
     coverUrl: s.originalimage?.source ?? s.thumbnail?.source ?? null, backdropUrl: null, overviewOk: /^fr/.test(String(s.lang ?? '')),
   };
+}
+
+// ── Galeries : images supplémentaires d'une fiche (une requête de plus par fournisseur) ──────
+
+/** TVmaze : fonds, bannières, puis affiches secondaires. */
+export function mapTvmazeImages(rows: any): string[] {
+  const list: any[] = Array.isArray(rows) ? rows : [];
+  const pick = (type: string, skipMain = false) => list.filter((r) => r?.type === type && !(skipMain && r.main)).map((r) => r?.resolutions?.original?.url ?? r?.resolutions?.medium?.url);
+  return gal([...pick('background'), ...pick('banner'), ...pick('poster', true)]);
+}
+
+/** Jikan : les images de l'animé (la première est déjà la pochette). */
+export function mapJikanPictures(res: any): string[] {
+  return gal((res?.data ?? []).slice(1).map((p: any) => p?.jpg?.large_image_url ?? p?.jpg?.image_url));
+}
+
+/** Cover Art Archive : jaquette arrière, livret, disque... (la face avant est déjà la pochette). */
+export function mapCoverArtImages(res: any): string[] {
+  return gal((res?.images ?? []).filter((i: any) => !i?.front).map((i: any) => i?.thumbnails?.['1200'] ?? i?.thumbnails?.large ?? i?.image));
 }
 
 // ── Orchestration ──────────────────────────────────────────────────────────────
@@ -278,10 +304,22 @@ export async function richExtra(kind: string, id: string, fetchJson: FetchJson):
   const [prefix, ...rest] = id.split(':');
   const raw = rest.join(':');
   switch (prefix) {
-    case 'tvm': return mapTvmazeShow(await fetchJson(`https://api.tvmaze.com/shows/${encodeURIComponent(raw)}?embed=cast`, 'TVmaze'));
-    case 'mal': return mapJikanAnime(await fetchJson(`https://api.jikan.moe/v4/anime/${encodeURIComponent(raw)}/full`, 'Jikan'));
+    case 'tvm': {
+      const rich = mapTvmazeShow(await fetchJson(`https://api.tvmaze.com/shows/${encodeURIComponent(raw)}?embed=cast`, 'TVmaze'));
+      rich.gallery = mapTvmazeImages(await fetchJson(`https://api.tvmaze.com/shows/${encodeURIComponent(raw)}/images`, 'TVmaze').catch(() => []));
+      return rich;
+    }
+    case 'mal': {
+      const rich = mapJikanAnime(await fetchJson(`https://api.jikan.moe/v4/anime/${encodeURIComponent(raw)}/full`, 'Jikan'));
+      rich.gallery = mapJikanPictures(await fetchJson(`https://api.jikan.moe/v4/anime/${encodeURIComponent(raw)}/pictures`, 'Jikan').catch(() => null));
+      return rich;
+    }
     case 'steam': return mapSteamApp(await fetchJson(`https://store.steampowered.com/api/appdetails?appids=${encodeURIComponent(raw)}&l=french&cc=ca`, 'Steam'), raw);
-    case 'mb': return mapMusicbrainzGroup(await fetchJson(`https://musicbrainz.org/ws/2/release-group/${encodeURIComponent(raw)}?inc=artist-credits+tags&fmt=json`, 'MusicBrainz', UA));
+    case 'mb': {
+      const rich = mapMusicbrainzGroup(await fetchJson(`https://musicbrainz.org/ws/2/release-group/${encodeURIComponent(raw)}?inc=artist-credits+tags&fmt=json`, 'MusicBrainz', UA));
+      rich.gallery = mapCoverArtImages(await fetchJson(`https://coverartarchive.org/release-group/${encodeURIComponent(raw)}`, 'Cover Art Archive', UA).catch(() => null));
+      return rich;
+    }
     case 'flat': return mapFlathubApp(await fetchJson(`https://flathub.org/api/v2/appstream/${encodeURIComponent(raw)}`, 'Flathub', UA), raw);
     case 'itu':
       return kind === 'MUSIQUE'

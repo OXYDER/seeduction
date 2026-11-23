@@ -1,4 +1,4 @@
-import { isExtraId, mergeResults, richExtra, searchExtra } from './extra-providers';
+import { gal, isExtraId, mergeResults, richExtra, searchExtra } from './extra-providers';
 import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
@@ -43,6 +43,8 @@ interface RichMetadata {
   /** Autres images à essayer si la première ne peut pas être enregistrée (trop lourde : 8 Mo au maximum, ou illisible). */
   coverFallbacks?: string[];
   backdropUrl: string | null;
+  /** Autres images de la fiche (fonds, captures d'écran...) : une galerie sur la page du torrent. */
+  gallery?: string[];
   /** Titres dans plusieurs langues / régions, un par ligne (recherche). */
   searchTitles?: string;
   /** Vrai si le synopsis affiché est bien en français (traduit, ou déjà français). */
@@ -428,7 +430,7 @@ export class MetadataService {
   private async richTmdb(type: 'movie' | 'tv', id: string): Promise<RichMetadata> {
     const url =
       `${TMDB_API}/${type}/${encodeURIComponent(id)}?language=fr-FR` +
-      `&append_to_response=credits,videos,external_ids,alternative_titles,translations&include_video_language=fr,en,null&api_key=${this.tmdbKey}`;
+      `&append_to_response=credits,videos,external_ids,alternative_titles,translations,images&include_video_language=fr,en,null&include_image_language=fr,en,null&api_key=${this.tmdbKey}`;
     const r = await this.fetchJson(url, 'TMDB');
     if (r.success === false) throw new NotFoundException('Fiche introuvable sur TMDB');
 
@@ -551,6 +553,11 @@ export class MetadataService {
       entities,
       coverUrl: img(r.poster_path, 'w500'),
       backdropUrl: img(r.backdrop_path, 'w1280'),
+      // Autres fonds d'écran : d'abord ceux sans texte incrusté, puis les mieux notés (le fond principal est déjà utilisé).
+      gallery: [...((r.images?.backdrops ?? []) as any[])]
+        .filter((b) => b?.file_path && b.file_path !== r.backdrop_path)
+        .sort((a, b) => Number(!!a.iso_639_1) - Number(!!b.iso_639_1) || (b.vote_average ?? 0) - (a.vote_average ?? 0))
+        .slice(0, 8).map((b) => img(b.file_path, 'w1280')).filter((u): u is string => !!u),
       searchTitles,
     };
   }
@@ -695,6 +702,7 @@ export class MetadataService {
     });
     const developers: any[] = (g.developers ?? []).slice(0, 3);
     const publishers: any[] = (g.publishers ?? []).slice(0, 3);
+    const shots = await this.fetchJson(`https://api.rawg.io/api/games/${encodeURIComponent(id)}/screenshots?key=${this.rawgKey}`, 'RAWG').catch(() => null);
 
     return {
       source: 'rawg',
@@ -725,6 +733,7 @@ export class MetadataService {
       ],
       coverUrl: g.background_image ?? null,
       backdropUrl: g.background_image_additional ?? null,
+      gallery: gal(((shots?.results ?? []) as any[]).map((x) => x?.image)),
     };
   }
 
@@ -899,7 +908,7 @@ export class MetadataService {
       if (e.imageUrl && !entity.imageUrl) pendingImages.push({ entityId: entity.id, url: e.imageUrl });
     }
 
-    void this.downloadImages(torrentId, pendingImages, rich.backdropUrl, rich.coverUrl, !!opts.replaceCover, rich.coverFallbacks).catch((err) =>
+    void this.downloadImages(torrentId, pendingImages, rich.backdropUrl, rich.coverUrl, !!opts.replaceCover, rich.coverFallbacks, rich.gallery).catch((err) =>
       this.logger.warn(`Téléchargement des images de la fiche échoué : ${err?.message ?? err}`),
     );
   }
@@ -1061,7 +1070,60 @@ export class MetadataService {
     }
   }
 
-  private async downloadImages(torrentId: string, images: { entityId: string; url: string }[], backdropUrl: string | null, coverUrl: string | null = null, forceCover = false, coverFallbacks: string[] = []) {
+  /**
+   * Enregistre sur Seeduction la galerie d'images de la fiche (au plus 10, trois à la fois) et la note dans `metadata.gallery`.
+   * `galleryTried` évite de la redemander à chaque passage quand le fournisseur n'a rien de plus à offrir.
+   */
+  private async saveGallery(torrentId: string, urls: string[] | undefined, exclude: (string | null)[] = []): Promise<void> {
+    const wanted = (urls ?? []).filter((u) => u && !exclude.includes(u)).slice(0, 10);
+    const saved: string[] = [];
+    for (let i = 0; i < wanted.length; i += 3) {
+      const part = await Promise.all(wanted.slice(i, i + 3).map((u) => this.saveCover(u)));
+      saved.push(...part.filter(Boolean));
+    }
+    const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { metadata: true } });
+    if (!t) return;
+    await this.prisma.torrent.update({ where: { id: torrentId }, data: { metadata: { ...((t.metadata as object) ?? {}), gallery: [...new Set(saved)], galleryTried: true } as any } });
+  }
+
+  /**
+   * Torrents dont la fiche est rattachée mais qui n'ont pas encore de galerie (envoyés avant son arrivée) : on la récupère petit à petit,
+   * quelques-uns toutes les 10 minutes, auprès du fournisseur d'origine de la fiche.
+   */
+  @Cron('*/10 * * * *')
+  async backfillGalleries() {
+    const rows = await this.prisma.$queryRaw<{ id: string; metaExternalId: string; metaSource: string; metadata: any }[]>`
+      SELECT id, "metaExternalId", "metaSource", metadata FROM "Torrent"
+      WHERE "metaSource" IN ('tmdb', 'rawg', 'tvmaze', 'jikan', 'steam', 'itunes', 'musicbrainz', 'flathub')
+        AND "metaExternalId" IS NOT NULL AND (metadata IS NULL OR (metadata->>'galleryTried') IS NULL)
+      ORDER BY "createdAt" DESC LIMIT 4`;
+    for (const t of rows) {
+      try {
+        const kind = this.galleryKind(t.metaSource, t.metadata);
+        const rich = kind ? await this.richRaw(kind, t.metaExternalId) : null;
+        await this.saveGallery(t.id, rich?.gallery, [rich?.backdropUrl ?? null, rich?.coverUrl ?? null]);
+      } catch (err: any) {
+        this.logger.warn(`Galerie d'images : ${err?.message ?? err}`);
+        // Une fiche introuvable chez le fournisseur n'est pas redemandée sans fin.
+        if (err instanceof NotFoundException) await this.saveGallery(t.id, [], []).catch(() => undefined);
+      }
+    }
+  }
+
+  /** Type de contenu à passer à `richRaw` pour retrouver la fiche d'un torrent selon son fournisseur. */
+  private galleryKind(source: string, info: any): string | null {
+    switch (source) {
+      case 'tmdb': return info?.kind === 'tv' ? 'SERIE' : 'FILM';
+      case 'rawg': case 'steam': return 'JEU';
+      case 'tvmaze': case 'jikan': return 'SERIE';
+      case 'musicbrainz': return 'MUSIQUE';
+      case 'flathub': return 'LOGICIEL';
+      case 'itunes': return info?.nbTracks !== undefined ? 'MUSIQUE' : 'LOGICIEL';
+      default: return null;
+    }
+  }
+
+  private async downloadImages(torrentId: string, images: { entityId: string; url: string }[], backdropUrl: string | null, coverUrl: string | null = null, forceCover = false, coverFallbacks: string[] = [], gallery: string[] = []) {
     await Promise.all(
       images.map(async ({ entityId, url }) => {
         const local = await this.saveCover(url);
@@ -1075,6 +1137,7 @@ export class MetadataService {
         await this.prisma.torrent.update({ where: { id: torrentId }, data: { metadata: { ...((t?.metadata as object) ?? {}), backdrop: local } } });
       }
     }
+    await this.saveGallery(torrentId, gallery, [backdropUrl, coverUrl]);
     // Pochette : seulement si le torrent n'en a pas déjà une (celle du formulaire d'envoi, ou choisie par le membre, reste prioritaire).
     if (coverUrl) {
       const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { coverImage: true } });

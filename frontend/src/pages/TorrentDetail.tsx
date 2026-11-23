@@ -39,6 +39,7 @@ import FileTree from '../components/FileTree';
 import { resolveContentKind } from '../lib/categoryKind';
 import { useCrumbTitle } from '../store/crumbs';
 import Loading from '../components/Loading';
+import TorrentGallery from '../components/TorrentGallery';
 
 // Types de contenu pour lesquels « Ouvrir dans le lecteur Seeduction » a un sens (vidéo à regarder).
 const VIDEO_KINDS = new Set(['FILM', 'SERIE', 'XXX', 'DOCUMENT']);
@@ -298,6 +299,7 @@ export default function TorrentDetail() {
         {tab === 'overview' && (
           <div className="grid" style={{ gap: 18 }}>
             <TorrentHero torrent={torrent} />
+            <TorrentGallery images={[...new Set([torrent.metadata?.backdrop, ...(torrent.metadata?.gallery ?? [])].filter((u: unknown): u is string => typeof u === 'string' && !!u))]} title={['JEU', 'LOGICIEL'].includes(contentKind ?? '') ? "Captures d'écran" : contentKind === 'MUSIQUE' ? 'Jaquette et livret' : 'Images'} />
             <TorrentVersions torrentId={torrent.id} />
             {descriptionPanel}
             {['LOGICIEL', 'JEU'].includes(contentKind ?? '') && <InstallNotes torrentId={torrent.id} onOpenNfo={() => setTab('nfo')} />}

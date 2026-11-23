@@ -4876,3 +4876,21 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 .lm-spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.18); border-top-color: var(--gold, #e0a43a); animation: lmSpin .7s linear infinite; }
 @keyframes lmSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .lm-spin { animation-duration: 2s; } }
+
+/* Galerie d'images d'une fiche (TorrentGallery) */
+.tg-count { margin-left: auto; font-size: 12.5px; font-weight: 400; }
+.tg-strip { display: grid; grid-auto-flow: column; grid-auto-columns: clamp(190px, 22vw, 280px); gap: 10px; overflow-x: auto; padding: 2px 2px 10px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.tg-thumb { padding: 0; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; overflow: hidden; background: #0b0f1e; aspect-ratio: 16 / 9; scroll-snap-align: start; cursor: zoom-in; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.tg-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
+.tg-thumb:hover { transform: translateY(-2px); border-color: var(--acc-light, #b9a4ff); box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.8); filter: none; }
+.tg-thumb:hover img { transform: scale(1.05); }
+.tg-lightbox { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 14, 0.92); backdrop-filter: blur(8px); animation: tipIn .2s ease both; padding: 56px 64px; }
+.tg-lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 10px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7); animation: tipIn .25s ease both; }
+.tg-x, .tg-nav { position: absolute; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.1); color: #fff; border-radius: 50%; cursor: pointer; padding: 0; line-height: 1; }
+.tg-x { top: 16px; right: 16px; width: 42px; height: 42px; font-size: 18px; }
+.tg-nav { top: 50%; width: 48px; height: 48px; margin-top: -24px; font-size: 30px; padding-bottom: 4px; }
+.tg-nav.prev { left: 12px; } .tg-nav.next { right: 12px; }
+.tg-x:hover, .tg-nav:hover { background: rgba(255, 255, 255, 0.22); filter: none; }
+.tg-pos { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); padding: 4px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 13px; }
+@media (max-width: 760px) { .tg-lightbox { padding: 52px 8px 56px; } .tg-nav { width: 40px; height: 40px; font-size: 24px; } .tg-nav.prev { left: 4px; } .tg-nav.next { right: 4px; } }
+.tg { min-width: 0; max-width: 100%; }

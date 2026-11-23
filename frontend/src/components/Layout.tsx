@@ -205,6 +205,19 @@ function LayoutInner() {
   const fitKey = [compact, topOn, navPrefs.size, navPrefs.icons, navPrefs.spacing, navPrefs.hidden.join(','), navPrefs.order.join(','), profile?.statusText ?? '', profile?.watching ?? '', user?.username ?? ''].join('|');
   const [fitTick, setFitTick] = useState(0);
   useEffect(() => { const r = () => { setTopFit(0); setFitTick((t) => t + 1); }; window.addEventListener('resize', r); return () => window.removeEventListener('resize', r); }, []);
+  // La barre change aussi de largeur sans que la fenêtre bouge (la barre de défilement de la page apparaît une fois le contenu chargé) : on re-mesure alors, sans réagir aux changements de hauteur.
+  useEffect(() => {
+    const el = topRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let w = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth !== w) { w = el.clientWidth; setTopFit(0); setFitTick((t) => t + 1); }
+      else if (el.scrollWidth > el.clientWidth + 1) setTopFit((f) => (f < 3 ? f + 1 : f)); // un contenu qui grandit après coup (statistiques chargées) : on resserre d'un cran
+    });
+    ro.observe(el);
+    el.querySelectorAll(':scope > *, :scope > * > *').forEach((c) => ro.observe(c));
+    return () => ro.disconnect();
+  }, [topOn]);
   useEffect(() => { setTopFit(0); }, [fitKey]);
   // Mesure après chaque palier (et non à chaque rendu) : pas de boucle possible.
   useLayoutEffect(() => {

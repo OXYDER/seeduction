@@ -1,5 +1,5 @@
 import {
-  isExtraId, mapFlathubSearch, mapItunesAlbum, mapItunesAlbums, mapItunesApp, mapJikanAnime, mapJikanSearch, mapMusicbrainzGroup, mapMusicbrainzSearch, mapSteamApp, mapSteamSearch,
+  gal, isExtraId, mapCoverArtImages, mapJikanPictures, mapTvmazeImages, mapFlathubApp, mapFlathubSearch, mapItunesAlbum, mapItunesAlbums, mapItunesApp, mapJikanAnime, mapJikanSearch, mapMusicbrainzGroup, mapMusicbrainzSearch, mapSteamApp, mapSteamSearch,
   mapTvmazeShow, mapTvmazeSearch, mapWikipediaSearch, mapWikipediaSummary, mergeResults, richExtra, searchExtra, stripHtml,
 } from './extra-providers';
 
@@ -117,4 +117,37 @@ describe('fusion et orchestration', () => {
     await expect(richExtra('LOGICIEL', 'wp:de:X', fake)).rejects.toThrow(/Langue/);
   });
   it('stripHtml', () => { expect(stripHtml('<p>A &amp; B</p><p>C</p>')).toBe('A & B\n\nC'); });
+});
+
+describe("galeries d'images", () => {
+  it('gal : adresses valides, sans doublon, https, limitées', () => {
+    expect(gal(['http://a/x.jpg', 'https://a/x.jpg', 'pas une url', null, 'https://b/y.jpg'])).toEqual(['https://a/x.jpg', 'https://b/y.jpg']);
+    expect(gal(Array.from({ length: 30 }, (_, i) => `https://a/${i}.jpg`))).toHaveLength(10);
+  });
+  it('TVmaze : fonds, bannières puis affiches secondaires', () => {
+    const rows = [
+      { type: 'poster', main: true, resolutions: { original: { url: 'https://t/poster-main.jpg' } } },
+      { type: 'poster', main: false, resolutions: { original: { url: 'https://t/poster2.jpg' } } },
+      { type: 'background', resolutions: { original: { url: 'https://t/bg.jpg' } } },
+      { type: 'banner', resolutions: { medium: { url: 'https://t/banner.jpg' } } },
+    ];
+    expect(mapTvmazeImages(rows)).toEqual(['https://t/bg.jpg', 'https://t/banner.jpg', 'https://t/poster2.jpg']);
+    expect(mapTvmazeImages(null)).toEqual([]);
+  });
+  it('Jikan : saute la première image (la pochette)', () => {
+    expect(mapJikanPictures({ data: [{ jpg: { large_image_url: 'https://j/0.jpg' } }, { jpg: { large_image_url: 'https://j/1.jpg' } }, { jpg: { image_url: 'https://j/2.jpg' } }] })).toEqual(['https://j/1.jpg', 'https://j/2.jpg']);
+  });
+  it('Cover Art Archive : jaquette arrière et livret, pas la face avant', () => {
+    const res = { images: [{ front: true, image: 'http://c/front.jpg' }, { front: false, image: 'http://c/back.jpg', thumbnails: { large: 'http://c/back-l.jpg' } }, { front: false, image: 'http://c/book.jpg', thumbnails: { '1200': 'http://c/book-1200.jpg' } }] };
+    expect(mapCoverArtImages(res)).toEqual(['https://c/back-l.jpg', 'https://c/book-1200.jpg']);
+  });
+  it("Steam, iTunes et Flathub : captures d'écran", () => {
+    expect(mapSteamApp({ '1': { data: { name: 'X', screenshots: [{ path_full: 'https://s/1.jpg' }, { path_thumbnail: 'https://s/2.jpg' }] } } }, '1').gallery).toEqual(['https://s/1.jpg', 'https://s/2.jpg']);
+    expect(mapItunesApp({ results: [{ trackName: 'App', screenshotUrls: ['https://i/1.png'], ipadScreenshotUrls: ['https://i/2.png'] }] }).gallery).toEqual(['https://i/1.png', 'https://i/2.png']);
+    expect(mapFlathubApp({ name: 'F', screenshots: [{ sizes: [{ src: 'https://f/small.png', width: '224' }, { src: 'https://f/big.png', width: '1280' }] }] }, 'f').gallery).toEqual(['https://f/big.png']);
+  });
+  it('un fournisseur sans images en second appel donne une galerie vide, sans erreur', async () => {
+    const fake = async (url: string) => { if (/\/images$/.test(url)) throw new Error('404'); return { id: 1, name: 'S', genres: [], _embedded: { cast: [] } }; };
+    expect((await richExtra('SERIE', 'tvm:1', fake as any)).gallery).toEqual([]);
+  });
 });
