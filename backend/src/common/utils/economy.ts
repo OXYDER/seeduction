@@ -50,6 +50,8 @@ export const ECONOMY = {
   hnrClearRepeat: num('HNR_CLEAR_REPEAT', 100),
   hnrClearMax: num('HNR_CLEAR_MAX', 900),
   /** Transfert de points entre membres : montant minimum et total envoyable par 24 h. */
+  /** Prix en points bonus d'un torrent mis en freeleech par son envoyeur (le personnel ne paie pas ; 0 = gratuit). */
+  uploadFreeleechCost: num('UPLOAD_FREELEECH_COST', 100),
   transferMin: num('TRANSFER_MIN', 10),
   transferDailyMax: num('TRANSFER_DAILY_MAX', 2000),
 };

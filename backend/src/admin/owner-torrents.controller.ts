@@ -9,7 +9,7 @@ import { RESUBMIT_NOTE_MAX } from '../common/utils/torrent-hold';
 
 /**
  * L'envoyeur modifie ses propres torrents en entier (nom, catégorie, langue, fiche, pochette, présentation, NFO, caractéristiques...) pour corriger
- * toute erreur. Seuls restent réservés à l'équipe : freeleech, double upload et statut. Un torrent rejeté qui est corrigé repart en validation.
+ * toute erreur. Seuls restent réservés à l'équipe : double upload et statut (le freeleech se paie en points bonus). Un torrent rejeté qui est corrigé repart en validation.
  * Chaque modification est inscrite dans le journal (Admin > Journal).
  */
 @UseGuards(JwtAuthGuard)
@@ -97,7 +97,7 @@ export class OwnerTorrentsController {
   async update(@Param('id') id: string, @Body() body: any, @Request() req: any) {
     const t = await this.own(req, id);
     if (typeof body?.categoryId === 'string' && body.categoryId) await this.assertAdultAllowed(req, body.categoryId, t.categoryId);
-    const result = await this.admin.updateTorrent(id, body ?? {}, { owner: true });
+    const result = await this.admin.updateTorrent(id, body ?? {}, { owner: true, payerId: accountOf(req) });
     let status = result.status;
     // Un torrent rejeté, une fois corrigé, repart en validation.
     if (t.status === 'REJECTED') status = (await this.prisma.torrent.update({ where: { id }, data: { status: 'PENDING' } })).status;

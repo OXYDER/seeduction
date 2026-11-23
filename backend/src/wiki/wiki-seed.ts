@@ -164,7 +164,7 @@ export const WIKI_SEED: WikiSeedCategory[] = [
         content:
           `Un torrent (ou une situation) en freeleech veut dire que le [b]télécharger ne compte pas dans ton ratio[/b] — l'upload, lui, compte toujours normalement.\n\n` +
           `Il y a plusieurs façons d'en profiter, cumulables :\n\n` +
-          `• [b]Freeleech sur un torrent précis[/b] : marqué « FREELEECH » par le staff (souvent pour relancer l'intérêt sur un contenu rare).\n` +
+          `• [b]Freeleech sur un torrent précis[/b] : marqué « FREELEECH » par le staff (souvent pour relancer l'intérêt sur un contenu rare) ou par son [b]envoyeur[/b], qui le paie en points bonus (100 points par défaut, affichés sur la case « 🎁 Torrent en freeleech » ; le personnel ne paie pas ; décocher plus tard ne rend pas les points).\n` +
           `• [b]Freeleech global[/b] : un événement pour tout le site, pendant une durée donnée (annoncé dans les Nouvelles et visible dans le [url=/freeleech]calendrier du freeleech[/url] : sur l'accueil, le lien « Voir tout le calendrier » ouvre un vrai calendrier, mois par mois, avec les périodes passées, en cours et à venir).\n` +
           `• [b]Freeleech personnel[/b] : offert à toi seul jusqu'à une date donnée — le cadeau de bienvenue en est un exemple (voir [url=/wiki/cadeau-de-bienvenue]Le cadeau de bienvenue[/url]), le staff peut aussi t'en offrir un en récompense.\n` +
           `• [b]Jeton freeleech[/b] : acheté dans la boutique à points bonus, à dépenser sur UN torrent précis de ton choix — son téléchargement ne comptera pas dans ton ratio pendant 7 jours.\n\n` +

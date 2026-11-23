@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useFreeleechPrice } from '../lib/freeleechPrice';
 import { useAuthStore } from '../store/auth';
 import DescriptionGenerator from '../components/DescriptionGenerator';
 import MemberImport from '../components/MemberImport';
@@ -43,7 +44,8 @@ function UploadOne() {
   const [categories, setCategories] = useState<any[]>([]);
   const [tags, setTags] = useState('');
   const [anonymous, setAnonymous] = useState(false);
-  const [freeleech, setFreeleech] = useState(false); // au choix de l'envoyeur : gratuit, sans point à dépenser
+  const [freeleech, setFreeleech] = useState(false); // au choix de l'envoyeur, contre des points bonus
+  const flPrice = useFreeleechPrice();
   useEffect(() => { api.get('/users/me').then((r) => { if (r.data?.anonymousUploads) setAnonymous(true); }).catch(() => undefined); }, []); // réglage « mes torrents sont anonymes »
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
@@ -589,7 +591,7 @@ function UploadOne() {
 
           <Step n={5} title="Envoi" done={false} locked={!step4} hint="Ajoute une description à l'étape 4.">
           <label className="row"><input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} style={{ width: 'auto' }} /> Upload anonyme</label>
-          <label className="row" title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres (ton upload, lui, est compté). Gratuit, tu peux le changer plus tard."><input type="checkbox" checked={freeleech} onChange={(e) => setFreeleech(e.target.checked)} style={{ width: 'auto' }} /> 🎁 Torrent en freeleech</label>
+          <label className="row" title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres (ton upload, lui, est compté). Les points sont débités à l'envoi."><input type="checkbox" checked={freeleech} onChange={(e) => setFreeleech(e.target.checked)} style={{ width: 'auto' }} /> 🎁 Torrent en freeleech <span className="muted">· {flPrice.price > 0 ? `coûte ${flPrice.text}` : 'gratuit'}</span></label>
             {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
             <button type="submit" disabled={!step4}>Uploader</button>
           </Step>

@@ -37,6 +37,7 @@ const FIELDS: Field[] = [
   eco('hnrClearPerHour', 'Hit & run', 'Effacer un hit & run : points par heure de seed manquante', 0, 10000, 1, undefined, true),
   eco('hnrClearRepeat', 'Hit & run', 'Effacer un hit & run : supplément par effacement des 30 derniers jours', 0, 100000, 5, 'Décourage de payer au lieu de seeder, fois après fois.', true),
   eco('hnrClearMax', 'Hit & run', 'Effacer un hit & run : prix maximum', 0, 10000000, 5, undefined, true),
+  eco('uploadFreeleechCost', 'Points bonus', 'Torrent en freeleech à l\'upload : prix en points', 0, 100000, 5, 'Payé par l\'envoyeur qui met son torrent en freeleech (à l\'envoi ou plus tard). 0 = gratuit. Le personnel ne paie pas.', true),
   eco('transferMin', 'Points bonus', 'Transfert de points : montant minimum', 1, 100000, 1, undefined, true),
   eco('transferDailyMax', 'Points bonus', 'Transfert de points : maximum envoyé par 24 h', 0, 10000000, 10, '0 = transferts désactivés.', true),
   eco('bonusPerTorrentHour', 'Points bonus', 'Points par heure et par torrent seedé', 0, 1000, 0.1),

@@ -172,7 +172,7 @@ export class EconomyService {
       seedingCount,
       perHour: memberHourly((await this.seededTorrents(userId)).get(userId) ?? [], ECONOMY.bonusPerTorrentHour, ECONOMY.bonusMaxTorrents),
       freeleechUntil,
-      rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours, hnrLimit: ECONOMY.hnrLimit, ratioGraceGb: ECONOMY.ratioGraceGb, welcomeUploadGb: ECONOMY.welcomeUploadGb, bonusMaxTorrents: ECONOMY.bonusMaxTorrents },
+      rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours, hnrLimit: ECONOMY.hnrLimit, ratioGraceGb: ECONOMY.ratioGraceGb, welcomeUploadGb: ECONOMY.welcomeUploadGb, bonusMaxTorrents: ECONOMY.bonusMaxTorrents, uploadFreeleechCost: ECONOMY.uploadFreeleechCost },
       // Ratio minimum du membre (celui du site, 0,5 par défaut) et marge de téléchargement qui en découle : c'est lui, et non un ratio de 1, que le tracker applique.
       minRatio: user.minRatio,
       downloadMarginBytes: downloadMarginBytes(Number(user.uploaded), Number(user.downloaded), user.minRatio, ECONOMY.ratioGraceGb * 1e9),

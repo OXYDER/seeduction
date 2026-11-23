@@ -21,6 +21,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { parsePeerClient } from '../common/utils/peer-client';
 import { stripNul } from '../common/utils/strip-nul';
+import { chargeUploaderFreeleech, refundUploaderFreeleech } from '../common/utils/freeleech-cost';
 
 const STORAGE_DIR = process.env.TORRENT_STORAGE_DIR ?? './storage/torrents';
 const ANNOUNCE_BASE_URL = process.env.ANNOUNCE_BASE_URL ?? 'https://tracker.example.com/tracker';
@@ -138,7 +139,7 @@ export class TorrentsService implements OnModuleInit {
     attrs?: unknown;
     /** Import automatique : un nom mal formé (espaces, résolution en majuscule, team isolée...) est remplacé par le nom standard proposé d'après les fichiers et le NFO. */
     standardizeName?: boolean;
-    /** Torrent en freeleech : au choix de l'envoyeur, gratuit. */
+    /** Torrent en freeleech : au choix de l'envoyeur, contre des points bonus (le personnel ne paie pas). */
     freeleech?: boolean;
   }) {
     // PostgreSQL refuse l'octet 0x00 : un NFO binaire ou un nom mal formé ferait échouer l'enregistrement.
@@ -171,7 +172,11 @@ export class TorrentsService implements OnModuleInit {
     const releaseName = stripReleaseExtension(rawName); // jamais d'extension de fichier (.mkv...) dans le titre
     const attrs = await this.resolveAttrs(params.categoryId, rawName, parsed.files, params.nfo, params.genres ?? [], params.attrs);
     const releaseGroup = await this.teams.noteRelease(releaseName); // team détectée dans le nom (créée automatiquement si elle est nouvelle)
-    const torrent = await this.prisma.torrent.create({
+    // Le freeleech d'envoyeur se paie en points bonus : débité juste avant l'enregistrement, rendu si l'enregistrement échoue.
+    const paid = params.freeleech ? await chargeUploaderFreeleech(this.prisma, params.userId) : 0;
+    let torrent: Awaited<ReturnType<typeof this.prisma.torrent.create>>;
+    try {
+    torrent = await this.prisma.torrent.create({
       data: {
         infoHash: parsed.infoHash,
         releaseGroup,
@@ -206,6 +211,10 @@ export class TorrentsService implements OnModuleInit {
         ...(params.nfo ? { nfoFile: { create: { content: params.nfo } } } : {}),
       },
     });
+    } catch (e) {
+      await refundUploaderFreeleech(this.prisma, params.userId, paid);
+      throw e;
+    }
 
     // Fiche complète (acteurs, studios, genres...) : ne doit jamais faire échouer l'upload.
     if (params.metaKind && params.metaId) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useFreeleechPrice } from '../lib/freeleechPrice';
 import WysiwygEditor from './WysiwygEditor';
 import FacetFields from './FacetFields';
 import FichePanel from './FichePanel';
@@ -29,6 +30,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
   const [categoryId, setCategoryId] = useState(torrent.categoryId ?? torrent.category?.id ?? '');
   const [status, setStatus] = useState(torrent.status ?? 'APPROVED');
   const [freeleech, setFreeleech] = useState(!!torrent.freeleech);
+  const flPrice = useFreeleechPrice();
   const [doubleUpload, setDoubleUpload] = useState(!!torrent.doubleUpload);
   const [description, setDescription] = useState(torrent.description ?? '');
   const [coverImage, setCoverImage] = useState(torrent.coverImage ?? '');
@@ -177,7 +179,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
               </select>
             </div>
             <label className="row muted" style={{ gap: 6 }}>
-              <input type="checkbox" style={{ width: 'auto' }} checked={freeleech} onChange={(e) => setFreeleech(e.target.checked)} /> 🎁 Freeleech
+              <input type="checkbox" style={{ width: 'auto' }} checked={freeleech} onChange={(e) => setFreeleech(e.target.checked)} /> 🎁 Freeleech{owner && !torrent.freeleech && flPrice.price > 0 ? ` (coûte ${flPrice.price} points à l'activation)` : ''}
             </label>
             {!owner && (
               <>

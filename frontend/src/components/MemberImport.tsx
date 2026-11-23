@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import { useFreeleechPrice } from '../lib/freeleechPrice';
 import { formatBytes } from '../lib/format';
 import { timeAgo } from '../lib/time';
 import { LANGUAGE_GROUPS, LANGUAGE_LABELS } from '../lib/languageTag';
@@ -319,6 +320,7 @@ function ItemCard({ item, options, checked, onCheck, onUpdated, reload, setMsg }
   item: Item; options: Options; checked?: boolean; onCheck?: () => void; onUpdated: (u: { id: string; why: string | null; detail: any }) => void; reload: () => Promise<void>;
   setMsg: (m: { ok: boolean; text: string } | null) => void;
 }) {
+  const flPrice = useFreeleechPrice();
   const d = item.detail ?? {};
   const o = d.override ?? {};
   const green = d.verdict === 'GREEN';
@@ -411,7 +413,7 @@ function ItemCard({ item, options, checked, onCheck, onUpdated, reload, setMsg }
           <option value="">Langue ? (non précisée)</option>
           {LANGUAGE_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.values.map((l) => <option key={l} value={l}>{LANGUAGE_LABELS[l] ?? l}</option>)}</optgroup>)}
         </select>
-        <label className="row" style={{ gap: 6, fontSize: 13 }} title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres (gratuit, modifiable plus tard)"><input type="checkbox" style={{ width: 'auto' }} checked={!!o.freeleech} disabled={busy} onChange={(e) => save({ freeleech: e.target.checked })} /> 🎁 Freeleech</label>
+        <label className="row" style={{ gap: 6, fontSize: 13 }} title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres. Les points sont débités à l'envoi de ce torrent."><input type="checkbox" style={{ width: 'auto' }} checked={!!o.freeleech} disabled={busy} onChange={(e) => save({ freeleech: e.target.checked })} /> 🎁 Freeleech{flPrice.price > 0 ? ` (${flPrice.price} pts)` : ''}</label>
       </div>
 
       {!(d.wantsFiche || problems.includes('fiche') || showFiche || o.metaId) && (

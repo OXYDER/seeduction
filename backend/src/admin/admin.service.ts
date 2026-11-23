@@ -23,6 +23,7 @@ import { stripReleaseExtension } from '../common/utils/release-name';
 import { AuthService } from '../auth/auth.service';
 import { UploadCreditService } from '../upload-credit/upload-credit.service';
 import { holdMessage, normalizeHold } from '../common/utils/torrent-hold';
+import { chargeUploaderFreeleech, refundUploaderFreeleech } from '../common/utils/freeleech-cost';
 
 export interface Actor { userId: string; username: string; role: string }
 
@@ -210,7 +211,8 @@ export class AdminService {
     return { updated, failed, fields: Object.keys(picked), ids: list };
   }
 
-  async updateTorrent(id: string, body: Record<string, any>, opts: { owner?: boolean } = {}) {
+  /** `payerId` : l'envoyeur qui modifie son torrent (met un torrent en freeleech contre des points bonus ; le personnel ne paie pas). */
+  async updateTorrent(id: string, body: Record<string, any>, opts: { owner?: boolean; payerId?: string } = {}) {
     const data: Record<string, any> = {};
     if (typeof body.name === 'string' && body.name.trim()) data.name = stripReleaseExtension(body.name.trim().slice(0, 300));
     if (typeof body.description === 'string') data.description = body.description;
@@ -286,7 +288,17 @@ export class AdminService {
       if (TORRENT_STATUSES.includes(body.status)) data.status = body.status;
     }
     if (Object.keys(data).length === 0) throw new BadRequestException('Aucune modification valide');
-    return this.prisma.torrent.update({ where: { id }, data });
+    let paid = 0;
+    if (opts.owner && opts.payerId && data.freeleech === true) {
+      const cur = await this.prisma.torrent.findUnique({ where: { id }, select: { freeleech: true } });
+      if (cur && !cur.freeleech) paid = await chargeUploaderFreeleech(this.prisma, opts.payerId);
+    }
+    try {
+      return await this.prisma.torrent.update({ where: { id }, data });
+    } catch (e) {
+      await refundUploaderFreeleech(this.prisma, opts.payerId ?? '', paid);
+      throw e;
+    }
   }
 
   // ------------------------------------------------------------ membres
