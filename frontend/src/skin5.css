@@ -310,7 +310,7 @@
 :root[data-theme="prestige"] .home-plex .hero-frame > .panel-title { display: none; }
 :root[data-theme="prestige"] .hero-frame-bg { opacity: 1; background-position: center 30%; }
 :root[data-theme="prestige"] .panel.ornate.hero-frame::before, :root[data-theme="prestige"] .hero-frame::before { display: block; content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(6, 7, 13, 0.94) 0%, rgba(6, 7, 13, 0.62) 42%, rgba(6, 7, 13, 0.08) 100%), linear-gradient(0deg, rgba(6, 7, 13, 0.82), transparent 55%); pointer-events: none; }
-:root[data-theme="prestige"] .home-plex .hero-frame .hero-plex { position: relative; z-index: 2; padding: clamp(18px, 3vw, 34px); max-width: 680px; }
+:root[data-theme="prestige"] .home-plex .hero-frame .hero-plex { position: relative; z-index: 2; padding: clamp(18px, 3vw, 34px); max-width: 880px; }
 :root[data-theme="prestige"] .hero-plex .hero-kicker { display: flex; align-items: center; gap: 8px; text-transform: uppercase; font-size: 11.5px; font-weight: 800; letter-spacing: 0.12em; color: var(--acc-light); margin-bottom: 12px; }
 :root[data-theme="prestige"] .hero-plex .hero-kicker::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--acc1); box-shadow: 0 0 10px var(--acc1); flex: none; }
 :root[data-theme="prestige"] .home-plex .hero-frame .hero-plex h1 { font-size: clamp(26px, 3.4vw, 42px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; margin-bottom: 14px; }
@@ -434,3 +434,11 @@ a.sc:hover { border-color: rgba(var(--acc-rgb), 0.4); transform: translateY(-2px
 /* Logos d'équipes en pastilles rondes */
 .mtl-team .mtl-logo { width: 58px !important; height: 58px !important; border-radius: 50%; display: grid; place-items: center; background: #fff; box-shadow: 0 10px 22px -8px #000, inset 0 0 0 3px rgba(255, 255, 255, 0.2); }
 .mtl-team .mtl-logo img { width: 40px; height: 40px; object-fit: contain; }
+
+/* Invitation à activer les notifications : toujours en bas à droite (le style des panneaux la remettait dans la page) */
+:root[data-theme="prestige"] .panel.notify-prompt { position: fixed; bottom: 16px; right: 16px; left: auto; width: min(340px, calc(100vw - 32px)); z-index: 130; padding: 14px; }
+@media (max-width: 700px) { :root[data-theme="prestige"] .panel.notify-prompt { bottom: 76px; left: 16px; right: 16px; width: auto; } }
+
+/* Bouton « − » des sections de l'accueil : il garde sa place, les liens d'en-tête ne passent plus dessous */
+:root[data-theme="prestige"] .hs-body :is(.fy-card h3, .st-board h3, .panel-title, .sc-head, .hr-card h4) { padding-right: 34px; }
+:root[data-theme="prestige"] .hs-min { top: 12px; right: 12px; }
