@@ -86,7 +86,7 @@ export class TorrentsController {
       search: query.search,
       uploaderId: query.uploaderId,
       page: parseInt(query.page ?? '1', 10),
-      pageSize: parseInt(query.pageSize ?? '25', 10),
+      pageSize: Math.min(200, Math.max(1, parseInt(query.pageSize ?? '25', 10) || 25)),
       sort: query.sort,
       order: query.order === 'asc' ? 'asc' : query.order === 'desc' ? 'desc' : undefined,
       period: query.period === 'day' || query.period === 'week' || query.period === 'month' ? query.period : undefined,

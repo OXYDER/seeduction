@@ -9,6 +9,8 @@ import { CATEGORY_STYLE } from '../components/Layout';
 import { useAuthStore } from '../store/auth';
 import { useTheme, applyCategoryAccent } from '../lib/theme';
 import { useViewMode } from '../lib/viewMode';
+import { useListPrefs } from '../lib/listMode';
+import { InfiniteFooter, ListModeBar } from '../components/InfiniteList';
 import TorrentView, { ViewSwitcher } from '../components/TorrentView';
 import Recommended from '../components/Recommended';
 import { parseNaturalQuery, ORIGINS, RESOLUTIONS, LANGUAGES, SOURCES, CODECS, AUDIO_FORMATS, CONTAINERS } from '../lib/searchParser';
@@ -27,7 +29,7 @@ const SORTS = [
 const DEFAULT_DIR: Record<string, 'asc' | 'desc'> = {
   date: 'desc', nom: 'asc', taille: 'desc', seeders: 'desc', leechers: 'desc', popularite: 'desc', activite: 'desc', categorie: 'asc', uploader: 'asc',
 };
-const PAGE_SIZES = [25, 50, 100];
+const PAGE_SIZES = [25, 50, 75, 100];
 
 export default function Browse() {
   const [params, setParams] = useSearchParams();
@@ -77,6 +79,13 @@ export default function Browse() {
   const authUser = useAuthStore((s) => s.user);
   const currentUserId = authUser?.id;
   const [view, setView] = useViewMode('browse');
+  // Défilement continu (par défaut) : la suite se charge en descendant ; sinon pages numérotées.
+  const [listPrefs, setListPrefs] = useListPrefs();
+  const infinite = listPrefs.infinite;
+  const effSize = infinite ? listPrefs.size : pageSize;
+  const [loadingList, setLoadingList] = useState(false);
+  const listSeq = useRef(0);
+  const [scroll, setScroll] = useState({ key: '', page: 1 });
   // Les filtres sont ouverts par défaut sur ordinateur, fermés sur téléphone (ils prendraient tout l'écran avant la liste) ; le choix du membre est ensuite retenu.
   const [showFilters, setShowFilters] = useState(() => { try { const saved = localStorage.getItem('browse-filters'); return saved ? saved === 'open' : !window.matchMedia('(max-width: 760px)').matches; } catch { return true; } });
   useEffect(() => { try { localStorage.setItem('browse-filters', showFilters ? 'open' : 'closed'); } catch { /* navigation privée */ } }, [showFilters]);
@@ -94,10 +103,17 @@ export default function Browse() {
     setClosedCatId(parentId);
   }
 
+  // Clé des filtres : en défilement continu, un changement de filtre ou de tri repart du premier lot.
+  const filterKey = JSON.stringify([view, parsed.name, categoryId, uploaderId, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period, attrKey, effSize]);
+  const effPage = infinite ? (scroll.key === filterKey ? scroll.page : 1) : page;
+  useEffect(() => { setScroll((cur) => (cur.key === filterKey ? cur : { key: filterKey, page: 1 })); }, [filterKey]);
+
   useEffect(() => {
+    const id = ++listSeq.current;
+    setLoadingList(true);
     api.get('/torrents', {
       params: {
-        search: parsed.name, categoryId, uploaderId, page, pageSize, sort, order,
+        search: parsed.name, categoryId, uploaderId, page: effPage, pageSize: effSize, sort, order,
         grouped: view === 'grouped' ? 1 : undefined, // vue « Groupé » : des contenus (séries, films) avec TOUTES leurs releases
         year: year || undefined, resolution: resolution || undefined, language: language || undefined,
         source: source || undefined, codec: codec || undefined, audio: audio || undefined,
@@ -111,13 +127,14 @@ export default function Browse() {
         ...attrParams,
       },
     }).then((r) => {
-      setItems(r.data.items);
+      if (id !== listSeq.current) return; // réponse d'une requête déjà dépassée
+      setItems((cur) => (infinite && effPage > 1 ? [...cur, ...r.data.items.filter((n: any) => !cur.some((o) => o.id === n.id))] : r.data.items));
       setTotal(r.data.total);
       setTotalTorrents(r.data.totalTorrents ?? r.data.total);
       setTotalSize(typeof r.data.totalSize === 'number' ? r.data.totalSize : null);
       setCatalog(r.data.catalog ?? null);
-    });
-  }, [view, parsed.name, categoryId, uploaderId, page, pageSize, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period, attrKey]);
+    }).catch(() => undefined).finally(() => { if (id === listSeq.current) setLoadingList(false); });
+  }, [view, parsed.name, categoryId, uploaderId, effPage, effSize, infinite, sort, order, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr, minSizeGo, maxSizeGo, minSeeders, maxSeeders, state, period, attrKey]);
 
   // Valeurs de filtres réellement disponibles pour la liste affichée (avec nombre de torrents).
   const [facets, setFacets] = useState<Record<string, any>>({});
@@ -188,7 +205,7 @@ export default function Browse() {
   /** Pagination (numéros de pages, précédent / suivant, nombre par page), affichée en haut et en bas de la liste. */
   const pager = (bottom: boolean) => (
     <Pager
-      page={page} total={total} pageSize={pageSize} pageSizes={PAGE_SIZES} unit={view === 'grouped' ? 'contenu' : 'résultat'}
+      page={page} total={total} pageSize={effSize} pageSizes={PAGE_SIZES} unit={view === 'grouped' ? 'contenu' : 'résultat'}
       onPage={goToPage} onSize={changePageSize} scrollTop={bottom}
       hrefFor={(p) => { const n = new URLSearchParams(params); n.set('page', String(p)); return `?${n.toString()}`; }}
     />
@@ -362,6 +379,7 @@ export default function Browse() {
             />
           </div>
           <ViewSwitcher value={view} onChange={setView} />
+          <ListModeBar prefs={listPrefs} onChange={setListPrefs} />
           {!uploaderId && !state && (
             <SaveSearchButton query={{ search: parsed.name, categoryId, year, resolution, language, source, codec, audio, containerFormat, origin, genre, hdr: hdr ? 'true' : '', minSize: minSizeGo, maxSize: maxSizeGo, ...attrParams }} />
           )}
@@ -515,9 +533,11 @@ export default function Browse() {
 
       <div className="panel">
         <div className="muted" style={{ marginBottom: 8 }}>{view === 'grouped' ? `${total} contenu(s) · ${totalTorrents} torrent(s)` : `${total} résultat(s)`}</div>
-        <div style={{ marginBottom: 10 }}>{pager(false)}</div>
+        {!infinite && <div style={{ marginBottom: 10 }}>{pager(false)}</div>}
         <TorrentView items={items} view={view} sort={sort} order={order} onSort={clickColumn} allResults={totalSize === null ? null : { count: totalTorrents, size: totalSize }} catalog={catalog} />
-        <div style={{ marginTop: 12 }}>{pager(true)}</div>
+        {infinite
+          ? <InfiniteFooter shown={items.length} total={total} loading={loadingList} unit={view === 'grouped' ? 'contenu' : 'résultat'} onMore={() => setScroll({ key: filterKey, page: effPage + 1 })} />
+          : <div style={{ marginTop: 12 }}>{pager(true)}</div>}
       </div>
 
       {items.length === 0 && !uploaderId && <Recommended title="🔎 Rien trouvé ? Tu pourrais aimer" subtitle="Selon ton historique" />}

@@ -328,7 +328,7 @@
 :root[data-theme="prestige"] .fy-t b { font-size: 13px; font-weight: 600; }
 :root[data-theme="prestige"] .fy-chip { background: none !important; padding: 0; font-size: 12px; font-weight: 700; align-self: flex-start; margin-top: 18px; }
 :root[data-theme="prestige"] .fy-chip.ok { color: var(--success); } :root[data-theme="prestige"] .fy-chip.dl { color: var(--acc-light); } :root[data-theme="prestige"] .fy-chip.warn { color: #ffc45d; } :root[data-theme="prestige"] .fy-chip.bad { color: var(--danger); }
-.ep { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; align-items: start; }
+.fy-next .ep { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; align-items: start; }
 .ep-th { width: 92px; aspect-ratio: 2 / 3; border-radius: 10px; object-fit: cover; border: 1px solid var(--s5-line2); box-shadow: 0 14px 30px -14px #000; background: rgba(255, 255, 255, 0.06); }
 .ep-th.none { display: grid; place-items: center; font-size: 28px; }
 .ep-t { display: grid; gap: 6px; align-content: start; min-width: 0; }
@@ -442,3 +442,16 @@ a.sc:hover { border-color: rgba(var(--acc-rgb), 0.4); transform: translateY(-2px
 /* Bouton « − » des sections de l'accueil : il garde sa place, les liens d'en-tête ne passent plus dessous */
 :root[data-theme="prestige"] .hs-body :is(.fy-card h3, .st-board h3, .panel-title, .sc-head, .hr-card h4) { padding-right: 34px; }
 :root[data-theme="prestige"] .hs-min { top: 12px; right: 12px; }
+
+/* Découvrir : outils de liste (affichage, défilement) et liste de torrents comme Parcourir */
+:root[data-theme="prestige"] .dc-tools { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+:root[data-theme="prestige"] .dc-list { animation: s5Rise .45s var(--s5-ease) both; min-width: 0; }
+:root[data-theme="prestige"] .lm-foot { border-top: 1px solid var(--s5-line); margin-top: 14px; }
+:root[data-theme="prestige"] .lm-spin { border-color: rgba(255,255,255,0.14); border-top-color: var(--acc-light); }
+:root[data-theme="prestige"] .lm-size select { background: var(--s5-surf); border: 1px solid var(--s5-line2); border-radius: 10px; }
+@media (max-width: 760px) { :root[data-theme="prestige"] .dc-tools { margin-left: 0; width: 100%; } }
+
+/* Page visitée dans les menus : un voile d'accent discret au lieu du blanc plein */
+:root[data-theme="prestige"] .side-links a.active { background: linear-gradient(90deg, rgba(var(--acc-rgb), 0.24), rgba(var(--acc-rgb), 0.08)); color: #fff; border-color: transparent; box-shadow: inset 3px 0 0 var(--acc1); }
+:root[data-theme="prestige"] .side-links a.active .side-icon { background: transparent; box-shadow: none; }
+:root[data-theme="prestige"] .side-links a.active:hover { background: linear-gradient(90deg, rgba(var(--acc-rgb), 0.32), rgba(var(--acc-rgb), 0.12)); }

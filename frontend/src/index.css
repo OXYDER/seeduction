@@ -4867,3 +4867,12 @@ button.stat-chip.on { background: #5b3bd6 !important; border-color: #8b5cf6 !imp
 :root[data-theme] .chat-rail { overflow-x: hidden; scrollbar-width: none; }
 :root[data-theme] .chat-rail::-webkit-scrollbar { display: none; width: 0; height: 0; }
 :root[data-theme] .chat-rail[data-pos="top"], :root[data-theme] .chat-rail[data-pos="bottom"] { overflow-x: auto; overflow-y: hidden; }
+
+/* Défilement continu des listes de torrents (Parcourir, Découvrir) */
+.lm-bar { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lm-size { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.lm-size select { padding: 5px 8px; }
+.lm-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; padding: 18px 0 8px; min-height: 56px; }
+.lm-spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.18); border-top-color: var(--gold, #e0a43a); animation: lmSpin .7s linear infinite; }
+@keyframes lmSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .lm-spin { animation-duration: 2s; } }

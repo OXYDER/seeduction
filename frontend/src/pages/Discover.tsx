@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
-import { PosterCard } from '../components/TorrentRail';
+import TorrentView, { ViewSwitcher } from '../components/TorrentView';
+import { InfiniteFooter, ListModeBar } from '../components/InfiniteList';
+import { useViewMode } from '../lib/viewMode';
+import { useListPrefs } from '../lib/listMode';
 import type { LayoutContext } from '../components/Layout';
 
 type TabId = 'nouveautes' | 'populaires' | 'pour-toi' | 'freeleech' | 'a-seeder';
@@ -17,9 +20,11 @@ const TABS: { id: TabId; icon: string; label: string; title: string; sub: string
 const PERIODS: { value: Period; label: string }[] = [
   { value: '', label: 'Tout' }, { value: 'day', label: '24 heures' }, { value: 'week', label: 'Cette semaine' }, { value: 'month', label: 'Ce mois' },
 ];
-const PAGE = 24;
 
-/** Découvrir : une page de grandes grilles d'affiches (nouveautés, plus populaires, recommandations, freeleech, à seeder), avec leurs filtres. */
+/**
+ * Découvrir : nouveautés, plus populaires, recommandations, freeleech, à seeder, avec leurs filtres. La liste s'affiche comme
+ * Parcourir (même sélecteur d'affichage : liste, confortable, grille, affiches…) et se charge au fil du défilement.
+ */
 export default function Discover() {
   const { categories } = useOutletContext<LayoutContext>();
   const [sp, setSp] = useSearchParams();
@@ -30,12 +35,16 @@ export default function Discover() {
   const [cat, setCat] = useState('');
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const seq = useRef(0);
-
-  // Un changement d'onglet ou de filtre repart de la première page.
-  useEffect(() => { setPage(1); setItems([]); }, [tab, period, mode, cat]);
+  const [view, setView] = useViewMode('discover');
+  const [prefs, setPrefs] = useListPrefs();
+  const size = prefs.size;
+  // Chaque combinaison onglet / filtres / taille de lot a son propre compteur de lots : un changement repart du premier.
+  const key = `${tab}|${period}|${mode}|${cat}|${size}|${prefs.infinite}`;
+  const [lots, setLots] = useState({ key: '', n: 1 });
+  const page = lots.key === key ? lots.n : 1;
+  useEffect(() => { setLots((cur) => (cur.key === key ? cur : { key, n: 1 })); }, [key]);
 
   useEffect(() => {
     const id = ++seq.current;
@@ -43,21 +52,20 @@ export default function Discover() {
     const done = (list: any[], n: number, append: boolean) => { if (id !== seq.current) return; setItems((cur) => (append ? [...cur, ...list] : list)); setTotal(n); setLoading(false); };
     const fail = () => { if (id === seq.current) { setItems([]); setTotal(0); setLoading(false); } };
     if (tab === 'pour-toi') {
-      api.get('/torrents/mine/recommended', { params: { limit: 48 } }).then((r) => done(r.data, r.data.length, false)).catch(fail);
+      api.get('/torrents/mine/recommended', { params: { limit: 60 } }).then((r) => done(r.data, r.data.length, false)).catch(fail);
       return;
     }
-    const params: Record<string, string | number> = { page, pageSize: PAGE, sort: 'date' };
+    const params: Record<string, string | number> = { page, pageSize: size, sort: 'date' };
     if (tab === 'populaires') params.sort = mode;
     if (tab === 'freeleech') params.freeleech = 'true';
     if (tab === 'a-seeder') { params.minSeeders = 1; params.maxSeeders = 2; params.sort = 'seeders'; params.order = 'asc'; }
     if (period && (tab === 'nouveautes' || tab === 'populaires')) params.period = period;
     if (cat) params.categoryId = cat;
     api.get('/torrents', { params }).then((r) => done(r.data.items, r.data.total, page > 1)).catch(fail);
-  }, [tab, period, mode, cat, page]);
+  }, [tab, period, mode, cat, page, size]);
 
   const showPeriod = tab === 'nouveautes' || tab === 'populaires';
   const showCats = tab !== 'pour-toi';
-  const more = tab !== 'pour-toi' && items.length < total;
 
   return (
     <div className="dc">
@@ -96,12 +104,14 @@ export default function Discover() {
           </div>
         )}
         {!loading && tab !== 'pour-toi' && <span className="dc-count muted">{total} résultat{total > 1 ? 's' : ''}</span>}
+        <div className="dc-tools">
+          <ViewSwitcher value={view} onChange={setView} modes={['list', 'comfortable', 'details', 'grid', 'posters', 'compact']} />
+          {tab !== 'pour-toi' && <ListModeBar prefs={prefs} onChange={setPrefs} manual />}
+        </div>
       </div>
 
-      <div className="dc-grid" key={`${tab}-${period}-${mode}-${cat}`}>
-        {items.map((t, i) => <div key={t.id} className="dc-cell" style={{ ['--n' as string]: i % PAGE }}><PosterCard t={t} /></div>)}
-        {loading && items.length === 0 && Array.from({ length: 12 }, (_, i) => <span key={i} className="skeleton-card"><span className="skeleton-poster" /><span className="skeleton-line" /></span>)}
-      </div>
+      {items.length > 0 && <div className="dc-list" key={`${tab}-${period}-${mode}-${cat}-${view}`}><TorrentView items={items} view={view} hideSummary /></div>}
+      {loading && items.length === 0 && <div className="dc-grid">{Array.from({ length: 12 }, (_, i) => <span key={i} className="skeleton-card"><span className="skeleton-poster" /><span className="skeleton-line" /></span>)}</div>}
 
       {!loading && items.length === 0 && (
         <div className="dc-empty panel">
@@ -110,7 +120,9 @@ export default function Discover() {
           <span className="muted">{tab === 'pour-toi' ? 'Télécharge et ajoute quelques favoris : les suggestions apparaîtront ici.' : 'Essaie un autre filtre ou une autre période.'}</span>
         </div>
       )}
-      {more && <div className="dc-more"><button type="button" className="secondary" disabled={loading} onClick={() => setPage((p) => p + 1)}>{loading ? 'Chargement…' : `Voir plus (${total - items.length})`}</button></div>}
+      {tab !== 'pour-toi' && items.length > 0 && (prefs.infinite
+        ? <InfiniteFooter shown={items.length} total={total} loading={loading} onMore={() => setLots({ key, n: page + 1 })} />
+        : items.length < total && <div className="dc-more"><button type="button" className="secondary" disabled={loading} onClick={() => setLots({ key, n: page + 1 })}>{loading ? 'Chargement…' : `Voir plus (${total - items.length})`}</button></div>)}
     </div>
   );
 }

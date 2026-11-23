@@ -94,7 +94,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]6. La vue Groupé : une seule ligne par film ou série[/b]\n` +
         `Elle réunit toutes les versions d'un même contenu. Un clic dépliant montre chaque release (langue, qualité, source, taille, seeders), et pour une série le nombre d'épisodes. Quand un épisode manque, un lien « faire une demande » apparaît.\n\n` +
         `[b]7. Pagination[/b]\n` +
-        `Les numéros de page sont cliquables, en haut et en bas de la liste, avec le choix du nombre de résultats par page (25 / 50 / 100).\n\n` +
+        `Par défaut, la liste est en [b]défilement continu[/b] : la suite se charge toute seule quand tu descends dans la page, par lots de 25 / 50 / 75 / 100 torrents (réglage « Par lot » dans la barre d'outils). Le bouton [b]Pages[/b] revient aux numéros de page cliquables, en haut et en bas de la liste, avec le choix du nombre de résultats par page. Ce réglage est retenu dans ton navigateur.\n\n` +
         `[b]8. Quand rien n'apparaît[/b]\n` +
         `• Enlève un filtre à la fois (le compteur des boutons te guide).\n` +
         `• Cherche un seul mot, sans année.\n` +
@@ -700,7 +700,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `En haut à droite, chaque icône ouvre un petit cadre qui reste toujours dans l'écran, même sur téléphone : 🎨 la couleur d'accent, 🌱 les seeds à terminer (le temps de seed restant de chaque torrent), 🔔 les notifications, ✉️ tes [b]messages privés[/b] récents (non lus en évidence, avec la présence de l'interlocuteur, « Tout marquer lu », « Nouveau message » et le lien « Voir tous mes messages ») et 👫 les [b]amis en ligne[/b] (leur statut, un bouton 💬 pour leur écrire, le rappel des demandes d'ami en attente et le lien « Voir tous mes amis »).\n\n` +
         `[b]Découvrir : nouveautés, plus populaires, recommandations[/b]
 ` +
-        `La page [url=/decouvrir]Découvrir[/url] (menu [b]Catalogue[/b]) réunit en grandes grilles d'affiches : les [b]Nouveautés[/b] (ajoutés récemment, par période et par catégorie), les [b]Plus populaires[/b] (les plus téléchargés ou les plus seedés), [b]Recommandé pour toi[/b] (d'après ce que tu regardes et tes favoris), le [b]Freeleech[/b] en cours et les torrents [b]À seeder[/b]. Les mêmes rangées sont sur ton accueil, avec la grande affiche [b]À la une[/b] en haut : tu peux les cacher, les déplacer ou les réduire (voir « Organiser l'accueil »).
+        `La page [url=/decouvrir]Découvrir[/url] (menu [b]Catalogue[/b]) réunit, avec le même sélecteur d'affichage que Parcourir (liste, confortable, détails, grille, affiches, compact) et le défilement continu : les [b]Nouveautés[/b] (ajoutés récemment, par période et par catégorie), les [b]Plus populaires[/b] (les plus téléchargés ou les plus seedés), [b]Recommandé pour toi[/b] (d'après ce que tu regardes et tes favoris), le [b]Freeleech[/b] en cours et les torrents [b]À seeder[/b]. Les mêmes rangées sont sur ton accueil, avec la grande affiche [b]À la une[/b] en haut : tu peux les cacher, les déplacer ou les réduire (voir « Organiser l'accueil »).
 
 ` +
         `[b]Organiser l'accueil[/b]\n` +

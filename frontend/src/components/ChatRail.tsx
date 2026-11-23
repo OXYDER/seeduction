@@ -99,14 +99,23 @@ export default function ChatRail() {
       });
     };
     measure();
-    window.addEventListener('scroll', measure, { passive: true });
+    // Une remontée rapide en haut de page peut finir avant que l'en-tête ait fini de se poser : on re-mesure aussi
+    // juste après le dernier défilement et à la fin des transitions de l'en-tête, sinon le haut des bulles reste coupé.
+    let tail = 0;
+    let tail2 = 0;
+    const onScroll = () => { measure(); clearTimeout(tail); clearTimeout(tail2); tail = window.setTimeout(measure, 120); tail2 = window.setTimeout(measure, 500); };
+    const onEnd = (e: Event) => { if ((e.target as HTMLElement | null)?.closest?.('.side-topbar, .top-menu, .top-sticky')) measure(); };
+    window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', measure);
+    document.addEventListener('transitionend', onEnd);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     const bar = document.querySelector('.side-topbar');
     if (bar && ro) ro.observe(bar);
+    const sticky = document.querySelector('.top-sticky');
+    if (sticky && ro) ro.observe(sticky);
     const menu = document.querySelector('.top-menu');
     if (menu && ro) ro.observe(menu);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', measure); window.removeEventListener('resize', measure); ro?.disconnect(); };
+    return () => { cancelAnimationFrame(raf); clearTimeout(tail); clearTimeout(tail2); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', measure); document.removeEventListener('transitionend', onEnd); ro?.disconnect(); };
   }, [wide, location.pathname, navStyle]);
 
   function hide(c: ConvSummary) {
