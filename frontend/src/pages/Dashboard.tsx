@@ -1,3 +1,4 @@
+import Emo from '../components/Emo';
 import { useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { api } from '../api/client';
@@ -172,7 +173,7 @@ function ClassicDashboard() {
           <NewsPanel />
           <TelegramCard />
           <div className="panel">
-          <div className="panel-title"><span className="title-icon">🏆</span>Torrents en vedette</div>
+          <div className="panel-title"><span className="title-icon"><Emo e="🏆" size={16} /></span>Torrents en vedette</div>
           <table>
             <thead>
               <tr><th>Nom</th><th>Catégorie</th><th>Taille</th><th>Ajouté</th><th>Seed</th><th>Leech</th></tr>
@@ -215,7 +216,7 @@ function ClassicDashboard() {
 
         <div className="grid col-right">
           <div className="panel">
-            <div className="panel-title"><span className="title-icon">👑</span>Top uploaders</div>
+            <div className="panel-title"><span className="title-icon"><Emo e="👑" size={16} /></span>Top uploaders</div>
             {topUploaders.map((u, i) => (
               <div key={u.id} className="row" style={{ justifyContent: 'space-between', padding: '6px 0' }}>
                 <span className="row" style={{ gap: 8 }}>
@@ -244,7 +245,7 @@ function ClassicDashboard() {
             ['🔗', formatNumber(stats.totalPeers), 'Pairs', '', false],
             ['📊', formatBytes(stats.totalTraffic), 'Trafic total', '/stats', false],
           ] as [string, string, string, string, boolean][]).map(([icon, n, label, to, everyone]) => {
-            const inner = <><div className="icon">{icon}</div><div className="n">{n}</div><div className="l">{label}</div></>;
+            const inner = <><div className="icon"><Emo e={icon} size={26} /></div><div className="n">{n}</div><div className="l">{label}</div></>;
             // Réservé à l'équipe, sauf les torrents (accessibles aux membres connectés).
             const allowed = !!to && !!user && (everyone || ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role));
             return allowed ? <Link key={label} to={to} className="item" title={`Voir : ${label}`}>{inner}</Link> : <div key={label} className="item">{inner}</div>;

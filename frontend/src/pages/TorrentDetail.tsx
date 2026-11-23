@@ -36,6 +36,7 @@ import Recommended from '../components/Recommended';
 import { FavoriteStar, HealthDot } from '../components/TorrentBits';
 import { useFavorites } from '../lib/favorites';
 import { usePageBackdrop } from '../lib/backdrop';
+import TrailerPlayer, { hasTrailer } from '../components/TrailerPlayer';
 import { useTheme } from '../lib/theme';
 import { formatBytes } from '../lib/format';
 import FileTree from '../components/FileTree';
@@ -283,7 +284,7 @@ export default function TorrentDetail() {
               <span><strong>{formatBytes(torrent.size)}</strong></span>
             </div>
             <div className="detail-actions-primary" ref={downloadAnchorRef}>
-              {torrent.metadata?.trailer?.key && (
+              {hasTrailer(torrent.metadata?.trailer) && (
                 <button type="button" className="secondary" onClick={() => setTrailerOpen(true)}>▶ Bande-annonce</button>
               )}
               {primaryActions}
@@ -300,16 +301,11 @@ export default function TorrentDetail() {
           </div>
         </section>
 
-        {trailerOpen && torrent.metadata?.trailer?.key && createPortal(
+        {trailerOpen && hasTrailer(torrent.metadata?.trailer) && createPortal(
           <div className="trailer-modal" onClick={() => setTrailerOpen(false)}>
             <button type="button" className="secondary trailer-close" onClick={() => setTrailerOpen(false)}>✕ Fermer</button>
             <div className="trailer-modal-inner" onClick={(e) => e.stopPropagation()}>
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(torrent.metadata.trailer.key)}?autoplay=1&rel=0`}
-                title="Bande-annonce"
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-              />
+              <TrailerPlayer trailer={torrent.metadata.trailer} />
             </div>
           </div>
         ,
@@ -325,7 +321,7 @@ export default function TorrentDetail() {
         {tab === 'overview' && (
           <div className="grid" style={{ gap: 18 }}>
             <TorrentHero torrent={torrent} />
-            <TorrentGallery images={[...new Set([torrent.metadata?.backdrop, ...(torrent.metadata?.gallery ?? [])].filter((u: unknown): u is string => typeof u === 'string' && !!u))]} title={['JEU', 'LOGICIEL'].includes(contentKind ?? '') ? "Captures d'écran" : contentKind === 'MUSIQUE' ? 'Jaquette et livret' : 'Images'} />
+            <TorrentGallery trailer={torrent.metadata?.trailer} images={[...new Set([torrent.metadata?.backdrop, ...(torrent.metadata?.gallery ?? [])].filter((u: unknown): u is string => typeof u === 'string' && !!u))]} title={['JEU', 'LOGICIEL'].includes(contentKind ?? '') ? "Captures d'écran" : contentKind === 'MUSIQUE' ? 'Jaquette et livret' : 'Images'} />
             <TorrentVersions torrentId={torrent.id} />
             {descriptionPanel}
             {['LOGICIEL', 'JEU'].includes(contentKind ?? '') && <InstallNotes torrentId={torrent.id} onOpenNfo={() => setTab('nfo')} />}

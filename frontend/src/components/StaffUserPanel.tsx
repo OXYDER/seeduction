@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -103,7 +104,7 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
 
   return (
     <div className="panel ornate">
-      <div className="panel-title"><span className="title-icon">🛡️</span>Modération du membre</div>
+      <div className="panel-title"><span className="title-icon"><Emo e="🛡️" size={16} /></span>Modération du membre</div>
       <div className="muted" style={{ marginBottom: 10 }}>
         {detail.email}{hasMail && !isSelf && detail.email && !/@(localhost|seeduction.local)$/i.test(detail.email) && <> <Link to={`/courriel?to=${encodeURIComponent(`${detail.username} <${detail.email}>`)}&subject=${encodeURIComponent('Seeduction – ')}`} title="Écrire à ce membre depuis le courriel de l'équipe">✉️ Écrire</Link></>} · <Link to={`/moderation-log?targetId=${detail.id}`} title="Tout ce que l'équipe a fait sur ce membre">🧾 Historique de modération</Link> · {ROLE_LABEL[detail.role]} · {detail.status === 'BANNED' ? '🚫 Banni' : detail.status === 'PENDING_EMAIL' ? '📧 Courriel non confirmé' : 'Actif'}
       </div>

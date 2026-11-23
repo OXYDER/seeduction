@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -45,7 +46,7 @@ export default function ContinueWatching({ hideNext }: { hideNext?: boolean } = 
   return (
     <HomeSection id="continue" label="Continuer à regarder" icon="▶️">
       <div className="panel" style={{ display: 'grid', gap: 10 }}>
-        <div className="panel-title"><span className="title-icon">▶️</span>Continuer à regarder</div>
+        <div className="panel-title"><span className="title-icon"><Emo e="▶️" size={16} /></span>Continuer à regarder</div>
         {error && <span style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</span>}
         {hint && <span className="muted" style={{ fontSize: 13 }}>Le lecteur Seeduction ne s'est pas ouvert ? <Link to="/player">Installe-le ici</Link>.</span>}
         <div className="cw-rail">

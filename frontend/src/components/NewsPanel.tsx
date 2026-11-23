@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import UserLink from './UserLink';
@@ -59,7 +60,7 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
         </div>
       )}
       <div className="panel-title news-head">
-        <span className="title-icon">📰</span>{heroOnly ? 'Dernière nouvelle' : 'Actualités & Événements'}
+        <span className="title-icon"><Emo e="📰" size={16} /></span>{heroOnly ? 'Dernière nouvelle' : 'Actualités & Événements'}
         {!heroOnly && items && items.length > 0 && (
           <div className="news-tabs" role="tablist">
             {NEWS_TABS.filter((t) => !t.kinds || items.some((n) => t.kinds!.includes(n.kind ?? 'NEWS'))).map((t) => (

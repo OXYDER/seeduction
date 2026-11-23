@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import MetaChips from './MetaChips';
 import PosterTags from './PosterTags';
 import type { ReactNode } from 'react';
@@ -27,7 +28,7 @@ export function ViewSwitcher({ value, onChange, modes }: { value: ViewMode; onCh
     <div className="view-toggle" role="group" aria-label="Affichage de la liste">
       {VIEW_MODES.filter((m) => !modes || modes.includes(m.id)).map((m) => (
         <button key={m.id} type="button" className={value === m.id ? 'on' : ''} onClick={() => onChange(m.id)} title={`${m.label} — ${m.hint}`} aria-pressed={value === m.id}>
-          <span aria-hidden="true">{m.icon}</span>
+          <span aria-hidden="true"><Emo e={m.icon} size={16} /></span>
           <span className="view-toggle-label">{m.label}</span>
         </button>
       ))}

@@ -1,3 +1,4 @@
+import Emo from '../components/Emo';
 import { useEffect, useState } from 'react';
 import UserLink from '../components/UserLink';
 import TorrentView, { ViewSwitcher } from '../components/TorrentView';
@@ -116,7 +117,7 @@ export default function CollectionDetail() {
         {isOwner && (
           <div className="grid" style={{ gap: 16 }}>
             <div className="panel ornate">
-              <div className="panel-title"><span className="title-icon">⚙️</span>Modifier</div>
+              <div className="panel-title"><span className="title-icon"><Emo e="⚙️" size={16} /></span>Modifier</div>
               <form onSubmit={saveInfo} className="grid">
                 <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
                 <textarea rows={3} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />

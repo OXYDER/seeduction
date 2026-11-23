@@ -1,3 +1,4 @@
+import Emo from '../components/Emo';
 import EmptyState from '../components/EmptyState';
 import UserLink from '../components/UserLink';
 import { useEffect, useState } from 'react';
@@ -90,7 +91,7 @@ export default function Collections() {
 
       {showForm && (
         <form onSubmit={submit} className="panel ornate collection-form">
-          <div className="panel-title"><span className="title-icon">📚</span>Nouvelle collection</div>
+          <div className="panel-title"><span className="title-icon"><Emo e="📚" size={16} /></span>Nouvelle collection</div>
           <div className="collection-form-grid">
             <input placeholder="Nom de la collection" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required maxLength={120} autoFocus />
             <select value={form.visibility} onChange={(e) => setForm({ ...form, visibility: e.target.value })}>

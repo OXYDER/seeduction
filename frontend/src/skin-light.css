@@ -1161,6 +1161,12 @@
 :root[data-mode="light"][data-theme="prestige"] .stat-tile.t-down .stat-tile-val { color: rgb(220, 0, 26); }
 :root[data-mode="light"] .badge-tile { background: linear-gradient(135deg, rgba(var(--acc-rgb), 0.14), rgba(0, 0, 0, 0.03)); }
 :root[data-mode="light"] .badge-tile-ico { background: rgba(0, 0, 0, 0.07); }
+:root[data-mode="light"] .skip-link { color: var(--on-acc, rgb(0, 0, 0)); }
+:root[data-mode="light"] .trailer-modal-inner video { background: rgb(246, 246, 246); }
+:root[data-mode="light"] .tg-novid { background: linear-gradient(135deg, rgb(245, 245, 247), rgb(245, 245, 247)); }
+:root[data-mode="light"] .tg-play { color: rgb(0, 0, 0); background: linear-gradient(180deg, rgba(246, 246, 246, 0.1), rgba(246, 246, 246, 0.55)); }
+:root[data-mode="light"] .tg-play em { text-shadow: 0 1px 6px rgba(15, 23, 42, 0.224); }
+:root[data-mode="light"] .tg-player { background: rgb(246, 246, 246); box-shadow: 0 30px 90px rgba(15, 23, 42, 0.196); }
 
 /* ── games.css ── */
 :root[data-mode="light"] .wh-stage { background: radial-gradient(circle at 50% 38%, #4a1672 0%, rgb(246, 245, 247) 55%, rgb(246, 245, 247) 100%); box-shadow: 0 10px 40px rgba(15, 23, 42, 0.14), inset 0 0 0 2px rgba(255, 220, 120, 0.35); }

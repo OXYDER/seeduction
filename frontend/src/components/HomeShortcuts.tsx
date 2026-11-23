@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { Link, useOutletContext } from 'react-router-dom';
 import { useMessenger, privateUnreadOf, publicUnreadOf } from '../store/messenger';
 import { CATEGORY_STYLE, type LayoutContext } from './Layout';
@@ -24,7 +25,7 @@ export default function HomeShortcuts({ canUpload = true }: { canUpload?: boolea
       <div className="hs-tiles">
         {TILES.filter((t) => canUpload || t.to !== '/upload').map((t) => (
           <Link key={t.to} to={t.to} className="hs-tile">
-            <span className="hs-icon" aria-hidden="true">{t.icon}</span>
+            <span className="hs-icon" aria-hidden="true"><Emo e={t.icon} size={22} /></span>
             <span className="hs-text"><strong>{t.label}</strong><small>{t.hint}</small></span>
             {t.to === '/chat' && priv > 0 && <span className="hs-badge">{priv}</span>}
             {t.to === '/chat' && pub > 0 && <span className="hs-badge outline"># {pub}</span>}

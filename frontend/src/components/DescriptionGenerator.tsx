@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { extractVariables } from '../lib/bbcode';
@@ -390,7 +391,7 @@ export default function DescriptionGenerator({
 
   return (
     <div className="panel ornate">
-      <div className="panel-title"><span className="title-icon">✨</span>Générateur de description</div>
+      <div className="panel-title"><span className="title-icon"><Emo e="✨" size={16} /></span>Générateur de description</div>
 
       <div className="grid" style={{ gap: 14 }}>
         {searchSupported ? (

@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -138,7 +139,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
   return (
     <div className="panel ornate" ref={root}>
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div className="panel-title" style={{ margin: 0, padding: 0, border: 0 }}><span className="title-icon">✏️</span>{owner ? 'Modifier mon torrent' : 'Édition du torrent'}</div>
+        <div className="panel-title" style={{ margin: 0, padding: 0, border: 0 }}><span className="title-icon"><Emo e="✏️" size={16} /></span>{owner ? 'Modifier mon torrent' : 'Édition du torrent'}</div>
         <div className="row">
           <button type="button" className="secondary" onClick={() => setOpen((v) => !v)}>{open ? 'Fermer' : '✏️ Modifier ce torrent'}</button>
           {(!owner || ['PENDING', 'REJECTED'].includes(torrent.status)) && <button type="button" className="danger" onClick={remove} disabled={busy}>🗑️ Supprimer</button>}

@@ -1,3 +1,4 @@
+import Emo from '../components/Emo';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import UserLink from '../components/UserLink';
@@ -192,7 +193,7 @@ function NewSuggestion({ meta, onCreated, onCancel }: { meta: SuggestionMeta; on
 
   return (
     <div className="panel grid" style={{ gap: 10 }}>
-      <div className="panel-title"><span className="title-icon">💡</span>Proposer une suggestion</div>
+      <div className="panel-title"><span className="title-icon"><Emo e="💡" size={16} /></span>Proposer une suggestion</div>
       <label style={{ display: 'grid', gap: 4 }}>Titre (court et clair)
         <input value={title} maxLength={meta.limits.titleMax} onChange={(e) => setTitle(e.target.value)} placeholder="Ex. : un mode sombre pour le lecteur" />
       </label>

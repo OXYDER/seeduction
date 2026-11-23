@@ -1,3 +1,4 @@
+import Emo from '../components/Emo';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -353,7 +354,7 @@ function UploadOne() {
       <UploadCreditPanel compact />
 
       <div className="panel ornate">
-        <div className="panel-title"><span className="title-icon">📜</span>À savoir avant d'uploader</div>
+        <div className="panel-title"><span className="title-icon"><Emo e="📜" size={16} /></span>À savoir avant d'uploader</div>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
           <div>
             <strong>Un seul upload par contenu</strong>

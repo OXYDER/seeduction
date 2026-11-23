@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { api } from '../api/client';
@@ -236,7 +237,7 @@ export default function HomeStreaming() {
             <section key={featured.id} className="panel ornate hero-frame hero-fade" onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
               {/* La même image que le fond de la page, bien visible à droite du texte. */}
               <span className="hero-frame-bg" aria-hidden="true" style={{ backgroundImage: `url("${String(featured.backdrop ?? featured.coverImage).replace(/"/g, '%22')}")` }} />
-              <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
+              <div className="panel-title"><span className="title-icon"><Emo e="⭐" size={16} /></span>À la une</div>
               {featured.coverImage && (
                 <Link to={`/torrents/${featured.id}`} className="hero-poster" tabIndex={-1} aria-hidden="true"><img src={featured.coverImage} alt="" /></Link>
               )}
@@ -273,7 +274,7 @@ export default function HomeStreaming() {
             </section>
           ) : (
             <section className="panel ornate hero-frame">
-              <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
+              <div className="panel-title"><span className="title-icon"><Emo e="⭐" size={16} /></span>À la une</div>
               <div className="hero-plex">
               <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username}</div>
               <h1>Bienvenue sur Seeduction</h1>

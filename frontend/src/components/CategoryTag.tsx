@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { useNavigate } from 'react-router-dom';
 import { CATEGORY_STYLE } from './Layout';
 
@@ -41,7 +42,7 @@ export default function CategoryTag({ category }: { category?: Cat | null }) {
       onClick={goToCategory}
       onKeyDown={goToCategory ? (e) => { if (e.key === 'Enter' || e.key === ' ') goToCategory(e); } : undefined}
     >
-      {icon && <span aria-hidden="true">{icon}</span>}
+      {icon && <span aria-hidden="true"><Emo e={icon} size={14} /></span>}
       {category.name}
     </span>
   );

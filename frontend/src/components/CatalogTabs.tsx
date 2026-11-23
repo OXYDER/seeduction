@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { Link } from 'react-router-dom';
 
 export type TabId = 'nouveautes' | 'populaires' | 'pour-toi' | 'freeleech' | 'a-seeder';
@@ -21,7 +22,7 @@ export default function CatalogTabs({ active }: { active: 'catalogue' | TabId })
       </Link>
       {TABS.map((t) => (
         <Link key={t.id} to={t.id === 'nouveautes' ? '/decouvrir' : `/decouvrir?s=${t.id}`} className={t.id === active ? 'on' : ''} aria-current={t.id === active ? 'page' : undefined}>
-          <span aria-hidden="true">{t.icon}</span> {t.label}
+          <span aria-hidden="true"><Emo e={t.icon} size={16} /></span> {t.label}
         </Link>
       ))}
     </nav>

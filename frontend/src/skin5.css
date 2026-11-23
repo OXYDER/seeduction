@@ -745,3 +745,15 @@ button.install-never:hover:not(:disabled) { background: none; box-shadow: none; 
 .skip-link { position: fixed; left: 12px; top: -60px; z-index: 2000; padding: 10px 16px; border-radius: 12px; background: var(--acc1); color: var(--on-acc, #fff); font-weight: 700; text-decoration: none; transition: top 0.15s; }
 .skip-link:focus { top: 12px; }
 main.container:focus { outline: none; }
+
+/* ───── Bande-annonce : première vignette de la galerie, lecteur dans la visionneuse (YouTube ou vidéo Steam) ───── */
+.trailer-modal-inner video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; }
+.tg-thumb { position: relative; }
+.tg-thumb.tg-video { border-color: rgba(var(--acc-rgb), 0.65); box-shadow: 0 0 0 1px rgba(var(--acc-rgb), 0.35), 0 12px 30px -14px rgba(var(--acc-rgb), 0.8); }
+.tg-novid { display: block; width: 100%; height: 100%; background: linear-gradient(135deg, #1b2240, #0b0f1e); }
+.tg-play { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; color: #fff; background: linear-gradient(180deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.55)); }
+.tg-play svg { width: 46px; height: 46px; padding: 12px 10px 12px 14px; border-radius: 50%; background: linear-gradient(135deg, var(--acc1), var(--acc2, var(--acc1))); box-shadow: 0 8px 24px -6px rgba(var(--acc-rgb), 0.9); transition: transform 0.2s; }
+.tg-thumb:hover .tg-play svg { transform: scale(1.1); }
+.tg-play em { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+.tg-player { position: relative; width: min(960px, 100%); aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7); }
+.tg-player iframe, .tg-player video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }

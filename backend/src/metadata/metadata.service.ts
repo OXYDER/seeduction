@@ -1095,17 +1095,28 @@ export class MetadataService {
     const rows = await this.prisma.$queryRaw<{ id: string; metaExternalId: string; metaSource: string; metadata: any }[]>`
       SELECT id, "metaExternalId", "metaSource", metadata FROM "Torrent"
       WHERE "metaSource" IN ('tmdb', 'rawg', 'tvmaze', 'jikan', 'steam', 'itunes', 'musicbrainz', 'flathub')
-        AND "metaExternalId" IS NOT NULL AND (metadata IS NULL OR (metadata->>'galleryTried') IS NULL)
+        AND "metaExternalId" IS NOT NULL AND (metadata IS NULL OR (metadata->>'galleryTried') IS NULL
+          OR ("metaSource" IN ('steam', 'jikan') AND (metadata->>'trailerTried') IS NULL))
       ORDER BY "createdAt" DESC LIMIT 4`;
     for (const t of rows) {
       try {
         const kind = this.galleryKind(t.metaSource, t.metadata);
         const rich = kind ? await this.richRaw(kind, t.metaExternalId) : null;
-        await this.saveGallery(t.id, rich?.gallery, [rich?.backdropUrl ?? null, rich?.coverUrl ?? null]);
+        if (!t.metadata?.galleryTried) await this.saveGallery(t.id, rich?.gallery, [rich?.backdropUrl ?? null, rich?.coverUrl ?? null]);
+        // Bande-annonce des jeux (Steam) et des animés (MyAnimeList), arrivée après l'enregistrement de leur fiche.
+        if (t.metaSource === 'steam' || t.metaSource === 'jikan') {
+          const cur = await this.prisma.torrent.findUnique({ where: { id: t.id }, select: { metadata: true } });
+          const trailer = (rich?.info as any)?.trailer ?? null;
+          await this.prisma.torrent.update({ where: { id: t.id }, data: { metadata: { ...((cur?.metadata as object) ?? {}), ...(trailer && !(cur?.metadata as any)?.trailer ? { trailer } : {}), trailerTried: true } as any } });
+        }
       } catch (err: any) {
         this.logger.warn(`Galerie d'images : ${err?.message ?? err}`);
         // Une fiche introuvable chez le fournisseur n'est pas redemandée sans fin.
-        if (err instanceof NotFoundException) await this.saveGallery(t.id, [], []).catch(() => undefined);
+        if (err instanceof NotFoundException) {
+          if (!t.metadata?.galleryTried) await this.saveGallery(t.id, [], []).catch(() => undefined);
+          const cur = await this.prisma.torrent.findUnique({ where: { id: t.id }, select: { metadata: true } }).catch(() => null);
+          await this.prisma.torrent.update({ where: { id: t.id }, data: { metadata: { ...((cur?.metadata as object) ?? {}), trailerTried: true } as any } }).catch(() => undefined);
+        }
       }
     }
   }

@@ -1,3 +1,4 @@
+import Emo from '../components/Emo';
 import { useEffect, useState } from 'react';
 import Nick from '../components/Nick';
 import { api } from '../api/client';
@@ -59,7 +60,7 @@ export default function Friends() {
       <h1>Amis</h1>
 
       <div className="panel ornate">
-        <div className="panel-title"><span className="title-icon">➕</span>Ajouter un ami</div>
+        <div className="panel-title"><span className="title-icon"><Emo e="➕" size={16} /></span>Ajouter un ami</div>
         <form className="row" onSubmit={sendRequest} style={{ gap: 10 }}>
           <input placeholder="Nom d'utilisateur" value={username} onChange={(e) => setUsername(e.target.value)} style={{ flex: 1, maxWidth: 320 }} />
           <button type="submit">Envoyer la demande</button>

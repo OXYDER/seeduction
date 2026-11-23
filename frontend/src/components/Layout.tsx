@@ -1,4 +1,5 @@
 import Nick from './Nick';
+import Emo from './Emo';
 import Ic, { GROUP_IC } from './Ic';
 import { PageArt } from './SectionArt';
 import { applyDefaultView } from '../lib/viewMode';
@@ -606,7 +607,7 @@ function LayoutInner() {
       const label = flat ? NAV_CLASSIC_LABELS[item.to] ?? item.label : item.label;
       return (
         <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={label}>
-          {(navPrefs.icons || collapsed) && <span className="side-icon">{item.icon}</span>}
+          {(navPrefs.icons || collapsed) && <span className="side-icon"><Emo e={item.icon} /></span>}
           <span>{label}</span>
           {evNav(item.to)}{badgesFor(item)}
         </Link>
@@ -695,7 +696,7 @@ function LayoutInner() {
                 return (
                   <div key={g.id} className={`top-grp${open ? ' open' : ''}${g.id === hereGroup ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }} onMouseEnter={() => setTopOpen(g.id)} onMouseLeave={() => setTopOpen((o) => (o === g.id ? null : o))}>
                     <button type="button" className={`top-grp-btn${navPrefs.icons ? ' has-ico' : ''}`} title={g.label} aria-expanded={open} onClick={() => setTopOpen(open ? null : g.id)}>
-                      {navPrefs.icons && <span className="top-ico" aria-hidden="true">{GROUP_IC[g.id] ? <Ic n={GROUP_IC[g.id]} /> : g.icon}</span>}
+                      {navPrefs.icons && <span className="top-ico" aria-hidden="true">{GROUP_IC[g.id] ? <Ic n={GROUP_IC[g.id]} /> : <Emo e={g.icon} />}</span>}
                       <span className="top-lbl">{g.label}</span>
                       {todo > 0 && <span className="side-badge red">{todo > 99 ? '99+' : todo}</span>}
                       <span className="top-chev" aria-hidden="true">▾</span>
@@ -791,7 +792,7 @@ function LayoutInner() {
                 return (
                   <div key={g.id} className={`side-group${open ? ' open' : ''}${hasActive ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }}>
                     <button type="button" className="side-group-head" onClick={() => toggleGroup(g.id)} aria-expanded={open}>
-                      {navPrefs.icons && <span className="side-icon">{g.icon}</span>}
+                      {navPrefs.icons && <span className="side-icon"><Emo e={g.icon} /></span>}
                       <span>{g.label}</span>
                       {todo > 0 && <span className="side-badge red" title="À voir dans cette section">{todo > 99 ? '99+' : todo}</span>}
                       <span className="side-chev" aria-hidden="true">›</span>
@@ -824,7 +825,7 @@ function LayoutInner() {
                         const todo = todoOf(items);
                         return (
                           <button key={g.id} type="button" role="tab" aria-selected={g.id === activeId} className={`rail-btn${g.id === activeId ? ' on' : ''}${g.id === hereGroup ? ' here' : ''}`} style={{ ['--gc' as string]: g.color }} title={g.label} onClick={() => pickRail(g.id)}>
-                            <span className="rail-ico">{g.icon}</span>
+                            <span className="rail-ico"><Emo e={g.icon} size={22} /></span>
                             <small>{g.label}</small>
                             {todo > 0 && <span className="side-badge red">{todo > 99 ? '99+' : todo}</span>}
                           </button>
@@ -875,7 +876,7 @@ function LayoutInner() {
             const active = item.match(location.pathname);
             return (
               <Link key={item.to} to={item.to} className={active ? 'active' : ''}>
-                <span>{item.icon}</span>
+                <span><Emo e={item.icon} size={22} /></span>
                 <small>{item.to === '/' ? 'Accueil' : item.label}</small>
               </Link>
             );
@@ -957,7 +958,7 @@ function LayoutInner() {
             const active = item.match(location.pathname);
             return (
               <Link key={item.to} to={item.to} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
-                <span className={`nav-icon ${item.cls}`}>{item.icon}</span>{item.label}{evNav(item.to)}{badgesFor(item)}
+                <span className={`nav-icon ${item.cls}`}><Emo e={item.icon} /></span>{item.label}{evNav(item.to)}{badgesFor(item)}
               </Link>
             );
           })}
@@ -987,7 +988,7 @@ function LayoutInner() {
                     <img src={c.imageUrl} alt={c.name} className="category-img" />
                   ) : (
                     <>
-                      {style ? <span>{style.icon}</span> : <span className="dot" style={{ background: 'var(--gold)' }} />}
+                      {style ? <span><Emo e={style.icon} size={16} /></span> : <span className="dot" style={{ background: 'var(--gold)' }} />}
                       {c.name}
                     </>
                   )}

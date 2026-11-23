@@ -1,3 +1,4 @@
+import Emo from '../components/Emo';
 import Nick from '../components/Nick';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -142,7 +143,7 @@ export default function Requests() {
 
       {user && showForm && (
         <div className="panel ornate">
-          <div className="panel-title"><span className="title-icon">💬</span>Nouvelle demande</div>
+          <div className="panel-title"><span className="title-icon"><Emo e="💬" size={16} /></span>Nouvelle demande</div>
           <form onSubmit={submit} className="grid" style={{ gap: 16 }}>
             <div className="grid" style={{ gridTemplateColumns: 'minmax(260px, 3fr) minmax(120px, 1fr)', gap: 14 }}>
               {field('Titre demandé *', <input placeholder="Ex : Dune Partie 2, Loft Story S03, album…" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required minLength={2} />)}

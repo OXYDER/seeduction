@@ -72,6 +72,21 @@ export function mapJikanSearch(res: any, kind: 'FILM' | 'SERIE'): ExtraSearchRes
   }));
 }
 
+/** Bande-annonce YouTube (identifiant de 11 caractères : lettres, chiffres, _ et -) ; null si absente ou invalide. */
+export function youtubeTrailer(key: unknown, name?: string): { site: 'YouTube'; key: string; name: string } | null {
+  return typeof key === 'string' && /^[\w-]{11}$/.test(key) ? { site: 'YouTube', key, name: name || 'Bande-annonce' } : null;
+}
+
+/** Bande-annonce d'un jeu Steam : la première vidéo, en MP4 ou WebM (480p de préférence), servie par le réseau de Steam ; null si aucune adresse sûre. */
+export function steamTrailer(movies: any): { site: 'Steam'; url: string; poster: string | null; name: string } | null {
+  const ok = (u: unknown): u is string => typeof u === 'string' && /^https:\/\/[\w.-]+\.(steamstatic\.com|akamaihd\.net|steamusercontent\.com)\//i.test(u);
+  for (const m of Array.isArray(movies) ? movies : []) {
+    const url = [m?.mp4?.['480'], m?.mp4?.max, m?.webm?.['480'], m?.webm?.max].find(ok);
+    if (url) return { site: 'Steam', url, poster: ok(m?.thumbnail) ? m.thumbnail : null, name: clean(String(m?.name ?? '')) || 'Bande-annonce' };
+  }
+  return null;
+}
+
 export function mapJikanAnime(res: any): ExtraRich {
   const a = res?.data ?? {};
   const genres: string[] = [...(a.genres ?? []), ...(a.themes ?? [])].map((g: any) => clean(g.name)).filter(Boolean);
@@ -84,7 +99,7 @@ export function mapJikanAnime(res: any): ExtraRich {
       description: clean(String(a.synopsis ?? '').replace(/\[Written by MAL Rewrite\]/gi, '')), genre: genres.join(', '), durée: dur ? `${dur[1]} min` : '',
       note: a.score ? `${String(a.score).replace('.', ',')} / 10` : '', réalisateur: '', acteurs: '', studio: studios.join(', '),
     },
-    info: { kind: a.type === 'Movie' ? 'movie' : 'tv', releaseDate: a.aired?.from ? String(a.aired.from).slice(0, 10) : null, status: a.status ?? null, rating: a.score ?? null, episodes: a.episodes ?? null, malId: a.mal_id },
+    info: { kind: a.type === 'Movie' ? 'movie' : 'tv', releaseDate: a.aired?.from ? String(a.aired.from).slice(0, 10) : null, status: a.status ?? null, rating: a.score ?? null, episodes: a.episodes ?? null, malId: a.mal_id, trailer: youtubeTrailer(a.trailer?.youtube_id, 'Bande-annonce') },
     entities: [
       ...(a.studios ?? []).slice(0, 3).map((s: any, i: number): ExtraRich['entities'][number] => ({ type: 'COMPANY', role: 'STUDIO', name: clean(s.name), source: 'jikan', externalId: String(s.mal_id), position: i })),
       ...genreDrafts(genres, 'jikan'),
@@ -113,7 +128,7 @@ export function mapSteamApp(res: any, id: string): ExtraRich {
       développeur: (d.developers ?? []).map(clean).join(', '), éditeur: (d.publishers ?? []).map(clean).join(', '), plateformes: platforms.join(', '),
       note: d.metacritic?.score ? `${d.metacritic.score} / 100 (Metacritic)` : '', description: stripHtml(d.short_description || d.about_the_game),
     },
-    info: { released: d.release_date?.date ?? null, metacritic: d.metacritic?.score ?? null, website: d.website || null, steamId: Number(id) || null },
+    info: { released: d.release_date?.date ?? null, metacritic: d.metacritic?.score ?? null, website: d.website || null, steamId: Number(id) || null, trailer: steamTrailer(d.movies) },
     entities: [
       ...(d.developers ?? []).slice(0, 3).map((n: string, i: number): ExtraRich['entities'][number] => ({ type: 'COMPANY', role: 'DEVELOPER', name: clean(n), source: 'seeduction', externalId: clean(n).toLowerCase().replace(/[^a-z0-9]+/g, '-'), position: i })),
       ...(d.publishers ?? []).slice(0, 3).map((n: string, i: number): ExtraRich['entities'][number] => ({ type: 'COMPANY', role: 'PUBLISHER', name: clean(n), source: 'seeduction', externalId: clean(n).toLowerCase().replace(/[^a-z0-9]+/g, '-'), position: i })),

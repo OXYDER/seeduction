@@ -1,3 +1,4 @@
+import Emo from './Emo';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -144,7 +145,7 @@ export function TelegramAdmin() {
       </div>
 
       <div className="panel">
-        <div className="panel-title"><span className="title-icon">🔗</span>Comptes liés ({ov.links.length})</div>
+        <div className="panel-title"><span className="title-icon"><Emo e="🔗" size={16} /></span>Comptes liés ({ov.links.length})</div>
         {ov.links.length === 0 ? <p className="muted">Aucun membre n'a encore lié son compte.</p> : (
           <table>
             <thead><tr><th>Membre</th><th>Telegram</th><th>Depuis</th><th /></tr></thead>

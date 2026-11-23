@@ -1,3 +1,4 @@
+import Emo from '../components/Emo';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import UserLink from '../components/UserLink';
@@ -104,7 +105,7 @@ export default function SuggestionDetail() {
       {isStaff && meta && <StaffPanel s={s} meta={meta} onChanged={load} />}
 
       <div className="panel grid" style={{ gap: 10 }}>
-        <div className="panel-title"><span className="title-icon">💬</span>Commentaires ({s.commentCount})</div>
+        <div className="panel-title"><span className="title-icon"><Emo e="💬" size={16} /></span>Commentaires ({s.commentCount})</div>
         {s.comments.length === 0 && <p className="muted" style={{ margin: 0 }}>Pas encore de commentaire.</p>}
         {s.comments.map((c) => (
           <div key={c.id} className="sg-comment">
@@ -147,7 +148,7 @@ function StaffPanel({ s, meta, onChanged }: { s: Detail; meta: NonNullable<Retur
 
   return (
     <div className="panel grid" style={{ gap: 10, borderLeft: '3px solid #f59e0b' }}>
-      <div className="panel-title"><span className="title-icon">🛡️</span>Équipe : faire avancer</div>
+      <div className="panel-title"><span className="title-icon"><Emo e="🛡️" size={16} /></span>Équipe : faire avancer</div>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         {meta.statuses.map((st) => <button key={st.id} type="button" className={status === st.id ? '' : 'secondary'} onClick={() => setStatus(st.id)}>{st.icon} {st.label}</button>)}
       </div>

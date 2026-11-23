@@ -1,6 +1,7 @@
 import {
   gal, isExtraId, mapCoverArtImages, mapJikanPictures, mapTvmazeImages, mapFlathubApp, mapFlathubSearch, mapItunesAlbum, mapItunesAlbums, mapItunesApp, mapJikanAnime, mapJikanSearch, mapMusicbrainzGroup, mapMusicbrainzSearch, mapSteamApp, mapSteamSearch,
   mapTvmazeShow, mapTvmazeSearch, mapWikipediaSearch, mapWikipediaSummary, mergeResults, richExtra, searchExtra, stripHtml,
+  youtubeTrailer, steamTrailer,
 } from './extra-providers';
 
 describe('identifiants des fournisseurs en arrière-plan', () => {
@@ -149,5 +150,21 @@ describe("galeries d'images", () => {
   it('un fournisseur sans images en second appel donne une galerie vide, sans erreur', async () => {
     const fake = async (url: string) => { if (/\/images$/.test(url)) throw new Error('404'); return { id: 1, name: 'S', genres: [], _embedded: { cast: [] } }; };
     expect((await richExtra('SERIE', 'tvm:1', fake as any)).gallery).toEqual([]);
+  });
+});
+
+describe('bandes-annonces', () => {
+  it('YouTube : identifiant valide seulement', () => {
+    expect(youtubeTrailer('dQw4w9WgXcQ')).toEqual({ site: 'YouTube', key: 'dQw4w9WgXcQ', name: 'Bande-annonce' });
+    expect(youtubeTrailer('trop court')).toBeNull();
+    expect(youtubeTrailer('<script>alert(1)</script>')).toBeNull();
+    expect(youtubeTrailer(null)).toBeNull();
+  });
+  it('Steam : MP4 480p de préférence, adresses du réseau de Steam seulement', () => {
+    const t = steamTrailer([{ name: 'Lancement', thumbnail: 'https://shared.akamai.steamstatic.com/a.jpg', mp4: { 480: 'https://video.akamai.steamstatic.com/a_480.mp4', max: 'https://video.akamai.steamstatic.com/a_max.mp4' } }]);
+    expect(t).toEqual({ site: 'Steam', url: 'https://video.akamai.steamstatic.com/a_480.mp4', poster: 'https://shared.akamai.steamstatic.com/a.jpg', name: 'Lancement' });
+    expect(steamTrailer([{ mp4: { 480: 'https://evil.example.com/x.mp4' } }])).toBeNull();
+    expect(steamTrailer([{ mp4: { 480: 'http://video.akamai.steamstatic.com/x.mp4' } }])).toBeNull();
+    expect(steamTrailer(undefined)).toBeNull();
   });
 });
