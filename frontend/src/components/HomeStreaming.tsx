@@ -207,7 +207,7 @@ export default function HomeStreaming() {
     ...candidates.filter((t) => t.backdrop && t.synopsis),
     ...candidates.filter((t) => !(t.backdrop && t.synopsis) && t.synopsis),
     ...candidates.filter((t) => !t.synopsis),
-  ].slice(0, 5);
+  ].slice(0, 8);
   const featured = featuredList[heroIndex % Math.max(1, featuredList.length)] ?? null;
   usePageBackdrop(featured ? (featured.backdrop ?? featured.coverImage) : null);
 
@@ -237,6 +237,9 @@ export default function HomeStreaming() {
               {/* La même image que le fond de la page, bien visible à droite du texte. */}
               <span className="hero-frame-bg" aria-hidden="true" style={{ backgroundImage: `url("${String(featured.backdrop ?? featured.coverImage).replace(/"/g, '%22')}")` }} />
               <div className="panel-title"><span className="title-icon">⭐</span>À la une</div>
+              {featured.coverImage && (
+                <Link to={`/torrents/${featured.id}`} className="hero-poster" tabIndex={-1} aria-hidden="true"><img src={featured.coverImage} alt="" /></Link>
+              )}
               <div className="hero-plex">
               <div className="hero-kicker">{greeting} {user?.profile?.name ?? user?.username} · À la une</div>
               <h1 title={featured.name}>{featured.name}</h1>
@@ -250,13 +253,22 @@ export default function HomeStreaming() {
                 <Link to={`/torrents/${featured.id}`}><button type="button" className="hero-cta">Voir la fiche</button></Link>
                 <Link to="/browse"><button type="button" className="secondary hero-cta-2">Parcourir le catalogue</button></Link>
               </div>
-              {featuredList.length > 1 && (
-                <div className="hero-dots" role="tablist" aria-label="Torrents à la une">
-                  {featuredList.map((f, i) => (
-                    <button key={f.id} type="button" role="tab" aria-selected={i === heroIndex % featuredList.length} className={i === heroIndex % featuredList.length ? 'on' : ''} onClick={() => setHeroIndex(i)} aria-label={`${i + 1} : ${f.name}`} title={f.name}>{i + 1}</button>
-                  ))}
-                </div>
-              )}
+              {featuredList.length > 1 && (() => {
+                const cur = heroIndex % featuredList.length;
+                const go = (d: number) => setHeroIndex((cur + d + featuredList.length) % featuredList.length);
+                return (
+                  <div className="hero-nav">
+                    <button type="button" className="hn-arrow" onClick={() => go(-1)} aria-label="Précédent">‹</button>
+                    <div className="hero-dots" role="tablist" aria-label="Torrents à la une">
+                      {featuredList.map((f, i) => (
+                        <button key={f.id} type="button" role="tab" aria-selected={i === cur} className={i === cur ? 'on' : ''} onClick={() => setHeroIndex(i)} aria-label={`${i + 1} : ${f.name}`} title={f.name}>{i + 1}</button>
+                      ))}
+                    </div>
+                    <button type="button" className="hn-arrow" onClick={() => go(1)} aria-label="Suivant">›</button>
+                    <span className="hn-count" aria-hidden="true">{cur + 1} / {featuredList.length}</span>
+                  </div>
+                );
+              })()}
               </div>
             </section>
           ) : (

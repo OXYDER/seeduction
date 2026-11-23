@@ -3,6 +3,8 @@ import FacetChips from '../components/FacetChips';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import UserLink from '../components/UserLink';
+import Avatar from '../components/Avatar';
+import { releaseGroup, teamSlug } from '../lib/releaseGroup';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import TorrentPeers from '../components/TorrentPeers';
@@ -247,6 +249,23 @@ export default function TorrentDetail() {
             </div>
             <FacetChips attrs={torrent.attrs} categoryId={torrent.categoryId ?? torrent.category?.id} />
             {synopsis && <p className="hero-synopsis">{synopsis}</p>}
+            {(() => {
+              const team = releaseGroup(String(torrent.name ?? '')) || torrent.releaseGroup || null;
+              return (
+                <div className="detail-credits">
+                  <div className="dc-who" title="Membre qui a mis ce torrent en ligne">
+                    {torrent.anonymousUpload ? <span className="dcw-av anon" aria-hidden="true">?</span> : <Avatar user={torrent.uploader} size={38} />}
+                    <span className="dcw-txt"><small>Uploadé par</small><strong>{torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</strong></span>
+                  </div>
+                  {team && (
+                    <Link to={`/team/${teamSlug(team)}`} className="dc-team" title={`Team ${team} : voir toutes ses releases`}>
+                      <span className="dcw-av team" aria-hidden="true">🛡️</span>
+                      <span className="dcw-txt"><small>Team</small><strong>{team}</strong></span>
+                    </Link>
+                  )}
+                </div>
+              );
+            })()}
             <div className="detail-stats">
               <span><HealthDot seeders={torrent.seeders} /><strong>{torrent.seeders}</strong> seeders</span>
               <span title="Membres qui téléchargent ce torrent en ce moment sans l'avoir terminé"><strong>{torrent.leechers}</strong> téléchargements non complétés</span>
@@ -254,7 +273,6 @@ export default function TorrentDetail() {
               <span title="Commentaires"><strong>{torrent._count?.comments ?? 0}</strong> commentaires</span>
               {torrent.streamCompletedCount > 0 && <span><strong>{torrent.streamCompletedCount}</strong> lectures complétées</span>}
               <span><strong>{formatBytes(torrent.size)}</strong></span>
-              <span>par {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</span>
             </div>
             <div className="detail-actions-primary" ref={downloadAnchorRef}>
               {torrent.metadata?.trailer?.key && (

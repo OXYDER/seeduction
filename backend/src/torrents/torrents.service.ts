@@ -905,7 +905,7 @@ export class TorrentsService implements OnModuleInit {
         // Le parent est nécessaire pour déterminer le type de contenu (FILM/SERIE/XXX...) d'une sous-catégorie qui
         // n'a pas le sien propre — voir resolveContentKind() côté frontend (bouton « Ouvrir dans le lecteur »).
         category: { include: { parent: true } },
-        uploader: { select: { id: true, username: true } },
+        uploader: { select: { id: true, username: true, avatarUrl: true } },
         entities: { include: { entity: true }, orderBy: [{ role: 'asc' }, { position: 'asc' }] },
       },
     });
