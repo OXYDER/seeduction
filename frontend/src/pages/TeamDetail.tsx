@@ -84,7 +84,7 @@ export default function TeamDetail() {
       )}
 
       {editing && (
-        <div className="panel" style={{ display: 'grid', gap: 10 }}>
+        <div className="panel team-edit" style={{ display: 'grid', gap: 10 }}>
           <h3 style={{ margin: 0 }}>Modifier la team</h3>
           <div className="inv-grid">
             <label><span className="muted">Nom</span><input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={40} /></label>
@@ -159,7 +159,7 @@ export default function TeamDetail() {
       {team.releases.length > 0 && (
         <div className="panel">
           <h3 style={{ marginTop: 0 }}>📦 Dernières releases ({team.releaseCount})</h3>
-          <table><tbody>
+          <table className="team-table"><tbody>
             {team.releases.map((r: any) => (
               <tr key={r.id}>
                 <td><Link to={`/torrents/${r.id}`}>{r.name}</Link></td>
@@ -177,13 +177,13 @@ export default function TeamDetail() {
         <h3 style={{ marginTop: 0 }}>Membres ({team.members.length})</h3>
         {team.members.length === 0 && <p className="muted" style={{ margin: 0 }}>Aucun membre officiel pour le moment.</p>}
         <div style={{ overflowX: 'auto' }}>
-          <table>
+          <table className="team-table team-members">
             <thead><tr><th>Membre</th><th>Rôle</th><th>Rang</th><th>Upload</th><th>Torrents</th><th>Depuis</th>{team.canManage && <th />}</tr></thead>
             <tbody>
               {team.members.map((m: any) => (
                 <tr key={m.userId}>
                   <td><span className="row" style={{ gap: 8 }}>{m.user && <Avatar user={m.user} size={26} />}{m.user && (m.anonymous && m.user.username === 'Anonyme' ? <span className="muted">🕶️ Anonyme</span> : <UserLink user={m.user} />)}{m.anonymous && m.user?.username !== 'Anonyme' && <span title="Anonyme pour les autres membres de la team">🕶️</span>}</span></td>
-                  <td>{ROLE[m.role] ?? m.role}</td>
+                  <td><span className={`role-chip r-${String(m.role).toLowerCase()}`}>{ROLE[m.role] ?? m.role}</span></td>
                   <td className="muted">{CLASS_LABEL[m.user?.memberClass] ?? ''}</td>
                   <td className="muted">{formatBytes(m.uploaded)}</td>
                   <td className="muted">{m.torrents}</td>

@@ -1134,6 +1134,11 @@
 :root[data-mode="light"][data-theme="prestige"] button.danger:not(.call-btn):not(.msgr-link-btn):not(.big-danger) { color: rgb(220, 0, 23); }
 :root[data-mode="light"][data-theme="prestige"] button.danger:not(.call-btn):not(.msgr-link-btn):not(.big-danger):hover:not(:disabled) { background: linear-gradient(135deg, rgb(205, 0, 22), #e5485a); }
 :root[data-mode="light"][data-theme="prestige"] .team-logo { background: linear-gradient(145deg, var(--team-accent, var(--acc1)), color-mix(in srgb, var(--team-accent, var(--acc2, var(--acc1))) 45%, rgb(246, 246, 246))); }
+:root[data-mode="light"][data-theme="prestige"] .team-app { background: linear-gradient(90deg, rgba(var(--acc-rgb), 0.1), transparent 45%), rgba(0, 0, 0, 0.03); }
+:root[data-mode="light"][data-theme="prestige"] .team-table tbody td { background: rgba(0, 0, 0, 0.035); }
+:root[data-mode="light"] .role-chip { background: rgba(0, 0, 0, 0.08); }
+:root[data-mode="light"] .role-chip.r-leader { color: rgb(218, 174, 0); }
+:root[data-mode="light"] .role-chip.r-officer { background: rgba(71, 86, 107, 0.2); color: rgb(110, 141, 183); }
 
 /* ── games.css ── */
 :root[data-mode="light"] .wh-stage { background: radial-gradient(circle at 50% 38%, #4a1672 0%, rgb(246, 245, 247) 55%, rgb(246, 245, 247) 100%); box-shadow: 0 10px 40px rgba(15, 23, 42, 0.14), inset 0 0 0 2px rgba(255, 220, 120, 0.35); }
