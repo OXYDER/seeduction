@@ -4,20 +4,13 @@ import { api } from '../api/client';
 import TorrentView, { ViewSwitcher } from '../components/TorrentView';
 import { InfiniteFooter, ListModeBar } from '../components/InfiniteList';
 import { useViewMode } from '../lib/viewMode';
+import CatalogTabs, { TABS, type TabId } from '../components/CatalogTabs';
 import { useListPrefs } from '../lib/listMode';
 import SectionArt, { type ArtKind } from '../components/SectionArt';
 import type { LayoutContext } from '../components/Layout';
 
-type TabId = 'nouveautes' | 'populaires' | 'pour-toi' | 'freeleech' | 'a-seeder';
 type Period = '' | 'day' | 'week' | 'month';
 
-const TABS: { id: TabId; icon: string; label: string; title: string; sub: string }[] = [
-  { id: 'nouveautes', icon: '🆕', label: 'Nouveautés', title: 'Ajoutés récemment', sub: 'Les derniers torrents du site, du plus frais au plus ancien.' },
-  { id: 'populaires', icon: '🔥', label: 'Plus populaires', title: 'Les plus populaires', sub: 'Ce que la communauté télécharge et seede le plus.' },
-  { id: 'pour-toi', icon: '✨', label: 'Pour toi', title: 'Recommandé pour toi', sub: 'Choisis d’après ce que tu regardes, tes favoris et tes abonnements.' },
-  { id: 'freeleech', icon: '🎁', label: 'Freeleech', title: 'Freeleech en ce moment', sub: 'Téléchargements gratuits : ils ne comptent pas dans ton ratio.' },
-  { id: 'a-seeder', icon: '🌱', label: 'À seeder', title: 'À seeder', sub: 'Des torrents à 1 ou 2 seeders : un petit seed les sauve et te rapporte des points.' },
-];
 const ART_OF: Record<TabId, ArtKind> = { nouveautes: 'film', populaires: 'trophy', 'pour-toi': 'medal', freeleech: 'gift', 'a-seeder': 'seed' };
 const PERIODS: { value: Period; label: string }[] = [
   { value: '', label: 'Tout' }, { value: 'day', label: '24 heures' }, { value: 'week', label: 'Cette semaine' }, { value: 'month', label: 'Ce mois' },
@@ -29,7 +22,7 @@ const PERIODS: { value: Period; label: string }[] = [
  */
 export default function Discover() {
   const { categories } = useOutletContext<LayoutContext>();
-  const [sp, setSp] = useSearchParams();
+  const [sp] = useSearchParams();
   const tab = TABS.find((t) => t.id === sp.get('s'))?.id ?? 'nouveautes';
   const meta = TABS.find((t) => t.id === tab)!;
   const [period, setPeriod] = useState<Period>('');
@@ -80,13 +73,7 @@ export default function Discover() {
         <Link to="/browse" className="dc-all">Recherche avancée →</Link>
       </header>
 
-      <nav className="dc-tabs" aria-label="Rubriques">
-        {TABS.map((t) => (
-          <button key={t.id} type="button" className={t.id === tab ? 'on' : ''} onClick={() => setSp(t.id === 'nouveautes' ? {} : { s: t.id }, { replace: true })} aria-current={t.id === tab ? 'page' : undefined}>
-            <span aria-hidden="true">{t.icon}</span> {t.label}
-          </button>
-        ))}
-      </nav>
+      <CatalogTabs active={tab} />
 
       <div className="dc-filters">
         {tab === 'populaires' && (

@@ -110,9 +110,9 @@
 .dc-head p { margin: 4px 0 0; max-width: 62ch; }
 .dc-all { font-size: 13px; color: var(--text-dim); white-space: nowrap; } .dc-all:hover { color: var(--acc-light); }
 .dc-tabs { display: flex; gap: 6px; flex-wrap: wrap; position: sticky; top: calc(var(--hh, 0px) + 6px); z-index: 20; padding: 6px; border-radius: 16px; background: rgba(10, 12, 22, 0.8); border: 1px solid var(--s5-line); backdrop-filter: blur(16px); width: fit-content; max-width: 100%; }
-.dc-tabs button, .dc-seg button { border: 0; background: none; box-shadow: none !important; color: var(--text-dim); font-weight: 650; font-size: 13.5px; padding: 8px 14px; border-radius: 11px; white-space: nowrap; }
-.dc-tabs button:hover, .dc-seg button:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
-.dc-tabs button.on { background: linear-gradient(135deg, rgba(var(--acc-rgb), 0.9), rgba(var(--acc-rgb), 0.55)); color: var(--on-acc, #fff); box-shadow: 0 8px 22px -8px rgba(var(--acc-rgb), 0.8) !important; }
+.dc-tabs button, .dc-tabs a, .dc-seg button { border: 0; background: none; box-shadow: none !important; color: var(--text-dim); font-weight: 650; font-size: 13.5px; padding: 8px 14px; border-radius: 11px; white-space: nowrap; }
+.dc-tabs button:hover, .dc-tabs a:hover, .dc-seg button:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+.dc-tabs button.on, .dc-tabs a.on { background: linear-gradient(135deg, rgba(var(--acc-rgb), 0.9), rgba(var(--acc-rgb), 0.55)); color: var(--on-acc, #fff); box-shadow: 0 8px 22px -8px rgba(var(--acc-rgb), 0.8) !important; }
 .dc-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .dc-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 13px; background: rgba(255, 255, 255, 0.045); border: 1px solid var(--s5-line); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .dc-seg::-webkit-scrollbar { display: none; }
@@ -626,3 +626,5 @@ body:has(.msgr-main) .install-prompt, body:has(.msgr-main) .panel.notify-prompt 
 :root[data-theme="prestige"] .profile-head h1, :root[data-theme="prestige"] .profile-head h2 { font-size: clamp(24px, 3vw, 34px); margin: 0; }
 @media (max-width: 760px) { :root[data-theme="prestige"] .profile-head { padding: 14px; } :root[data-theme="prestige"] .profile-head .forum-avatar { width: 64px !important; height: 64px !important; font-size: 28px !important; } }
 :root[data-theme="prestige"] .tabs.admin-tabs button:not(.on) { box-shadow: none; text-shadow: none; filter: none; }
+.dc-tabs a { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: background .18s, color .18s; }
+.dc-tabs a.on { text-decoration: none; }

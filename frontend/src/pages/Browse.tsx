@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/auth';
 import { useTheme, applyCategoryAccent } from '../lib/theme';
 import { useViewMode } from '../lib/viewMode';
 import { useListPrefs } from '../lib/listMode';
+import CatalogTabs from '../components/CatalogTabs';
 import { InfiniteFooter, ListModeBar } from '../components/InfiniteList';
 import TorrentView, { ViewSwitcher } from '../components/TorrentView';
 import Recommended from '../components/Recommended';
@@ -366,6 +367,7 @@ export default function Browse() {
 
   return (
     <div className="grid">
+      {!uploaderId && <CatalogTabs active="catalogue" />}
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <h1>{uploaderId ? (uploaderId === currentUserId ? 'Mes uploads' : 'Torrents de ce membre') : 'Parcourir'}</h1>
         <div className="list-toolbar">
