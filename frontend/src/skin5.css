@@ -400,15 +400,15 @@ a.sc:hover { border-color: rgba(var(--acc-rgb), 0.4); transform: translateY(-2px
 
 /* ---------- Colonne de droite : match, amis, chat ---------- */
 .hr-mtl h4 .sc-chip { margin-left: auto; }
-.mtl-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin: 4px 0 10px; }
-.mtl-team { display: grid; justify-items: center; gap: 6px; min-width: 0; }
-.mtl-team small { font-size: 12px; font-weight: 650; color: var(--text-dim); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mtl-mid { display: grid; justify-items: center; gap: 2px; }
-.mtl-mid strong { font-size: 28px; font-weight: 800; letter-spacing: -0.04em; white-space: nowrap; }
-.mtl-mid small { color: var(--text-dim); font-size: 12px; text-align: center; }
-.mtl-last { margin: 0 0 12px; text-align: center; font-size: 12.5px; color: var(--text-dim); }
-.mtl-last .ok { color: var(--success); }
-.mtl-last .bad { color: var(--danger); }
+.hr-mtl .mtl-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.hr-mtl .mtl-team { display: grid; justify-items: center; gap: 6px; min-width: 0; }
+.hr-mtl .mtl-team small { font-size: 12px; font-weight: 650; color: var(--text-dim); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hr-mtl .mtl-mid { display: grid; justify-items: center; gap: 2px; }
+.hr-mtl .mtl-mid strong { font-size: 28px; font-weight: 800; letter-spacing: -0.04em; white-space: nowrap; }
+.hr-mtl .mtl-mid small { color: var(--text-dim); font-size: 12px; text-align: center; }
+.hr-mtl .mtl-last { margin: 0 0 12px; text-align: center; font-size: 12.5px; color: var(--text-dim); }
+.hr-mtl .mtl-last .ok { color: var(--success); }
+.hr-mtl .mtl-last .bad { color: var(--danger); }
 .faces { display: flex; align-items: center; padding-left: 8px; }
 .face { position: relative; width: 34px; height: 34px; margin-left: -8px; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: 0 0 0 2px #0d1019; transition: transform .18s var(--s5-ease); }
 .face:hover { transform: translateY(-3px); z-index: 2; }
@@ -432,8 +432,8 @@ a.sc:hover { border-color: rgba(var(--acc-rgb), 0.4); transform: translateY(-2px
 /* Fond d'affiche : discret (petite opacité), l'image reste lisible sans gêner le contenu */
 :root[data-theme="prestige"][style*="--backdrop"] .shell::before { opacity: 0.4; filter: saturate(1.1) brightness(0.9) blur(1px); }
 /* Logos d'équipes en pastilles rondes */
-.mtl-team .mtl-logo { width: 58px !important; height: 58px !important; border-radius: 50%; display: grid; place-items: center; background: #fff; box-shadow: 0 10px 22px -8px #000, inset 0 0 0 3px rgba(255, 255, 255, 0.2); }
-.mtl-team .mtl-logo img { width: 40px; height: 40px; object-fit: contain; }
+.hr-mtl .mtl-team .mtl-logo { width: 58px !important; height: 58px !important; border-radius: 50%; display: grid; place-items: center; background: #fff; box-shadow: 0 10px 22px -8px #000, inset 0 0 0 3px rgba(255, 255, 255, 0.2); }
+.hr-mtl .mtl-team .mtl-logo img { width: 40px; height: 40px; object-fit: contain; }
 
 /* Invitation à activer les notifications : toujours en bas à droite (le style des panneaux la remettait dans la page) */
 :root[data-theme="prestige"] .panel.notify-prompt { position: fixed; bottom: 16px; right: 16px; left: auto; width: min(340px, calc(100vw - 32px)); z-index: 130; padding: 14px; }
