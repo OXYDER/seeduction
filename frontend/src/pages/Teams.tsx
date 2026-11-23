@@ -10,7 +10,7 @@ import Loading from '../components/Loading';
 import { PublicTeamPosts } from '../components/TeamExtras';
 
 interface TeamCard {
-  id: string; name: string; tag: string | null; description: string; logoUrl: string | null; recruiting: boolean; memberCount: number; totalUpload: number;
+  id: string; name: string; tag: string | null; description: string; logoUrl: string | null; accent?: string | null; recruiting: boolean; memberCount: number; totalUpload: number;
   leader: { id: string; username: string; avatarUrl: string | null } | null; applied: boolean; mine: boolean; auto: boolean; hasOwner: boolean; releaseCount: number;
 }
 type Filter = 'all' | 'recruiting' | 'unowned' | 'owned' | 'mine';
@@ -90,7 +90,7 @@ export default function Teams() {
       {data.teams.length === 0 && <div className="panel"><p className="muted" style={{ margin: 0 }}>Aucune team ne correspond.</p></div>}
       <div className="team-grid">
         {data.teams.map((t) => (
-          <Link key={t.id} to={`/teams/${t.id}`} className={`team-card${t.mine ? ' mine' : ''}${t.hasOwner ? '' : ' unowned'}`}>
+          <Link key={t.id} to={`/teams/${t.id}`} className={`team-card${t.mine ? ' mine' : ''}${t.hasOwner ? '' : ' unowned'}`} style={t.accent ? ({ ['--team-accent' as string]: t.accent } as React.CSSProperties) : undefined}>
             <div className="team-logo">{t.logoUrl ? <img src={t.logoUrl} alt="" /> : <span>{(t.tag || t.name).slice(0, 2).toUpperCase()}</span>}</div>
             <div className="team-body">
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

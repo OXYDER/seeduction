@@ -132,7 +132,7 @@ export class TeamsService implements OnModuleInit {
         const upload = members.filter((m) => m.teamId === t.id).reduce((n, m) => n + Number(uById.get(m.userId)?.uploaded ?? 0n), 0);
         const leader = t.leaderId ? uById.get(t.leaderId) : null;
         return {
-          id: t.id, name: t.name, tag: t.tag, slug: t.slug, description: t.description, logoUrl: t.logoUrl, recruiting: t.recruiting, createdAt: t.createdAt,
+          id: t.id, name: t.name, tag: t.tag, slug: t.slug, description: t.description, logoUrl: t.logoUrl, accent: t.accent, recruiting: t.recruiting, createdAt: t.createdAt,
           auto: t.auto, hasOwner: !!t.leaderId, releaseCount: t.releaseCount, memberCount: t._count.members, totalUpload: upload,
           leader: leader ? { id: leader.id, username: leader.username, avatarUrl: leader.avatarUrl } : null, applied: applied.has(t.id), mine: mine?.teamId === t.id,
         };

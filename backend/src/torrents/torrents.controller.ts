@@ -97,6 +97,7 @@ export class TorrentsController {
       year: query.year ? Number(query.year) : undefined,
       language: query.language,
       origin: normalizeOrigin(query.origin),
+      freeleechOnly: query.freeleech === 'true' || query.freeleech === '1' ? true : undefined, // rubrique Freeleech de Découvrir : seulement les torrents marqués freeleech
       resolution: query.resolution,
       codec: query.codec,
       hdr: query.hdr === 'true' ? true : undefined,
