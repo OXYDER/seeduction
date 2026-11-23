@@ -1,5 +1,6 @@
 import Nick from './Nick';
 import Ic, { GROUP_IC } from './Ic';
+import { PageArt } from './SectionArt';
 import { applyDefaultView } from '../lib/viewMode';
 import { applyTipStyle } from '../lib/tipStyle';
 import { useEventTheme } from '../store/eventTheme';
@@ -858,6 +859,7 @@ function LayoutInner() {
 
           <QuickSearch open={quickOpen} onClose={() => setQuickOpen(false)} pages={visibleNav.map((i) => ({ to: i.to, icon: i.icon, label: i.label }))} />
           <main className="container">
+            <PageArt path={location.pathname} />
             <EventStrip />
             <Staff2faBanner />
             <Breadcrumbs />

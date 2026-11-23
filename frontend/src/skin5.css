@@ -531,3 +531,19 @@ a.sc:hover { border-color: rgba(var(--acc-rgb), 0.4); transform: translateY(-2px
 :root[data-theme="prestige"] .chat-rail[data-labels="off"] .cr-all .cr-name { display: none; }
 :root[data-theme="prestige"] .chat-rail[data-pos="top"] .cr-group-title.cr-sep::after, :root[data-theme="prestige"] .chat-rail[data-pos="bottom"] .cr-group-title.cr-sep::after { display: none; }
 :root[data-theme="prestige"] .chat-rail .cr-group-title { letter-spacing: 0.07em; font-size: 9.5px; padding: 3px 8px; gap: 4px; max-width: calc(100% - 6px); box-sizing: border-box; }
+
+/* ───── Illustration de fond d'une page entière ───── */
+:root[data-theme="prestige"] .shell main.container { position: relative; isolation: isolate; }
+.s-art.page-art { position: absolute; top: 6px; right: clamp(16px, 3vw, 72px); bottom: auto; left: auto; width: clamp(200px, 22vw, 340px); max-width: none; height: auto; opacity: 0.2; z-index: -1; filter: drop-shadow(0 0 30px rgba(var(--acc-rgb), 0.5)); -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 95%); mask-image: linear-gradient(180deg, #000 30%, transparent 95%); }
+@media (max-width: 760px) { .s-art.page-art { width: 150px; opacity: 0.14; } }
+.s-art.page-art { opacity: 0.3; width: clamp(240px, 26vw, 400px); top: -2px; }
+@media (max-width: 760px) { .s-art.page-art { opacity: 0.2; } }
+
+/* ───── Forum : en-tête de catégorie en dégradé d'accent, lignes vivantes, icônes en pastille ───── */
+:root[data-theme="prestige"] .forum-table-head { background: linear-gradient(90deg, rgba(var(--acc-rgb), 0.3), rgba(var(--acc-rgb), 0.08) 70%, transparent); border-bottom: 1px solid var(--s5-line2); }
+:root[data-theme="prestige"] .forum-table tr, :root[data-theme="prestige"] .forum-row { transition: background .18s; }
+:root[data-theme="prestige"] .forum-table tbody tr:hover, :root[data-theme="prestige"] .forum-row:hover { background: rgba(var(--acc-rgb), 0.08); }
+:root[data-theme="prestige"] .forum-icon { font-size: 22px; }
+:root[data-theme="prestige"] .forum-name { font-weight: 700; letter-spacing: -0.01em; }
+:root[data-theme="prestige"] .forum-name:hover { color: var(--acc-light); }
+:root[data-theme="prestige"] .forum-num { font-weight: 700; font-variant-numeric: tabular-nums; }

@@ -131,6 +131,19 @@ const ART: Record<ArtKind, ReactNode> = {
 };
 
 /** `top` : en haut à droite (rangées d'affiches) au lieu du bas à droite. */
-export default function SectionArt({ kind, top }: { kind: ArtKind; top?: boolean }) {
-  return <svg className={`s-art${top ? ' top' : ''}`} viewBox="0 0 220 150" aria-hidden="true" focusable="false">{ART[kind]}</svg>;
+export default function SectionArt({ kind, top, page }: { kind: ArtKind; top?: boolean; /** Grande illustration en haut à droite d'une page entière (derrière le contenu). */ page?: boolean }) {
+  return <svg className={`s-art${top ? ' top' : ''}${page ? ' page-art' : ''}`} viewBox="0 0 220 150" aria-hidden="true" focusable="false">{ART[kind]}</svg>;
+}
+
+/** Illustration de fond de chaque page, selon son adresse : ça met de la gaieté sans rien changer au contenu. */
+const PAGE_ART: [string, ArtKind][] = [
+  ['/forum', 'forum'], ['/news', 'news'], ['/wiki', 'news'], ['/roadmap', 'news'], ['/friends', 'faces'], ['/profile', 'faces'], ['/u', 'faces'], ['/user', 'faces'], ['/members', 'faces'], ['/profiles', 'faces'], ['/family', 'faces'], ['/teams', 'faces'], ['/team', 'faces'],
+  ['/achievements', 'medal'], ['/bonus', 'medal'], ['/stats', 'trophy'], ['/classements', 'trophy'], ['/leaderboard', 'trophy'], ['/hall-of-fame', 'trophy'], ['/founders', 'crown'],
+  ['/upload', 'down'], ['/activity', 'down'], ['/my-seeds', 'seed'], ['/my-uploads', 'seed'], ['/dead', 'seed'], ['/hit-and-run', 'seed'],
+  ['/requests', 'chat'], ['/suggestions', 'chat'], ['/support', 'chat'], ['/favorites', 'heart'], ['/pot', 'heart'], ['/donate', 'heart'], ['/referrals', 'gift'], ['/freeleech', 'gift'],
+  ['/collections', 'film'], ['/series', 'film'], ['/browse', 'film'], ['/live', 'play'], ['/canadiens', 'puck'],
+];
+export function PageArt({ path }: { path: string }) {
+  const hit = PAGE_ART.find(([prefix]) => path === prefix || path.startsWith(`${prefix}/`));
+  return hit ? <SectionArt kind={hit[1]} page /> : null;
 }
