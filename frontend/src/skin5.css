@@ -358,7 +358,7 @@ a.sc:hover { border-color: rgba(var(--acc-rgb), 0.4); transform: translateY(-2px
 .sc-foot small { color: var(--text-dim); }
 .sc-btn { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--s5-line2); background: rgba(255, 255, 255, 0.04); color: var(--text); font-size: 12.5px; font-weight: 650; white-space: nowrap; justify-self: start; transition: .18s; }
 .sc-btn:hover { border-color: rgba(var(--acc-rgb), 0.6); background: rgba(var(--acc-rgb), 0.14); color: #fff; }
-.sc-btn.full { justify-self: stretch; height: 38px; }
+.sc-btn.full { justify-self: stretch; display: flex; width: 100%; box-sizing: border-box; height: 38px; font-size: 13.5px; }
 .sc-fl { background: radial-gradient(ellipse at 100% 100%, rgba(var(--acc-rgb), 0.3), transparent 62%), var(--s5-surf); }
 .sc-fl.live { border-color: rgba(62, 224, 168, 0.35); }
 .sc-lvl { grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 14px; }
@@ -632,3 +632,8 @@ body:has(.msgr-main) .install-prompt, body:has(.msgr-main) .panel.notify-prompt 
 .dcw-av.date { border-radius: 12px; background: rgba(52, 211, 153, 0.22); }
 .dc-date .dcw-txt strong { color: #a7f3d0; }
 .dcw-txt em { font-style: normal; font-size: 12px; color: var(--text-dim); }
+
+/* ───── Boutons de suppression : discrets au repos (rouge translucide), pleins au survol — fini les rangées de gros boutons rouges ───── */
+:root[data-theme="prestige"] button.danger:not(.call-btn):not(.msgr-link-btn):not(.big-danger) { background: rgba(229, 72, 90, 0.12); color: #ff8a96; border: 1px solid rgba(229, 72, 90, 0.45); box-shadow: none; }
+:root[data-theme="prestige"] button.danger:not(.call-btn):not(.msgr-link-btn):not(.big-danger):hover:not(:disabled) { background: linear-gradient(135deg, #ff7b89, #e5485a); color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(229, 72, 90, 0.35); }
+:root[data-theme="prestige"] .tabs.admin-tabs button::after, :root[data-theme="prestige"] .tabs.admin-tabs button::before { display: none !important; }
