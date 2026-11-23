@@ -10,6 +10,8 @@ const isMuted = (c: ConvSummary) => !!c.mutedUntil && new Date(c.mutedUntil).get
 const PRIVATE_MAX = 12;
 type Pos = 'left' | 'right' | 'top' | 'bottom';
 interface RailPrefs { pos: Pos; size: 'sm' | 'md' | 'lg'; labels: boolean }
+/** Teinte (0-359) propre à un canal, tirée de son identifiant : chaque canal garde toujours la même couleur. */
+const hueOf = (id: string) => { let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360; return h; };
 const PREFS_KEY = 'chat-rail-prefs';
 const DEFAULT_PREFS: RailPrefs = { pos: 'left', size: 'md', labels: true };
 const readPrefs = (): RailPrefs => { try { return { ...DEFAULT_PREFS, ...(JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as Partial<RailPrefs>) }; } catch { return DEFAULT_PREFS; } };
@@ -164,7 +166,7 @@ export default function ChatRail() {
       <div key={c.id} className="cr-item">
         <button type="button" className={`cr-bubble${open ? ' open' : ''}${unread ? ' unread' : ''}${muted ? ' muted' : ''}`} onClick={() => click(c)}
           title={`${c.type === 'CHANNEL' ? 'Canal public' : c.type === 'GROUP' ? 'Groupe' : 'Conversation privée'} : ${label}${unread ? ` — ${c.unread} non lu${c.unread > 1 ? 's' : ''}` : ''}`}>
-          <span className={`cr-av${c.type === 'CHANNEL' ? ' channel' : ''}`}>
+          <span className={`cr-av${c.type === 'CHANNEL' ? ' channel' : ''}`} style={c.type === 'CHANNEL' ? ({ ['--h' as string]: hueOf(c.id) } as React.CSSProperties) : undefined}>
             {c.type === 'CHANNEL' ? <span className="cr-hash">#</span> : <ConvAvatar conv={c} size={AVATAR_PX[prefs.size]} />}
             {unread && <span className="dot-badge" style={{ top: -3, right: -3 }}>{c.mentions > 0 ? '@' : c.unread > 99 ? '99+' : c.unread}</span>}
           </span>
@@ -179,11 +181,11 @@ export default function ChatRail() {
     <>
     <nav ref={navRef} className="chat-rail" data-pos={prefs.pos} data-size={prefs.size} data-labels={prefs.labels ? 'on' : 'off'} style={prefs.pos === 'bottom' ? undefined : { top }} aria-label="Conversations">
       <button type="button" className="cr-grip" onPointerDown={startDrag} title="Glisse vers un bord de l'écran pour déplacer la barre (gauche, droite, haut, bas)" aria-label="Déplacer la barre des bulles">⋮⋮</button>
-      {publics.length > 0 && <div className="cr-group-title" title="Canaux publics">Publics</div>}
+      {publics.length > 0 && <div className="cr-group-title pub" title="Canaux publics">Publics</div>}
       {publics.map(bubble)}
-      {privates.length > 0 && <div className="cr-group-title cr-sep" title="Conversations privées et groupes">Privés</div>}
+      {privates.length > 0 && <div className="cr-group-title priv cr-sep" title="Conversations privées et groupes">Privés</div>}
       {privates.map(bubble)}
-      <Link to="/chat" className="cr-all" title="Ouvrir le Messenger complet">💬</Link>
+      <Link to="/chat" className="cr-all" title="Ouvrir le Messenger complet"><span className="cr-all-ic" aria-hidden="true">＋</span><span className="cr-name">Messenger</span></Link>
       {hiddenCount > 0 && <button type="button" className="cr-restore" onClick={restoreAll} title="Réafficher les bulles retirées">↺ {hiddenCount}</button>}
       <button type="button" className="cr-set" onClick={() => setMenuOpen((v) => !v)} title="Réglages des bulles : position, taille, noms" aria-expanded={menuOpen} aria-label="Réglages des bulles">⚙</button>
     </nav>

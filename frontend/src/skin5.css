@@ -499,3 +499,35 @@ a.sc:hover { border-color: rgba(var(--acc-rgb), 0.4); transform: translateY(-2px
 .st-board > .s-art, .hr-card > .s-art { opacity: 0.3; }
 .dc-head > .s-art { right: 170px; opacity: 0.4; }
 @media (max-width: 760px) { .dc-head > .s-art { right: 0; opacity: 0.22; } }
+
+/* ───── Bulles de discussion : style de la maquette (canaux en carrés arrondis colorés, pastille de non-lus, sélection bien visible) ───── */
+:root[data-theme="prestige"] .chat-rail .cr-bubble { border-radius: 14px; transition: background .18s, transform .18s var(--s5-ease), box-shadow .18s; }
+:root[data-theme="prestige"] .chat-rail .cr-bubble:hover { background: rgba(var(--acc-rgb), 0.14); }
+:root[data-theme="prestige"] .chat-rail .cr-av { background: linear-gradient(145deg, hsl(var(--h, 262) 55% 46%), hsl(calc(var(--h, 262) + 40) 60% 24%)); border: 2px solid transparent; box-shadow: 0 0 0 2px rgba(var(--acc-rgb), 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 16px rgba(0, 0, 0, 0.45); color: #fff; font-weight: 800; }
+:root[data-theme="prestige"] .chat-rail .cr-av.channel { border-radius: 15px; }
+:root[data-theme="prestige"] .chat-rail .cr-av .cr-hash { font-size: 21px; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35); }
+:root[data-theme="prestige"] .chat-rail .cr-bubble.unread .cr-av { border-color: transparent; box-shadow: 0 0 0 2px rgba(var(--acc-rgb), 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 16px rgba(0, 0, 0, 0.45); }
+/* Pastille de non-lus : petite pilule d'accent en haut à droite, comme dans la maquette. */
+:root[data-theme="prestige"] .chat-rail .cr-av .dot-badge { top: -7px !important; right: -9px !important; left: auto; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; background: linear-gradient(135deg, var(--acc1), var(--acc2, var(--acc1))); color: var(--on-acc, #fff); font-size: 10.5px; font-weight: 800; line-height: 15px; border: 2px solid #0a0c16; box-sizing: content-box; box-shadow: 0 2px 8px rgba(var(--acc-rgb), 0.6); }
+/* Noms sous les bulles : texte simple (plus de pastille sombre), sauf pour la conversation ouverte. */
+:root[data-theme="prestige"] .chat-rail .cr-name { background: none; color: var(--text-dim); padding: 1px 2px; font-weight: 500; }
+:root[data-theme="prestige"] .chat-rail .cr-bubble.unread .cr-name { color: #fff; font-weight: 700; }
+/* Conversation ouverte : voile d'accent sur toute la bulle, barre à gauche, anneau blanc + halo, nom en pastille d'accent. */
+:root[data-theme="prestige"] .chat-rail .cr-bubble.open { background: rgba(var(--acc-rgb), 0.24); box-shadow: inset 3px 0 0 var(--acc1), 0 0 0 1px rgba(var(--acc-rgb), 0.4); }
+:root[data-theme="prestige"] .chat-rail .cr-bubble.open .cr-av { border: 2px solid transparent; box-shadow: 0 0 0 2px #fff, 0 0 0 5px rgba(var(--acc-rgb), 0.6), 0 0 20px 4px rgba(var(--acc-rgb), 0.75); transform: none; }
+:root[data-theme="prestige"] .chat-rail .cr-bubble.open .cr-av::after { display: none; }
+:root[data-theme="prestige"] .chat-rail .cr-bubble.open .cr-name { background: linear-gradient(135deg, var(--acc1), var(--acc2, var(--acc1))); color: var(--on-acc, #fff); font-weight: 700; padding: 1px 7px; }
+/* Titres de groupe : pastilles bien lisibles, une teinte par groupe, séparées par un filet. */
+:root[data-theme="prestige"] .chat-rail .cr-group-title { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; color: #fff; padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(var(--acc-rgb), 0.55); background: rgba(var(--acc-rgb), 0.26); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+:root[data-theme="prestige"] .chat-rail .cr-group-title.pub::before { content: "#"; font-size: 12px; }
+:root[data-theme="prestige"] .chat-rail .cr-group-title.priv { border-color: rgba(52, 211, 153, 0.6); background: rgba(52, 211, 153, 0.2); }
+:root[data-theme="prestige"] .chat-rail .cr-group-title.priv::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px #34d399; }
+:root[data-theme="prestige"] .chat-rail .cr-group-title.cr-sep { margin-top: 12px; position: relative; }
+:root[data-theme="prestige"] .chat-rail .cr-group-title.cr-sep::after { content: ""; position: absolute; left: -2px; right: -2px; top: -8px; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent); transform: translateX(0); pointer-events: none; }
+/* « + Messenger » : cercle fantôme comme « Nouveau » dans la maquette. */
+:root[data-theme="prestige"] .chat-rail .cr-all { display: grid; justify-items: center; gap: 2px; width: 62px; height: auto; margin-top: 8px; border: 0; background: none; border-radius: 14px; padding: 4px 0; }
+:root[data-theme="prestige"] .chat-rail .cr-all-ic { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; font-weight: 300; color: var(--text-dim); background: rgba(255, 255, 255, 0.06); box-shadow: 0 0 0 1px var(--s5-line2); transition: .18s; }
+:root[data-theme="prestige"] .chat-rail .cr-all:hover .cr-all-ic { color: #fff; background: rgba(var(--acc-rgb), 0.2); box-shadow: 0 0 0 1px rgba(var(--acc-rgb), 0.6); }
+:root[data-theme="prestige"] .chat-rail[data-labels="off"] .cr-all .cr-name { display: none; }
+:root[data-theme="prestige"] .chat-rail[data-pos="top"] .cr-group-title.cr-sep::after, :root[data-theme="prestige"] .chat-rail[data-pos="bottom"] .cr-group-title.cr-sep::after { display: none; }
+:root[data-theme="prestige"] .chat-rail .cr-group-title { letter-spacing: 0.07em; font-size: 9.5px; padding: 3px 8px; gap: 4px; max-width: calc(100% - 6px); box-sizing: border-box; }
