@@ -42,7 +42,7 @@ export default function EntityPage() {
     <div className="grid">
       <div className="row" style={{ alignItems: 'flex-start', gap: 16 }}>
         {entity.imageUrl
-          ? <img src={entity.imageUrl} alt="" style={{ width: 120, height: 160, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+          ? <img loading="lazy" decoding="async" src={entity.imageUrl} alt="" style={{ width: 120, height: 160, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
           : <div className="entity-initial" style={{ width: 120, height: 160, fontSize: 40 }}>{entity.name.slice(0, 1).toUpperCase()}</div>}
         <div>
           <div className="muted">{TYPE_LABEL[entity.type] ?? entity.type}</div>

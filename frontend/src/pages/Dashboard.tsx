@@ -74,7 +74,7 @@ function ClassicDashboard() {
               <button className="hero-cta">{user ? 'Parcourir les torrents' : 'Devenir légendaire'}</button>
             </Link>
           </div>
-          <div className="hero-logo"><img src="/logo-full.png" alt="Seeduction" /></div>
+          <div className="hero-logo"><img loading="lazy" decoding="async" src="/logo-full.png" alt="Seeduction" /></div>
         </div>
         <div className="hero-features">
           <div className="hero-feature"><span className="hero-feature-icon">👥</span><div><strong>Communauté d'élite</strong>Membres triés sur le volet</div></div>

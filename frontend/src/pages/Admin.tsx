@@ -535,7 +535,7 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
             )}
             {showContentKind && (
               <div className="row" style={{ gap: 8 }}>
-                {editImage && <img src={editImage} alt="" style={{ height: 28, maxWidth: 90, objectFit: 'contain' }} />}
+                {editImage && <img loading="lazy" decoding="async" src={editImage} alt="" style={{ height: 28, maxWidth: 90, objectFit: 'contain' }} />}
                 <label className="secondary" style={{ cursor: 'pointer', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13 }}>
                   🖼️ {editImage ? "Changer l'image" : 'Ajouter une image'}
                   <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => uploadImage(e.target.files?.[0])} />
@@ -551,7 +551,7 @@ function CategoryManager({ endpoint, title, renderCount, showContentKind }: { en
         ) : (
           <>
             <span>
-              {isSub ? '↳ ' : ''}{showContentKind && item.imageUrl && <img src={item.imageUrl} alt="" style={{ height: 20, maxWidth: 60, objectFit: 'contain', verticalAlign: 'middle', marginRight: 6 }} />}<strong>{item.name}</strong>{showContentKind && item.adult && <span className="badge" style={{ marginLeft: 6, background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>🔞 Adulte</span>}{renderCount && <span className="muted">{renderCount(item)}</span>}
+              {isSub ? '↳ ' : ''}{showContentKind && item.imageUrl && <img loading="lazy" decoding="async" src={item.imageUrl} alt="" style={{ height: 20, maxWidth: 60, objectFit: 'contain', verticalAlign: 'middle', marginRight: 6 }} />}<strong>{item.name}</strong>{showContentKind && item.adult && <span className="badge" style={{ marginLeft: 6, background: 'rgba(224,90,90,0.2)', color: 'var(--danger)' }}>🔞 Adulte</span>}{renderCount && <span className="muted">{renderCount(item)}</span>}
               {showContentKind && (
                 <span className="muted">
                   {' '}— {item.contentKind ? CONTENT_KIND_LABEL[item.contentKind] ?? item.contentKind : (isSub ? 'hérite de la catégorie principale' : 'aucun type de contenu')}

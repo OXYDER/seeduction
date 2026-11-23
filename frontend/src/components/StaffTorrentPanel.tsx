@@ -216,7 +216,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
             </div>
           </div>
           <div className="row" style={{ gap: 10 }}>
-            {coverImage && <img src={coverImage} alt="" style={{ width: 50, height: 70, objectFit: 'cover', borderRadius: 4 }} />}
+            {coverImage && <img loading="lazy" decoding="async" src={coverImage} alt="" style={{ width: 50, height: 70, objectFit: 'cover', borderRadius: 4 }} />}
             <label className="secondary" style={{ cursor: 'pointer', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13 }}>
               🖼️ {coverImage ? 'Changer la pochette' : 'Ajouter une pochette'}
               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => uploadCover(e.target.files?.[0])} />

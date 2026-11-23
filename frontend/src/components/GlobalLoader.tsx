@@ -18,14 +18,14 @@ export function LoadingScreen({ mode, label = 'Chargement…' }: { mode: Mode; l
     <>
       <div className={`sd-loader${overlay ? ' on' : ''}${mode === 'soft' ? ' soft' : ''}`} role="status" aria-live="polite" aria-hidden={!overlay}>
         <div className="sd-loader-box">
-          <img src="/logo-full.png" alt="Seeduction" className="sd-loader-logo" draggable={false} />
+          <img loading="lazy" decoding="async" src="/logo-full.png" alt="Seeduction" className="sd-loader-logo" draggable={false} />
           <div className="sd-loader-bar"><span /></div>
           <div className="sd-loader-label">{label}</div>
         </div>
       </div>
       <div className={`sd-top${mode === 'subtle' ? ' on' : ''}`} aria-hidden="true"><span /></div>
       <div className={`sd-chip${mode === 'subtle' ? ' on' : ''}`} role="status" aria-hidden={mode !== 'subtle'}>
-        <img src="/logo-icon.png" alt="" draggable={false} />
+        <img loading="lazy" decoding="async" src="/logo-icon.png" alt="" draggable={false} />
         <span>{label}</span>
       </div>
     </>

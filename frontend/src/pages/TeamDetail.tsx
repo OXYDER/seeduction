@@ -54,9 +54,9 @@ export default function TeamDetail() {
       {error && <div className="panel" style={{ borderColor: 'var(--danger)' }}>{error}</div>}
       {flash && <div className="mod-flash" role="status">{flash}</div>}
 
-      {team.bannerUrl && <img className="team-banner" src={team.bannerUrl} alt="" />}
+      {team.bannerUrl && <img loading="lazy" decoding="async" className="team-banner" src={team.bannerUrl} alt="" />}
       <div className="panel team-hero" style={team.accent ? { borderColor: team.accent } : undefined}>
-        <div className="team-logo big">{team.logoUrl ? <img src={team.logoUrl} alt="" /> : <span>{(team.tag || team.name).slice(0, 2).toUpperCase()}</span>}</div>
+        <div className="team-logo big">{team.logoUrl ? <img loading="lazy" decoding="async" src={team.logoUrl} alt="" /> : <span>{(team.tag || team.name).slice(0, 2).toUpperCase()}</span>}</div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <h1 style={{ margin: 0 }}>{team.name} {team.tag && <span className="team-tag">[{team.tag}]</span>}</h1>
           {team.slogan && <div style={{ fontStyle: 'italic', color: team.accent || undefined }}>{team.slogan}</div>}

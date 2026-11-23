@@ -318,7 +318,7 @@ function ChatsPanel({ profiles }: { profiles: Card[] }) {
               <div className="fam-msg-head"><strong><Nick id={m.sender.id} name={m.sender.username} /></strong> <span className="muted">{new Date(m.at).toLocaleString('fr-CA')}</span></div>
               <div>
                 {m.type === 'SYSTEM' ? <em>{m.content}</em> : m.type === 'VOICE' ? '🎤 Message vocal' : m.type === 'FILE' ? `📎 ${m.fileName ?? 'Fichier'}` : null}
-                {m.imageUrl && <img src={m.imageUrl} alt="" style={{ maxWidth: 220, borderRadius: 8, display: 'block' }} />}
+                {m.imageUrl && <img loading="lazy" decoding="async" src={m.imageUrl} alt="" style={{ maxWidth: 220, borderRadius: 8, display: 'block' }} />}
                 {m.content && m.type !== 'SYSTEM' ? m.content : null}
               </div>
             </div>

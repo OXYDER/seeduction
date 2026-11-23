@@ -40,7 +40,7 @@ export default function ShareTorrentModal({ onPick, onClose }: { onPick: (torren
           {!loading && items.length === 0 && <p className="muted">{tab === 'search' ? (q.trim().length < 2 ? 'Tape au moins 2 lettres.' : 'Aucun résultat.') : 'Aucun favori pour l\'instant.'}</p>}
           {items.map((t) => (
             <button key={t.id} type="button" className="msgr-share-item" onClick={() => onPick(t.id)}>
-              {t.coverImage ? <img src={t.coverImage} alt="" /> : <span className="msgr-torrent-fallback">🎬</span>}
+              {t.coverImage ? <img loading="lazy" decoding="async" src={t.coverImage} alt="" /> : <span className="msgr-torrent-fallback">🎬</span>}
               <span style={{ minWidth: 0 }}>
                 <strong>{t.name}</strong>
                 <span className="muted" style={{ display: 'block', fontSize: 12 }}>{[t.category?.name, t.year, t.resolution, formatBytes(t.size)].filter(Boolean).join(' · ')}</span>

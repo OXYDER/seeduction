@@ -28,7 +28,7 @@ export default function VerifyLink() {
   return (
     <div className="auth-form-side" style={{ minHeight: '100vh' }}>
       <div className="panel ornate" style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
-        <img src="/logo-icon.png" alt="" width={56} height={56} />
+        <img loading="lazy" decoding="async" src="/logo-icon.png" alt="" width={56} height={56} />
         <h2 style={{ marginTop: 10 }}>Confirmation par courriel</h2>
         {state === 'loading' && <p className="muted">Vérification…</p>}
         {state === 'ok' && <p style={{ color: 'var(--success)' }}>{message}</p>}

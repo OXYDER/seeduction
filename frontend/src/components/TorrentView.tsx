@@ -209,14 +209,14 @@ function TorrentViewBody(props: TorrentViewProps) {
                 <tr key={t.id}>
                   <td className="cat-cell" style={{ whiteSpace: 'nowrap' }}>
                     {t.category?.imageUrl
-                      ? <img src={t.category.imageUrl} alt={t.category.name} title={t.category.name} style={{ height: 22, maxWidth: 80, objectFit: 'contain' }} />
+                      ? <img loading="lazy" decoding="async" src={t.category.imageUrl} alt={t.category.name} title={t.category.name} style={{ height: 22, maxWidth: 80, objectFit: 'contain' }} />
                       : <CategoryTag category={t.category} />}
                   </td>
                   <td>
                     <div className="row" style={{ gap: 10 }}>
                       {star(t)}
                       {t.coverImage
-                        ? <img src={t.coverImage} alt="" style={{ width: 32, height: 44, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
+                        ? <img loading="lazy" decoding="async" src={t.coverImage} alt="" style={{ width: 32, height: 44, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
                         : <span className="category-swatch" style={{ background: `${(catStyle?.color ?? '#e0b84a')}26` }}>{catStyle?.icon ?? '📦'}</span>}
                       <span>
                         {isStaff && <Link to={`/torrents/${t.id}?edit=1`} title="Modifier / supprimer (staff)" style={{ marginRight: 6 }}>✏️</Link>}

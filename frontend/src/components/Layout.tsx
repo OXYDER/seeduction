@@ -751,6 +751,7 @@ function LayoutInner() {
     return (
       <div style={navPrefs.width && !topBar && !collapsed ? ({ ['--side-w' as string]: `${navPrefs.width}px` } as React.CSSProperties) : undefined} className={`shell${collapsed && !topBar ? ' collapsed' : ''}${navPrefs.side === 'right' && !topBar ? ' side-right' : ''}${style === 'rail' && !collapsed && !topBar ? ' nav-rail' : ''}${topBar ? ' nav-top' : ''}`}>
         <div key={location.pathname} className="nprog" aria-hidden="true" />
+        <a className="skip-link" href="#contenu">Aller au contenu</a>
         {drawer && <div className="shell-overlay" onClick={() => setDrawer(false)} />}
         {!topBar && (
         <aside className={`side-nav${drawer ? ' open' : ''}`}>
@@ -858,7 +859,7 @@ function LayoutInner() {
           {!topBar && headerEl}
 
           <QuickSearch open={quickOpen} onClose={() => setQuickOpen(false)} pages={visibleNav.map((i) => ({ to: i.to, icon: i.icon, label: i.label }))} />
-          <main className="container">
+          <main className="container" id="contenu" tabIndex={-1}>
             <PageArt path={location.pathname} />
             <EventStrip />
             <Staff2faBanner />

@@ -457,7 +457,7 @@ export default function DescriptionGenerator({
                   >
                     {multi && <input type="checkbox" readOnly checked={isPicked} style={{ width: 'auto', flexShrink: 0 }} aria-label={`Choisir ${r.title}`} />}
                     {r.thumbnail
-                      ? <img src={r.thumbnail} alt="" style={{ width: 44, height: 62, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
+                      ? <img loading="lazy" decoding="async" src={r.thumbnail} alt="" style={{ width: 44, height: 62, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
                       : <div style={{ width: 44, height: 62, background: 'var(--bg-panel-raised)', borderRadius: 3, flexShrink: 0 }} />}
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>

@@ -1,3 +1,4 @@
+import EmptyState from '../components/EmptyState';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -131,7 +132,7 @@ export default function Notifications() {
         {notice && <div style={{ color: 'var(--success)', marginBottom: 8 }}>{notice}</div>}
 
         {loading && items.length === 0 && <Loading />}
-        {!loading && items.length === 0 && <p className="muted">{unreadOnly ? 'Aucune notification non lue.' : 'Aucune notification ici.'}</p>}
+        {!loading && items.length === 0 && <EmptyState icon="🔔" title={unreadOnly ? 'Tout est lu' : 'Aucune notification'}>{unreadOnly ? 'Aucune notification non lue.' : 'Les nouvelles qui te concernent apparaîtront ici.'}</EmptyState>}
         <div className="np-list">
           {items.map((n) => (
             <div key={n.id} className={`np-item${n.read ? '' : ' unread'}`} onClick={() => open(n)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') open(n); }}>

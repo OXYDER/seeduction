@@ -75,7 +75,7 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
       <div className={`news-split${rest.length > 0 ? ' with-side' : ''}`}>
       {first && k && (
         <Link to={`/news/${first.id}`} className="news-hero">
-          <span className={`news-hero-img${first.imageUrl ? ' ambient' : ''}`} style={ambient(first.imageUrl)}>{first.imageUrl ? <img src={first.imageUrl} alt="" /> : k.icon}</span>
+          <span className={`news-hero-img${first.imageUrl ? ' ambient' : ''}`} style={ambient(first.imageUrl)}>{first.imageUrl ? <img loading="lazy" decoding="async" src={first.imageUrl} alt="" /> : k.icon}</span>
           <span className="news-hero-body">
             <span className="row" style={{ gap: 8 }}>
               <span className={`news-kind k-${(first.kind ?? 'NEWS').toLowerCase()}`}>{k.icon} {k.label}</span>

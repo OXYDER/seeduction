@@ -66,7 +66,7 @@ export default function SeedObligations() {
               const pct = Math.min(100, Math.round((i.seedSeconds / i.requiredSeconds) * 100));
               return (
                 <Link key={i.torrentId} to={`/torrents/${i.torrentId}`} className="seedob-item" onClick={() => setOpen(false)}>
-                  {i.coverImage ? <img src={i.coverImage} alt="" className="seedob-cover" /> : <span className="seedob-cover plain">🎬</span>}
+                  {i.coverImage ? <img loading="lazy" decoding="async" src={i.coverImage} alt="" className="seedob-cover" /> : <span className="seedob-cover plain">🎬</span>}
                   <span className="seedob-text">
                     <span className="seedob-name">{i.name}</span>
                     <span className="seedob-bar"><span className={i.status} style={{ width: `${pct}%` }} /></span>

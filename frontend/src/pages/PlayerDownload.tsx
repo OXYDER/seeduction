@@ -57,7 +57,7 @@ export default function PlayerDownload() {
       </div>
 
       <div className="panel ornate" style={{ textAlign: 'center' }}>
-        <img src="/logo-icon.png" alt="" width={72} height={72} style={{ marginBottom: 10 }} />
+        <img loading="lazy" decoding="async" src="/logo-icon.png" alt="" width={72} height={72} style={{ marginBottom: 10 }} />
         <h3 style={{ margin: '0 0 4px' }}>Lecteur Seeduction pour Windows</h3>
         <p className="muted" style={{ margin: '0 0 16px' }}>
           Inclut Seeduction VLC (une copie de VLC) — rien d'autre à installer.
@@ -72,7 +72,7 @@ export default function PlayerDownload() {
       </div>
 
       <div className="panel ornate" style={{ textAlign: 'center', ...(isAndroid ? { order: -1 } : {}) }}>
-        <img src="/logo-icon.png" alt="" width={72} height={72} style={{ marginBottom: 10 }} />
+        <img loading="lazy" decoding="async" src="/logo-icon.png" alt="" width={72} height={72} style={{ marginBottom: 10 }} />
         <h3 style={{ margin: '0 0 4px' }}>Lecteur Seeduction pour Android{isAndroid ? ' — pour ton téléphone' : ''}</h3>
         <p className="muted" style={{ margin: '0 0 16px' }}>
           Même principe que sur PC : touche « Ouvrir dans le lecteur Seeduction » sur le site, le téléphone télécharge ce qu'il faut et lance la vidéo (tous les formats, pistes audio et sous-titres).

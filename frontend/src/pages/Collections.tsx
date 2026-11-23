@@ -1,3 +1,4 @@
+import EmptyState from '../components/EmptyState';
 import UserLink from '../components/UserLink';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -128,7 +129,7 @@ export default function Collections() {
       <section>
         <h2 className="collection-section-title">Collections publiques {publicCols && <span className="collection-count">{others.length}</span>}</h2>
         {publicCols === null && <Loading />}
-        {publicCols && others.length === 0 && <p className="muted">Aucune collection publique pour l'instant.</p>}
+        {publicCols && others.length === 0 && <EmptyState icon="🗂️" title="Aucune collection publique">Les collections créées par les membres apparaîtront ici.</EmptyState>}
         {others.length > 0 && <div className="collection-grid">{others.map((c) => <CollectionCard key={c.id} c={c} />)}</div>}
       </section>
 

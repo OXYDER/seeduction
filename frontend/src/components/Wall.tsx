@@ -130,7 +130,7 @@ function Composer({ teamId: fixedTeam, teams, onPosted, torrentId, compact, auto
       <MentionField multiline autoFocus={autoFocus} value={content} onChange={setContent} maxLength={2000} rows={compact ? 2 : 3} placeholder={teamId ? 'Écris quelque chose à ta team… (@ pour mentionner)' : torrentId ? 'Ajoute un mot sur ce torrent (facultatif)…' : 'Quoi de neuf ? Un statut, une trouvaille, un lien… (@ pour mentionner)'} />
       {imageUrl && (
         <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
-          <img src={imageUrl} alt="" style={{ maxHeight: 140, maxWidth: '100%', borderRadius: 8 }} />
+          <img loading="lazy" decoding="async" src={imageUrl} alt="" style={{ maxHeight: 140, maxWidth: '100%', borderRadius: 8 }} />
           <button type="button" className="secondary" onClick={() => setImageUrl('')}>✕ Retirer</button>
         </div>
       )}
@@ -242,7 +242,7 @@ function PostEditor({ post, onSaved, onCancel }: { post: any; onSaved: (p: any) 
     <div style={{ display: 'grid', gap: 8 }}>
       <MentionField multiline value={content} onChange={setContent} maxLength={2000} rows={3} autoFocus />
       <input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="Lien (facultatif)" maxLength={500} />
-      {post.imageUrl && !dropImage && <div className="row" style={{ gap: 8 }}><img src={post.imageUrl} alt="" style={{ maxHeight: 80, borderRadius: 6 }} /><button type="button" className="secondary" onClick={() => setDropImage(true)}>✕ Retirer l'image</button></div>}
+      {post.imageUrl && !dropImage && <div className="row" style={{ gap: 8 }}><img loading="lazy" decoding="async" src={post.imageUrl} alt="" style={{ maxHeight: 80, borderRadius: 6 }} /><button type="button" className="secondary" onClick={() => setDropImage(true)}>✕ Retirer l'image</button></div>}
       <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <label className="row muted" style={{ gap: 6 }}>
           Visible par

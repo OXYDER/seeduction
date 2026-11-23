@@ -9,6 +9,7 @@ import TorrentView, { ViewSwitcher } from '../components/TorrentView';
 import Recommended from '../components/Recommended';
 import Loading from '../components/Loading';
 import { ClientLots } from '../components/InfiniteList';
+import EmptyState from '../components/EmptyState';
 
 export default function Favorites() {
   const [items, setItems] = useState<any[] | null>(null);
@@ -46,9 +47,9 @@ export default function Favorites() {
         </div>
         {items === null && <Loading />}
         {items?.length === 0 && (
-          <p className="muted">
-            Rien ici pour l'instant. Clique sur l'étoile ☆ à côté d'un torrent (dans <Link to="/browse">Parcourir</Link> ou sur sa fiche) pour le mettre de côté.
-          </p>
+          <EmptyState icon="⭐" title="Rien de côté pour l'instant" action={<Link to="/browse" className="icon-btn">Parcourir le catalogue →</Link>}>
+            Clique sur l'étoile ☆ à côté d'un torrent (dans le catalogue ou sur sa fiche) pour le mettre de côté et le retrouver ici.
+          </EmptyState>
         )}
         {items && items.length > 0 && (
           <ClientLots items={items}>

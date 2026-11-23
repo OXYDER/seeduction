@@ -570,7 +570,7 @@ function UploadOne() {
             <div className="muted" style={{ marginBottom: 6 }}>Pochette / affiche (optionnelle)</div>
             <div className="row" style={{ alignItems: 'center', gap: 10 }}>
               {coverImage
-                ? <img src={coverImage} alt="" style={{ width: 60, height: 84, objectFit: 'cover', borderRadius: 4 }} />
+                ? <img loading="lazy" decoding="async" src={coverImage} alt="" style={{ width: 60, height: 84, objectFit: 'cover', borderRadius: 4 }} />
                 : <div style={{ width: 60, height: 84, background: 'var(--bg-panel-raised)', borderRadius: 4 }} />}
               <div className="grid" style={{ gap: 6 }}>
                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onCoverFileChange} disabled={coverUploading} />

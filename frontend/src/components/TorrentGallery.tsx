@@ -41,7 +41,7 @@ export default function TorrentGallery({ images, title = 'Images' }: { images: s
           onTouchEnd={(e) => { const x = touch.current; touch.current = null; if (x !== null) { const dx = e.changedTouches[0].clientX - x; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); } }}>
           <button type="button" className="tg-x" aria-label="Fermer" onClick={() => setOpen(null)}>✕</button>
           <button type="button" className="tg-nav prev" aria-label="Image précédente" onClick={(e) => { e.stopPropagation(); go(-1); }}>‹</button>
-          <img key={images[open]} src={images[open]} alt="" onClick={(e) => e.stopPropagation()} />
+          <img loading="lazy" decoding="async" key={images[open]} src={images[open]} alt="" onClick={(e) => e.stopPropagation()} />
           <button type="button" className="tg-nav next" aria-label="Image suivante" onClick={(e) => { e.stopPropagation(); go(1); }}>›</button>
           <span className="tg-pos">{open + 1} / {n}</span>
         </div>,

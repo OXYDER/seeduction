@@ -147,7 +147,7 @@ export default function SearchBox({
       case 'torrents':
         return (
           <>
-            {d.coverImage ? <img src={d.coverImage} alt="" className="sb-thumb" /> : <span className="sb-thumb sb-icon">🎬</span>}
+            {d.coverImage ? <img loading="lazy" decoding="async" src={d.coverImage} alt="" className="sb-thumb" /> : <span className="sb-thumb sb-icon">🎬</span>}
             <span className="sb-text">
               <span className="sb-title">{d.name}</span>
               <span className="sb-sub">{[d.matchedTitle ? `aussi : ${d.matchedTitle}` : '', d.category?.name, `${d.seeders} seeder${d.seeders > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}</span>
@@ -169,7 +169,7 @@ export default function SearchBox({
         const style = CATEGORY_STYLE[d.slug];
         return (
           <>
-            {d.imageUrl ? <img src={d.imageUrl} alt="" className="sb-thumb sb-wide" /> : <span className="sb-thumb sb-icon">{style?.icon ?? '📁'}</span>}
+            {d.imageUrl ? <img loading="lazy" decoding="async" src={d.imageUrl} alt="" className="sb-thumb sb-wide" /> : <span className="sb-thumb sb-icon">{style?.icon ?? '📁'}</span>}
             <span className="sb-text">
               <span className="sb-title">{d.name}</span>
               <span className="sb-sub">{d.parent ? `Sous-catégorie de ${d.parent.name}` : 'Catégorie'}</span>
@@ -180,7 +180,7 @@ export default function SearchBox({
       case 'actors': case 'directors': case 'producers': case 'genres': case 'creators': case 'entities':
         return (
           <>
-            {d.imageUrl ? <img src={d.imageUrl} alt="" className="sb-thumb" /> : <span className="sb-thumb sb-icon">{entry.scope === 'genres' ? '🏷️' : d.name.slice(0, 1).toUpperCase()}</span>}
+            {d.imageUrl ? <img loading="lazy" decoding="async" src={d.imageUrl} alt="" className="sb-thumb" /> : <span className="sb-thumb sb-icon">{entry.scope === 'genres' ? '🏷️' : d.name.slice(0, 1).toUpperCase()}</span>}
             <span className="sb-text">
               <span className="sb-title">{d.name}</span>
               <span className="sb-sub">{[ROLE_NAME[d.role] ?? TYPE_LABEL[d.type] ?? d.type, d.torrentCount != null ? `${d.torrentCount} torrent${d.torrentCount > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}</span>

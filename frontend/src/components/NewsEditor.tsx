@@ -99,7 +99,7 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
       <input placeholder="Titre" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
       <textarea placeholder="Chapeau : une ou deux phrases affichées dans les listes (facultatif)" value={summary} onChange={(e) => setSummary(e.target.value)} maxLength={300} rows={2} />
       <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        {imageUrl ? <img src={imageUrl} alt="" className="news-edit-thumb" /> : <div className="news-edit-thumb empty">Pas d'image</div>}
+        {imageUrl ? <img loading="lazy" decoding="async" src={imageUrl} alt="" className="news-edit-thumb" /> : <div className="news-edit-thumb empty">Pas d'image</div>}
         <label className="secondary fam-file">🖼️ {imageUrl ? "Changer l'image principale" : 'Ajouter une image principale'}<input type="file" accept="image/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ''; }} /></label>
         {imageUrl && <button type="button" className="secondary" onClick={() => setImageUrl(null)}>Retirer</button>}
       </div>
@@ -118,7 +118,7 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
             <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
               {banners.map((u) => (
                 <button key={u.slice(-60)} type="button" onClick={() => pickBanner(u)} title="Utiliser cette bannière" style={{ padding: 0, border: '3px solid transparent', borderRadius: 10, background: 'none', cursor: 'pointer', overflow: 'hidden' }}>
-                  <img src={u} alt="Proposition de bannière" style={{ display: 'block', width: 300, maxWidth: '100%', aspectRatio: '16 / 9' }} />
+                  <img loading="lazy" decoding="async" src={u} alt="Proposition de bannière" style={{ display: 'block', width: 300, maxWidth: '100%', aspectRatio: '16 / 9' }} />
                 </button>
               ))}
             </div>
@@ -147,7 +147,7 @@ export default function NewsEditor({ item, onSaved, onCancel }: { item?: NewsIte
                 <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
                   {aiImages.map((u) => (
                     <button key={u} type="button" onClick={() => setImageUrl(u)} title="Utiliser cette image" style={{ padding: 0, border: imageUrl === u ? '3px solid var(--acc-link, #b9a4ff)' : '3px solid transparent', borderRadius: 10, background: 'none', cursor: 'pointer', overflow: 'hidden' }}>
-                      <img src={u} alt="Proposition d'image" style={{ display: 'block', width: 300, maxWidth: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }} />
+                      <img loading="lazy" decoding="async" src={u} alt="Proposition d'image" style={{ display: 'block', width: 300, maxWidth: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }} />
                     </button>
                   ))}
                 </div>

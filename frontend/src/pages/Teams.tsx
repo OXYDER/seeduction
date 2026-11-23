@@ -91,7 +91,7 @@ export default function Teams() {
       <div className="team-grid">
         {data.teams.map((t) => (
           <Link key={t.id} to={`/teams/${t.id}`} className={`team-card${t.mine ? ' mine' : ''}${t.hasOwner ? '' : ' unowned'}`} style={t.accent ? ({ ['--team-accent' as string]: t.accent } as React.CSSProperties) : undefined}>
-            <div className="team-logo">{t.logoUrl ? <img src={t.logoUrl} alt="" /> : <span>{(t.tag || t.name).slice(0, 2).toUpperCase()}</span>}</div>
+            <div className="team-logo">{t.logoUrl ? <img loading="lazy" decoding="async" src={t.logoUrl} alt="" /> : <span>{(t.tag || t.name).slice(0, 2).toUpperCase()}</span>}</div>
             <div className="team-body">
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                 <strong className="team-name">{t.name}</strong>

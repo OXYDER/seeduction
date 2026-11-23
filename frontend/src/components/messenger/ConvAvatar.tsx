@@ -18,7 +18,7 @@ export default function ConvAvatar({ conv, size = 44, showStatus = true }: { con
   if (conv.type === 'CHANNEL') {
     return <span className="msgr-conv-avatar channel" style={{ width: size, height: size, fontSize: size * 0.5 }}>#</span>;
   }
-  if (conv.iconUrl) return <span className="msgr-conv-avatar"><img src={conv.iconUrl} alt="" className="forum-avatar" style={{ width: size, height: size, objectFit: 'cover' }} /></span>;
+  if (conv.iconUrl) return <span className="msgr-conv-avatar"><img loading="lazy" decoding="async" src={conv.iconUrl} alt="" className="forum-avatar" style={{ width: size, height: size, objectFit: 'cover' }} /></span>;
   const members = (conv.members ?? []).slice(0, 3);
   const small = Math.round(size * 0.62);
   return (

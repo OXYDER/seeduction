@@ -56,7 +56,7 @@ function PosterTip({ t }: { t: any }) {
   return (
     <>
       <div className="tp-hero">
-        {t.coverImage ? <img src={t.coverImage} alt="" /> : <div className="tp-nocover">🎬</div>}
+        {t.coverImage ? <img loading="lazy" decoding="async" src={t.coverImage} alt="" /> : <div className="tp-nocover">🎬</div>}
         <div className="tp-hero-fade" />
         <div className="tp-hero-title">{t.name}</div>
       </div>
@@ -79,7 +79,7 @@ function CinemaTip({ t }: { t: any }) {
     <>
       <div className="tp-banner" style={banner ? { backgroundImage: `url("${banner}")` } : undefined}><div className="tp-hero-fade" /></div>
       <div className="tp-cin-head">
-        {t.coverImage ? <img src={t.coverImage} alt="" className="tp-thumb" /> : <div className="tp-thumb tp-nocover">🎬</div>}
+        {t.coverImage ? <img loading="lazy" decoding="async" src={t.coverImage} alt="" className="tp-thumb" /> : <div className="tp-thumb tp-nocover">🎬</div>}
         <div style={{ minWidth: 0 }}>
           <div className="tp-title">{t.name}</div>
           <Chips t={t} />
@@ -101,7 +101,7 @@ function ClassicTip({ t }: { t: any }) {
   const runtime = formatRuntime(t.runtime);
   return (
     <>
-      {t.coverImage && <img src={t.coverImage} alt="" className="tp-side-img" />}
+      {t.coverImage && <img loading="lazy" decoding="async" src={t.coverImage} alt="" className="tp-side-img" />}
       <div style={{ minWidth: 0 }}>
         <div className="tip-title">{t.name}</div>
         <div className="tip-meta">
@@ -178,7 +178,7 @@ export default function TorrentLink({ torrent, thumb = true, children }: {
   return (
     <TorrentHover id={torrent.id}>
       <Link to={`/torrents/${torrent.id}`} className="torrent-link">
-        {thumb && torrent.coverImage && <img src={torrent.coverImage} alt="" className="torrent-link-thumb" />}
+        {thumb && torrent.coverImage && <img loading="lazy" decoding="async" src={torrent.coverImage} alt="" className="torrent-link-thumb" />}
         <span>{children ?? torrent.name}</span>
       </Link>
     </TorrentHover>

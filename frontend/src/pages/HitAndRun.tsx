@@ -72,7 +72,7 @@ export default function HitAndRun() {
             const pct = Math.min(100, Math.round((i.seedSeconds / i.requiredSeconds) * 100));
             return (
               <div key={i.id} className="seedpage-item hnr-item">
-                {i.coverImage ? <img src={i.coverImage} alt="" className="seedob-cover" /> : <span className="seedob-cover plain">🎬</span>}
+                {i.coverImage ? <img loading="lazy" decoding="async" src={i.coverImage} alt="" className="seedob-cover" /> : <span className="seedob-cover plain">🎬</span>}
                 <span className="seedob-text">
                   <Link to={`/torrents/${i.torrentId}`} className="seedob-name" style={{ fontSize: 14 }}>{i.name}</Link>
                   <span className="seedob-bar"><span className="hnr" style={{ width: `${pct}%` }} /></span>

@@ -160,7 +160,7 @@ function NewsArticle({ n, canEdit, onEdit, onChanged }: { n: any; canEdit: boole
   return (
     <div className="grid" style={{ gap: 14 }}>
       <article className="panel ornate news-full">
-        {n.imageUrl && <div className="news-banner ambient" style={ambient(n.imageUrl)}><img src={n.imageUrl} alt="" /></div>}
+        {n.imageUrl && <div className="news-banner ambient" style={ambient(n.imageUrl)}><img loading="lazy" decoding="async" src={n.imageUrl} alt="" /></div>}
         <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}><KindBadge kind={n.kind} />{n.pinned && <span className="news-kind">📌 Épinglée</span>}</div>
           <div className="row" style={{ gap: 6 }}>

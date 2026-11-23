@@ -28,7 +28,7 @@ export default function DuplicateWarning({ name, metaId }: { name: string; metaI
       </p>
       {items.map((t) => (
         <div key={t.id} className="row" style={{ padding: '4px 0', gap: 10 }}>
-          {t.coverImage && <img src={t.coverImage} alt="" style={{ width: 28, height: 40, objectFit: 'cover', borderRadius: 3 }} />}
+          {t.coverImage && <img loading="lazy" decoding="async" src={t.coverImage} alt="" style={{ width: 28, height: 40, objectFit: 'cover', borderRadius: 3 }} />}
           <div style={{ minWidth: 0 }}>
             <TorrentLink torrent={t} thumb={false} />
             <div className="muted" style={{ fontSize: 12 }}>

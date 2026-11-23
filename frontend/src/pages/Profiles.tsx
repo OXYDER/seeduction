@@ -85,7 +85,7 @@ export default function Profiles() {
   const account = cards?.[0]?.accountName ?? user?.username ?? '';
   return (
     <div className="profiles-page">
-      <img src="/logo-icon.png" alt="" width={56} height={56} />
+      <img loading="lazy" decoding="async" src="/logo-icon.png" alt="" width={56} height={56} />
       <h1>Qui est-ce ?</h1>
       <p className="muted">Compte <strong>{account}</strong></p>
       {error && <div className="panel" style={{ color: 'var(--danger)' }}>{error}</div>}

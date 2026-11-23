@@ -115,7 +115,7 @@ export default function SecurityPanel() {
           {setup && (
             <form onSubmit={confirm} className="grid" style={{ gap: 8, maxWidth: 360 }}>
               <div className="muted">1. Scanne ce QR code avec ton application d'authentification :</div>
-              <img src={setup.qrCode} alt="QR code 2FA" width={180} height={180} style={{ background: '#fff', padding: 6, borderRadius: 6 }} />
+              <img loading="lazy" decoding="async" src={setup.qrCode} alt="QR code 2FA" width={180} height={180} style={{ background: '#fff', padding: 6, borderRadius: 6 }} />
               <div className="muted">Ou saisis la clé à la main : <code>{setup.base32}</code></div>
               <div className="muted">2. Entre le code affiché pour confirmer :</div>
               <input inputMode="numeric" placeholder="Code à 6 chiffres" value={token} onChange={(e) => setToken(e.target.value)} maxLength={6} required />

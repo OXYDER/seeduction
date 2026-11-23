@@ -1,3 +1,4 @@
+import EmptyState from '../components/EmptyState';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
@@ -38,7 +39,7 @@ export default function Alerts() {
       </p>
       {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
       {note && <p style={{ color: 'var(--success)' }}>{note}</p>}
-      {data.items.length === 0 && <div className="panel muted">Aucune alerte pour l'instant.</div>}
+      {data.items.length === 0 && <EmptyState icon="🔔" title="Aucune alerte pour l'instant">Fais une recherche dans le catalogue puis clique sur « 🔔 Alerte » : tu seras prévenu dès qu'un nouveau torrent y correspond.</EmptyState>}
       {data.items.map((a) => (
         <div key={a.id} className="panel" style={{ display: 'grid', gap: 8, opacity: a.active ? 1 : 0.65 }}>
           <div className="row" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
