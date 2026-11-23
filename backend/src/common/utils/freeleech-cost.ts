@@ -7,6 +7,16 @@ import { spendDonatedFirst } from './points';
 /** Le personnel (modération et plus) met un torrent en freeleech gratuitement ; les envoyeurs paient en points bonus. */
 const STAFF_ROLES = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 
+const WEEK_MS = 7 * 86_400_000;
+export const FREELEECH_LOG = 'FREELEECH_PAID';
+
+/** Places restantes sur 7 jours (null = sans limite). */
+export const freeleechWeekLeft = (max: number, used: number): number | null => (max > 0 ? Math.max(0, Math.floor(max) - used) : null);
+
+/** Combien de torrents l'envoyeur a mis en freeleech (payé) sur les 7 derniers jours. */
+export const freeleechUsedThisWeek = (prisma: PrismaClient, userId: string): Promise<number> =>
+  prisma.activityLog.count({ where: { userId, action: FREELEECH_LOG, createdAt: { gte: new Date(Date.now() - WEEK_MS) } } });
+
 /** Prix en points d'un torrent en freeleech pour ce rôle (0 = gratuit). */
 export const freeleechPrice = (role: string | null | undefined): number => (role && STAFF_ROLES.includes(role) ? 0 : Math.max(0, Math.floor(ECONOMY.uploadFreeleechCost)));
 
@@ -19,11 +29,14 @@ export async function chargeUploaderFreeleech(prisma: PrismaClient, userId: stri
   if (!user) throw new BadRequestException('Membre introuvable');
   const price = freeleechPrice(user.role);
   if (price <= 0) return 0;
+  const left = freeleechWeekLeft(ECONOMY.uploadFreeleechWeeklyMax, await freeleechUsedThisWeek(prisma, userId));
+  if (left !== null && left <= 0) throw new BadRequestException(`Limite atteinte : ${Math.floor(ECONOMY.uploadFreeleechWeeklyMax)} torrents en freeleech par semaine. Décoche « Torrent en freeleech » ou réessaie dans quelques jours.`);
   await prisma.$transaction(async (tx) => {
     await setSource(tx as any, 'freeleech');
     const res = await tx.user.updateMany({ where: { id: userId, bonusPoints: { gte: price } }, data: { bonusPoints: { decrement: price } } });
     if (res.count === 0) throw new BadRequestException(`Un torrent en freeleech coûte ${price} points bonus (tu en as ${Math.floor(user.bonusPoints)}). Décoche « Torrent en freeleech » ou gagne des points en partageant.`);
     await spendDonatedFirst(tx as any, userId, price);
+    await tx.activityLog.create({ data: { userId, action: FREELEECH_LOG, meta: { price } as any } });
   });
   return price;
 }
@@ -34,5 +47,7 @@ export async function refundUploaderFreeleech(prisma: PrismaClient, userId: stri
   await prisma.$transaction(async (tx) => {
     await setSource(tx as any, 'freeleech');
     await tx.user.update({ where: { id: userId }, data: { bonusPoints: { increment: amount } } });
+    const last = await tx.activityLog.findFirst({ where: { userId, action: FREELEECH_LOG }, orderBy: { createdAt: 'desc' }, select: { id: true } });
+    if (last) await tx.activityLog.delete({ where: { id: last.id } });
   }).catch(() => undefined);
 }

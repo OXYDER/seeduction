@@ -180,7 +180,7 @@ export default function StaffTorrentPanel({ torrent, startOpen, openSignal, onSa
               </select>
             </div>
             <label className="row muted" style={{ gap: 6 }}>
-              <input type="checkbox" style={{ width: 'auto' }} checked={freeleech} onChange={(e) => setFreeleech(e.target.checked)} /> 🎁 Freeleech{owner && !torrent.freeleech && flPrice.price > 0 ? ` (coûte ${flPrice.price} points à l'activation)` : ''}
+              <input type="checkbox" style={{ width: 'auto' }} checked={freeleech} disabled={owner && !torrent.freeleech && flPrice.blocked} onChange={(e) => setFreeleech(e.target.checked)} /> 🎁 Freeleech{owner && !torrent.freeleech && flPrice.price > 0 ? ` (coûte ${flPrice.price} points à l'activation${flPrice.quota ? ` · ${flPrice.quota}` : ''})` : ''}
             </label>
             {!owner && (
               <>

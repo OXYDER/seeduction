@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
 import { moveDonated, spendDonatedFirst } from '../common/utils/points';
+import { freeleechUsedThisWeek } from '../common/utils/freeleech-cost';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SettingsService } from '../settings/settings.service';
 import { TrackerService } from '../tracker/tracker.service';
@@ -172,7 +173,8 @@ export class EconomyService {
       seedingCount,
       perHour: memberHourly((await this.seededTorrents(userId)).get(userId) ?? [], ECONOMY.bonusPerTorrentHour, ECONOMY.bonusMaxTorrents),
       freeleechUntil,
-      rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours, hnrLimit: ECONOMY.hnrLimit, ratioGraceGb: ECONOMY.ratioGraceGb, welcomeUploadGb: ECONOMY.welcomeUploadGb, bonusMaxTorrents: ECONOMY.bonusMaxTorrents, uploadFreeleechCost: ECONOMY.uploadFreeleechCost },
+      rules: { hnrSeedHours: ECONOMY.hnrSeedHours, hnrRatio: ECONOMY.hnrRatio, hnrGraceHours: ECONOMY.hnrGraceHours, hnrLimit: ECONOMY.hnrLimit, ratioGraceGb: ECONOMY.ratioGraceGb, welcomeUploadGb: ECONOMY.welcomeUploadGb, bonusMaxTorrents: ECONOMY.bonusMaxTorrents, uploadFreeleechCost: ECONOMY.uploadFreeleechCost, uploadFreeleechWeeklyMax: ECONOMY.uploadFreeleechWeeklyMax },
+      freeleechWeekUsed: await freeleechUsedThisWeek(this.prisma, userId),
       // Ratio minimum du membre (celui du site, 0,5 par défaut) et marge de téléchargement qui en découle : c'est lui, et non un ratio de 1, que le tracker applique.
       minRatio: user.minRatio,
       downloadMarginBytes: downloadMarginBytes(Number(user.uploaded), Number(user.downloaded), user.minRatio, ECONOMY.ratioGraceGb * 1e9),

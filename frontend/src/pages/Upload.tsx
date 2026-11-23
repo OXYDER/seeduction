@@ -319,7 +319,7 @@ function UploadOne() {
     form.append('categoryId', categoryId);
     form.append('tags', tags);
     form.append('anonymous', String(anonymous));
-    form.append('freeleech', String(freeleech));
+    form.append('freeleech', String(freeleech && !flPrice.blocked));
     if (coverImage) form.append('coverImage', coverImage);
     if (meta) { form.append('metaKind', meta.kind); form.append('metaId', meta.id); }
     if (year) form.append('year', year);
@@ -592,7 +592,7 @@ function UploadOne() {
 
           <Step n={5} title="Envoi" done={false} locked={!step4} hint="Ajoute une description à l'étape 4.">
           <label className="row"><input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} style={{ width: 'auto' }} /> Upload anonyme</label>
-          <label className="row" title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres (ton upload, lui, est compté). Les points sont débités à l'envoi."><input type="checkbox" checked={freeleech} onChange={(e) => setFreeleech(e.target.checked)} style={{ width: 'auto' }} /> 🎁 Torrent en freeleech <span className="muted">· {flPrice.price > 0 ? `coûte ${flPrice.text}` : 'gratuit'}</span></label>
+          <label className="row" title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres (ton upload, lui, est compté). Les points sont débités à l'envoi."><input type="checkbox" checked={freeleech && !flPrice.blocked} disabled={flPrice.blocked} onChange={(e) => setFreeleech(e.target.checked)} style={{ width: 'auto' }} /> 🎁 Torrent en freeleech <span className="muted">· {flPrice.price > 0 ? `coûte ${flPrice.text}` : 'gratuit'}{flPrice.quota ? ` · ${flPrice.quota}` : ''}</span></label>
             {error && <div style={{ color: 'var(--danger)' }} className="muted">{error}</div>}
             <button type="submit" disabled={!step4}>Uploader</button>
           </Step>

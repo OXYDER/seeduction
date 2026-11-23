@@ -413,7 +413,7 @@ function ItemCard({ item, options, checked, onCheck, onUpdated, reload, setMsg }
           <option value="">Langue ? (non précisée)</option>
           {LANGUAGE_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.values.map((l) => <option key={l} value={l}>{LANGUAGE_LABELS[l] ?? l}</option>)}</optgroup>)}
         </select>
-        <label className="row" style={{ gap: 6, fontSize: 13 }} title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres. Les points sont débités à l'envoi de ce torrent."><input type="checkbox" style={{ width: 'auto' }} checked={!!o.freeleech} disabled={busy} onChange={(e) => save({ freeleech: e.target.checked })} /> 🎁 Freeleech{flPrice.price > 0 ? ` (${flPrice.price} pts)` : ''}</label>
+        <label className="row" style={{ gap: 6, fontSize: 13 }} title="Les téléchargements de ce torrent ne comptent pas dans le ratio des membres. Les points sont débités à l'envoi de ce torrent."><input type="checkbox" style={{ width: 'auto' }} checked={!!o.freeleech} disabled={busy || (flPrice.blocked && !o.freeleech)} onChange={(e) => save({ freeleech: e.target.checked })} /> 🎁 Freeleech{flPrice.price > 0 ? ` (${flPrice.price} pts${flPrice.quota ? ` · ${flPrice.quota}` : ''})` : ''}</label>
       </div>
 
       {!(d.wantsFiche || problems.includes('fiche') || showFiche || o.metaId) && (

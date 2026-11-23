@@ -52,6 +52,8 @@ export const ECONOMY = {
   /** Transfert de points entre membres : montant minimum et total envoyable par 24 h. */
   /** Prix en points bonus d'un torrent mis en freeleech par son envoyeur (le personnel ne paie pas ; 0 = gratuit). */
   uploadFreeleechCost: num('UPLOAD_FREELEECH_COST', 100),
+  /** Nombre maximum de torrents qu'un envoyeur peut mettre en freeleech sur 7 jours glissants (0 = sans limite ; le personnel n'est pas limité). */
+  uploadFreeleechWeeklyMax: num('UPLOAD_FREELEECH_WEEKLY_MAX', 10),
   transferMin: num('TRANSFER_MIN', 10),
   transferDailyMax: num('TRANSFER_DAILY_MAX', 2000),
 };

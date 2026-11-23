@@ -1,5 +1,5 @@
 import { ECONOMY } from './economy';
-import { freeleechPrice } from './freeleech-cost';
+import { freeleechPrice, freeleechWeekLeft } from './freeleech-cost';
 
 describe('freeleechPrice', () => {
   const saved = ECONOMY.uploadFreeleechCost;
@@ -19,5 +19,14 @@ describe('freeleechPrice', () => {
     expect(freeleechPrice('USER')).toBe(0);
     ECONOMY.uploadFreeleechCost = 99.9;
     expect(freeleechPrice('USER')).toBe(99);
+  });
+});
+
+describe('freeleechWeekLeft', () => {
+  it('0 = sans limite, sinon le reste de la semaine sans passer sous zéro', () => {
+    expect(freeleechWeekLeft(0, 50)).toBeNull();
+    expect(freeleechWeekLeft(10, 3)).toBe(7);
+    expect(freeleechWeekLeft(10, 10)).toBe(0);
+    expect(freeleechWeekLeft(10, 14)).toBe(0);
   });
 });
