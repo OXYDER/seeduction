@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/auth';
 import { releaseTitle } from './TorrentGroups';
 import { episodeCode } from '../lib/frText';
 import { HOME_SECTIONS, orderIds, useHomeLayout } from '../lib/homeLayout';
+import SectionArt from './SectionArt';
 
 // ------------------------------------------------------------------ mise en page de l'accueil (propre au compte : voir lib/homeLayout.ts)
 
@@ -79,6 +80,7 @@ function FreeleechItem({ state }: { state: any }) {
   const pct = start && end && end > start ? Math.max(0, Math.min(100, ((Date.now() - start) / (end - start)) * 100)) : 100;
   return (
     <div className={`sc sc-fl${state?.until ? ' live' : ''}`}>
+      <SectionArt kind="gift" />
       <div className="sc-head"><span className="hc-ic"><Ic n="gift" size={16} /></span><b>Freeleech</b>{state?.until && <span className="sc-chip">EN COURS</span>}</div>
       <p className="sc-txt">
         {state?.until ? <><b>{state.event?.title ?? 'Freeleech global'}</b> · se termine dans <b>{left}</b></> : next ? <>Prochain : <b>{next.title}</b> · dans {untilNext}</> : 'Aucun freeleech prévu pour le moment.'}
@@ -95,6 +97,7 @@ function PotItem({ pot }: { pot: any }) {
   const open = cycle.status === 'OPEN';
   return (
     <div className="sc sc-pot">
+      <SectionArt kind="heart" />
       <div className="sc-head"><span className="hc-ic"><Ic n="heart" size={16} /></span><b>{pot.name}</b>{pot.active && <span className="sc-chip">FREELEECH GLOBAL</span>}</div>
       <div className="sc-big">{formatNumber(Math.round(cycle.collected ?? 0))} <small>points</small></div>
       <div className="sc-bar"><i style={{ width: `${Math.min(100, cycle.percent)}%` }} /></div>
@@ -115,6 +118,7 @@ function RankItem() {
   const fmt = (p: any) => `${String(p.have).replace('.', ',')} / ${String(p.need).replace('.', ',')}`;
   return (
     <Link to="/wiki/guide-ratio-seed" className="sc sc-rank" title={r.parts.map((p: any) => `${p.label} : ${fmt(p)}${p.ok ? ' ✓' : ''}`).join(' · ')}>
+      <SectionArt kind="crown" />
       <div className="sc-head"><span className="hc-ic"><Ic n="crown" size={16} /></span><b>Niveau suivant : {r.nextLabel}</b><span className="sc-chip plain">{r.pct} %</span></div>
       <div className="sc-bar"><i style={{ width: `${r.pct}%` }} /></div>
       <div className="sc-txt small">{r.parts.filter((p: any) => !p.ok).map((p: any) => `${p.label} ${fmt(p)}`).join(' · ') || 'Conditions remplies : le rang arrive cette nuit'}</div>
@@ -131,6 +135,7 @@ function BadgesItem() {
   const next = (d.items ?? []).filter((i: any) => !i.earned && i.target > 0).sort((a: any, b: any) => b.value / b.target - a.value / a.target)[0];
   return (
     <Link to="/achievements" className="sc sc-lvl">
+      <SectionArt kind="medal" />
       <span className="sc-medal" aria-hidden="true">🏅</span>
       <span className="sc-lvl-body">
         <b>Badges obtenus</b>
@@ -231,6 +236,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
   return (
     <div className="fy-grid fy-2">
       <section className="fy-card">
+        <SectionArt kind="down" />
         <h3><span className="hc-ic"><Ic n="down" size={16} /></span>Téléchargements<Link to="/activity?statut=leeching">Tout voir →</Link></h3>
         {leeching.length === 0 && (done ?? []).length === 0 && <p className="fy-empty">Aucun téléchargement pour le moment : tes téléchargements en cours et complétés apparaîtront ici.</p>}
         {leeching.slice(0, 2).map((t) => (
@@ -245,6 +251,7 @@ export function ForYouGrid({ active }: { active: any[]; followed?: any[] }) {
       </section>
 
       <section className="fy-card fy-next">
+        <SectionArt kind="play" />
         <h3><span className="hc-ic"><Ic n="cal" size={16} /></span>Épisode suivant<Link to="/series">Mes séries →</Link></h3>
         {next && next.length === 0 && <p className="fy-empty">Quand tu finis un épisode, le suivant apparaît ici dès qu'il est disponible.</p>}
         {(next ?? []).slice(0, 1).map((t) => (

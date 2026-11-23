@@ -51,7 +51,13 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
   if (heroOnly && items && items.length === 0) return null; // rien à annoncer : on n'affiche pas de cadre vide
 
   return (
-    <div className="panel ornate">
+    <div className="panel ornate news-panel">
+      {/* Fond : les images des nouvelles et événements précédents, très en retrait, pour donner le ton de la section. */}
+      {(items ?? []).some((n) => n.imageUrl) && (
+        <div className="news-bg" aria-hidden="true">
+          {(items ?? []).filter((n) => n.imageUrl).slice(0, 4).map((n) => <i key={n.id} style={{ backgroundImage: `url("${String(n.imageUrl).replace(/"/g, '%22')}")` }} />)}
+        </div>
+      )}
       <div className="panel-title news-head">
         <span className="title-icon">📰</span>{heroOnly ? 'Dernière nouvelle' : 'Actualités & Événements'}
         {!heroOnly && items && items.length > 0 && (
@@ -96,8 +102,8 @@ export default function NewsPanel({ limit = 10, heroOnly = false }: { limit?: nu
           {rest.slice(0, 4).map((n) => {
             const nk = kindOf(n.kind);
             return (
-              <Link key={n.id} to={`/news/${n.id}`} className={`news-side-item k-${(n.kind ?? 'NEWS').toLowerCase()}`}>
-                <span className="ns-ic" aria-hidden="true">{nk.icon}</span>
+              <Link key={n.id} to={`/news/${n.id}`} className={`news-side-item k-${(n.kind ?? 'NEWS').toLowerCase()}${n.imageUrl ? ' has-img' : ''}`} style={ambient(n.imageUrl)}>
+                <span className="ns-ic" aria-hidden="true">{n.imageUrl ? <img src={n.imageUrl} alt="" loading="lazy" /> : nk.icon}</span>
                 <span className="ns-t">
                   <strong>{n.title}</strong>
                   <span className="muted news-tile-meta">{nk.label} · {timeAgo(n.createdAt)} · 💬 {n._count?.comments ?? 0}</span>

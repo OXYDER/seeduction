@@ -5,6 +5,7 @@ import TorrentView, { ViewSwitcher } from '../components/TorrentView';
 import { InfiniteFooter, ListModeBar } from '../components/InfiniteList';
 import { useViewMode } from '../lib/viewMode';
 import { useListPrefs } from '../lib/listMode';
+import SectionArt, { type ArtKind } from '../components/SectionArt';
 import type { LayoutContext } from '../components/Layout';
 
 type TabId = 'nouveautes' | 'populaires' | 'pour-toi' | 'freeleech' | 'a-seeder';
@@ -17,6 +18,7 @@ const TABS: { id: TabId; icon: string; label: string; title: string; sub: string
   { id: 'freeleech', icon: '🎁', label: 'Freeleech', title: 'Freeleech en ce moment', sub: 'Téléchargements gratuits : ils ne comptent pas dans ton ratio.' },
   { id: 'a-seeder', icon: '🌱', label: 'À seeder', title: 'À seeder', sub: 'Des torrents à 1 ou 2 seeders : un petit seed les sauve et te rapporte des points.' },
 ];
+const ART_OF: Record<TabId, ArtKind> = { nouveautes: 'film', populaires: 'trophy', 'pour-toi': 'medal', freeleech: 'gift', 'a-seeder': 'seed' };
 const PERIODS: { value: Period; label: string }[] = [
   { value: '', label: 'Tout' }, { value: 'day', label: '24 heures' }, { value: 'week', label: 'Cette semaine' }, { value: 'month', label: 'Ce mois' },
 ];
@@ -70,6 +72,7 @@ export default function Discover() {
   return (
     <div className="dc">
       <header className="dc-head">
+        <SectionArt kind={ART_OF[tab]} />
         <div>
           <h1><span aria-hidden="true">{meta.icon}</span> {meta.title}</h1>
           <p className="muted">{meta.sub}</p>

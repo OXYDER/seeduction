@@ -22,6 +22,7 @@ import UserLink from './UserLink';
 import { HomeComposer } from './Wall';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
+import SectionArt from './SectionArt';
 
 const PERIODS: { value: 'day' | 'week' | 'month'; label: string }[] = [
   { value: 'day', label: '24 heures' },
@@ -295,6 +296,7 @@ export default function HomeStreaming() {
           <HomeSection id="community" label="La communauté" icon="📊">
           {stats && (
             <div className="panel st-board">
+              <SectionArt kind="faces" />
               <h3>📊 La communauté</h3>
               <div className="community-tiles">
                 {([

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import UserLink from '../UserLink';
+import SectionArt from '../SectionArt';
 
 /**
  * Éléments des pages de statistiques qui n'ont pas besoin de la bibliothèque de graphiques (recharts, lourde) : cases chiffrées, classements, sections.
@@ -41,6 +42,7 @@ export function Board({ title, hint, icon, rows, empty = 'Personne pour le momen
   const max = Math.max(...rows.map((r) => Math.abs(r.value)), 0.0001);
   return (
     <div className="panel st-board">
+      <SectionArt kind={icon === '💬' ? 'forum' : icon === '👑' ? 'crown' : 'trophy'} />
       <h3>{icon && <span>{icon} </span>}{title}</h3>
       {hint && <p className="muted st-board-hint">{hint}</p>}
       {rows.length === 0 && <p className="muted">{empty}</p>}

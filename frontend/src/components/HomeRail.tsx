@@ -11,6 +11,7 @@ import { timeAgo } from '../lib/time';
 import Avatar from './Avatar';
 import Nick from './Nick';
 import TeamLogo from './TeamLogo';
+import SectionArt from './SectionArt';
 
 interface Side { abbrev: string; name: string; score: number | null }
 interface Game { id: number; startUtc: string; state: 'FUT' | 'PRE' | 'LIVE' | 'FINAL' | 'PPD'; home: Side; away: Side; side: 'home' | 'away'; won: boolean | null; period: string | null; clock: { remaining: string } | null }
@@ -41,6 +42,7 @@ function CanadiensCard() {
   const tag = show.state === 'LIVE' ? { text: 'EN DIRECT', cls: 'live' } : show.state === 'FINAL' ? { text: 'FINAL', cls: '' } : { text: new Date(show.startUtc).toDateString() === new Date().toDateString() ? 'CE SOIR' : 'PROCHAIN', cls: 'live' };
   return (
     <section className="hr-card hr-mtl">
+      <SectionArt kind="puck" />
       <h4><span className="hc-ic"><Ic n="trophy" size={16} /></span>Canadiens<span className={`sc-chip ${tag.cls}`}>{tag.cls === 'live' && <i className="sc-dot" />}{tag.text}</span></h4>
       <div className="mtl-row">
         <span className="mtl-team"><TeamLogo abbrev={m.abbrev} name={m.name} size={48} /><small>{m.name}</small></span>
@@ -70,6 +72,7 @@ function FriendsCard() {
   const online = friends.map((f) => ({ ...f, status: (onlineMap[f.id] ?? f.status ?? 'OFFLINE') as PublicStatus })).filter((f) => f.status !== 'OFFLINE').sort((a, b) => a.username.localeCompare(b.username, 'fr', { sensitivity: 'base' }));
   return (
     <section className="hr-card">
+      <SectionArt kind="faces" />
       <h4><span className="hc-ic"><Ic n="users" size={16} /></span>Amis en ligne ({online.length})<Link to="/friends">Tous →</Link></h4>
       {online.length === 0 && <p className="hr-empty">{friends.length === 0 ? "Tu n'as pas encore d'amis. " : 'Aucun ami en ligne pour le moment.'}{friends.length === 0 && <Link to="/members">Trouver des membres →</Link>}</p>}
       {online.length > 0 && (
@@ -95,6 +98,7 @@ function ChatCard() {
   const name = (c: (typeof list)[number]) => (c.type === 'DIRECT' ? c.other?.username ?? 'Message privé' : c.name ? `#${c.name}` : 'Discussion');
   return (
     <section className="hr-card">
+      <SectionArt kind="chat" />
       <h4><span className="hc-ic"><Ic n="msg" size={16} /></span>Dans le chat<Link to="/chat">Ouvrir →</Link></h4>
       {list.map((c) => (
         <button key={c.id} type="button" className="hr-chat" onClick={() => openWindow(c.id)}>
@@ -128,6 +132,7 @@ function ChallengeCard() {
   const c = ch.item, pct = Math.round((c.progress / c.target) * 100);
   return (
     <section className="hr-card">
+      <SectionArt kind="trophy" />
       <h4><span className="hc-ic"><Ic n="trophy" size={16} /></span>Défi de la semaine<Link to="/jeux/defis">Tous →</Link></h4>
       <div className="hr-ch"><span aria-hidden="true">{c.icon}</span><span><b>{c.title}</b><span className="hr-sub">{c.progress} / {c.target}{c.points > 0 ? ` · +${c.points} pts` : ''}{ch.left > 1 ? ` · ${ch.left - 1} autre${ch.left > 2 ? 's' : ''}` : ''}</span></span></div>
       <div className="hr-bar"><i style={{ width: `${pct}%` }} /></div>

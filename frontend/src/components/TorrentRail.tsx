@@ -6,6 +6,7 @@ import { TorrentHover } from './TorrentLink';
 import { HealthDot } from './TorrentBits';
 import CategoryTag from './CategoryTag';
 import PosterTags from './PosterTags';
+import SectionArt, { type ArtKind } from './SectionArt';
 
 /** Une carte d'affiche (pochette + titre + infos) avec l'infobulle riche au survol ; `reason` = pourquoi on te la propose. */
 export function PosterCard({ t }: { t: any }) {
@@ -40,12 +41,16 @@ export function PosterCard({ t }: { t: any }) {
 }
 
 /** Rangée d'affiches défilante, façon plateforme de streaming. */
+/** Illustration du fond d'une rangée selon son icône. */
+const RAIL_ART: Record<string, ArtKind> = { '🔥': 'trophy', '🆕': 'film', '🎁': 'gift', '✨': 'medal', '⚠️': 'seed' };
+
 export function Rail({ title, to, items, loading, icon = '🎞️', toolbar }: { title: string; to: string; items: any[]; loading?: boolean; icon?: string; /** Contrôles sous le titre (filtres de la rangée). */ toolbar?: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   if (items.length === 0 && !loading) return null;
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' });
   return (
     <section className="panel ornate rail-section rail-plex">
+      <SectionArt kind={RAIL_ART[icon] ?? 'film'} top />
       <div className="panel-title">
         <span className="title-icon">{icon}</span>{title}
         <div className="row" style={{ gap: 6, marginLeft: 'auto' }}>
