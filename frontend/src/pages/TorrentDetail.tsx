@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import UserLink from '../components/UserLink';
 import Avatar from '../components/Avatar';
 import { releaseGroup, teamSlug } from '../lib/releaseGroup';
+import { timeAgo } from '../lib/time';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import StaffTorrentPanel from '../components/StaffTorrentPanel';
 import TorrentPeers from '../components/TorrentPeers';
@@ -257,6 +258,12 @@ export default function TorrentDetail() {
                     {torrent.anonymousUpload ? <span className="dcw-av anon" aria-hidden="true">?</span> : <Avatar user={torrent.uploader} size={38} />}
                     <span className="dcw-txt"><small>Uploadé par</small><strong>{torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</strong></span>
                   </div>
+                  {torrent.createdAt && (
+                    <div className="dc-date" title={`Mis en ligne sur Seeduction le ${new Date(torrent.createdAt).toLocaleString('fr-FR')}`}>
+                      <span className="dcw-av date" aria-hidden="true">📅</span>
+                      <span className="dcw-txt"><small>Partagé le</small><strong>{new Date(torrent.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong><em>{new Date(torrent.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {timeAgo(torrent.createdAt)}</em></span>
+                    </div>
+                  )}
                   {team && (
                     <Link to={`/team/${teamSlug(team)}`} className="dc-team" title={`Team ${team} : voir toutes ses releases`}>
                       <span className="dcw-av team" aria-hidden="true">🛡️</span>
@@ -376,6 +383,7 @@ export default function TorrentDetail() {
           <div>
             <div className="muted">Catégorie : {torrent.category?.name}</div>
             <div className="muted">Uploader : {torrent.anonymousUpload ? 'Anonyme' : <UserLink user={torrent.uploader} />}</div>
+            {torrent.createdAt && <div className="muted">Partagé le : {new Date(torrent.createdAt).toLocaleString('fr-FR')} ({timeAgo(torrent.createdAt)})</div>}
             {torrent.infoHash && <div className="muted">Hash : <code>{torrent.infoHash}</code> <CopyButton text={torrent.infoHash} title="Copier le hash" /></div>}
             <div className="muted">
               <HealthDot seeders={torrent.seeders} />Seeders {torrent.seeders} / Téléchargements non complétés {torrent.leechers} / Complétés {torrent.completedCount}
