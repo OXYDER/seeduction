@@ -1,4 +1,4 @@
-import { bestDay, compare, dailyGains, monthKeyOf, monthRange, previousMonth, summarizeWatching, tzOffsetMinutes } from './recap';
+import { bestDay, compare, dailyGains, mondayKeyOf, monthKeyOf, monthRange, previousMonth, previousWeek, summarizeWatching, tzOffsetMinutes, weekRange } from './recap';
 
 const GB = 1e9;
 const snap = (iso: string, up: number, down = 0) => ({ takenAt: new Date(iso), uploaded: up * GB, downloaded: down * GB });
@@ -80,5 +80,32 @@ describe('summarizeWatching', () => {
     expect(r.otherCount).toBe(1);
     expect(r.other[0].title).toBe('Mon.Film.2021');
     expect(r.totalSeconds).toBe(1800 * 3 + 5400);
+  });
+});
+
+describe('semaines', () => {
+  it("le lundi de la semaine, à l'heure de Montréal", () => {
+    expect(mondayKeyOf(new Date('2026-11-23T15:00:00Z'))).toBe('2026-11-23'); // lundi
+    expect(mondayKeyOf(new Date('2026-11-29T20:00:00Z'))).toBe('2026-11-23'); // dimanche
+    expect(mondayKeyOf(new Date('2026-11-30T03:00:00Z'))).toBe('2026-11-23'); // dimanche soir à Montréal (lundi 3 h UTC)
+    expect(previousWeek('2026-11-23')).toBe('2026-11-16');
+  });
+  it("bornes et jours d'une semaine", () => {
+    const w = weekRange('2026-11-23')!;
+    expect(w.days).toBe(7);
+    expect(w.dayKeys![0]).toBe('2026-11-23');
+    expect(w.dayKeys![6]).toBe('2026-11-29');
+    expect(w.end.getTime() - w.start.getTime()).toBe(7 * 86_400_000);
+    expect(w.label).toBe('Semaine du 23 au 29 novembre');
+    expect(weekRange('2026-11-30')!.label).toBe('Semaine du 30 novembre au 6 décembre');
+    expect(weekRange('2026-11-24')).toBeNull(); // pas un lundi
+    expect(weekRange('2026-02-30')).toBeNull();
+    expect(weekRange('nope')).toBeNull();
+  });
+  it("gains par jour d'une semaine", () => {
+    const w = weekRange('2026-11-23')!;
+    const days = dailyGains([{ takenAt: new Date('2026-11-25T08:00:00Z'), uploaded: 300, downloaded: 10 }], { takenAt: new Date('2026-11-22T08:00:00Z'), uploaded: 100, downloaded: 0 }, w);
+    expect(days).toHaveLength(7);
+    expect(days.find((d) => d.day === '2026-11-24')!.up).toBe(200);
   });
 });

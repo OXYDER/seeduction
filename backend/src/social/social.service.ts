@@ -134,6 +134,9 @@ export class SocialService {
       userId,
       type: 'FOLLOW' as const,
       title: `Nouveau torrent : ${entityName}`,
+      // Plusieurs sorties du même suivi tant que la notification n'est pas lue : une seule ligne (« 4 nouveaux torrents : … »).
+      titleMany: `{n} nouveaux torrents : ${entityName}`,
+      groupKey: `follow:${entityName}`.slice(0, 120),
       body: torrent.name,
       link: `/torrents/${torrent.id}`,
     })));

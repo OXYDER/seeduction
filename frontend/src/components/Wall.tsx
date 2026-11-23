@@ -95,10 +95,10 @@ function MentionField({ value, onChange, multiline, onSubmit, ...rest }: { value
 }
 
 /** Zone pour écrire : texte (avec @pseudo), image envoyée sur le site, lien, et qui peut lire. */
-function Composer({ teamId: fixedTeam, teams, onPosted, torrentId, compact, autoFocus }: { teamId?: string; /** Teams parmi lesquelles choisir « Publier comme » (accueil) ; sans elle, la cible est fixe. */ teams?: { id: string; name: string }[]; onPosted: (post: any) => void; torrentId?: string; compact?: boolean; autoFocus?: boolean }) {
+function Composer({ teamId: fixedTeam, teams, onPosted, torrentId, compact, autoFocus, initialText }: { /** Texte déjà écrit (résumé à partager, par exemple). */ initialText?: string; teamId?: string; /** Teams parmi lesquelles choisir « Publier comme » (accueil) ; sans elle, la cible est fixe. */ teams?: { id: string; name: string }[]; onPosted: (post: any) => void; torrentId?: string; compact?: boolean; autoFocus?: boolean }) {
   const [target, setTarget] = useState<string>(fixedTeam ?? '');
   const teamId = target || undefined;
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState(initialText ?? '');
   const [imageUrl, setImageUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [showLink, setShowLink] = useState(false);
@@ -391,6 +391,19 @@ export function ShareToWall({ torrentId }: { torrentId: string }) {
     <div style={{ display: 'grid', gap: 8, ...(open ? { flexBasis: '100%' } : {}) }}>
       <button type="button" className="icon-btn" style={{ justifySelf: 'start' }} onClick={() => setOpen((v) => !v)}>📣 Partager sur mon mur</button>
       {open && <Composer torrentId={torrentId} compact onPosted={() => { setDone(true); setOpen(false); }} />}
+    </div>
+  );
+}
+
+/** Bouton « Partager sur mon mur » pour un texte déjà prêt (le résumé de ma semaine) : on peut le modifier avant de publier. */
+export function ShareTextToWall({ text, label = '📣 Partager sur mon mur' }: { text: string; label?: string }) {
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState(false);
+  if (done) return <span className="muted">✓ Partagé sur ton mur</span>;
+  return (
+    <div style={{ display: 'grid', gap: 8, ...(open ? { flexBasis: '100%' } : {}) }}>
+      <button type="button" className="icon-btn" style={{ justifySelf: 'start' }} onClick={() => setOpen((v) => !v)}>{label}</button>
+      {open && <Composer initialText={text} compact autoFocus onPosted={() => { setDone(true); setOpen(false); }} />}
     </div>
   );
 }

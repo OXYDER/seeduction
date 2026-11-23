@@ -776,3 +776,19 @@ main.container:focus { outline: none; }
 .qs-ico { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 10px; background: rgba(255, 255, 255, 0.06); }
 .qs-item.sel .qs-ico { background: rgba(var(--acc-rgb), 0.3); }
 .qs-foot span { padding: 2px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.06); }
+
+/* ───── Squelettes de chargement par section : lignes et cartes grises qui scintillent ───── */
+.ld-wrap { opacity: 0; animation: ld-in 0.25s ease 0.15s forwards; }
+.ld-wrap .ld { opacity: 1; animation: none; padding-bottom: 8px; }
+.ld-rows { display: grid; gap: 10px; padding: 4px 4px 14px; }
+.ld-rows i { display: block; height: 14px; border-radius: 8px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.13) 50%, rgba(255, 255, 255, 0.05)); background-size: 200% 100%; animation: ld-shimmer 1.3s linear infinite; }
+.ld-cards-sm { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.ld-cards-sm i { aspect-ratio: 2 / 3; height: auto; }
+@keyframes ld-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .ld-rows i, .ld-cards-sm i { animation: none; } }
+
+/* ───── Notifications regroupées ───── */
+.np-stack { border-style: dashed; }
+.np-stack .np-title { font-weight: 800; }
+.np-open { display: grid; gap: 8px; padding: 8px; border-radius: 16px; border: 1px dashed var(--s5-line2); background: rgba(var(--acc-rgb), 0.05); }
+.np-fold { justify-self: start; font-size: 12.5px; padding: 4px 12px; }

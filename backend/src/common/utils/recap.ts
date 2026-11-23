@@ -17,7 +17,11 @@ export function tzOffsetMinutes(at: Date, tz = RECAP_TZ): number {
 
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
-export interface MonthRange { key: string; start: Date; end: Date; days: number; label: string; year: number; month: number }
+export interface MonthRange {
+  key: string; start: Date; end: Date; days: number; label: string; year: number; month: number;
+  /** Jours de la période (AAAA-MM-JJ) quand ce n'est pas un mois civil : une semaine. Sans cela, les jours du mois. */
+  dayKeys?: string[];
+}
 
 /** Bornes d'un mois civil (AAAA-MM) à l'heure de Montréal ; null si la clé est invalide. */
 export function monthRange(key: string, tz = RECAP_TZ): MonthRange | null {
@@ -29,6 +33,38 @@ export function monthRange(key: string, tz = RECAP_TZ): MonthRange | null {
   const start = localStart(year, month);
   const end = month === 12 ? localStart(year + 1, 1) : localStart(year, month + 1);
   return { key, start, end, days: new Date(Date.UTC(year, month, 0)).getUTCDate(), label: `${MONTHS[month - 1]} ${year}`, year, month };
+}
+
+const ymd = (t: number) => new Date(t).toISOString().slice(0, 10);
+
+/** Lundi (AAAA-MM-JJ) de la semaine qui contient cet instant, à l'heure de Montréal. */
+export function mondayKeyOf(at: Date, tz = RECAP_TZ): string {
+  const local = dayKey(at, tz);
+  const t = Date.parse(`${local}T12:00:00Z`);
+  const dow = new Date(t).getUTCDay(); // 0 = dimanche
+  return ymd(t - ((dow + 6) % 7) * 86_400_000);
+}
+
+/** Lundi de la semaine précédente d'un lundi AAAA-MM-JJ. */
+export const previousWeek = (mondayKey: string): string => ymd(Date.parse(`${mondayKey}T12:00:00Z`) - 7 * 86_400_000);
+
+/** Bornes d'une semaine (du lundi 0 h au lundi suivant 0 h, heure de Montréal) ; la clé est le lundi AAAA-MM-JJ. null si la date est invalide ou n'est pas un lundi. */
+export function weekRange(mondayKey: string, tz = RECAP_TZ): MonthRange | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(mondayKey ?? ''));
+  if (!m) return null;
+  const t0 = Date.parse(`${mondayKey}T12:00:00Z`);
+  if (!Number.isFinite(t0) || ymd(t0) !== mondayKey || new Date(t0).getUTCDay() !== 1) return null;
+  const year = Number(m[1]);
+  if (year < 2000 || year > 2100) return null;
+  const localStart = (key: string) => { const guess = new Date(`${key}T00:00:00Z`); return new Date(guess.getTime() - tzOffsetMinutes(guess, tz) * 60_000); };
+  const dayKeys = Array.from({ length: 7 }, (_, i) => ymd(t0 + i * 86_400_000));
+  const endKey = ymd(t0 + 7 * 86_400_000);
+  const first = new Date(`${dayKeys[0]}T12:00:00Z`), last = new Date(`${dayKeys[6]}T12:00:00Z`);
+  const part = (d: Date) => `${d.getUTCDate()}${d.getUTCDate() === 1 ? 'er' : ''}`;
+  const label = first.getUTCMonth() === last.getUTCMonth()
+    ? `Semaine du ${part(first)} au ${part(last)} ${MONTHS[last.getUTCMonth()]}`
+    : `Semaine du ${part(first)} ${MONTHS[first.getUTCMonth()]} au ${part(last)} ${MONTHS[last.getUTCMonth()]}`;
+  return { key: mondayKey, start: localStart(dayKeys[0]), end: localStart(endKey), days: 7, label, year, month: first.getUTCMonth() + 1, dayKeys };
 }
 
 /** Clé du mois (AAAA-MM) d'un instant, à l'heure de Montréal. */
@@ -62,12 +98,8 @@ export function dailyGains(snaps: Snap[], base: Snap | null, range: MonthRange, 
     }
     prev = s;
   }
-  const out: DayGain[] = [];
-  for (let d = 1; d <= range.days; d++) {
-    const day = `${range.key}-${String(d).padStart(2, '0')}`;
-    out.push(gains.get(day) ?? { day, up: 0, down: 0 });
-  }
-  return out;
+  const keys = range.dayKeys ?? Array.from({ length: range.days }, (_, i) => `${range.key}-${String(i + 1).padStart(2, '0')}`);
+  return keys.map((day) => gains.get(day) ?? { day, up: 0, down: 0 });
 }
 
 /** Le meilleur jour de partage (plus gros upload), null s'il n'y a rien. */

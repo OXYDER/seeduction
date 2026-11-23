@@ -852,7 +852,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Chaque mois, le site te prépare un [b]récapitulatif personnel[/b] : ce que tu as partagé, regardé et gagné.\n` +
         `\n` +
         `[b]Où le trouver ?[/b]\n` +
-        `Menu de ton compte > [b]📅 Mon récap du mois[/b]. Le 1er de chaque mois, une notification t'annonce celui du mois écoulé (tu peux la couper dans « Nouvelles et événements » : [url=/wiki/guide-notifications-push]Notifications[/url]). Le sélecteur en haut permet de revoir les 12 derniers mois.\n` +
+        `Menu de ton compte > [b]📅 Mon récap du mois[/b]. Le 1er de chaque mois, une notification t'annonce celui du mois écoulé (tu peux la couper dans « Nouvelles et événements » : [url=/wiki/guide-notifications-push]Notifications[/url]). Le sélecteur en haut permet de revoir les 12 derniers mois. Le bouton [b]Semaine[/b] affiche [b]Ma semaine[/b] : le même récap sur sept jours (du lundi au dimanche), avec les 8 dernières semaines au choix. Le bouton [b]📣 Partager mon résumé sur mon mur[/b] prépare un message avec tes chiffres (jamais les titres que tu as regardés) : tu peux le modifier avant de le publier. Ctrl+K puis « semaine » y mène aussi.\n` +
         `\n` +
         `[b]Ce qu'il contient[/b]\n` +
         `• [b]Partage[/b] : volume envoyé et reçu, nombre de jours de partage et ton [b]meilleur jour[/b] (avec un graphique par jour). Le relevé se fait chaque nuit ; l'upload comprend le double upload.\n` +
@@ -957,6 +957,9 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• [b]Android et ordinateur (Chrome, Edge)[/b] : va dans la cloche → Notifications → ⚙️ Préférences, puis clique sur [b]⬇ Installer l'application[/b] (ou utilise « Installer Seeduction » dans le menu du navigateur / l'icône dans la barre d'adresse).\n` +
         `• [b]iPhone et iPad (Safari)[/b] : touche [b]Partager[/b] puis [b]« Sur l'écran d'accueil »[/b]. C'est obligatoire pour recevoir des notifications sur iOS (version 16.4 ou plus).\n` +
         `• L'application s'ouvre sans barre d'adresse, avec raccourcis (Parcourir, Messages, Notifications) par un appui long sur l'icône.\n` +
+        `\n` +
+        `[b]Notifications regroupées[/b]\n` +
+        `Pour ne pas te noyer : plusieurs notifications du même suivi (nouveaux torrents d'un acteur ou d'un studio, épisodes d'une série suivie, alertes de recherche, remerciements...) tant qu'elles ne sont pas lues deviennent une seule ligne avec un compteur (« ×4 »). Dans la page Notifications, 3 notifications ou plus qui se suivent, de la même catégorie et du même jour, se replient en un bloc (« 5 notifications · Séries et alertes ») : clique dessus pour les déplier, ou sur ✓ pour tout marquer comme lu d'un coup.\n` +
         `\n` +
         `[b]Activer les notifications sur un appareil[/b]\n` +
         `1. Ouvre [b]Notifications → ⚙️ Préférences[/b], section [b]📲 Application et notifications push[/b].\n` +

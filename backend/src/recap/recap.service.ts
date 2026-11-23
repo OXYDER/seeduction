@@ -4,7 +4,7 @@ import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BADGES } from '../common/utils/badges';
 import { sourceMeta } from '../common/utils/ledger';
-import { RECAP_TZ, bestDay, compare, dailyGains, monthKeyOf, monthRange, previousMonth, summarizeWatching } from '../common/utils/recap';
+import { RECAP_TZ, bestDay, compare, dailyGains, mondayKeyOf, monthKeyOf, monthRange, previousMonth, previousWeek, summarizeWatching, weekRange, type MonthRange } from '../common/utils/recap';
 
 const CACHE_MS = 10 * 60_000;
 
@@ -56,11 +56,37 @@ export class RecapService {
     return value;
   }
 
+  /** Les 8 dernières semaines (la semaine en cours comprise), de la plus récente à la plus ancienne ; clé = lundi. */
+  weeks(createdAt: Date) {
+    const out: { key: string; label: string; current: boolean }[] = [];
+    let key = mondayKeyOf(new Date());
+    const first = mondayKeyOf(createdAt);
+    for (let i = 0; i < 8; i++) {
+      out.push({ key, label: weekRange(key)!.label, current: i === 0 });
+      if (key <= first) break;
+      key = previousWeek(key);
+    }
+    return out;
+  }
+
   async monthly(userId: string, key?: string) {
     const nowKey = monthKeyOf(new Date());
     const range = monthRange(key || nowKey);
     if (!range) throw new BadRequestException('Mois invalide (AAAA-MM)');
     if (range.start.getTime() > Date.now()) throw new BadRequestException('Ce mois n\'a pas encore commencé');
+    return this.period(userId, range, range.key === nowKey);
+  }
+
+  /** « Ma semaine » : le même récap sur sept jours (du lundi au dimanche, heure de Montréal) ; la clé est le lundi AAAA-MM-JJ. */
+  async weekly(userId: string, key?: string) {
+    const nowKey = mondayKeyOf(new Date());
+    const range = weekRange(key || nowKey);
+    if (!range) throw new BadRequestException('Semaine invalide (lundi AAAA-MM-JJ)');
+    if (range.start.getTime() > Date.now()) throw new BadRequestException('Cette semaine n\'a pas encore commencé');
+    return this.period(userId, range, range.key === nowKey);
+  }
+
+  private async period(userId: string, range: MonthRange, current: boolean) {
     const until = new Date(range.end.getTime() + 12 * 3_600_000);
     const inMonth = { gte: range.start, lt: range.end };
 
@@ -97,7 +123,7 @@ export class RecapService {
     const round = (c: ReturnType<typeof compare>) => c && { ...c, median: Math.round(c.median), average: Math.round(c.average) };
 
     return {
-      month: { key: range.key, label: range.label, days: range.days, current: range.key === nowKey },
+      month: { key: range.key, label: range.label, days: range.days, current },
       sharing: { uploaded, downloaded, best, daily: days.map((d) => ({ day: d.day, up: d.up })), activeDays: days.filter((d) => d.up > 0).length, hasData: snaps.length > 0 },
       watching,
       points: { earned, spent, net: earned - spent, bySource },

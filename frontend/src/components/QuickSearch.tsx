@@ -72,6 +72,7 @@ export default function QuickSearch({ open, onClose, pages }: { open: boolean; o
     { key: 'a:upload', group: 'Actions', icon: '⬆️', label: 'Envoyer un torrent', to: '/upload', words: 'upload uploader partager ajouter' },
     { key: 'a:request', group: 'Actions', icon: '💬', label: 'Faire une demande', to: '/requests', words: 'demande requete request' },
     { key: 'a:invite', group: 'Actions', icon: '🎟️', label: 'Inviter un ami', to: '/referrals', words: 'invitation parrainage code' },
+    { key: 'a:week', group: 'Actions', icon: '📅', label: 'Ma semaine (résumé à partager)', to: '/recap?semaine=', words: 'recap semaine resume statistiques partager' },
     { key: 'a:notifs', group: 'Actions', icon: '🔔', label: 'Voir mes notifications', to: '/notifications', words: 'alertes cloche' },
     { key: 'a:light', group: 'Actions', icon: '☀', label: 'Passer en thème clair', run: () => setMode('light'), words: 'theme clair blanc jour apparence' },
     { key: 'a:dark', group: 'Actions', icon: '🌙', label: 'Passer en thème sombre', run: () => setMode('dark'), words: 'theme sombre noir nuit apparence' },

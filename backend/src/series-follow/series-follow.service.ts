@@ -171,7 +171,7 @@ export class SeriesFollowService {
       const base = f.baseSeason !== null && f.baseEpisode !== null ? { season: f.baseSeason, episode: f.baseEpisode } : null;
       if (!isNewForFollow(ep, base)) continue;
       await this.notifications.notify({
-        userId: f.userId, type: 'ANNOUNCEMENT', category: 'alerts', groupKey: `series:${f.id}:available:${epKey(ep)}`, titleMany: `📺 ${f.title} ${epLabel(ep)} : {n} versions disponibles`,
+        userId: f.userId, type: 'ANNOUNCEMENT', category: 'alerts', groupKey: `series:${f.id}:available`, titleMany: `📺 ${f.title} : {n} nouveaux torrents disponibles`,
         title: `📺 ${f.title} ${epLabel(ep)} est disponible`, body: t.name, link: `/torrents/${t.id}`,
       }).then(() => { n++; }).catch(() => undefined);
     }

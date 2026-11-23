@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
-import { CATEGORY_ICON, notifyChanged, onNotificationsChanged, type AppNotification } from '../lib/notifications';
+import { CATEGORY_ICON, notifyChanged, onNotificationsChanged, stackNotifications, type AppNotification } from '../lib/notifications';
 import Loading from '../components/Loading';
 import PushSettings from '../components/PushSettings';
 
@@ -23,6 +23,7 @@ export default function Notifications() {
   const [prefs, setPrefs] = useState<Record<string, boolean> | null>(null);
   const [showPrefs, setShowPrefs] = useState(false);
   const [notice, setNotice] = useState('');
+  const [open2, setOpen2] = useState<Set<string>>(new Set()); // blocs de notifications regroupées dépliés
 
   const loadSummary = useCallback(() => { api.get('/notifications/summary').then((r) => setSummary(r.data)).catch(() => {}); }, []);
   const params = useCallback((offset = 0) => ({ page: 1, limit: 30, offset, sort, category: tab === 'all' ? undefined : tab, unread: unreadOnly ? 1 : undefined }), [sort, tab, unreadOnly]);
@@ -50,6 +51,12 @@ export default function Notifications() {
   async function toggleRead(n: AppNotification) {
     await api.post(`/notifications/${n.id}/${n.read ? 'unread' : 'read'}`);
     setItems((l) => l.map((x) => (x.id === n.id ? { ...x, read: !n.read } : x)));
+    changed();
+  }
+  async function readMany(list: AppNotification[]) {
+    await Promise.all(list.filter((x) => !x.read).map((x) => api.post(`/notifications/${x.id}/read`).catch(() => {})));
+    const ids = new Set(list.map((x) => x.id));
+    setItems((l) => l.map((x) => (ids.has(x.id) ? { ...x, read: true } : x)));
     changed();
   }
   async function remove(n: AppNotification) {
@@ -134,20 +141,45 @@ export default function Notifications() {
         {loading && items.length === 0 && <Loading />}
         {!loading && items.length === 0 && <EmptyState icon="🔔" title={unreadOnly ? 'Tout est lu' : 'Aucune notification'}>{unreadOnly ? 'Aucune notification non lue.' : 'Les nouvelles qui te concernent apparaîtront ici.'}</EmptyState>}
         <div className="np-list">
-          {items.map((n) => (
-            <div key={n.id} className={`np-item${n.read ? '' : ' unread'}`} onClick={() => open(n)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') open(n); }}>
-              <span className="np-icon" aria-hidden>{CATEGORY_ICON[n.category] ?? '🔔'}</span>
-              <div className="np-main">
-                <div className="np-title">{!n.read && <i className="np-dot" />}{n.title}{n.count > 1 && <span className="np-x">×{n.count}</span>}</div>
-                {n.body && <div className="np-body">{n.body}</div>}
-                <div className="np-time">{timeAgo(n.createdAt)}{n.link ? ' · ouvrir →' : ''}</div>
+          {stackNotifications(items).map((e) => {
+            if (e.kind === 'stack' && !open2.has(e.id)) {
+              const label = cats.find((c) => c.key === e.category)?.label ?? 'Notifications';
+              const unread = !e.items[0].read;
+              return (
+                <div key={`s${e.id}`} className={`np-item np-stack${unread ? ' unread' : ''}`} onClick={() => setOpen2((o) => new Set(o).add(e.id))} role="button" tabIndex={0} onKeyDown={(ev) => { if (ev.key === 'Enter') setOpen2((o) => new Set(o).add(e.id)); }}>
+                  <span className="np-icon" aria-hidden>{CATEGORY_ICON[e.category] ?? '🔔'}</span>
+                  <div className="np-main">
+                    <div className="np-title">{unread && <i className="np-dot" />}{e.items.length} notifications · {label}</div>
+                    <div className="np-body">{e.items.slice(0, 2).map((x) => x.title).join(' · ')}{e.items.length > 2 ? ` … et ${e.items.length - 2} autre${e.items.length > 3 ? 's' : ''}` : ''}</div>
+                    <div className="np-time">{timeAgo(e.items[0].createdAt)} · voir tout ↓</div>
+                  </div>
+                  <div className="np-actions" onClick={(ev) => ev.stopPropagation()}>
+                    {unread && <button type="button" title="Tout marquer comme lu" aria-label="Marquer ce groupe comme lu" onClick={() => readMany(e.items)}>✓</button>}
+                  </div>
+                </div>
+              );
+            }
+            const list = e.kind === 'stack' ? e.items : [e.n];
+            return (
+              <div key={e.kind === 'stack' ? `o${e.id}` : e.n.id} className={e.kind === 'stack' ? 'np-open' : undefined}>
+                {e.kind === 'stack' && <button type="button" className="secondary np-fold" onClick={() => setOpen2((o) => { const x = new Set(o); x.delete(e.id); return x; })}>↑ Replier les {e.items.length} notifications</button>}
+                {list.map((n) => (
+                <div key={n.id} className={`np-item${n.read ? '' : ' unread'}`} onClick={() => open(n)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') open(n); }}>
+                  <span className="np-icon" aria-hidden>{CATEGORY_ICON[n.category] ?? '🔔'}</span>
+                  <div className="np-main">
+                    <div className="np-title">{!n.read && <i className="np-dot" />}{n.title}{n.count > 1 && <span className="np-x">×{n.count}</span>}</div>
+                    {n.body && <div className="np-body">{n.body}</div>}
+                    <div className="np-time">{timeAgo(n.createdAt)}{n.link ? ' · ouvrir →' : ''}</div>
+                  </div>
+                  <div className="np-actions" onClick={(e) => e.stopPropagation()}>
+                    <button type="button" title={n.read ? 'Marquer comme non lue' : 'Marquer comme lue'} aria-label={n.read ? 'Marquer comme non lue' : 'Marquer comme lue'} onClick={() => toggleRead(n)}>{n.read ? '○' : '●'}</button>
+                    <button type="button" title="Supprimer" aria-label="Supprimer cette notification" onClick={() => remove(n)}>✕</button>
+                  </div>
+                </div>
+                ))}
               </div>
-              <div className="np-actions" onClick={(e) => e.stopPropagation()}>
-                <button type="button" title={n.read ? 'Marquer comme non lue' : 'Marquer comme lue'} aria-label={n.read ? 'Marquer comme non lue' : 'Marquer comme lue'} onClick={() => toggleRead(n)}>{n.read ? '○' : '●'}</button>
-                <button type="button" title="Supprimer" aria-label="Supprimer cette notification" onClick={() => remove(n)}>✕</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {next !== null && <div style={{ textAlign: 'center', marginTop: 12 }}><button type="button" className="secondary" onClick={more}>Voir plus</button></div>}
       </div>
