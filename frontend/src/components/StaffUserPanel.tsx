@@ -151,8 +151,10 @@ export default function StaffUserPanel({ targetId, myRole, myId, onChanged }: { 
             <div className="muted" style={{ marginBottom: 4 }}>Ratio minimum</div>
             <input type="number" min="0" max="20" step="0.05" value={minRatio} onChange={(e) => setMinRatio(e.target.value)} style={{ width: '100%' }} />
           </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label className="row" style={{ gap: 6 }} title="Son pseudo et son avatar sont remplacés par « Anonyme » pour les autres membres, sur tout le site et dans les équipes. L'équipe et lui-même voient la vérité."><input type="checkbox" style={{ width: 'auto' }} checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} /> 🕶️ Membre anonyme (pseudo caché sur le site et dans les équipes)</label>
+          </div>
           <div>
-            <label className="row" style={{ gap: 6, marginBottom: 10 }} title="Son pseudo et son avatar sont remplacés par « Anonyme » pour les autres membres, sur tout le site et dans les équipes. L'équipe et lui-même voient la vérité."><input type="checkbox" style={{ width: 'auto' }} checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} /> 🕶️ Membre anonyme (pseudo caché sur le site et dans les équipes)</label>
             <div className="muted" style={{ marginBottom: 4 }}>Jetons freeleech</div>
             <input type="number" min="0" value={tokens} onChange={(e) => setTokens(e.target.value)} style={{ width: '100%' }} />
           </div>

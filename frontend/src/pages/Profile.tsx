@@ -102,7 +102,7 @@ export default function Profile() {
 
   return (
     <div className="grid">
-      <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
+      <div className="row profile-head" style={{ flexWrap: 'wrap', gap: 10 }}>
         <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
           <Avatar user={profile} size={56} />
           {profile.onlineStatus && (
