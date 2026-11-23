@@ -52,3 +52,20 @@
 
 /* ── Onglets actifs (liste du chat, etc.) : texte d'accent foncé sur teinte légère ── */
 :root[data-mode="light"] [role="tab"][aria-selected="true"]:not(.dc-tabs *):not(.hero-dots *):not(.admin-tabs *):not(.news-tabs *) { color: var(--acc-light); background: rgba(var(--acc-rgb), 0.14); font-weight: 700; }
+
+/* ── Pseudo des fondateurs : or plus profond (le doré vif est illisible sur blanc), texte toujours en dégradé ── */
+:root[data-mode="light"] .user-link.rank-FOUNDER, :root[data-mode="light"] .nick.rank-FOUNDER, :root[data-mode="light"] a.user-link.rank-FOUNDER, :root[data-mode="light"] a .nick.rank-FOUNDER {
+  background-image: linear-gradient(110deg, #7a4e00 0%, #b8800a 25%, #e0a800 45%, #b8800a 60%, #7a4e00 100%) !important;
+  background-size: 240% 100% !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important;
+  filter: drop-shadow(0 0 3px rgba(160, 110, 0, 0.25));
+}
+
+/* ── Couleurs d'événement (Noël, Halloween…) : leurs teintes « claires » sont des pastels pour fond sombre ; en clair, on les assombrit (sinon titres et liens deviennent illisibles) ── */
+html:root[data-mode="light"][data-theme="prestige"][data-ev][data-evc] {
+  --acc-light: color-mix(in srgb, var(--acc1) 72%, #0a0f1e);
+  --acc-link: color-mix(in srgb, var(--acc1) 72%, #0a0f1e);
+}
+
+/* ── Onglets inactifs (Membres : En ligne / Seeders, etc.) : texte lisible sur fond clair ── */
+:root[data-mode="light"][data-theme="prestige"] .tabs button:not(.on):not(.admin-tabs *), :root[data-mode="light"][data-theme="prestige"] .tabs a:not(.on) { color: var(--text-dim); }
+:root[data-mode="light"][data-theme="prestige"] .tabs button:not(.on):hover:not(:disabled) { color: var(--text); }

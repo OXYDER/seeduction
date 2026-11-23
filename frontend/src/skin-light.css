@@ -89,12 +89,13 @@
   :root[data-mode="light"] .side-nav.open { box-shadow: 0 0 80px rgba(15, 23, 42, 0.196); }
   :root[data-mode="light"] .shell-overlay { background: rgba(246, 246, 246, 0.62); }
   :root[data-mode="light"] .tabbar { background: rgba(245, 245, 247, 0.9); }
+  :root[data-mode="light"][data-theme="prestige"] .tabbar button:hover:not(:disabled) { color: var(--text); }
 }
 :root[data-mode="light"][data-theme="prestige"] .view-toggle button { background: rgba(0, 0, 0, 0.06); }
 :root[data-mode="light"][data-theme="prestige"] .badge.new { color: rgb(0, 138, 204); }
 :root[data-mode="light"][data-theme="prestige"] .torrent-tip .tip-title { color: rgb(0, 0, 0); }
 :root[data-mode="light"][data-theme="prestige"] .side-brand { color: rgb(0, 0, 0); }
-:root[data-mode="light"][data-theme="prestige"] .side-brand span { background: linear-gradient(90deg, var(--acc-light), rgb(233, 10, 131)); }
+:root[data-mode="light"][data-theme="prestige"] .side-brand span { background: linear-gradient(90deg, var(--acc-light), rgb(233, 10, 131)); -webkit-background-clip: text; background-clip: text; }
 :root[data-mode="light"][data-theme="prestige"] .poster-card { background: rgb(245, 245, 247); border: 1px solid rgba(15, 23, 42, 0.06); }
 :root[data-mode="light"][data-theme="prestige"] .poster-card .poster-fallback { background: linear-gradient(160deg, rgb(245, 245, 247), rgb(245, 245, 247)); }
 :root[data-mode="light"][data-theme="prestige"] .poster-card .poster-body { background: linear-gradient(180deg, transparent 0%, rgba(245, 245, 247, 0.82) 45%, rgba(245, 245, 247, 0.97) 100%); }
@@ -143,7 +144,7 @@
 :root[data-mode="light"] .hero-dots button { color: rgb(103, 125, 203); background: rgba(0, 0, 0, 0.12); border: 1px solid rgba(15, 23, 42, 0.18); }
 :root[data-mode="light"] .progress-bar { background: rgba(0, 0, 0, 0.18); }
 :root[data-mode="light"] .skeleton-poster,
-:root[data-mode="light"] .skeleton-line { background: linear-gradient(90deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.05)); }
+:root[data-mode="light"] .skeleton-line { background: linear-gradient(90deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.05)); background-size: 200% 100%; }
 :root[data-mode="light"][data-theme="prestige"] .tabs a { color: rgb(59, 68, 91); }
 :root[data-mode="light"][data-theme="prestige"] .tabs a:hover { color: rgb(0, 0, 0); }
 :root[data-mode="light"][data-theme="prestige"] .tabs a.on { color: rgb(0, 0, 0); }
@@ -173,9 +174,11 @@
 :root[data-mode="light"] .chat-file-chip:hover { background: rgba(0, 0, 0, 0.13); }
 :root[data-mode="light"] .chat-msg-tools { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.084); }
 :root[data-mode="light"] .chat-reaction-picker { box-shadow: 0 8px 20px rgba(15, 23, 42, 0.112); }
+:root[data-mode="light"] .chat-reaction-picker button { color: var(--text); }
 :root[data-mode="light"] .chat-reaction-picker button:hover { background: rgba(0, 0, 0, 0.12); }
 :root[data-mode="light"] .chat-reactions button { background: rgba(0, 0, 0, 0.08); }
 :root[data-mode="light"] .chat-emoji-grid-composer { box-shadow: 0 10px 26px rgba(15, 23, 42, 0.112); }
+:root[data-mode="light"] .chat-emoji-grid button { color: var(--text); }
 :root[data-mode="light"] .chat-emoji-grid button:hover { background: rgba(0, 0, 0, 0.1); }
 :root[data-mode="light"] .chat-icon-btn { background: rgba(0, 0, 0, 0.06); }
 :root[data-mode="light"] .chat-icon-btn:hover { background: rgba(0, 0, 0, 0.14); }
@@ -244,11 +247,15 @@
 :root[data-mode="light"] .msgr-voice-bar { background: rgba(0, 0, 0, 0.25); }
 :root[data-mode="light"] .msgr-voice-speed { background: rgba(0, 0, 0, 0.18); }
 :root[data-mode="light"] .msgr-rec-dot { background: rgb(159, 0, 15); }
+:root[data-mode="light"] .msgr-pop-tabs button { color: var(--text); }
 :root[data-mode="light"] .msgr-pop-tabs button.on { background: rgba(0, 0, 0, 0.12); }
+:root[data-mode="light"] .msgr-sticker-grid button { color: var(--text); }
 :root[data-mode="light"] .msgr-sticker-grid button:hover { background: rgba(0, 0, 0, 0.1); }
 :root[data-mode="light"] .msgr-gif-kind { border: 1px solid rgba(15, 23, 42, 0.14); }
+:root[data-mode="light"] .msgr-gif-kind button { color: var(--text); }
 :root[data-mode="light"] .msgr-gif-kind button.on { background: rgba(0, 0, 0, 0.14); }
 :root[data-mode="light"] .msgr-gif-grid button { background: rgba(0, 0, 0, 0.05); }
+:root[data-mode="light"] .msgr-gif-grid button.sticker { color: var(--text); }
 :root[data-mode="light"] .msgr-file { background: rgba(0, 0, 0, 0.1); }
 :root[data-mode="light"] .msgr-file:hover { background: rgba(0, 0, 0, 0.16); }
 :root[data-mode="light"] .msgr-reply-quote { background: rgba(0, 0, 0, 0.06); }
@@ -258,6 +265,7 @@
 :root[data-mode="light"] .msgr-tools { background: rgb(245, 245, 247); border: 1px solid rgba(15, 23, 42, 0.12); box-shadow: 0 6px 16px rgba(15, 23, 42, 0.126); }
 :root[data-mode="light"] .msgr-tools > button:hover { background: rgba(0, 0, 0, 0.12); }
 :root[data-mode="light"] .msgr-reaction-picker { background: rgb(245, 245, 247); border: 1px solid rgba(15, 23, 42, 0.14); box-shadow: 0 10px 28px rgba(15, 23, 42, 0.154); }
+:root[data-mode="light"] .msgr-reaction-picker > button { color: var(--text); }
 :root[data-mode="light"] .msgr-reaction-picker > button:hover { background: rgba(0, 0, 0, 0.12); }
 :root[data-mode="light"] .msgr-torrent { background: rgba(0, 0, 0, 0.1); border: 1px solid rgba(15, 23, 42, 0.08); }
 :root[data-mode="light"] a.msgr-torrent:hover { background: rgba(0, 0, 0, 0.16); }
@@ -285,6 +293,7 @@
 :root[data-mode="light"] .msgr-link-btn { color: var(--acc-light, rgb(168, 127, 8)); }
 :root[data-mode="light"] .msgr-link-btn.danger { color: rgb(220, 0, 0); }
 :root[data-mode="light"] .msgr-add-box { background: rgba(0, 0, 0, 0.05); }
+:root[data-mode="light"] .msgr-media-grid button { color: var(--text); }
 :root[data-mode="light"] .msgr-modal-backdrop { background: rgba(245, 245, 247, 0.7); }
 :root[data-mode="light"] .msgr-modal { background: rgb(245, 245, 247); border: 1px solid rgba(15, 23, 42, 0.12); box-shadow: 0 30px 80px rgba(15, 23, 42, 0.168); }
 :root[data-mode="light"] .msgr-modal-head .dm-icon-btn { background: rgba(0, 0, 0, 0.1); }
@@ -302,6 +311,8 @@
 @media (max-width: 1100px) {
   :root[data-mode="light"] .msgr-page.with-info .msgr-info { background: rgb(245, 245, 247); box-shadow: -20px 0 50px rgba(15, 23, 42, 0.168); }
 }
+:root[data-mode="light"] button.msgr-link-btn,
+:root[data-mode="light"] button.msgr-link-btn.danger { color: var(--text); }
 :root[data-mode="light"] button.msgr-link-btn.danger { color: rgb(220, 0, 0); }
 :root[data-mode="light"] .call-toast { background: rgb(245, 245, 247); border: 1px solid rgba(15, 23, 42, 0.16); box-shadow: 0 14px 40px rgba(15, 23, 42, 0.154); }
 :root[data-mode="light"] .call-incoming { background: rgb(245, 245, 247); border: 1px solid rgba(52, 5, 160, 0.55); box-shadow: 0 18px 50px rgba(15, 23, 42, 0.182), 0 0 0 4px rgba(139,92,246,0.18); }
@@ -325,6 +336,7 @@
 :root[data-mode="light"] .nav-links .side-badge { color: rgb(0, 0, 0); }
 :root[data-mode="light"] .nav-links .side-badge.red.outline { color: rgb(213, 0, 29); }
 :root[data-mode="light"] .tab-dot { box-shadow: 0 0 0 2px var(--bg-panel, rgba(15, 23, 42, 0.28)); }
+:root[data-mode="light"] .mod-tabs button { color: var(--text); }
 :root[data-mode="light"] .mod-tabs button.on { background: rgba(0, 0, 0, 0.07); }
 :root[data-mode="light"] .mod-count { background: rgba(0, 0, 0, 0.14); }
 :root[data-mode="light"] .mod-filters button.on,
@@ -750,6 +762,7 @@
 :root[data-mode="light"] .live-reactions button:hover:not(:disabled) { background: rgba(0, 0, 0, 0.25); }
 :root[data-mode="light"] .live-chat-msg { background: rgba(246, 246, 246, 0.42); color: rgb(0, 0, 0); text-shadow: 0 1px 2px rgba(15, 23, 42, 0.168); }
 :root[data-mode="light"] .live-chat-empty { background: rgba(246, 246, 246, 0.35); color: rgba(0, 0, 0, 0.8); }
+:root[data-mode="light"] .live-chat-mod button { color: var(--text); }
 :root[data-mode="light"] .live-chat-input input { border: 1px solid rgba(15, 23, 42, 0.28); background: rgba(246, 246, 246, 0.5); color: rgb(0, 0, 0); }
 :root[data-mode="light"] .live-chat-input input::placeholder { color: rgba(0, 0, 0, 0.6); }
 :root[data-mode="light"] .mtl-pill.idle { background: rgba(0, 0, 0, 0.06); border-color: rgba(15, 23, 42, 0.2); }
@@ -841,7 +854,7 @@
 :root[data-mode="light"] .ld-bar { background: rgba(0, 0, 0, 0.06); }
 :root[data-mode="light"] .ld-bar span { background: linear-gradient(90deg, transparent, rgb(149, 110, 4), rgb(56, 4, 212), transparent); }
 :root[data-mode="light"] .ld-skel i,
-:root[data-mode="light"] .ld-cards i { background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.05) 75%); }
+:root[data-mode="light"] .ld-cards i { background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.05) 75%); background-size: 200% 100%; }
 :root[data-mode="light"] .cw-poster { background: rgba(245, 245, 247, 0.7); border: 1px solid var(--border, rgba(15, 23, 42, 0.15)); }
 :root[data-mode="light"] .cw-play { color: rgb(0, 0, 0); background: rgba(246, 246, 246, 0.35); }
 :root[data-mode="light"] .cw-bar { background: rgba(0, 0, 0, 0.25); }
@@ -868,24 +881,24 @@
 :root[data-mode="light"] .tv-bar { background: rgba(0, 0, 0, 0.12); }
 :root[data-mode="light"] .user-link.rank-ADMIN,
 :root[data-mode="light"] .nick.rank-ADMIN { color: rgb(183, 5, 5); }
-:root[data-mode="light"] html a.user-link.rank-ADMIN,
-:root[data-mode="light"] html a .nick.rank-ADMIN { color: rgb(183, 5, 5); }
+:root[data-mode="light"] a.user-link.rank-ADMIN,
+:root[data-mode="light"] a .nick.rank-ADMIN { color: rgb(183, 5, 5); }
 :root[data-mode="light"] .user-link.rank-SUPER_MODERATOR,
 :root[data-mode="light"] .nick.rank-SUPER_MODERATOR { color: rgb(105, 0, 211); }
-:root[data-mode="light"] html a.user-link.rank-SUPER_MODERATOR,
-:root[data-mode="light"] html a .nick.rank-SUPER_MODERATOR { color: rgb(105, 0, 211); }
+:root[data-mode="light"] a.user-link.rank-SUPER_MODERATOR,
+:root[data-mode="light"] a .nick.rank-SUPER_MODERATOR { color: rgb(105, 0, 211); }
 :root[data-mode="light"] .user-link.rank-VETERAN,
 :root[data-mode="light"] .nick.rank-VETERAN { color: rgb(153, 69, 0); }
-:root[data-mode="light"] html a.user-link.rank-VETERAN,
-:root[data-mode="light"] html a .nick.rank-VETERAN { color: rgb(153, 69, 0); }
+:root[data-mode="light"] a.user-link.rank-VETERAN,
+:root[data-mode="light"] a .nick.rank-VETERAN { color: rgb(153, 69, 0); }
 :root[data-mode="light"] .user-link.rank-ELITE,
 :root[data-mode="light"] .nick.rank-ELITE { color: rgb(1, 77, 171); }
-:root[data-mode="light"] html a.user-link.rank-ELITE,
-:root[data-mode="light"] html a .nick.rank-ELITE { color: rgb(1, 77, 171); }
+:root[data-mode="light"] a.user-link.rank-ELITE,
+:root[data-mode="light"] a .nick.rank-ELITE { color: rgb(1, 77, 171); }
 :root[data-mode="light"] .user-link.rank-POWER_USER,
 :root[data-mode="light"] .nick.rank-POWER_USER { color: rgb(2, 43, 241); }
-:root[data-mode="light"] html a.user-link.rank-POWER_USER,
-:root[data-mode="light"] html a .nick.rank-POWER_USER { color: rgb(2, 43, 241); }
+:root[data-mode="light"] a.user-link.rank-POWER_USER,
+:root[data-mode="light"] a .nick.rank-POWER_USER { color: rgb(2, 43, 241); }
 :root[data-mode="light"] .stat-tip { background: rgb(245, 245, 247); border: 1px solid rgba(15, 23, 42, 0.16); box-shadow: 0 12px 34px rgba(15, 23, 42, 0.154); color: rgb(96, 125, 210); }
 :root[data-mode="light"] .stat-tip-intro { color: rgb(55, 62, 85); }
 :root[data-mode="light"] .stat-tip-rows { border-top: 1px solid rgba(15, 23, 42, 0.1); border-bottom: 1px solid rgba(15, 23, 42, 0.1); }
@@ -1013,8 +1026,8 @@
 :root[data-mode="light"] .side-links.sp-lines .rail-list > a { border-bottom-color: rgba(15, 23, 42, 0.06); }
 :root[data-mode="light"] .user-link.rank-FOUNDER,
 :root[data-mode="light"] .nick.rank-FOUNDER,
-:root[data-mode="light"] html a.user-link.rank-FOUNDER,
-:root[data-mode="light"] html a .nick.rank-FOUNDER { color: rgb(156, 117, 0); background: linear-gradient(110deg, #b8860b 0%, #ffd700 25%, rgb(255, 220, 21) 45%, #ffd700 60%, #b8860b 100%); }
+:root[data-mode="light"] a.user-link.rank-FOUNDER,
+:root[data-mode="light"] a .nick.rank-FOUNDER { color: rgb(156, 117, 0); background: linear-gradient(110deg, #b8860b 0%, #ffd700 25%, rgb(255, 220, 21) 45%, #ffd700 60%, #b8860b 100%); background-size: 240% 100%; -webkit-background-clip: text; background-clip: text; }
 :root[data-mode="light"] .founder-tag { background: linear-gradient(135deg, rgb(184, 140, 9), #c99a2e) !important; color: rgb(247, 247, 245) !important; }
 :root[data-mode="light"] .hc-row { background: rgba(0, 0, 0, 0.04); }
 :root[data-mode="light"] .top-sticky { background: linear-gradient(180deg, rgba(245, 245, 247, 0.97), rgba(245, 245, 247, 0.88)); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.098); }
@@ -1288,7 +1301,7 @@
 :root[data-mode="light"] .cc.missing .cc-art { background: rgba(0, 0, 0, 0.04); }
 :root[data-mode="light"] .cc-unknown { color: rgb(165, 177, 197); }
 :root[data-mode="light"] .cc-name { text-shadow: 0 1px 2px rgba(15, 23, 42, 0.196); }
-:root[data-mode="light"] .cc-foil { background: linear-gradient(115deg, transparent 20%, rgba(197, 6, 0, 0.9) 32%, rgba(177, 157, 0, 0.9) 42%, rgba(81, 177, 0, 0.9) 52%, rgba(0, 213, 199, 0.9) 62%, rgba(0, 42, 202, 0.9) 72%, transparent 84%); }
+:root[data-mode="light"] .cc-foil { background: linear-gradient(115deg, transparent 20%, rgba(197, 6, 0, 0.9) 32%, rgba(177, 157, 0, 0.9) 42%, rgba(81, 177, 0, 0.9) 52%, rgba(0, 213, 199, 0.9) 62%, rgba(0, 42, 202, 0.9) 72%, transparent 84%); background-size: 250% 250%; background-position: var(--mx) var(--my); }
 :root[data-mode="light"] .cc-hero { background: linear-gradient(160deg, #2a1470, rgb(245, 245, 247) 80%); border: 1px solid rgba(77, 0, 222, 0.45); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.112); }
 :root[data-mode="light"] .cc-minipack { border: 2px solid rgb(136, 106, 17); }
 :root[data-mode="light"] .cc-big { color: rgb(220, 167, 0); }

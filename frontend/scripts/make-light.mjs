@@ -107,7 +107,7 @@ function ruleHasAccentBackground(rule) {
 }
 
 function prefixSelector(sel) {
-  const s = sel.trim();
+  const s = sel.trim().replace(/^html\s+/, ''); // « html a.x » : html est la racine elle-même, pas un ancêtre
   if (/^:root/.test(s)) return s.replace(/^:root/, ':root[data-mode="light"]');
   return `:root[data-mode="light"] ${s}`;
 }
@@ -137,6 +137,19 @@ function lightRule(rule) {
     const v = convertValue(d.value, d.prop === 'box-shadow' || d.prop === 'text-shadow' ? d.prop : prop);
     if (v && v !== d.value) decls.push([d.prop, v + (d.important ? ' !important' : '')]);
   });
+  // Le raccourci « background » remet à zéro background-clip / size / position : si la règle d'origine les fixe (texte en dégradé,
+  // background-clip: text), on les recopie après lui, sinon le pseudo devient un rectangle plein.
+  if (decls.some(([p]) => p === 'background')) {
+    rule.walkDecls(/^(-webkit-)?background-(clip|size|position|repeat|origin)$/, (d) => {
+      if (d.parent === rule) decls.push([d.prop, d.value + (d.important ? ' !important' : '')]);
+    });
+  }
+  // Un bouton rendu « sans fond » (background: none / transparent) hérite du texte blanc des boutons pleins : en clair il devient illisible.
+  if (/(^|[\s,>+~])button\b/.test(rule.selector) && !decls.some(([p]) => p === 'color')) {
+    let bare = false, hasColor = false;
+    rule.walkDecls((d) => { if (d.parent !== rule) return; if (/^background(-color)?$/.test(d.prop) && /^(none|transparent)(\s*!important)?$/.test(d.value.trim())) bare = true; if (d.prop === 'color') hasColor = true; });
+      if (bare && !hasColor) decls.push(['color', 'var(--text)']);
+  }
   if (decls.length === 0) return null;
   const selectors = rule.selectors.map(prefixSelector).join(',\n');
   return `${selectors} { ${decls.map(([p, v]) => `${p}: ${v};`).join(' ')} }`;
