@@ -8,10 +8,10 @@ import ConvAvatar from './ConvAvatar';
 import MessengerSettings from './MessengerSettings';
 
 /** Les conversations publiques (canaux) et privées (1 à 1 et groupes) sont séparées en deux onglets. */
-type Kind = 'private' | 'public';
+type Kind = 'private' | 'public' | 'founders';
 const KIND_KEY = 'msgr-list-kind';
 const readKind = (): Kind => { try { return localStorage.getItem(KIND_KEY) === 'public' ? 'public' : 'private'; } catch { return 'private'; } };
-const kindOf = (c: ConvSummary): Kind => (c.type === 'CHANNEL' ? 'public' : 'private');
+const kindOf = (c: ConvSummary): Kind => (c.founders ? 'founders' : c.type === 'CHANNEL' ? 'public' : 'private');
 
 const MUTE_OPTIONS: { label: string; hours: number | null }[] = [
   { label: '1 heure', hours: 1 },
@@ -136,6 +136,7 @@ export default function ConversationList({ activeId, onSelect, onNew }: { active
   const tabs: { id: Kind; label: string }[] = [
     { id: 'private', label: '💬 Privées' },
     { id: 'public', label: '# Publiques' },
+    ...(conversations.some((c) => c.founders) ? [{ id: 'founders' as Kind, label: '🏅 Fondateurs' }] : []),
   ];
 
   return (

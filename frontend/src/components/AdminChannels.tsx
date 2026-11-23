@@ -3,7 +3,7 @@ import { api } from '../api/client';
 import PurgeChannelModal from './PurgeChannelModal';
 
 interface Channel {
-  id: string; name: string; slug: string; description: string | null; motd: string | null; readRole: string | null; writeRole: string | null;
+  id: string; name: string; slug: string; description: string | null; motd: string | null; readRole: string | null; writeRole: string | null; founderOnly?: boolean;
   slowModeSeconds: number; position: number; archived: boolean; messageCount: number;
 }
 
@@ -16,7 +16,7 @@ const ROLES: { value: string; label: string }[] = [
 ];
 const roleLabel = (v: string | null) => ROLES.find((r) => r.value === (v ?? ''))?.label ?? v ?? '';
 
-const emptyForm = { name: '', description: '', motd: '', readRole: '', writeRole: '', slowModeSeconds: 0 };
+const emptyForm = { name: '', description: '', motd: '', readRole: '', writeRole: '', founderOnly: false, slowModeSeconds: 0 };
 
 /** Canaux publics du Messenger : créer, régler qui peut lire / écrire, mode lent, ordre, archiver (administrateurs). */
 export function ChannelsAdmin() {
@@ -35,7 +35,7 @@ export function ChannelsAdmin() {
   async function save() {
     setError(''); setMessage('');
     if (!form.name.trim()) { setError('Donne un nom au canal'); return; }
-    const body = { ...form, motd: form.motd, readRole: form.readRole || null, writeRole: form.writeRole || null, slowModeSeconds: Number(form.slowModeSeconds) || 0 };
+    const body = { ...form, motd: form.motd, readRole: form.readRole || null, writeRole: form.writeRole || null, founderOnly: !!form.founderOnly, slowModeSeconds: Number(form.slowModeSeconds) || 0 };
     try {
       if (editingId) await api.patch(`/messenger/admin/channels/${editingId}`, body);
       else await api.post('/messenger/admin/channels', body);
@@ -59,7 +59,7 @@ export function ChannelsAdmin() {
 
   function startEdit(c: Channel) {
     setEditingId(c.id);
-    setForm({ name: c.name, description: c.description ?? '', motd: c.motd ?? '', readRole: c.readRole ?? '', writeRole: c.writeRole ?? '', slowModeSeconds: c.slowModeSeconds });
+    setForm({ name: c.name, description: c.description ?? '', motd: c.motd ?? '', readRole: c.readRole ?? '', writeRole: c.writeRole ?? '', founderOnly: !!c.founderOnly, slowModeSeconds: c.slowModeSeconds });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -82,6 +82,10 @@ export function ChannelsAdmin() {
           </label>
           <label className="muted">Qui peut <strong>écrire</strong> (« Annonces » = réservé au staff)
             <select value={form.writeRole} onChange={(e) => setForm({ ...form, writeRole: e.target.value })}>{ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
+          </label>
+          <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, gridColumn: '1 / -1' }}>
+            <input type="checkbox" checked={form.founderOnly} onChange={(e) => setForm({ ...form, founderOnly: e.target.checked })} />
+            🏅 Réservé aux <strong>membres fondateurs</strong> (l'administration y a aussi accès, pour le modérer)
           </label>
           <label className="muted">Mode lent (secondes entre deux messages, 0 = aucun)
             <input type="number" min={0} max={3600} value={form.slowModeSeconds} onChange={(e) => setForm({ ...form, slowModeSeconds: Number(e.target.value) })} />
@@ -108,7 +112,7 @@ export function ChannelsAdmin() {
                     <button type="button" className="secondary" title="Descendre" onClick={() => patch(c, { position: c.position + 1 })}>▼</button>
                   </td>
                   <td><strong># {c.name}</strong>{c.archived && <span className="badge" style={{ marginLeft: 6 }}>archivé</span>}<div className="muted" style={{ fontSize: 12 }}>{c.description}</div></td>
-                  <td className="muted">{roleLabel(c.readRole)}</td>
+                  <td className="muted">{c.founderOnly ? '🏅 Fondateurs' : roleLabel(c.readRole)}</td>
                   <td className="muted">{roleLabel(c.writeRole)}</td>
                   <td className="muted">{c.slowModeSeconds ? `${c.slowModeSeconds} s` : '—'}</td>
                   <td className="muted">{c.messageCount}</td>

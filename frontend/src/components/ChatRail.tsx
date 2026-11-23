@@ -131,17 +131,18 @@ export default function ChatRail() {
   }
 
   const hiddenCount = conversations.filter((c) => !c.archived && isHidden(c, hidden)).length;
-  const { publics, privates } = useMemo(() => {
+  const { publics, founders, privates } = useMemo(() => {
     const live = conversations.filter((c) => !c.archived && !isHidden(c, hidden));
     const byActivity = (a: ConvSummary, b: ConvSummary) => Number(b.pinned) - Number(a.pinned) || new Date(b.last?.createdAt ?? 0).getTime() - new Date(a.last?.createdAt ?? 0).getTime();
-    const pub = live.filter((c) => c.type === 'CHANNEL').sort(byActivity);
-    const priv = live.filter((c) => c.type !== 'CHANNEL').sort(byActivity);
+    const fond = live.filter((c) => c.founders).sort(byActivity);
+    const pub = live.filter((c) => c.type === 'CHANNEL' && !c.founders).sort(byActivity);
+    const priv = live.filter((c) => c.type !== 'CHANNEL' && !c.founders).sort(byActivity);
     // Les conversations privées récentes, plus toutes celles qui ont des messages non lus.
     const shown = priv.filter((c, i) => i < PRIVATE_MAX || (c.unread > 0 && !isMuted(c)));
-    return { publics: pub, privates: shown };
+    return { publics: pub, founders: fond, privates: shown };
   }, [conversations, hidden]);
 
-  const active = !!token && enabled && wide && loaded && (publics.length > 0 || privates.length > 0 || hiddenCount > 0);
+  const active = !!token && enabled && wide && loaded && (publics.length > 0 || founders.length > 0 || privates.length > 0 || hiddenCount > 0);
   useEffect(() => {
     const b = document.body;
     b.classList.toggle('has-chat-rail', active);
@@ -183,6 +184,8 @@ export default function ChatRail() {
       <button type="button" className="cr-grip" onPointerDown={startDrag} title="Glisse vers un bord de l'écran pour déplacer la barre (gauche, droite, haut, bas)" aria-label="Déplacer la barre des bulles">⋮⋮</button>
       {publics.length > 0 && <div className="cr-group-title pub" title="Canaux publics">Publics</div>}
       {publics.map(bubble)}
+      {founders.length > 0 && <div className="cr-group-title fond cr-sep" title="Réservé aux membres fondateurs">Fondateurs</div>}
+      {founders.map(bubble)}
       {privates.length > 0 && <div className="cr-group-title priv cr-sep" title="Conversations privées et groupes">Privés</div>}
       {privates.map(bubble)}
       <Link to="/chat" className="cr-all" title="Ouvrir le Messenger complet"><span className="cr-all-ic" aria-hidden="true">＋</span><span className="cr-name">Messenger</span></Link>

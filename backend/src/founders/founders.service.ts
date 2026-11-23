@@ -159,25 +159,26 @@ export class FoundersService {
   async salon(userId: string) {
     const me = await this.prisma.user.findUnique({ where: { id: userId }, select: { founderAt: true, role: true } });
     if (!me || (!me.founderAt && !STAFF.includes(me.role))) throw new ForbiddenException('Réservé aux membres fondateurs');
-    const conversationId = await this.syncSalon();
+    const conversationId = await this.syncSalon(true);
     return { conversationId };
   }
 
   /** Crée le salon au besoin et aligne ses participants : les fondateurs, plus les administrateurs pour le modérer. */
-  async syncSalon(): Promise<string | null> {
+  async syncSalon(force = false): Promise<string | null> {
     const [founders, admins] = await Promise.all([
       this.prisma.user.findMany({ where: { founderAt: { not: null }, deletedAt: null }, select: { id: true } }),
       this.prisma.user.findMany({ where: { role: { in: ['ADMIN', 'OWNER'] }, deletedAt: null, parentId: null }, select: { id: true, role: true }, orderBy: { createdAt: 'asc' } }),
     ]);
-    if (founders.length === 0) return ((await this.settings.get(SALON_KEY)) as { id?: string } | null)?.id ?? null;
+    if (founders.length === 0 && !force) return ((await this.settings.get(SALON_KEY)) as { id?: string } | null)?.id ?? null;
     let convId = ((await this.settings.get(SALON_KEY)) as { id?: string } | null)?.id ?? null;
     if (convId && !(await this.prisma.conversation.findUnique({ where: { id: convId }, select: { id: true } }))) convId = null;
     if (!convId) {
       const owner = admins.find((a) => a.role === 'OWNER') ?? admins[0] ?? null;
-      const conv = await this.prisma.conversation.create({ data: { type: 'GROUP', name: SALON_NAME, createdById: owner?.id ?? founders[0].id } });
+      const conv = await this.prisma.conversation.create({ data: { type: 'GROUP', name: SALON_NAME, createdById: owner?.id ?? founders[0]?.id ?? undefined, founderOnly: true } });
       convId = conv.id;
       await this.settings.set(SALON_KEY, { id: convId });
     }
+    await this.prisma.conversation.updateMany({ where: { id: convId, founderOnly: false }, data: { founderOnly: true } }); // marque le salon : groupe « Fondateurs » dans les bulles
     const want = new Map<string, 'OWNER' | 'ADMIN' | 'MEMBER'>();
     for (const f of founders) want.set(f.id, 'MEMBER');
     admins.forEach((a, i) => want.set(a.id, a.role === 'OWNER' && i === 0 ? 'OWNER' : 'ADMIN'));

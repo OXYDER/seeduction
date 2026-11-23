@@ -547,3 +547,5 @@ a.sc:hover { border-color: rgba(var(--acc-rgb), 0.4); transform: translateY(-2px
 :root[data-theme="prestige"] .forum-name { font-weight: 700; letter-spacing: -0.01em; }
 :root[data-theme="prestige"] .forum-name:hover { color: var(--acc-light); }
 :root[data-theme="prestige"] .forum-num { font-weight: 700; font-variant-numeric: tabular-nums; }
+:root[data-theme="prestige"] .chat-rail .cr-group-title.fond { letter-spacing: 0.02em; font-size: 8.5px; border-color: rgba(250, 204, 21, 0.65); background: rgba(250, 204, 21, 0.18); color: #fde68a; }
+:root[data-theme="prestige"] .chat-rail .cr-group-title.fond::before { content: "🏅"; font-size: 9px; }

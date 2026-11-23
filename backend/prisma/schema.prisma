@@ -1408,6 +1408,8 @@ model Conversation {
   // Canaux : rôle minimal pour lire / écrire (vide = tout le monde) — ex. un canal « Annonces » en lecture seule, ou « Staff ».
   readRole        UserRole?
   writeRole       UserRole?
+  // Canaux : réservé aux membres fondateurs (et à l'administration, qui le modère), en plus des rôles ci-dessus.
+  founderOnly     Boolean              @default(false)
   slowModeSeconds Int                  @default(0)
   pinnedMessageId String? // ancien épinglage (un seul message) : recopié dans ConversationPin au démarrage, plus utilisé
   // Message du jour d'un canal : affiché en haut du canal, avec la date de dernière modification (pour le ré-afficher à ceux qui l'avaient masqué).

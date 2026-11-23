@@ -13,6 +13,9 @@ import { LAST_SEEN_SELECT, lastSeenVisible } from '../common/utils/last-seen';
 const ROLE_ORDER = ['USER', 'UPLOADER', 'MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const rank = (r?: string | null) => (r ? ROLE_ORDER.indexOf(r) : -1);
 export const isStaff = (role?: string | null) => rank(role) >= rank('MODERATOR');
+/** Un canal est-il lisible par ce rôle ? `founder` : le membre est fondateur (les canaux « fondateurs seulement » sont aussi ouverts à l'administration, qui les modère). */
+const canReadChannel = (c: { readRole: string | null; founderOnly?: boolean }, role: string, founder: boolean) =>
+  !(c.founderOnly && !founder && rank(role) < rank('ADMIN')) && (!c.readRole || rank(role) >= rank(c.readRole));
 
 const USER_SELECT = { id: true, username: true, avatarUrl: true, role: true } as const;
 const MAX_LENGTH = 4000;
@@ -132,7 +135,7 @@ export class MessengerService extends EventEmitter {
     const key = { conversationId_userId: { conversationId, userId: actor.userId } };
     let member = await this.prisma.conversationMember.findUnique({ where: key });
     if (conv.type === 'CHANNEL') {
-      if (conv.readRole && rank(actor.role) < rank(conv.readRole)) throw new ForbiddenException('Ce canal est réservé');
+      if (!canReadChannel(conv, actor.role, conv.founderOnly ? await this.isFounder(actor.userId) : false)) throw new ForbiddenException(conv.founderOnly ? 'Ce canal est réservé aux membres fondateurs' : 'Ce canal est réservé');
       if (!member) member = await this.prisma.conversationMember.create({ data: { conversationId, userId: actor.userId } });
     } else if (!member) {
       throw new ForbiddenException('Tu ne fais pas partie de cette conversation');
@@ -178,8 +181,9 @@ export class MessengerService extends EventEmitter {
 
   /** Les canaux lisibles par ce membre deviennent des conversations « suivies » (pour compter les non lus), sans historique non lu. */
   private async ensureChannelMembership(actor: Actor) {
-    const channels = await this.prisma.conversation.findMany({ where: { type: 'CHANNEL', archived: false }, select: { id: true, readRole: true } });
-    const readable = channels.filter((c) => !c.readRole || rank(actor.role) >= rank(c.readRole)).map((c) => c.id);
+    const channels = await this.prisma.conversation.findMany({ where: { type: 'CHANNEL', archived: false }, select: { id: true, readRole: true, founderOnly: true } });
+    const founder = channels.some((c) => c.founderOnly) ? await this.isFounder(actor.userId) : false;
+    const readable = channels.filter((c) => canReadChannel(c, actor.role, founder)).map((c) => c.id);
     if (readable.length === 0) return;
     const mine = new Set((await this.prisma.conversationMember.findMany({ where: { userId: actor.userId, conversationId: { in: readable } }, select: { conversationId: true } })).map((m) => m.conversationId));
     const missing = readable.filter((id) => !mine.has(id));
@@ -187,9 +191,15 @@ export class MessengerService extends EventEmitter {
   }
 
   /** Canaux lisibles par un membre (pour que la websocket le rejoigne). */
-  async readableChannelIds(actor: { role: string }) {
-    const channels = await this.prisma.conversation.findMany({ where: { type: 'CHANNEL', archived: false }, select: { id: true, readRole: true } });
-    return channels.filter((c) => !c.readRole || rank(actor.role) >= rank(c.readRole)).map((c) => c.id);
+  async readableChannelIds(actor: { role: string; userId?: string }) {
+    const channels = await this.prisma.conversation.findMany({ where: { type: 'CHANNEL', archived: false }, select: { id: true, readRole: true, founderOnly: true } });
+    const founder = channels.some((c) => c.founderOnly) && actor.userId ? await this.isFounder(actor.userId) : false;
+    return channels.filter((c) => canReadChannel(c, actor.role, founder)).map((c) => c.id);
+  }
+
+  /** Le membre est-il un membre fondateur ? */
+  private async isFounder(userId: string): Promise<boolean> {
+    return !!(await this.prisma.user.findUnique({ where: { id: userId }, select: { founderAt: true } }))?.founderAt;
   }
 
   async list(actor: Actor, opts: { archived?: boolean } = {}) {
@@ -198,7 +208,8 @@ export class MessengerService extends EventEmitter {
       where: { userId: actor.userId, archived: !!opts.archived, conversation: { archived: false } },
       include: { conversation: true },
     });
-    const visible = mine.filter((m) => m.conversation.type !== 'CHANNEL' || !m.conversation.readRole || rank(actor.role) >= rank(m.conversation.readRole));
+    const founder = mine.some((m) => m.conversation.founderOnly) ? await this.isFounder(actor.userId) : false;
+    const visible = mine.filter((m) => m.conversation.type !== 'CHANNEL' || canReadChannel(m.conversation, actor.role, founder));
     const ids = visible.map((m) => m.conversationId);
     if (ids.length === 0) return [];
     // Membres mis en sourdine : leurs messages ne comptent ni dans « non lus » ni dans l'aperçu de la conversation. Bannissements : le canal devient en lecture seule.
@@ -257,6 +268,7 @@ export class MessengerService extends EventEmitter {
         pinnedMessageIds: pinsBy.get(c.id) ?? [],
         motd: c.motd,
         motdAt: c.motdAt,
+        founders: !!c.founderOnly, // canal ou salon réservé aux fondateurs : son propre groupe dans la liste des bulles
         writable: !ban && !(c.type === 'CHANNEL' && c.writeRole && rank(actor.role) < rank(c.writeRole)),
         ban: ban ? { reason: ban.reason, expiresAt: ban.expiresAt } : null,
         position: c.position,
@@ -934,7 +946,7 @@ export class MessengerService extends EventEmitter {
     return rows.map(({ _count, ...c }) => ({ ...c, messageCount: _count.messages }));
   }
 
-  async createChannel(actor: Actor, data: { name: string; description?: string; motd?: string | null; readRole?: string | null; writeRole?: string | null; slowModeSeconds?: number; position?: number }) {
+  async createChannel(actor: Actor, data: { name: string; description?: string; motd?: string | null; readRole?: string | null; writeRole?: string | null; founderOnly?: boolean; slowModeSeconds?: number; position?: number }) {
     this.assertAdmin(actor);
     const name = (data.name ?? '').trim().slice(0, 80);
     if (!name) throw new BadRequestException('Donne un nom au canal');
@@ -947,7 +959,7 @@ export class MessengerService extends EventEmitter {
         type: 'CHANNEL', name, slug, createdById: actor.userId,
         description: data.description?.trim().slice(0, 300) || null,
         ...(data.motd?.trim() ? { motd: data.motd.trim().slice(0, MOTD_MAX), motdAt: new Date() } : {}),
-        readRole: this.validRole(data.readRole), writeRole: this.validRole(data.writeRole),
+        readRole: this.validRole(data.readRole), writeRole: this.validRole(data.writeRole), founderOnly: !!data.founderOnly,
         slowModeSeconds: Math.max(0, Math.min(3600, Math.floor(Number(data.slowModeSeconds) || 0))),
         position: Number.isFinite(data.position) ? Math.floor(data.position as number) : (last?.position ?? 0) + 1,
       },
@@ -956,7 +968,7 @@ export class MessengerService extends EventEmitter {
     return channel;
   }
 
-  async updateChannel(actor: Actor, id: string, data: { name?: string; description?: string | null; motd?: string | null; readRole?: string | null; writeRole?: string | null; slowModeSeconds?: number; position?: number; archived?: boolean }) {
+  async updateChannel(actor: Actor, id: string, data: { name?: string; description?: string | null; motd?: string | null; readRole?: string | null; writeRole?: string | null; founderOnly?: boolean; slowModeSeconds?: number; position?: number; archived?: boolean }) {
     this.assertAdmin(actor);
     const channel = await this.prisma.conversation.findUnique({ where: { id } });
     if (!channel || channel.type !== 'CHANNEL') throw new NotFoundException('Canal introuvable');
@@ -969,6 +981,7 @@ export class MessengerService extends EventEmitter {
     }
     if (data.readRole !== undefined) patch.readRole = this.validRole(data.readRole);
     if (data.writeRole !== undefined) patch.writeRole = this.validRole(data.writeRole);
+    if (data.founderOnly !== undefined) patch.founderOnly = !!data.founderOnly;
     if (data.slowModeSeconds !== undefined) patch.slowModeSeconds = Math.max(0, Math.min(3600, Math.floor(Number(data.slowModeSeconds) || 0)));
     if (Number.isFinite(data.position)) patch.position = Math.floor(data.position as number);
     if (typeof data.archived === 'boolean') {

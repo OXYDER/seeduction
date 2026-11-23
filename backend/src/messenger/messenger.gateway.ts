@@ -57,7 +57,7 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
       if (!this.server) return;
       try {
         for (const s of await this.server.fetchSockets()) {
-          const allowed = !removed && (await this.messenger.readableChannelIds({ role: (s.data as any)?.role ?? 'USER' })).includes(id);
+          const allowed = !removed && (await this.messenger.readableChannelIds({ role: (s.data as any)?.role ?? 'USER', userId: (s.data as any)?.userId })).includes(id);
           if (allowed) s.join(channelRoom(id)); else s.leave(channelRoom(id));
         }
       } catch (err: any) { this.logger.warn(`Mise à jour des salles de canal échouée : ${err?.message}`); }
@@ -87,7 +87,7 @@ export class MessengerGateway implements OnGatewayConnection, OnGatewayDisconnec
       payload.role = ident!.role;
       client.data = { userId: payload.sub, username: payload.username, role: payload.role };
       client.join(userRoom(payload.sub));
-      for (const id of await this.messenger.readableChannelIds({ role: payload.role })) client.join(channelRoom(id));
+      for (const id of await this.messenger.readableChannelIds({ role: payload.role, userId: payload.sub })) client.join(channelRoom(id));
       await this.presence.connect(payload.sub, client.id, payload.username);
       this.presence.watch(payload.sub, client.id);
       client.emit('presence:online', this.presence.listOnline());

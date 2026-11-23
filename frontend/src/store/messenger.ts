@@ -71,6 +71,8 @@ export interface ConvSummary {
   motd?: string | null;
   motdAt?: string | null;
   writable: boolean;
+  /** Canal ou salon réservé aux membres fondateurs. */
+  founders?: boolean;
   /** Bannissement du chat en cours pour moi dans ce canal (raison, date de fin ; null = définitif). */
   ban?: { reason: string; expiresAt: string | null } | null;
   position: number;
