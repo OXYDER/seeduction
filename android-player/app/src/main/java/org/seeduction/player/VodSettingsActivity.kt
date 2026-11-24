@@ -15,8 +15,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
-/** Paramètres de Seeduction Cinéma : lecteur intégré ou externe, partage en Wi-Fi, compte, partages en cours, diagnostic, mise à jour. */
+/** Paramètres de Seeduction TV : lecteur intégré ou externe, partage en Wi-Fi, compte, partages en cours, diagnostic, mise à jour. */
 class VodSettingsActivity : AppCompatActivity() {
+    override fun onStart() { super.onStart(); Presence.enter(this) }
+    override fun onStop() { super.onStop(); Presence.leave() }
+
     private lateinit var prefs: Prefs
     private lateinit var col: LinearLayout
 
@@ -128,11 +131,11 @@ class VodSettingsActivity : AppCompatActivity() {
         // --- Application
         col.addView(section("Application"))
         col.addView(card(
-            action("Rechercher une mise à jour", "Version " + Config.APP_VERSION) { checkUpdate() },
+            action("Rechercher une mise à jour", "Seeduction TV (SDTV) · version " + Config.APP_VERSION) { checkUpdate() },
             divider(),
             action("Partager le journal de diagnostic", "Utile si une lecture ne démarre pas.") {
                 val log = try { java.io.File(filesDir, "lecteur.log").readText().takeLast(20000) } catch (_: Exception) { "(journal vide)" }
-                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, "Journal de Seeduction").putExtra(Intent.EXTRA_TEXT, log), "Envoyer le journal"))
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, "Journal de Seeduction TV").putExtra(Intent.EXTRA_TEXT, log), "Envoyer le journal"))
             },
         ))
     }

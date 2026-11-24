@@ -1,5 +1,6 @@
 package org.seeduction.player
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Outline
 import android.os.Bundle
@@ -13,14 +14,16 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 /**
- * Fiche d'un titre : grande affiche, titre, infos, « Lecture » (ou « Reprendre »), synopsis, puis les versions (film) ou les épisodes par saison (série), la saga
- * et les titres du même genre. La disponibilité n'est que le nombre de seeders.
+ * Fiche d'un titre : grande affiche, bande-annonce, titre, infos, « Lecture » (ou « Reprendre »), ma note et celle des membres, synopsis, équipe, distribution (touche une personne :
+ * ses films et séries), puis les versions (film) ou les saisons et épisodes (série : « Tout lire », « Lire la saison », épisodes manquants à demander), la saga et les titres du même genre.
+ * Jamais de nom de release : le titre et « Épisode 5 » suffisent. La disponibilité n'est que le nombre de seeders.
  */
 class VodTitleActivity : AppCompatActivity() {
     private lateinit var content: LinearLayout
@@ -28,6 +31,9 @@ class VodTitleActivity : AppCompatActivity() {
     private var season: Int? = null
     private var busy = false
     private var autoplayDone = false
+    private var expanded = false
+    private val requested = mutableSetOf<String>()
+    private var community: VodCommunity? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +42,9 @@ class VodTitleActivity : AppCompatActivity() {
         setContentView(ScrollView(this).apply { addView(content, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); setBackgroundColor(Ui.BG); isVerticalScrollBarEnabled = false })
         content.addView(label("Chargement…", 14f, Ui.MUTED).apply { setPadding(dp(16), dp(80), dp(16), 0) })
     }
+
+    override fun onStart() { super.onStart(); Presence.enter(this) }
+    override fun onStop() { super.onStop(); Presence.leave() }
 
     override fun onResume() {
         super.onResume()
@@ -49,6 +58,7 @@ class VodTitleActivity : AppCompatActivity() {
             try {
                 val t = VodApi.title(token, id)
                 data = t
+                community = t.community
                 if (season == null) season = (t.episodes.firstOrNull { it.percent != null && it.percent < 92 } ?: t.episodes.firstOrNull())?.season
                 render()
                 if (intent.getBooleanExtra(EXTRA_AUTOPLAY, false) && !autoplayDone) { autoplayDone = true; playMain(t) }
@@ -63,33 +73,138 @@ class VodTitleActivity : AppCompatActivity() {
         }
     }
 
-    private fun play(torrentId: String, fileIndex: Int) {
+    private fun epSub(e: VodEpisode) = if (e.season != null && e.episode != null) "Saison ${e.season} · Épisode ${e.episode}" else e.label
+
+    /** `scope` : « all » (toute la série à la suite) ou « season » (jusqu'à la fin de la saison) ; vide pour un seul épisode qui laisse l'application proposer le suivant. */
+    private fun play(torrentId: String, fileIndex: Int, scope: String = "", sub: String = "") {
         if (busy) return
         val t = data
-        val queue = if (t != null && t.kind == "serie") {
-            val i = t.episodes.indexOfFirst { it.torrentId == torrentId && it.fileIndex == fileIndex }
-            if (i >= 0) t.episodes.drop(i + 1).take(30).map { it.torrentId + "|" + it.fileIndex + "|" + it.label } else emptyList()
-        } else emptyList()
-        playVod(torrentId, fileIndex, queue) { busy = it }
+        playVod(torrentId, fileIndex, series = t?.kind == "serie", scope = scope, title = t?.title ?: "", sub = sub) { busy = it }
     }
+
+    private fun playEpisode(e: VodEpisode, scope: String = "") = play(e.torrentId, e.fileIndex, scope, epSub(e))
 
     /** « Lecture » : le premier épisode à voir (série) ou la version la mieux seedée (film). */
     private fun playMain(t: VodTitle) {
         if (t.kind == "serie" && t.episodes.isNotEmpty()) {
             val e = t.episodes.firstOrNull { it.percent != null && it.percent in 1..91 } ?: t.episodes.firstOrNull { it.percent == null || it.percent == 0 } ?: t.episodes.first()
-            play(e.torrentId, e.fileIndex)
+            playEpisode(e)
         } else t.versions.firstOrNull()?.let { play(it.id, it.fileIndex) }
+    }
+
+    private fun side() = if (isTv()) dp(48) else dp(18)
+
+    private fun runtimeText(min: Int) = if (min >= 60) "${min / 60} h ${String.format("%02d", min % 60)}" else "$min min"
+
+    // ------------------------------------------------------------------ en-tête
+
+    private fun metaLine(t: VodTitle): String {
+        val seasons = t.episodes.mapNotNull { it.season }.distinct().size
+        return listOfNotNull(
+            t.year?.toString(), t.runtime?.let { runtimeText(it) }, if (t.kind == "serie" && seasons > 0) (if (seasons > 1) "$seasons saisons" else "1 saison") else null,
+            t.rating?.let { "TMDB " + String.format(java.util.Locale.US, "%.1f", it) },
+        ).joinToString("  ·  ")
+    }
+
+    private fun starRow(t: VodTitle): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val stars = (1..5).map { n ->
+            TextView(this).apply {
+                text = "★"; textSize = if (isTv()) 26f else 30f; setPadding(dp(3), 0, dp(3), 0); isClickable = true; isFocusable = true; tvFocus(8f)
+                setOnClickListener {
+                    val cur = community?.mine ?: 0
+                    val next = if (cur == n) 0 else n
+                    val token = Prefs(this@VodTitleActivity).vodToken ?: return@setOnClickListener
+                    community = VodCommunity(community?.average, community?.count ?: 0, if (next == 0) null else next); refreshStars(box)
+                    lifecycleScope.launch {
+                        try { community = VodApi.rate(token, t.id, next); refreshStars(box); Toast.makeText(this@VodTitleActivity, if (next == 0) "Note retirée" else "Merci ! $next ★ enregistré", Toast.LENGTH_SHORT).show() }
+                        catch (e: Exception) { Toast.makeText(this@VodTitleActivity, e.message ?: "Note impossible", Toast.LENGTH_SHORT).show() }
+                    }
+                }
+            }
+        }
+        stars.forEach { box.addView(it) }
+        box.addView(label("", 12.5f, Ui.MUTED, Ui.medium).apply { setPadding(dp(10), 0, 0, 0); tag = "info" })
+        box.tag = stars
+        refreshStars(box)
+        return box
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun refreshStars(box: LinearLayout) {
+        val stars = box.tag as List<TextView>
+        val mine = community?.mine ?: 0
+        stars.forEachIndexed { i, tv -> tv.setTextColor(if (i < mine) Ui.GOLD2 else Color.parseColor("#3A435C")) }
+        val c = community
+        box.findViewWithTag<TextView>("info")?.text = when {
+            mine > 0 && c != null && c.count > 0 -> "Ta note · membres ${fmt1(c.average)} (${c.count})"
+            mine > 0 -> "Ta note"
+            c != null && c.count > 0 -> "Membres ${fmt1(c.average)} ★ (${c.count}) · touche pour noter"
+            else -> "Touche une étoile pour noter"
+        }
+    }
+
+    private fun fmt1(v: Double?) = if (v == null) "" else String.format(java.util.Locale.US, "%.1f", v)
+
+    private fun trailerButton(t: VodTitle): View? {
+        val key = t.trailerKey ?: return null
+        return pillButton("Bande-annonce", R.drawable.ic_play, false) { startActivity(Intent(this, TrailerActivity::class.java).putExtra(TrailerActivity.EXTRA_KEY, key).putExtra(TrailerActivity.EXTRA_TITLE, t.title)) }
+    }
+
+    private fun infoRows(t: VodTitle): View? {
+        val rows = listOfNotNull(
+            if (t.directors.isNotEmpty()) (if (t.kind == "serie") "Création" else "Réalisation") to t.directors.joinToString(", ") { it.name } else null,
+            if (t.writers.isNotEmpty()) "Scénario" to t.writers.joinToString(", ") { it.name } else null,
+            if (t.studios.isNotEmpty()) "Studios" to t.studios.joinToString(", ") else null,
+            if (t.countries.isNotEmpty()) "Pays" to t.countries.joinToString(", ") else null,
+            if (t.languages.isNotEmpty()) "Langues" to t.languages.joinToString(", ") else null,
+            t.released?.takeIf { it.length >= 10 }?.let { "Sortie" to it.substring(8, 10).trimStart('0') + "/" + it.substring(5, 7) + "/" + it.substring(0, 4) },
+        )
+        if (rows.isEmpty()) return null
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(side(), dp(18), side(), 0) }
+        for ((k, v) in rows) {
+            val r = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(3), 0, dp(3)) }
+            r.addView(label(k, 12.5f, Ui.MUTED, Ui.medium), LinearLayout.LayoutParams(dp(92), ViewGroup.LayoutParams.WRAP_CONTENT))
+            r.addView(label(v, 13f, Ui.TEXT).apply { setLineSpacing(0f, 1.15f) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            box.addView(r)
+        }
+        return box
+    }
+
+    private fun openPerson(p: VodPerson) {
+        startActivity(Intent(this, VodListActivity::class.java).putExtra(VodListActivity.EXTRA_TITLE, p.name).putExtra(VodListActivity.EXTRA_PERSON, p.id))
+    }
+
+    private fun castRail(t: VodTitle): View? {
+        if (t.cast.isEmpty()) return null
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(section("Distribution"))
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(side(), 0, side(), dp(4)) }
+        val size = dp(if (isTv()) 96 else 76)
+        for (p in t.cast) {
+            val cell = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(4), dp(4), dp(4), dp(4)); isClickable = true; isFocusable = true; setOnClickListener { openPerson(p) }; tvFocus(10f) }
+            val img = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                outlineProvider = object : ViewOutlineProvider() { override fun getOutline(view: View, outline: Outline) { outline.setOval(0, 0, view.width, view.height) } }
+                clipToOutline = true
+            }
+            Images.load(img, p.photo, size * 2)
+            cell.addView(img, LinearLayout.LayoutParams(size, size))
+            cell.addView(label(p.name, 12f, Ui.TEXT, Ui.bold).apply { gravity = Gravity.CENTER; maxLines = 2; setPadding(0, dp(6), 0, 0) }, LinearLayout.LayoutParams(size + dp(16), ViewGroup.LayoutParams.WRAP_CONTENT))
+            if (!p.character.isNullOrBlank()) cell.addView(label(p.character, 11f, Ui.MUTED).apply { gravity = Gravity.CENTER; maxLines = 2 }, LinearLayout.LayoutParams(size + dp(16), ViewGroup.LayoutParams.WRAP_CONTENT))
+            row.addView(cell, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(8) })
+        }
+        box.addView(HorizontalScrollView(this).apply { addView(row); isHorizontalScrollBarEnabled = false })
+        return box
     }
 
     private fun render() {
         val t = data ?: return
         content.removeAllViews()
         val w = screenW()
-        val heroH = (w * 1.05f).toInt()
-
         val tv = isTv()
         var rightCol: LinearLayout? = null
-        val meta = listOfNotNull(t.year?.toString(), t.runtime?.let { "${it} min" }, t.rating?.let { "★ " + String.format(java.util.Locale.US, "%.1f", it) }, if (t.kind == "serie" && t.episodes.isNotEmpty()) "${t.episodes.mapNotNull { it.season }.distinct().size.coerceAtLeast(1)} saison(s)" else null)
+
         if (tv) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(48), dp(28), dp(48), dp(6)) }
             val pw = (w * 0.2f).toInt()
@@ -103,17 +218,19 @@ class VodTitleActivity : AppCompatActivity() {
             val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(32), 0, 0, 0) }
             col.addView(label(if (t.kind == "serie") "SÉRIE" else "FILM", 11f, Ui.GOLD, Ui.bold).apply { letterSpacing = 0.4f })
             col.addView(label(t.title, 30f, Ui.TEXT, Ui.black).apply { maxLines = 2 })
-            if (meta.isNotEmpty()) col.addView(label(meta.joinToString("   "), 13f, Ui.MUTED, Ui.medium).apply { setPadding(0, dp(6), 0, 0) })
+            t.tagline?.let { col.addView(label(it, 13f, Ui.GOLD2).apply { setPadding(0, dp(2), 0, 0); typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.ITALIC) }) }
+            metaLine(t).takeIf { it.isNotEmpty() }?.let { col.addView(label(it, 13f, Ui.MUTED, Ui.medium).apply { setPadding(0, dp(6), 0, 0) }) }
             if (t.genres.isNotEmpty()) col.addView(label(t.genres.joinToString("  •  "), 12.5f, Ui.TEXT, Ui.medium).apply { setPadding(0, dp(2), 0, 0) })
             row.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             rightCol = col
             content.addView(row)
         } else {
+            val heroH = (w * 1.12f).toInt()
             val hero = FrameLayout(this)
             val img = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
             Images.load(img, t.cover, w * 2)
             hero.addView(img, FrameLayout.LayoutParams(w, heroH))
-            hero.addView(View(this).apply { background = vGradient(Color.TRANSPARENT, Ui.BG) }, FrameLayout.LayoutParams(w, (heroH * 0.6f).toInt(), Gravity.BOTTOM))
+            hero.addView(View(this).apply { background = vGradient(Color.TRANSPARENT, Ui.BG) }, FrameLayout.LayoutParams(w, (heroH * 0.62f).toInt(), Gravity.BOTTOM))
             hero.addView(View(this).apply { background = vGradient(Color.parseColor("#B006080F"), Color.TRANSPARENT) }, FrameLayout.LayoutParams(w, dp(80), Gravity.TOP))
             hero.addView(icon(R.drawable.ic_back, 24, Ui.TEXT).apply {
                 setPadding(dp(10), dp(10), dp(10), dp(10)); background = roundRect(Color.parseColor("#80000000"), dpf(24f)); isClickable = true; setOnClickListener { finish() }
@@ -121,9 +238,10 @@ class VodTitleActivity : AppCompatActivity() {
             })
             val head = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), 0, dp(18), dp(6)) }
             head.addView(label(if (t.kind == "serie") "SÉRIE" else "FILM", 11f, Ui.GOLD, Ui.bold).apply { letterSpacing = 0.4f })
-            head.addView(label(t.title, 30f, Ui.TEXT, Ui.black).apply { maxLines = 3; setShadowLayer(12f, 0f, 2f, Color.BLACK) })
-            if (meta.isNotEmpty()) head.addView(label(meta.joinToString("   "), 13f, Ui.MUTED, Ui.medium).apply { setPadding(0, dp(6), 0, 0) })
-            if (t.genres.isNotEmpty()) head.addView(label(t.genres.joinToString("  •  "), 12.5f, Ui.TEXT, Ui.medium).apply { setPadding(0, dp(2), 0, 0) })
+            head.addView(label(t.title, 31f, Ui.TEXT, Ui.black).apply { maxLines = 3; setShadowLayer(12f, 0f, 2f, Color.BLACK) })
+            t.tagline?.let { head.addView(label(it, 13.5f, Ui.GOLD2).apply { setPadding(0, dp(3), 0, 0); typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.ITALIC); setShadowLayer(8f, 0f, 1f, Color.BLACK) }) }
+            metaLine(t).takeIf { it.isNotEmpty() }?.let { head.addView(label(it, 13f, Ui.TEXT, Ui.medium).apply { setPadding(0, dp(7), 0, 0) }) }
+            if (t.genres.isNotEmpty()) head.addView(label(t.genres.joinToString("  •  "), 12.5f, Ui.MUTED, Ui.medium).apply { setPadding(0, dp(2), 0, 0) })
             hero.addView(head, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
             content.addView(hero)
         }
@@ -133,31 +251,51 @@ class VodTitleActivity : AppCompatActivity() {
         val resumePct = main?.percent ?: v0?.percent?.takeIf { it in 1..91 }
         val btnLabel = if (resumePct != null && resumePct in 1..91) "Reprendre ($resumePct %)" else "Lecture"
         val cta = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(if (tv) 0 else dp(18), dp(if (tv) 14 else 4), if (tv) 0 else dp(18), 0) }
+        val lp = { LinearLayout.LayoutParams(if (tv) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) } }
         val btn = pillButton(btnLabel, R.drawable.ic_play, true) { playMain(t) }
         cta.addView(btn, LinearLayout.LayoutParams(if (tv) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         if (tv) btn.post { btn.requestFocus() }
+        // « Tout lire » : toute la série à la suite, depuis le premier épisode (ou celui qu'on avait commencé)
+        if (t.kind == "serie" && t.episodes.size > 1) cta.addView(pillButton("Tout lire", R.drawable.ic_play, false) { playAll(t, "all") }, lp())
+        trailerButton(t)?.let { cta.addView(it, lp()) }
         val best = if (t.kind == "serie") t.episodes.firstOrNull() else null
         val bestSeeders = best?.seeders ?: v0?.seeders ?: 0
         val bestHealth = best?.health ?: v0?.health
-        cta.addView(label(healthText(bestHealth, bestSeeders), 12f, healthColor(bestHealth), Ui.bold).apply { gravity = if (tv) Gravity.START else Gravity.CENTER; setPadding(0, dp(8), 0, 0) })
-        t.synopsis?.let { cta.addView(label(it, 14f, Color.parseColor("#D5DAE8")).apply { setLineSpacing(0f, 1.25f); setPadding(0, dp(14), 0, 0) }) }
+        cta.addView(label(healthText(bestHealth, bestSeeders), 12f, healthColor(bestHealth), Ui.bold).apply { gravity = if (tv) Gravity.START else Gravity.CENTER; setPadding(0, dp(10), 0, 0) })
+        cta.addView(starRow(t).apply { setPadding(0, dp(10), 0, 0) })
+        t.synopsis?.let { syn ->
+            val tvSyn = label(syn, 14f, Color.parseColor("#D5DAE8")).apply { setLineSpacing(0f, 1.25f); setPadding(0, dp(14), 0, 0); maxLines = if (expanded) 40 else 4; ellipsize = android.text.TextUtils.TruncateAt.END; isClickable = true; isFocusable = true; tvFocus(6f) }
+            tvSyn.setOnClickListener { expanded = !expanded; tvSyn.maxLines = if (expanded) 40 else 4 }
+            cta.addView(tvSyn)
+        }
         (rightCol ?: content).addView(cta)
+
+        infoRows(t)?.let { content.addView(it) }
+        castRail(t)?.let { content.addView(it) }
 
         if (t.kind == "serie" && t.episodes.isNotEmpty()) renderEpisodes(t) else renderVersions(t)
 
         t.saga?.let { content.addView(railView(VodRail("saga", "Dans la saga « ${it.name} »", it.items, null))) }
         if (t.similar.isNotEmpty()) content.addView(railView(VodRail("similar", "Dans le même genre", t.similar, null)))
-        content.addView(label("Ce que tu regardes ici n'est pas compté dans ton ratio. Le titre se télécharge pendant la lecture, directement entre ton téléphone et les seeders ; le partage reprend ensuite en arrière-plan (Wi-Fi seulement par défaut).", 11.5f, Ui.MUTED).apply { setPadding((if (isTv()) dp(48) else dp(18)), dp(22), (if (isTv()) dp(48) else dp(18)), dp(30)); setLineSpacing(0f, 1.2f) })
+        content.addView(label("Ce que tu regardes ici n'est pas compté dans ton ratio. Le titre se télécharge pendant la lecture, directement entre ton appareil et les seeders ; le partage reprend ensuite en arrière-plan (Wi-Fi seulement par défaut).", 11.5f, Ui.MUTED).apply { setPadding(side(), dp(22), side(), dp(30)); setLineSpacing(0f, 1.2f) })
     }
 
-    private fun section(t: String) = label(t, 17f, Ui.TEXT, Ui.black).apply { setPadding((if (isTv()) dp(48) else dp(18)), dp(22), (if (isTv()) dp(48) else dp(18)), dp(8)) }
+    /** « Tout lire » / « Lire la saison » : depuis l'épisode commencé s'il y en a un dans l'étendue, sinon depuis le premier. */
+    private fun playAll(t: VodTitle, scope: String) {
+        val pool = if (scope == "season") t.episodes.filter { it.season == season } else t.episodes
+        val e = pool.firstOrNull { it.percent != null && it.percent in 1..91 } ?: pool.firstOrNull { it.percent == null || it.percent < 92 } ?: pool.firstOrNull() ?: return
+        playEpisode(e, scope)
+    }
 
-    private fun row(title: String, info: String, infoColor: Int, percent: Int?, onClick: () -> Unit): View {
+    private fun section(t: String) = label(t, 17f, Ui.TEXT, Ui.black).apply { setPadding(side(), dp(22), side(), dp(8)) }
+
+    private fun row(title: String, info: String, infoColor: Int, percent: Int?, num: String? = null, onClick: () -> Unit): View {
         val box = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; background = roundRect(Ui.SURFACE, dpf(8f)); setPadding(dp(14), dp(11), dp(10), dp(11))
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((if (isTv()) dp(48) else dp(18)), dp(4), (if (isTv()) dp(48) else dp(18)), dp(4)) }
-            isClickable = true; isFocusable = true; setOnClickListener { onClick() }; tvFocus(8f)
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; background = roundRect(Ui.SURFACE, dpf(10f)); setPadding(dp(12), dp(11), dp(10), dp(11))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(side(), dp(4), side(), dp(4)) }
+            isClickable = true; isFocusable = true; setOnClickListener { onClick() }; tvFocus(10f)
         }
+        if (num != null) box.addView(label(num, 22f, Ui.GOLD, Ui.black).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT))
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         col.addView(label(title, 14.5f, Ui.TEXT, Ui.bold).apply { maxLines = 2 })
         col.addView(label(info, 12f, infoColor, Ui.medium).apply { setPadding(0, dp(2), 0, 0) })
@@ -168,26 +306,72 @@ class VodTitleActivity : AppCompatActivity() {
     }
 
     private fun renderVersions(t: VodTitle) {
-        if (t.versions.isEmpty()) { content.addView(label("Aucune version disponible pour l'instant.", 14f, Ui.MUTED).apply { setPadding((if (isTv()) dp(48) else dp(18)), dp(20), (if (isTv()) dp(48) else dp(18)), 0) }); return }
-        if (t.versions.size > 1) content.addView(section("Versions"))
-        else content.addView(section("Version"))
+        if (t.versions.isEmpty()) { content.addView(label("Aucune version disponible pour l'instant.", 14f, Ui.MUTED).apply { setPadding(side(), dp(20), side(), 0) }); return }
+        content.addView(section(if (t.versions.size > 1) "Versions" else "Version"))
         for (v in t.versions) {
             val subs = if (v.subtitles.isNotEmpty()) " · ST " + v.subtitles.joinToString("/") else ""
             content.addView(row(v.label, healthText(v.health, v.seeders) + " · " + formatSize(v.size) + subs, healthColor(v.health), v.percent) { play(v.id, v.fileIndex) })
         }
     }
 
+    private fun missingRow(t: VodTitle, s: Int, ep: Int): View {
+        val key = "$s:$ep"
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; background = roundRect(Color.parseColor("#0E1322"), dpf(10f), Ui.LINE, 1); setPadding(dp(12), dp(10), dp(10), dp(10))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(side(), dp(4), side(), dp(4)) }
+        }
+        box.addView(label("$ep", 22f, Ui.MUTED, Ui.black).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT))
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(label("Épisode $ep", 14.5f, Ui.MUTED, Ui.bold))
+        col.addView(label("Pas encore sur Seeduction", 12f, Color.parseColor("#FB923C"), Ui.medium).apply { setPadding(0, dp(2), 0, 0) })
+        box.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val btn = chip(if (key in requested) "Demandé ✓" else "Demander", false) { requestMissing(t, s, ep) }
+        box.addView(btn)
+        return box
+    }
+
+    private fun requestMissing(t: VodTitle, s: Int, ep: Int) {
+        val token = Prefs(this).vodToken ?: return
+        val anchor = t.episodes.firstOrNull() ?: return
+        lifecycleScope.launch {
+            try {
+                val st = VodApi.requestEpisode(token, anchor.torrentId, s, ep)
+                requested.add("$s:$ep")
+                Toast.makeText(this@VodTitleActivity, when (st) {
+                    "created" -> "Demande envoyée sur le site : tu seras prévenu quand l'épisode arrive."
+                    "already-mine" -> "Tu as déjà demandé cet épisode : il est en attente sur le site."
+                    else -> "Un autre membre a déjà demandé cet épisode : il sera disponible dès qu'il arrive."
+                }, Toast.LENGTH_LONG).show()
+                render()
+            } catch (e: Exception) { Toast.makeText(this@VodTitleActivity, e.message ?: "Demande impossible", Toast.LENGTH_LONG).show() }
+        }
+    }
+
     private fun renderEpisodes(t: VodTitle) {
         val seasons = t.episodes.mapNotNull { it.season }.distinct().sorted()
-        content.addView(section("Épisodes"))
+        content.addView(section(if (seasons.size > 1) "Saisons et épisodes" else "Épisodes"))
         if (seasons.size > 1) {
-            val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding((if (isTv()) dp(48) else dp(18)), 0, (if (isTv()) dp(48) else dp(18)), dp(6)) }
+            val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(side(), 0, side(), dp(6)) }
             for (s in seasons) { chips.addView(chip("Saison $s", s == season) { season = s; render() }); chips.addView(View(this), LinearLayout.LayoutParams(dp(8), 1)) }
             content.addView(HorizontalScrollView(this).apply { addView(chips); isHorizontalScrollBarEnabled = false })
         }
-        for (e in t.episodes.filter { season == null || it.season == season || it.season == null }) {
+        val shown = t.episodes.filter { season == null || it.season == season || it.season == null }
+        if (shown.size > 1) {
+            val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(side(), dp(4), side(), dp(2)) }
+            bar.addView(label(if (season != null) "Saison $season · ${shown.size} épisodes" else "${shown.size} épisodes", 12.5f, Ui.MUTED, Ui.medium), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            bar.addView(chip(if (season != null) "Lire la saison" else "Tout lire", true) { playAll(t, if (season != null) "season" else "all") })
+            content.addView(bar)
+        }
+        var prev = 0
+        for (e in shown) {
+            // les épisodes qui manquent entre deux épisodes disponibles : on le montre et on propose de les demander
+            val s = e.season; val n = e.episode
+            if (s != null && n != null) {
+                if (n - prev in 2..13 && (prev > 0 || n <= 13)) for (m in (prev + 1) until n) if (m >= 1) content.addView(missingRow(t, s, m))
+                prev = n
+            }
             val info = healthText(e.health, e.seeders) + " · " + formatSize(e.size) + (e.resolution?.let { " · $it" } ?: "") + (e.language?.let { " · $it" } ?: "")
-            content.addView(row(e.label, info, healthColor(e.health), e.percent) { play(e.torrentId, e.fileIndex) })
+            content.addView(row(if (n != null) "Épisode $n" else e.label, info, healthColor(e.health), e.percent, n?.toString()) { playEpisode(e) })
         }
     }
 

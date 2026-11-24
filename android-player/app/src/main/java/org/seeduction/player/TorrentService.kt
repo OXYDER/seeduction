@@ -220,7 +220,7 @@ class TorrentService : Service(), StreamSource {
         val stop = PendingIntent.getService(this, 1, Intent(this, TorrentService::class.java).setAction(ACTION_STOP_ALL), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Seeduction")
+            .setContentTitle("Seeduction TV")
             .setContentText(text)
             .setContentIntent(open)
             .setOngoing(true)

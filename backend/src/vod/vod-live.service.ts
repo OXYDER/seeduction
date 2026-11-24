@@ -22,7 +22,7 @@ const FLUSH_SECONDS = 30;
 const MAX_STEP_S = 15; // jamais plus de 15 s créditées entre deux messages (l'application coupée au milieu ne crédite pas des heures)
 
 /**
- * Appareils de l'application Seeduction et état en direct (ce qui joue, sur quel appareil). L'application écrit toutes les 3 s en lecture et toutes les 12 s sinon ;
+ * Appareils de Seeduction TV et état en direct (ce qui joue, sur quel appareil). L'application écrit toutes les 3 s en lecture et toutes les 12 s sinon ;
  * la réponse porte les commandes envoyées depuis le site (pause, avance, arrêt, lancer un titre). Rien de cela n'est gardé en base, hormis la liste des appareils
  * et le temps regardé par jour (statistiques). Serveur unique : l'état est en mémoire.
  */
@@ -116,7 +116,7 @@ export class VodLiveService {
     const cmd = cleanCommand(body, randomUUID());
     if (!cmd) throw new ConflictException('Commande inconnue.');
     const l = this.live.get(`${accountId}:${d.deviceKey}`);
-    if (!l || Date.now() - l.at > ONLINE_MS) throw new ConflictException("Cet appareil est hors ligne : ouvre l'application Seeduction dessus.");
+    if (!l || Date.now() - l.at > ONLINE_MS) throw new ConflictException("Cet appareil est hors ligne : ouvre Seeduction TV dessus.");
     if (cmd.type !== 'start' && !l.playing) throw new ConflictException("Rien n'est en lecture sur cet appareil.");
     if (cmd.type === 'start') {
       const t = await this.prisma.torrent.findFirst({ where: { id: cmd.torrentId, status: 'APPROVED' }, select: { id: true } });

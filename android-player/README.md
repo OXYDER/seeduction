@@ -1,4 +1,4 @@
-# Lecteur Seeduction pour Android
+# Lecteur Seeduction TV pour Android
 
 Application Android (Kotlin) équivalente au lecteur Windows : un lien `seeduction://stream/<jeton>` ouvre l'application, qui échange le jeton contre le `.torrent` personnalisé du membre,
 télécharge le fichier **dans l'ordre** (libtorrent), le sert à VLC par un petit serveur HTTP local (127.0.0.1, avec les demandes de zone « Range »), et signale « en train de regarder » et la position au site.

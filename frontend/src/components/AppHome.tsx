@@ -18,10 +18,10 @@ export function Wall({ covers }: { covers: string[] }) {
 export function AppPromoBanner({ promo }: { promo: VodPromo | null }) {
   const titles = promo ? promo.movies + promo.series : 0;
   return (
-    <section className="apppromo" aria-label="L'application Seeduction">
+    <section className="apppromo" aria-label="Seeduction TV">
       <Wall covers={promo?.covers ?? []} />
       <div className="apppromo-in">
-        <div className="sc-kicker">Nouveau · Application Seeduction</div>
+        <div className="sc-kicker">Nouveau · Seeduction TV (SDTV)</div>
         <h3>Ton cinéma privé, sur ton téléphone et ta télé.</h3>
         <p>Des films et des séries à portée de pouce, lecture instantanée, <strong>sans ratio à gérer</strong>. Réservé aux donateurs, aux fondateurs et aux uploaders.</p>
         {promo && titles > 0 && (
@@ -77,9 +77,9 @@ export default function AppHome() {
   const online = (items ?? []).filter((d) => d.online);
   const playing = online.filter((d) => d.playing);
   return (
-    <section className="appnow" aria-label="Application Seeduction : en lecture">
+    <section className="appnow" aria-label="Seeduction TV : en lecture">
       <div className="appnow-head">
-        <h3><span className={`live-dot${playing.length ? '' : ' off'}`} /> Application Seeduction</h3>
+        <h3><span className={`live-dot${playing.length ? '' : ' off'}`} /> Seeduction TV</h3>
         <span className="muted" style={{ fontSize: 13 }}>
           {items === null ? '…' : playing.length ? `${playing.length} lecture${playing.length > 1 ? 's' : ''} en cours` : online.length ? `${online.length} appareil${online.length > 1 ? 's' : ''} connecté${online.length > 1 ? 's' : ''}, rien en lecture` : items.length ? 'Aucun appareil connecté pour le moment' : "Pas encore d'appareil"}
         </span>
@@ -92,7 +92,7 @@ export default function AppHome() {
           <div className="ctl-idle" style={{ gridColumn: '1 / -1' }}>
             {items && items.length > 0
               ? <>Ouvre l'application sur un de tes appareils ({items.slice(0, 3).map((d) => `${KIND_ICON[d.kind] ?? '📱'} ${d.name}`).join(', ')}) : ce qui joue apparaît ici en direct, et tu peux le piloter depuis le site. Ou <Link to="/appareils">lance un titre à distance</Link>.</>
-              : <>Installe l'application Seeduction sur ton téléphone ou ta télé : ce que tu regardes s'affichera ici, en direct. <Link to="/application">Comment l'installer →</Link></>}
+              : <>Installe Seeduction TV sur ton téléphone ou ta télé : ce que tu regardes s'affichera ici, en direct. <Link to="/application">Comment l'installer →</Link></>}
           </div>
         )}
       </div>
@@ -108,7 +108,7 @@ export function AppPerk() {
   return (
     <section className="perk-app">
       <div className="sc-kicker">Inclus avec ton don</div>
-      <h3>🎬 L'application Seeduction : ton cinéma privé</h3>
+      <h3>🎬 Seeduction TV : ton cinéma privé</h3>
       <ul>
         <li>{titles > 0 ? `${titles.toLocaleString('fr-CA')} films et séries` : 'Tous les films et séries'} à lancer en un clic, sur téléphone, tablette, télé et box Android</li>
         <li><strong>Zéro ratio</strong> : ce que tu regardes n'est jamais compté</li>

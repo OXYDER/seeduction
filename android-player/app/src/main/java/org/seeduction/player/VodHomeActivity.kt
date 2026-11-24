@@ -38,6 +38,9 @@ interface VodScreen {
  * ou, sur une télé, par QR code / code affiché à l'écran et saisi sur le site.
  */
 class VodHomeActivity : AppCompatActivity() {
+    override fun onStart() { super.onStart(); Presence.enter(this) }
+    override fun onStop() { super.onStop(); Presence.leave() }
+
     private lateinit var prefs: Prefs
     private lateinit var root: FrameLayout
     private var screens: List<VodScreen> = emptyList()

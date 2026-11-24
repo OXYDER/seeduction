@@ -24,7 +24,7 @@ function Meta({ r }: { r: Release | undefined }) {
 
 interface VodStatus { eligible: boolean; label: string | null; rule: string }
 
-/** « Seeduction Cinéma » : catalogue vidéo de l'application Android, réservé aux donateurs, fondateurs et uploaders. Le code (ou le lien) associe l'application sans jamais lui donner le mot de passe. */
+/** « Seeduction TV » : catalogue vidéo de l'application Android, réservé aux donateurs, fondateurs et uploaders. Le code (ou le lien) associe l'application sans jamais lui donner le mot de passe. */
 function VodPanel() {
   const [st, setSt] = useState<VodStatus | null>(null);
   const [pair, setPair] = useState<{ code: string; link: string; until: number } | null>(null);
@@ -144,7 +144,7 @@ function Phone({ covers }: { covers: string[] }) {
   );
 }
 
-/** « L'application Seeduction » : la page de présentation (et de promotion), l'installation et la connexion. */
+/** « Seeduction TV » : la page de présentation (et de promotion), l'installation et la connexion. */
 export default function PlayerDownload() {
   const [rel, setRel] = useState<{ android?: Release }>({});
   const st = useVodStatus();
@@ -161,7 +161,7 @@ export default function PlayerDownload() {
       <header className="sc-hero">
         <div className="sc-wall" aria-hidden>{rows.map((r, i) => <div className="row" key={i}>{[...r, ...r, ...r, ...r].map((u, j) => <img key={`${u}-${j}`} src={u} alt="" loading="lazy" decoding="async" />)}</div>)}</div>
         <div className="sc-hero-in">
-          <div className="sc-kicker">Application Seeduction · Android, télé et box</div>
+          <div className="sc-kicker">Seeduction TV · SDTV · Android, télé et box</div>
           <h1>Ton cinéma privé. <em>Sans ratio.</em> Sur toutes tes télés.</h1>
           <p>Les films et les séries de Seeduction, rangés comme sur les grandes plateformes : une affiche, un clic, ça se lit. Pas de client BitTorrent à régler, pas de ratio à surveiller, pas de pub.</p>
           <div className="sc-cta">
@@ -231,7 +231,7 @@ export default function PlayerDownload() {
           <h2>Installer l'application</h2>
           <div className="panel ornate" style={{ textAlign: 'center', ...(isAndroid ? { order: -1 } : {}) }}>
             <img loading="lazy" decoding="async" src="/logo-icon.png" alt="" width={72} height={72} style={{ marginBottom: 10 }} />
-            <h3 style={{ margin: '0 0 4px' }}>Seeduction pour Android</h3>
+            <h3 style={{ margin: '0 0 4px' }}>Seeduction TV pour Android</h3>
             <p className="muted" style={{ margin: '0 0 16px' }}>Un seul fichier pour téléphone, tablette, télé et box Android (le lecteur est intégré : tous les formats, langues audio, sous-titres, reprise, épisode suivant).</p>
             <Meta r={rel.android} />
             <a href={andUrl} className="download-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>⬇ Télécharger l'application (.apk)</a>

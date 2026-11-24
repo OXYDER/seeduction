@@ -16,7 +16,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 
-/** « Seeduction Cinéma » : le catalogue vidéo (réservé aux donateurs, fondateurs et uploaders). Les modèles ci-dessous reflètent les réponses de /api/vod. */
+/** « Seeduction TV » : le catalogue vidéo (réservé aux donateurs, fondateurs et uploaders). Les modèles ci-dessous reflètent les réponses de /api/vod. */
 
 /** La session du catalogue a expiré ou n'est plus autorisée : l'écran repasse à l'association par code. */
 class VodAuthException(message: String) : Exception(message)
@@ -55,11 +55,32 @@ class VodEpisode(
     val size: Long, val seeders: Int, val health: String, val resolution: String?, val language: String?, val percent: Int?,
 )
 
+class VodPerson(val id: String, val name: String, val photo: String?, val character: String?)
+
+/** Note des membres (moyenne, nombre de notes) et ma note de 1 à 5. */
+class VodCommunity(val average: Double?, val count: Int, val mine: Int?)
+
 class VodTitle(
     val id: String, val title: String, val year: Int?, val kind: String, val cover: String?, val backdrop: String?, val synopsis: String?,
     val rating: Double?, val runtime: Int?, val genres: List<String>, val versions: List<VodVersion>, val episodes: List<VodEpisode>,
     val saga: VodSaga?, val similar: List<VodItem>,
+    val tagline: String? = null, val trailerKey: String? = null, val countries: List<String> = emptyList(), val languages: List<String> = emptyList(),
+    val studios: List<String> = emptyList(), val cast: List<VodPerson> = emptyList(), val directors: List<VodPerson> = emptyList(), val writers: List<VodPerson> = emptyList(),
+    val community: VodCommunity = VodCommunity(null, 0, null), val released: String? = null,
 )
+
+/** Un épisode qui manque, avec l'état de la demande déjà faite sur le site (« mine », « others » ou aucune). */
+class MissingEpisode(val season: Int, val episode: Int, val requestState: String?, val requestAt: String?)
+
+class NextRef(val season: Int, val episode: Int, val torrentId: String, val fileIndex: Int)
+
+/** L'épisode suivant d'une série : « next » (le bon), « gap » (il en manque avant le suivant disponible), « missing » (le suivant n'existe pas encore sur le site), « end ». */
+class NextResult(val status: String, val show: String, val cover: String?, val curSeason: Int?, val curEpisode: Int?, val next: NextRef?, val missing: List<MissingEpisode>)
+
+/** Une commande envoyée depuis le site (pause, avance, arrêt, lancer un titre). */
+class RemoteCommand(val type: String, val value: Int, val torrentId: String?, val fileIndex: Int, val title: String?)
+
+class PersonPage(val name: String, val photo: String?, val items: List<VodItem>)
 
 private fun JSONObject.str(k: String): String? = if (isNull(k)) null else optString(k).ifEmpty { null }
 private fun JSONObject.intOrNull(k: String): Int? = if (isNull(k) || !has(k)) null else optInt(k)
@@ -76,6 +97,8 @@ private fun itemOf(o: JSONObject): VodItem {
 }
 
 private fun itemsOf(arr: JSONArray?): List<VodItem> = if (arr == null) emptyList() else (0 until arr.length()).map { itemOf(arr.getJSONObject(it)) }
+
+private fun strList(a: JSONArray?): List<String> = if (a == null) emptyList() else (0 until a.length()).map { a.getString(it) }
 
 object VodApi {
     private fun call(path: String, token: String?, method: String = "GET", body: String? = null): JSONObject {
@@ -211,7 +234,52 @@ object VodApi {
             },
             saga = sg?.let { VodSaga(it.optString("id"), it.optString("name"), itemsOf(it.optJSONArray("items"))) },
             similar = itemsOf(o.optJSONArray("similar")),
+            tagline = o.str("tagline"), trailerKey = o.optJSONObject("trailer")?.str("key"),
+            countries = strList(o.optJSONArray("countries")), languages = strList(o.optJSONArray("languages")), studios = strList(o.optJSONArray("studios")),
+            cast = people(o.optJSONArray("cast")), directors = people(o.optJSONArray("directors")), writers = people(o.optJSONArray("writers")),
+            community = communityOf(o.optJSONObject("community")), released = o.str("released"),
         )
+    }
+
+    private fun people(arr: JSONArray?): List<VodPerson> = if (arr == null) emptyList() else (0 until arr.length()).map {
+        val o = arr.getJSONObject(it); VodPerson(o.optString("id"), o.optString("name"), o.str("photo"), o.str("character"))
+    }
+
+    /** L'épisode qui suit celui-ci (sans en sauter un), ou ce qui manque. */
+    suspend fun next(token: String, torrentId: String, fileIndex: Int): NextResult = withContext(Dispatchers.IO) {
+        val o = call("/next?torrentId=" + SiteApi.enc(torrentId) + "&fileIndex=$fileIndex", token)
+        val n = o.optJSONObject("next")
+        val cur = o.optJSONObject("current")
+        val ms = o.optJSONArray("missing") ?: JSONArray()
+        NextResult(
+            o.optString("status", "end"), o.optString("show"), o.str("cover"), cur?.intOrNull("season"), cur?.intOrNull("episode"),
+            n?.let { NextRef(it.optInt("season"), it.optInt("episode"), it.getString("torrentId"), it.optInt("fileIndex")) },
+            (0 until ms.length()).map { val m = ms.getJSONObject(it); val r = m.optJSONObject("request"); MissingEpisode(m.optInt("season"), m.optInt("episode"), r?.str("state"), r?.str("at")) },
+        )
+    }
+
+    /** Demande, sur le site, d'un épisode manquant : renvoie « created », « already-mine » ou « already-others ». */
+    suspend fun requestEpisode(token: String, torrentId: String, season: Int, episode: Int): String = withContext(Dispatchers.IO) {
+        call("/request-episode", token, "POST", JSONObject().put("torrentId", torrentId).put("season", season).put("episode", episode).toString()).optString("status")
+    }
+
+    /** Ma note (1 à 5, 0 la retire) ; renvoie la note des membres mise à jour. */
+    suspend fun rate(token: String, torrentId: String, score: Int): VodCommunity = withContext(Dispatchers.IO) {
+        communityOf(call("/rate", token, "POST", JSONObject().put("torrentId", torrentId).put("score", score).toString()))
+    }
+
+    fun communityOf(o: JSONObject?): VodCommunity = VodCommunity(if (o == null || o.isNull("average")) null else o.optDouble("average"), o?.optInt("count") ?: 0, o?.intOrNull("mine"))
+
+    /** Une personne de la distribution : sa photo et ses films et séries disponibles. */
+    suspend fun person(token: String, id: String): PersonPage = withContext(Dispatchers.IO) {
+        val o = call("/person/" + SiteApi.enc(id), token)
+        PersonPage(o.optString("name"), o.str("photo"), itemsOf(o.optJSONArray("items")))
+    }
+
+    /** Signale l'appareil (et ce qui joue) et reçoit les commandes envoyées depuis le site. */
+    suspend fun devicePing(token: String, body: JSONObject): List<RemoteCommand> = withContext(Dispatchers.IO) {
+        val arr = call("/devices/ping", token, "POST", body.toString()).optJSONArray("commands") ?: JSONArray()
+        (0 until arr.length()).map { val c = arr.getJSONObject(it); RemoteCommand(c.optString("type"), c.optInt("value"), c.str("torrentId"), c.optInt("fileIndex"), c.str("title")) }
     }
 
     /** Jeton de lecture (à ouvrir comme seeduction://stream/<jeton>) : le .torrent remis porte le marqueur du catalogue, le téléchargement n'est pas compté pour le spectateur. */

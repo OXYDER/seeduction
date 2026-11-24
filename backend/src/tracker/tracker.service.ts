@@ -26,7 +26,7 @@ export interface AnnounceParams {
   // (WebTorrent) qui continue de seeder après la lecture, donc il est soumis aux mêmes règles hit & run qu'un
   // téléchargement classique. Le flag sert uniquement à alimenter un compteur séparé pour les statistiques.
   viaStream?: boolean;
-  /** Lecture du catalogue « Seeduction Cinéma » (app Android) : le téléchargement n'est pas compté pour le spectateur, s'il y a droit (donateur, fondateur, uploader ; voir common/utils/vod.ts). */
+  /** Lecture du catalogue « Seeduction TV » (app Android) : le téléchargement n'est pas compté pour le spectateur, s'il y a droit (donateur, fondateur, uploader ; voir common/utils/vod.ts). */
   vod?: boolean;
   /** User-Agent du client (anti-triche : cohérence avec le peer_id). */
   userAgent?: string;

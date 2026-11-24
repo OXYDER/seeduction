@@ -13,7 +13,7 @@ export const DEFAULT_HOME_LAYOUT: HomeLayout = { order: [], hidden: [], collapse
 export const HOME_SECTIONS: { id: string; icon: string; label: string; fixed?: boolean }[] = [
   { id: 'composer', icon: '✍️', label: 'Publier : « Qu\'avez-vous en tête ? »', fixed: true },
   { id: 'actions', icon: '⚡', label: 'Actions rapides (Envoyer, Demander, Inviter, Mes seeds)' },
-  { id: 'app', icon: '🎬', label: "Application Seeduction (ce qui joue, sur quel appareil)" },
+  { id: 'app', icon: '🎬', label: "Seeduction TV (ce qui joue, sur quel appareil)" },
   { id: 'featured', icon: '⭐', label: 'À la une (grande affiche en vedette)' },
   { id: 'foryou', icon: '🎯', label: 'Téléchargements en cours, complétés et épisode suivant' },
   { id: 'moderation', icon: '🛡️', label: 'Modération (équipe)' },

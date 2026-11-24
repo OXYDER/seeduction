@@ -31,7 +31,7 @@ interface PlaySession {
   torrentId: string;
   fileIndex: number;
   expiresAt: number;
-  /** Lecture du catalogue « Seeduction Cinéma » : l'annonce du .torrent porte `vod=1` (téléchargement non compté pour le spectateur). */
+  /** Lecture du catalogue « Seeduction TV » : l'annonce du .torrent porte `vod=1` (téléchargement non compté pour le spectateur). */
   vod?: boolean;
 }
 

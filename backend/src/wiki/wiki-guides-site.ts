@@ -621,7 +621,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Envoie le torrent demandé ([url=/wiki/guide-envoyer-premier-torrent]Envoyer ton premier torrent[/url]) puis lie-le à la demande : la récompense te revient.\n\n` +
         `[b]Comblée automatiquement par le système[/b]\n` +
         `Tu as envoyé une release sans voir qu'une demande l'attendait ? Pas de souci : quand ta release est approuvée, le site la compare aux demandes ouvertes (même titre, même épisode, et l'année, la langue ou la qualité si la demande les précisait). En cas de correspondance, la demande est [b]marquée comme comblée automatiquement[/b], la récompense te revient, et le demandeur comme toi êtes prévenus. En cas de doute, la demande reste ouverte : tu peux toujours la lier toi-même.\n\n` +
-        `Les demandes d'épisode manquant faites depuis [url=/wiki/guide-cinema]l'application Seeduction[/url] fonctionnent de la même façon, sans langue ni qualité imposées.\n\n` +
+        `Les demandes d'épisode manquant faites depuis [url=/wiki/guide-cinema]Seeduction TV[/url] fonctionnent de la même façon, sans langue ni qualité imposées.\n\n` +
         `Référence : [url=/wiki/demandes]Demandes (bounties)[/url].`,
     },
     {
@@ -629,14 +629,14 @@ export const GUIDES_SITE: WikiSeedCategory = {
       slug: 'guide-lecteur',
       keywords: 'lecteur, desktop, vlc, regarder, streaming, installer, smartscreen, reprendre, ouvrir dans le lecteur',
       content:
-        `[b]Le lecteur Windows et le lecteur Android distincts sont remplacés par [url=/wiki/guide-cinema]l'application Seeduction[/url][/b] (lecteur intégré, catalogue façon Netflix). Ce guide reste valable pour les liens « Ouvrir dans le lecteur Seeduction » déjà installés.\n\n` +
+        `[b]Le lecteur Windows et le lecteur Android distincts sont remplacés par [url=/wiki/guide-cinema]Seeduction TV[/url][/b] (lecteur intégré, catalogue façon Netflix). Ce guide reste valable pour les liens « Ouvrir dans le lecteur Seeduction » déjà installés.\n\n` +
         `Le lecteur Seeduction permet de [b]regarder un film ou une série pendant qu'il se télécharge[/b], sans limite de format. C'est un vrai client BitTorrent avec une copie de VLC incluse.\n\n` +
         `[b]Installer (une seule fois)[/b]\n` +
         `1. Ouvre la page [url=/player]Le lecteur Seeduction[/url] et télécharge l'installateur pour ton système.\n` +
         `2. Lance-le. Windows peut afficher un avertissement SmartScreen (logiciel récent) : clique sur « Informations complémentaires » puis « Exécuter quand même ».\n` +
         `3. L'installation inclut tout (VLC compris). Le logiciel se lance aussi avec Windows et reste dans la zone de notification.\n\n` +
         `[b]Sur Android[/b]\n` +
-        `Il existe aussi une application pour [b]Android[/b] (page [url=/player]Le lecteur Seeduction[/url], bouton « Télécharger l'application (.apk) »). Les donateurs, fondateurs et uploaders y trouvent aussi [b]Seeduction Cinéma[/b], le catalogue vidéo à la demande ([url=/wiki/guide-cinema]voir le guide[/url]). Autorise l'installation depuis ton navigateur (« Sources inconnues ») puis, sur la fiche d'un film, touche « Ouvrir dans le lecteur Seeduction » : l'application télécharge ce qu'il faut, lance la vidéo (tous les formats, pistes audio, sous-titres) et signale « en train de regarder » comme sur PC. Une notification discrète indique le partage en cours : c'est elle qui permet de continuer à seeder écran éteint. Le partage se met en pause sur données mobiles (réglage « Partager seulement en Wi-Fi »). Ta position de lecture te suit d'un appareil à l'autre. Double-tape à gauche ou à droite de l'écran : retour ou avance de 10 secondes.\n\n` +
+        `Il existe aussi une application pour [b]Android[/b] (page [url=/player]Le lecteur Seeduction[/url], bouton « Télécharger l'application (.apk) »). Les donateurs, fondateurs et uploaders y trouvent aussi [b]Seeduction TV[/b], le catalogue vidéo à la demande ([url=/wiki/guide-cinema]voir le guide[/url]). Autorise l'installation depuis ton navigateur (« Sources inconnues ») puis, sur la fiche d'un film, touche « Ouvrir dans le lecteur Seeduction » : l'application télécharge ce qu'il faut, lance la vidéo (tous les formats, pistes audio, sous-titres) et signale « en train de regarder » comme sur PC. Une notification discrète indique le partage en cours : c'est elle qui permet de continuer à seeder écran éteint. Le partage se met en pause sur données mobiles (réglage « Partager seulement en Wi-Fi »). Ta position de lecture te suit d'un appareil à l'autre. Double-tape à gauche ou à droite de l'écran : retour ou avance de 10 secondes.\n\n` +
         `[b]Regarder quelque chose[/b]\n` +
         `1. Ouvre la fiche d'un film ou d'une série.\n` +
         `2. Clique sur [b]🖥️ « Ouvrir dans le lecteur Seeduction »[/b].\n` +
@@ -671,23 +671,23 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Références : [url=/wiki/installer-le-lecteur]Installer le lecteur[/url], [url=/wiki/fonctionnement-du-lecteur]Comment fonctionne le lecteur[/url].`,
     },
     {
-      title: 'L\'application Seeduction : films et séries sur Android et télé',
+      title: 'Seeduction TV (SDTV) : films et séries sur Android et télé',
       slug: 'guide-cinema',
-      keywords: 'application, android, télé, box, netflix, appareils, télécommande, statistiques, notes, étoiles, casting, bande-annonce, épisode manquant, catalogue, vidéo à la demande, donateur, fondateur, uploader, ratio, seeders, connexion, qr code, lecteur, sous-titres, audio, vitesse, épisode suivant, top 10, sagas, genres',
+      keywords: 'seeduction tv, sdtv, application, android, télé, box, netflix, appareils, télécommande, statistiques, notes, étoiles, casting, bande-annonce, épisode manquant, catalogue, vidéo à la demande, donateur, fondateur, uploader, ratio, seeders, connexion, qr code, lecteur, sous-titres, audio, vitesse, épisode suivant, top 10, sagas, genres',
       content:
-        `L'application Seeduction : films et séries sur Android et télé\n` +
-        `Une seule application, façon Netflix, pour regarder les films et les séries de Seeduction sur téléphone, tablette, télé et box Android. Elle remplace le lecteur Seeduction pour Windows et pour Android : le lecteur est maintenant intégré. Tu ouvres, tu choisis une affiche, ça se lit.\n` +
+        `Seeduction TV (SDTV) : films et séries sur Android et télé\n` +
+        `[b]Seeduction TV[/b] (« SDTV » pour faire court) est une seule application, façon Netflix, pour regarder les films et les séries de Seeduction sur téléphone, tablette, télé et box Android. Elle remplace le lecteur Seeduction pour Windows et pour Android : le lecteur est maintenant intégré. Tu ouvres, tu choisis une affiche, ça se lit.\n` +
         `\n` +
         `[b]Qui y a accès ?[/b]\n` +
         `• Les [b]donateurs[/b] (tant que leur soutien est actif), les [b]membres fondateurs[/b] et les [b]uploaders[/b], ainsi que l'équipe.\n` +
-        `• Les autres membres voient sur la page [url=/player]L'application Seeduction[/url] que l'accès est réservé, avec un lien pour [url=/soutenir]soutenir le site[/url]. Si un don arrive à son terme, l'accès se ferme tout seul.\n` +
+        `• Les autres membres voient sur la page [url=/player]Seeduction TV[/url] que l'accès est réservé, avec un lien pour [url=/soutenir]soutenir le site[/url]. Si un don arrive à son terme, l'accès se ferme tout seul.\n` +
         `\n` +
         `[b]Pas de ratio à gérer pour celui qui regarde[/b]\n` +
         `• Ce que tu télécharges pendant une lecture n'est [b]pas compté[/b] dans ton ratio, et aucune obligation de partage ni « hit & run » n'en naît.\n` +
         `• Seuls ceux qui [b]seedent[/b] comptent : leur envoi est compté comme d'habitude. Plus un titre est seedé, mieux il démarre : pense à garder tes torrents en seed.\n` +
         `\n` +
         `[b]Installer et se connecter[/b]\n` +
-        `1. Télécharge l'application sur la page [url=/player]L'application Seeduction[/url] et installe-la (autorise les « sources inconnues » : elle n'est pas sur le Play Store).\n` +
+        `1. Télécharge l'application sur la page [url=/player]Seeduction TV[/url] et installe-la (autorise les « sources inconnues » : elle n'est pas sur le Play Store).\n` +
         `2. Ouvre Seeduction et connecte-toi avec ton [b]identifiant (ou courriel) et ton mot de passe[/b]. Un compte avec double authentification demande le code à 6 chiffres ; un compte famille demande le profil puis son PIN.\n` +
         `3. Pas envie de taper ? Sur la page de l'application, [b]Connecter l'application[/b] affiche un code de 8 caractères à saisir dans l'application (« Se connecter avec un code »), valable 5 minutes.\n` +
         `\n` +
@@ -706,7 +706,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Pour une série, [b]Épisode suivant[/b] : en fin d'épisode, le suivant démarre après 6 secondes (Annuler ou Lire maintenant). L'application vérifie que c'est bien le [b]bon[/b] épisode : si le 6 manque alors que le 7 est là, elle te prévient (« l'épisode 6 est manquant ») et te propose de lire le 7 quand même ou de [b]demander l'épisode manquant[/b] : une demande est alors publiée sur [url=/requests]Demandes[/url] à ton nom. Si elle existe déjà (la tienne ou celle d'un autre membre), l'application te le dit au lieu d'en créer une deuxième.\n` +
         `\n` +
         `[b]Ma télécommande sur le site : appareils et statistiques[/b]\n` +
-        `• Sur [url=/application]la page de l'application[/url], la présentation complète ; sur la page [b]Mon application[/b] (menu Bibliothèque, ou le bloc « Application Seeduction » du tableau de bord) : tes [b]appareils[/b] (téléphone, tablette, télé), [b]ce qui joue en direct et sur lequel[/b], avec pause, reculer ou avancer de 10 ou 30 secondes, saut à n'importe quel moment et arrêt.\n` +
+        `• Sur [url=/application]la page de l'application[/url], la présentation complète ; sur la page [b]Mon espace Seeduction TV[/b] (menu Bibliothèque, ou le bloc « Seeduction TV » du tableau de bord) : tes [b]appareils[/b] (téléphone, tablette, télé), [b]ce qui joue en direct et sur lequel[/b], avec pause, reculer ou avancer de 10 ou 30 secondes, saut à n'importe quel moment et arrêt.\n` +
         `• Tu peux aussi [b]lancer un titre à distance[/b] : cherche dans le catalogue depuis le site, choisis la version ou l'épisode, et l'appareil le démarre (l'application doit être ouverte dessus ; les commandes arrivent en moins de 4 secondes pendant une lecture, jusqu'à 12 secondes sinon). Renomme ou retire un appareil quand tu veux.\n` +
         `• [b]Statistiques[/b] : heures regardées (semaine, 30 jours, total), jour par jour, titres et genres préférés, appareils les plus utilisés, ce que ton application partage. [b]Mes notes[/b] rassemble les titres que tu as notés.\n` +
         `• Ce que l'application télécharge n'apparaît [b]jamais[/b] sur le site (ni dans Mon activité, ni dans Mes torrents) : seul ce qui joue en ce moment est montré, et seulement à toi.\n` +

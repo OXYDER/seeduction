@@ -237,7 +237,7 @@ export class EconomyService {
     const fresh = new Date(Date.now() - 45 * 60_000);
     const [user, peers, snatches, uploads] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId }, select: { uploaded: true, downloaded: true } }),
-      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh }, NOT: { vod: true, isSeeder: false } }, include: { torrent: { select: { id: true, name: true, size: true, coverImage: true } } } }), // le téléchargement de l'application Seeduction n'est jamais montré
+      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh }, NOT: { vod: true, isSeeder: false } }, include: { torrent: { select: { id: true, name: true, size: true, coverImage: true } } } }), // le téléchargement de Seeduction TV n'est jamais montré
       this.prisma.snatch.findMany({
         where: { userId }, orderBy: { completedAt: 'desc' }, take: 300,
         include: { torrent: { select: { id: true, name: true, size: true, coverImage: true, uploaderId: true } } },

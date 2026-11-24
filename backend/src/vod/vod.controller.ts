@@ -6,7 +6,7 @@ import { VodService, type VodViewer } from './vod.service';
 
 const viewerOf = (req: any): VodViewer => ({ userId: req.user.userId, accountId: req.user.accountId ?? req.user.userId, username: req.user.username, role: req.user.role, fam: !!req.user.fam });
 
-/** « Seeduction Cinéma » : catalogue vidéo de l'application Android, réservé aux donateurs, fondateurs et uploaders (voir VodService). */
+/** « Seeduction TV » : catalogue vidéo de l'application Android, réservé aux donateurs, fondateurs et uploaders (voir VodService). */
 @Controller('vod')
 export class VodController {
   constructor(private vod: VodService, private live: VodLiveService) {}

@@ -29,9 +29,10 @@
         android:theme="@style/Theme.Seeduction"
         android:usesCleartextTraffic="true">
 
+        <activity android:name=".TrailerActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" android:theme="@style/Theme.Seeduction.Player" />
         <activity android:name=".MainActivity" android:exported="false" android:launchMode="singleTask" />
 
-        <!-- « Seeduction Cinéma » : catalogue vidéo (donateurs, fondateurs, uploaders). Le lien seeduction://vod/<code> du site associe l'application. -->
+        <!-- « Seeduction TV » : catalogue vidéo (donateurs, fondateurs, uploaders). Le lien seeduction://vod/<code> du site associe l'application. -->
         <activity
             android:name=".VodHomeActivity"
             android:exported="true"

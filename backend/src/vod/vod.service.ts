@@ -92,7 +92,7 @@ const titleOf = (row: any): string => {
 const percentOf = (pos: number, dur: number | null) => (dur && dur > 0 ? Math.min(99, Math.round((pos / dur) * 100)) : null);
 
 /**
- * « Seeduction Cinéma » : le catalogue de l'application Android (accueil en rails, recherche, fiche, lecture). Réservé aux donateurs, fondateurs et uploaders (voir common/utils/vod.ts).
+ * « Seeduction TV » : le catalogue de l'application Android (accueil en rails, recherche, fiche, lecture). Réservé aux donateurs, fondateurs et uploaders (voir common/utils/vod.ts).
  * Le catalogue est celui du site : films et séries approuvés qui ont au moins un seeder. Rien n'est « maison » : la disponibilité d'un titre est son nombre de seeders.
  */
 @Injectable()
@@ -359,10 +359,10 @@ export class VodService {
     const resumeItems: VodItem[] = [
       ...(cont.resume ?? []).map((r: any) => ({
         id: r.torrentId, title: r.title, subtitle: [r.season != null && r.episode != null ? episodeLabel(r.season, r.episode) : '', r.percent != null ? `${r.percent} %` : ''].filter(Boolean).join(' · ') || undefined,
-        cover: r.cover ?? null, percent: r.percent ?? null, play: { torrentId: r.torrentId, fileIndex: r.fileIndex ?? 0 },
+        cover: r.cover ?? null, percent: r.percent ?? null, play: { torrentId: r.torrentId, fileIndex: r.fileIndex ?? 0 }, ...(r.season != null && r.episode != null ? { kind: 'serie' as const } : {}),
       })),
       ...(cont.next ?? []).map((n: any) => ({
-        id: n.torrentId, title: n.title, subtitle: `Suite · ${episodeLabel(n.season, n.episode)}`, cover: n.cover ?? null, percent: null, play: { torrentId: n.torrentId, fileIndex: 0 },
+        id: n.torrentId, title: n.title, subtitle: `Suite · ${episodeLabel(n.season, n.episode)}`, cover: n.cover ?? null, percent: null, play: { torrentId: n.torrentId, fileIndex: 0 }, kind: 'serie' as const,
       })),
     ];
 
@@ -582,7 +582,7 @@ export class VodService {
     if (existing) return { status: existing.state === 'mine' ? 'already-mine' : 'already-others', label, at: existing.at };
     await this.prisma.torrentRequest.create({
       data: {
-        title: `${st.title} ${label}`.slice(0, 200), description: "Demande automatique depuis l'application Seeduction : cet épisode manquait au catalogue.",
+        title: `${st.title} ${label}`.slice(0, 200), description: "Demande automatique depuis Seeduction TV : cet épisode manquait au catalogue.",
         requestedById: viewer.accountId, categoryId: st.categoryId, // sans langue ni qualité : n'importe quelle release de l'épisode la comble
       },
     });

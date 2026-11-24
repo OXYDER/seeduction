@@ -29,7 +29,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/** Le look de Seeduction Cinéma : noir profond, or Seeduction, affiches nettes, textes blancs. */
+/** Le look de Seeduction TV : noir profond, or Seeduction, affiches nettes, textes blancs. */
 object Ui {
     val BG = Color.parseColor("#06080F")
     val NAV = Color.parseColor("#0B0F19")
@@ -114,7 +114,7 @@ fun Context.chip(text: String, selected: Boolean, withArrow: Boolean = false, on
 fun AppCompatActivity.openItem(item: VodItem) {
     when {
         item.type == "saga" -> startActivity(Intent(this, VodListActivity::class.java).putExtra(VodListActivity.EXTRA_TITLE, item.title).putExtra(VodListActivity.EXTRA_SAGA, item.id))
-        item.playTorrentId != null -> playVod(item.playTorrentId, item.playFileIndex)
+        item.playTorrentId != null -> playVod(item.playTorrentId, item.playFileIndex, series = item.kind == "serie", title = item.title, sub = item.subtitle ?: "")
         else -> startActivity(Intent(this, VodTitleActivity::class.java).putExtra(VodTitleActivity.EXTRA_ID, item.id))
     }
 }
@@ -125,15 +125,18 @@ fun AppCompatActivity.openMore(title: String, more: VodMore) {
         .putExtra(VodListActivity.EXTRA_SAGAS, more.sagas))
 }
 
-/** Lance une lecture du catalogue : le site remet un jeton, le lecteur existant le prend en charge (téléchargement dans l'ordre, VLC, reprise, partage). */
-/** `queue` : les épisodes suivants (« torrent|fichier|libellé »), pour enchaîner automatiquement. */
-fun AppCompatActivity.playVod(torrentId: String, fileIndex: Int, queue: List<String> = emptyList(), busy: (Boolean) -> Unit = {}) {
+/**
+ * Lance une lecture du catalogue : le site remet un jeton, le lecteur existant le prend en charge (téléchargement dans l'ordre, VLC, reprise, partage).
+ * `series` : un épisode de série (le lecteur propose le bon épisode suivant) ; `scope` : « all » ou « season » pour enchaîner ; `title` et `sub` : ce qui s'affiche (jamais le nom de la release).
+ */
+fun AppCompatActivity.playVod(torrentId: String, fileIndex: Int, series: Boolean = false, scope: String = "", title: String = "", sub: String = "", busy: (Boolean) -> Unit = {}) {
     val token = Prefs(this).vodToken ?: return
     busy(true)
     lifecycleScope.launch {
         try {
             val play = VodApi.play(token, torrentId, fileIndex)
-            startActivity(Intent(this@playVod, PlayerActivity::class.java).putExtra(PlayerActivity.EXTRA_TOKEN, play).putStringArrayListExtra(PlayerActivity.EXTRA_QUEUE, ArrayList(queue)))
+            startActivity(Intent(this@playVod, PlayerActivity::class.java).putExtra(PlayerActivity.EXTRA_TOKEN, play).putExtra(PlayerActivity.EXTRA_SERIES, series)
+                .putExtra(PlayerActivity.EXTRA_SCOPE, scope).putExtra(PlayerActivity.EXTRA_TITLE, title).putExtra(PlayerActivity.EXTRA_SUB, sub))
         } catch (e: VodAuthException) {
             Prefs(this@playVod).vodToken = null
             Toast.makeText(this@playVod, e.message, Toast.LENGTH_LONG).show()

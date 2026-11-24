@@ -15,7 +15,7 @@ export default function AppControl() {
   if (!st.eligible) {
     return (
       <div className="grid page-narrow" style={{ gap: 16 }}>
-        <h1>🎛️ Mon application</h1>
+        <h1>🎛️ Mon espace Seeduction TV</h1>
         <AppPromoBanner promo={st.promo} />
         <p className="muted">{st.rule}</p>
       </div>
@@ -24,7 +24,7 @@ export default function AppControl() {
   return (
     <div className="grid page-narrow" style={{ gap: 16 }}>
       <div>
-        <h1 style={{ marginBottom: 4 }}>🎛️ Mon application Seeduction</h1>
+        <h1 style={{ marginBottom: 4 }}>🎛️ Mon espace Seeduction TV</h1>
         <p className="muted" style={{ margin: 0 }}>Tes appareils, ce qui joue en direct (tu peux le piloter d'ici), tes statistiques et tes notes. <Link to="/application">Installer l'application →</Link></p>
       </div>
       <div className="ctl-tabs" role="tablist">
@@ -51,7 +51,7 @@ function Devices() {
       <div className="panel" style={{ textAlign: 'center', display: 'grid', gap: 8, justifyItems: 'center' }}>
         <div style={{ fontSize: 40 }}>📱</div>
         <h3 style={{ margin: 0 }}>Aucun appareil pour l'instant</h3>
-        <p className="muted" style={{ margin: 0, maxWidth: 520 }}>Installe l'application Seeduction sur ton téléphone, ta tablette ou ta télé et connecte-toi : l'appareil apparaît ici dès son ouverture. Tu verras alors ce qui joue et tu pourras le piloter.</p>
+        <p className="muted" style={{ margin: 0, maxWidth: 520 }}>Installe Seeduction TV sur ton téléphone, ta tablette ou ta télé et connecte-toi : l'appareil apparaît ici dès son ouverture. Tu verras alors ce qui joue et tu pourras le piloter.</p>
         <Link to="/application" className="download-btn" style={{ textDecoration: 'none' }}>Installer l'application</Link>
       </div>
     );
@@ -123,7 +123,7 @@ function DeviceCard({ d, reload, say }: { d: Device; reload: () => void; say: (t
             </div>
           </div>
         ) : d.online ? <div className="ctl-idle">Rien en lecture. Choisis un titre ci-dessous : il démarre sur cet appareil.</div>
-          : <div className="ctl-idle">Cet appareil est hors ligne. Ouvre l'application Seeduction dessus pour le piloter d'ici.</div>}
+          : <div className="ctl-idle">Cet appareil est hors ligne. Ouvre Seeduction TV dessus pour le piloter d'ici.</div>}
         {d.online && (
           <div>
             <button type="button" className={picker ? 'secondary' : 'download-btn'} style={{ padding: '8px 16px', fontSize: 14 }} onClick={() => setPicker((v) => !v)}>{picker ? 'Fermer le catalogue' : '🎬 Lancer un titre sur cet appareil'}</button>

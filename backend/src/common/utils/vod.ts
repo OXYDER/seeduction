@@ -1,5 +1,5 @@
 /**
- * « Seeduction Cinéma » (catalogue vidéo à la demande de l'application Android) : logique pure, testée.
+ * « Seeduction TV » (catalogue vidéo à la demande de l'application Android) : logique pure, testée.
  *
  * Accès réservé : donateurs (don actif), membres fondateurs et uploaders (plus l'équipe). Le spectateur n'a pas de ratio à gérer :
  * ce qu'il télécharge pendant la lecture n'est pas compté (le tracker traite l'annonce marquée `vod=1` comme du freeleech) ; seul

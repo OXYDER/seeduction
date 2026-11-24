@@ -84,8 +84,13 @@ class PlayerActivity : AppCompatActivity() {
     private var userSeeking = false
     private var lengthMs = 0L
     private var scaleIndex = 0
-    /** Épisodes suivants à enchaîner (« torrent|fichier|libellé »). */
-    private var queue: List<String> = emptyList()
+    /** Épisode de série : le lecteur propose le bon épisode suivant (jamais en sauter un) ; `scope` : « all », « season » ou vide. */
+    private var series = false
+    private var scope = ""
+    private var showTitle = ""
+    private var showSub = ""
+    private var curSeason: Int? = null
+    private var pendingNext: NextResult? = null
     private var nextJob: Job? = null
     private var rate = 1f
     private var brightness = -1f
@@ -116,8 +121,8 @@ class PlayerActivity : AppCompatActivity() {
         findViewById<View>(R.id.forward).setOnClickListener { seekBy(10_000) }
         findViewById<View>(R.id.audio).setOnClickListener { showTracksPanel() }
         findViewById<View>(R.id.subs).setOnClickListener { chooseSpeed() }
-        findViewById<View>(R.id.next).setOnClickListener { playNext() }
-        findViewById<View>(R.id.nextNow).apply { tvFocus(8f); setOnClickListener { playNext() } }
+        findViewById<View>(R.id.next).setOnClickListener { resolveNext(auto = false) }
+        findViewById<View>(R.id.nextNow).apply { tvFocus(8f); setOnClickListener { pendingNext?.let { nextJob?.cancel(); playNextRef(it) } } }
         findViewById<View>(R.id.nextCancel).apply { tvFocus(8f); setOnClickListener { nextJob?.cancel(); findViewById<View>(R.id.nextBanner).visibility = View.GONE; finish() } }
         findViewById<View>(R.id.aspect).setOnClickListener {
             scaleIndex = (scaleIndex + 1) % scales.size
@@ -195,8 +200,13 @@ class PlayerActivity : AppCompatActivity() {
     private fun handleIntent(i: Intent) {
         val token = i.getStringExtra(EXTRA_TOKEN) ?: if (i.action == Intent.ACTION_VIEW) i.data?.lastPathSegment else null
         val existing = i.getStringExtra(EXTRA_SESSION)
-        queue = i.getStringArrayListExtra(EXTRA_QUEUE)?.toList() ?: emptyList()
-        findViewById<View>(R.id.next).visibility = if (queue.isNotEmpty()) View.VISIBLE else View.GONE
+        series = i.getBooleanExtra(EXTRA_SERIES, false)
+        scope = i.getStringExtra(EXTRA_SCOPE) ?: ""
+        showTitle = i.getStringExtra(EXTRA_TITLE) ?: ""
+        showSub = i.getStringExtra(EXTRA_SUB) ?: ""
+        curSeason = i.getIntExtra(EXTRA_SEASON, -1).takeIf { it >= 0 }
+        pendingNext = null
+        findViewById<View>(R.id.next).visibility = if (series) View.VISIBLE else View.GONE
         findViewById<View>(R.id.nextBanner).visibility = View.GONE; nextJob?.cancel()
         if (token == null && existing == null) { showError("Aucune lecture à ouvrir : clique sur « Ouvrir dans le lecteur Seeduction » depuis le site."); return }
         loadJob?.cancel()
@@ -212,7 +222,8 @@ class PlayerActivity : AppCompatActivity() {
                 } else svc.entry(existing!!)?.info ?: throw IllegalStateException("Cette lecture n'existe plus : relance-la depuis Seeduction.")
                 info = entryInfo
                 lastEntryId = entryInfo.id
-                val pretty = prettyTitle(entryInfo.name)
+                // Jamais le nom de la release : le titre du catalogue (et « Saison 1 · Épisode 5 »), sinon un nom nettoyé.
+                val pretty = if (showTitle.isNotEmpty()) (if (showSub.isNotEmpty()) "$showTitle · $showSub" else showTitle) else prettyTitle(entryInfo.name)
                 titleText.text = pretty; loadTitle.text = pretty
                 Images.load(bgCover, entryInfo.coverImage, 900)
                 svc.resume(entryInfo.id)
@@ -343,7 +354,7 @@ class PlayerActivity : AppCompatActivity() {
             MediaPlayer.Event.EndReached -> {
                 info?.let { Prefs(this).savePosition(it.torrentId, it.fileIndex, 0) }
                 sendPing(finalPosition = true)
-                if (queue.isNotEmpty()) startNextCountdown() else finish()
+                if (series) resolveNext(auto = true) else finish()
             }
             MediaPlayer.Event.EncounteredError -> showError("VLC n'arrive pas à lire ce fichier.")
         }
@@ -367,7 +378,7 @@ class PlayerActivity : AppCompatActivity() {
                 val st = withContext(Dispatchers.Default) { svc.stats(info.id) }
                 if (st != null) statsText.text = "↓ " + formatSpeed(st.downRate) + " · ↑ " + formatSpeed(st.upRate) + " · " + st.peers + " pairs · " + (st.progress * 100).toInt() + " %"
             }
-            if (n % 3 == 0) sendPing(finalPosition = false)
+            if (n % 3 == 0) { sendPing(finalPosition = false); deviceTick() }
         }
     }
 
@@ -392,7 +403,8 @@ class PlayerActivity : AppCompatActivity() {
         val mp = player ?: return
         if (lengthMs <= 0) return
         mp.time = (mp.time + deltaMs).coerceIn(0, lengthMs - 1000)
-        flash(if (deltaMs < 0) "⏪ 10 s" else "10 s ⏩")
+        val sec = Math.abs(deltaMs) / 1000
+        flash(if (deltaMs < 0) "⏪ $sec s" else "$sec s ⏩")
     }
 
     private fun flash(text: String) {
@@ -498,33 +510,145 @@ class PlayerActivity : AppCompatActivity() {
         }.setNegativeButton("Fermer", null).show()
     }
 
-    /** Lance l'épisode suivant de la file : le site remet un nouveau jeton et le lecteur repart. */
-    private fun playNext() {
-        val entry = queue.firstOrNull() ?: return
+    // ------------------------------------------------------------------ épisode suivant (le bon, sans en sauter un)
+
+    /** Demande au site quel épisode vient après celui-ci : le bon (lecture ou compte à rebours), ou un épisode manquant (avertissement et demande possible). */
+    private fun resolveNext(auto: Boolean) {
+        val i = info ?: return
+        val tid = i.torrentId
+        val token = Prefs(this).vodToken
+        if (tid == null || token == null) { if (auto) finish(); return }
+        nextJob?.cancel()
+        nextJob = lifecycleScope.launch {
+            try {
+                val r = VodApi.next(token, tid, i.fileIndex)
+                curSeason = r.curSeason ?: curSeason
+                val n = r.next
+                when {
+                    r.status == "next" && n != null -> {
+                        if (scope == "season" && curSeason != null && n.season != curSeason) { askNextSeason(r, n); return@launch }
+                        if (auto) countdown(r, n) else playNextRef(r)
+                    }
+                    r.status == "end" -> { Toast.makeText(this@PlayerActivity, "C'est la fin : plus d'épisode après celui-ci.", Toast.LENGTH_LONG).show(); if (auto) finish() }
+                    else -> showMissingDialog(r, auto, null)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Toast.makeText(this@PlayerActivity, "Épisode suivant indisponible : " + (e.message ?: "erreur réseau"), Toast.LENGTH_LONG).show()
+                if (auto) finish()
+            }
+        }
+    }
+
+    /** Fin d'un épisode : « Épisode 6 dans 6 s » avec « Lire maintenant » et « Annuler ». */
+    private suspend fun countdown(r: NextResult, n: NextRef) {
+        pendingNext = r
+        val banner = findViewById<View>(R.id.nextBanner); val text = findViewById<TextView>(R.id.nextText)
+        banner.visibility = View.VISIBLE
+        findViewById<View>(R.id.nextNow).requestFocus()
+        for (k in 6 downTo 1) { text.text = "Épisode ${n.episode} dans $k s"; delay(1000) }
+        playNextRef(r)
+    }
+
+    private fun playNextRef(r: NextResult) {
+        val n = r.next ?: return
+        val token = Prefs(this).vodToken ?: return
         nextJob?.cancel()
         findViewById<View>(R.id.nextBanner).visibility = View.GONE
-        val (tid, file) = entry.split("|").let { it[0] to (it.getOrNull(1)?.toIntOrNull() ?: 0) }
-        val token = Prefs(this).vodToken ?: return
-        val rest = queue.drop(1)
-        showLoading("Épisode suivant…", entry.split("|").getOrNull(2) ?: "")
+        val sub = "Saison ${n.season} · Épisode ${n.episode}"
+        val title = showTitle.ifEmpty { r.show }
+        showLoading("Épisode suivant…", sub)
         lifecycleScope.launch {
             try {
-                val play = VodApi.play(token, tid, file)
-                handleIntent(Intent().putExtra(EXTRA_TOKEN, play).putStringArrayListExtra(EXTRA_QUEUE, ArrayList(rest)))
+                val play = VodApi.play(token, n.torrentId, n.fileIndex)
+                handleIntent(Intent().putExtra(EXTRA_TOKEN, play).putExtra(EXTRA_SERIES, true).putExtra(EXTRA_SCOPE, scope).putExtra(EXTRA_TITLE, title).putExtra(EXTRA_SUB, sub).putExtra(EXTRA_SEASON, n.season))
             } catch (e: Exception) { showError(e.message ?: "Épisode suivant indisponible") }
         }
     }
 
-    /** Fin d'un épisode : « Épisode suivant dans 6 s » avec « Lire maintenant » et « Annuler ». */
-    private fun startNextCountdown() {
-        val label = queue.firstOrNull()?.split("|")?.getOrNull(2) ?: "Épisode suivant"
-        val banner = findViewById<View>(R.id.nextBanner); val text = findViewById<TextView>(R.id.nextText)
-        banner.visibility = View.VISIBLE
-        findViewById<View>(R.id.nextNow).requestFocus()
-        nextJob?.cancel()
-        nextJob = lifecycleScope.launch {
-            for (n in 6 downTo 1) { text.text = "$label dans $n s"; delay(1000) }
-            playNext()
+    private fun askNextSeason(r: NextResult, n: NextRef) {
+        AlertDialog.Builder(this).setTitle("Fin de la saison ${curSeason}")
+            .setMessage("Continuer avec la saison ${n.season} ?")
+            .setPositiveButton("Continuer") { _, _ -> playNextRef(r) }
+            .setNegativeButton("Terminer") { _, _ -> finish() }
+            .setCancelable(false).show()
+    }
+
+    private fun epText(list: List<MissingEpisode>): String = if (list.size == 1) "L'épisode ${list[0].episode}" else "Les épisodes " + list.first().episode + " à " + list.last().episode
+
+    /** Un épisode manque : on le dit (avec l'état de la demande déjà faite sur le site) et on propose de lire le suivant disponible ou de demander l'épisode manquant. */
+    private fun showMissingDialog(r: NextResult, auto: Boolean, justRequested: String?) {
+        val miss = r.missing
+        if (miss.isEmpty()) { if (auto) finish(); return }
+        val n = r.next
+        val mine = miss.count { it.requestState == "mine" }
+        val others = miss.count { it.requestState == "others" }
+        val todo = miss.filter { it.requestState == null }
+        val msg = StringBuilder()
+        if (justRequested != null) msg.append(justRequested).append("\n\n")
+        msg.append(epText(miss)).append(if (miss.size == 1) " est manquant" else " sont manquants").append(" sur Seeduction")
+        if (n != null) msg.append(" ; le suivant disponible est l'épisode ${n.episode}") else msg.append(" pour l'instant")
+        msg.append(".")
+        if (todo.isEmpty() && justRequested == null) msg.append("\n\n").append(if (mine > 0 && others == 0) "Tu l'as déjà demandé sur le site : il sera disponible dès qu'un membre l'envoie." else if (mine == 0) "Un autre membre l'a déjà demandé sur le site : il sera disponible dès qu'il arrive." else "Il a déjà été demandé sur le site.")
+        else if (todo.isNotEmpty() && (mine > 0 || others > 0)) msg.append("\n\nCertains ont déjà été demandés.")
+        val b = AlertDialog.Builder(this).setTitle("Épisode manquant").setMessage(msg.toString()).setCancelable(!auto)
+        if (n != null) b.setPositiveButton("Lire l'épisode ${n.episode}") { _, _ -> playNextRef(r) }
+        if (todo.isNotEmpty()) b.setNeutralButton(if (todo.size == 1) "Demander l'épisode ${todo[0].episode}" else "Demander les ${todo.size} épisodes") { _, _ -> requestMissing(r, todo, auto) }
+        b.setNegativeButton(if (auto) "Terminer" else "Fermer") { _, _ -> if (auto) finish() }
+        b.show()
+    }
+
+    private fun requestMissing(r: NextResult, todo: List<MissingEpisode>, auto: Boolean) {
+        val i = info ?: return
+        val tid = i.torrentId ?: return
+        val token = Prefs(this).vodToken ?: return
+        lifecycleScope.launch {
+            try {
+                for (m in todo) VodApi.requestEpisode(token, tid, m.season, m.episode)
+                val fresh = VodApi.next(token, tid, i.fileIndex)
+                showMissingDialog(fresh, auto, "✓ Demande envoyée sur le site : tu seras prévenu quand " + (if (todo.size == 1) "l'épisode arrive." else "les épisodes arrivent."))
+            } catch (e: Exception) {
+                Toast.makeText(this@PlayerActivity, e.message ?: "Demande impossible", Toast.LENGTH_LONG).show()
+                showMissingDialog(r, auto, null)
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ cet appareil vu depuis le site (commandes à distance)
+
+    /** Toutes les 3 s : dit au site ce qui joue et exécute ses commandes (pause, reprise, saut, arrêt, lancer un autre titre). */
+    private fun deviceTick() {
+        val i = info ?: return
+        val mp = player ?: return
+        val tid = i.torrentId ?: return
+        val token = Prefs(this).vodToken ?: return
+        val playing = org.json.JSONObject().put("torrentId", tid).put("fileIndex", i.fileIndex)
+            .put("title", showTitle.ifEmpty { prettyTitle(i.name) }).put("subtitle", showSub).put("cover", i.coverImage ?: "")
+            .put("position", (mp.time / 1000).toInt()).put("duration", (lengthMs / 1000).toInt()).put("paused", !mp.isPlaying)
+        lifecycleScope.launch {
+            try {
+                val cmds = withContext(Dispatchers.IO) { DeviceSync.ping(applicationContext, token, playing) }
+                for (c in cmds) applyCommand(c)
+            } catch (_: CancellationException) { /* écran fermé */ } catch (_: Exception) { /* hors ligne : au prochain tour */ }
+        }
+    }
+
+    private fun applyCommand(c: RemoteCommand) {
+        val mp = player
+        when (c.type) {
+            "pause" -> { mp?.pause(); flash("⏸ depuis le site") }
+            "play" -> { mp?.play(); flash("▶ depuis le site") }
+            "seek" -> if (mp != null && lengthMs > 0) { mp.time = (c.value * 1000L).coerceIn(0, lengthMs - 1000); flash("⏩ " + formatClock(c.value.toLong())) }
+            "seekBy" -> seekBy(c.value * 1000L)
+            "stop" -> finish()
+            "start" -> if (c.torrentId != null) {
+                val token = Prefs(this).vodToken ?: return
+                lifecycleScope.launch {
+                    try { handleIntent(Intent().putExtra(EXTRA_TOKEN, VodApi.play(token, c.torrentId, c.fileIndex)).putExtra(EXTRA_TITLE, c.title ?: "")) }
+                    catch (e: Exception) { Toast.makeText(this@PlayerActivity, e.message ?: "Lecture impossible", Toast.LENGTH_LONG).show() }
+                }
+            }
         }
     }
 
@@ -588,7 +712,12 @@ class PlayerActivity : AppCompatActivity() {
         const val EXTRA_SESSION = "session"
         /** Jeton de lecture remis par le catalogue (sans passer par un lien). */
         const val EXTRA_TOKEN = "token"
-        /** Épisodes suivants à enchaîner (liste de « torrent|fichier|libellé »). */
-        const val EXTRA_QUEUE = "queue"
+        /** Épisode de série : le lecteur propose le bon épisode suivant. */
+        const val EXTRA_SERIES = "series"
+        /** « all » (toute la série) ou « season » (jusqu'à la fin de la saison). */
+        const val EXTRA_SCOPE = "scope"
+        const val EXTRA_TITLE = "showTitle"
+        const val EXTRA_SUB = "showSub"
+        const val EXTRA_SEASON = "season"
     }
 }

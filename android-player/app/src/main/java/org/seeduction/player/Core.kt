@@ -11,7 +11,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Réglages et constantes du lecteur Seeduction pour Android. */
+/** Réglages et constantes du lecteur Seeduction TV pour Android. */
 object Config {
     val SITE: String get() = BuildConfig.SITE_BASE_URL.trimEnd('/')
     /** Version de l'application (build.gradle.kts) : affichée à l'écran et comparée à celle publiée par le site pour proposer une mise à jour. */
@@ -103,13 +103,17 @@ class Prefs(ctx: Context) {
         p.edit().putString("sessions", arr.toString()).apply()
     }
 
-    /** Session du catalogue « Seeduction Cinéma » (obtenue en saisissant le code d'association affiché sur le site) et son pseudo. */
+    /** Session du catalogue « Seeduction TV » (obtenue en saisissant le code d'association affiché sur le site) et son pseudo. */
     var vodToken: String?
         get() = p.getString("vodToken", null)
         set(v) { p.edit().apply { if (v == null) remove("vodToken") else putString("vodToken", v) }.apply() }
     var vodUser: String?
         get() = p.getString("vodUser", null)
         set(v) { p.edit().apply { if (v == null) remove("vodUser") else putString("vodUser", v) }.apply() }
+
+    /** Identifiant tiré au hasard à la première ouverture : il sert au site à reconnaître cet appareil (liste « Mes appareils »). */
+    val deviceKey: String
+        get() = p.getString("deviceKey", null) ?: java.util.UUID.randomUUID().toString().also { p.edit().putString("deviceKey", it).apply() }
 
     /** Version qu'on a choisi d'ignorer (« Ignorer cette version » dans la proposition de mise à jour). */
     var skippedVersion: String?

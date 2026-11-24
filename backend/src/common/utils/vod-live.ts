@@ -1,5 +1,5 @@
 /**
- * Application Seeduction : appareils du membre, ce qui joue en direct, commandes à distance et statistiques de visionnage.
+ * Seeduction TV : appareils du membre, ce qui joue en direct, commandes à distance et statistiques de visionnage.
  * Fonctions pures (testées dans vod-live.spec.ts) ; l'état en direct lui-même vit dans VodLiveService.
  */
 
