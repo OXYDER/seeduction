@@ -1,10 +1,12 @@
 package org.seeduction.player
 
 import android.graphics.Color
+import android.graphics.Outline
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
@@ -80,53 +82,76 @@ class VodTitleActivity : AppCompatActivity() {
         val w = screenW()
         val heroH = (w * 1.05f).toInt()
 
-        val hero = FrameLayout(this)
-        val img = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
-        Images.load(img, t.cover, w * 2)
-        hero.addView(img, FrameLayout.LayoutParams(w, heroH))
-        hero.addView(View(this).apply { background = vGradient(Color.TRANSPARENT, Ui.BG) }, FrameLayout.LayoutParams(w, (heroH * 0.6f).toInt(), Gravity.BOTTOM))
-        hero.addView(View(this).apply { background = vGradient(Color.parseColor("#B006080F"), Color.TRANSPARENT) }, FrameLayout.LayoutParams(w, dp(80), Gravity.TOP))
-        hero.addView(icon(R.drawable.ic_back, 24, Ui.TEXT).apply {
-            setPadding(dp(10), dp(10), dp(10), dp(10)); background = roundRect(Color.parseColor("#80000000"), dpf(24f)); isClickable = true; setOnClickListener { finish() }
-            layoutParams = FrameLayout.LayoutParams(dp(44), dp(44)).apply { setMargins(dp(12), dp(10), 0, 0) }
-        })
-        val head = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), 0, dp(18), dp(6)) }
-        head.addView(label(if (t.kind == "serie") "SÉRIE" else "FILM", 11f, Ui.GOLD, Ui.bold).apply { letterSpacing = 0.4f })
-        head.addView(label(t.title, 30f, Ui.TEXT, Ui.black).apply { maxLines = 3; setShadowLayer(12f, 0f, 2f, Color.BLACK) })
+        val tv = isTv()
+        var rightCol: LinearLayout? = null
         val meta = listOfNotNull(t.year?.toString(), t.runtime?.let { "${it} min" }, t.rating?.let { "★ " + String.format(java.util.Locale.US, "%.1f", it) }, if (t.kind == "serie" && t.episodes.isNotEmpty()) "${t.episodes.mapNotNull { it.season }.distinct().size.coerceAtLeast(1)} saison(s)" else null)
-        if (meta.isNotEmpty()) head.addView(label(meta.joinToString("   "), 13f, Ui.MUTED, Ui.medium).apply { setPadding(0, dp(6), 0, 0) })
-        if (t.genres.isNotEmpty()) head.addView(label(t.genres.joinToString("  •  "), 12.5f, Ui.TEXT, Ui.medium).apply { setPadding(0, dp(2), 0, 0) })
-        hero.addView(head, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
-        content.addView(hero)
+        if (tv) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(48), dp(28), dp(48), dp(6)) }
+            val pw = (w * 0.2f).toInt()
+            val poster = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                outlineProvider = object : ViewOutlineProvider() { override fun getOutline(view: View, outline: Outline) { outline.setRoundRect(0, 0, view.width, view.height, dpf(8f)) } }
+                clipToOutline = true
+            }
+            Images.load(poster, t.cover, pw * 2)
+            row.addView(poster, LinearLayout.LayoutParams(pw, (pw * 1.5f).toInt()))
+            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(32), 0, 0, 0) }
+            col.addView(label(if (t.kind == "serie") "SÉRIE" else "FILM", 11f, Ui.GOLD, Ui.bold).apply { letterSpacing = 0.4f })
+            col.addView(label(t.title, 30f, Ui.TEXT, Ui.black).apply { maxLines = 2 })
+            if (meta.isNotEmpty()) col.addView(label(meta.joinToString("   "), 13f, Ui.MUTED, Ui.medium).apply { setPadding(0, dp(6), 0, 0) })
+            if (t.genres.isNotEmpty()) col.addView(label(t.genres.joinToString("  •  "), 12.5f, Ui.TEXT, Ui.medium).apply { setPadding(0, dp(2), 0, 0) })
+            row.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            rightCol = col
+            content.addView(row)
+        } else {
+            val hero = FrameLayout(this)
+            val img = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+            Images.load(img, t.cover, w * 2)
+            hero.addView(img, FrameLayout.LayoutParams(w, heroH))
+            hero.addView(View(this).apply { background = vGradient(Color.TRANSPARENT, Ui.BG) }, FrameLayout.LayoutParams(w, (heroH * 0.6f).toInt(), Gravity.BOTTOM))
+            hero.addView(View(this).apply { background = vGradient(Color.parseColor("#B006080F"), Color.TRANSPARENT) }, FrameLayout.LayoutParams(w, dp(80), Gravity.TOP))
+            hero.addView(icon(R.drawable.ic_back, 24, Ui.TEXT).apply {
+                setPadding(dp(10), dp(10), dp(10), dp(10)); background = roundRect(Color.parseColor("#80000000"), dpf(24f)); isClickable = true; setOnClickListener { finish() }
+                layoutParams = FrameLayout.LayoutParams(dp(44), dp(44)).apply { setMargins(dp(12), dp(10), 0, 0) }
+            })
+            val head = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), 0, dp(18), dp(6)) }
+            head.addView(label(if (t.kind == "serie") "SÉRIE" else "FILM", 11f, Ui.GOLD, Ui.bold).apply { letterSpacing = 0.4f })
+            head.addView(label(t.title, 30f, Ui.TEXT, Ui.black).apply { maxLines = 3; setShadowLayer(12f, 0f, 2f, Color.BLACK) })
+            if (meta.isNotEmpty()) head.addView(label(meta.joinToString("   "), 13f, Ui.MUTED, Ui.medium).apply { setPadding(0, dp(6), 0, 0) })
+            if (t.genres.isNotEmpty()) head.addView(label(t.genres.joinToString("  •  "), 12.5f, Ui.TEXT, Ui.medium).apply { setPadding(0, dp(2), 0, 0) })
+            hero.addView(head, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
+            content.addView(hero)
+        }
 
         val main = if (t.kind == "serie") t.episodes.firstOrNull { it.percent != null && it.percent in 1..91 } else null
         val v0 = t.versions.firstOrNull()
         val resumePct = main?.percent ?: v0?.percent?.takeIf { it in 1..91 }
         val btnLabel = if (resumePct != null && resumePct in 1..91) "Reprendre ($resumePct %)" else "Lecture"
-        val cta = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(4), dp(18), 0) }
+        val cta = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(if (tv) 0 else dp(18), dp(if (tv) 14 else 4), if (tv) 0 else dp(18), 0) }
         val btn = pillButton(btnLabel, R.drawable.ic_play, true) { playMain(t) }
-        cta.addView(btn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        cta.addView(btn, LinearLayout.LayoutParams(if (tv) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        if (tv) btn.post { btn.requestFocus() }
         val best = if (t.kind == "serie") t.episodes.firstOrNull() else null
         val bestSeeders = best?.seeders ?: v0?.seeders ?: 0
         val bestHealth = best?.health ?: v0?.health
-        cta.addView(label(healthText(bestHealth, bestSeeders), 12f, healthColor(bestHealth), Ui.bold).apply { gravity = Gravity.CENTER; setPadding(0, dp(8), 0, 0) })
+        cta.addView(label(healthText(bestHealth, bestSeeders), 12f, healthColor(bestHealth), Ui.bold).apply { gravity = if (tv) Gravity.START else Gravity.CENTER; setPadding(0, dp(8), 0, 0) })
         t.synopsis?.let { cta.addView(label(it, 14f, Color.parseColor("#D5DAE8")).apply { setLineSpacing(0f, 1.25f); setPadding(0, dp(14), 0, 0) }) }
-        content.addView(cta)
+        (rightCol ?: content).addView(cta)
 
         if (t.kind == "serie" && t.episodes.isNotEmpty()) renderEpisodes(t) else renderVersions(t)
 
         t.saga?.let { content.addView(railView(VodRail("saga", "Dans la saga « ${it.name} »", it.items, null))) }
         if (t.similar.isNotEmpty()) content.addView(railView(VodRail("similar", "Dans le même genre", t.similar, null)))
-        content.addView(label("Ce que tu regardes ici n'est pas compté dans ton ratio. Le titre se télécharge pendant la lecture, directement entre ton téléphone et les seeders ; le partage reprend ensuite en arrière-plan (Wi-Fi seulement par défaut).", 11.5f, Ui.MUTED).apply { setPadding(dp(18), dp(22), dp(18), dp(30)); setLineSpacing(0f, 1.2f) })
+        content.addView(label("Ce que tu regardes ici n'est pas compté dans ton ratio. Le titre se télécharge pendant la lecture, directement entre ton téléphone et les seeders ; le partage reprend ensuite en arrière-plan (Wi-Fi seulement par défaut).", 11.5f, Ui.MUTED).apply { setPadding((if (isTv()) dp(48) else dp(18)), dp(22), (if (isTv()) dp(48) else dp(18)), dp(30)); setLineSpacing(0f, 1.2f) })
     }
 
-    private fun section(t: String) = label(t, 17f, Ui.TEXT, Ui.black).apply { setPadding(dp(18), dp(22), dp(18), dp(8)) }
+    private fun section(t: String) = label(t, 17f, Ui.TEXT, Ui.black).apply { setPadding((if (isTv()) dp(48) else dp(18)), dp(22), (if (isTv()) dp(48) else dp(18)), dp(8)) }
 
     private fun row(title: String, info: String, infoColor: Int, percent: Int?, onClick: () -> Unit): View {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; background = roundRect(Ui.SURFACE, dpf(8f)); setPadding(dp(14), dp(11), dp(10), dp(11))
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(18), dp(4), dp(18), dp(4)) }
-            isClickable = true; isFocusable = true; setOnClickListener { onClick() }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((if (isTv()) dp(48) else dp(18)), dp(4), (if (isTv()) dp(48) else dp(18)), dp(4)) }
+            isClickable = true; isFocusable = true; setOnClickListener { onClick() }; tvFocus(8f)
         }
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         col.addView(label(title, 14.5f, Ui.TEXT, Ui.bold).apply { maxLines = 2 })
@@ -138,7 +163,7 @@ class VodTitleActivity : AppCompatActivity() {
     }
 
     private fun renderVersions(t: VodTitle) {
-        if (t.versions.isEmpty()) { content.addView(label("Aucune version disponible pour l'instant.", 14f, Ui.MUTED).apply { setPadding(dp(18), dp(20), dp(18), 0) }); return }
+        if (t.versions.isEmpty()) { content.addView(label("Aucune version disponible pour l'instant.", 14f, Ui.MUTED).apply { setPadding((if (isTv()) dp(48) else dp(18)), dp(20), (if (isTv()) dp(48) else dp(18)), 0) }); return }
         if (t.versions.size > 1) content.addView(section("Versions"))
         else content.addView(section("Version"))
         for (v in t.versions) {
@@ -151,7 +176,7 @@ class VodTitleActivity : AppCompatActivity() {
         val seasons = t.episodes.mapNotNull { it.season }.distinct().sorted()
         content.addView(section("Épisodes"))
         if (seasons.size > 1) {
-            val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(18), 0, dp(18), dp(6)) }
+            val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding((if (isTv()) dp(48) else dp(18)), 0, (if (isTv()) dp(48) else dp(18)), dp(6)) }
             for (s in seasons) { chips.addView(chip("Saison $s", s == season) { season = s; render() }); chips.addView(View(this), LinearLayout.LayoutParams(dp(8), 1)) }
             content.addView(HorizontalScrollView(this).apply { addView(chips); isHorizontalScrollBarEnabled = false })
         }

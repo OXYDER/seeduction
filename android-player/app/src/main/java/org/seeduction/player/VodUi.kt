@@ -43,6 +43,23 @@ object Ui {
     val medium: Typeface get() = Typeface.create("sans-serif-medium", Typeface.NORMAL)
 }
 
+/** Télé ou box Android : détectée (mode télévision, pas d'écran tactile, Leanback) ou imposée dans les Paramètres. */
+fun Context.isTv(): Boolean {
+    when (Prefs(this).tvMode) { "on" -> return true; "off" -> return false }
+    val ui = (getSystemService(Context.UI_MODE_SERVICE) as? android.app.UiModeManager)?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+    return ui || packageManager.hasSystemFeature("android.software.leanback") || !packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)
+}
+
+/** Sélection à la télécommande : anneau doré et léger agrandissement sur l'élément qui a le focus (sans effet au toucher). */
+fun View.tvFocus(radiusDp: Float = 8f) {
+    isFocusable = true
+    val ring = GradientDrawable().apply { setStroke(context.dp(3), Ui.GOLD2); cornerRadius = context.dpf(radiusDp); setColor(Color.TRANSPARENT) }
+    setOnFocusChangeListener { v, has ->
+        v.foreground = if (has) ring else null
+        v.animate().scaleX(if (has) 1.06f else 1f).scaleY(if (has) 1.06f else 1f).setDuration(110).start()
+    }
+}
+
 fun Context.dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 fun Context.dpf(v: Float): Float = v * resources.displayMetrics.density
 fun Context.screenW(): Int = resources.displayMetrics.widthPixels
@@ -54,7 +71,7 @@ fun roundRect(color: Int, radiusPx: Float, stroke: Int? = null, strokePx: Int = 
 fun vGradient(top: Int, bottom: Int) = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom))
 
 fun Context.label(t: String, size: Float, color: Int = Ui.TEXT, face: Typeface? = null) = TextView(this).apply {
-    text = t; textSize = size; setTextColor(color); if (face != null) typeface = face
+    text = t; textSize = size * (if (isTv()) 1.2f else 1f); setTextColor(color); if (face != null) typeface = face
 }
 
 fun Context.icon(res: Int, sizeDp: Int, tint: Int = Ui.TEXT) = ImageView(this).apply {
@@ -68,6 +85,7 @@ fun Context.pillButton(text: String, iconRes: Int?, gold: Boolean, onClick: () -
         orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(22), dp(11), dp(24), dp(11))
         background = if (gold) GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Ui.GOLD2, Ui.GOLD)).apply { cornerRadius = dpf(8f) } else roundRect(Color.parseColor("#33FFFFFF"), dpf(8f))
         isClickable = true; isFocusable = true; setOnClickListener { onClick() }
+        tvFocus()
     }
     if (iconRes != null) box.addView(icon(iconRes, 22, fg))
     box.addView(label(text, 15f, fg, Ui.bold).apply { setPadding(dp(if (iconRes != null) 6 else 0), 0, 0, 0) })
@@ -80,6 +98,7 @@ fun Context.chip(text: String, selected: Boolean, withArrow: Boolean = false, on
         orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(14), dp(7), dp(if (withArrow) 8 else 14), dp(7))
         background = roundRect(if (selected) Ui.GOLD else Ui.SURFACE2, dpf(18f), if (selected) null else Ui.LINE, 1)
         isClickable = true; isFocusable = true; setOnClickListener { onClick() }
+        tvFocus(18f)
     }
     box.addView(label(text, 13f, if (selected) Ui.INK else Ui.TEXT, Ui.bold))
     if (withArrow) box.addView(icon(R.drawable.ic_expand, 18, if (selected) Ui.INK else Ui.MUTED))
@@ -133,7 +152,7 @@ class PosterAdapter(private val widthPx: Int, private val caption: Boolean, priv
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val c = parent.context
-        val box = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT) }
+        val box = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT); tvFocus(8f) }
         val frame = FrameLayout(c).apply {
             outlineProvider = object : ViewOutlineProvider() { override fun getOutline(view: View, outline: Outline) { outline.setRoundRect(0, 0, view.width, view.height, c.dpf(6f)) } }
             clipToOutline = true; setBackgroundColor(Ui.SURFACE2)
@@ -184,21 +203,24 @@ class PosterAdapter(private val widthPx: Int, private val caption: Boolean, priv
 /** Rangée horizontale d'affiches avec son titre et « Tout voir ». */
 fun AppCompatActivity.railView(rail: VodRail): View {
     val c = this
-    val col = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(0, c.dp(18), 0, 0) }
-    val head = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(c.dp(16), 0, c.dp(10), c.dp(8)) }
+    val tv = c.isTv()
+    val side = if (tv) c.dp(48) else c.dp(16)
+    val col = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(0, c.dp(18), 0, 0); clipChildren = false; clipToPadding = false }
+    val head = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(side, 0, c.dp(10), c.dp(8)) }
     head.addView(c.label(rail.title, 17f, Ui.TEXT, Ui.black).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
     if (rail.more != null) {
-        val more = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; isClickable = true; setPadding(c.dp(8), c.dp(4), 0, c.dp(4)); setOnClickListener { openMore(rail.title, rail.more) } }
+        val more = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; isClickable = true; setPadding(c.dp(8), c.dp(4), 0, c.dp(4)); setOnClickListener { openMore(rail.title, rail.more) }; tvFocus(6f) }
         more.addView(c.label("Tout voir", 12.5f, Ui.GOLD, Ui.bold)); more.addView(c.icon(R.drawable.ic_chevron, 18, Ui.GOLD))
         head.addView(more)
     }
     col.addView(head)
-    val w = (c.screenW() * 0.3f).toInt()
+    val w = (c.screenW() * (if (tv) 0.125f else 0.3f)).toInt()
     col.addView(RecyclerView(c).apply {
+        clipChildren = false
         layoutManager = LinearLayoutManager(c, LinearLayoutManager.HORIZONTAL, false)
         adapter = PosterAdapter(w, rail.id == "continue") { openItem(it) }.also { a -> a.items = rail.items }
-        setPadding(c.dp(16), 0, c.dp(8), 0); clipToPadding = false
-        addItemDecoration(object : RecyclerView.ItemDecoration() { override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) { outRect.right = c.dp(8) } })
+        setPadding(side, c.dp(8), c.dp(8), c.dp(8)); clipToPadding = false
+        addItemDecoration(object : RecyclerView.ItemDecoration() { override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) { outRect.right = c.dp(if (tv) 12 else 8) } })
         isNestedScrollingEnabled = false
     })
     return col
@@ -206,8 +228,10 @@ fun AppCompatActivity.railView(rail: VodRail): View {
 
 /** Grille d'affiches à 3 colonnes qui charge la suite en défilant. `loader(page)` renvoie les titres de la page et s'il y en a une autre. */
 class PagedGrid(private val act: AppCompatActivity, private val loader: suspend (Int) -> Pair<List<VodItem>, Boolean>) {
+    private val tv = act.isTv()
+    private val cols = if (tv) 6 else 3
     private val gap = act.dp(5)
-    private val cell = (act.screenW() - act.dp(22)) / 3
+    private val cell = (act.screenW() - act.dp(if (tv) 96 else 22)) / cols
     private val adapter = PosterAdapter(cell - gap * 2, true) { act.openItem(it) }
     private var page = 0
     private var more = true
@@ -215,10 +239,11 @@ class PagedGrid(private val act: AppCompatActivity, private val loader: suspend 
     private var job: Job? = null
     private val message = act.label("", 14f, Ui.MUTED).apply { gravity = Gravity.CENTER; setPadding(act.dp(24), act.dp(40), act.dp(24), 0); visibility = View.GONE }
     val recycler = RecyclerView(act).apply {
-        val lm = GridLayoutManager(act, 3)
+        val lm = GridLayoutManager(act, cols)
+        clipChildren = false
         layoutManager = lm
         adapter = this@PagedGrid.adapter
-        setPadding(act.dp(11), act.dp(6), act.dp(11), act.dp(12)); clipToPadding = false
+        setPadding(act.dp(if (tv) 43 else 11), act.dp(10), act.dp(if (tv) 43 else 11), act.dp(12)); clipToPadding = false
         addItemDecoration(object : RecyclerView.ItemDecoration() { override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) { outRect.set(gap, gap, gap, act.dp(10)) } })
         addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) { if (dy > 0 && lm.findLastVisibleItemPosition() >= this@PagedGrid.adapter.itemCount - 7) next() }

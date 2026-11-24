@@ -719,6 +719,11 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Paramètres[/b] (la roue dentée de l'accueil, ou ⋮ > Paramètres)\n` +
         `• [b]Lecteur intégré[/b] (par défaut, recommandé) ou [b]lecteur externe[/b] : avec l'externe, chaque lecture s'ouvre dans une autre application vidéo installée (VLC, MX Player…). L'application ne suit alors ni la reprise ni le statut sur le site ; s'il n'y a aucune application vidéo, la lecture se fait dans l'application.\n` +
         `• [b]Partager seulement en Wi-Fi[/b], accès à [b]Mes partages et téléchargements[/b], déconnexion du catalogue, recherche de mise à jour et partage du journal de diagnostic.\n\n` +
+        `[b]Sur une télé ou une box Android[/b]\n` +
+        `• L'application détecte une télé ou une box et passe en [b]mode TV[/b] : menu en haut, grandes affiches, navigation à la télécommande (flèches et OK, un anneau doré montre l'élément sélectionné, Retour revient en arrière). Une icône apparaît aussi dans la liste des applications de la télé.\n` +
+        `• [b]Connexion par code[/b] : la télé affiche un code de 8 caractères ; sur le site, page [url=/player]Le lecteur Seeduction[/url], zone [b]Connecter une télé ou une box[/b], saisis ce code. Rien à taper à la télécommande. Le code est valable 10 minutes (bouton « Nouveau code » sur la télé).\n` +
+        `• [b]Lecteur[/b] : OK met en pause, gauche et droite avancent de 10 secondes (30 en maintenant), haut et bas affichent les commandes ; les touches multimédia de la télécommande fonctionnent aussi.\n` +
+        `• Sur une box 32 bits (la plupart des boîtes d'entrée de gamme), il faut la version 32 bits de l'application. Si la détection se trompe, choisis [b]Mode TV[/b] ou [b]Mode téléphone[/b] dans Paramètres > Affichage.\n\n` +
         `[b]La disponibilité, c'est le nombre de seeders[/b]
 ` +
         `• Le catalogue ne montre que les titres qui ont [b]au moins un seeder[/b]. ⚡ [b]Démarrage rapide[/b] : 5 seeders ou plus ; ● [b]correct[/b] : 2 à 4 ; ● [b]lent[/b] : 1 seul seeder (la lecture peut mettre du temps à démarrer ou saccader).

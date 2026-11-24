@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.view.GestureDetector
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
@@ -95,6 +96,9 @@ class PlayerActivity : AppCompatActivity() {
         hideSystemBars()
 
         findViewById<View>(R.id.back).setOnClickListener { finish() }
+        // Télécommande : chaque commande reçoit le focus (anneau doré) ; la barre bouge par pas de 1 %.
+        listOf(R.id.back, R.id.rewind, R.id.playPause, R.id.forward, R.id.audio, R.id.subs, R.id.aspect, R.id.retry, R.id.loadBack).forEach { findViewById<View>(it).tvFocus(12f) }
+        findViewById<SeekBar>(R.id.seek).apply { keyProgressIncrement = 10; isFocusable = true }
         findViewById<View>(R.id.loadBack).setOnClickListener { finish() }
         retry.setOnClickListener { finish() }
         playPause.setOnClickListener { togglePause() }
@@ -110,6 +114,8 @@ class PlayerActivity : AppCompatActivity() {
         seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && lengthMs > 0) timeText.text = formatClock(progress * lengthMs / 1000 / 1000) + " / " + formatClock(lengthMs / 1000)
+                // Au clavier ou à la télécommande (pas de toucher) : on avance tout de suite.
+                if (fromUser && !userSeeking && lengthMs > 0) { player?.time = progress.toLong() * lengthMs / 1000; showControls() }
             }
             override fun onStartTrackingTouch(sb: SeekBar?) { userSeeking = true; showControls() }
             override fun onStopTrackingTouch(sb: SeekBar?) {
@@ -364,10 +370,32 @@ class PlayerActivity : AppCompatActivity() {
     }
     private val hideToast = Runnable { seekToast.visibility = View.GONE }
 
+    /** Télécommande et touches multimédia : OK = pause, gauche/droite = ±10 s (plus long en maintenant), haut/bas = afficher les commandes. */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (player == null || loading.visibility == View.VISIBLE) return super.onKeyDown(keyCode, event)
+        val visible = controls.visibility == View.VISIBLE
+        when (keyCode) {
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> { togglePause(); return true }
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { seekBy(30_000); return true }
+            KeyEvent.KEYCODE_MEDIA_REWIND -> { seekBy(-30_000); return true }
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (!visible) { togglePause(); return true }
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> if (!visible) {
+                val step = if (event.repeatCount > 5) 30_000L else 10_000L
+                seekBy(if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) -step else step)
+                return true
+            }
+            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> if (!visible) { showControls(); playPause.requestFocus(); return true }
+        }
+        if (visible) showControls()
+        return super.onKeyDown(keyCode, event)
+    }
+
     private fun toggleControls() { if (controls.visibility == View.VISIBLE) controls.visibility = View.GONE else showControls() }
 
     private fun showControls() {
+        val wasHidden = controls.visibility != View.VISIBLE
         controls.visibility = View.VISIBLE
+        if (wasHidden && !controls.hasFocus()) playPause.requestFocus()
         hideJob?.cancel()
         hideJob = lifecycleScope.launch { delay(4000); if (player?.isPlaying == true && !userSeeking) controls.visibility = View.GONE }
     }

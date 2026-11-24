@@ -42,6 +42,7 @@ class VodSettingsActivity : AppCompatActivity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(14), dp(14), dp(14)); isClickable = true; isFocusable = true
             setOnClickListener { onClick() }
+            tvFocus(10f)
         }
         val txt = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         txt.addView(label(title, 15f, Ui.TEXT, Ui.bold))
@@ -59,7 +60,7 @@ class VodSettingsActivity : AppCompatActivity() {
     private fun divider() = View(this).apply { setBackgroundColor(Ui.LINE); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1).apply { leftMargin = dp(16) } }
 
     private fun action(title: String, desc: String?, color: Int = Ui.TEXT, onClick: () -> Unit): View {
-        val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)); isClickable = true; isFocusable = true; setOnClickListener { onClick() } }
+        val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)); isClickable = true; isFocusable = true; setOnClickListener { onClick() }; tvFocus(10f) }
         row.addView(label(title, 15f, color, Ui.bold))
         if (desc != null) row.addView(label(desc, 12.5f, Ui.MUTED).apply { setPadding(0, dp(3), 0, 0) })
         return row
@@ -73,7 +74,7 @@ class VodSettingsActivity : AppCompatActivity() {
     private fun render() {
         col.removeAllViews()
         val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(6), dp(12), dp(16), dp(4)) }
-        bar.addView(icon(R.drawable.ic_back, 24, Ui.TEXT).apply { setPadding(dp(10), dp(10), dp(10), dp(10)); layoutParams = LinearLayout.LayoutParams(dp(46), dp(46)); isClickable = true; setOnClickListener { finish() } })
+        bar.addView(icon(R.drawable.ic_back, 24, Ui.TEXT).apply { setPadding(dp(10), dp(10), dp(10), dp(10)); layoutParams = LinearLayout.LayoutParams(dp(46), dp(46)); isClickable = true; setOnClickListener { finish() }; tvFocus(24f) })
         bar.addView(label("Paramètres", 22f, Ui.TEXT, Ui.black))
         col.addView(bar)
 
@@ -85,6 +86,20 @@ class VodSettingsActivity : AppCompatActivity() {
             divider(),
             choice("Lecteur externe", "Ouvre une autre application vidéo installée (VLC, MX Player…) à chaque lecture. La reprise et le statut sur le site ne sont pas suivis par l'application." +
                 (if (externals.isEmpty()) "\nAucune application vidéo externe détectée : la lecture se fera dans l'application." else "\nDétectées : " + externals.take(4).joinToString(", ") + "."), prefs.playerMode == PlayerMode.EXTERNAL) { prefs.playerMode = PlayerMode.EXTERNAL; render() },
+        ))
+
+        // --- Affichage
+        col.addView(section("Affichage"))
+        fun setTv(v: String) {
+            prefs.tvMode = v
+            startActivity(Intent(this, VodHomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)); finish()
+        }
+        col.addView(card(
+            choice("Automatique", "L'application détecte si elle tourne sur une télé ou une box et adapte l'affichage.", prefs.tvMode == "auto") { setTv("auto") },
+            divider(),
+            choice("Mode TV", "Navigation à la télécommande, grandes affiches, menu en haut, connexion par code affiché à l'écran.", prefs.tvMode == "on") { setTv("on") },
+            divider(),
+            choice("Mode téléphone", "Écran tactile : menu en bas, affiches plus petites.", prefs.tvMode == "off") { setTv("off") },
         ))
 
         // --- Partage

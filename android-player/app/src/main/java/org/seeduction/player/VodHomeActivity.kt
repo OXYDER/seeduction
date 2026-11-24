@@ -87,21 +87,41 @@ class VodHomeActivity : AppCompatActivity() {
         root.removeAllViews()
         screens = emptyList()
         if (prefs.vodToken == null) { renderPairing(); return }
+        val tv = isTv()
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         holder = FrameLayout(this)
-        col.addView(holder, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         screens = listOf(HomeScreen(this), BrowseScreen(this, "film", "Films"), BrowseScreen(this, "serie", "Séries"), ExploreScreen(this), SearchScreen(this))
-        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(Ui.NAV); setPadding(0, dp(6), 0, dp(6)) }
-        navItems = tabs.map { (name, ic, idx) ->
-            val img = ImageView(this).apply { setImageResource(ic); setColorFilter(Ui.MUTED); layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)) }
-            val tv = label(name, 10.5f, Ui.MUTED, Ui.bold).apply { setPadding(0, dp(2), 0, 0) }
-            val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; isClickable = true; isFocusable = true; setPadding(0, dp(4), 0, dp(2)); setOnClickListener { select(idx) } }
-            item.addView(img); item.addView(tv)
-            nav.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            img to tv
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; setBackgroundColor(Ui.NAV)
+            if (tv) { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(40), dp(10), dp(32), dp(10)) } else setPadding(0, dp(6), 0, dp(6))
         }
-        col.addView(View(this).apply { setBackgroundColor(Ui.LINE) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1))
-        col.addView(nav)
+        if (tv) nav.addView(label("SEEDUCTION", 17f, Ui.GOLD, Ui.black).apply { letterSpacing = 0.16f; setPadding(0, 0, dp(30), 0) })
+        navItems = tabs.map { (name, ic, idx) ->
+            val img = ImageView(this).apply { setImageResource(ic); setColorFilter(Ui.MUTED); layoutParams = LinearLayout.LayoutParams(dp(if (tv) 22 else 24), dp(if (tv) 22 else 24)) }
+            val txt = label(name, if (tv) 12f else 10.5f, Ui.MUTED, Ui.bold).apply { setPadding(if (tv) dp(8) else 0, if (tv) 0 else dp(2), 0, 0) }
+            val item = LinearLayout(this).apply {
+                orientation = if (tv) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL; gravity = Gravity.CENTER; isClickable = true
+                if (tv) setPadding(dp(16), dp(9), dp(18), dp(9)) else setPadding(0, dp(4), 0, dp(2))
+                setOnClickListener { select(idx) }
+                tvFocus(if (tv) 22f else 8f)
+            }
+            item.addView(img); item.addView(txt)
+            nav.addView(item, if (tv) LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(6) } else LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            img to txt
+        }
+        if (tv) {
+            nav.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+            nav.addView(icon(R.drawable.ic_settings, 22, Ui.TEXT).apply { setPadding(dp(10), dp(10), dp(10), dp(10)); layoutParams = LinearLayout.LayoutParams(dp(46), dp(46)); isClickable = true; setOnClickListener { startActivity(Intent(this@VodHomeActivity, VodSettingsActivity::class.java)) }; tvFocus(24f) })
+            nav.addView(icon(R.drawable.ic_more, 24, Ui.TEXT).apply { setPadding(dp(10), dp(10), dp(10), dp(10)); layoutParams = LinearLayout.LayoutParams(dp(46), dp(46)); isClickable = true; setOnClickListener { menu(this) }; tvFocus(24f) })
+        }
+        val line = View(this).apply { setBackgroundColor(Ui.LINE) }
+        if (tv) {
+            col.addView(nav); col.addView(line, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1))
+            col.addView(holder, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        } else {
+            col.addView(holder, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            col.addView(line, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)); col.addView(nav)
+        }
         root.addView(col, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         select(current)
     }
@@ -135,7 +155,65 @@ class VodHomeActivity : AppCompatActivity() {
 
     // ------------------------------------------------------------------ association
 
-    private fun renderPairing() {
+    private var deviceJob: Job? = null
+
+    private fun renderPairing() { if (isTv()) renderTvPairing() else renderPhonePairing() }
+
+    /** Télé ou box : un code s'affiche à l'écran, le membre le saisit sur le site (page « Lecteur ») ; rien à taper à la télécommande. */
+    private fun renderTvPairing() {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(64), dp(32), dp(64), dp(32)) }
+        val left = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        left.addView(label("SEEDUCTION", 30f, Ui.GOLD, Ui.black).apply { letterSpacing = 0.18f })
+        left.addView(label("CINÉMA", 13f, Ui.MUTED, Ui.bold).apply { letterSpacing = 0.5f; setPadding(0, dp(2), 0, dp(22)) })
+        left.addView(label("Connecte cette télé à ton compte", 26f, Ui.TEXT, Ui.black))
+        left.addView(label("Réservé aux donateurs ❤️, aux membres fondateurs et aux uploaders.", 14f, Ui.MUTED).apply { setPadding(0, dp(8), 0, dp(20)) })
+        left.addView(label("1. Sur ton téléphone ou ton ordinateur, ouvre seeduction.org, page « Lecteur ».\n2. Dans « Seeduction Cinéma », zone « Connecter une télé ou une box ».\n3. Saisis le code affiché ici.", 15f, Ui.TEXT).apply { setLineSpacing(0f, 1.3f) })
+        val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(26), 0, 0) }
+        val right = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; background = roundRect(Ui.SURFACE, dpf(16f), Ui.LINE, 2); setPadding(dp(40), dp(36), dp(40), dp(36)) }
+        right.addView(label("Ton code", 14f, Ui.MUTED, Ui.bold))
+        val codeView = label("········", 44f, Ui.GOLD2, Ui.black).apply { typeface = Typeface.MONOSPACE; letterSpacing = 0.12f; setPadding(0, dp(10), 0, dp(10)) }
+        right.addView(codeView)
+        val status = label("Connexion au site…", 14f, Ui.MUTED).apply { gravity = Gravity.CENTER }
+        right.addView(status)
+        buttons.addView(pillButton("Nouveau code", null, true) { startDeviceFlow(codeView, status) })
+        buttons.addView(View(this), LinearLayout.LayoutParams(dp(14), 1))
+        buttons.addView(pillButton("Saisir un code", null, false) { renderPhonePairing() })
+        buttons.addView(View(this), LinearLayout.LayoutParams(dp(14), 1))
+        buttons.addView(pillButton("Partages", null, false) { startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true)) })
+        left.addView(buttons)
+        row.addView(left, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.25f))
+        row.addView(right, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(48) })
+        root.removeAllViews()
+        root.addView(ScrollView(this).apply { addView(row); isFillViewport = true })
+        startDeviceFlow(codeView, status)
+    }
+
+    private fun startDeviceFlow(codeView: TextView, status: TextView) {
+        deviceJob?.cancel()
+        codeView.text = "········"; status.text = "Connexion au site…"
+        deviceJob = lifecycleScope.launch {
+            try {
+                val d = VodApi.deviceStart()
+                codeView.text = d.userCode.take(4) + " " + d.userCode.drop(4)
+                status.text = "En attente de la saisie sur le site…"
+                val end = System.currentTimeMillis() + d.expiresInSeconds * 1000L
+                while (System.currentTimeMillis() < end) {
+                    delay(d.intervalSeconds * 1000L)
+                    val name = VodApi.devicePoll(d.deviceCode, prefs)
+                    if (name != null) {
+                        Toast.makeText(this@VodHomeActivity, "Connecté" + (if (name.isNotEmpty()) " : $name" else ""), Toast.LENGTH_SHORT).show()
+                        current = 0; render(); return@launch
+                    }
+                }
+                status.text = "Code expiré : choisis « Nouveau code »."
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) { status.text = "Impossible de joindre le site : " + (e.message ?: "erreur réseau") }
+        }
+    }
+
+    private fun renderPhonePairing() {
+        deviceJob?.cancel()
+        root.removeAllViews()
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(48), dp(24), dp(24)); gravity = Gravity.CENTER_HORIZONTAL }
         col.addView(label("SEEDUCTION", 26f, Ui.GOLD, Ui.black).apply { letterSpacing = 0.18f })
         col.addView(label("CINÉMA", 12f, Ui.MUTED, Ui.bold).apply { letterSpacing = 0.5f; setPadding(0, dp(2), 0, dp(28)) })
@@ -152,8 +230,9 @@ class VodHomeActivity : AppCompatActivity() {
         val go = pillButton("Connecter", null, true) { connect(field.text.toString()) }
         field.setOnEditorActionListener { _, _, _ -> connect(field.text.toString()); true }
         col.addView(go, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(14) })
-        col.addView(label("Ouvrir la page du site", 13f, Ui.GOLD, Ui.bold).apply { setPadding(0, dp(18), 0, dp(10)); isClickable = true; setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE + "/player"))) } })
-        col.addView(label("Lecteur et partages", 13f, Ui.MUTED, Ui.bold).apply { setPadding(0, dp(6), 0, 0); isClickable = true; setOnClickListener { startActivity(Intent(this@VodHomeActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true)) } })
+        if (isTv()) col.addView(label("Afficher un code sur la télé", 13f, Ui.GOLD, Ui.bold).apply { setPadding(dp(8), dp(16), dp(8), dp(8)); isClickable = true; tvFocus(6f); setOnClickListener { renderTvPairing() } })
+        col.addView(label("Ouvrir la page du site", 13f, Ui.GOLD, Ui.bold).apply { setPadding(dp(8), dp(16), dp(8), dp(10)); isClickable = true; tvFocus(6f); setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE + "/player"))) } })
+        col.addView(label("Lecteur et partages", 13f, Ui.MUTED, Ui.bold).apply { setPadding(dp(8), dp(6), dp(8), dp(6)); isClickable = true; tvFocus(6f); setOnClickListener { startActivity(Intent(this@VodHomeActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true)) } })
         root.addView(ScrollView(this).apply { addView(col); isFillViewport = true })
     }
 
@@ -211,11 +290,35 @@ class HomeScreen(private val act: VodHomeActivity) : VodScreen {
         }
     }
 
-    /** La grande affiche du jour : image, genre, titre, boutons Lecture et Infos ; le logo et le menu flottent dessus. */
+    /** La grande affiche du jour : image, genre, titre, boutons Lecture et Infos. Sur téléphone, le logo et le menu flottent dessus ; sur télé, texte à gauche et image à droite. */
     private fun hero(h: VodItem?): View {
+        val tv = act.isTv()
         val w = act.screenW()
         val frame = FrameLayout(act)
-        val heroH = (w * 1.28f).toInt()
+        val heroH = if (tv) (w * 0.36f).toInt() else (w * 1.28f).toInt()
+        if (h != null && tv) {
+            val imgW = (w * 0.52f).toInt()
+            val img = ImageView(act).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+            Images.load(img, h.cover, imgW * 2)
+            frame.addView(img, FrameLayout.LayoutParams(imgW, heroH, Gravity.END))
+            frame.addView(View(act).apply { background = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Ui.BG, Color.TRANSPARENT)) }, FrameLayout.LayoutParams(imgW, heroH, Gravity.END))
+            frame.addView(View(act).apply { background = vGradient(Color.TRANSPARENT, Ui.BG) }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (heroH * 0.35f).toInt(), Gravity.BOTTOM))
+            val info = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL; setPadding(act.dp(48), act.dp(8), act.dp(16), act.dp(10)) }
+            info.addView(act.label(if (h.kind == "serie") "SÉRIE" else "FILM", 11f, Ui.GOLD, Ui.bold).apply { letterSpacing = 0.4f })
+            info.addView(act.label(h.title, 30f, Ui.TEXT, Ui.black).apply { maxLines = 2; setPadding(0, act.dp(2), 0, act.dp(4)) })
+            val line = (h.genres.take(3) + listOfNotNull(h.year?.toString())).joinToString("  •  ")
+            if (line.isNotEmpty()) info.addView(act.label(line, 12.5f, Ui.TEXT, Ui.medium))
+            h.synopsis?.let { info.addView(act.label(it, 12.5f, Color.parseColor("#D5DAE8")).apply { maxLines = 3; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(0, act.dp(8), 0, 0) }) }
+            val buttons = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, act.dp(14), 0, 0) }
+            val play = act.pillButton("Lecture", R.drawable.ic_play, true) { act.startActivity(Intent(act, VodTitleActivity::class.java).putExtra(VodTitleActivity.EXTRA_ID, h.id).putExtra(VodTitleActivity.EXTRA_AUTOPLAY, true)) }
+            buttons.addView(play)
+            buttons.addView(View(act), LinearLayout.LayoutParams(act.dp(12), 1))
+            buttons.addView(act.pillButton("Infos", R.drawable.ic_info, false) { act.openItem(h) })
+            info.addView(buttons)
+            frame.addView(info, FrameLayout.LayoutParams((w * 0.55f).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL or Gravity.START))
+            play.post { play.requestFocus() }
+            return frame
+        }
         if (h != null) {
             val img = ImageView(act).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
             Images.load(img, h.cover, w * 2)
@@ -234,14 +337,16 @@ class HomeScreen(private val act: VodHomeActivity) : VodScreen {
             buttons.addView(act.pillButton("Infos", R.drawable.ic_info, false) { act.openItem(h) })
             info.addView(buttons)
             frame.addView(info, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
-        } else frame.addView(View(act), FrameLayout.LayoutParams(w, act.dp(70)))
-        val top = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(act.dp(16), act.dp(10), act.dp(6), 0) }
-        top.addView(act.label("SEEDUCTION", 17f, Ui.GOLD, Ui.black).apply { letterSpacing = 0.16f; setShadowLayer(10f, 0f, 2f, Color.BLACK) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        val gear = act.icon(R.drawable.ic_settings, 22, Ui.TEXT).apply { setPadding(act.dp(10), act.dp(10), act.dp(10), act.dp(10)); isClickable = true; layoutParams = LinearLayout.LayoutParams(act.dp(44), act.dp(44)); setOnClickListener { act.startActivity(Intent(act, VodSettingsActivity::class.java)) } }
-        top.addView(gear)
-        val more = act.icon(R.drawable.ic_more, 24, Ui.TEXT).apply { setPadding(act.dp(8), act.dp(8), act.dp(8), act.dp(8)); isClickable = true; layoutParams = LinearLayout.LayoutParams(act.dp(44), act.dp(44)); setOnClickListener { act.menu(this) } }
-        top.addView(more)
-        frame.addView(top, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP))
+        } else frame.addView(View(act), FrameLayout.LayoutParams(w, act.dp(if (tv) 20 else 70)))
+        if (!tv) {
+            val top = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(act.dp(16), act.dp(10), act.dp(6), 0) }
+            top.addView(act.label("SEEDUCTION", 17f, Ui.GOLD, Ui.black).apply { letterSpacing = 0.16f; setShadowLayer(10f, 0f, 2f, Color.BLACK) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            val gear = act.icon(R.drawable.ic_settings, 22, Ui.TEXT).apply { setPadding(act.dp(10), act.dp(10), act.dp(10), act.dp(10)); isClickable = true; layoutParams = LinearLayout.LayoutParams(act.dp(44), act.dp(44)); setOnClickListener { act.startActivity(Intent(act, VodSettingsActivity::class.java)) } }
+            top.addView(gear)
+            val more = act.icon(R.drawable.ic_more, 24, Ui.TEXT).apply { setPadding(act.dp(8), act.dp(8), act.dp(8), act.dp(8)); isClickable = true; layoutParams = LinearLayout.LayoutParams(act.dp(44), act.dp(44)); setOnClickListener { act.menu(this) } }
+            top.addView(more)
+            frame.addView(top, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP))
+        }
         return frame
     }
 }
@@ -309,7 +414,7 @@ class ExploreScreen(private val act: VodHomeActivity) : VodScreen {
     private fun tile(text: String, sub: String?, hue: Float, onClick: () -> Unit): View {
         val d = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR, intArrayOf(Color.HSVToColor(floatArrayOf(hue, 0.55f, 0.55f)), Color.HSVToColor(floatArrayOf((hue + 40f) % 360f, 0.6f, 0.22f)))).apply { cornerRadius = act.dpf(8f) }
         return LinearLayout(act).apply {
-            orientation = LinearLayout.VERTICAL; gravity = Gravity.BOTTOM; setPadding(act.dp(12), act.dp(10), act.dp(12), act.dp(10)); background = d; isClickable = true; isFocusable = true; setOnClickListener { onClick() }
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.BOTTOM; setPadding(act.dp(12), act.dp(10), act.dp(12), act.dp(10)); background = d; isClickable = true; isFocusable = true; setOnClickListener { onClick() }; tvFocus(8f)
             addView(act.label(text, 15f, Ui.TEXT, Ui.black).apply { maxLines = 2 })
             if (sub != null) addView(act.label(sub, 11f, Color.parseColor("#D5DAE8")))
         }
@@ -345,7 +450,7 @@ class ExploreScreen(private val act: VodHomeActivity) : VodScreen {
         val letters = ('A'..'Z').map { it.toString() } + "#"
         col.addView(grid(letters.map { l ->
             LinearLayout(act).apply {
-                gravity = Gravity.CENTER; background = roundRect(Ui.SURFACE2, act.dpf(8f), Ui.LINE, 1); isClickable = true; isFocusable = true
+                gravity = Gravity.CENTER; background = roundRect(Ui.SURFACE2, act.dpf(8f), Ui.LINE, 1); isClickable = true; isFocusable = true; tvFocus(8f)
                 setOnClickListener { list("Titres en « $l »", sort = "name", letter = l) }
                 addView(act.label(l, 17f, Ui.TEXT, Ui.black))
             }

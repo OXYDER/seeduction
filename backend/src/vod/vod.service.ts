@@ -1,7 +1,7 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, GoneException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
-import { randomInt } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { PrismaService } from '../common/prisma.service';
 import { AdultService } from '../adult/adult.service';
 import { StreamService } from '../stream/stream.service';
@@ -16,6 +16,7 @@ export interface VodViewer { userId: string; accountId: string; username: string
 type Kind = 'FILM' | 'SERIE';
 const PAIR_TTL_MS = 5 * 60_000;
 const TOKEN_DAYS = 60;
+const DEVICE_TTL_MS = 10 * 60_000;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // sans les caractères qu'on confond (0/O, 1/I/L)
 
 /** Une catégorie de film ou de série (une sous-catégorie sans type propre hérite de celui de sa catégorie parente). */
@@ -94,6 +95,8 @@ const percentOf = (pos: number, dur: number | null) => (dur && dur > 0 ? Math.mi
 @Injectable()
 export class VodService {
   private pairings = new Map<string, { viewer: VodViewer; expiresAt: number }>();
+  /** Connexion d'une télé ou d'une box : la télé affiche un code, le membre le saisit sur le site ; la télé le découvre en interrogeant le serveur. */
+  private devices = new Map<string, { userCode: string; expiresAt: number; viewer?: VodViewer }>();
 
   constructor(
     private prisma: PrismaService,
@@ -138,11 +141,47 @@ export class VodService {
     const hit = this.pairings.get(code);
     if (!hit || hit.expiresAt < Date.now()) throw new UnauthorizedException("Code d'association invalide ou expiré : génère-en un nouveau sur le site (page Lecteur).");
     this.pairings.delete(code);
-    const v = hit.viewer;
+    return this.issueToken(hit.viewer);
+  }
+
+  /** La session de l'application pour ce profil (60 jours). L'accès est revérifié ici et à chaque appel. */
+  private async issueToken(v: VodViewer) {
     await this.assertAccess(v.accountId);
     const payload = { sub: v.userId, username: v.username, role: v.role, ...(v.accountId !== v.userId ? { acct: v.accountId } : {}), ...(v.fam ? { fam: true } : {}) };
     const accessToken = this.jwt.sign(payload, { expiresIn: `${TOKEN_DAYS}d` });
     return { accessToken, username: v.username, expiresAt: new Date(Date.now() + TOKEN_DAYS * 86_400_000).toISOString() };
+  }
+
+  /** Une télé ou une box demande un code à afficher (le membre n'a rien à saisir sur la télécommande). Public : le code secret `deviceCode` ne quitte pas l'appareil. */
+  deviceStart() {
+    const now = Date.now();
+    for (const [k, v] of this.devices) if (v.expiresAt < now) this.devices.delete(k);
+    if (this.devices.size > 2000) this.devices.clear();
+    const taken = new Set([...this.devices.values()].map((d) => d.userCode));
+    let userCode = '';
+    do { userCode = Array.from({ length: 8 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join(''); } while (taken.has(userCode));
+    const deviceCode = randomBytes(24).toString('hex');
+    this.devices.set(deviceCode, { userCode, expiresAt: now + DEVICE_TTL_MS });
+    return { deviceCode, userCode, expiresInSeconds: DEVICE_TTL_MS / 1000, intervalSeconds: 3 };
+  }
+
+  /** Le membre (connecté au site) saisit le code affiché sur la télé : cet appareil reçoit sa session au prochain appel. */
+  async deviceApprove(viewer: VodViewer, rawCode: string) {
+    await this.assertAccess(viewer.accountId);
+    const code = String(rawCode ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const hit = [...this.devices.entries()].find(([, d]) => d.userCode === code && d.expiresAt > Date.now());
+    if (!code || !hit) throw new NotFoundException("Code inconnu ou expiré : vérifie celui qui s'affiche sur la télé (il change toutes les 10 minutes).");
+    hit[1].viewer = viewer;
+    return { ok: true };
+  }
+
+  /** La télé demande si le code a été saisi : « pending » tant que non, puis la session (une seule fois). */
+  async devicePoll(deviceCode: string) {
+    const d = this.devices.get(String(deviceCode ?? ''));
+    if (!d || d.expiresAt < Date.now()) { if (d) this.devices.delete(String(deviceCode)); throw new GoneException('Code expiré : relance la connexion sur la télé.'); }
+    if (!d.viewer) return { status: 'pending' };
+    this.devices.delete(String(deviceCode));
+    return { status: 'approved', ...(await this.issueToken(d.viewer)) };
   }
 
   private async hiddenFor(viewer: VodViewer): Promise<string[]> {

@@ -31,6 +31,26 @@ export class VodController {
     return this.vod.exchange(body?.code ?? '');
   }
 
+  /** Télé ou box : demande un code à afficher à l'écran (public). */
+  @Post('device/start')
+  deviceStart() {
+    return this.vod.deviceStart();
+  }
+
+  /** La télé demande si le code a été saisi sur le site (public : le code secret de l'appareil en tient lieu). */
+  @Post('device/poll')
+  devicePoll(@Body() body: { deviceCode?: string }) {
+    return this.vod.devicePoll(body?.deviceCode ?? '');
+  }
+
+  /** Le membre saisit sur le site le code affiché sur sa télé. */
+  @UseGuards(JwtAuthGuard)
+  @Post('device/approve')
+  deviceApprove(@Body() body: { code?: string }, @Req() req: any) {
+    assertPerm(req, 'download');
+    return this.vod.deviceApprove(viewerOf(req), body?.code ?? '');
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('home')
   home(@Req() req: any) {

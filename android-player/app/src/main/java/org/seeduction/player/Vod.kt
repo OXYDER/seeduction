@@ -93,6 +93,23 @@ object VodApi {
         prefs.vodUser ?: ""
     }
 
+    /** Télé ou box : demande un code à afficher à l'écran (le membre le saisit sur le site). */
+    class DeviceCode(val deviceCode: String, val userCode: String, val expiresInSeconds: Int, val intervalSeconds: Int)
+
+    suspend fun deviceStart(): DeviceCode = withContext(Dispatchers.IO) {
+        val o = call("/device/start", null, "POST", "{}")
+        DeviceCode(o.getString("deviceCode"), o.getString("userCode"), o.optInt("expiresInSeconds", 600), o.optInt("intervalSeconds", 3).coerceAtLeast(2))
+    }
+
+    /** Le code a-t-il été saisi sur le site ? Renvoie le pseudo (et enregistre la session) une fois connecté, sinon null. */
+    suspend fun devicePoll(deviceCode: String, prefs: Prefs): String? = withContext(Dispatchers.IO) {
+        val o = call("/device/poll", null, "POST", JSONObject().put("deviceCode", deviceCode).toString())
+        if (o.optString("status") != "approved") return@withContext null
+        prefs.vodToken = o.getString("accessToken")
+        prefs.vodUser = o.optString("username").ifEmpty { null }
+        prefs.vodUser ?: ""
+    }
+
     suspend fun home(token: String): VodHome = withContext(Dispatchers.IO) {
         val o = call("/home", token)
         val arr = o.optJSONArray("rails") ?: JSONArray()

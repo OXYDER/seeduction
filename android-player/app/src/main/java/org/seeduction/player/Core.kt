@@ -79,6 +79,11 @@ class Prefs(ctx: Context) {
         get() = p.getString("playerMode", PlayerMode.INTERNAL) ?: PlayerMode.INTERNAL
         set(v) { p.edit().putString("playerMode", v).apply() }
 
+    /** Mode TV : « auto » (détecté), « on » (toujours) ou « off » (jamais) : navigation à la télécommande, grandes affiches, menu en haut. */
+    var tvMode: String
+        get() = p.getString("tvMode", "auto") ?: "auto"
+        set(v) { p.edit().putString("tvMode", v).apply() }
+
     var wifiOnlySeed: Boolean
         get() = p.getBoolean("wifiOnlySeed", true)
         set(v) { p.edit().putBoolean("wifiOnlySeed", v).apply() }

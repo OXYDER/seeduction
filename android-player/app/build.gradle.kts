@@ -20,8 +20,8 @@ android {
         applicationId = "org.seeduction.player"
         minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.4.0"
+        versionCode = 7
+        versionName = "1.5.0"
         // Les téléphones d'aujourd'hui : 64 bits (la grande majorité) et 32 bits (anciens modèles). Pas x86 : l'APK serait bien plus gros.
         // -PabiOnly=arm64-v8a : version allégée pour les téléphones récents (envoi par messagerie).
         ndk { abiFilters += ((project.findProperty("abiOnly") as String?)?.split(",") ?: listOf("arm64-v8a", "armeabi-v7a")) }

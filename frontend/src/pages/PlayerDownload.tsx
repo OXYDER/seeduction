@@ -51,6 +51,8 @@ function VodPanel() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState(false);
+  const [tvCode, setTvCode] = useState('');
+  const [tvMsg, setTvMsg] = useState<{ ok: boolean; text: string } | null>(null);
   useEffect(() => { api.get('/vod/status').then((r) => setSt(r.data)).catch(() => setSt(null)); }, []);
   useEffect(() => {
     if (!pair) return;
@@ -66,6 +68,15 @@ function VodPanel() {
       setLeft(r.data.expiresInSeconds ?? 300);
     } catch (e: any) { setErr(e?.response?.data?.message ?? 'Impossible de générer le code.'); }
     finally { setBusy(false); }
+  };
+  const connectTv = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTvMsg(null);
+    try {
+      await api.post('/vod/device/approve', { code: tvCode });
+      setTvMsg({ ok: true, text: 'Télé connectée : elle ouvre le catalogue dans quelques secondes.' });
+      setTvCode('');
+    } catch (err: any) { setTvMsg({ ok: false, text: err?.response?.data?.message ?? 'Code refusé.' }); }
   };
   const mm = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
   return (
@@ -95,6 +106,15 @@ function VodPanel() {
             </div>
           )}
           {err && <p style={{ color: 'var(--danger, #f87171)', margin: '10px 0 0', fontSize: 13 }}>{err}</p>}
+          <form onSubmit={connectTv} style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--line, rgba(255,255,255,.1))', display: 'grid', gap: 8, justifyItems: 'center' }}>
+            <strong>Connecter une télé ou une box</strong>
+            <span className="muted" style={{ fontSize: 12.5 }}>Ouvre l'application sur la télé : un code s'affiche. Saisis-le ici, rien à taper à la télécommande.</span>
+            <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <input id="tv-code" value={tvCode} onChange={(e) => setTvCode(e.target.value.toUpperCase())} maxLength={9} placeholder="Code de la télé" aria-label="Code affiché sur la télé" autoComplete="off" style={{ width: 170, textAlign: 'center', letterSpacing: '0.12em', fontFamily: 'ui-monospace, monospace' }} />
+              <button type="submit" className="secondary" disabled={tvCode.replace(/[^A-Z0-9]/g, '').length < 8}>Connecter</button>
+            </div>
+            {tvMsg && <span style={{ fontSize: 13, color: tvMsg.ok ? 'var(--ok, #34d399)' : 'var(--danger, #f87171)' }}>{tvMsg.text}</span>}
+          </form>
         </>
       )}
     </div>

@@ -18,6 +18,7 @@ const PUBLIC_ROUTES: Record<string, string> = {
   'GET /public/torrents': 'API par clé', 'GET /public/categories': 'API par clé (catégories d’envoi)', 'GET /public/torrents/:id': 'API par clé', 'GET /public/me': 'API par clé', 'GET /public/stats': 'API par clé', 'GET /public/rss/torrents.xml': 'flux RSS par clé',
   'POST /donations/webhook/kofi': 'Ko-fi (jeton vérifié)', 'POST /donations/webhook/bmc': 'Buy Me a Coffee (signature vérifiée)',
   'GET /stream/session/:token': 'jeton de lecture', 'POST /stream/watching': 'jeton de lecture', 'GET /stream/resume': 'passkey du lecteur', 'POST /stream/watching/stop': 'jeton de lecture', 'GET /stream/:torrentId': 'passkey', 'GET /subtitles/player': 'passkey du lecteur', 'GET /subtitles/:id/play': 'passkey du lecteur',
+  'POST /vod/device/start': 'télé ou box : demande un code à afficher (rien de personnel)', 'POST /vod/device/poll': 'télé ou box : code secret de l\'appareil',
   'POST /vod/exchange': "code d'association à usage unique (5 minutes) de l'application Seeduction Cinéma",
   'GET /tracker/:passkey/announce': 'tracker BitTorrent', 'GET /tracker/:passkey/scrape': 'tracker BitTorrent',
 };
