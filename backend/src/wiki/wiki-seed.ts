@@ -608,9 +608,11 @@ export const WIKI_SEED: WikiSeedCategory[] = [
       {
         title: 'Thèmes et couleurs d\'accent',
         slug: 'themes-et-accents',
-        keywords: 'prestige, couleur, violet, néon, glacier, apparence',
+        keywords: 'prestige, couleur, violet, néon, glacier, apparence, ambiance, cinéma, terminal, papier, couleur libre, contraste, lisibilité',
         content:
-          `Le site utilise une seule mise en page (Prestige), personnalisable par sa couleur d'accent depuis le sélecteur 🎨 : violet, bleu, rouge, vert, doré, néon arcade, émeraude royale, sang et ombre, glacier ou aurore.\n\n` +
+          `Le sélecteur 🎨 (en haut à droite) règle trois choses.\n\n` +
+          `[b]Ambiance[/b] : [b]Prestige[/b] (verre et lueurs, la mise en page d'origine), [b]Cinéma[/b] (noir chaud, titres à empattements, grain de pellicule léger), [b]Terminal[/b] (police à chasse fixe, vert sur noir, angles droits) ou [b]Papier[/b] (clair et chaud, titres façon journal). Chaque ambiance propose sa couleur d'accent ; tu peux ensuite en choisir une autre. Cinéma et Terminal sont toujours sombres, Papier toujours clair : les boutons Sombre / Clair / Auto ne s'appliquent qu'à Prestige. En revenant à Prestige, ta couleur d'avant est remise.\n\n` +
+          `[b]Couleur d'accent[/b] : violet, bleu, rouge, vert, doré, néon arcade, émeraude royale, sang et ombre, glacier ou aurore, ou [b]Couleur libre[/b] : n'importe quelle couleur. Le site règle alors tout seul le texte des boutons (blanc ou foncé) et la teinte des liens pour qu'ils restent lisibles (contraste d'au moins 4,5 pour 1, norme WCAG AA, adapté au fond sombre ou clair). Si ta couleur est trop pâle ou trop sombre pour ça, elle est éclaircie ou assombrie un tout petit peu et le menu l'indique, avec les chiffres de contraste.\n\n` +
           `Une option « L'accent suit la catégorie parcourue » (dans le même menu) fait changer automatiquement la couleur du site selon ce que tu regardes (Films en bleu, XXX en rose, Jeux en vert...) au lieu d'une couleur fixe — désactivée par défaut.`,
       },
       {

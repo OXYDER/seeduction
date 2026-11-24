@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { fitAccent, type FittedAccent } from './accentColor';
 
 export const THEME_STORAGE_KEY = 'seeduction-theme';
 /** Seul thème du site (mise en page) — les anciens (Doré classique, Écarlate, Nuit Argentée) ont été retirés au
@@ -31,6 +32,7 @@ export function setAccent(value: string) {
   } catch {
     // Stockage indisponible : le choix vaut pour cette visite.
   }
+  applyCustomAccent();
   window.dispatchEvent(new Event('seeduction-theme'));
 }
 
@@ -71,12 +73,7 @@ function hexToRgb(hex: string): string {
 export function applyCategoryAccent(hex: string | null) {
   const root = document.documentElement.style;
   if (!hex || !getCategoryAccentEnabled()) {
-    root.removeProperty('--acc1');
-    root.removeProperty('--acc2');
-    root.removeProperty('--acc-rgb');
-    root.removeProperty('--acc2-rgb');
-    root.removeProperty('--acc-light');
-    root.removeProperty('--acc-link');
+    writeCustomVars(); // retire les variables posées, puis remet la couleur libre si c'est elle qui est choisie
     return;
   }
   const rgb = hexToRgb(hex);
@@ -133,9 +130,11 @@ export function getMode(): Mode {
 
 /** Applique l'apparence sur <html> (attribut data-mode="light" quand le clair est actif). */
 export function applyMode(mode: Mode = getMode()) {
-  const light = mode === 'light' || (mode === 'auto' && !!window.matchMedia?.('(prefers-color-scheme: light)').matches);
+  const forced = AMBIANCES.find((a) => a.value === getAmbiance())?.forced;
+  const light = forced ? forced === 'light' : mode === 'light' || (mode === 'auto' && !!window.matchMedia?.('(prefers-color-scheme: light)').matches);
   if (light) document.documentElement.setAttribute('data-mode', 'light');
   else document.documentElement.removeAttribute('data-mode');
+  applyCustomAccent(); // les liens d'une couleur libre se calculent selon le fond (sombre ou clair)
 }
 
 export function setMode(mode: Mode) {
@@ -160,4 +159,91 @@ export function watchSystemMode() {
   if (!mq) return;
   const on = () => { if (getMode() === 'auto') applyMode('auto'); };
   mq.addEventListener?.('change', on);
+}
+
+/* ───────────── Ambiances : Prestige (par défaut), Cinéma, Terminal, Papier ─────────────
+ * Une ambiance règle la police des titres, les angles, le grain et la teinte des fonds ; elle est indépendante de la
+ * couleur d'accent (mais en propose une). Cinéma et Terminal sont toujours sombres, Papier toujours clair : le choix
+ * Sombre / Clair / Auto ne s'applique qu'à Prestige. */
+export type Ambiance = 'prestige' | 'cinema' | 'terminal' | 'papier';
+export const AMBIANCE_STORAGE_KEY = 'seeduction-ambiance';
+const ACCENT_BEFORE_KEY = 'seeduction-accent-before-ambiance';
+export const AMBIANCES: { value: Ambiance; label: string; desc: string; forced?: 'dark' | 'light'; accent?: string; sample: [string, string, string] }[] = [
+  { value: 'prestige', label: 'Prestige', desc: 'Verre et lueurs, sombre ou clair', sample: ['#0e111d', '#f3f4fb', '#8b5cf6'] },
+  { value: 'cinema', label: 'Cinéma', desc: 'Noir chaud, titres à empattements, grain de pellicule', forced: 'dark', accent: '#d9a441', sample: ['#100e0c', '#f3ead8', '#d9a441'] },
+  { value: 'terminal', label: 'Terminal', desc: 'Monospace, vert sur noir, angles droits', forced: 'dark', accent: '#2fe38a', sample: ['#07180f', '#a6f5c3', '#2fe38a'] },
+  { value: 'papier', label: 'Papier', desc: 'Clair chaud, titres de journal', forced: 'light', accent: '#9a4d1d', sample: ['#fffdf7', '#2a2519', '#9a4d1d'] },
+];
+
+export function getAmbiance(): Ambiance {
+  const v = document.documentElement.getAttribute('data-ambiance');
+  return v === 'cinema' || v === 'terminal' || v === 'papier' ? v : 'prestige';
+}
+
+export function setAmbiance(value: Ambiance) {
+  const root = document.documentElement;
+  const amb = AMBIANCES.find((a) => a.value === value)!;
+  const prev = getAmbiance();
+  if (value === 'prestige') root.removeAttribute('data-ambiance'); else root.setAttribute('data-ambiance', value);
+  try { localStorage.setItem(AMBIANCE_STORAGE_KEY, value); } catch { /* stockage indisponible */ }
+  // L'ambiance propose sa couleur ; on retient celle d'avant pour la rendre en revenant à Prestige (si le membre n'en a pas changé entre-temps).
+  try {
+    if (amb.accent) {
+      if (prev === 'prestige') localStorage.setItem(ACCENT_BEFORE_KEY, getAccent());
+      setCustomAccent(amb.accent, false);
+    } else if (prev !== 'prestige') {
+      const before = localStorage.getItem(ACCENT_BEFORE_KEY);
+      const sig = AMBIANCES.find((a) => a.value === prev)?.accent;
+      if (before && before !== 'custom' && getAccent() === 'custom' && readCustom()?.hex === sig) setAccent(before);
+    }
+  } catch { /* idem */ }
+  applyMode();
+  window.dispatchEvent(new Event('seeduction-theme'));
+}
+
+export function useAmbiance(): Ambiance {
+  const [a, setA] = useState<Ambiance>(getAmbiance);
+  useEffect(() => {
+    const update = () => setA(getAmbiance());
+    window.addEventListener('seeduction-theme', update);
+    return () => window.removeEventListener('seeduction-theme', update);
+  }, []);
+  return a;
+}
+
+/* ───────────── Couleur libre ───────────── */
+export const CUSTOM_ACCENT_KEY = 'seeduction-accent-custom';
+interface CustomAccent { hex: string; dark: Record<string, string>; light: Record<string, string> }
+const CUSTOM_VARS = ['--acc1', '--acc2', '--acc-rgb', '--acc2-rgb', '--acc-light', '--acc-link', '--acc-link-hover', '--on-acc', '--aurora-a', '--aurora-b', '--aurora-c', '--aurora-d'];
+
+export function readCustom(): CustomAccent | null {
+  try { const v = JSON.parse(localStorage.getItem(CUSTOM_ACCENT_KEY) ?? 'null'); return v && v.hex && v.dark && v.light ? v : null; } catch { return null; }
+}
+
+/** Pose (ou retire) les variables de la couleur libre sur <html>. Les lueurs de fond restent celles de l'ambiance quand il y en a une. */
+function writeCustomVars() {
+  const style = document.documentElement.style;
+  CUSTOM_VARS.forEach((k) => style.removeProperty(k));
+  if (getAccent() !== 'custom') return;
+  const c = readCustom();
+  if (!c) return;
+  const vars = document.documentElement.getAttribute('data-mode') === 'light' ? c.light : c.dark;
+  const ambiance = getAmbiance() !== 'prestige';
+  for (const [k, v] of Object.entries(vars)) if (!(ambiance && k.startsWith('--aurora'))) style.setProperty(k, v);
+}
+
+function applyCustomAccent() {
+  if (!getCategoryAccentEnabled()) writeCustomVars(); // « l'accent suit la catégorie » reste prioritaire quand il est actif
+}
+
+/** Choisit une couleur libre. Retourne le résultat du contrôle de lisibilité (pour l'afficher dans le sélecteur). */
+export function setCustomAccent(hex: string, notify = true): { dark: FittedAccent; light: FittedAccent } | null {
+  const dark = fitAccent(hex, false), light = fitAccent(hex, true);
+  if (!dark || !light) return null;
+  try { localStorage.setItem(CUSTOM_ACCENT_KEY, JSON.stringify({ hex, dark: dark.vars, light: light.vars })); } catch { /* stockage indisponible */ }
+  document.documentElement.setAttribute('data-accent', 'custom');
+  try { localStorage.setItem(ACCENT_STORAGE_KEY, 'custom'); } catch { /* idem */ }
+  applyCustomAccent();
+  if (notify) window.dispatchEvent(new Event('seeduction-theme'));
+  return { dark, light };
 }

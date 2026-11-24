@@ -1,0 +1,69 @@
+/* ==========================================================================
+   AMBIANCES : trois habillages en plus de Prestige (voir lib/theme.ts, AMBIANCES).
+   Elles ne touchent ni à la couleur d'accent (choisie à part, avec contrôle de lisibilité) ni à la mise en page :
+   seulement les fonds, les polices des titres, les angles et un voile (grain ou lignes de balayage).
+   Chargée après skin5.css et skin-light.css. <html data-ambiance="cinema|terminal|papier">.
+   ========================================================================== */
+
+/* ───────────── Cinéma : noir chaud, titres à empattements, grain de pellicule ───────────── */
+:root[data-theme="prestige"][data-ambiance="cinema"] {
+  --font-display: 'Playfair Display Variable', 'Playfair Display', Georgia, serif;
+  --s5-bg: #070605; --s5-surf: rgba(18, 15, 12, 0.8); --s5-surf2: rgba(28, 23, 18, 0.85);
+  --s5-line: rgba(240, 224, 190, 0.12); --s5-line2: rgba(240, 224, 190, 0.22);
+  --s5-r: 4px; --s5-rs: 3px;
+  --bg: #070605; --bg-panel: #100e0c; --bg-panel-raised: #1a1713;
+  --border: rgba(240, 224, 190, 0.12); --text: #f3ead8; --text-dim: #a89c85;
+  --aurora-a: 120, 80, 30; --aurora-b: 70, 40, 15; --aurora-c: 25, 18, 10; --aurora-d: 50, 30, 10;
+}
+:root[data-ambiance="cinema"] :is(h1, h2, h3, .panel-title, .dc-head h1, .hero-plex h1) { font-family: var(--font-display); letter-spacing: 0; }
+:root[data-ambiance="cinema"] body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999; opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ───────────── Terminal : monospace, vert sur noir, angles droits, lignes de balayage ───────────── */
+:root[data-theme="prestige"][data-ambiance="terminal"] {
+  --font-display: 'JetBrains Mono Variable', 'JetBrains Mono', Consolas, monospace;
+  --font-body: 'JetBrains Mono Variable', 'JetBrains Mono', Consolas, monospace;
+  --s5-bg: #030d08; --s5-surf: rgba(7, 24, 15, 0.86); --s5-surf2: rgba(11, 36, 24, 0.9);
+  --s5-line: rgba(80, 255, 150, 0.26); --s5-line2: rgba(80, 255, 150, 0.4);
+  --s5-r: 0px; --s5-rs: 0px;
+  --bg: #030d08; --bg-panel: #07180f; --bg-panel-raised: #0b2418;
+  --border: rgba(80, 255, 150, 0.26); --text: #a6f5c3; --text-dim: #6bb98a;
+  --aurora-a: 0, 120, 60; --aurora-b: 0, 70, 40; --aurora-c: 0, 30, 18; --aurora-d: 0, 50, 30;
+}
+:root[data-ambiance="terminal"] * { font-family: var(--font-body) !important; }
+:root[data-ambiance="terminal"] :is(.panel, button, input, select, textarea, .badge, .poster-card, .ha-btn, .community-tile, .hr-card, .fy-card, .st-board, .account-menu, .qs-box, .theme-menu, .home-cust-panel, .dm-window) { border-radius: 0 !important; }
+:root[data-ambiance="terminal"] body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 1px, transparent 1px 3px);
+}
+
+/* ───────────── Papier : clair chaud, titres de journal ───────────── */
+:root[data-theme="prestige"][data-ambiance="papier"][data-mode="light"] {
+  --font-display: 'Fraunces Variable', 'Fraunces', Georgia, serif;
+  --s5-bg: #f4efe4; --s5-surf: rgba(255, 253, 247, 0.94); --s5-surf2: rgba(236, 229, 212, 0.95);
+  --s5-line: rgba(60, 45, 20, 0.16); --s5-line2: rgba(60, 45, 20, 0.28);
+  --s5-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 26px -16px rgba(60, 45, 20, 0.35);
+  --bg: #f4efe4; --bg-panel: #fffdf7; --bg-panel-raised: #ece5d4;
+  --border: rgba(60, 45, 20, 0.16); --text: #2a2519; --text-dim: #6d6450;
+}
+:root[data-ambiance="papier"] :is(h1, h2, h3, .panel-title, .dc-head h1, .hero-plex h1) { font-family: var(--font-display); letter-spacing: 0; }
+:root[data-ambiance="papier"] body { background: #f4efe4; }
+
+/* ───────────── Sélecteur : cartes d'ambiance et couleur libre ───────────── */
+.amb-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.amb-card { display: grid; gap: 4px; padding: 5px; border-radius: 10px; background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 11px; box-shadow: none; text-align: center; cursor: pointer; }
+.amb-card.on { border-color: var(--acc1); box-shadow: 0 0 0 1px var(--acc1); }
+.amb-sample { position: relative; display: grid; place-items: center; height: 34px; border-radius: 6px; overflow: hidden; }
+.amb-sample b { font-size: 15px; font-family: Georgia, serif; }
+.amb-sample i { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; }
+.amb-name { font-weight: 600; }
+.free-accent { margin-top: 6px; }
+.accent-swatch.free { position: relative; width: 100%; cursor: pointer; }
+.accent-swatch.free input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.free-check { margin-top: 6px; font-size: 11.5px; color: var(--text-dim); }
+.free-check.ok { color: var(--acc-link); }
+
+/* Papier : quelques textes du thème clair (générés à partir de teintes bleutées) passent au brun-gris chaud de l'ambiance */
+:root[data-ambiance="papier"][data-mode="light"] :is(.hero-plex .hero-synopsis, .side-topbar .side-burger, .side-topbar .side-search input, .cr-name, .cr-restore, .hs-min, button.secondary) { color: var(--text-dim); }
