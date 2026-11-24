@@ -1,4 +1,5 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { vodAccess } from '../common/utils/vod';
 import { PrismaService } from '../common/prisma.service';
 import { PeerEvent } from '@prisma/client';
 import { SettingsService } from '../settings/settings.service';
@@ -25,6 +26,8 @@ export interface AnnounceParams {
   // (WebTorrent) qui continue de seeder après la lecture, donc il est soumis aux mêmes règles hit & run qu'un
   // téléchargement classique. Le flag sert uniquement à alimenter un compteur séparé pour les statistiques.
   viaStream?: boolean;
+  /** Lecture du catalogue « Seeduction Cinéma » (app Android) : le téléchargement n'est pas compté pour le spectateur, s'il y a droit (donateur, fondateur, uploader ; voir common/utils/vod.ts). */
+  vod?: boolean;
   /** User-Agent du client (anti-triche : cohérence avec le peer_id). */
   userAgent?: string;
 }
@@ -162,8 +165,10 @@ export class TrackerService {
       this.settings.freeleechUntil(),
       this.prisma.personalFreeleech.findUnique({ where: { userId_torrentId: { userId: user.id, torrentId: torrent.id } } }),
     ]);
+    // Lecture du catalogue vidéo : le spectateur n'a pas de ratio à gérer (ni de ratio minimum ni de hit & run), seuls ceux qui seedent comptent. Le marqueur ne vaut que pour un compte qui a droit au catalogue.
+    const vodFree = params.vod === true && vodAccess(user) !== null;
     const isFree = torrent.freeleech || !!globalFreeleech || (!!personal && personal.expiresAt > new Date())
-      || (!!user.freeleechUntil && user.freeleechUntil > new Date());
+      || (!!user.freeleechUntil && user.freeleechUntil > new Date()) || vodFree;
 
     // Capturé avant toute écriture de cette requête (la création/mise à jour de Snatch plus bas mettrait sinon
     // toujours lastSeedAt à "maintenant", rendant ce test toujours vrai) : sert à décider, plus bas, si une
@@ -191,7 +196,7 @@ export class TrackerService {
       }
     }
     // Trop de « hit & run » non régularisés : plus de nouveaux téléchargements tant que ce n'est pas réglé.
-    if (isDownloading && params.event === 'started' && !staffExempt) {
+    if (isDownloading && params.event === 'started' && !staffExempt && !vodFree) {
       // Un hit & run « en réparation » (le membre seede de nouveau ce torrent) ne compte pas dans la limite : il ne bloque plus ses téléchargements tant que le seed continue.
       const repairing = (await this.prisma.peer.findMany({ where: { userId: user.id, isSeeder: true, lastAnnounceAt: { gt: new Date(Date.now() - SEED_FRESH_MS) } }, select: { torrentId: true }, distinct: ['torrentId'] })).map((p) => p.torrentId);
       const unresolved = await this.prisma.snatch.count({ where: { userId: user.id, hnr: true, satisfied: false, ...(repairing.length ? { torrentId: { notIn: repairing } } : {}) } });
@@ -290,7 +295,8 @@ export class TrackerService {
     if (params.event === 'completed') {
       // Le lecteur Seeduction est un vrai client BitTorrent qui continue de seeder après coup : un téléchargement
       // complété via le lecteur crée une obligation de seed normale, exactement comme n'importe quel client.
-      await this.prisma.snatch.create({ data: { torrentId: torrent.id, userId: user.id, lastSeedAt: new Date(), startedAt: existingPeer?.createdAt ?? null } });
+      // Une lecture du catalogue vidéo n'engage à rien (pas d'obligation de partage) : aucune ligne de téléchargement complété n'est créée pour le spectateur.
+      if (!vodFree) await this.prisma.snatch.create({ data: { torrentId: torrent.id, userId: user.id, lastSeedAt: new Date(), startedAt: existingPeer?.createdAt ?? null } });
       await this.prisma.torrent.update({
         where: { id: torrent.id },
         data: { completedCount: { increment: 1 }, ...(params.viaStream ? { streamCompletedCount: { increment: 1 } } : {}) },

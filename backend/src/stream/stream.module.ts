@@ -7,5 +7,6 @@ import { TorrentsModule } from '../torrents/torrents.module';
   imports: [TorrentsModule],
   controllers: [StreamController],
   providers: [StreamService],
+  exports: [StreamService],
 })
 export class StreamModule {}

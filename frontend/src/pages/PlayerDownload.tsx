@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { formatBytes } from '../lib/format';
+import QrCode from '../components/QrCode';
 
 // Les installateurs sont hébergés par le site (Admin > Lecteurs). Les adresses GitHub ci-dessous ne servent plus que de secours tant que rien n'est publié.
 // (Ancien commentaire :) URL de l'asset de la release GitHub (le lecteur ne peut pas être hébergé dans le dépôt : un installateur avec
@@ -37,6 +38,66 @@ function Meta({ r }: { r: Release | undefined }) {
       Version <strong>{r.version}</strong> · {formatBytes(r.size)} · publiée le {new Date(r.publishedAt).toLocaleDateString('fr-CA')}
       {r.notes ? <><br />{r.notes}</> : null}
     </p>
+  );
+}
+
+interface VodStatus { eligible: boolean; label: string | null; rule: string }
+
+/** « Seeduction Cinéma » : catalogue vidéo de l'application Android, réservé aux donateurs, fondateurs et uploaders. Le code (ou le lien) associe l'application sans jamais lui donner le mot de passe. */
+function VodPanel() {
+  const [st, setSt] = useState<VodStatus | null>(null);
+  const [pair, setPair] = useState<{ code: string; link: string; until: number } | null>(null);
+  const [left, setLeft] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { api.get('/vod/status').then((r) => setSt(r.data)).catch(() => setSt(null)); }, []);
+  useEffect(() => {
+    if (!pair) return;
+    const t = setInterval(() => { const s = Math.max(0, Math.round((pair.until - Date.now()) / 1000)); setLeft(s); if (s === 0) setPair(null); }, 1000);
+    return () => clearInterval(t);
+  }, [pair]);
+  if (!st) return null;
+  const generate = async () => {
+    setBusy(true); setErr('');
+    try {
+      const r = await api.post('/vod/pair');
+      setPair({ code: r.data.code, link: r.data.link, until: Date.now() + (r.data.expiresInSeconds ?? 300) * 1000 });
+      setLeft(r.data.expiresInSeconds ?? 300);
+    } catch (e: any) { setErr(e?.response?.data?.message ?? 'Impossible de générer le code.'); }
+    finally { setBusy(false); }
+  };
+  const mm = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+  return (
+    <div className="panel ornate" style={{ textAlign: 'center' }}>
+      <h3 style={{ margin: '0 0 4px' }}>🎬 Seeduction Cinéma</h3>
+      <p className="muted" style={{ margin: '0 0 14px' }}>
+        Le catalogue de films et de séries du site dans l'application Android, façon vidéo à la demande : tu choisis une affiche, ça se lit. Ce que tu regardes ici n'est <strong>pas compté dans ton ratio</strong> : seuls ceux qui seedent comptent. La disponibilité d'un titre dépend de son nombre de seeders.
+      </p>
+      {!st.eligible ? (
+        <p className="muted" style={{ margin: 0 }}>🔒 {st.rule} Pour y accéder, <a href="/soutenir">soutiens le site</a> ou deviens uploader.</p>
+      ) : (
+        <>
+          <p style={{ margin: '0 0 12px', fontSize: 13 }}>✅ Accès ouvert ({st.label}).</p>
+          {!pair ? (
+            <button type="button" className="download-btn" disabled={busy} onClick={generate}>{busy ? '…' : "Connecter l'application"}</button>
+          ) : (
+            <div className="grid" style={{ gap: 10, justifyItems: 'center' }}>
+              <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: '0.18em', fontFamily: 'ui-monospace, monospace' }}>{pair.code}</div>
+              <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button type="button" className="secondary" onClick={() => { navigator.clipboard?.writeText(pair.code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => undefined); }}>{copied ? 'Copié ✓' : 'Copier le code'}</button>
+                <a className="download-btn" href={pair.link} style={{ textDecoration: 'none', display: 'inline-block' }}>Ouvrir dans l'application</a>
+              </div>
+              <QrCode value={pair.link} size={150} label="QR code d'association de l'application" />
+              <p className="muted" style={{ fontSize: 12.5, margin: 0, lineHeight: 1.6 }}>
+                Sur ton téléphone, ouvre l'application et saisis ce code (ou touche « Ouvrir dans l'application », ou scanne le QR code). Valable encore <strong>{mm}</strong>, une seule fois.
+              </p>
+            </div>
+          )}
+          {err && <p style={{ color: 'var(--danger, #f87171)', margin: '10px 0 0', fontSize: 13 }}>{err}</p>}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -90,6 +151,8 @@ export default function PlayerDownload() {
           Pendant la lecture, une notification indique le partage en cours : laisse-la, c'est ce qui permet de continuer à seeder (72 h ou ratio 1, comme sur PC). Le partage se met en pause sur données mobiles (réglage modifiable dans l'application).
         </div>
       </div>
+
+      <VodPanel />
 
       <div className="panel grid" style={{ gap: 18 }}>
         <h2 style={{ margin: 0 }}>Installation sur Windows, étape par étape</h2>

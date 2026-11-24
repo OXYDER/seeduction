@@ -35,6 +35,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var empty: TextView
     private var refreshJob: Job? = null
 
+    companion object { const val EXTRA_NO_REDIRECT = "noRedirect" }
+
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     private fun text(t: String, size: Float = 15f, color: Int = Color.parseColor("#E8ECF8"), bold: Boolean = false) = TextView(this).apply {
@@ -45,11 +47,22 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         Journal.init(this)
         val prefs = Prefs(this)
+        // Une fois le catalogue associé, l'application s'ouvre dessus ; « Mes partages » y revient ici.
+        if (prefs.vodToken != null && !intent.getBooleanExtra(EXTRA_NO_REDIRECT, false)) {
+            startActivity(Intent(this, VodHomeActivity::class.java))
+            finish()
+            return
+        }
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(24), dp(18), dp(24)) }
         root.addView(text("Seeduction", 28f, Color.parseColor("#E0B84A"), true))
         root.addView(text("Lecteur pour Android", 15f, Color.parseColor("#9AA3C0")))
         root.addView(text("Version " + Config.APP_VERSION, 12f, Color.parseColor("#9AA3C0")))
         root.addView(text("\nRegarde un film ou une série directement depuis ton téléphone, sans limite de format. Sur le site Seeduction, ouvre la fiche d'un torrent et touche « Ouvrir dans le lecteur Seeduction » : ce lecteur s'ouvre tout seul, télécharge ce qu'il faut et lance la vidéo.\n", 14f))
+
+        root.addView(Button(this).apply {
+            text = if (prefs.vodToken != null) "🎬 Catalogue Seeduction Cinéma" else "🎬 Connecter le catalogue Seeduction Cinéma"
+            setOnClickListener { startActivity(Intent(this@MainActivity, VodHomeActivity::class.java)) }
+        })
 
         root.addView(Button(this).apply {
             text = "Ouvrir Seeduction"

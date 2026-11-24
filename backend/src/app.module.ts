@@ -51,6 +51,7 @@ import { EntitiesModule } from './entities/entities.module';
 import { FriendsModule } from './friends/friends.module';
 import { DmModule } from './dm/dm.module';
 import { StreamModule } from './stream/stream.module';
+import { VodModule } from './vod/vod.module';
 import { WikiModule } from './wiki/wiki.module';
 import { MessengerModule } from './messenger/messenger.module';
 import { FamilyModule } from './family/family.module';
@@ -129,6 +130,7 @@ import { WebmailModule } from './webmail/webmail.module';
     FriendsModule,
     DmModule,
     StreamModule,
+    VodModule,
     WikiModule,
     MessengerModule,
     FamilyModule,

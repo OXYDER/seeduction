@@ -93,6 +93,14 @@ class Prefs(ctx: Context) {
         p.edit().putString("sessions", arr.toString()).apply()
     }
 
+    /** Session du catalogue « Seeduction Cinéma » (obtenue en saisissant le code d'association affiché sur le site) et son pseudo. */
+    var vodToken: String?
+        get() = p.getString("vodToken", null)
+        set(v) { p.edit().apply { if (v == null) remove("vodToken") else putString("vodToken", v) }.apply() }
+    var vodUser: String?
+        get() = p.getString("vodUser", null)
+        set(v) { p.edit().apply { if (v == null) remove("vodUser") else putString("vodUser", v) }.apply() }
+
     /** Version qu'on a choisi d'ignorer (« Ignorer cette version » dans la proposition de mise à jour). */
     var skippedVersion: String?
         get() = p.getString("skippedVersion", null)

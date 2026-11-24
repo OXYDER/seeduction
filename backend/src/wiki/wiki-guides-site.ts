@@ -632,7 +632,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `2. Lance-le. Windows peut afficher un avertissement SmartScreen (logiciel récent) : clique sur « Informations complémentaires » puis « Exécuter quand même ».\n` +
         `3. L'installation inclut tout (VLC compris). Le logiciel se lance aussi avec Windows et reste dans la zone de notification.\n\n` +
         `[b]Sur Android[/b]\n` +
-        `Il existe aussi une application pour [b]Android[/b] (page [url=/player]Le lecteur Seeduction[/url], bouton « Télécharger l'application (.apk) »). Autorise l'installation depuis ton navigateur (« Sources inconnues ») puis, sur la fiche d'un film, touche « Ouvrir dans le lecteur Seeduction » : l'application télécharge ce qu'il faut, lance la vidéo (tous les formats, pistes audio, sous-titres) et signale « en train de regarder » comme sur PC. Une notification discrète indique le partage en cours : c'est elle qui permet de continuer à seeder écran éteint. Le partage se met en pause sur données mobiles (réglage « Partager seulement en Wi-Fi »). Ta position de lecture te suit d'un appareil à l'autre. Double-tape à gauche ou à droite de l'écran : retour ou avance de 10 secondes.\n\n` +
+        `Il existe aussi une application pour [b]Android[/b] (page [url=/player]Le lecteur Seeduction[/url], bouton « Télécharger l'application (.apk) »). Les donateurs, fondateurs et uploaders y trouvent aussi [b]Seeduction Cinéma[/b], le catalogue vidéo à la demande ([url=/wiki/guide-cinema]voir le guide[/url]). Autorise l'installation depuis ton navigateur (« Sources inconnues ») puis, sur la fiche d'un film, touche « Ouvrir dans le lecteur Seeduction » : l'application télécharge ce qu'il faut, lance la vidéo (tous les formats, pistes audio, sous-titres) et signale « en train de regarder » comme sur PC. Une notification discrète indique le partage en cours : c'est elle qui permet de continuer à seeder écran éteint. Le partage se met en pause sur données mobiles (réglage « Partager seulement en Wi-Fi »). Ta position de lecture te suit d'un appareil à l'autre. Double-tape à gauche ou à droite de l'écran : retour ou avance de 10 secondes.\n\n` +
         `[b]Regarder quelque chose[/b]\n` +
         `1. Ouvre la fiche d'un film ou d'une série.\n` +
         `2. Clique sur [b]🖥️ « Ouvrir dans le lecteur Seeduction »[/b].\n` +
@@ -665,6 +665,66 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `[b]Quand utiliser le lecteur ?[/b]\n` +
         `Pour regarder vite, sur un ordinateur de bureau. Pour des téléchargements en masse ou une seedbox, préfère un client classique ([url=/wiki/guide-telecharger]Télécharger un torrent[/url]).\n\n` +
         `Références : [url=/wiki/installer-le-lecteur]Installer le lecteur[/url], [url=/wiki/fonctionnement-du-lecteur]Comment fonctionne le lecteur[/url].`,
+    },
+    {
+      title: 'Seeduction Cinéma : le catalogue vidéo sur Android',
+      slug: 'guide-cinema',
+      keywords: 'cinéma, catalogue, vidéo à la demande, android, application, donateur, fondateur, uploader, ratio, seeders, code, associer, séries, films',
+      content:
+        `[b]Seeduction Cinéma[/b] est le catalogue de films et de séries du site, dans l'application Android, façon vidéo à la demande : tu ouvres l'application, tu choisis une affiche, ça se lit. Pas de client BitTorrent à configurer, pas de fichier à chercher.
+
+` +
+        `[b]Qui y a accès ?[/b]
+` +
+        `• Les [b]donateurs[/b] (tant que leur soutien est actif), les [b]membres fondateurs[/b] et les [b]uploaders[/b], ainsi que l'équipe.
+` +
+        `• Les autres membres voient sur la page [url=/player]Le lecteur Seeduction[/url] que le catalogue est réservé, avec un lien pour [url=/soutenir]soutenir le site[/url]. Si un don arrive à son terme, l'accès se ferme tout seul.
+
+` +
+        `[b]Pas de ratio à gérer pour celui qui regarde[/b]
+` +
+        `• Ce que tu télécharges pendant une lecture du catalogue [b]n'est pas compté[/b] dans ton ratio, et aucune obligation de partage ni « hit & run » n'en naît.
+` +
+        `• Seuls ceux qui [b]seedent[/b] comptent : leur envoi est compté comme d'habitude. Plus un titre est seedé, mieux il démarre : pense à garder tes torrents en seed.
+` +
+        `• Le marqueur n'a d'effet que pour un compte qui a droit au catalogue ; un autre client ou un autre membre ne peut pas s'en servir.
+
+` +
+        `[b]Connecter l'application (une seule fois)[/b]
+` +
+        `1. Installe l'application Android (page [url=/player]Le lecteur Seeduction[/url], « Télécharger l'application »).
+` +
+        `2. Sur cette même page, dans [b]🎬 Seeduction Cinéma[/b], touche [b]Connecter l'application[/b] : un code de 8 caractères s'affiche (valable 5 minutes, utilisable une seule fois), avec un lien et un QR code.
+` +
+        `3. Saisis le code dans l'application, ou touche « Ouvrir dans l'application » depuis ton téléphone. Ton mot de passe n'est jamais demandé à l'application.
+` +
+        `• Avec un compte famille, l'application se connecte avec le [b]profil actif[/b] au moment où tu génères le code (contenu adulte masqué, droits du profil respectés).
+
+` +
+        `[b]Dans l'application[/b]
+` +
+        `• L'accueil montre des rangées : [b]Reprendre[/b] (ce que tu as commencé, avec l'épisode suivant des séries), [b]Recommandé pour toi[/b], puis films et séries [b]« démarrage rapide »[/b] (les mieux seedés) et [b]récents[/b]. La reprise suit ton compte : tu peux commencer sur le site ou le PC et finir sur le téléphone.
+` +
+        `• La recherche trouve un film ou une série par son titre (français ou original).
+` +
+        `• La fiche donne le synopsis, la note, la durée et les [b]versions[/b] disponibles (qualité, langue, taille, seeders). Pour une série, les épisodes sont rangés par saison, avec pour chacun la release la mieux seedée.
+` +
+        `• La lecture est celle du lecteur Seeduction : tous les formats, pistes audio et sous-titres (y compris ceux partagés par les membres).
+
+` +
+        `[b]La disponibilité, c'est le nombre de seeders[/b]
+` +
+        `• Le catalogue ne montre que les titres qui ont [b]au moins un seeder[/b]. ⚡ [b]Démarrage rapide[/b] : 5 seeders ou plus ; ● [b]correct[/b] : 2 à 4 ; ● [b]lent[/b] : 1 seul seeder (la lecture peut mettre du temps à démarrer ou saccader).
+` +
+        `• Il n'y a aucune réserve de seeders « maison » : ce sont les membres qui font vivre le catalogue.
+
+` +
+        `[b]Après la lecture[/b]
+` +
+        `• Comme pour le lecteur, le partage se poursuit en arrière-plan (Wi-Fi seulement par défaut) et tu peux l'arrêter dans « Mes partages ». Quitter le catalogue se fait avec le bouton « Quitter » (il faudra un nouveau code pour se reconnecter).
+
+` +
+        `Références : [url=/wiki/guide-lecteur]Le lecteur Seeduction[/url], [url=/wiki/guide-ratio-seed]Le ratio[/url].`,
     },
     {
       title: 'Personnaliser le site : thèmes, affichages, infobulles',

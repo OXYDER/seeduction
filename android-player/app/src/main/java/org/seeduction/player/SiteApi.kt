@@ -23,9 +23,9 @@ class LiveInfo(val playbackUrl: String, val title: String)
 
 /** Dialogue avec le site Seeduction (jeton de lecture, suivi « en train de regarder », sous-titres partagés). Aucune session web : tout passe par le jeton ou la passkey, comme le lecteur Windows. */
 object SiteApi {
-    private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+    internal fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
-    private fun open(url: String, method: String = "GET", body: String? = null, timeoutMs: Int = 15000): HttpURLConnection {
+    internal fun open(url: String, method: String = "GET", body: String? = null, timeoutMs: Int = 15000): HttpURLConnection {
         val c = URL(url).openConnection() as HttpURLConnection
         c.requestMethod = method
         c.connectTimeout = timeoutMs; c.readTimeout = timeoutMs
@@ -38,7 +38,7 @@ object SiteApi {
         return c
     }
 
-    private fun readAll(c: HttpURLConnection): String {
+    internal fun readAll(c: HttpURLConnection): String {
         val stream = if (c.responseCode in 200..299) c.inputStream else (c.errorStream ?: return "")
         return stream.bufferedReader().use { it.readText() }
     }

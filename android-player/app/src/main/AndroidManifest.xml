@@ -23,6 +23,20 @@
             </intent-filter>
         </activity>
 
+        <!-- « Seeduction Cinéma » : catalogue vidéo (donateurs, fondateurs, uploaders). Le lien seeduction://vod/<code> du site associe l'application. -->
+        <activity
+            android:name=".VodHomeActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="seeduction" android:host="vod" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".VodTitleActivity" android:exported="false" />
+
         <!-- Le lien « Ouvrir dans le lecteur Seeduction » du site : seeduction://stream/<jeton> -->
         <activity
             android:name=".PlayerActivity"

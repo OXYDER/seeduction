@@ -13,6 +13,6 @@ import { TorrentFixesController } from './torrent-fixes.controller';
   imports: [MetadataModule, TeamsModule, AdminModule, NotificationsModule],
   controllers: [TorrentsController, TorrentFixesController],
   providers: [TorrentsService, RecommendationsService, TorrentFixesService],
-  exports: [TorrentsService],
+  exports: [TorrentsService, RecommendationsService],
 })
 export class TorrentsModule {}

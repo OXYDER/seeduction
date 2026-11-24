@@ -49,6 +49,7 @@ export class TrackerController {
         // Ajouté par TorrentsService.getDownloadFile() quand le .torrent sert au lecteur Seeduction (pas à un
         // téléchargement classique) — voir tracker.service.ts pour ce que ça change côté hit & run.
         viaStream: query.stream === '1',
+        vod: query.vod === '1',
         userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
       });
 
