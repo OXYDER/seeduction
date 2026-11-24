@@ -715,9 +715,10 @@ export const GUIDES_SITE: WikiSeedCategory = {
 ` +
         `• La [b]fiche[/b] donne le synopsis, la note, la durée, les [b]versions[/b] disponibles (qualité, langue, taille, seeders) ou, pour une série, les épisodes rangés par saison avec la release la mieux seedée. Elle propose aussi la saga du film et des titres du même genre.
 ` +
-        `• La lecture est celle du lecteur Seeduction : tous les formats, pistes audio et sous-titres (y compris ceux partagés par les membres).
-
-` +
+        `• La lecture se fait [b]dans l'application[/b] (lecteur intégré) : tous les formats, pistes audio, sous-titres (y compris ceux partagés par les membres), format de l'image, reprise là où tu t'es arrêté et statut « en train de regarder » sur le site.\n\n` +
+        `[b]Paramètres[/b] (la roue dentée de l'accueil, ou ⋮ > Paramètres)\n` +
+        `• [b]Lecteur intégré[/b] (par défaut, recommandé) ou [b]lecteur externe[/b] : avec l'externe, chaque lecture s'ouvre dans une autre application vidéo installée (VLC, MX Player…). L'application ne suit alors ni la reprise ni le statut sur le site ; s'il n'y a aucune application vidéo, la lecture se fait dans l'application.\n` +
+        `• [b]Partager seulement en Wi-Fi[/b], accès à [b]Mes partages et téléchargements[/b], déconnexion du catalogue, recherche de mise à jour et partage du journal de diagnostic.\n\n` +
         `[b]La disponibilité, c'est le nombre de seeders[/b]
 ` +
         `• Le catalogue ne montre que les titres qui ont [b]au moins un seeder[/b]. ⚡ [b]Démarrage rapide[/b] : 5 seeders ou plus ; ● [b]correct[/b] : 2 à 4 ; ● [b]lent[/b] : 1 seul seeder (la lecture peut mettre du temps à démarrer ou saccader).
