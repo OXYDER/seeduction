@@ -1,4 +1,4 @@
-import { bestPerEpisode, episodeLabel, parseEpisode, videoFiles, vodAccess, vodHealth } from './vod';
+import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, videoFiles, vodAccess, vodHealth } from './vod';
 
 const now = new Date('2026-11-24T12:00:00Z');
 const day = 86_400_000;
@@ -88,5 +88,25 @@ describe('bestPerEpisode', () => {
       src({ torrentId: 'x', season: null, episode: null }),
     ]);
     expect(out.map((s) => s.torrentId)).toEqual(['small', 'x']);
+  });
+});
+
+describe('nextEpisode', () => {
+  const eps = (s: number, list: number[]) => list.map((episode) => ({ season: s, episode }));
+  it("rend l'épisode suivant quand il est là", () => {
+    expect(nextEpisode(eps(1, [1, 2, 3, 4, 5, 6]), { season: 1, episode: 5 }, { 1: 10 })).toEqual({ status: 'next', next: { season: 1, episode: 6 }, missing: [] });
+  });
+  it("signale l'épisode manquant quand le suivant existe plus loin", () => {
+    expect(nextEpisode(eps(1, [1, 2, 3, 4, 5, 7, 8]), { season: 1, episode: 5 }, { 1: 10 })).toEqual({ status: 'gap', next: { season: 1, episode: 7 }, missing: [{ season: 1, episode: 6 }] });
+    expect(nextEpisode(eps(1, [1, 5, 9]), { season: 1, episode: 5 })).toMatchObject({ status: 'gap', next: { season: 1, episode: 9 }, missing: [{ season: 1, episode: 6 }, { season: 1, episode: 7 }, { season: 1, episode: 8 }] });
+  });
+  it("épisode attendu absent et rien après : manquant ; sans taille de saison connue : fin", () => {
+    expect(nextEpisode(eps(1, [1, 2, 3, 4, 5]), { season: 1, episode: 5 }, { 1: 10 })).toEqual({ status: 'missing', missing: [{ season: 1, episode: 6 }] });
+    expect(nextEpisode(eps(1, [1, 2, 3, 4, 5]), { season: 1, episode: 5 })).toEqual({ status: 'end', missing: [] });
+  });
+  it('passe à la saison suivante en fin de saison, et signale un début de saison incomplet', () => {
+    expect(nextEpisode([...eps(1, [1, 2, 3]), ...eps(2, [1, 2])], { season: 1, episode: 3 }, { 1: 3 })).toEqual({ status: 'next', next: { season: 2, episode: 1 }, missing: [] });
+    expect(nextEpisode([...eps(1, [1, 2, 3]), ...eps(2, [2, 3])], { season: 1, episode: 3 }, { 1: 3 })).toEqual({ status: 'gap', next: { season: 2, episode: 2 }, missing: [{ season: 2, episode: 1 }] });
+    expect(nextEpisode(eps(1, [1, 2, 3]), { season: 1, episode: 3 }, { 1: 3 })).toEqual({ status: 'end', missing: [] });
   });
 });

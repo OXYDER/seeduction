@@ -705,7 +705,7 @@ export class TorrentsService implements OnModuleInit {
   async activeForUser(userId: string, viewerId?: string) {
     const hidden = await this.adult.hiddenFor(viewerId ?? userId);
     const peers = await this.prisma.peer.findMany({
-      where: { userId, torrent: { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
+      where: { userId, NOT: { vod: true, isSeeder: false }, torrent: { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
       orderBy: { lastAnnounceAt: 'desc' },
       take: 40,
       include: { torrent: { select: { id: true, name: true, coverImage: true, size: true, category: { select: { slug: true, name: true, parent: { select: { slug: true, name: true } } } } } } },

@@ -237,7 +237,7 @@ export class EconomyService {
     const fresh = new Date(Date.now() - 45 * 60_000);
     const [user, peers, snatches, uploads] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId }, select: { uploaded: true, downloaded: true } }),
-      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh } }, include: { torrent: { select: { id: true, name: true, size: true, coverImage: true } } } }),
+      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh }, NOT: { vod: true, isSeeder: false } }, include: { torrent: { select: { id: true, name: true, size: true, coverImage: true } } } }), // le téléchargement de l'application Seeduction n'est jamais montré
       this.prisma.snatch.findMany({
         where: { userId }, orderBy: { completedAt: 'desc' }, take: 300,
         include: { torrent: { select: { id: true, name: true, size: true, coverImage: true, uploaderId: true } } },
@@ -311,7 +311,7 @@ export class EconomyService {
     const pick = { id: true, name: true, size: true, coverImage: true, uploaderId: true, createdAt: true, status: true, resolution: true, language: true, seeders: true, leechers: true, completedCount: true, category: { select: { id: true, name: true, parent: { select: { id: true, name: true } } } } } as const;
     const [user, peers, snatches, uploads] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId }, select: { uploaded: true, downloaded: true } }),
-      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh } }, select: { torrentId: true, isSeeder: true, left: true, uploaded: true, downloaded: true, lastAnnounceAt: true, torrent: { select: pick } } }),
+      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh }, NOT: { vod: true, isSeeder: false } }, select: { torrentId: true, isSeeder: true, left: true, uploaded: true, downloaded: true, lastAnnounceAt: true, torrent: { select: pick } } }),
       this.prisma.snatch.findMany({ where: { userId }, orderBy: { completedAt: 'desc' }, take: 3000, include: { torrent: { select: pick } } }),
       this.prisma.torrent.findMany({ where: { uploaderId: userId }, orderBy: { createdAt: 'desc' }, take: 1500, select: pick }),
     ]);

@@ -255,6 +255,7 @@ export class TrackerService {
           isSeeder: params.left === 0,
           lastEvent: EVENT_MAP[params.event ?? ''] ?? PeerEvent.NONE,
           userAgent: params.userAgent?.slice(0, 120) ?? null,
+          vod: vodFree,
         },
         update: {
           ip: params.ip,
@@ -265,6 +266,7 @@ export class TrackerService {
           isSeeder: params.left === 0,
           lastEvent: EVENT_MAP[params.event ?? ''] ?? PeerEvent.NONE,
           userAgent: params.userAgent?.slice(0, 120) ?? null,
+          vod: vodFree,
           lastAnnounceAt: new Date(),
         },
       });

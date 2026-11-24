@@ -134,6 +134,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/decouvrir?s=populaires', icon: '🔥', cls: 'c-search', label: 'Plus populaires', match: (p) => starts('/decouvrir')(p) && window.location.search.includes('s=populaires'), group: 'catalogue' },
   { to: '/decouvrir?s=pour-toi', icon: '✨', cls: 'c-search', label: 'Recommandé pour toi', match: (p) => starts('/decouvrir')(p) && window.location.search.includes('s=pour-toi'), group: 'catalogue' },
   { to: '/decouvrir?s=freeleech', icon: '🎁', cls: 'c-search', label: 'Freeleech', match: (p) => starts('/decouvrir')(p) && window.location.search.includes('s=freeleech'), group: 'catalogue' },
+  { to: '/application', icon: '🎬', cls: 'c-search', label: 'Application Seeduction', match: (p) => starts('/application')(p) || starts('/player')(p), group: 'catalogue' },
+  { to: '/appareils', icon: '🎛️', cls: 'c-search', label: 'Mon application (appareils)', match: starts('/appareils'), group: 'bibliotheque' },
   { to: '/suggestions', icon: '💡', cls: 'c-forum', label: 'Suggestions', match: starts('/suggestions'), group: 'communaute' },
   { to: '/dead', icon: '☠️', cls: 'c-forum', label: 'Réanimation', match: starts('/dead'), group: 'catalogue' },
   { to: '/activity', icon: '📈', cls: 'c-search', label: 'Mes torrents', match: (p) => starts('/activity')(p) && !window.location.search.includes('statut='), group: 'bibliotheque', sideOnly: true },

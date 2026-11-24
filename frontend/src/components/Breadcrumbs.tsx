@@ -55,6 +55,8 @@ const NODES: Node[] = [
   { path: '/users/:id', label: 'Profil' },
   { path: '/family', label: 'Compte famille', parent: '/profile' },
   { path: '/player', label: 'Application Seeduction' },
+  { path: '/application', label: 'Application Seeduction' },
+  { path: '/appareils', label: 'Mon application' },
   { path: '/roadmap', label: 'Roadmap' },
   { path: '/moderation', label: 'Modération' },
   { path: '/staff-board', label: 'Tableau de bord', parent: '/admin' },

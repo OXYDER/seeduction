@@ -4,6 +4,10 @@ import { spendDonatedFirst } from '../common/utils/points';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BadgesService } from '../badges/badges.service';
 import { Cron } from '@nestjs/schedule';
+import { requestMatches } from '../common/utils/request-match';
+import { releaseTitle } from '../torrents/group-key';
+import { numOf, seriesTitleOf } from '../common/utils/watch-progress';
+import { parseEpisode, videoFiles } from '../common/utils/vod';
 
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
 const MAX_BOUNTY = 100_000;
@@ -203,7 +207,7 @@ export class RequestsService {
   }
 
   /** Verse la récompense : à l'envoyeur du torrent, moins la part de celui qui l'a trouvé (s'il n'est ni l'envoyeur ni le demandeur). */
-  private async complete(request: { id: string; title: string; bounty: number; requestedById: string }, torrent: { id: string; name?: string; uploaderId: string }, finderId: string | null, actorId: string | null) {
+  private async complete(request: { id: string; title: string; bounty: number; requestedById: string }, torrent: { id: string; name?: string; uploaderId: string }, finderId: string | null, actorId: string | null, auto = false) {
     const finder = finderId && finderId !== torrent.uploaderId && finderId !== request.requestedById ? finderId : null;
     const finderPoints = finder && request.bounty >= MIN_BOUNTY_FOR_SHARE ? Math.max(1, Math.floor((request.bounty * FINDER_PERCENT) / 100)) : 0;
     const uploaderPoints = request.bounty - finderPoints;
@@ -221,15 +225,57 @@ export class RequestsService {
 
     const link = `/torrents/${torrent.id}`;
     if (request.requestedById !== torrent.uploaderId && request.requestedById !== actorId) {
-      await this.notifications.notify({ userId: request.requestedById, type: 'REQUEST_FILLED', title: 'Ta demande a été comblée', body: request.title, link }).catch(() => undefined);
+      await this.notifications.notify({ userId: request.requestedById, type: 'REQUEST_FILLED', title: auto ? 'Ta demande a été comblée automatiquement' : 'Ta demande a été comblée', body: auto ? `${request.title} : une release qui correspond vient d'être publiée` : request.title, link }).catch(() => undefined);
     }
-    if (torrent.uploaderId !== actorId && uploaderPoints > 0) {
-      await this.notifications.notify({ userId: torrent.uploaderId, type: 'REQUEST_FILLED', title: `Ton torrent a comblé une demande : +${Math.round(uploaderPoints)} points`, body: request.title, link }).catch(() => undefined);
+    if (torrent.uploaderId !== actorId && (uploaderPoints > 0 || auto)) {
+      await this.notifications.notify({ userId: torrent.uploaderId, type: 'REQUEST_FILLED', title: auto ? `Ton envoi a comblé une demande${uploaderPoints > 0 ? ` : +${Math.round(uploaderPoints)} points` : ''}` : `Ton torrent a comblé une demande : +${Math.round(uploaderPoints)} points`, body: auto ? `${request.title} : le site l'a reliée à ta release automatiquement` : request.title, link }).catch(() => undefined);
     }
     if (finder && finderPoints > 0) {
       await this.notifications.notify({ userId: finder, type: 'REQUEST_FILLED', title: `Merci ! +${Math.round(finderPoints)} points pour avoir trouvé ce torrent`, body: request.title, link }).catch(() => undefined);
     }
     await this.badges.checkAndAward(torrent.uploaderId);
+  }
+
+  /**
+   * Une release approuvée qui correspond à une demande restée ouverte (que l'envoyeur n'avait pas vue à l'envoi) la comble : « comblée automatiquement par le système ».
+   * Le demandeur et l'envoyeur sont prévenus ; la récompense va à l'envoyeur comme pour un comblement normal. Une release ne comble qu'une demande (la plus ancienne qui correspond).
+   */
+  async autoFillFor(torrentId: string): Promise<boolean> {
+    const t = await this.prisma.torrent.findUnique({
+      where: { id: torrentId },
+      select: { id: true, name: true, status: true, year: true, language: true, resolution: true, uploaderId: true, season: true, episode: true, fileList: true, metadata: true, categoryId: true, category: { select: { id: true, parentId: true } }, requestFilled: { select: { id: true } } },
+    });
+    if (!t || t.status !== 'APPROVED' || t.requestFilled) return false;
+    const root = t.category?.parentId ?? t.category?.id ?? t.categoryId;
+    const family = root ? (await this.prisma.category.findMany({ where: { OR: [{ id: root }, { parentId: root }] }, select: { id: true } })).map((c) => c.id) : [];
+    const open = await this.prisma.torrentRequest.findMany({
+      where: { filledById: null, proposedTorrentId: null, OR: [{ categoryId: null }, ...(family.length ? [{ categoryId: { in: family } }] : [])] },
+      orderBy: { createdAt: 'asc' }, take: 600,
+      select: { id: true, title: true, bounty: true, requestedById: true, year: true, language: true, resolution: true, declinedTorrentIds: true },
+    });
+    if (open.length === 0) return false;
+
+    const meta: any = t.metadata && typeof t.metadata === 'object' ? t.metadata : {};
+    const titles = [releaseTitle(t.name), seriesTitleOf(t.name), meta.originalTitle, ...(Array.isArray(meta.titles) ? meta.titles.slice(0, 40).map((x: any) => x?.title) : [])].filter((x): x is string => typeof x === 'string' && x.length > 1);
+    const episodes: { season: number; episode: number }[] = [];
+    const s = numOf(t.season), e = numOf(t.episode);
+    if (s != null && e != null) episodes.push({ season: s, episode: e });
+    for (const f of videoFiles(t.fileList).slice(0, 400)) { const ep = parseEpisode(f.path); if (ep) episodes.push(ep); }
+    const mt = { id: t.id, titles, year: t.year ?? null, language: t.language ?? null, resolution: t.resolution ?? null, episodes };
+    const hit = open.find((r) => requestMatches({ title: r.title, year: r.year, language: r.language, resolution: r.resolution, declinedTorrentIds: r.declinedTorrentIds }, mt));
+    if (!hit) return false;
+    await this.complete(hit, { id: t.id, name: t.name, uploaderId: t.uploaderId }, null, null, true);
+    return true;
+  }
+
+  /** Toutes les 10 minutes : les releases approuvées depuis peu (et pas encore reliées à une demande) sont comparées aux demandes ouvertes. */
+  @Cron('*/10 * * * *')
+  async autoFillRecent() {
+    const recent = await this.prisma.torrent.findMany({
+      where: { status: 'APPROVED', requestFilled: null, approvedAt: { gt: new Date(Date.now() - 3 * 3600_000) } },
+      orderBy: { approvedAt: 'asc' }, take: 100, select: { id: true },
+    });
+    for (const t of recent) await this.autoFillFor(t.id).catch(() => undefined);
   }
 
   /** Propositions sans réponse du demandeur depuis 3 jours : confirmées d'office (le demandeur a pu refuser avant, pas après). */

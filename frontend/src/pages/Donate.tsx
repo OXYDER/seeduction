@@ -4,6 +4,7 @@ import Avatar from '../components/Avatar';
 import UserLink from '../components/UserLink';
 import { useDonors } from '../store/donors';
 import Loading from '../components/Loading';
+import { AppPerk } from '../components/AppHome';
 
 interface Tier { minAmount: number; label: string; days: number; freeleechDays: number; hnrDays: number; bonusPoints: number; invites: number }
 interface Info {
@@ -61,6 +62,8 @@ export default function Donate() {
           </p>
         </div>
       )}
+
+      <AppPerk />
 
       {info.me.donor && (
         <div className="panel" style={{ borderColor: info.me.active ? '#fb7185' : undefined }}>

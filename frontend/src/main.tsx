@@ -13,6 +13,7 @@ import './skin5.css';
 import './skin-light.css';
 import './skin-light-fixes.css';
 import './ambiances.css';
+import './app.css';
 import './store/sessionCleanup';
 import { watchSystemMode } from './lib/theme';
 

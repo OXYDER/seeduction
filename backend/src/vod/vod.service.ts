@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, GoneException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, GoneException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import { randomBytes, randomInt } from 'crypto';
@@ -8,7 +8,8 @@ import { StreamService } from '../stream/stream.service';
 import { RecommendationsService } from '../torrents/recommendations.service';
 import { groupKeyOf, releaseTitle } from '../torrents/group-key';
 import { numOf, seriesTitleOf } from '../common/utils/watch-progress';
-import { bestPerEpisode, episodeLabel, parseEpisode, videoFiles, vodAccess, vodHealth, VOD_REASON_LABELS, VOD_RULE_TEXT, type EpisodeSource, type VodReason } from '../common/utils/vod';
+import { VodLiveService } from './vod-live.service';
+import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, videoFiles, vodAccess, vodHealth, VOD_REASON_LABELS, VOD_RULE_TEXT, type EpisodeSource, type VodReason } from '../common/utils/vod';
 
 /** Qui regarde : le profil actif (famille) et le compte (ratio, positions de lecture, droits). */
 export interface VodViewer { userId: string; accountId: string; username: string; role: string; fam: boolean }
@@ -106,6 +107,7 @@ export class VodService {
     private adult: AdultService,
     private streams: StreamService,
     private recommendations: RecommendationsService,
+    private live: VodLiveService,
   ) {}
 
   /** Le compte a-t-il (encore) droit au catalogue ? Vérifié à chaque appel : un don qui expire coupe l'accès. */
@@ -123,7 +125,33 @@ export class VodService {
 
   async status(accountId: string) {
     const reason = await this.access(accountId);
-    return { eligible: !!reason, reason, label: reason ? VOD_REASON_LABELS[reason] : null, rule: VOD_RULE_TEXT };
+    return { eligible: !!reason, reason, label: reason ? VOD_REASON_LABELS[reason] : null, rule: VOD_RULE_TEXT, promo: await this.promo().catch(() => null) };
+  }
+
+  private promoCache: { at: number; value: { movies: number; series: number; fresh: number; hoursWeek: number; covers: string[] } } | null = null;
+
+  /** Les chiffres de la promo (visibles aussi des membres qui n'ont pas encore accès) : titres disponibles, nouveautés de la semaine, heures regardées, une mosaïque d'affiches. Gardés 10 minutes. */
+  async promo() {
+    if (!this.promoCache || Date.now() - this.promoCache.at > 10 * 60_000) {
+      const [counts, covers, hoursWeek] = await Promise.all([
+        this.prisma.$queryRaw<{ kind: string; n: number; fresh: number }[]>(Prisma.sql`
+          SELECT kind, COUNT(DISTINCT grp)::int AS n, (COUNT(DISTINCT grp) FILTER (WHERE fresh))::int AS fresh FROM (
+            SELECT COALESCE(c."contentKind", pc."contentKind")::text AS kind,
+              COALESCE(NULLIF(t."metaSource", '') || ':' || NULLIF(t."metaExternalId", ''), regexp_replace(lower(t.name), '([._ ](19|20)[0-9]{2}|[._ ]s[0-9]{1,2}(e[0-9]{1,3})?)([._ ].*)?$', '')) AS grp,
+              t."createdAt" > now() - interval '7 days' AS fresh
+            FROM "Torrent" t JOIN "Category" c ON c.id = t."categoryId" LEFT JOIN "Category" pc ON pc.id = c."parentId"
+            WHERE t.status = 'APPROVED' AND t.seeders >= 1 AND COALESCE(c."contentKind", pc."contentKind")::text IN ('FILM', 'SERIE') AND c.adult = false AND COALESCE(pc.adult, false) = false
+          ) z GROUP BY kind`),
+        this.prisma.$queryRaw<{ cover: string }[]>(Prisma.sql`
+          SELECT t."coverImage" AS cover FROM "Torrent" t JOIN "Category" c ON c.id = t."categoryId" LEFT JOIN "Category" pc ON pc.id = c."parentId"
+          WHERE t.status = 'APPROVED' AND t.seeders >= 2 AND t."coverImage" IS NOT NULL AND COALESCE(c."contentKind", pc."contentKind")::text IN ('FILM', 'SERIE') AND c.adult = false AND COALESCE(pc.adult, false) = false
+          ORDER BY t.seeders DESC, t."createdAt" DESC LIMIT 90`),
+        this.live.hoursThisWeek(),
+      ]);
+      const n = (k: string) => counts.find((c) => c.kind === k);
+      this.promoCache = { at: Date.now(), value: { movies: n('FILM')?.n ?? 0, series: n('SERIE')?.n ?? 0, fresh: (n('FILM')?.fresh ?? 0) + (n('SERIE')?.fresh ?? 0), hoursWeek, covers: [...new Set(covers.map((c) => c.cover))].slice(0, 36) } };
+    }
+    return { ...this.promoCache.value, watchingNow: this.live.watchingNow() };
   }
 
   /** La session de l'application pour le compte connecté (60 jours) : sert après une connexion par identifiant et mot de passe. */
@@ -315,7 +343,7 @@ export class VodService {
     const get = (o: CardOpts) => this.cardsOf(hidden, o);
     const idsRail = async (ids: string[]) => (ids.length ? (await get({ ids, sort: 'seeders', limit: 24 })).items.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)) : []);
 
-    const [cont, fresh, trending, seriesNew, filmsNew, genreList, sagaList, foryou, because] = await Promise.all([
+    const [cont, fresh, trending, seriesNew, filmsNew, genreList, sagaList, foryou, because, liked] = await Promise.all([
       this.streams.continueWatching(viewer.accountId).catch(() => ({ resume: [], next: [] } as any)),
       get({ sort: 'new', limit: 24 }),
       get({ sort: 'seeders', limit: 24 }),
@@ -325,6 +353,7 @@ export class VodService {
       this.sagaItems(hidden, 14),
       this.recommendations.forUser(viewer.userId, { limit: 40 }).catch(() => [] as any[]),
       this.recommendations.because(viewer.userId).catch(() => ({ based: null, items: [] as any[] })),
+      this.live.topRated(14).catch(() => []),
     ]);
 
     const resumeItems: VodItem[] = [
@@ -359,6 +388,7 @@ export class VodService {
       ...(because.based ? [{ id: 'because', title: `Parce que tu as aimé ${because.based.title}`, items: await idsRail((because.items as any[]).map((x) => x.id).filter(Boolean)) }] : []),
       { id: 'new', title: 'Nouveautés', items: fresh.items, more: { sort: 'new' } },
       { id: 'trending', title: "Top 10 en ce moment", items: trending.items.slice(0, 10), more: { sort: 'seeders' }, style: 'top10' as const },
+      { id: 'liked', title: 'Aimés par les membres', items: await idsRail(liked.map((x) => x.tid)) },
       { id: 'sagas', title: 'Sagas', items: sagaList, more: { sagas: true } },
       { id: 'films-new', title: 'Films récents', items: filmsNew.items, more: { kind: 'film', sort: 'new' } },
       { id: 'series-new', title: 'Séries à découvrir', items: seriesNew.items, more: { kind: 'serie', sort: 'new' } },
@@ -367,9 +397,8 @@ export class VodService {
     return { hero, heroes, rails };
   }
 
-  /** Fiche d'un contenu : synopsis, versions (qualité, langue, seeders) ou, pour une série, un épisode par ligne avec la release la mieux seedée. */
-  async title(viewer: VodViewer, id: string) {
-    await this.assertAccess(viewer.accountId);
+  /** Un contenu et toutes ses versions disponibles (même fiche, ou même titre) : la version demandée, la clé du contenu, les versions avec au moins un seeder. */
+  private async loadGroup(viewer: VodViewer, id: string) {
     const hidden = await this.hiddenFor(viewer);
     const t: any = await this.prisma.torrent.findFirst({ where: { id, status: 'APPROVED', category: kindsWhere(['FILM', 'SERIE']) }, select: DETAIL_SELECT });
     if (!t || hidden.includes(t.categoryId)) throw new NotFoundException('Titre introuvable');
@@ -387,6 +416,13 @@ export class VodService {
     }
     rows = rows.filter((r) => r.seeders >= 1).sort((a, b) => b.seeders - a.seeders || b.createdAt.getTime() - a.createdAt.getTime());
     if (rows.length === 0) rows = [t];
+    return { hidden, t, key, rows };
+  }
+
+  /** Fiche d'un contenu : synopsis, versions (qualité, langue, seeders) ou, pour une série, un épisode par ligne avec la release la mieux seedée. */
+  async title(viewer: VodViewer, id: string) {
+    await this.assertAccess(viewer.accountId);
+    const { hidden, t, key, rows } = await this.loadGroup(viewer, id);
 
     const positions = await this.prisma.playbackPosition.findMany({
       where: { userId: viewer.accountId, torrentId: { in: rows.map((r) => r.id) } },
@@ -427,7 +463,7 @@ export class VodService {
         }
       }
       episodes = bestPerEpisode(sources).slice(0, 600).map((s) => ({
-        season: s.season, episode: s.episode, label: episodeLabel(s.season, s.episode) || s.label, name: s.label, torrentId: s.torrentId, fileIndex: s.fileIndex,
+        season: s.season, episode: s.episode, label: episodeLabel(s.season, s.episode) || 'Épisode', torrentId: s.torrentId, fileIndex: s.fileIndex,
         size: s.size, seeders: s.seeders, health: vodHealth(s.seeders), resolution: s.resolution, language: s.language, ...progressOf(s.torrentId, s.fileIndex),
       }));
     }
@@ -443,8 +479,30 @@ export class VodService {
     const similar = (similarCards?.items ?? []).filter((i) => i.title !== myTitle).slice(0, 14);
 
     const rating = Number(m.rating);
+
+    // Distribution, équipe et studios de la fiche (les mêmes que sur le site) ; si cette version n'a pas de fiche complète, celle d'une autre version du même contenu.
+    const ents = await this.prisma.torrentEntity.findMany({
+      where: { torrentId: { in: [t.id, ...rows.slice(0, 8).map((r) => r.id)] }, role: { in: ['ACTOR', 'DIRECTOR', 'WRITER', 'PRODUCER', 'CREATOR', 'STUDIO', 'NETWORK'] } },
+      orderBy: { position: 'asc' }, select: { torrentId: true, role: true, detail: true, entity: { select: { id: true, name: true, imageUrl: true } } },
+    });
+    const perTorrent = new Map<string, typeof ents>();
+    for (const e of ents) perTorrent.set(e.torrentId, [...(perTorrent.get(e.torrentId) ?? []), e]);
+    const crew = perTorrent.get(t.id)?.length ? perTorrent.get(t.id)! : [...perTorrent.values()].sort((a, b) => b.length - a.length)[0] ?? [];
+    const people = (...roles: string[]) => crew.filter((e) => roles.includes(e.role)).map((e) => ({ id: e.entity.id, name: e.entity.name, photo: e.entity.imageUrl ?? null, character: e.detail ?? null }));
+    const community = await this.live.ratingOf(viewer.userId, key);
+    const strs = (v: unknown, n: number) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x).slice(0, n) : []);
+    const trailerKey = typeof m.trailer?.key === 'string' && /^[\w-]{6,20}$/.test(m.trailer.key) ? m.trailer.key : null;
     return {
       id: t.id, title: titleOf(t), year: t.year ?? null, kind, cover: t.coverImage ?? null,
+      tagline: typeof m.tagline === 'string' && m.tagline.trim() ? m.tagline.trim() : null,
+      trailer: trailerKey ? { key: trailerKey, name: typeof m.trailer?.name === 'string' ? m.trailer.name.slice(0, 120) : null } : null,
+      released: typeof m.releaseDate === 'string' ? m.releaseDate : null,
+      countries: strs(m.countries, 4), languages: strs(m.languages, 4), status: typeof m.status === 'string' ? m.status : null,
+      imdbId: typeof m.imdbId === 'string' ? m.imdbId : null, seasons: Number(m.seasons) || null, episodesCount: Number(m.episodes) || null,
+      gallery: strs(m.gallery, 8),
+      cast: people('ACTOR').slice(0, 16), directors: people('DIRECTOR', 'CREATOR').slice(0, 4), writers: people('WRITER').slice(0, 4), producers: people('PRODUCER').slice(0, 4),
+      studios: crew.filter((e) => e.role === 'STUDIO' || e.role === 'NETWORK').map((e) => e.entity.name).slice(0, 5),
+      community,
       backdrop: typeof m.backdrop === 'string' ? m.backdrop : null,
       synopsis: typeof m.overview === 'string' && m.overview.trim() ? m.overview.trim() : null,
       rating: Number.isFinite(rating) && rating > 0 ? Math.round(rating * 10) / 10 : null,
@@ -452,6 +510,105 @@ export class VodService {
       genres: Array.isArray(t.genres) ? t.genres.slice(0, 6) : [],
       versions, ...(episodes ? { episodes } : {}), saga, similar,
     };
+  }
+
+  /** Les épisodes disponibles de la série à laquelle appartient ce torrent, avec la taille des saisons d'après la fiche. */
+  private async seriesState(viewer: VodViewer, torrentId: string) {
+    const { t, rows } = await this.loadGroup(viewer, torrentId);
+    if (kindOf(t) !== 'serie') throw new NotFoundException("Ce titre n'est pas une série");
+    const sources: EpisodeSource[] = [];
+    for (const r of rows) {
+      const files = videoFiles(r.fileList);
+      const list = files.length ? files : [{ index: 0, path: r.name, size: Number(r.size) }];
+      for (const f of list) {
+        let ep = parseEpisode(f.path);
+        if (!ep && list.length === 1) { const s = numOf(r.season), e = numOf(r.episode); ep = s != null && e != null ? { season: s, episode: e } : parseEpisode(r.name); }
+        sources.push({ torrentId: r.id, fileIndex: f.index, season: ep?.season ?? null, episode: ep?.episode ?? null, size: f.size, seeders: r.seeders, resolution: r.resolution ?? null, language: r.language ?? null, label: baseName(f.path) });
+      }
+    }
+    const best = bestPerEpisode(sources).filter((e) => e.season != null && e.episode != null);
+    const sizes: Record<number, number> = {};
+    const list = metaOf(t).seasonList;
+    if (Array.isArray(list)) for (const x of list) if (Number.isInteger(x?.number) && Number(x?.episodeCount) > 0) sizes[x.number] = Number(x.episodeCount);
+    return { t, best, sizes, title: titleOf(t), cover: t.coverImage ?? null, categoryId: t.categoryId as string | null };
+  }
+
+  private async requestState(accountId: string, show: string, ep: { season: number; episode: number }) {
+    const code = episodeLabel(ep.season, ep.episode);
+    const hit = await this.prisma.torrentRequest.findFirst({
+      where: { filledById: null, title: { contains: code, mode: 'insensitive' }, AND: [{ title: { contains: show.slice(0, 40), mode: 'insensitive' } }] },
+      orderBy: { createdAt: 'asc' }, select: { requestedById: true, createdAt: true },
+    });
+    return hit ? { state: hit.requestedById === accountId ? ('mine' as const) : ('others' as const), at: hit.createdAt } : null;
+  }
+
+  /**
+   * Après (ou pendant) un épisode : le bon épisode suivant, sans en sauter un. S'il manque (mais qu'un plus tardif existe, ou que rien ne suit), la réponse le dit, avec l'état de la demande
+   * déjà faite sur le site (par le membre ou par un autre), pour que l'application propose d'en faire une.
+   */
+  async next(viewer: VodViewer, torrentId: string, fileIndexRaw: unknown) {
+    await this.assertAccess(viewer.accountId);
+    const st = await this.seriesState(viewer, String(torrentId ?? ''));
+    const cur = st.best.find((e) => e.torrentId === String(torrentId) && e.fileIndex === (Math.floor(Number(fileIndexRaw)) || 0))
+      ?? (() => { const r = st.best.find((e) => e.torrentId === String(torrentId)); return r; })();
+    // Un épisode qui n'est plus la meilleure version (une autre release l'a remplacé) : on retrouve son numéro dans le torrent lui-même.
+    let curRef = cur && cur.season != null && cur.episode != null ? { season: cur.season, episode: cur.episode } : null;
+    if (!curRef) {
+      const tr = await this.prisma.torrent.findUnique({ where: { id: String(torrentId) }, select: { name: true, season: true, episode: true, fileList: true } });
+      const f = tr ? videoFiles(tr.fileList)[Math.max(0, Math.floor(Number(fileIndexRaw)) || 0)] : null;
+      const e = (f && parseEpisode(f.path)) || (tr && numOf(tr.season) != null && numOf(tr.episode) != null ? { season: numOf(tr.season)!, episode: numOf(tr.episode)! } : null) || (tr ? parseEpisode(tr.name) : null);
+      curRef = e;
+    }
+    if (!curRef) return { status: 'end' as const, missing: [], show: st.title };
+    const r = nextEpisode(st.best.map((e) => ({ season: e.season!, episode: e.episode! })), curRef, st.sizes);
+    const nextSrc = r.next ? st.best.find((e) => e.season === r.next!.season && e.episode === r.next!.episode) : null;
+    const missing = await Promise.all(r.missing.map(async (m) => ({ ...m, label: episodeLabel(m.season, m.episode), request: await this.requestState(viewer.accountId, st.title, m) })));
+    return {
+      status: r.status, show: st.title, cover: st.cover, current: { ...curRef, label: episodeLabel(curRef.season, curRef.episode) },
+      next: nextSrc ? { season: nextSrc.season, episode: nextSrc.episode, label: episodeLabel(nextSrc.season, nextSrc.episode), torrentId: nextSrc.torrentId, fileIndex: nextSrc.fileIndex, health: vodHealth(nextSrc.seeders) } : null,
+      missing,
+    };
+  }
+
+  /** Demande automatique, sur le site, d'un épisode qui manque. Une demande déjà faite (par ce membre ou un autre) n'est pas dupliquée : on le dit. */
+  async requestEpisode(viewer: VodViewer, torrentId: string, seasonRaw: unknown, episodeRaw: unknown) {
+    await this.assertAccess(viewer.accountId);
+    const season = Math.floor(Number(seasonRaw)), episode = Math.floor(Number(episodeRaw));
+    if (!(season >= 0 && season < 200 && episode >= 1 && episode < 2000)) throw new BadRequestException('Épisode invalide');
+    const st = await this.seriesState(viewer, String(torrentId ?? ''));
+    if (st.best.some((e) => e.season === season && e.episode === episode)) throw new ConflictException('Cet épisode est déjà disponible : réessaie de le lire.');
+    const label = episodeLabel(season, episode);
+    const existing = await this.requestState(viewer.accountId, st.title, { season, episode });
+    if (existing) return { status: existing.state === 'mine' ? 'already-mine' : 'already-others', label, at: existing.at };
+    await this.prisma.torrentRequest.create({
+      data: {
+        title: `${st.title} ${label}`.slice(0, 200), description: "Demande automatique depuis l'application Seeduction : cet épisode manquait au catalogue.",
+        requestedById: viewer.accountId, categoryId: st.categoryId, // sans langue ni qualité : n'importe quelle release de l'épisode la comble
+      },
+    });
+    return { status: 'created', label, at: new Date() };
+  }
+
+  /** Note interne de 1 à 5 étoiles (0 : retirer ma note) ; rend la moyenne des membres. */
+  async rate(viewer: VodViewer, torrentId: string, scoreRaw: unknown) {
+    await this.assertAccess(viewer.accountId);
+    const score = Math.max(0, Math.min(5, Math.round(Number(scoreRaw) || 0)));
+    const t: any = await this.prisma.torrent.findFirst({ where: { id: String(torrentId ?? ''), status: 'APPROVED', category: kindsWhere(['FILM', 'SERIE']) }, select: DETAIL_SELECT });
+    if (!t) throw new NotFoundException('Titre introuvable');
+    const key = groupKeyOf({ name: t.name, metaSource: t.metaSource, metaExternalId: t.metaExternalId, category: { slug: t.category?.slug } });
+    await this.live.setRating(viewer.userId, { key, torrentId: t.id, title: titleOf(t), cover: t.coverImage ?? null, kind: kindOf(t) }, score);
+    return this.live.ratingOf(viewer.userId, key);
+  }
+
+  /** Une personne de la distribution : sa photo et ses films et séries disponibles. */
+  async person(viewer: VodViewer, id: string) {
+    await this.assertAccess(viewer.accountId);
+    const ent = await this.prisma.entity.findFirst({ where: { id: String(id ?? ''), type: 'PERSON' }, select: { id: true, name: true, imageUrl: true } });
+    if (!ent) throw new NotFoundException('Personne introuvable');
+    const links = await this.prisma.torrentEntity.findMany({ where: { entityId: ent.id, role: { in: ['ACTOR', 'DIRECTOR', 'WRITER', 'CREATOR', 'PRODUCER'] } }, select: { torrentId: true, role: true }, take: 600 });
+    const hidden = await this.hiddenFor(viewer);
+    const { items } = links.length ? await this.cardsOf(hidden, { ids: links.map((l) => l.torrentId), sort: 'year', limit: 60 }) : { items: [] as VodItem[] };
+    return { id: ent.id, name: ent.name, photo: ent.imageUrl ?? null, roles: [...new Set(links.map((l) => l.role))], items };
   }
 
   /** Jeton de lecture pour l'application : elle l'ouvre comme un lien seeduction://stream/<jeton> ; le .torrent remis porte `vod=1` (téléchargement non compté pour le spectateur). */

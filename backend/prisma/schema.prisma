@@ -38,10 +38,10 @@ model User {
   /// Membre anonyme (réglé par l'équipe) : son pseudo et son avatar sont remplacés par « Anonyme » pour les autres membres, sur tout le site et dans les équipes (voir AnonymityService).
   anonymous          Boolean    @default(false)
   /// Choix du membre : anonyme sur tout le site, torrents envoyés anonymes par défaut, anonyme dans sa team.
-  anonymousSelf    Boolean    @default(false)
-  anonymousUploads Boolean    @default(false)
-  anonymousTeam    Boolean    @default(false)
-  showLastSeen     Boolean    @default(true) // montre aux autres « Vu la dernière fois il y a… » (profil, chat, amis)
+  anonymousSelf      Boolean    @default(false)
+  anonymousUploads   Boolean    @default(false)
+  anonymousTeam      Boolean    @default(false)
+  showLastSeen       Boolean    @default(true) // montre aux autres « Vu la dernière fois il y a… » (profil, chat, amis)
   /// Les sessions ouvertes avant cette date ne sont plus valides (posée à chaque changement ou réinitialisation de mot de passe).
   sessionsValidAfter DateTime?
   /// Réinitialisation du mot de passe exigée par l'équipe : le compte reste inutilisable tant que le membre n'a pas choisi un nouveau mot de passe avec le lien reçu par courriel.
@@ -504,6 +504,8 @@ model Peer {
   lastAnnounceAt DateTime  @default(now())
   /// Première annonce de ce client sur ce torrent : sert de « date d'ajout » dans l'historique des téléchargements.
   createdAt      DateTime  @default(now())
+  /// Lecture de l'application Seeduction (annonce `vod=1`) : son téléchargement n'apparaît jamais dans « Mon activité » ni « Mes torrents » du site.
+  vod            Boolean   @default(false)
 
   @@unique([torrentId, userId, peerId])
   @@index([torrentId, isSeeder])
@@ -545,6 +547,56 @@ model PointTransfer {
 
   @@index([fromId, createdAt])
   @@index([toId, createdAt])
+}
+
+// Application Seeduction : un appareil du membre (téléphone, tablette, télé) vu sur le site (« Mes appareils »). L'état en direct (ce qui joue) reste en mémoire.
+model VodDevice {
+  id         String   @id @default(uuid())
+  userId     String // le compte (pas le profil famille)
+  deviceKey  String   @db.VarChar(64) // identifiant tiré au hasard par l'application à son premier lancement
+  name       String   @db.VarChar(60)
+  kind       String   @default("phone") @db.VarChar(10) // phone | tablet | tv
+  appVersion String?  @db.VarChar(20)
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@unique([userId, deviceKey])
+  @@index([userId])
+}
+
+// Temps regardé dans l'application, par titre, appareil et jour (statistiques personnelles).
+model VodWatch {
+  id        String   @id @default(uuid())
+  userId    String // le compte
+  torrentId String
+  deviceId  String   @default("") // VodDevice.id, vide si inconnu
+  day       String   @db.VarChar(10) // AAAA-MM-JJ
+  seconds   Int      @default(0)
+  title     String   @db.VarChar(160)
+  cover     String?
+  kind      String   @default("film") @db.VarChar(5)
+  genres    String[]
+
+  @@unique([userId, torrentId, deviceId, day])
+  @@index([userId, day])
+  @@index([day])
+}
+
+// Note interne (1 à 5 étoiles) d'un film ou d'une série par un membre ; la clé est celle du contenu (même fiche, toutes versions confondues).
+model VodRating {
+  id        String   @id @default(uuid())
+  userId    String // le profil qui note
+  key       String   @db.VarChar(200)
+  torrentId String // une version, pour retrouver l'affiche
+  title     String   @db.VarChar(160)
+  cover     String?
+  kind      String   @default("film") @db.VarChar(5)
+  score     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([key])
 }
 
 model PlaybackPosition {
@@ -1516,28 +1568,27 @@ model MessageReaction {
 // ---------------------------------------------------------------------------
 
 model Team {
-  id           String       @id @default(uuid())
-  name         String       @unique
-  slug         String       @unique
-  tag          String?      @db.VarChar(8)
-  description  String       @default("") @db.Text
-  requirements String?      @db.Text // ce que la team attend d'un candidat
-  logoUrl      String?
-  bannerUrl    String?  // bannière de la page de la team (envoyée par le chef)
-  slogan       String?  @db.VarChar(120)
-  accent       String?  @db.VarChar(9) // couleur de la team (#rrggbb)
-  monthlyGoal  Int      @default(0) // objectif de releases par mois (0 = aucun)
+  id                 String       @id @default(uuid())
+  name               String       @unique
+  slug               String       @unique
+  tag                String?      @db.VarChar(8)
+  description        String       @default("") @db.Text
+  requirements       String?      @db.Text // ce que la team attend d'un candidat
+  logoUrl            String?
+  bannerUrl          String? // bannière de la page de la team (envoyée par le chef)
+  slogan             String?      @db.VarChar(120)
+  accent             String?      @db.VarChar(9) // couleur de la team (#rrggbb)
+  monthlyGoal        Int          @default(0) // objectif de releases par mois (0 = aucun)
   chatConversationId String? // conversation privée de la team (Messenger), créée à la demande
-  leaderId     String? // vide = team sans propriétaire (détectée automatiquement, en attente d'un vrai membre)
-  auto         Boolean      @default(false) // ajoutée par le système d'après le nom des releases partagées
-  releaseCount Int          @default(0) // releases partagées sous son nom
-  recruiting   Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  members      TeamMember[]
-  posts        TeamPost[]
-  follows      TeamFollow[]
+  leaderId           String? // vide = team sans propriétaire (détectée automatiquement, en attente d'un vrai membre)
+  auto               Boolean      @default(false) // ajoutée par le système d'après le nom des releases partagées
+  releaseCount       Int          @default(0) // releases partagées sous son nom
+  recruiting         Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  members            TeamMember[]
+  posts              TeamPost[]
+  follows            TeamFollow[]
 }
-
 
 /// Un membre qui suit une team : il est prévenu de ses nouvelles releases approuvées (cloche).
 model TeamFollow {
@@ -1583,14 +1634,15 @@ model TeamPost {
 
   @@index([teamId, createdAt])
 }
+
 model TeamMember {
-  id       String   @id @default(uuid())
-  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId   String
-  userId   String   @unique // un compte ne fait partie que d'une seule team
-  role     String   @default("MEMBER") @db.VarChar(8) // LEADER | OFFICER | MEMBER
+  id        String   @id @default(uuid())
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String
+  userId    String   @unique // un compte ne fait partie que d'une seule team
+  role      String   @default("MEMBER") @db.VarChar(8) // LEADER | OFFICER | MEMBER
   anonymous Boolean  @default(false) // choisi par le chef : ce membre apparaît comme « Anonyme » dans la team
-  joinedAt DateTime @default(now())
+  joinedAt  DateTime @default(now())
 
   @@index([teamId])
 }
@@ -2770,21 +2822,21 @@ model PlayerUse {
 
 /// Le Mur : une publication sur le profil d'un membre (teamId vide) ou sur la page d'une team. Réservé aux membres du site, jamais public.
 model WallPost {
-  id         String   @id @default(uuid())
-  authorId   String
-  teamId     String?
-  content    String   @default("") @db.VarChar(2000)
-  imageUrl   String?  @db.VarChar(300)
-  linkUrl    String?  @db.VarChar(500)
+  id              String    @id @default(uuid())
+  authorId        String
+  teamId          String?
+  content         String    @default("") @db.VarChar(2000)
+  imageUrl        String?   @db.VarChar(300)
+  linkUrl         String?   @db.VarChar(500)
   /// Aperçu du lien (titre, description, site), lu par le serveur à la publication : jamais d'image, rien n'est chargé chez les lecteurs.
-  linkTitle       String? @db.VarChar(160)
-  linkDescription String? @db.VarChar(260)
-  linkSite        String? @db.VarChar(80)
-  torrentId  String?
+  linkTitle       String?   @db.VarChar(160)
+  linkDescription String?   @db.VarChar(260)
+  linkSite        String?   @db.VarChar(80)
+  torrentId       String?
   /// Profil : ME | FRIENDS | MEMBERS. Team : TEAM | MEMBERS.
-  visibility String   @default("MEMBERS") @db.VarChar(8)
-  createdAt  DateTime @default(now())
-  editedAt   DateTime?
+  visibility      String    @default("MEMBERS") @db.VarChar(8)
+  createdAt       DateTime  @default(now())
+  editedAt        DateTime?
 
   reactions WallReaction[]
   comments  WallComment[]
@@ -2807,12 +2859,12 @@ model WallReaction {
 }
 
 model WallComment {
-  id        String   @id @default(uuid())
-  post      WallPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  post      WallPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId    String
   authorId  String
-  content   String   @db.VarChar(1000)
-  createdAt DateTime @default(now())
+  content   String    @db.VarChar(1000)
+  createdAt DateTime  @default(now())
   editedAt  DateTime?
 
   @@index([postId, createdAt])

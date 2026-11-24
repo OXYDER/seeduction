@@ -15,6 +15,7 @@ import TelegramLogo from './TelegramLogo';
 import ModerationRail from './ModerationRail';
 import HomeRail from './HomeRail';
 import { ForYouGrid, HomeActions, HomeCustomize, HomeStrip, LatestRail, Top5 } from './HomeBits';
+import AppHome from './AppHome';
 import { HOME_SECTIONS, orderIds, useHomeLayout } from '../lib/homeLayout';
 import HomeSection, { HomeBlock, HomeSectionsControls } from './HomeSection';
 import HomeTabs, { type HomeTab } from './HomeTabs';
@@ -356,6 +357,7 @@ export default function HomeStreaming() {
   // Les sections de la colonne principale, dans l'ordre d'origine ; le membre les déplace, les cache et les réduit (Personnaliser l'accueil, ou « Organiser »).
   const blocks: { id: string; node: React.ReactNode; collapsible?: boolean }[] = [
     { id: 'actions', node: <HomeActions canUpload={canUpload} /> },
+    { id: 'app', node: <AppHome /> },
     { id: 'featured', node: heroNode, collapsible: false },
     { id: 'foryou', node: <ForYouGrid active={active} /> },
     { id: 'moderation', node: <ModerationRail /> },

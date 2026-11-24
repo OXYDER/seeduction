@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { assertPerm } from '../common/utils/account';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { VodLiveService } from './vod-live.service';
 import { VodService, type VodViewer } from './vod.service';
 
 const viewerOf = (req: any): VodViewer => ({ userId: req.user.userId, accountId: req.user.accountId ?? req.user.userId, username: req.user.username, role: req.user.role, fam: !!req.user.fam });
@@ -8,7 +9,7 @@ const viewerOf = (req: any): VodViewer => ({ userId: req.user.userId, accountId:
 /** « Seeduction Cinéma » : catalogue vidéo de l'application Android, réservé aux donateurs, fondateurs et uploaders (voir VodService). */
 @Controller('vod')
 export class VodController {
-  constructor(private vod: VodService) {}
+  constructor(private vod: VodService, private live: VodLiveService) {}
 
   /** Pour la page « Lecteur » du site : ce compte a-t-il droit au catalogue, et pourquoi. */
   @UseGuards(JwtAuthGuard)
@@ -100,6 +101,94 @@ export class VodController {
   @Get('title/:id')
   title(@Param('id') id: string, @Req() req: any) {
     return this.vod.title(viewerOf(req), id);
+  }
+
+  /** L'épisode suivant (sans en sauter un) ; dit s'il en manque un, et si une demande existe déjà. */
+  @UseGuards(JwtAuthGuard)
+  @Get('next')
+  next(@Query('torrentId') torrentId: string, @Query('fileIndex') fileIndex: string, @Req() req: any) {
+    return this.vod.next(viewerOf(req), torrentId, fileIndex);
+  }
+
+  /** Demande sur le site d'un épisode manquant. */
+  @UseGuards(JwtAuthGuard)
+  @Post('request-episode')
+  requestEpisode(@Body() body: { torrentId: string; season: number; episode: number }, @Req() req: any) {
+    assertPerm(req, 'download');
+    return this.vod.requestEpisode(viewerOf(req), body?.torrentId, body?.season, body?.episode);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('person/:id')
+  person(@Param('id') id: string, @Req() req: any) {
+    return this.vod.person(viewerOf(req), id);
+  }
+
+  /** Note interne : 1 à 5 étoiles (0 retire la note). */
+  @UseGuards(JwtAuthGuard)
+  @Post('rate')
+  rate(@Body() body: { torrentId: string; score: number }, @Req() req: any) {
+    return this.vod.rate(viewerOf(req), body?.torrentId, body?.score);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('ratings')
+  async ratings(@Req() req: any) {
+    const v = viewerOf(req);
+    await this.vod.assertAccess(v.accountId);
+    return { items: await this.live.myRatings(v.userId) };
+  }
+
+  // ------------------------------------------------------------------ appareils, lecture en direct et statistiques (site et application)
+
+  /** L'application se signale toutes les 3 s en lecture (12 s sinon) et reçoit les commandes envoyées depuis le site. */
+  @UseGuards(JwtAuthGuard)
+  @Post('devices/ping')
+  async ping(@Body() body: any, @Req() req: any) {
+    const v = viewerOf(req);
+    await this.vod.assertAccess(v.accountId);
+    return this.live.ping(v.accountId, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('devices')
+  async devices(@Req() req: any) {
+    const v = viewerOf(req);
+    await this.vod.assertAccess(v.accountId);
+    return { items: await this.live.devices(v.accountId) };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('devices/:id/command')
+  async command(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    assertPerm(req, 'download');
+    const v = viewerOf(req);
+    await this.vod.assertAccess(v.accountId);
+    return this.live.command(v.accountId, id, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('devices/:id')
+  async rename(@Param('id') id: string, @Body() body: { name?: string }, @Req() req: any) {
+    const v = viewerOf(req);
+    await this.vod.assertAccess(v.accountId);
+    return this.live.rename(v.accountId, id, body?.name ?? '');
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('devices/:id')
+  async forget(@Param('id') id: string, @Req() req: any) {
+    const v = viewerOf(req);
+    await this.vod.assertAccess(v.accountId);
+    return this.live.forget(v.accountId, id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('stats')
+  async stats(@Req() req: any) {
+    const v = viewerOf(req);
+    await this.vod.assertAccess(v.accountId);
+    return this.live.stats(v.accountId, v.userId);
   }
 
   @UseGuards(JwtAuthGuard)

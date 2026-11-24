@@ -4,11 +4,12 @@ import { jwtSecret } from '../common/utils/secret';
 import { StreamModule } from '../stream/stream.module';
 import { TorrentsModule } from '../torrents/torrents.module';
 import { VodController } from './vod.controller';
+import { VodLiveService } from './vod-live.service';
 import { VodService } from './vod.service';
 
 @Module({
   imports: [JwtModule.register({ secret: jwtSecret(), signOptions: { expiresIn: '7d' } }), StreamModule, TorrentsModule],
   controllers: [VodController],
-  providers: [VodService],
+  providers: [VodService, VodLiveService],
 })
 export class VodModule {}

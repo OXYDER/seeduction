@@ -619,6 +619,9 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Tu retrouves tes demandes dans [b]Mes demandes[/b]. Quand quelqu'un envoie le torrent et le lie à ta demande, tu es prévenu : n'oublie pas de le remercier avec un 👍.\n\n` +
         `[b]Remplir une demande (pour gagner les points)[/b]\n` +
         `Envoie le torrent demandé ([url=/wiki/guide-envoyer-premier-torrent]Envoyer ton premier torrent[/url]) puis lie-le à la demande : la récompense te revient.\n\n` +
+        `[b]Comblée automatiquement par le système[/b]\n` +
+        `Tu as envoyé une release sans voir qu'une demande l'attendait ? Pas de souci : quand ta release est approuvée, le site la compare aux demandes ouvertes (même titre, même épisode, et l'année, la langue ou la qualité si la demande les précisait). En cas de correspondance, la demande est [b]marquée comme comblée automatiquement[/b], la récompense te revient, et le demandeur comme toi êtes prévenus. En cas de doute, la demande reste ouverte : tu peux toujours la lier toi-même.\n\n` +
+        `Les demandes d'épisode manquant faites depuis [url=/wiki/guide-cinema]l'application Seeduction[/url] fonctionnent de la même façon, sans langue ni qualité imposées.\n\n` +
         `Référence : [url=/wiki/demandes]Demandes (bounties)[/url].`,
     },
     {
@@ -670,7 +673,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
     {
       title: 'L\'application Seeduction : films et séries sur Android et télé',
       slug: 'guide-cinema',
-      keywords: 'application, android, télé, box, netflix, catalogue, vidéo à la demande, donateur, fondateur, uploader, ratio, seeders, connexion, qr code, lecteur, sous-titres, audio, vitesse, épisode suivant, top 10, sagas, genres',
+      keywords: 'application, android, télé, box, netflix, appareils, télécommande, statistiques, notes, étoiles, casting, bande-annonce, épisode manquant, catalogue, vidéo à la demande, donateur, fondateur, uploader, ratio, seeders, connexion, qr code, lecteur, sous-titres, audio, vitesse, épisode suivant, top 10, sagas, genres',
       content:
         `L'application Seeduction : films et séries sur Android et télé\n` +
         `Une seule application, façon Netflix, pour regarder les films et les séries de Seeduction sur téléphone, tablette, télé et box Android. Elle remplace le lecteur Seeduction pour Windows et pour Android : le lecteur est maintenant intégré. Tu ouvres, tu choisis une affiche, ça se lit.\n` +
@@ -692,14 +695,21 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `• Quatre onglets : [b]Accueil[/b], [b]Films[/b], [b]Séries[/b] et [b]Recherche[/b]. Ton initiale, en haut à droite, ouvre les [b]Paramètres[/b].\n` +
         `• [b]Accueil[/b] : de grandes affiches qui défilent, puis des rangées : [b]Reprendre[/b] (avec l'épisode suivant des séries), [b]Recommandé pour toi[/b], [b]Parce que tu as aimé…[/b], [b]Nouveautés[/b], un [b]Top 10[/b] des titres les plus regardés, [b]Sagas[/b], films récents, séries à découvrir et des rangées par genre. « Tout voir » ouvre la liste complète. La reprise suit ton compte : tu peux commencer sur le site ou ailleurs et finir sur le téléphone.\n` +
         `• [b]Films[/b] et [b]Séries[/b] : toute la liste, avec le choix d'une [b]catégorie[/b] (genre) et un tri (nouveautés, plus regardés, nom de A à Z, année, mieux notés). Les films proposent aussi les [b]sagas[/b] (toutes les suites d'une même collection, dans l'ordre de sortie).\n` +
-        `• La [b]fiche[/b] : synopsis, note, durée, versions disponibles (qualité, langue, taille, seeders) ou épisodes par saison, la saga du film et des titres du même genre.\n` +
+        `• La [b]fiche[/b] : grande image, synopsis, [b]bande-annonce[/b], note TMDB et [b]note des membres[/b], [b]distribution[/b] avec photos (touche un acteur : tous ses films et séries disponibles), réalisateurs, scénaristes, studios, pays et langues, la saga du film et des titres du même genre. Un film propose ses versions (qualité, langue, taille, seeders) ; une série, ses [b]saisons[/b] à choisir et leurs épisodes, avec un bouton [b]Tout lire[/b] sur la fiche et [b]Lire la saison[/b] dans chaque saison. Les noms de release ne sont jamais affichés : seulement le titre et « Épisode 5 ».\n` +
+        `• [b]Noter[/b] : donne de 1 à 5 étoiles à un film ou une série (touche une étoile ; touche-la encore pour retirer ta note). Les titres les mieux notés par les membres forment la rangée « Aimés par les membres ».\n` +
         `• La disponibilité d'un titre, c'est son nombre de seeders : le catalogue ne montre que les titres qui ont [b]au moins un seeder[/b]. ⚡ [b]Démarrage rapide[/b] : 5 seeders ou plus ; ● [b]correct[/b] : 2 à 4 ; ● [b]lent[/b] : 1 seul seeder.\n` +
         `\n` +
         `[b]Le lecteur intégré[/b]\n` +
         `• Tous les formats, reprise là où tu t'es arrêté, statut « en train de regarder » sur le site.\n` +
         `• [b]Avancer et reculer[/b] de 10 secondes (boutons, double toucher à gauche ou à droite, ou les flèches de la télécommande), glisser sur la barre pour aller n'importe où. Glisser vers le haut ou le bas : [b]luminosité[/b] à gauche, [b]volume[/b] à droite.\n` +
         `• [b]Audio et sous-titres[/b] dans un seul panneau (y compris les sous-titres partagés par les membres), avec le décalage des sous-titres. [b]Vitesse[/b] de lecture de 0,5× à 2×, [b]format[/b] de l'image.\n` +
-        `• Pour une série, [b]Épisode suivant[/b] : en fin d'épisode, le suivant démarre après 6 secondes (Annuler ou Lire maintenant).\n` +
+        `• Pour une série, [b]Épisode suivant[/b] : en fin d'épisode, le suivant démarre après 6 secondes (Annuler ou Lire maintenant). L'application vérifie que c'est bien le [b]bon[/b] épisode : si le 6 manque alors que le 7 est là, elle te prévient (« l'épisode 6 est manquant ») et te propose de lire le 7 quand même ou de [b]demander l'épisode manquant[/b] : une demande est alors publiée sur [url=/requests]Demandes[/url] à ton nom. Si elle existe déjà (la tienne ou celle d'un autre membre), l'application te le dit au lieu d'en créer une deuxième.\n` +
+        `\n` +
+        `[b]Ma télécommande sur le site : appareils et statistiques[/b]\n` +
+        `• Sur [url=/application]la page de l'application[/url], la présentation complète ; sur la page [b]Mon application[/b] (menu Bibliothèque, ou le bloc « Application Seeduction » du tableau de bord) : tes [b]appareils[/b] (téléphone, tablette, télé), [b]ce qui joue en direct et sur lequel[/b], avec pause, reculer ou avancer de 10 ou 30 secondes, saut à n'importe quel moment et arrêt.\n` +
+        `• Tu peux aussi [b]lancer un titre à distance[/b] : cherche dans le catalogue depuis le site, choisis la version ou l'épisode, et l'appareil le démarre (l'application doit être ouverte dessus ; les commandes arrivent en moins de 4 secondes pendant une lecture, jusqu'à 12 secondes sinon). Renomme ou retire un appareil quand tu veux.\n` +
+        `• [b]Statistiques[/b] : heures regardées (semaine, 30 jours, total), jour par jour, titres et genres préférés, appareils les plus utilisés, ce que ton application partage. [b]Mes notes[/b] rassemble les titres que tu as notés.\n` +
+        `• Ce que l'application télécharge n'apparaît [b]jamais[/b] sur le site (ni dans Mon activité, ni dans Mes torrents) : seul ce qui joue en ce moment est montré, et seulement à toi.\n` +
         `\n` +
         `[b]Sur une télé ou une box Android[/b]\n` +
         `• L'application détecte une télé ou une box et passe en [b]mode TV[/b] : menu en haut, grandes affiches, navigation à la télécommande (flèches et OK, un anneau doré montre l'élément sélectionné, Retour revient en arrière). Si la détection se trompe : Paramètres > Affichage.\n` +
@@ -712,7 +722,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `\n` +
         `Après la lecture, le partage continue en arrière-plan (Wi-Fi seulement par défaut) : arrête-le dans Mes téléchargements si besoin.\n` +
         `\n` +
-        `Références : [url=/wiki/guide-ratio-seed]Le ratio[/url].`,
+        `Références : [url=/wiki/guide-ratio-seed]Le ratio[/url] · [url=/wiki/guide-demandes]Demandes[/url].`,
     },
     {
       title: 'Personnaliser le site : thèmes, affichages, infobulles',
