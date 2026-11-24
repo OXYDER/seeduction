@@ -31,6 +31,14 @@ export class VodController {
     return this.vod.exchange(body?.code ?? '');
   }
 
+  /** Session longue de l'application, pour le compte déjà connecté (identifiant + mot de passe passés par /auth/login) : refusée sans droit au catalogue. */
+  @UseGuards(JwtAuthGuard)
+  @Post('token')
+  token(@Req() req: any) {
+    assertPerm(req, 'download');
+    return this.vod.session(viewerOf(req));
+  }
+
   /** Télé ou box : demande un code à afficher à l'écran (public). */
   @Post('device/start')
   deviceStart() {

@@ -29,12 +29,7 @@
         android:theme="@style/Theme.Seeduction"
         android:usesCleartextTraffic="true">
 
-        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+        <activity android:name=".MainActivity" android:exported="false" android:launchMode="singleTask" />
 
         <!-- « Seeduction Cinéma » : catalogue vidéo (donateurs, fondateurs, uploaders). Le lien seeduction://vod/<code> du site associe l'application. -->
         <activity
@@ -49,6 +44,7 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>

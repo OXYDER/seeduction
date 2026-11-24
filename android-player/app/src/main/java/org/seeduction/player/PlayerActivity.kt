@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,7 +17,10 @@ import android.view.GestureDetector
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.ProgressBar
 import android.widget.Toast
 import android.widget.SeekBar
@@ -79,6 +84,11 @@ class PlayerActivity : AppCompatActivity() {
     private var userSeeking = false
     private var lengthMs = 0L
     private var scaleIndex = 0
+    /** Épisodes suivants à enchaîner (« torrent|fichier|libellé »). */
+    private var queue: List<String> = emptyList()
+    private var nextJob: Job? = null
+    private var rate = 1f
+    private var brightness = -1f
     private val scales = listOf(MediaPlayer.ScaleType.SURFACE_BEST_FIT, MediaPlayer.ScaleType.SURFACE_FIT_SCREEN, MediaPlayer.ScaleType.SURFACE_FILL, MediaPlayer.ScaleType.SURFACE_16_9, MediaPlayer.ScaleType.SURFACE_4_3)
 
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* sans réponse : le partage marche, seule la notification manque */ }
@@ -97,15 +107,18 @@ class PlayerActivity : AppCompatActivity() {
 
         findViewById<View>(R.id.back).setOnClickListener { finish() }
         // Télécommande : chaque commande reçoit le focus (anneau doré) ; la barre bouge par pas de 1 %.
-        listOf(R.id.back, R.id.rewind, R.id.playPause, R.id.forward, R.id.audio, R.id.subs, R.id.aspect, R.id.retry, R.id.loadBack).forEach { findViewById<View>(it).tvFocus(12f) }
+        listOf(R.id.back, R.id.rewind, R.id.playPause, R.id.forward, R.id.audio, R.id.subs, R.id.aspect, R.id.next, R.id.retry, R.id.loadBack).forEach { findViewById<View>(it).tvFocus(12f) }
         findViewById<SeekBar>(R.id.seek).apply { keyProgressIncrement = 10; isFocusable = true }
         findViewById<View>(R.id.loadBack).setOnClickListener { finish() }
         retry.setOnClickListener { finish() }
         playPause.setOnClickListener { togglePause() }
         findViewById<View>(R.id.rewind).setOnClickListener { seekBy(-10_000) }
         findViewById<View>(R.id.forward).setOnClickListener { seekBy(10_000) }
-        findViewById<View>(R.id.audio).setOnClickListener { chooseTrack(audio = true) }
-        findViewById<View>(R.id.subs).setOnClickListener { chooseTrack(audio = false) }
+        findViewById<View>(R.id.audio).setOnClickListener { showTracksPanel() }
+        findViewById<View>(R.id.subs).setOnClickListener { chooseSpeed() }
+        findViewById<View>(R.id.next).setOnClickListener { playNext() }
+        findViewById<View>(R.id.nextNow).apply { tvFocus(8f); setOnClickListener { playNext() } }
+        findViewById<View>(R.id.nextCancel).apply { tvFocus(8f); setOnClickListener { nextJob?.cancel(); findViewById<View>(R.id.nextBanner).visibility = View.GONE; finish() } }
         findViewById<View>(R.id.aspect).setOnClickListener {
             scaleIndex = (scaleIndex + 1) % scales.size
             player?.videoScale = scales[scaleIndex]
@@ -127,6 +140,23 @@ class PlayerActivity : AppCompatActivity() {
 
         val gestures = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent) = true
+            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, dx: Float, dy: Float): Boolean {
+                if (e1 == null || Math.abs(dy) < Math.abs(dx) || video.height <= 0) return false
+                val frac = dy / video.height
+                if (e1.x < video.width / 2f) {
+                    val cur = if (brightness >= 0) brightness else (window.attributes.screenBrightness.takeIf { it >= 0 } ?: 0.5f)
+                    brightness = (cur + frac).coerceIn(0.02f, 1f)
+                    window.attributes = window.attributes.also { it.screenBrightness = brightness }
+                    flash("☀ " + (brightness * 100).toInt() + " %")
+                } else {
+                    val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                    val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    val v = (am.getStreamVolume(AudioManager.STREAM_MUSIC) + Math.round(frac * max * 1.4f)).coerceIn(0, max)
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, v, 0)
+                    flash("🔊 $v / $max")
+                }
+                return true
+            }
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean { toggleControls(); return true }
             override fun onDoubleTap(e: MotionEvent): Boolean {
                 val w = video.width.coerceAtLeast(1)
@@ -165,6 +195,9 @@ class PlayerActivity : AppCompatActivity() {
     private fun handleIntent(i: Intent) {
         val token = i.getStringExtra(EXTRA_TOKEN) ?: if (i.action == Intent.ACTION_VIEW) i.data?.lastPathSegment else null
         val existing = i.getStringExtra(EXTRA_SESSION)
+        queue = i.getStringArrayListExtra(EXTRA_QUEUE)?.toList() ?: emptyList()
+        findViewById<View>(R.id.next).visibility = if (queue.isNotEmpty()) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.nextBanner).visibility = View.GONE; nextJob?.cancel()
         if (token == null && existing == null) { showError("Aucune lecture à ouvrir : clique sur « Ouvrir dans le lecteur Seeduction » depuis le site."); return }
         loadJob?.cancel()
         releasePlayer()
@@ -310,7 +343,7 @@ class PlayerActivity : AppCompatActivity() {
             MediaPlayer.Event.EndReached -> {
                 info?.let { Prefs(this).savePosition(it.torrentId, it.fileIndex, 0) }
                 sendPing(finalPosition = true)
-                finish()
+                if (queue.isNotEmpty()) startNextCountdown() else finish()
             }
             MediaPlayer.Event.EncounteredError -> showError("VLC n'arrive pas à lire ce fichier.")
         }
@@ -400,6 +433,101 @@ class PlayerActivity : AppCompatActivity() {
         hideJob = lifecycleScope.launch { delay(4000); if (player?.isPlaying == true && !userSeeking) controls.visibility = View.GONE }
     }
 
+    // ------------------------------------------------------------------ audio, sous-titres, vitesse, épisode suivant
+
+    private fun trackName(name: String?, id: Int): String = when {
+        id < 0 || name.equals("Disable", true) -> "Désactivés"
+        else -> (name ?: "Piste $id")
+    }
+
+    /** Un seul panneau pour la langue audio et les sous-titres, comme les grandes plateformes : deux colonnes, un choix par colonne, et le décalage des sous-titres. */
+    private fun showTracksPanel() {
+        val mp = player ?: return
+        val audioTracks = mp.audioTracks ?: emptyArray()
+        val subTracks = mp.spuTracks ?: emptyArray()
+        if (audioTracks.isEmpty() && subTracks.isEmpty()) { flash("Aucune piste"); return }
+        val d = resources.displayMetrics.density
+        fun dp(v: Int) = (v * d).toInt()
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(16), dp(20), dp(10)); setBackgroundColor(Ui.SURFACE) }
+        val cols = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        lateinit var dialog: AlertDialog
+        fun column(title: String, tracks: Array<MediaPlayer.TrackDescription>, current: () -> Int, set: (Int) -> Unit, rebuild: () -> Unit): View {
+            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            col.addView(TextView(this).apply { text = title; textSize = 13f; typeface = Ui.bold; setTextColor(Ui.GOLD); setPadding(dp(10), 0, 0, dp(6)); letterSpacing = 0.08f })
+            tracks.forEach { t ->
+                val on = t.id == current()
+                col.addView(TextView(this).apply {
+                    text = (if (on) "✓  " else "     ") + trackName(t.name, t.id); textSize = 15f; typeface = if (on) Ui.bold else Ui.medium; setTextColor(if (on) Ui.GOLD2 else Ui.TEXT)
+                    setPadding(dp(10), dp(10), dp(14), dp(10)); isClickable = true; tvFocus(8f); setOnClickListener { set(t.id); rebuild() }
+                })
+            }
+            if (tracks.isEmpty()) col.addView(TextView(this).apply { text = "Aucun"; textSize = 14f; setTextColor(Ui.MUTED); setPadding(dp(10), dp(10), 0, 0) })
+            return ScrollView(this).apply { addView(col) }
+        }
+        fun build() {
+            cols.removeAllViews()
+            cols.addView(column("AUDIO", audioTracks, { mp.audioTrack }, { mp.audioTrack = it }, ::build), LinearLayout.LayoutParams(0, dp(260), 1f))
+            cols.addView(column("SOUS-TITRES", subTracks, { mp.spuTrack }, { mp.spuTrack = it }, ::build), LinearLayout.LayoutParams(0, dp(260), 1f))
+        }
+        build()
+        root.addView(cols)
+        val delay = TextView(this).apply { textSize = 13f; setTextColor(Ui.MUTED); setPadding(dp(10), dp(12), dp(10), 0) }
+        fun delayText() { delay.text = "Décalage des sous-titres : " + String.format(java.util.Locale.US, "%+.1f s", mp.spuDelay / 1_000_000.0) }
+        delayText()
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
+        fun stepBtn(t: String, deltaUs: Long) = TextView(this).apply {
+            text = t; textSize = 16f; typeface = Ui.bold; setTextColor(Ui.TEXT); gravity = android.view.Gravity.CENTER; setPadding(dp(18), dp(8), dp(18), dp(8)); isClickable = true
+            background = android.graphics.drawable.GradientDrawable().apply { setColor(Ui.SURFACE2); cornerRadius = 8 * d }; tvFocus(8f)
+            setOnClickListener { mp.spuDelay = mp.spuDelay + deltaUs; delayText() }
+        }
+        row.addView(delay, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(stepBtn("−", -500_000L)); row.addView(View(this), LinearLayout.LayoutParams(dp(8), 1)); row.addView(stepBtn("+", 500_000L))
+        root.addView(row)
+        dialog = AlertDialog.Builder(this).setView(root).setPositiveButton("Fermer", null).create()
+        dialog.show()
+    }
+
+    private fun chooseSpeed() {
+        val mp = player ?: return
+        val rates = floatArrayOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
+        val names = rates.map { (if (it == 1f) "Normale" else String.format(java.util.Locale.US, "%.2f", it).trimEnd('0').trimEnd('.') + "×") }.toTypedArray()
+        AlertDialog.Builder(this).setTitle("Vitesse de lecture").setSingleChoiceItems(names, rates.indexOfFirst { it == rate }.coerceAtLeast(0)) { d, i ->
+            rate = rates[i]; mp.rate = rate
+            ((findViewById<View>(R.id.subs) as LinearLayout).getChildAt(1) as TextView).text = if (rate == 1f) "Vitesse" else names[i]
+            d.dismiss()
+        }.setNegativeButton("Fermer", null).show()
+    }
+
+    /** Lance l'épisode suivant de la file : le site remet un nouveau jeton et le lecteur repart. */
+    private fun playNext() {
+        val entry = queue.firstOrNull() ?: return
+        nextJob?.cancel()
+        findViewById<View>(R.id.nextBanner).visibility = View.GONE
+        val (tid, file) = entry.split("|").let { it[0] to (it.getOrNull(1)?.toIntOrNull() ?: 0) }
+        val token = Prefs(this).vodToken ?: return
+        val rest = queue.drop(1)
+        showLoading("Épisode suivant…", entry.split("|").getOrNull(2) ?: "")
+        lifecycleScope.launch {
+            try {
+                val play = VodApi.play(token, tid, file)
+                handleIntent(Intent().putExtra(EXTRA_TOKEN, play).putStringArrayListExtra(EXTRA_QUEUE, ArrayList(rest)))
+            } catch (e: Exception) { showError(e.message ?: "Épisode suivant indisponible") }
+        }
+    }
+
+    /** Fin d'un épisode : « Épisode suivant dans 6 s » avec « Lire maintenant » et « Annuler ». */
+    private fun startNextCountdown() {
+        val label = queue.firstOrNull()?.split("|")?.getOrNull(2) ?: "Épisode suivant"
+        val banner = findViewById<View>(R.id.nextBanner); val text = findViewById<TextView>(R.id.nextText)
+        banner.visibility = View.VISIBLE
+        findViewById<View>(R.id.nextNow).requestFocus()
+        nextJob?.cancel()
+        nextJob = lifecycleScope.launch {
+            for (n in 6 downTo 1) { text.text = "$label dans $n s"; delay(1000) }
+            playNext()
+        }
+    }
+
     private fun chooseTrack(audio: Boolean) {
         val mp = player ?: return
         val tracks = (if (audio) mp.audioTracks else mp.spuTracks) ?: emptyArray()
@@ -432,7 +560,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun releasePlayer() {
-        tickJob?.cancel(); hideJob?.cancel()
+        tickJob?.cancel(); hideJob?.cancel(); nextJob?.cancel()
         try { player?.stop() } catch (_: Exception) { /* déjà arrêté */ }
         try { player?.detachViews() } catch (_: Exception) { /* déjà détaché */ }
         try { player?.release() } catch (_: Exception) { /* déjà libéré */ }
@@ -460,5 +588,7 @@ class PlayerActivity : AppCompatActivity() {
         const val EXTRA_SESSION = "session"
         /** Jeton de lecture remis par le catalogue (sans passer par un lien). */
         const val EXTRA_TOKEN = "token"
+        /** Épisodes suivants à enchaîner (liste de « torrent|fichier|libellé »). */
+        const val EXTRA_QUEUE = "queue"
     }
 }

@@ -109,7 +109,7 @@ class VodSettingsActivity : AppCompatActivity() {
             setOnCheckedChangeListener { _, on -> prefs.wifiOnlySeed = on }
         }
         col.addView(card(wifi, label("Après la lecture, le partage continue en arrière-plan pour aider les autres membres. Sur données mobiles, il se met en pause si ce réglage est actif ; une lecture en cours n'est jamais coupée.", 12.5f, Ui.MUTED).apply { setPadding(dp(16), 0, dp(16), dp(14)); setLineSpacing(0f, 1.15f) },
-            divider(), action("Mes partages et téléchargements", "Arrêter, reprendre ou supprimer ce qui est téléchargé.") { startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true)) }))
+            divider(), action("Mes téléchargements", "Ce qui est téléchargé et partagé : lire, arrêter, supprimer.") { startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true)) }))
 
         // --- Compte
         col.addView(section("Compte"))
@@ -132,7 +132,7 @@ class VodSettingsActivity : AppCompatActivity() {
             divider(),
             action("Partager le journal de diagnostic", "Utile si une lecture ne démarre pas.") {
                 val log = try { java.io.File(filesDir, "lecteur.log").readText().takeLast(20000) } catch (_: Exception) { "(journal vide)" }
-                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, "Journal de Seeduction Cinéma").putExtra(Intent.EXTRA_TEXT, log), "Envoyer le journal"))
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, "Journal de Seeduction").putExtra(Intent.EXTRA_TEXT, log), "Envoyer le journal"))
             },
         ))
     }

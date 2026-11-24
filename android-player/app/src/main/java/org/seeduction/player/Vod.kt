@@ -31,9 +31,16 @@ class VodItem(
 /** « Tout voir » d'une rangée : les critères de la liste complète. */
 class VodMore(val kind: String?, val genre: String?, val sort: String?, val sagas: Boolean)
 
-class VodRail(val id: String, val title: String, val items: List<VodItem>, val more: VodMore?)
+class VodRail(val id: String, val title: String, val items: List<VodItem>, val more: VodMore?, val style: String? = null)
 
-class VodHome(val hero: VodItem?, val rails: List<VodRail>)
+class VodHome(val heroes: List<VodItem>, val rails: List<VodRail>)
+
+/** Erreur du site avec son code HTTP et son message en français. */
+class ApiError(val code: Int, message: String) : Exception(message)
+
+class LoginResult(val token: String?, val needsProfile: Boolean, val message: String?)
+
+class FamilyProfile(val id: String, val name: String, val hasPin: Boolean, val blocked: Boolean)
 
 class VodGenre(val name: String, val count: Int)
 
@@ -72,8 +79,7 @@ private fun itemsOf(arr: JSONArray?): List<VodItem> = if (arr == null) emptyList
 
 object VodApi {
     private fun call(path: String, token: String?, method: String = "GET", body: String? = null): JSONObject {
-        val c: HttpURLConnection = SiteApi.open(Config.SITE + "/api/vod" + path, method, body, 20000)
-        if (token != null) c.setRequestProperty("Authorization", "Bearer $token")
+        val c: HttpURLConnection = SiteApi.open(Config.SITE + "/api/vod" + path, method, body, 20000, token)
         val text = SiteApi.readAll(c)
         val code = c.responseCode
         if (code !in 200..299) {
@@ -88,6 +94,47 @@ object VodApi {
     /** Échange le code d'association affiché sur le site contre une session de l'application (le mot de passe n'est jamais demandé). Renvoie le pseudo. */
     suspend fun pair(code: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
         val o = call("/exchange", null, "POST", JSONObject().put("code", code).toString())
+        prefs.vodToken = o.getString("accessToken")
+        prefs.vodUser = o.optString("username").ifEmpty { null }
+        prefs.vodUser ?: ""
+    }
+
+    // ---- connexion par identifiant (ou courriel) et mot de passe : les mêmes routes que le site
+
+    private fun raw(path: String, method: String, body: String?, token: String?): JSONObject {
+        val c = SiteApi.open(Config.SITE + path, method, body, 20000, token)
+        val text = SiteApi.readAll(c)
+        if (c.responseCode !in 200..299) {
+            val msg = try { JSONObject(text).optString("message") } catch (_: Exception) { "" }
+            throw ApiError(c.responseCode, msg.ifEmpty { "Le site a répondu " + c.responseCode + "." })
+        }
+        return if (text.isBlank()) JSONObject() else JSONObject(text)
+    }
+
+    /** Identifiant ou courriel + mot de passe (+ code de double authentification si le compte en a une). Un compte famille renvoie `needsProfile` : il reste à choisir le profil. */
+    suspend fun login(identifier: String, password: String, totp: String?): LoginResult = withContext(Dispatchers.IO) {
+        val b = JSONObject().put("usernameOrEmail", identifier).put("password", password)
+        if (!totp.isNullOrBlank()) b.put("totpToken", totp)
+        val o = raw("/api/auth/login", "POST", b.toString(), null)
+        when {
+            o.optBoolean("needsVerification") -> LoginResult(null, false, "Confirme d'abord ton courriel sur le site : un code t'y a été envoyé.")
+            o.optBoolean("needsProfile") -> LoginResult(o.getString("accessToken"), true, null)
+            else -> LoginResult(o.getString("accessToken"), false, null)
+        }
+    }
+
+    suspend fun familyProfiles(accountToken: String): List<FamilyProfile> = withContext(Dispatchers.IO) {
+        val arr = raw("/api/family/picker", "GET", null, accountToken).optJSONArray("profiles") ?: JSONArray()
+        (0 until arr.length()).map { val p = arr.getJSONObject(it); FamilyProfile(p.getString("id"), p.optString("name"), p.optBoolean("hasPin"), p.optBoolean("blocked")) }
+    }
+
+    suspend fun familySelect(accountToken: String, profileId: String, pin: String): String = withContext(Dispatchers.IO) {
+        raw("/api/family/select", "POST", JSONObject().put("profileId", profileId).put("pin", pin).toString(), accountToken).getString("accessToken")
+    }
+
+    /** Échange la session de connexion (7 jours) contre celle de l'application (60 jours) ; refusé sans droit au catalogue. Renvoie le pseudo. */
+    suspend fun longSession(token: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
+        val o = raw("/api/vod/token", "POST", "{}", token)
         prefs.vodToken = o.getString("accessToken")
         prefs.vodUser = o.optString("username").ifEmpty { null }
         prefs.vodUser ?: ""
@@ -113,12 +160,13 @@ object VodApi {
     suspend fun home(token: String): VodHome = withContext(Dispatchers.IO) {
         val o = call("/home", token)
         val arr = o.optJSONArray("rails") ?: JSONArray()
+        val hs = itemsOf(o.optJSONArray("heroes"))
         VodHome(
-            hero = o.optJSONObject("hero")?.let { itemOf(it) },
+            heroes = if (hs.isNotEmpty()) hs else listOfNotNull(o.optJSONObject("hero")?.let { itemOf(it) }),
             rails = (0 until arr.length()).map { i ->
                 val r = arr.getJSONObject(i)
                 val m = r.optJSONObject("more")
-                VodRail(r.getString("id"), r.optString("title"), itemsOf(r.optJSONArray("items")), m?.let { VodMore(it.str("kind"), it.str("genre"), it.str("sort"), it.optBoolean("sagas")) })
+                VodRail(r.getString("id"), r.optString("title"), itemsOf(r.optJSONArray("items")), m?.let { VodMore(it.str("kind"), it.str("genre"), it.str("sort"), it.optBoolean("sagas")) }, r.str("style"))
             },
         )
     }
@@ -198,29 +246,41 @@ object Images {
     fun absolute(url: String): String = if (url.startsWith("http", true)) url else Config.SITE + (if (url.startsWith("/")) url else "/$url")
 
     /** `maxWidth` : largeur utile en pixels (l'image est réduite à peu près à cette taille pour ménager la mémoire). */
+    private fun fetch(full: String, maxWidth: Int): Bitmap? = try {
+        val c = URL(full).openConnection() as HttpURLConnection
+        c.connectTimeout = 10000; c.readTimeout = 15000
+        c.setRequestProperty("User-Agent", "Seeduction-Android/" + Config.APP_VERSION)
+        val bytes = if (c.responseCode in 200..299) c.inputStream.use { it.readBytes() } else null
+        if (bytes == null) null else {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            var sample = 1
+            while (bounds.outWidth / (sample * 2) >= maxWidth) sample *= 2
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+        }
+    } catch (_: Exception) { null }
+
+    /** Charge une image en avance (affiches qui défilent) : elle s'affichera sans attente. */
+    fun prefetch(url: String?, maxWidth: Int = 400) {
+        if (url == null) return
+        val full = absolute(url)
+        if (cache.get(full) != null) return
+        pool.execute { fetch(full, maxWidth)?.let { cache.put(full, it) } }
+    }
+
+    /** `maxWidth` : largeur utile en pixels (l'image est réduite à peu près à cette taille pour ménager la mémoire). */
     fun load(view: ImageView, url: String?, maxWidth: Int = 400) {
         view.tag = url
+        view.animate().cancel(); view.alpha = 1f
         view.setImageDrawable(placeholder)
         if (url == null) return
         val full = absolute(url)
         cache.get(full)?.let { view.setImageBitmap(it); return }
         pool.execute {
-            val bmp = try {
-                val c = URL(full).openConnection() as HttpURLConnection
-                c.connectTimeout = 10000; c.readTimeout = 15000
-                c.setRequestProperty("User-Agent", "Seeduction-Android/" + Config.APP_VERSION)
-                val bytes = if (c.responseCode in 200..299) c.inputStream.use { it.readBytes() } else null
-                if (bytes == null) null else {
-                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-                    var sample = 1
-                    while (bounds.outWidth / (sample * 2) >= maxWidth) sample *= 2
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
-                }
-            } catch (_: Exception) { null }
+            val bmp = fetch(full, maxWidth)
             if (bmp != null) {
                 cache.put(full, bmp)
-                ui.post { if (view.tag == url) view.setImageBitmap(bmp) }
+                ui.post { if (view.tag == url) { view.setImageBitmap(bmp); view.alpha = 0f; view.animate().alpha(1f).setDuration(260).start() } }
             }
         }
     }

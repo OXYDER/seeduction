@@ -56,6 +56,8 @@ export interface VodRail {
   items: VodItem[];
   /** « Tout voir » : les critères de la liste complète. */
   more?: { kind?: string; genre?: string; sort?: string; sagas?: boolean };
+  /** « top10 » : rangée numérotée de 1 à 10, façon palmarès. */
+  style?: 'top10';
 }
 
 export interface VodItem {
@@ -122,6 +124,11 @@ export class VodService {
   async status(accountId: string) {
     const reason = await this.access(accountId);
     return { eligible: !!reason, reason, label: reason ? VOD_REASON_LABELS[reason] : null, rule: VOD_RULE_TEXT };
+  }
+
+  /** La session de l'application pour le compte connecté (60 jours) : sert après une connexion par identifiant et mot de passe. */
+  session(viewer: VodViewer) {
+    return this.issueToken(viewer);
   }
 
   /** Code d'association (5 minutes, une seule fois) affiché sur le site : l'application l'échange contre sa propre session, sans jamais demander le mot de passe. */
@@ -334,6 +341,12 @@ export class VodService {
     const heroRows = fresh.rows.filter((r) => r.cover && r.overview);
     const hr = heroRows.length ? heroRows[Math.floor(Date.now() / 86_400_000) % Math.min(5, heroRows.length)] : null;
     const hero = hr ? { ...this.card(hr), synopsis: hr.overview!.replace(/\s+/g, ' ').slice(0, 240) } : null;
+    // Jusqu'à cinq affiches qui défilent sur l'accueil (la première est « l'affiche du jour »).
+    const heroes = heroRows.length
+      ? Array.from({ length: Math.min(5, heroRows.length) }, (_, i) => heroRows[(Math.floor(Date.now() / 86_400_000) + i) % Math.min(8, heroRows.length)])
+          .filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i)
+          .map((r) => ({ ...this.card(r), synopsis: r.overview!.replace(/\s+/g, ' ').slice(0, 240) }))
+      : [];
 
     const topGenres = genreList.genres.slice(0, 8);
     const day = Math.floor(Date.now() / 86_400_000);
@@ -345,13 +358,13 @@ export class VodService {
       { id: 'foryou', title: 'Recommandé pour toi', items: await idsRail((foryou as any[]).map((x) => x.id).filter(Boolean)) },
       ...(because.based ? [{ id: 'because', title: `Parce que tu as aimé ${because.based.title}`, items: await idsRail((because.items as any[]).map((x) => x.id).filter(Boolean)) }] : []),
       { id: 'new', title: 'Nouveautés', items: fresh.items, more: { sort: 'new' } },
-      { id: 'trending', title: 'Les plus regardés en ce moment', items: trending.items, more: { sort: 'seeders' } },
+      { id: 'trending', title: "Top 10 en ce moment", items: trending.items.slice(0, 10), more: { sort: 'seeders' }, style: 'top10' as const },
       { id: 'sagas', title: 'Sagas', items: sagaList, more: { sagas: true } },
       { id: 'films-new', title: 'Films récents', items: filmsNew.items, more: { kind: 'film', sort: 'new' } },
       { id: 'series-new', title: 'Séries à découvrir', items: seriesNew.items, more: { kind: 'serie', sort: 'new' } },
       ...genreRails,
     ].filter((r) => r.items.length > 0);
-    return { hero, rails };
+    return { hero, heroes, rails };
   }
 
   /** Fiche d'un contenu : synopsis, versions (qualité, langue, seeders) ou, pour une série, un épisode par ligne avec la release la mieux seedée. */

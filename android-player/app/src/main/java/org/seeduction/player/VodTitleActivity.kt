@@ -65,7 +65,12 @@ class VodTitleActivity : AppCompatActivity() {
 
     private fun play(torrentId: String, fileIndex: Int) {
         if (busy) return
-        playVod(torrentId, fileIndex) { busy = it }
+        val t = data
+        val queue = if (t != null && t.kind == "serie") {
+            val i = t.episodes.indexOfFirst { it.torrentId == torrentId && it.fileIndex == fileIndex }
+            if (i >= 0) t.episodes.drop(i + 1).take(30).map { it.torrentId + "|" + it.fileIndex + "|" + it.label } else emptyList()
+        } else emptyList()
+        playVod(torrentId, fileIndex, queue) { busy = it }
     }
 
     /** « Lecture » : le premier épisode à voir (série) ou la version la mieux seedée (film). */

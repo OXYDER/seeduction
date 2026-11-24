@@ -25,11 +25,12 @@ class LiveInfo(val playbackUrl: String, val title: String)
 object SiteApi {
     internal fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
-    internal fun open(url: String, method: String = "GET", body: String? = null, timeoutMs: Int = 15000): HttpURLConnection {
+    internal fun open(url: String, method: String = "GET", body: String? = null, timeoutMs: Int = 15000, token: String? = null): HttpURLConnection {
         val c = URL(url).openConnection() as HttpURLConnection
         c.requestMethod = method
         c.connectTimeout = timeoutMs; c.readTimeout = timeoutMs
         c.setRequestProperty("User-Agent", "Seeduction-Android/" + Config.APP_VERSION)
+        if (token != null) c.setRequestProperty("Authorization", "Bearer $token")
         if (body != null) {
             c.doOutput = true
             c.setRequestProperty("Content-Type", "application/json")

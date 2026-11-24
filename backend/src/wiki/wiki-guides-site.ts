@@ -626,6 +626,7 @@ export const GUIDES_SITE: WikiSeedCategory = {
       slug: 'guide-lecteur',
       keywords: 'lecteur, desktop, vlc, regarder, streaming, installer, smartscreen, reprendre, ouvrir dans le lecteur',
       content:
+        `[b]Le lecteur Windows et le lecteur Android distincts sont remplacés par [url=/wiki/guide-cinema]l'application Seeduction[/url][/b] (lecteur intégré, catalogue façon Netflix). Ce guide reste valable pour les liens « Ouvrir dans le lecteur Seeduction » déjà installés.\n\n` +
         `Le lecteur Seeduction permet de [b]regarder un film ou une série pendant qu'il se télécharge[/b], sans limite de format. C'est un vrai client BitTorrent avec une copie de VLC incluse.\n\n` +
         `[b]Installer (une seule fois)[/b]\n` +
         `1. Ouvre la page [url=/player]Le lecteur Seeduction[/url] et télécharge l'installateur pour ton système.\n` +
@@ -667,76 +668,51 @@ export const GUIDES_SITE: WikiSeedCategory = {
         `Références : [url=/wiki/installer-le-lecteur]Installer le lecteur[/url], [url=/wiki/fonctionnement-du-lecteur]Comment fonctionne le lecteur[/url].`,
     },
     {
-      title: 'Seeduction Cinéma : le catalogue vidéo sur Android',
+      title: 'L\'application Seeduction : films et séries sur Android et télé',
       slug: 'guide-cinema',
-      keywords: 'cinéma, catalogue, vidéo à la demande, android, application, donateur, fondateur, uploader, ratio, seeders, code, associer, séries, films',
+      keywords: 'application, android, télé, box, netflix, catalogue, vidéo à la demande, donateur, fondateur, uploader, ratio, seeders, connexion, qr code, lecteur, sous-titres, audio, vitesse, épisode suivant, top 10, sagas, genres',
       content:
-        `[b]Seeduction Cinéma[/b] est le catalogue de films et de séries du site, dans l'application Android, façon vidéo à la demande : tu ouvres l'application, tu choisis une affiche, ça se lit. Pas de client BitTorrent à configurer, pas de fichier à chercher.
-
-` +
-        `[b]Qui y a accès ?[/b]
-` +
-        `• Les [b]donateurs[/b] (tant que leur soutien est actif), les [b]membres fondateurs[/b] et les [b]uploaders[/b], ainsi que l'équipe.
-` +
-        `• Les autres membres voient sur la page [url=/player]Le lecteur Seeduction[/url] que le catalogue est réservé, avec un lien pour [url=/soutenir]soutenir le site[/url]. Si un don arrive à son terme, l'accès se ferme tout seul.
-
-` +
-        `[b]Pas de ratio à gérer pour celui qui regarde[/b]
-` +
-        `• Ce que tu télécharges pendant une lecture du catalogue [b]n'est pas compté[/b] dans ton ratio, et aucune obligation de partage ni « hit & run » n'en naît.
-` +
-        `• Seuls ceux qui [b]seedent[/b] comptent : leur envoi est compté comme d'habitude. Plus un titre est seedé, mieux il démarre : pense à garder tes torrents en seed.
-` +
-        `• Le marqueur n'a d'effet que pour un compte qui a droit au catalogue ; un autre client ou un autre membre ne peut pas s'en servir.
-
-` +
-        `[b]Connecter l'application (une seule fois)[/b]
-` +
-        `1. Installe l'application Android (page [url=/player]Le lecteur Seeduction[/url], « Télécharger l'application »).
-` +
-        `2. Sur cette même page, dans [b]🎬 Seeduction Cinéma[/b], touche [b]Connecter l'application[/b] : un code de 8 caractères s'affiche (valable 5 minutes, utilisable une seule fois), avec un lien et un QR code.
-` +
-        `3. Saisis le code dans l'application, ou touche « Ouvrir dans l'application » depuis ton téléphone. Ton mot de passe n'est jamais demandé à l'application.
-` +
-        `• Avec un compte famille, l'application se connecte avec le [b]profil actif[/b] au moment où tu génères le code (contenu adulte masqué, droits du profil respectés).
-
-` +
-        `[b]Dans l'application[/b]
-` +
-        `• Cinq onglets en bas : [b]Accueil[/b], [b]Films[/b], [b]Séries[/b], [b]Explorer[/b] et [b]Recherche[/b].
-` +
-        `• [b]Accueil[/b] : une grande affiche du jour (elle change chaque jour) avec « Lecture » et « Infos », puis des rangées : [b]Reprendre[/b] (ce que tu as commencé, avec l'épisode suivant des séries), [b]Recommandé pour toi[/b], [b]Parce que tu as aimé…[/b], [b]Nouveautés[/b], [b]Les plus regardés[/b], [b]Sagas[/b], films récents, séries à découvrir et quelques rangées par genre. « Tout voir » ouvre la liste complète d'une rangée. La reprise suit ton compte : tu peux commencer sur le site ou le PC et finir sur le téléphone.
-` +
-        `• [b]Films[/b] et [b]Séries[/b] : toute la liste, avec un filtre par [b]genre[/b] et un tri (nouveautés, les plus regardés, nom de A à Z, année, mieux notés). La liste se charge en défilant.
-` +
-        `• [b]Explorer[/b] : des raccourcis (nouveautés, plus regardés, mieux notés, sagas), tous les [b]genres[/b] et la liste [b]de A à Z[/b] (le tri ignore « Le », « La », « The »…). Une [b]saga[/b] regroupe les films d'une même collection (par exemple toute une trilogie) dans l'ordre de sortie.
-` +
-        `• [b]Recherche[/b] : par titre (français ou original). Une pastille sur chaque affiche indique le démarrage : ⚡ rapide, ● lent.
-` +
-        `• La [b]fiche[/b] donne le synopsis, la note, la durée, les [b]versions[/b] disponibles (qualité, langue, taille, seeders) ou, pour une série, les épisodes rangés par saison avec la release la mieux seedée. Elle propose aussi la saga du film et des titres du même genre.
-` +
-        `• La lecture se fait [b]dans l'application[/b] (lecteur intégré) : tous les formats, pistes audio, sous-titres (y compris ceux partagés par les membres), format de l'image, reprise là où tu t'es arrêté et statut « en train de regarder » sur le site.\n\n` +
-        `[b]Paramètres[/b] (la roue dentée de l'accueil, ou ⋮ > Paramètres)\n` +
-        `• [b]Lecteur intégré[/b] (par défaut, recommandé) ou [b]lecteur externe[/b] : avec l'externe, chaque lecture s'ouvre dans une autre application vidéo installée (VLC, MX Player…). L'application ne suit alors ni la reprise ni le statut sur le site ; s'il n'y a aucune application vidéo, la lecture se fait dans l'application.\n` +
-        `• [b]Partager seulement en Wi-Fi[/b], accès à [b]Mes partages et téléchargements[/b], déconnexion du catalogue, recherche de mise à jour et partage du journal de diagnostic.\n\n` +
+        `L'application Seeduction : films et séries sur Android et télé\n` +
+        `Une seule application, façon Netflix, pour regarder les films et les séries de Seeduction sur téléphone, tablette, télé et box Android. Elle remplace le lecteur Seeduction pour Windows et pour Android : le lecteur est maintenant intégré. Tu ouvres, tu choisis une affiche, ça se lit.\n` +
+        `\n` +
+        `[b]Qui y a accès ?[/b]\n` +
+        `• Les [b]donateurs[/b] (tant que leur soutien est actif), les [b]membres fondateurs[/b] et les [b]uploaders[/b], ainsi que l'équipe.\n` +
+        `• Les autres membres voient sur la page [url=/player]L'application Seeduction[/url] que l'accès est réservé, avec un lien pour [url=/soutenir]soutenir le site[/url]. Si un don arrive à son terme, l'accès se ferme tout seul.\n` +
+        `\n` +
+        `[b]Pas de ratio à gérer pour celui qui regarde[/b]\n` +
+        `• Ce que tu télécharges pendant une lecture n'est [b]pas compté[/b] dans ton ratio, et aucune obligation de partage ni « hit & run » n'en naît.\n` +
+        `• Seuls ceux qui [b]seedent[/b] comptent : leur envoi est compté comme d'habitude. Plus un titre est seedé, mieux il démarre : pense à garder tes torrents en seed.\n` +
+        `\n` +
+        `[b]Installer et se connecter[/b]\n` +
+        `1. Télécharge l'application sur la page [url=/player]L'application Seeduction[/url] et installe-la (autorise les « sources inconnues » : elle n'est pas sur le Play Store).\n` +
+        `2. Ouvre Seeduction et connecte-toi avec ton [b]identifiant (ou courriel) et ton mot de passe[/b]. Un compte avec double authentification demande le code à 6 chiffres ; un compte famille demande le profil puis son PIN.\n` +
+        `3. Pas envie de taper ? Sur la page de l'application, [b]Connecter l'application[/b] affiche un code de 8 caractères à saisir dans l'application (« Se connecter avec un code »), valable 5 minutes.\n` +
+        `\n` +
+        `[b]Dans l'application[/b]\n` +
+        `• Quatre onglets : [b]Accueil[/b], [b]Films[/b], [b]Séries[/b] et [b]Recherche[/b]. Ton initiale, en haut à droite, ouvre les [b]Paramètres[/b].\n` +
+        `• [b]Accueil[/b] : de grandes affiches qui défilent, puis des rangées : [b]Reprendre[/b] (avec l'épisode suivant des séries), [b]Recommandé pour toi[/b], [b]Parce que tu as aimé…[/b], [b]Nouveautés[/b], un [b]Top 10[/b] des titres les plus regardés, [b]Sagas[/b], films récents, séries à découvrir et des rangées par genre. « Tout voir » ouvre la liste complète. La reprise suit ton compte : tu peux commencer sur le site ou ailleurs et finir sur le téléphone.\n` +
+        `• [b]Films[/b] et [b]Séries[/b] : toute la liste, avec le choix d'une [b]catégorie[/b] (genre) et un tri (nouveautés, plus regardés, nom de A à Z, année, mieux notés). Les films proposent aussi les [b]sagas[/b] (toutes les suites d'une même collection, dans l'ordre de sortie).\n` +
+        `• La [b]fiche[/b] : synopsis, note, durée, versions disponibles (qualité, langue, taille, seeders) ou épisodes par saison, la saga du film et des titres du même genre.\n` +
+        `• La disponibilité d'un titre, c'est son nombre de seeders : le catalogue ne montre que les titres qui ont [b]au moins un seeder[/b]. ⚡ [b]Démarrage rapide[/b] : 5 seeders ou plus ; ● [b]correct[/b] : 2 à 4 ; ● [b]lent[/b] : 1 seul seeder.\n` +
+        `\n` +
+        `[b]Le lecteur intégré[/b]\n` +
+        `• Tous les formats, reprise là où tu t'es arrêté, statut « en train de regarder » sur le site.\n` +
+        `• [b]Avancer et reculer[/b] de 10 secondes (boutons, double toucher à gauche ou à droite, ou les flèches de la télécommande), glisser sur la barre pour aller n'importe où. Glisser vers le haut ou le bas : [b]luminosité[/b] à gauche, [b]volume[/b] à droite.\n` +
+        `• [b]Audio et sous-titres[/b] dans un seul panneau (y compris les sous-titres partagés par les membres), avec le décalage des sous-titres. [b]Vitesse[/b] de lecture de 0,5× à 2×, [b]format[/b] de l'image.\n` +
+        `• Pour une série, [b]Épisode suivant[/b] : en fin d'épisode, le suivant démarre après 6 secondes (Annuler ou Lire maintenant).\n` +
+        `\n` +
         `[b]Sur une télé ou une box Android[/b]\n` +
-        `• L'application détecte une télé ou une box et passe en [b]mode TV[/b] : menu en haut, grandes affiches, navigation à la télécommande (flèches et OK, un anneau doré montre l'élément sélectionné, Retour revient en arrière). Une icône apparaît aussi dans la liste des applications de la télé.\n` +
-        `• [b]Connexion par code[/b] : la télé affiche un code de 8 caractères ; sur le site, page [url=/player]Le lecteur Seeduction[/url], zone [b]Connecter une télé ou une box[/b], saisis ce code. Rien à taper à la télécommande. Le code est valable 10 minutes (bouton « Nouveau code » sur la télé).\n` +
-        `• [b]Lecteur[/b] : OK met en pause, gauche et droite avancent de 10 secondes (30 en maintenant), haut et bas affichent les commandes ; les touches multimédia de la télécommande fonctionnent aussi.\n` +
-        `• Sur une box 32 bits (la plupart des boîtes d'entrée de gamme), il faut la version 32 bits de l'application. Si la détection se trompe, choisis [b]Mode TV[/b] ou [b]Mode téléphone[/b] dans Paramètres > Affichage.\n\n` +
-        `[b]La disponibilité, c'est le nombre de seeders[/b]
-` +
-        `• Le catalogue ne montre que les titres qui ont [b]au moins un seeder[/b]. ⚡ [b]Démarrage rapide[/b] : 5 seeders ou plus ; ● [b]correct[/b] : 2 à 4 ; ● [b]lent[/b] : 1 seul seeder (la lecture peut mettre du temps à démarrer ou saccader).
-` +
-        `• Il n'y a aucune réserve de seeders « maison » : ce sont les membres qui font vivre le catalogue.
-
-` +
-        `[b]Après la lecture[/b]
-` +
-        `• Comme pour le lecteur, le partage se poursuit en arrière-plan (Wi-Fi seulement par défaut) et tu peux l'arrêter dans « Mes partages ». Quitter le catalogue se fait avec le bouton « Quitter » (il faudra un nouveau code pour se reconnecter).
-
-` +
-        `Références : [url=/wiki/guide-lecteur]Le lecteur Seeduction[/url], [url=/wiki/guide-ratio-seed]Le ratio[/url].`,
+        `• L'application détecte une télé ou une box et passe en [b]mode TV[/b] : menu en haut, grandes affiches, navigation à la télécommande (flèches et OK, un anneau doré montre l'élément sélectionné, Retour revient en arrière). Si la détection se trompe : Paramètres > Affichage.\n` +
+        `• [b]Connexion sans clavier[/b] : l'écran de connexion de la télé affiche un [b]QR code[/b] et un code. Scanne le QR code avec ton téléphone (ou va sur [url=/tv]la page de connexion de la télé[/url] et saisis le code), confirme : la télé se connecte. Le code est valable 10 minutes.\n` +
+        `• Lecteur : OK met en pause, gauche et droite avancent de 10 secondes (30 en maintenant), haut et bas affichent les commandes ; les touches multimédia fonctionnent aussi.\n` +
+        `• Sur une box 32 bits (la plupart des boîtes d'entrée de gamme), il faut la version 32 bits de l'application ; demande-la à l'équipe si l'installation est refusée.\n` +
+        `\n` +
+        `[b]Paramètres[/b]\n` +
+        `• [b]Lecteur intégré[/b] (par défaut) ou [b]lecteur externe[/b] (VLC, MX Player… : l'application ne suit alors ni la reprise ni le statut sur le site), [b]Affichage[/b] automatique, TV ou téléphone, [b]partage en Wi-Fi seulement[/b], [b]Mes téléchargements[/b], déconnexion, recherche de mise à jour et journal de diagnostic.\n` +
+        `\n` +
+        `Après la lecture, le partage continue en arrière-plan (Wi-Fi seulement par défaut) : arrête-le dans Mes téléchargements si besoin.\n` +
+        `\n` +
+        `Références : [url=/wiki/guide-ratio-seed]Le ratio[/url].`,
     },
     {
       title: 'Personnaliser le site : thèmes, affichages, infobulles',

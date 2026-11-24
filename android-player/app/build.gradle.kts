@@ -20,8 +20,8 @@ android {
         applicationId = "org.seeduction.player"
         minSdk = 24
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.5.0"
+        versionCode = 8
+        versionName = "1.6.0"
         // Les téléphones d'aujourd'hui : 64 bits (la grande majorité) et 32 bits (anciens modèles). Pas x86 : l'APK serait bien plus gros.
         // -PabiOnly=arm64-v8a : version allégée pour les téléphones récents (envoi par messagerie).
         ndk { abiFilters += ((project.findProperty("abiOnly") as String?)?.split(",") ?: listOf("arm64-v8a", "armeabi-v7a")) }
@@ -70,6 +70,8 @@ dependencies {
     implementation("org.videolan.android:libvlc-all:3.6.5")
     // Petit serveur HTTP local qui sert le fichier en cours de téléchargement à VLC.
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+    // QR code de connexion affiché sur la télé (généré sur l'appareil).
+    implementation("com.google.zxing:core:3.5.3")
 
     // Essais sur le PC : le vrai moteur BitTorrent (libtorrent pour Windows) contre un seeder local, sans téléphone.
     testImplementation("junit:junit:4.13.2")

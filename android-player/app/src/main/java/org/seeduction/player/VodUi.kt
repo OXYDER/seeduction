@@ -2,6 +2,7 @@ package org.seeduction.player
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Typeface
@@ -22,6 +23,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -36,6 +40,7 @@ object Ui {
     val MUTED = Color.parseColor("#9BA3BA")
     val GOLD = Color.parseColor("#E0B84A")
     val GOLD2 = Color.parseColor("#F3D78A")
+    val OKGREEN = Color.parseColor("#34D399")
     val INK = Color.parseColor("#1C1404")
     val GLASS = Color.parseColor("#4D0B0F19")
     val black: Typeface get() = Typeface.create("sans-serif-black", Typeface.NORMAL)
@@ -121,13 +126,14 @@ fun AppCompatActivity.openMore(title: String, more: VodMore) {
 }
 
 /** Lance une lecture du catalogue : le site remet un jeton, le lecteur existant le prend en charge (téléchargement dans l'ordre, VLC, reprise, partage). */
-fun AppCompatActivity.playVod(torrentId: String, fileIndex: Int, busy: (Boolean) -> Unit = {}) {
+/** `queue` : les épisodes suivants (« torrent|fichier|libellé »), pour enchaîner automatiquement. */
+fun AppCompatActivity.playVod(torrentId: String, fileIndex: Int, queue: List<String> = emptyList(), busy: (Boolean) -> Unit = {}) {
     val token = Prefs(this).vodToken ?: return
     busy(true)
     lifecycleScope.launch {
         try {
             val play = VodApi.play(token, torrentId, fileIndex)
-            startActivity(Intent(this@playVod, PlayerActivity::class.java).putExtra(PlayerActivity.EXTRA_TOKEN, play))
+            startActivity(Intent(this@playVod, PlayerActivity::class.java).putExtra(PlayerActivity.EXTRA_TOKEN, play).putStringArrayListExtra(PlayerActivity.EXTRA_QUEUE, ArrayList(queue)))
         } catch (e: VodAuthException) {
             Prefs(this@playVod).vodToken = null
             Toast.makeText(this@playVod, e.message, Toast.LENGTH_LONG).show()
@@ -218,7 +224,7 @@ fun AppCompatActivity.railView(rail: VodRail): View {
     col.addView(RecyclerView(c).apply {
         clipChildren = false
         layoutManager = LinearLayoutManager(c, LinearLayoutManager.HORIZONTAL, false)
-        adapter = PosterAdapter(w, rail.id == "continue") { openItem(it) }.also { a -> a.items = rail.items }
+        adapter = if (rail.style == "top10") TopAdapter(w) { openItem(it) }.also { a -> a.items = rail.items } else PosterAdapter(w, rail.id == "continue") { openItem(it) }.also { a -> a.items = rail.items }
         setPadding(side, c.dp(8), c.dp(8), c.dp(8)); clipToPadding = false
         addItemDecoration(object : RecyclerView.ItemDecoration() { override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) { outRect.right = c.dp(if (tv) 12 else 8) } })
         isNestedScrollingEnabled = false
@@ -282,4 +288,76 @@ class PagedGrid(private val act: AppCompatActivity, private val loader: suspend 
             } finally { loading = false }
         }
     }
+}
+
+
+/** Palmarès : un gros chiffre derrière chaque affiche, façon « Top 10 ». */
+class TopAdapter(private val posterW: Int, private val onClick: (VodItem) -> Unit) : RecyclerView.Adapter<TopAdapter.Holder>() {
+    var items: List<VodItem> = emptyList()
+        set(v) { field = v; notifyDataSetChanged() }
+
+    class Holder(val root: LinearLayout, val num: TextView, val img: ImageView) : RecyclerView.ViewHolder(root)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+        val c = parent.context
+        val numW = (posterW * 0.62f).toInt()
+        val root = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.BOTTOM; layoutParams = RecyclerView.LayoutParams(posterW + numW, ViewGroup.LayoutParams.WRAP_CONTENT); tvFocus(8f) }
+        val num = c.label("", 92f, Color.parseColor("#56618F"), Ui.black).apply { gravity = Gravity.END or Gravity.BOTTOM; includeFontPadding = false; translationX = c.dpf(16f); setShadowLayer(8f, 0f, 2f, Color.BLACK) }
+        root.addView(num, LinearLayout.LayoutParams(numW, (posterW * 1.5f).toInt()))
+        val img = ImageView(c).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP; setBackgroundColor(Ui.SURFACE2)
+            outlineProvider = object : ViewOutlineProvider() { override fun getOutline(view: View, outline: Outline) { outline.setRoundRect(0, 0, view.width, view.height, c.dpf(6f)) } }
+            clipToOutline = true; elevation = c.dpf(4f)
+        }
+        root.addView(img, LinearLayout.LayoutParams(posterW, (posterW * 1.5f).toInt()))
+        return Holder(root, num, img)
+    }
+
+    override fun getItemCount() = items.size
+
+    override fun onBindViewHolder(h: Holder, position: Int) {
+        val it = items[position]
+        h.num.text = (position + 1).toString()
+        Images.load(h.img, it.cover, posterW * 2)
+        h.root.setOnClickListener { _ -> onClick(it) }
+    }
+}
+
+/** Pastille ronde avec l'initiale du membre : ouvre les Paramètres (compte, lecteur, partages). */
+fun AppCompatActivity.avatar(sizeDp: Int = 34): View {
+    val initial = (Prefs(this).vodUser?.trim()?.firstOrNull() ?: 'S').uppercaseChar().toString()
+    return TextView(this).apply {
+        text = initial; gravity = Gravity.CENTER; textSize = sizeDp * 0.42f; typeface = Ui.black; setTextColor(Ui.INK)
+        background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Ui.GOLD2, Ui.GOLD)).apply { shape = GradientDrawable.OVAL }
+        layoutParams = LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp))
+        isClickable = true; tvFocus(sizeDp / 2f)
+        setOnClickListener { startActivity(Intent(this@avatar, VodSettingsActivity::class.java)) }
+    }
+}
+
+/** Écran de chargement : des silhouettes qui pulsent (affiche et rangées) en attendant le catalogue. */
+fun AppCompatActivity.skeleton(): Pair<View, android.animation.ValueAnimator> {
+    val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+    val tv = isTv()
+    col.addView(View(this).apply { setBackgroundColor(Ui.SURFACE) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, if (tv) (screenW() * 0.36f).toInt() else (screenW() * 1.0f).toInt()))
+    repeat(2) {
+        col.addView(View(this).apply { background = roundRect(Ui.SURFACE, dpf(4f)) }, LinearLayout.LayoutParams(dp(120), dp(16)).apply { setMargins(dp(if (tv) 48 else 16), dp(22), 0, dp(10)) })
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(if (tv) 48 else 16), 0, 0, 0) }
+        val w = (screenW() * (if (tv) 0.125f else 0.3f)).toInt()
+        repeat(if (tv) 8 else 4) { row.addView(View(this).apply { background = roundRect(Ui.SURFACE, dpf(6f)) }, LinearLayout.LayoutParams(w, (w * 1.5f).toInt()).apply { rightMargin = dp(8) }) }
+        col.addView(row)
+    }
+    val anim = android.animation.ValueAnimator.ofFloat(0.45f, 1f).apply {
+        duration = 800; repeatMode = android.animation.ValueAnimator.REVERSE; repeatCount = android.animation.ValueAnimator.INFINITE
+        addUpdateListener { col.alpha = it.animatedValue as Float }
+        start()
+    }
+    return col to anim
+}
+
+/** QR code (noir sur blanc, marge comprise) généré sur l'appareil. */
+fun qrBitmap(text: String, sizePx: Int): Bitmap {
+    val m = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, sizePx, sizePx, mapOf(EncodeHintType.MARGIN to 1))
+    val px = IntArray(sizePx * sizePx) { if (m.get(it % sizePx, it / sizePx)) Color.BLACK else Color.WHITE }
+    return Bitmap.createBitmap(px, sizePx, sizePx, Bitmap.Config.ARGB_8888)
 }

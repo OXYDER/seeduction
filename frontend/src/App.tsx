@@ -71,6 +71,7 @@ const Messages = lazyPage(() => import('./pages/Messages'));
 const Requests = lazyPage(() => import('./pages/Requests'));
 const Friends = lazyPage(() => import('./pages/Friends'));
 const PlayerDownload = lazyPage(() => import('./pages/PlayerDownload'));
+const TvConnect = lazyPage(() => import('./pages/TvConnect'));
 const Wiki = lazyPage(() => import('./pages/Wiki'));
 const Founders = lazyPage(() => import('./pages/Founders'));
 const Alerts = lazyPage(() => import('./pages/Alerts'));
@@ -143,6 +144,7 @@ export default function App() {
           <Route path="/fil" element={<Fil />} />
           <Route path="/friends" element={<Friends />} />
           <Route path="/player" element={<PlayerDownload />} />
+          <Route path="/tv" element={<TvConnect />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/wiki" element={<Wiki />} />
