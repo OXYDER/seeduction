@@ -2,7 +2,6 @@ package org.seeduction.player
 
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Outline
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
@@ -10,108 +9,58 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewOutlineProvider
 import android.view.inputmethod.EditorInfo
-import android.widget.Button
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
+import android.widget.PopupMenu
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private val GOLD = Color.parseColor("#E0B84A")
-private val TEXT = Color.parseColor("#E8ECF8")
-private val MUTED = Color.parseColor("#9AA3C0")
-private val PANEL = Color.parseColor("#141A33")
-
-/** Lance une lecture du catalogue : le site remet un jeton, le lecteur existant le prend en charge (téléchargement dans l'ordre, VLC, reprise, partage). */
-fun AppCompatActivity.playVod(torrentId: String, fileIndex: Int, busy: (Boolean) -> Unit = {}) {
-    val token = Prefs(this).vodToken ?: return
-    busy(true)
-    lifecycleScope.launch {
-        try {
-            val play = VodApi.play(token, torrentId, fileIndex)
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("seeduction://stream/$play"), this@playVod, PlayerActivity::class.java))
-        } catch (e: VodAuthException) {
-            Prefs(this@playVod).vodToken = null
-            Toast.makeText(this@playVod, e.message, Toast.LENGTH_LONG).show()
-            startActivity(Intent(this@playVod, VodHomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
-        } catch (e: Exception) {
-            Toast.makeText(this@playVod, e.message ?: "Lecture impossible", Toast.LENGTH_LONG).show()
-        } finally { busy(false) }
-    }
-}
-
-/** Une affiche du catalogue (ou d'une ligne « Reprendre ») : image, titre, ligne d'information, barre de progression si le titre est entamé. */
-class PosterAdapter(private val widthPx: Int, private val onClick: (VodItem) -> Unit) : RecyclerView.Adapter<PosterAdapter.Holder>() {
-    var items: List<VodItem> = emptyList()
-        set(v) { field = v; notifyDataSetChanged() }
-
-    class Holder(val box: LinearLayout, val img: ImageView, val title: TextView, val info: TextView, val bar: ProgressBar) : RecyclerView.ViewHolder(box)
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-        val ctx = parent.context
-        val d = ctx.resources.displayMetrics.density
-        val box = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT) }
-        val frame = FrameLayout(ctx)
-        val img = ImageView(ctx).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            outlineProvider = object : ViewOutlineProvider() { override fun getOutline(view: View, outline: Outline) { outline.setRoundRect(0, 0, view.width, view.height, 8 * d) } }
-            clipToOutline = true
-        }
-        frame.addView(img, FrameLayout.LayoutParams(widthPx, (widthPx * 1.5).toInt()))
-        val bar = ProgressBar(ctx, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100; visibility = View.GONE }
-        frame.addView(bar, FrameLayout.LayoutParams(widthPx, (4 * d).toInt(), Gravity.BOTTOM))
-        box.addView(frame)
-        val title = TextView(ctx).apply { setTextColor(TEXT); textSize = 12.5f; maxLines = 2; setTypeface(typeface, Typeface.BOLD); setPadding(0, (6 * d).toInt(), 0, 0) }
-        val info = TextView(ctx).apply { setTextColor(MUTED); textSize = 11f; maxLines = 2 }
-        box.addView(title); box.addView(info)
-        return Holder(box, img, title, info, bar)
-    }
-
-    override fun getItemCount() = items.size
-
-    override fun onBindViewHolder(h: Holder, position: Int) {
-        val it = items[position]
-        Images.load(h.img, it.cover, widthPx * 2)
-        h.title.text = it.title + (it.year?.let { y -> " ($y)" } ?: "")
-        if (it.subtitle != null) { h.info.text = it.subtitle; h.info.setTextColor(MUTED) }
-        else { h.info.text = listOfNotNull(it.quality, healthText(it.health, it.seeders).takeIf { _ -> it.seeders > 0 }).joinToString(" · "); h.info.setTextColor(healthColor(it.health)) }
-        h.bar.visibility = if (it.percent != null) View.VISIBLE else View.GONE
-        h.bar.progress = it.percent ?: 0
-        h.box.setOnClickListener { _ -> onClick(it) }
-    }
+/** Un onglet du catalogue : sa vue et ce qu'il fait quand on y revient. */
+interface VodScreen {
+    val view: View
+    fun onShow() {}
 }
 
 /**
- * « Seeduction Cinéma » : l'accueil du catalogue vidéo (rails, recherche). Sans session, l'écran demande le code d'association affiché sur la page « Lecteur » du site (ou s'ouvre par le lien seeduction://vod/<code>).
+ * « Seeduction Cinéma » : l'application de vidéo à la demande. Cinq onglets (Accueil, Films, Séries, Explorer, Recherche). Sans session, l'écran demande le code d'association affiché
+ * sur la page « Lecteur » du site (ou s'ouvre par le lien seeduction://vod/<code>).
  */
 class VodHomeActivity : AppCompatActivity() {
     private lateinit var prefs: Prefs
-    private lateinit var content: LinearLayout
-    private var loadJob: Job? = null
-    private var searchJob: Job? = null
+    private lateinit var root: FrameLayout
     private var pairing = false
+    private var screens: List<VodScreen> = emptyList()
+    private var navItems: List<Pair<ImageView, TextView>> = emptyList()
+    private var current = 0
+    private lateinit var holder: FrameLayout
 
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-    private fun text(t: String, size: Float = 15f, color: Int = TEXT, bold: Boolean = false) = TextView(this).apply {
-        text = t; textSize = size; setTextColor(color); if (bold) setTypeface(typeface, Typeface.BOLD)
-    }
+    private val tabs = listOf(
+        Triple("Accueil", R.drawable.ic_home, 0), Triple("Films", R.drawable.ic_movie, 1), Triple("Séries", R.drawable.ic_tv, 2),
+        Triple("Explorer", R.drawable.ic_explore, 3), Triple("Recherche", R.drawable.ic_search, 4),
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Journal.init(this)
         prefs = Prefs(this)
+        root = FrameLayout(this).apply { setBackgroundColor(Ui.BG) }
+        setContentView(root)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() { if (prefs.vodToken != null && current != 0) select(0) else { isEnabled = false; onBackPressedDispatcher.onBackPressed() } }
+        })
         render()
         handleLink(intent)
     }
@@ -130,47 +79,80 @@ class VodHomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (prefs.vodToken != null && !pairing) loadHome()
+        if (prefs.vodToken == null && screens.isNotEmpty()) render()
+        if (prefs.vodToken != null && screens.isNotEmpty()) screens[current].onShow()
     }
 
     private fun render() {
-        val token = prefs.vodToken
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor("#0A0E1C")); setPadding(dp(14), dp(18), dp(14), 0) }
-
-        val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        bar.addView(text("🎬 Seeduction Cinéma", 20f, GOLD, true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        if (token != null) {
-            bar.addView(Button(this).apply { text = "Mes partages"; textSize = 12f; setOnClickListener { startActivity(Intent(this@VodHomeActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true)) } })
-            bar.addView(Button(this).apply { text = "Quitter"; textSize = 12f; setOnClickListener { prefs.vodToken = null; prefs.vodUser = null; render() } })
-        } else {
-            bar.addView(Button(this).apply { text = "Lecteur"; textSize = 12f; setOnClickListener { startActivity(Intent(this@VodHomeActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true)) } })
+        root.removeAllViews()
+        screens = emptyList()
+        if (prefs.vodToken == null) { renderPairing(); return }
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        holder = FrameLayout(this)
+        col.addView(holder, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        screens = listOf(HomeScreen(this), BrowseScreen(this, "film", "Films"), BrowseScreen(this, "serie", "Séries"), ExploreScreen(this), SearchScreen(this))
+        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(Ui.NAV); setPadding(0, dp(6), 0, dp(6)) }
+        navItems = tabs.map { (name, ic, idx) ->
+            val img = ImageView(this).apply { setImageResource(ic); setColorFilter(Ui.MUTED); layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)) }
+            val tv = label(name, 10.5f, Ui.MUTED, Ui.bold).apply { setPadding(0, dp(2), 0, 0) }
+            val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; isClickable = true; isFocusable = true; setPadding(0, dp(4), 0, dp(2)); setOnClickListener { select(idx) } }
+            item.addView(img); item.addView(tv)
+            nav.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            img to tv
         }
-        root.addView(bar)
+        col.addView(View(this).apply { setBackgroundColor(Ui.LINE) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1))
+        col.addView(nav)
+        root.addView(col, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        select(current)
+    }
 
-        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        if (token == null) renderPairing() else renderCatalog(root)
-        root.addView(ScrollView(this).apply { addView(content, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); isFillViewport = true }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        setContentView(root)
+    fun select(idx: Int) {
+        current = idx
+        holder.removeAllViews()
+        holder.addView(screens[idx].view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        navItems.forEachIndexed { i, (img, tv) -> val c = if (i == idx) Ui.GOLD else Ui.MUTED; img.setColorFilter(c); tv.setTextColor(c) }
+        screens[idx].onShow()
+    }
+
+    /** Menu discret (⋮) : partages en cours, déconnexion. */
+    fun menu(anchor: View) {
+        PopupMenu(this, anchor).apply {
+            menu.add(0, 1, 0, "Mes partages et téléchargements")
+            menu.add(0, 2, 1, "Ouvrir Seeduction")
+            menu.add(0, 3, 2, "Déconnecter le catalogue")
+            setOnMenuItemClickListener {
+                when (it.itemId) {
+                    1 -> startActivity(Intent(this@VodHomeActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true))
+                    2 -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE)))
+                    3 -> { prefs.vodToken = null; prefs.vodUser = null; current = 0; render() }
+                }
+                true
+            }
+        }.show()
     }
 
     // ------------------------------------------------------------------ association
 
     private fun renderPairing() {
-        content.removeAllViews()
-        content.addView(text("\nLe catalogue de films et de séries de Seeduction, sur ton téléphone.", 15f))
-        content.addView(text("Réservé aux donateurs ❤️, aux membres fondateurs et aux uploaders.", 13f, MUTED).apply { setPadding(0, dp(6), 0, dp(14)) })
-        content.addView(text("1. Sur le site Seeduction, ouvre la page « Lecteur » (menu Aide ou Téléchargements).\n2. Dans « Seeduction Cinéma », touche « Connecter l'application » : un code de 8 caractères s'affiche (valable 5 minutes).\n3. Saisis-le ici.", 13.5f, MUTED))
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(48), dp(24), dp(24)); gravity = Gravity.CENTER_HORIZONTAL }
+        col.addView(label("SEEDUCTION", 26f, Ui.GOLD, Ui.black).apply { letterSpacing = 0.18f })
+        col.addView(label("CINÉMA", 12f, Ui.MUTED, Ui.bold).apply { letterSpacing = 0.5f; setPadding(0, dp(2), 0, dp(28)) })
+        col.addView(label("Tous les films et séries\nde Seeduction, dans ta poche.", 22f, Ui.TEXT, Ui.black).apply { gravity = Gravity.CENTER })
+        col.addView(label("Réservé aux donateurs ❤️, aux membres fondateurs et aux uploaders.", 13f, Ui.MUTED).apply { gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(22)) })
+        col.addView(label("1. Sur le site, ouvre la page « Lecteur ».\n2. Touche « Connecter l'application » : un code s'affiche.\n3. Saisis-le ci-dessous.", 13.5f, Ui.TEXT).apply { setLineSpacing(0f, 1.25f) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         val field = EditText(this).apply {
-            hint = "Code (ex. K7M2QX9A)"; setHintTextColor(MUTED); setTextColor(TEXT); textSize = 20f
+            hint = "CODE"; setHintTextColor(Ui.MUTED); setTextColor(Ui.TEXT); textSize = 26f; typeface = Typeface.MONOSPACE; letterSpacing = 0.25f
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             imeOptions = EditorInfo.IME_ACTION_DONE; gravity = Gravity.CENTER; setSingleLine()
+            background = roundRect(Ui.SURFACE, dpf(10f), Ui.LINE, 1); setPadding(dp(12), dp(14), dp(12), dp(14))
         }
-        content.addView(field, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(18) })
-        val go = Button(this).apply { text = "Connecter" }
-        go.setOnClickListener { connect(field.text.toString()) }
-        field.setOnEditorActionListener { _, _, _ -> go.performClick(); true }
-        content.addView(go)
-        content.addView(Button(this).apply { text = "Ouvrir la page du site"; setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE + "/player"))) } })
+        col.addView(field, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(22) })
+        val go = pillButton("Connecter", null, true) { connect(field.text.toString()) }
+        field.setOnEditorActionListener { _, _, _ -> connect(field.text.toString()); true }
+        col.addView(go, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(14) })
+        col.addView(label("Ouvrir la page du site", 13f, Ui.GOLD, Ui.bold).apply { setPadding(0, dp(18), 0, dp(10)); isClickable = true; setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE + "/player"))) } })
+        col.addView(label("Lecteur et partages", 13f, Ui.MUTED, Ui.bold).apply { setPadding(0, dp(6), 0, 0); isClickable = true; setOnClickListener { startActivity(Intent(this@VodHomeActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true)) } })
+        root.addView(ScrollView(this).apply { addView(col); isFillViewport = true })
     }
 
     private fun connect(code: String) {
@@ -182,109 +164,229 @@ class VodHomeActivity : AppCompatActivity() {
                 val name = VodApi.pair(clean, prefs)
                 Toast.makeText(this@VodHomeActivity, "Connecté" + (if (name.isNotEmpty()) " : $name" else ""), Toast.LENGTH_SHORT).show()
                 pairing = false
-                render(); loadHome()
+                current = 0; render()
             } catch (e: Exception) {
                 pairing = false
                 Toast.makeText(this@VodHomeActivity, e.message ?: "Association impossible", Toast.LENGTH_LONG).show()
             }
         }
     }
+}
 
-    // ------------------------------------------------------------------ catalogue
+// ====================================================================== Accueil
 
-    private lateinit var searchBox: EditText
-    private lateinit var results: LinearLayout
-    private lateinit var rails: LinearLayout
-
-    private fun renderCatalog(root: LinearLayout) {
-        searchBox = EditText(this).apply {
-            hint = "🔍 Rechercher un film ou une série"; setHintTextColor(MUTED); setTextColor(TEXT); textSize = 15f
-            inputType = InputType.TYPE_CLASS_TEXT; imeOptions = EditorInfo.IME_ACTION_SEARCH; setSingleLine()
-            setOnEditorActionListener { _, _, _ -> search(text.toString()); true }
-            addTextChangedListener(object : android.text.TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
-                override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) { if ((s?.length ?: 0) == 0) showRails() }
-                override fun afterTextChanged(s: android.text.Editable?) {}
-            })
-        }
-        content.addView(searchBox)
-        results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
-        rails = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        content.addView(results); content.addView(rails)
-        rails.addView(text("Chargement du catalogue…", 14f, MUTED).apply { setPadding(0, dp(18), 0, 0) })
+/** L'accueil : une grande affiche du jour, puis les rangées (reprendre, recommandations, nouveautés, sagas, genres...). */
+class HomeScreen(private val act: VodHomeActivity) : VodScreen {
+    private val col = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL }
+    override val view: View = FrameLayout(act).apply {
+        addView(ScrollView(act).apply { addView(col); setBackgroundColor(Ui.BG); isVerticalScrollBarEnabled = false }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
+    private var loadedAt = 0L
+    private var job: Job? = null
 
-    private fun showRails() { if (::results.isInitialized) { results.visibility = View.GONE; rails.visibility = View.VISIBLE } }
-
-    private fun posterWidth() = (resources.displayMetrics.widthPixels / 3.3f).toInt().coerceIn(dp(100), dp(150))
-
-    private fun open(item: VodItem) {
-        if (item.playTorrentId != null) playVod(item.playTorrentId, item.playFileIndex)
-        else startActivity(Intent(this, VodTitleActivity::class.java).putExtra(VodTitleActivity.EXTRA_ID, item.id))
-    }
-
-    private fun loadHome() {
-        val token = prefs.vodToken ?: return
-        if (!::rails.isInitialized) return
-        loadJob?.cancel()
-        loadJob = lifecycleScope.launch {
+    override fun onShow() {
+        if (System.currentTimeMillis() - loadedAt < 60_000 && col.childCount > 0) return
+        val token = Prefs(act).vodToken ?: return
+        if (col.childCount == 0) col.addView(act.label("Chargement du catalogue…", 14f, Ui.MUTED).apply { setPadding(act.dp(16), act.dp(80), act.dp(16), 0) })
+        job?.cancel()
+        job = act.lifecycleScope.launch {
             try {
-                val list = VodApi.home(token)
-                rails.removeAllViews()
-                if (list.isEmpty()) rails.addView(text("Rien à regarder pour l'instant : le catalogue ne montre que les titres qui ont au moins un seeder.", 14f, MUTED).apply { setPadding(0, dp(18), 0, 0) })
-                for (r in list) {
-                    rails.addView(text(r.title, 16f, GOLD, true).apply { setPadding(0, dp(16), 0, dp(6)) })
-                    rails.addView(RecyclerView(this@VodHomeActivity).apply {
-                        layoutManager = LinearLayoutManager(this@VodHomeActivity, LinearLayoutManager.HORIZONTAL, false)
-                        adapter = PosterAdapter(posterWidth()) { open(it) }.also { a -> a.items = r.items }
-                        addItemDecoration(object : RecyclerView.ItemDecoration() {
-                            override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) { outRect.right = dp(10) }
-                        })
-                        isNestedScrollingEnabled = false
-                    })
-                }
-                rails.addView(View(this@VodHomeActivity), LinearLayout.LayoutParams(1, dp(24)))
+                val home = VodApi.home(token)
+                loadedAt = System.currentTimeMillis()
+                col.removeAllViews()
+                col.addView(hero(home.hero))
+                if (home.rails.isEmpty()) col.addView(act.label("Rien à regarder pour l'instant : le catalogue ne montre que les titres qui ont au moins un seeder.", 14f, Ui.MUTED).apply { setPadding(act.dp(16), act.dp(24), act.dp(16), 0) })
+                home.rails.forEach { col.addView(act.railView(it)) }
+                col.addView(View(act), LinearLayout.LayoutParams(1, act.dp(28)))
             } catch (e: VodAuthException) {
-                prefs.vodToken = null; Toast.makeText(this@VodHomeActivity, e.message, Toast.LENGTH_LONG).show(); render()
+                Prefs(act).vodToken = null; Toast.makeText(act, e.message, Toast.LENGTH_LONG).show(); act.recreate()
             } catch (e: Exception) {
                 Journal.log("catalogue : " + e.message)
-                rails.removeAllViews()
-                rails.addView(text("Impossible de charger le catalogue : " + (e.message ?: "erreur réseau"), 14f, MUTED).apply { setPadding(0, dp(18), 0, 0) })
-                rails.addView(Button(this@VodHomeActivity).apply { text = "Réessayer"; setOnClickListener { loadHome() } })
+                col.removeAllViews()
+                col.addView(act.label("Impossible de charger le catalogue :\n" + (e.message ?: "erreur réseau"), 14f, Ui.MUTED).apply { setPadding(act.dp(16), act.dp(80), act.dp(16), act.dp(12)) })
+                col.addView(act.pillButton("Réessayer", null, true) { loadedAt = 0; onShow() }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = act.dp(16) })
             }
         }
     }
 
-    private fun search(q: String) {
-        val token = prefs.vodToken ?: return
-        val term = q.trim()
-        if (term.length < 2) { showRails(); return }
-        searchJob?.cancel()
-        results.visibility = View.VISIBLE; rails.visibility = View.GONE
-        results.removeAllViews()
-        results.addView(text("Recherche…", 14f, MUTED).apply { setPadding(0, dp(14), 0, 0) })
-        searchJob = lifecycleScope.launch {
+    /** La grande affiche du jour : image, genre, titre, boutons Lecture et Infos ; le logo et le menu flottent dessus. */
+    private fun hero(h: VodItem?): View {
+        val w = act.screenW()
+        val frame = FrameLayout(act)
+        val heroH = (w * 1.28f).toInt()
+        if (h != null) {
+            val img = ImageView(act).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+            Images.load(img, h.cover, w * 2)
+            frame.addView(img, FrameLayout.LayoutParams(w, heroH))
+            frame.addView(View(act).apply { background = vGradient(Color.TRANSPARENT, Ui.BG) }, FrameLayout.LayoutParams(w, (heroH * 0.62f).toInt(), Gravity.BOTTOM))
+            frame.addView(View(act).apply { background = vGradient(Color.parseColor("#B006080F"), Color.TRANSPARENT) }, FrameLayout.LayoutParams(w, act.dp(90), Gravity.TOP))
+            val info = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(act.dp(20), 0, act.dp(20), act.dp(14)) }
+            info.addView(act.label(if (h.kind == "serie") "SÉRIE" else "FILM", 11f, Ui.GOLD, Ui.bold).apply { letterSpacing = 0.4f })
+            info.addView(act.label(h.title, 30f, Ui.TEXT, Ui.black).apply { gravity = Gravity.CENTER; maxLines = 2; setPadding(0, act.dp(2), 0, act.dp(4)); setShadowLayer(12f, 0f, 2f, Color.BLACK) })
+            val line = (h.genres.take(3) + listOfNotNull(h.year?.toString())).joinToString("  •  ")
+            if (line.isNotEmpty()) info.addView(act.label(line, 12.5f, Ui.TEXT, Ui.medium).apply { gravity = Gravity.CENTER })
+            h.synopsis?.let { info.addView(act.label(it, 12.5f, Color.parseColor("#D5DAE8")).apply { gravity = Gravity.CENTER; maxLines = 3; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(0, act.dp(8), 0, 0) }) }
+            val buttons = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, act.dp(14), 0, 0) }
+            buttons.addView(act.pillButton("Lecture", R.drawable.ic_play, true) { act.startActivity(Intent(act, VodTitleActivity::class.java).putExtra(VodTitleActivity.EXTRA_ID, h.id).putExtra(VodTitleActivity.EXTRA_AUTOPLAY, true)) })
+            buttons.addView(View(act), LinearLayout.LayoutParams(act.dp(10), 1))
+            buttons.addView(act.pillButton("Infos", R.drawable.ic_info, false) { act.openItem(h) })
+            info.addView(buttons)
+            frame.addView(info, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
+        } else frame.addView(View(act), FrameLayout.LayoutParams(w, act.dp(70)))
+        val top = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(act.dp(16), act.dp(10), act.dp(6), 0) }
+        top.addView(act.label("SEEDUCTION", 17f, Ui.GOLD, Ui.black).apply { letterSpacing = 0.16f; setShadowLayer(10f, 0f, 2f, Color.BLACK) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val more = act.icon(R.drawable.ic_more, 24, Ui.TEXT).apply { setPadding(act.dp(8), act.dp(8), act.dp(8), act.dp(8)); isClickable = true; layoutParams = LinearLayout.LayoutParams(act.dp(44), act.dp(44)); setOnClickListener { act.menu(this) } }
+        top.addView(more)
+        frame.addView(top, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP))
+        return frame
+    }
+}
+
+// ====================================================================== Films / Séries
+
+private val SORTS = listOf("new" to "Nouveautés", "seeders" to "Les plus regardés", "name" to "Nom (A → Z)", "year" to "Année", "rating" to "Mieux notés")
+
+/** Un onglet de liste complète (Films ou Séries) : filtre par genre, tri, grille infinie. */
+class BrowseScreen(private val act: VodHomeActivity, private val kind: String, private val title: String) : VodScreen {
+    private var genre: String? = null
+    private var sort = "new"
+    private val chips = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; setPadding(act.dp(16), 0, act.dp(16), act.dp(8)) }
+    private val grid = PagedGrid(act) { page -> VodApi.browse(Prefs(act).vodToken ?: "", mapOf("kind" to kind, "genre" to genre, "sort" to sort), page) }
+    private var started = false
+    override val view: View = LinearLayout(act).apply {
+        orientation = LinearLayout.VERTICAL; setBackgroundColor(Ui.BG)
+        addView(act.label(title, 26f, Ui.TEXT, Ui.black).apply { setPadding(act.dp(16), act.dp(18), act.dp(16), act.dp(10)) })
+        addView(HorizontalScrollView(act).apply { addView(chips); isHorizontalScrollBarEnabled = false })
+        addView(grid.view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+    }
+
+    init { drawChips() }
+
+    private fun drawChips() {
+        chips.removeAllViews()
+        chips.addView(act.chip(genre ?: "Tous les genres", genre != null, true) { pickGenre() })
+        chips.addView(View(act), LinearLayout.LayoutParams(act.dp(8), 1))
+        chips.addView(act.chip(SORTS.first { it.first == sort }.second, false, true) { pickSort() })
+    }
+
+    private fun pickSort() {
+        AlertDialog.Builder(act).setTitle("Trier par").setItems(SORTS.map { it.second }.toTypedArray()) { _, i -> sort = SORTS[i].first; drawChips(); grid.reset() }.show()
+    }
+
+    private fun pickGenre() {
+        val token = Prefs(act).vodToken ?: return
+        act.lifecycleScope.launch {
             try {
-                val items = VodApi.search(token, term)
-                results.removeAllViews()
-                if (items.isEmpty()) { results.addView(text("Aucun titre disponible pour « $term » (seuls ceux qui ont au moins un seeder sont montrés).", 14f, MUTED).apply { setPadding(0, dp(14), 0, 0) }); return@launch }
-                val span = 3
-                val w = (resources.displayMetrics.widthPixels - dp(28) - dp(10) * (span - 1)) / span
-                results.addView(RecyclerView(this@VodHomeActivity).apply {
-                    layoutManager = GridLayoutManager(this@VodHomeActivity, span)
-                    adapter = PosterAdapter(w) { open(it) }.also { a -> a.items = items }
-                    addItemDecoration(object : RecyclerView.ItemDecoration() {
-                        override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) { outRect.bottom = dp(12); outRect.right = dp(10) }
-                    })
-                    isNestedScrollingEnabled = false
-                    setPadding(0, dp(12), 0, dp(20))
-                })
-            } catch (e: VodAuthException) {
-                prefs.vodToken = null; Toast.makeText(this@VodHomeActivity, e.message, Toast.LENGTH_LONG).show(); render()
-            } catch (e: Exception) {
-                results.removeAllViews()
-                results.addView(text("Recherche impossible : " + (e.message ?: "erreur réseau"), 14f, MUTED).apply { setPadding(0, dp(14), 0, 0) })
-            }
+                val gs = VodApi.genres(token, kind)
+                val names = listOf("Tous les genres") + gs.map { it.name + "  (" + it.count + ")" }
+                AlertDialog.Builder(act).setTitle("Genre").setItems(names.toTypedArray()) { _, i -> genre = if (i == 0) null else gs[i - 1].name; drawChips(); grid.reset() }.show()
+            } catch (e: Exception) { Toast.makeText(act, e.message ?: "Genres indisponibles", Toast.LENGTH_SHORT).show() }
         }
     }
+
+    override fun onShow() { if (!started) { started = true; grid.reset() } }
+}
+
+// ====================================================================== Explorer
+
+/** Explorer : par genre, par saga, de A à Z, et quelques raccourcis (nouveautés, mieux notés...). */
+class ExploreScreen(private val act: VodHomeActivity) : VodScreen {
+    private val col = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, act.dp(24)) }
+    override val view: View = ScrollView(act).apply { addView(col); setBackgroundColor(Ui.BG); isVerticalScrollBarEnabled = false }
+    private var loaded = false
+
+    private fun section(t: String) = act.label(t, 17f, Ui.TEXT, Ui.black).apply { setPadding(act.dp(16), act.dp(22), act.dp(16), act.dp(10)) }
+
+    private fun list(title: String, kind: String? = null, genre: String? = null, sort: String? = null, letter: String? = null, sagas: Boolean = false) {
+        act.startActivity(Intent(act, VodListActivity::class.java).putExtra(VodListActivity.EXTRA_TITLE, title).putExtra(VodListActivity.EXTRA_KIND, kind)
+            .putExtra(VodListActivity.EXTRA_GENRE, genre).putExtra(VodListActivity.EXTRA_SORT, sort).putExtra(VodListActivity.EXTRA_LETTER, letter).putExtra(VodListActivity.EXTRA_SAGAS, sagas))
+    }
+
+    private fun tile(text: String, sub: String?, hue: Float, onClick: () -> Unit): View {
+        val d = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR, intArrayOf(Color.HSVToColor(floatArrayOf(hue, 0.55f, 0.55f)), Color.HSVToColor(floatArrayOf((hue + 40f) % 360f, 0.6f, 0.22f)))).apply { cornerRadius = act.dpf(8f) }
+        return LinearLayout(act).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.BOTTOM; setPadding(act.dp(12), act.dp(10), act.dp(12), act.dp(10)); background = d; isClickable = true; isFocusable = true; setOnClickListener { onClick() }
+            addView(act.label(text, 15f, Ui.TEXT, Ui.black).apply { maxLines = 2 })
+            if (sub != null) addView(act.label(sub, 11f, Color.parseColor("#D5DAE8")))
+        }
+    }
+
+    private fun grid(views: List<View>, cols: Int, h: Int): View {
+        val box = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL; setPadding(act.dp(12), 0, act.dp(12), 0) }
+        views.chunked(cols).forEach { r ->
+            val row = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL }
+            r.forEach { v -> row.addView(v, LinearLayout.LayoutParams(0, h, 1f).apply { setMargins(act.dp(4), act.dp(4), act.dp(4), act.dp(4)) }) }
+            repeat(cols - r.size) { row.addView(View(act), LinearLayout.LayoutParams(0, h, 1f).apply { setMargins(act.dp(4), act.dp(4), act.dp(4), act.dp(4)) }) }
+            box.addView(row)
+        }
+        return box
+    }
+
+    override fun onShow() {
+        if (loaded) return
+        val token = Prefs(act).vodToken ?: return
+        col.removeAllViews()
+        col.addView(act.label("Explorer", 26f, Ui.TEXT, Ui.black).apply { setPadding(act.dp(16), act.dp(18), act.dp(16), 0) })
+        col.addView(section("Raccourcis"))
+        col.addView(grid(listOf(
+            tile("Nouveautés", "Ajoutés récemment", 38f) { list("Nouveautés", sort = "new") },
+            tile("Les plus regardés", "Les mieux seedés", 150f) { list("Les plus regardés", sort = "seeders") },
+            tile("Mieux notés", "Les meilleures notes", 280f) { list("Mieux notés", sort = "rating") },
+            tile("Sagas", "Films à suites", 340f) { list("Sagas", sagas = true) },
+        ), 2, act.dp(72)))
+        col.addView(section("Genres"))
+        val genresBox = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(genresBox)
+        col.addView(section("De A à Z"))
+        val letters = ('A'..'Z').map { it.toString() } + "#"
+        col.addView(grid(letters.map { l ->
+            LinearLayout(act).apply {
+                gravity = Gravity.CENTER; background = roundRect(Ui.SURFACE2, act.dpf(8f), Ui.LINE, 1); isClickable = true; isFocusable = true
+                setOnClickListener { list("Titres en « $l »", sort = "name", letter = l) }
+                addView(act.label(l, 17f, Ui.TEXT, Ui.black))
+            }
+        }, 7, act.dp(46)))
+        act.lifecycleScope.launch {
+            try {
+                val gs = VodApi.genres(token, null)
+                genresBox.addView(grid(gs.take(24).mapIndexed { i, g -> tile(g.name, g.count.toString() + " titres", (i * 47f) % 360f) { list(g.name, genre = g.name, sort = "seeders") } }, 2, act.dp(64)))
+                loaded = true
+            } catch (e: VodAuthException) { Prefs(act).vodToken = null; act.recreate() } catch (e: Exception) { genresBox.addView(act.label("Genres indisponibles : " + (e.message ?: "erreur réseau"), 13f, Ui.MUTED).apply { setPadding(act.dp(16), 0, act.dp(16), 0) }) }
+        }
+    }
+}
+
+// ====================================================================== Recherche
+
+class SearchScreen(private val act: VodHomeActivity) : VodScreen {
+    private var query = ""
+    private val grid = PagedGrid(act) { page -> VodApi.browse(Prefs(act).vodToken ?: "", mapOf("q" to query, "sort" to "seeders"), page) }
+    private val field = EditText(act).apply {
+        hint = "Film, série, saga…"; setHintTextColor(Ui.MUTED); setTextColor(Ui.TEXT); textSize = 16f; setSingleLine(); inputType = InputType.TYPE_CLASS_TEXT; imeOptions = EditorInfo.IME_ACTION_SEARCH
+        background = null; setPadding(act.dp(8), act.dp(12), act.dp(8), act.dp(12))
+    }
+    private var debounce: Job? = null
+    override val view: View = LinearLayout(act).apply {
+        orientation = LinearLayout.VERTICAL; setBackgroundColor(Ui.BG)
+        val bar = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; background = roundRect(Ui.SURFACE, act.dpf(10f), Ui.LINE, 1); setPadding(act.dp(12), 0, act.dp(8), 0) }
+        bar.addView(act.icon(R.drawable.ic_search, 22, Ui.MUTED))
+        bar.addView(field, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(act.dp(16), act.dp(18), act.dp(16), act.dp(8)) })
+        addView(grid.view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+    }
+
+    init {
+        field.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+            override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {
+                query = s?.toString()?.trim() ?: ""
+                debounce?.cancel()
+                debounce = act.lifecycleScope.launch { delay(350); if (query.length >= 2) grid.reset() else grid.clear() }
+            }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
+        field.setOnEditorActionListener { v, _, _ -> (act.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(v.windowToken, 0); true }
+    }
+
+    override fun onShow() { field.requestFocus() }
 }

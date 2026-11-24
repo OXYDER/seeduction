@@ -24,9 +24,20 @@ class VodAuthException(message: String) : Exception(message)
 class VodItem(
     val id: String, val title: String, val subtitle: String?, val year: Int?, val kind: String?, val cover: String?,
     val seeders: Int, val health: String?, val quality: String?, val percent: Int?, val playTorrentId: String?, val playFileIndex: Int,
+    /** « saga » : une collection de films (id = celui de la collection) ; sinon un film ou une série. */
+    val type: String? = null, val genres: List<String> = emptyList(), val synopsis: String? = null, val versions: Int = 0,
 )
 
-class VodRail(val id: String, val title: String, val items: List<VodItem>)
+/** « Tout voir » d'une rangée : les critères de la liste complète. */
+class VodMore(val kind: String?, val genre: String?, val sort: String?, val sagas: Boolean)
+
+class VodRail(val id: String, val title: String, val items: List<VodItem>, val more: VodMore?)
+
+class VodHome(val hero: VodItem?, val rails: List<VodRail>)
+
+class VodGenre(val name: String, val count: Int)
+
+class VodSaga(val id: String, val name: String, val items: List<VodItem>)
 
 class VodVersion(
     val id: String, val label: String, val size: Long, val seeders: Int, val health: String, val fileIndex: Int, val percent: Int?, val subtitles: List<String>,
@@ -40,6 +51,7 @@ class VodEpisode(
 class VodTitle(
     val id: String, val title: String, val year: Int?, val kind: String, val cover: String?, val backdrop: String?, val synopsis: String?,
     val rating: Double?, val runtime: Int?, val genres: List<String>, val versions: List<VodVersion>, val episodes: List<VodEpisode>,
+    val saga: VodSaga?, val similar: List<VodItem>,
 )
 
 private fun JSONObject.str(k: String): String? = if (isNull(k)) null else optString(k).ifEmpty { null }
@@ -47,12 +59,16 @@ private fun JSONObject.intOrNull(k: String): Int? = if (isNull(k) || !has(k)) nu
 
 private fun itemOf(o: JSONObject): VodItem {
     val play = o.optJSONObject("play")
+    val gs = o.optJSONArray("genres") ?: JSONArray()
     return VodItem(
         id = o.getString("id"), title = o.optString("title"), subtitle = o.str("subtitle"), year = o.intOrNull("year"), kind = o.str("kind"), cover = o.str("cover"),
         seeders = o.optInt("seeders"), health = o.str("health"), quality = o.str("quality"), percent = o.intOrNull("percent"),
         playTorrentId = play?.optString("torrentId")?.ifEmpty { null }, playFileIndex = play?.optInt("fileIndex", 0) ?: 0,
+        type = o.str("type"), genres = (0 until gs.length()).map { gs.getString(it) }, synopsis = o.str("synopsis"), versions = o.optInt("versions"),
     )
 }
+
+private fun itemsOf(arr: JSONArray?): List<VodItem> = if (arr == null) emptyList() else (0 until arr.length()).map { itemOf(arr.getJSONObject(it)) }
 
 object VodApi {
     private fun call(path: String, token: String?, method: String = "GET", body: String? = null): JSONObject {
@@ -77,18 +93,36 @@ object VodApi {
         prefs.vodUser ?: ""
     }
 
-    suspend fun home(token: String): List<VodRail> = withContext(Dispatchers.IO) {
-        val arr = call("/home", token).optJSONArray("rails") ?: JSONArray()
-        (0 until arr.length()).map { i ->
-            val r = arr.getJSONObject(i)
-            val items = r.optJSONArray("items") ?: JSONArray()
-            VodRail(r.getString("id"), r.optString("title"), (0 until items.length()).map { itemOf(items.getJSONObject(it)) })
-        }
+    suspend fun home(token: String): VodHome = withContext(Dispatchers.IO) {
+        val o = call("/home", token)
+        val arr = o.optJSONArray("rails") ?: JSONArray()
+        VodHome(
+            hero = o.optJSONObject("hero")?.let { itemOf(it) },
+            rails = (0 until arr.length()).map { i ->
+                val r = arr.getJSONObject(i)
+                val m = r.optJSONObject("more")
+                VodRail(r.getString("id"), r.optString("title"), itemsOf(r.optJSONArray("items")), m?.let { VodMore(it.str("kind"), it.str("genre"), it.str("sort"), it.optBoolean("sagas")) })
+            },
+        )
     }
 
-    suspend fun search(token: String, q: String): List<VodItem> = withContext(Dispatchers.IO) {
-        val arr = call("/search?q=" + SiteApi.enc(q), token).optJSONArray("items") ?: JSONArray()
-        (0 until arr.length()).map { itemOf(arr.getJSONObject(it)) }
+    /** Liste paginée (onglets Films / Séries, « Tout voir », genres, A–Z, recherche) : renvoie les titres et s'il y a une page suivante. */
+    suspend fun browse(token: String, params: Map<String, String?>, page: Int): Pair<List<VodItem>, Boolean> = withContext(Dispatchers.IO) {
+        val qs = params.filterValues { !it.isNullOrEmpty() }.entries.joinToString("&") { it.key + "=" + SiteApi.enc(it.value!!) } + "&page=$page&size=30"
+        val o = call("/browse?$qs", token)
+        Pair(itemsOf(o.optJSONArray("items")), o.optBoolean("hasMore"))
+    }
+
+    suspend fun genres(token: String, kind: String?): List<VodGenre> = withContext(Dispatchers.IO) {
+        val arr = call("/genres" + (if (kind != null) "?kind=" + SiteApi.enc(kind) else ""), token).optJSONArray("genres") ?: JSONArray()
+        (0 until arr.length()).map { VodGenre(arr.getJSONObject(it).optString("name"), arr.getJSONObject(it).optInt("n")) }
+    }
+
+    suspend fun sagas(token: String): List<VodItem> = withContext(Dispatchers.IO) { itemsOf(call("/sagas", token).optJSONArray("items")) }
+
+    suspend fun saga(token: String, id: String): VodSaga = withContext(Dispatchers.IO) {
+        val o = call("/saga/" + SiteApi.enc(id), token)
+        VodSaga(o.optString("id"), o.optString("name"), itemsOf(o.optJSONArray("items")))
     }
 
     suspend fun title(token: String, id: String): VodTitle = withContext(Dispatchers.IO) {
@@ -96,6 +130,7 @@ object VodApi {
         val vs = o.optJSONArray("versions") ?: JSONArray()
         val es = o.optJSONArray("episodes") ?: JSONArray()
         val gs = o.optJSONArray("genres") ?: JSONArray()
+        val sg = o.optJSONObject("saga")
         VodTitle(
             id = o.getString("id"), title = o.optString("title"), year = o.intOrNull("year"), kind = o.optString("kind", "film"), cover = o.str("cover"), backdrop = o.str("backdrop"),
             synopsis = o.str("synopsis"), rating = if (o.isNull("rating")) null else o.optDouble("rating"), runtime = o.intOrNull("runtime"),
@@ -109,6 +144,8 @@ object VodApi {
                 val e = es.getJSONObject(it)
                 VodEpisode(e.intOrNull("season"), e.intOrNull("episode"), e.optString("label"), e.getString("torrentId"), e.optInt("fileIndex"), e.optLong("size"), e.optInt("seeders"), e.optString("health"), e.str("resolution"), e.str("language"), e.intOrNull("percent"))
             },
+            saga = sg?.let { VodSaga(it.optString("id"), it.optString("name"), itemsOf(it.optJSONArray("items"))) },
+            similar = itemsOf(o.optJSONArray("similar")),
         )
     }
 

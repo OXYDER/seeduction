@@ -703,11 +703,17 @@ export const GUIDES_SITE: WikiSeedCategory = {
 ` +
         `[b]Dans l'application[/b]
 ` +
-        `• L'accueil montre des rangées : [b]Reprendre[/b] (ce que tu as commencé, avec l'épisode suivant des séries), [b]Recommandé pour toi[/b], puis films et séries [b]« démarrage rapide »[/b] (les mieux seedés) et [b]récents[/b]. La reprise suit ton compte : tu peux commencer sur le site ou le PC et finir sur le téléphone.
+        `• Cinq onglets en bas : [b]Accueil[/b], [b]Films[/b], [b]Séries[/b], [b]Explorer[/b] et [b]Recherche[/b].
 ` +
-        `• La recherche trouve un film ou une série par son titre (français ou original).
+        `• [b]Accueil[/b] : une grande affiche du jour (elle change chaque jour) avec « Lecture » et « Infos », puis des rangées : [b]Reprendre[/b] (ce que tu as commencé, avec l'épisode suivant des séries), [b]Recommandé pour toi[/b], [b]Parce que tu as aimé…[/b], [b]Nouveautés[/b], [b]Les plus regardés[/b], [b]Sagas[/b], films récents, séries à découvrir et quelques rangées par genre. « Tout voir » ouvre la liste complète d'une rangée. La reprise suit ton compte : tu peux commencer sur le site ou le PC et finir sur le téléphone.
 ` +
-        `• La fiche donne le synopsis, la note, la durée et les [b]versions[/b] disponibles (qualité, langue, taille, seeders). Pour une série, les épisodes sont rangés par saison, avec pour chacun la release la mieux seedée.
+        `• [b]Films[/b] et [b]Séries[/b] : toute la liste, avec un filtre par [b]genre[/b] et un tri (nouveautés, les plus regardés, nom de A à Z, année, mieux notés). La liste se charge en défilant.
+` +
+        `• [b]Explorer[/b] : des raccourcis (nouveautés, plus regardés, mieux notés, sagas), tous les [b]genres[/b] et la liste [b]de A à Z[/b] (le tri ignore « Le », « La », « The »…). Une [b]saga[/b] regroupe les films d'une même collection (par exemple toute une trilogie) dans l'ordre de sortie.
+` +
+        `• [b]Recherche[/b] : par titre (français ou original). Une pastille sur chaque affiche indique le démarrage : ⚡ rapide, ● lent.
+` +
+        `• La [b]fiche[/b] donne le synopsis, la note, la durée, les [b]versions[/b] disponibles (qualité, langue, taille, seeders) ou, pour une série, les épisodes rangés par saison avec la release la mieux seedée. Elle propose aussi la saga du film et des titres du même genre.
 ` +
         `• La lecture est celle du lecteur Seeduction : tous les formats, pistes audio et sous-titres (y compris ceux partagés par les membres).
 

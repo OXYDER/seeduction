@@ -36,6 +36,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".VodTitleActivity" android:exported="false" />
+        <activity android:name=".VodListActivity" android:exported="false" />
 
         <!-- Le lien « Ouvrir dans le lecteur Seeduction » du site : seeduction://stream/<jeton> -->
         <activity

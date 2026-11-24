@@ -43,6 +43,31 @@ export class VodController {
     return this.vod.search(viewerOf(req), q);
   }
 
+  /** Liste paginée : onglets Films / Séries, « Tout voir », genres, A–Z (kind, genre, sort, letter, q, page, size). */
+  @UseGuards(JwtAuthGuard)
+  @Get('browse')
+  browse(@Query() query: Record<string, string>, @Req() req: any) {
+    return this.vod.browse(viewerOf(req), query);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('genres')
+  genres(@Query('kind') kind: string, @Req() req: any) {
+    return this.vod.genres(viewerOf(req), kind);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('sagas')
+  sagas(@Req() req: any) {
+    return this.vod.sagas(viewerOf(req));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('saga/:id')
+  saga(@Param('id') id: string, @Req() req: any) {
+    return this.vod.saga(viewerOf(req), id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('title/:id')
   title(@Param('id') id: string, @Req() req: any) {
