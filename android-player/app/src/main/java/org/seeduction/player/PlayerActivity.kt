@@ -1,6 +1,7 @@
 package org.seeduction.player
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -13,7 +14,9 @@ import android.os.IBinder
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import android.widget.ImageView
 import android.widget.ProgressBar
+import android.widget.Toast
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
@@ -61,7 +64,10 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var timeText: TextView
     private lateinit var titleText: TextView
     private lateinit var statsText: TextView
-    private lateinit var playPause: TextView
+    private lateinit var playPause: ImageView
+    private lateinit var loadBar: ProgressBar
+    private lateinit var loadTitle: TextView
+    private lateinit var bgCover: ImageView
     private lateinit var seekToast: TextView
 
     private var info: SessionInfo? = null
@@ -85,9 +91,11 @@ class PlayerActivity : AppCompatActivity() {
         loadingText = findViewById(R.id.loadingText); loadingSub = findViewById(R.id.loadingSub); spinner = findViewById(R.id.spinner); retry = findViewById(R.id.retry)
         bufferSpinner = findViewById(R.id.bufferSpinner); seek = findViewById(R.id.seek); timeText = findViewById(R.id.time); titleText = findViewById(R.id.title)
         statsText = findViewById(R.id.stats); playPause = findViewById(R.id.playPause); seekToast = findViewById(R.id.seekToast)
+        loadBar = findViewById(R.id.loadBar); loadTitle = findViewById(R.id.loadTitle); bgCover = findViewById(R.id.bgCover)
         hideSystemBars()
 
         findViewById<View>(R.id.back).setOnClickListener { finish() }
+        findViewById<View>(R.id.loadBack).setOnClickListener { finish() }
         retry.setOnClickListener { finish() }
         playPause.setOnClickListener { togglePause() }
         findViewById<View>(R.id.rewind).setOnClickListener { seekBy(-10_000) }
@@ -149,7 +157,7 @@ class PlayerActivity : AppCompatActivity() {
     // ------------------------------------------------------------------ démarrage d'une lecture
 
     private fun handleIntent(i: Intent) {
-        val token = if (i.action == Intent.ACTION_VIEW) i.data?.lastPathSegment else null
+        val token = i.getStringExtra(EXTRA_TOKEN) ?: if (i.action == Intent.ACTION_VIEW) i.data?.lastPathSegment else null
         val existing = i.getStringExtra(EXTRA_SESSION)
         if (token == null && existing == null) { showError("Aucune lecture à ouvrir : clique sur « Ouvrir dans le lecteur Seeduction » depuis le site."); return }
         loadJob?.cancel()
@@ -165,9 +173,13 @@ class PlayerActivity : AppCompatActivity() {
                 } else svc.entry(existing!!)?.info ?: throw IllegalStateException("Cette lecture n'existe plus : relance-la depuis Seeduction.")
                 info = entryInfo
                 lastEntryId = entryInfo.id
-                titleText.text = entryInfo.name
+                val pretty = prettyTitle(entryInfo.name)
+                titleText.text = pretty; loadTitle.text = pretty
+                Images.load(bgCover, entryInfo.coverImage, 900)
                 svc.resume(entryInfo.id)
                 waitForBuffer(svc, entryInfo)
+                // Réglage « Lecteur externe » : on confie la lecture à une autre application vidéo installée (le flux est prêt) ; sans application, on lit ici.
+                if (Prefs(this@PlayerActivity).playerMode == PlayerMode.EXTERNAL && launchExternal(svc, entryInfo)) return@launch
                 val start = startPosition(entryInfo)
                 startPlayback(svc, entryInfo, start)
             } catch (e: CancellationException) {
@@ -208,6 +220,7 @@ class PlayerActivity : AppCompatActivity() {
             val peers = st?.peers ?: 0
             if (ready >= 0.999f || (waited > 90 && ready >= 0.5f)) return
             val percent = (ready * 100).toInt()
+            loadBar.visibility = View.VISIBLE; loadBar.progress = percent
             setLoading(
                 if (peers == 0 && waited > 8) "Recherche de pairs…" else "Mise en mémoire tampon… $percent %",
                 (if (peers > 0) "$peers pair(s) · ↓ ${formatSpeed(st?.downRate ?: 0)}" else "Connexion au swarm") +
@@ -234,6 +247,22 @@ class PlayerActivity : AppCompatActivity() {
         val local = Prefs(this).position(info.torrentId, info.fileIndex)
         val remote = if (info.passkey != null && info.torrentId != null) SiteApi.serverPosition(info.passkey, info.torrentId, info.fileIndex) else 0
         return maxOf(local, remote)
+    }
+
+    /** Ouvre le flux local dans une autre application vidéo (VLC, MX Player...). Renvoie faux s'il n'y en a aucune : on lit alors dans l'application. */
+    private fun launchExternal(svc: TorrentService, info: SessionInfo): Boolean {
+        val view = Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(svc.streamUrl(info.id)), "video/*").putExtra("title", prettyTitle(info.name))
+        val others = packageManager.queryIntentActivities(view, 0).filter { it.activityInfo.packageName != packageName }
+        if (others.isEmpty()) {
+            Toast.makeText(this, "Aucune application vidéo externe trouvée : lecture dans l'application.", Toast.LENGTH_LONG).show()
+            return false
+        }
+        return try {
+            startActivity(Intent.createChooser(view, "Lire avec…"))
+            Journal.log("lecture confiée à une application externe")
+            finish()
+            true
+        } catch (e: ActivityNotFoundException) { false }
     }
 
     private fun startPlayback(svc: TorrentService, info: SessionInfo, startSeconds: Int) {
@@ -268,8 +297,8 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun onVlcEvent(ev: MediaPlayer.Event) {
         when (ev.type) {
-            MediaPlayer.Event.Playing -> { loading.visibility = View.GONE; bufferSpinner.visibility = View.GONE; playPause.text = "⏸"; showControls() }
-            MediaPlayer.Event.Paused -> { playPause.text = "▶" }
+            MediaPlayer.Event.Playing -> { loading.visibility = View.GONE; bufferSpinner.visibility = View.GONE; playPause.setImageResource(R.drawable.ic_pause); showControls() }
+            MediaPlayer.Event.Paused -> { playPause.setImageResource(R.drawable.ic_play) }
             MediaPlayer.Event.Buffering -> bufferSpinner.visibility = if (ev.buffering < 100f && loading.visibility != View.VISIBLE) View.VISIBLE else View.GONE
             MediaPlayer.Event.LengthChanged -> lengthMs = ev.lengthChanged
             MediaPlayer.Event.EndReached -> {
@@ -363,13 +392,13 @@ class PlayerActivity : AppCompatActivity() {
     // ------------------------------------------------------------------ états à l'écran
 
     private fun showLoading(text: String, sub: String) {
-        loading.visibility = View.VISIBLE; spinner.visibility = View.VISIBLE; retry.visibility = View.GONE
+        loading.visibility = View.VISIBLE; spinner.visibility = View.VISIBLE; retry.visibility = View.GONE; loadBar.visibility = View.GONE
         loadingText.text = text; loadingSub.text = sub
     }
     private fun setLoading(text: String, sub: String) { loadingText.text = text; loadingSub.text = sub }
 
     private fun showError(message: String) {
-        loading.visibility = View.VISIBLE; spinner.visibility = View.GONE; retry.visibility = View.VISIBLE
+        loading.visibility = View.VISIBLE; spinner.visibility = View.GONE; retry.visibility = View.VISIBLE; loadBar.visibility = View.GONE
         loadingText.text = message; loadingSub.text = ""
         bufferSpinner.visibility = View.GONE
     }
@@ -399,5 +428,9 @@ class PlayerActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    companion object { const val EXTRA_SESSION = "session" }
+    companion object {
+        const val EXTRA_SESSION = "session"
+        /** Jeton de lecture remis par le catalogue (sans passer par un lien). */
+        const val EXTRA_TOKEN = "token"
+    }
 }

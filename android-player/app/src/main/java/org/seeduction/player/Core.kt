@@ -74,6 +74,11 @@ data class SessionInfo(
 class Prefs(ctx: Context) {
     private val p = ctx.getSharedPreferences("seeduction", Context.MODE_PRIVATE)
 
+    /** Lecteur des vidéos du catalogue : intégré à l'application (par défaut) ou une autre application vidéo installée (VLC, MX Player...). */
+    var playerMode: String
+        get() = p.getString("playerMode", PlayerMode.INTERNAL) ?: PlayerMode.INTERNAL
+        set(v) { p.edit().putString("playerMode", v).apply() }
+
     var wifiOnlySeed: Boolean
         get() = p.getBoolean("wifiOnlySeed", true)
         set(v) { p.edit().putBoolean("wifiOnlySeed", v).apply() }
@@ -114,6 +119,20 @@ class Prefs(ctx: Context) {
     /** Dernière position de lecture (secondes) d'un fichier, pour reprendre là où on s'est arrêté. */
     fun position(torrentId: String?, fileIndex: Int): Int = if (torrentId == null) 0 else p.getInt("pos:$torrentId:$fileIndex", 0)
     fun savePosition(torrentId: String?, fileIndex: Int, seconds: Int) { if (torrentId != null) p.edit().putInt("pos:$torrentId:$fileIndex", seconds).apply() }
+}
+
+object PlayerMode {
+    const val INTERNAL = "internal"
+    const val EXTERNAL = "external"
+}
+
+/** « Dune.Part.Two.2024.1080p.WEB-DL.mkv » -> « Dune Part Two » ; « Show.S01E02.1080p » -> « Show · S01E02 ». */
+fun prettyTitle(raw: String): String {
+    val base = raw.replace(Regex("\\.(mkv|mp4|avi|m4v|mov|webm|ts)$", RegexOption.IGNORE_CASE), "")
+    val ep = Regex("S(\\d{1,2})E(\\d{1,3})", RegexOption.IGNORE_CASE).find(base)
+    val cut = Regex("[. _-](19|20)\\d{2}\\b|[. _-]\\d{3,4}p\\b|[. _-]S\\d{1,2}E\\d{1,3}", RegexOption.IGNORE_CASE).find(base)?.range?.first ?: base.length
+    val title = base.substring(0, cut).replace(Regex("[._]+"), " ").trim().ifEmpty { base }
+    return if (ep != null) title + " · S" + ep.groupValues[1].padStart(2, '0') + "E" + ep.groupValues[2].padStart(2, '0') else title
 }
 
 /** Le téléphone est-il sur une connexion non limitée (Wi-Fi, Ethernet) ? */

@@ -117,11 +117,13 @@ class VodHomeActivity : AppCompatActivity() {
     /** Menu discret (⋮) : partages en cours, déconnexion. */
     fun menu(anchor: View) {
         PopupMenu(this, anchor).apply {
-            menu.add(0, 1, 0, "Mes partages et téléchargements")
-            menu.add(0, 2, 1, "Ouvrir Seeduction")
-            menu.add(0, 3, 2, "Déconnecter le catalogue")
+            menu.add(0, 4, 0, "Paramètres")
+            menu.add(0, 1, 1, "Mes partages et téléchargements")
+            menu.add(0, 2, 2, "Ouvrir Seeduction")
+            menu.add(0, 3, 3, "Déconnecter le catalogue")
             setOnMenuItemClickListener {
                 when (it.itemId) {
+                    4 -> startActivity(Intent(this@VodHomeActivity, VodSettingsActivity::class.java))
                     1 -> startActivity(Intent(this@VodHomeActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_NO_REDIRECT, true))
                     2 -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE)))
                     3 -> { prefs.vodToken = null; prefs.vodUser = null; current = 0; render() }
@@ -235,6 +237,8 @@ class HomeScreen(private val act: VodHomeActivity) : VodScreen {
         } else frame.addView(View(act), FrameLayout.LayoutParams(w, act.dp(70)))
         val top = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(act.dp(16), act.dp(10), act.dp(6), 0) }
         top.addView(act.label("SEEDUCTION", 17f, Ui.GOLD, Ui.black).apply { letterSpacing = 0.16f; setShadowLayer(10f, 0f, 2f, Color.BLACK) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val gear = act.icon(R.drawable.ic_settings, 22, Ui.TEXT).apply { setPadding(act.dp(10), act.dp(10), act.dp(10), act.dp(10)); isClickable = true; layoutParams = LinearLayout.LayoutParams(act.dp(44), act.dp(44)); setOnClickListener { act.startActivity(Intent(act, VodSettingsActivity::class.java)) } }
+        top.addView(gear)
         val more = act.icon(R.drawable.ic_more, 24, Ui.TEXT).apply { setPadding(act.dp(8), act.dp(8), act.dp(8), act.dp(8)); isClickable = true; layoutParams = LinearLayout.LayoutParams(act.dp(44), act.dp(44)); setOnClickListener { act.menu(this) } }
         top.addView(more)
         frame.addView(top, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP))

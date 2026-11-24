@@ -7,6 +7,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Voir les applications vidéo installées (réglage « Lecteur externe ») -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="video/*" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -37,6 +45,7 @@
         </activity>
         <activity android:name=".VodTitleActivity" android:exported="false" />
         <activity android:name=".VodListActivity" android:exported="false" />
+        <activity android:name=".VodSettingsActivity" android:exported="false" />
 
         <!-- Le lien « Ouvrir dans le lecteur Seeduction » du site : seeduction://stream/<jeton> -->
         <activity

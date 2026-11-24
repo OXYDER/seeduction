@@ -108,7 +108,7 @@ fun AppCompatActivity.playVod(torrentId: String, fileIndex: Int, busy: (Boolean)
     lifecycleScope.launch {
         try {
             val play = VodApi.play(token, torrentId, fileIndex)
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("seeduction://stream/$play"), this@playVod, PlayerActivity::class.java))
+            startActivity(Intent(this@playVod, PlayerActivity::class.java).putExtra(PlayerActivity.EXTRA_TOKEN, play))
         } catch (e: VodAuthException) {
             Prefs(this@playVod).vodToken = null
             Toast.makeText(this@playVod, e.message, Toast.LENGTH_LONG).show()
