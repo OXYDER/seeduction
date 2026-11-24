@@ -23,7 +23,8 @@ android {
         versionCode = 6
         versionName = "1.4.0"
         // Les téléphones d'aujourd'hui : 64 bits (la grande majorité) et 32 bits (anciens modèles). Pas x86 : l'APK serait bien plus gros.
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+        // -PabiOnly=arm64-v8a : version allégée pour les téléphones récents (envoi par messagerie).
+        ndk { abiFilters += ((project.findProperty("abiOnly") as String?)?.split(",") ?: listOf("arm64-v8a", "armeabi-v7a")) }
         buildConfigField("String", "SITE_BASE_URL", "\"https://seeduction.org\"")
     }
 
