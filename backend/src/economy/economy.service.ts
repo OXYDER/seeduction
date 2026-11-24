@@ -235,18 +235,20 @@ export class EconomyService {
    */
   async activity(userId: string) {
     const fresh = new Date(Date.now() - 45 * 60_000);
-    const [user, peers, snatches, uploads] = await Promise.all([
+    const [user, peers, snatches, uploads, adultCats] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId }, select: { uploaded: true, downloaded: true } }),
-      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh }, NOT: { vod: true, isSeeder: false } }, include: { torrent: { select: { id: true, name: true, size: true, coverImage: true } } } }), // le téléchargement de Seeduction TV n'est jamais montré
+      this.prisma.peer.findMany({ where: { userId, lastAnnounceAt: { gt: fresh }, NOT: { vod: true, isSeeder: false } }, include: { torrent: { select: { id: true, name: true, size: true, coverImage: true, categoryId: true } } } }), // le téléchargement de Seeduction TV n'est jamais montré
       this.prisma.snatch.findMany({
         where: { userId }, orderBy: { completedAt: 'desc' }, take: 300,
-        include: { torrent: { select: { id: true, name: true, size: true, coverImage: true, uploaderId: true } } },
+        include: { torrent: { select: { id: true, name: true, size: true, coverImage: true, uploaderId: true, categoryId: true } } },
       }),
       this.prisma.torrent.findMany({
         where: { uploaderId: userId }, orderBy: { createdAt: 'desc' }, take: 200,
         select: { id: true, name: true, size: true, coverImage: true, status: true, seeders: true, leechers: true, completedCount: true, createdAt: true },
       }),
+      this.prisma.category.findMany({ where: { OR: [{ adult: true }, { parent: { adult: true } }] }, select: { id: true } }),
     ]);
+    const adultIds = new Set(adultCats.map((c) => c.id)); // les pochettes adultes ne s'affichent jamais dans les listes d'activité (seul l'indicateur `adult` part au site)
 
     // Un même torrent peut avoir plusieurs pairs (plusieurs clients) : on les réunit.
     const byTorrent = new Map<string, { t: (typeof peers)[number]['torrent']; seeding: boolean; leeching: boolean; left: number; up: number; down: number; last: Date }>();
@@ -266,7 +268,7 @@ export class EconomyService {
       const size = Number(c.t.size);
       const sn = snatchByTorrent.get(id);
       return {
-        torrentId: id, name: c.t.name, coverImage: c.t.coverImage, size,
+        torrentId: id, name: c.t.name, coverImage: adultIds.has(c.t.categoryId) ? null : c.t.coverImage, adult: adultIds.has(c.t.categoryId), size,
         uploaded: c.up, downloaded: c.down, ratio: c.down > 0 ? Math.round((c.up / c.down) * 100) / 100 : c.up > 0 ? null : 0,
         progress: size > 0 ? Math.max(0, Math.min(1, 1 - c.left / size)) : 1, lastAnnounceAt: c.last,
         seedSeconds: sn?.seedSeconds ?? 0, requiredSeconds: required, obligationDone: sn ? sn.satisfied : null,
@@ -281,7 +283,7 @@ export class EconomyService {
     const flows = snatchByTorrent.size ? await this.prisma.userTorrentFlow.groupBy({ by: ['torrentId'], where: { userId, torrentId: { in: [...snatchByTorrent.keys()] } }, _sum: { up: true, down: true }, _min: { day: true } }) : [];
     const flowOf = new Map(flows.map((f) => [f.torrentId, f]));
     const completed = [...snatchByTorrent.values()].map((s) => ({
-      torrentId: s.torrentId, name: s.torrent.name, coverImage: s.torrent.coverImage, size: Number(s.torrent.size), completedAt: s.completedAt,
+      torrentId: s.torrentId, name: s.torrent.name, coverImage: adultIds.has(s.torrent.categoryId) ? null : s.torrent.coverImage, adult: adultIds.has(s.torrent.categoryId), size: Number(s.torrent.size), completedAt: s.completedAt,
       startedAt: s.startedAt ?? null, firstDay: flowOf.get(s.torrentId)?._min.day ?? null,
       receivedBytes: flowOf.has(s.torrentId) ? Number(flowOf.get(s.torrentId)!._sum.down ?? 0n) : null, sentBytes: flowOf.has(s.torrentId) ? Number(flowOf.get(s.torrentId)!._sum.up ?? 0n) : null,
       seedSeconds: s.seedSeconds, requiredSeconds: required, satisfied: s.satisfied,

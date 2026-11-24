@@ -708,8 +708,9 @@ export class TorrentsService implements OnModuleInit {
       where: { userId, NOT: { vod: true, isSeeder: false }, torrent: { status: 'APPROVED', ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) } },
       orderBy: { lastAnnounceAt: 'desc' },
       take: 40,
-      include: { torrent: { select: { id: true, name: true, coverImage: true, size: true, category: { select: { slug: true, name: true, parent: { select: { slug: true, name: true } } } } } } },
+      include: { torrent: { select: { id: true, name: true, coverImage: true, size: true, categoryId: true, category: { select: { slug: true, name: true, parent: { select: { slug: true, name: true } } } } } } },
     });
+    const adultIds = new Set(await this.adult.adultCategoryIds()); // pochettes adultes jamais affichées dans ces listes
     const seen = new Set<string>();
     return peers
       .filter((p) => (seen.has(p.torrentId) ? false : (seen.add(p.torrentId), true)))
@@ -718,6 +719,8 @@ export class TorrentsService implements OnModuleInit {
         const left = Number(p.left) || 0;
         return {
           ...p.torrent,
+          adult: adultIds.has(p.torrent.categoryId),
+          coverImage: adultIds.has(p.torrent.categoryId) ? null : p.torrent.coverImage,
           isSeeder: p.isSeeder,
           progress: p.isSeeder || size === 0 ? 1 : Math.max(0, Math.min(1, 1 - left / size)),
           lastAnnounceAt: p.lastAnnounceAt,
