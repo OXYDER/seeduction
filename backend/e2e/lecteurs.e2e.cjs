@@ -72,7 +72,7 @@ async function publish(T, platform, data, version, chunk = 1024 * 1024) {
     const apk = fake('PK', 2_500_000);
     const finA = await publish(TA, 'android', apk, '1.1.0');
     const dlA = await call('GET', '/downloads/players/android');
-    check('l\'APK est publié et téléchargeable sous son nom habituel', finA.s === 201 && dlA.buf.equals(apk) && /Seeduction\.Player\.apk/.test(dlA.h.get('content-disposition') ?? ''));
+    check('l\'APK est publié et téléchargeable sous son nom habituel', finA.s === 201 && dlA.buf.equals(apk) && /Seeduction\.TV\.apk/.test(dlA.h.get('content-disposition') ?? ''));
     check('l\'administration voit les deux versions', (await call('GET', '/admin/players', TA)).b.android?.version === '1.1.0');
 
     // Clé de publication : le script « publier-lecteurs » publie sans mot de passe

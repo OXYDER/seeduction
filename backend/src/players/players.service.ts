@@ -21,7 +21,7 @@ const STALE_MS = 6 * 3600_000;
 /** Ce qu'on accepte pour chaque système : extension, début du fichier (un .exe commence par « MZ », un .apk est une archive « PK ») et nom du téléchargement. */
 const SPEC: Record<Platform, { ext: string; magic: number[]; mime: string; downloadName: (v: string) => string }> = {
   windows: { ext: '.exe', magic: [0x4d, 0x5a], mime: 'application/vnd.microsoft.portable-executable', downloadName: (v) => `Seeduction Player Setup ${v}.exe` },
-  android: { ext: '.apk', magic: [0x50, 0x4b], mime: 'application/vnd.android.package-archive', downloadName: () => 'Seeduction.Player.apk' },
+  android: { ext: '.apk', magic: [0x50, 0x4b], mime: 'application/vnd.android.package-archive', downloadName: () => 'Seeduction.TV.apk' },
 };
 
 export function isPlatform(v: string): v is Platform { return v === 'windows' || v === 'android'; }

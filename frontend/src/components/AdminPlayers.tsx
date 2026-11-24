@@ -9,7 +9,7 @@ type Platform = 'windows' | 'android';
 const CHUNK = 8 * 1024 * 1024;
 const META: Record<Platform, { title: string; icon: string; accept: string; hint: string }> = {
   windows: { title: 'Lecteur Windows', icon: '🖥️', accept: '.exe', hint: 'Le fichier « Seeduction Player Setup X.Y.Z.exe » compilé dans desktop-player/dist.' },
-  android: { title: 'Lecteur Android', icon: '📱', accept: '.apk', hint: 'Le fichier « Seeduction.Player.apk » compilé dans android-player.' },
+  android: { title: 'Seeduction TV (Android)', icon: '📱', accept: '.apk', hint: 'Le fichier « app-release.apk » compilé dans android-player ; il se télécharge sous le nom « Seeduction.TV.apk ».' },
 };
 
 /** Une version trouvée dans le nom du fichier (« Seeduction Player Setup 0.2.0.exe » → 0.2.0), pour pré-remplir le formulaire. */

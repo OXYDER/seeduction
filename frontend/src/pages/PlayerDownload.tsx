@@ -120,7 +120,7 @@ const FEATURES: { ic: string; t: string; d: string; hot?: boolean }[] = [
 const FAQ: [string, string][] = [
   ['Qui peut utiliser l\'application ?', "Les donateurs (tant que leur soutien est actif), les membres fondateurs, les uploaders et l'équipe. Si un don arrive à terme, l'accès se ferme tout seul, et se rouvre dès le prochain don : tes notes et ta progression sont gardées."],
   ['Est-ce que ça touche à mon ratio ?', "Non. Ton téléchargement dans l'application n'est pas compté, ne crée aucune obligation de partage et n'apparaît pas dans « Mon activité ». Seul l'envoi (le partage) compte, et il compte en ta faveur."],
-  ['Sur quels appareils ?', "Téléphones et tablettes Android, télévisions et box Android (mode TV avec télécommande). Sur une box 32 bits, il faut la version 32 bits : demande-la à l'équipe si l'installation est refusée."],
+  ['Sur quels appareils ?', "Téléphones et tablettes Android, télévisions et box Android (mode TV avec télécommande). Le même fichier convient aux appareils 32 bits et 64 bits."],
   ['Pourquoi des fichiers restent sur mon appareil ?', "L'application partage en arrière-plan ce qu'elle a téléchargé (en Wi-Fi seulement par défaut) : c'est ce qui permet aux autres membres de regarder à leur tour. Tu peux tout arrêter ou supprimer depuis Paramètres > Mes téléchargements."],
   ['Et si le film est lent à démarrer ?', "La disponibilité d'un titre, c'est son nombre de seeders : ⚡ rapide à partir de 5, correct de 2 à 4, lent avec un seul. Seeder tes propres torrents aide tout le monde, toi compris."],
   ['Puis-je utiliser VLC ou MX Player ?', "Oui : Paramètres > Lecteur externe. Le lecteur intégré reste conseillé : il garde ta progression et ton statut « en train de regarder »."],
@@ -242,7 +242,7 @@ export default function PlayerDownload() {
               3. Si Play Protect avertit, choisis « Installer quand même ».<br />
               4. Ouvre Seeduction et connecte-toi avec ton identifiant (ou courriel) et ton mot de passe.<br />
               <strong>Sur une télé ou une box :</strong> ouvre l'application, scanne le QR code avec ton téléphone (ou va sur <Link to="/tv">seeduction.org/tv</Link> et saisis le code affiché) : rien à taper à la télécommande.
-              Si la box refuse l'installation, c'est souvent qu'elle est en 32 bits : demande la version 32 bits à l'équipe.
+              Le même fichier convient aux appareils 32 bits et 64 bits (« Seeduction.TV.apk »).
             </div>
           </div>
           <VodPanel />
