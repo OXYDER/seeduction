@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import UserLink from '../components/UserLink';
+import QrCode from '../components/QrCode';
 import { api } from '../api/client';
 import { timeAgo } from '../lib/time';
 import Loading from '../components/Loading';
@@ -17,6 +17,41 @@ interface Data {
 }
 const errorOf = (e: any) => { const m = e?.response?.data?.message; return Array.isArray(m) ? m.join(', ') : m ?? 'Erreur'; };
 const linkOf = (code: string) => `${window.location.origin}/register?code=${code}`;
+type SortKey = 'username' | 'joinedAt' | 'ratio' | 'uploadedGb' | 'lastSeenAt';
+const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
+
+/** De l'invitation créée au membre à part entière : où les invités s'arrêtent. */
+function Funnel({ data }: { data: Data }) {
+  const created = data.codes.length;
+  const registered = data.totals.invitees;
+  const active = data.invitees.filter((i) => i.state !== 'inactive').length;
+  const members = data.invitees.filter((i) => i.state === 'rewarded' || i.state === 'ready').length;
+  const open = data.codes.filter((c) => c.status === 'open').length;
+  const expired = data.codes.filter((c) => c.status === 'expired').length;
+  if (created === 0 && registered === 0) return null;
+  const steps: { label: string; n: number; hint: string }[] = [
+    { label: 'Invitations créées', n: Math.max(created, registered), hint: `${open} ouverte${open > 1 ? 's' : ''} · ${expired} expirée${expired > 1 ? 's' : ''}` },
+    { label: 'Amis inscrits', n: registered, hint: 'ont utilisé un code' },
+    { label: 'Toujours actifs', n: active, hint: 'compte non désactivé' },
+    { label: 'Devenus membres', n: members, hint: `${data.config.minDays} jours et rang « ${data.config.minClassLabel} »` },
+  ];
+  const top = steps[0].n || 1;
+  return (
+    <div className="panel" style={{ display: 'grid', gap: 10 }}>
+      <h3 style={{ margin: 0 }}>Tes invitations en chiffres</h3>
+      <div className="ref-funnel">
+        {steps.map((s, i) => (
+          <div key={s.label} className="ref-step">
+            <div className="ref-step-top"><span>{s.label}</span><b>{s.n}</b></div>
+            <div className="ref-bar" aria-hidden="true"><i style={{ width: `${Math.max(2, pct(s.n, top))}%` }} /></div>
+            <small className="muted">{i === 0 ? s.hint : `${pct(s.n, steps[i - 1].n)} % de l'étape d'avant · ${s.hint}`}</small>
+          </div>
+        ))}
+      </div>
+      {created >= 50 && <span className="muted" style={{ fontSize: 12 }}>Seules tes 50 dernières invitations sont comptées dans la première étape.</span>}
+    </div>
+  );
+}
 
 function status(i: Invitee, cfg: Data['config']): { icon: string; text: string } {
   if (i.state === 'rewarded') return i.reward > 0 ? { icon: '🎁', text: `Prime reçue : +${i.reward} points` } : { icon: '✔️', text: 'Devenu membre (sans prime)' };
@@ -35,8 +70,20 @@ export default function Referrals() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [fresh, setFresh] = useState<{ code: string; expiresAt: string | null; bought: boolean } | null>(null); // l'invitation qui vient d'être créée ou achetée : code et lien bien visibles
+  const [qrFor, setQrFor] = useState<string | null>(null); // code dont le QR est affiché dans « Mes invitations »
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'joinedAt', dir: -1 });
   const load = () => api.get('/referrals').then((r) => setData(r.data)).catch((e) => setError(errorOf(e)));
   useEffect(() => { void load(); }, []);
+  const invitees = useMemo(() => {
+    if (!data) return [];
+    const val = (i: Invitee): number | string => sort.key === 'username' ? i.username.toLowerCase() : sort.key === 'joinedAt' ? +new Date(i.joinedAt) : sort.key === 'lastSeenAt' ? (i.lastSeenAt ? +new Date(i.lastSeenAt) : 0) : sort.key === 'ratio' ? (i.ratio ?? -1) : i.uploadedGb;
+    return [...data.invitees].sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * sort.dir; });
+  }, [data, sort]);
+  const head = (key: SortKey, label: string) => (
+    <th aria-sort={sort.key === key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" className="th-sort" onClick={() => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : -1 }))}>{label}{sort.key === key ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}</button>
+    </th>
+  );
 
   async function create() {
     setBusy(true); setError(''); setNote('');
@@ -100,10 +147,16 @@ export default function Referrals() {
               <code style={{ overflowWrap: 'anywhere', userSelect: 'all', flex: '1 1 260px' }}>{linkOf(fresh.code)}</code>
               <button type="button" className="secondary" onClick={() => copyText(linkOf(fresh.code), 'Lien')}>📋 Copier le lien</button>
             </div>
+            <div className="row" style={{ gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <QrCode value={linkOf(fresh.code)} size={132} label="QR code du lien d'inscription" />
+              <span className="muted" style={{ fontSize: 12.5, flex: '1 1 200px' }}>Pour un ami à côté de toi : il scanne ce code avec son téléphone et arrive directement sur l'inscription, code déjà rempli.</span>
+            </div>
             <span className="muted" style={{ fontSize: 12.5 }}>Valable 7 jours{fresh.expiresAt ? ` (jusqu'au ${new Date(fresh.expiresAt).toLocaleDateString('fr-CA')})` : ''}, une seule personne. Tu la retrouves plus bas dans « Mes invitations ».</span>
           </div>
         )}
       </div>
+
+      <Funnel data={data} />
 
       <div className="panel" style={{ display: 'grid', gap: 8 }}>
         <h3 style={{ margin: 0 }}>Mes invitations</h3>
@@ -119,9 +172,11 @@ export default function Referrals() {
               <div className="row" style={{ gap: 6 }}>
                 <button type="button" className="secondary" onClick={() => copyText(c.code, 'Code')}>📋 Copier le code</button>
                 <button type="button" className="secondary" onClick={() => copy(c)}>📋 Copier le lien</button>
+                <button type="button" className="secondary" onClick={() => setQrFor(qrFor === c.code ? null : c.code)} aria-expanded={qrFor === c.code} title="Afficher le QR code du lien">▦ QR code</button>
                 <button type="button" className="secondary" onClick={() => revoke(c)} aria-label="Retirer">🗑️</button>
               </div>
             )}
+            {c.status === 'open' && qrFor === c.code && <div style={{ flexBasis: '100%' }}><QrCode value={linkOf(c.code)} size={150} label="QR code du lien d'inscription" /></div>}
           </div>
         ))}
       </div>
@@ -131,9 +186,9 @@ export default function Referrals() {
         {data.invitees.length === 0 ? <span className="muted">Personne n'a encore utilisé tes invitations.</span> : (
           <div style={{ overflowX: 'auto' }}>
             <table>
-              <thead><tr><th>Membre</th><th>Inscrit</th><th>Rang</th><th>Ratio</th><th>Envoyé</th><th>Vu</th><th>Prime</th></tr></thead>
+              <thead><tr>{head('username', 'Membre')}{head('joinedAt', 'Inscrit')}<th>Rang</th>{head('ratio', 'Ratio')}{head('uploadedGb', 'Envoyé')}{head('lastSeenAt', 'Vu')}<th>Prime</th></tr></thead>
               <tbody>
-                {data.invitees.map((i) => {
+                {invitees.map((i) => {
                   const s = status(i, cfg);
                   return (
                     <tr key={i.id}>
