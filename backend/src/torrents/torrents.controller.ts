@@ -125,6 +125,13 @@ export class TorrentsController {
     return this.recommendations.forUser(req.user.userId, { basedOn: basedOn || undefined, limit: limit ? Number(limit) : undefined });
   }
 
+  /** « Parce que tu as aimé X » : un titre aimé du membre (qui change d'un jour à l'autre) et des offres qui lui ressemblent. */
+  @UseGuards(JwtAuthGuard)
+  @Get('mine/because')
+  because(@Request() req: any) {
+    return this.recommendations.because(req.user.userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('mine/active')
   active(@Request() req: any) {

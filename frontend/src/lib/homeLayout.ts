@@ -20,6 +20,7 @@ export const HOME_SECTIONS: { id: string; icon: string; label: string; fixed?: b
   { id: 'stats', icon: '📊', label: 'Forum, top uploaders et communauté' },
   { id: 'news', icon: '📰', label: 'Nouvelles' },
   { id: 'continue', icon: '▶️', label: 'Reprendre la lecture' },
+  { id: 'because', icon: '🧭', label: 'Parce que tu as aimé… (un titre que tu as aimé, et ce qui lui ressemble)' },
   { id: 'recommended', icon: '⭐', label: 'Recommandé pour toi (ou les plus populaires)' },
   { id: 'top5', icon: '🏆', label: 'Top 5' },
   { id: 'latest', icon: '🆕', label: 'Nouveautés (ajoutés récemment)' },

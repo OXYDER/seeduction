@@ -26,6 +26,15 @@ interface Candidate {
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
+/** Titre lisible d'un nom de release : « Blade.Runner.2049.2017.1080p.WEB » devient « Blade Runner 2049 (2017) ». */
+export function cleanTitle(name: string): string {
+  const flat = name.replace(/[._]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = /^(.+?)\s+((?:19|20)\d{2})(?=\s|$)(?!.*\s(?:19|20)\d{2}(?=\s|$))/.exec(flat);
+  if (m) return `${m[1]} (${m[2]})`;
+  const cut = /\s(?:480p|576p|720p|1080p|2160p|4k|uhd|s\d{1,2}(?:e\d{1,3})?)(?=\s|$)/i.exec(flat);
+  return (cut ? flat.slice(0, cut.index) : flat).slice(0, 80).trim();
+}
+
 /** Petit hachage stable (0..1) pour varier légèrement l'ordre d'un jour à l'autre sans jamais le rendre aléatoire en cours de journée. */
 function dailyJitter(id: string) {
   const day = Math.floor(Date.now() / 86_400_000);
@@ -68,6 +77,34 @@ export class RecommendationsService {
     this.cache.set(key, { at: Date.now(), data });
     if (this.cache.size > 500) for (const k of [...this.cache.keys()].slice(0, 100)) this.cache.delete(k);
     return data;
+  }
+
+  /**
+   * « Parce que tu as aimé… » : prend un titre que le membre a aimé (mis en favori, bien noté, aimé, ou regardé plus de 10 minutes),
+   * un peu différent d'un jour à l'autre, et propose ce qui lui ressemble. Rien du tout si l'historique ne permet pas d'offres plus précises
+   * que « populaire en ce moment ».
+   */
+  async because(userId: string) {
+    const [hidden, favs, ratings, plays, likes] = await Promise.all([
+      this.adult.hiddenFor(userId),
+      this.prisma.favorite.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 12, select: { torrentId: true } }),
+      this.prisma.torrentRating.findMany({ where: { userId, score: { gte: 4 } }, orderBy: { updatedAt: 'desc' }, take: 12, select: { torrentId: true } }),
+      this.prisma.playbackPosition.findMany({ where: { userId, positionSeconds: { gt: 600 } }, orderBy: { updatedAt: 'desc' }, take: 12, select: { torrentId: true } }),
+      this.prisma.torrentLike.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 12, select: { torrentId: true } }),
+    ]);
+    const ids = [...new Set([...favs, ...ratings, ...plays, ...likes].map((x) => x.torrentId))];
+    if (ids.length === 0) return { based: null, items: [] };
+    const rows = await this.prisma.torrent.findMany({ where: { id: { in: ids }, ...(hidden.length ? { categoryId: { notIn: hidden } } : {}) }, select: { id: true, name: true } });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const anchors = ids.filter((id) => byId.has(id)).slice(0, 6);
+    if (anchors.length === 0) return { based: null, items: [] };
+    const start = Math.floor(Date.now() / 86_400_000) % anchors.length;
+    for (let i = 0; i < Math.min(3, anchors.length); i++) {
+      const anchor = byId.get(anchors[(start + i) % anchors.length])!;
+      const items = (await this.forUser(userId, { basedOn: anchor.id, limit: 14 })).filter((x: any) => x.reason !== 'Populaire en ce moment');
+      if (items.length >= 4) return { based: { id: anchor.id, title: cleanTitle(anchor.name) }, items };
+    }
+    return { based: null, items: [] };
   }
 
   private async compute(userId: string, basedOn: string | undefined, limit: number) {

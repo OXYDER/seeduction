@@ -162,6 +162,7 @@ export default function HomeStreaming() {
   const [active, setActive] = useState<any[]>([]);
   const [followed, setFollowed] = useState<any[]>([]);
   const [recommended, setRecommended] = useState<any[]>([]);
+  const [because, setBecause] = useState<{ based: { id: string; title: string } | null; items: any[] }>({ based: null, items: [] });
   const [atRisk, setAtRisk] = useState<any[]>([]);
   const [free, setFree] = useState<any[]>([]);
   const [heroIndex, setHeroIndex] = useState(0);
@@ -183,6 +184,7 @@ export default function HomeStreaming() {
     api.get('/torrents/mine/active').then((r) => setActive(r.data)).catch(() => {});
     api.get('/torrents/mine/followed').then((r) => setFollowed(r.data)).catch(() => {});
     api.get('/torrents/mine/recommended').then((r) => setRecommended(r.data)).catch(() => {});
+    api.get('/torrents/mine/because').then((r) => setBecause(r.data)).catch(() => {});
     api.get('/users/leaderboard', { params: { limit: 5 } }).then((r) => setTopUploaders(r.data)).catch(() => {});
     api.get('/stats/global').then((r) => setStats(r.data)).catch(() => {});
     api.get('/telegram/info').then((r) => setTg(r.data)).catch(() => {});
@@ -363,6 +365,7 @@ export default function HomeStreaming() {
     // La dernière nouvelle reste toujours affichée, en grand ; les précédentes en petites cartes (au choix).
     { id: 'news', node: <NewsPanel heroOnly={!layout.prevNews} /> },
     { id: 'continue', node: <ContinueWatching hideNext /> },
+    ...(because.based && because.items.length > 0 ? [{ id: 'because', node: <Rail icon="🧭" title={`Parce que tu as aimé ${because.based.title}`} to={`/torrents/${because.based.id}`} items={because.items} /> }] : []),
     ...(recommended.length > 0 ? [{ id: 'recommended', node: <Rail icon="✨" title="Recommandé pour toi" to="/decouvrir?s=pour-toi" items={recommended} /> }] : []),
     { id: 'top5', node: <Top5 items={popular} /> },
     { id: 'latest', node: <LatestRail latest={latest} /> },
