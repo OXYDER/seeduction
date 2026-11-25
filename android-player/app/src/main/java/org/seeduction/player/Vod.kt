@@ -26,6 +26,8 @@ class VodItem(
     val seeders: Int, val health: String?, val quality: String?, val percent: Int?, val playTorrentId: String?, val playFileIndex: Int,
     /** « saga » : une collection de films (id = celui de la collection) ; sinon un film ou une série. */
     val type: String? = null, val genres: List<String> = emptyList(), val synopsis: String? = null, val versions: Int = 0,
+    /** « Reprendre la lecture » : image large, repère d'épisode (S1:E3) et minutes restantes. */
+    val backdrop: String? = null, val epLabel: String? = null, val remainingMin: Int? = null,
 )
 
 /** « Tout voir » d'une rangée : les critères de la liste complète. */
@@ -49,18 +51,25 @@ class VodSaga(val id: String, val name: String, val items: List<VodItem>)
 class VodVersion(
     val id: String, val label: String, val size: Long, val seeders: Int, val health: String, val fileIndex: Int, val percent: Int?, val subtitles: List<String>,
     val quality: String = "", val fit: String = "good", val language: String? = null, val hdr: Boolean = false, val recommended: Boolean = false,
+    val audioLanguages: List<String> = emptyList(), val subtitleNames: List<String> = emptyList(), val tech: String? = null,
+    val startSeconds: Int? = null, val fastest: Boolean = false,
 )
 
 /** Une release proposée avant la lecture (même film ou même épisode) : qualité, langue, taille, et si elle est recommandée d'après la vitesse du torrent. */
 class VodOption(
     val torrentId: String, val fileIndex: Int, val size: Long, val seeders: Int, val health: String, val quality: String, val language: String?,
     val fit: String, val recommended: Boolean, val percent: Int?, val hdr: Boolean = false,
+    val audioLanguages: List<String> = emptyList(), val subtitleNames: List<String> = emptyList(), val tech: String? = null,
+    val startSeconds: Int? = null, val fastest: Boolean = false,
 )
 
 class VodEpisode(
     val season: Int?, val episode: Int?, val label: String, val torrentId: String, val fileIndex: Int,
     val size: Long, val seeders: Int, val health: String, val resolution: String?, val language: String?, val percent: Int?,
     val options: List<VodOption> = emptyList(),
+    val quality: String = "", val audioLanguages: List<String> = emptyList(), val fit: String? = null, val startSeconds: Int? = null,
+    /** Fiche de l'épisode (TMDB, TVmaze ou TheTVDB) : vrai titre, résumé, image d'aperçu, durée en minutes. */
+    val name: String? = null, val overview: String? = null, val still: String? = null, val runtime: Int? = null,
 )
 
 class VodPerson(val id: String, val name: String, val photo: String?, val character: String?)
@@ -101,6 +110,7 @@ private fun itemOf(o: JSONObject): VodItem {
         seeders = o.optInt("seeders"), health = o.str("health"), quality = o.str("quality"), percent = o.intOrNull("percent"),
         playTorrentId = play?.optString("torrentId")?.ifEmpty { null }, playFileIndex = play?.optInt("fileIndex", 0) ?: 0,
         type = o.str("type"), genres = (0 until gs.length()).map { gs.getString(it) }, synopsis = o.str("synopsis"), versions = o.optInt("versions"),
+        backdrop = o.str("backdrop"), epLabel = o.str("epLabel"), remainingMin = o.intOrNull("remainingMin"),
     )
 }
 
@@ -221,8 +231,23 @@ object VodApi {
         VodSaga(o.optString("id"), o.optString("name"), itemsOf(o.optJSONArray("items")))
     }
 
-    suspend fun title(token: String, id: String): VodTitle = withContext(Dispatchers.IO) {
-        val o = call("/title/" + SiteApi.enc(id), token)
+    /** Mesure la connexion de l'appareil : télécharge quelques Mo du site et renvoie le débit en Mbit/s (0 si la mesure échoue). */
+    suspend fun measureSpeed(token: String): Float = withContext(Dispatchers.IO) {
+        try {
+            val c = SiteApi.open(Config.SITE + "/api/vod/speedtest", "GET", null, 20000, token)
+            if (c.responseCode !in 200..299) return@withContext 0f
+            val buf = ByteArray(64 * 1024)
+            var total = 0L
+            val t0 = System.nanoTime()
+            c.inputStream.use { ins -> while (true) { val n = ins.read(buf); if (n < 0) break; total += n } }
+            val secs = (System.nanoTime() - t0) / 1e9
+            if (secs <= 0.05 || total < 500_000) 0f else (total * 8 / secs / 1e6).toFloat()
+        } catch (_: Exception) { 0f }
+    }
+
+    suspend fun title(token: String, id: String, mbps: Float = 0f, lang: String? = null): VodTitle = withContext(Dispatchers.IO) {
+        val q = listOfNotNull(if (mbps > 0f) "mbps=" + String.format(java.util.Locale.US, "%.1f", mbps) else null, lang?.takeIf { it != "auto" }?.let { "lang=$it" }).joinToString("&")
+        val o = call("/title/" + SiteApi.enc(id) + (if (q.isNotEmpty()) "?$q" else ""), token)
         val vs = o.optJSONArray("versions") ?: JSONArray()
         val es = o.optJSONArray("episodes") ?: JSONArray()
         val gs = o.optJSONArray("genres") ?: JSONArray()
@@ -235,12 +260,15 @@ object VodApi {
                 val v = vs.getJSONObject(it)
                 val subs = v.optJSONArray("subtitles") ?: JSONArray()
                 VodVersion(v.getString("id"), v.optString("label"), v.optLong("size"), v.optInt("seeders"), v.optString("health"), v.optInt("fileIndex"), v.intOrNull("percent"), (0 until subs.length()).map { s -> subs.getString(s) },
-                    quality = v.optString("quality"), fit = v.optString("fit", "good"), language = v.str("language"), hdr = v.optBoolean("hdr"), recommended = v.optBoolean("recommended"))
+                    quality = v.optString("quality"), fit = v.optString("fit", "good"), language = v.str("language"), hdr = v.optBoolean("hdr"), recommended = v.optBoolean("recommended"),
+                    audioLanguages = strList(v.optJSONArray("audioLanguages")), subtitleNames = strList(v.optJSONArray("subtitleNames")), tech = v.str("tech"), startSeconds = v.intOrNull("startSeconds"), fastest = v.optBoolean("fastest"))
             },
             episodes = (0 until es.length()).map {
                 val e = es.getJSONObject(it)
                 VodEpisode(e.intOrNull("season"), e.intOrNull("episode"), e.optString("label"), e.getString("torrentId"), e.optInt("fileIndex"), e.optLong("size"), e.optInt("seeders"), e.optString("health"), e.str("resolution"), e.str("language"), e.intOrNull("percent"),
-                    options = optionsOf(e.optJSONArray("options")))
+                    options = optionsOf(e.optJSONArray("options")),
+                    quality = e.optString("quality"), audioLanguages = strList(e.optJSONArray("audioLanguages")), fit = e.str("fit"), startSeconds = e.intOrNull("startSeconds"),
+                    name = e.str("name"), overview = e.str("overview"), still = e.str("still"), runtime = e.intOrNull("runtime"))
             },
             saga = sg?.let { VodSaga(it.optString("id"), it.optString("name"), itemsOf(it.optJSONArray("items"))) },
             similar = itemsOf(o.optJSONArray("similar")),
@@ -302,10 +330,21 @@ object VodApi {
 private fun optionsOf(a: JSONArray?): List<VodOption> = (0 until (a?.length() ?: 0)).map {
     val o = a!!.getJSONObject(it)
     VodOption(o.getString("torrentId"), o.optInt("fileIndex"), o.optLong("size"), o.optInt("seeders"), o.optString("health"), o.optString("quality"), o.str("language"),
-        o.optString("fit", "good"), o.optBoolean("recommended"), o.intOrNull("percent"))
+        o.optString("fit", "good"), o.optBoolean("recommended"), o.intOrNull("percent"),
+        audioLanguages = strList(o.optJSONArray("audioLanguages")), subtitleNames = strList(o.optJSONArray("subtitleNames")), tech = o.str("tech"),
+        startSeconds = o.intOrNull("startSeconds"), fastest = o.optBoolean("fastest"))
 }
 
-/** Ce que la vitesse du torrent permet pour cette qualité (le serveur compte les seeders : plus l'image est lourde, plus il en faut). */
+/** « démarre en ~8 s » : le délai estimé avant que la lecture commence. */
+fun startText(seconds: Int?): String? = seconds?.let { if (it < 60) "démarre en ~$it s" else "démarre en ~" + ((it + 30) / 60) + " min" }
+
+/** Les langues d'une release en toutes lettres : « Français (France) · Anglais ». */
+fun languagesText(names: List<String>, fallback: String?): String = if (names.isNotEmpty()) names.joinToString(" · ") else (fallback ?: "Langue non précisée")
+
+/** Ta connexion en mots : « 85 Mbit/s ». */
+fun speedText(mbps: Float): String = "" + Math.round(mbps) + " Mbit/s"
+
+/** Ce que permettent le torrent et ta connexion pour cette release (le serveur estime : taille, partageurs, débit mesuré). */
 fun fitText(fit: String?, seeders: Int): String = when (fit) {
     "great" -> "⚡ Très fluide · $seeders seeders"
     "good" -> "● Fluide · $seeders seeders"
@@ -330,6 +369,29 @@ fun healthColor(health: String?): Int = when (health) {
     "instant" -> Color.parseColor("#34D399")
     "ok" -> Color.parseColor("#E0B84A")
     else -> Color.parseColor("#FB923C")
+}
+
+/** La connexion de l'appareil, mesurée sur le site (quelques Mo) : sert au serveur à recommander la qualité qui démarre vite. */
+object ConnectionSpeed {
+    private const val FRESH_MS = 20 * 60_000L
+    @Volatile private var running = false
+
+    /** Mesure si aucune mesure ne date de moins de vingt minutes (ou si `force`). Renvoie le débit connu en Mbit/s, 0 si inconnu. */
+    suspend fun ensure(prefs: Prefs, token: String, force: Boolean = false): Float {
+        if (!force && prefs.speedMbps > 0f && System.currentTimeMillis() - prefs.speedAt < FRESH_MS) return prefs.speedMbps
+        if (running) return prefs.speedMbps
+        running = true
+        try {
+            val v = VodApi.measureSpeed(token)
+            if (v > 0f) {
+                // Une mesure isolée peut être trop basse (démarrage lent de la connexion) : on garde un peu de la précédente si elle est récente.
+                val old = prefs.speedMbps
+                prefs.speedMbps = if (!force && old > 0f && System.currentTimeMillis() - prefs.speedAt < 6 * 3_600_000L) v * 0.6f + old * 0.4f else v
+                prefs.speedAt = System.currentTimeMillis()
+            }
+        } finally { running = false }
+        return prefs.speedMbps
+    }
 }
 
 /** Chargement d'affiches : téléchargées en arrière-plan, réduites, gardées en mémoire (pas de bibliothèque d'images : l'APK reste léger). */

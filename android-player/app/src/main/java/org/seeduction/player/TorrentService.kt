@@ -20,6 +20,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.libtorrent4j.TorrentHandle
+import org.libtorrent4j.TorrentInfo
 import java.io.File
 import java.io.InputStream
 import java.util.UUID
@@ -96,6 +97,8 @@ class TorrentService : Service(), StreamSource {
     private fun restore() {
         for (s in prefs.sessions()) {
             if (s.stopped) { entries.remove(s.id); continue }
+            // Une lecture interrompue (appareil redémarré avant la fin du fichier) ne reprend pas toute seule : seul ce qui est terminé continue d'être partagé.
+            if (s.completedAt == 0L) { Journal.log("lecture non terminée, téléchargement non repris : " + s.name); continue }
             try {
                 val f = torrentCopy(s.id)
                 if (!f.exists()) continue
@@ -110,6 +113,12 @@ class TorrentService : Service(), StreamSource {
 
     /** Ajoute (ou retrouve) le torrent d'une lecture et commence à télécharger le fichier choisi. À appeler hors du fil principal. */
     fun addSession(play: PlaySession): SessionInfo {
+        // Un seul film ou épisode se télécharge à la fois : ce qui n'est pas fini et qu'on ne lit plus s'arrête (sauf ce qui est regardé en entier, qui reste partagé).
+        val newHash = try { TorrentInfo(play.torrent).infoHash().toHex() } catch (_: Throwable) { null }
+        for (o in entries.values.toList()) {
+            val sameFile = o.info.infoHash == newHash && o.info.fileIndex == play.fileIndex
+            if (!sameFile && !o.info.stopped && !o.paused) endPlayback(o.info.id, watchedToEnd = false)
+        }
         val handle = engine.add(play.torrent, play.fileIndex)
         val hash = handle.infoHash().toHex()
         val ti = handle.torrentFile()
@@ -131,6 +140,24 @@ class TorrentService : Service(), StreamSource {
         saveAll()
         Journal.log("lecture ajoutée : " + info.name + " (fichier " + play.fileIndex + ")")
         return info
+    }
+
+    /**
+     * La lecture s'arrête : si le fichier n'est pas fini et n'a pas été regardé jusqu'au bout, on arrête de le télécharger (le prochain film ou épisode a toute la bande passante).
+     * Ce qui est arrivé reste sur l'appareil. Un fichier terminé, ou regardé en entier, continue d'être partagé comme avant.
+     */
+    fun endPlayback(id: String, watchedToEnd: Boolean) {
+        val e = entries[id] ?: return
+        if (e.closed || e.info.stopped) return
+        val st = engine.stats(e.handle, e.map, e.paused)
+        if (st.finished || watchedToEnd) return
+        engine.stopFile(e.handle, e.map)
+        e.paused = true
+        e.info.stopped = true
+        // Le torrent entier n'est mis en pause que si aucun autre fichier du même torrent n'est encore actif (un épisode terminé continue d'être partagé).
+        if (entries.values.none { it !== e && it.info.infoHash == e.info.infoHash && !it.info.stopped }) { try { e.handle.pause() } catch (_: Exception) { /* déjà en pause */ } }
+        saveAll()
+        Journal.log("lecture arrêtée avant la fin : téléchargement arrêté pour " + e.info.name + " (" + (st.progress * 100).toInt() + " % reçu)")
     }
 
     fun entry(id: String): Entry? = entries[id]
@@ -160,6 +187,7 @@ class TorrentService : Service(), StreamSource {
         val e = entries[id] ?: return
         e.paused = false
         e.info.stopped = false
+        engine.startFile(e.handle, e.map)
         try { e.handle.resume() } catch (_: Exception) { /* déjà actif */ }
         saveAll()
     }

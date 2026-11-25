@@ -94,10 +94,27 @@ class VodSettingsActivity : AppCompatActivity() {
         // --- Qualité
         col.addView(section("Qualité"))
         col.addView(card(
-            choice("Me demander la qualité", "Quand un film ou un épisode existe en plusieurs qualités (4K, 1080p, 720p…), tu choisis avant de lire. La qualité recommandée, d'après la vitesse du torrent, est en tête.", prefs.askQuality) { prefs.askQuality = true; render() },
+            choice("Me demander la qualité", "Quand un film ou un épisode existe en plusieurs versions (4K, 1080p, 720p…), tu choisis avant de lire. La recommandée est marquée, la plus rapide aussi.", prefs.askQuality) { prefs.askQuality = true; render() },
             divider(),
-            choice("Toujours la recommandée", "Lit tout de suite la plus belle qualité que la vitesse du torrent permet de lire sans coupure.", !prefs.askQuality) { prefs.askQuality = false; render() },
+            choice("Toujours la recommandée", "Lit tout de suite la plus belle qualité qui démarre vite et se lit sans coupure, d'après la taille, les partageurs et ta connexion.", !prefs.askQuality) { prefs.askQuality = false; render() },
         ))
+
+        // --- Langue et connexion
+        col.addView(section("Langue et connexion"))
+        fun setLang(v: String) { prefs.audioPref = v; render() }
+        col.addView(card(
+            choice("Automatique", "Pas de préférence : la recommandation ne regarde que la qualité et la vitesse.", prefs.audioPref == "auto") { setLang("auto") },
+            divider(),
+            choice("Français (France)", "Les releases en version française de France passent avant les autres.", prefs.audioPref == "vff") { setLang("vff") },
+            divider(),
+            choice("Français (Québec)", "Les releases en version québécoise passent avant les autres.", prefs.audioPref == "vfq") { setLang("vfq") },
+            divider(),
+            choice("Français (International)", "Les releases en français international passent avant les autres.", prefs.audioPref == "vfi") { setLang("vfi") },
+            divider(),
+            choice("Version originale", "Les releases en version originale (avec ou sans sous-titres) passent avant les autres.", prefs.audioPref == "vo") { setLang("vo") },
+        ))
+        val speedLine = if (prefs.speedMbps > 0f) "Mesurée : " + speedText(prefs.speedMbps) + " (" + java.text.SimpleDateFormat("HH:mm", java.util.Locale.FRANCE).format(java.util.Date(prefs.speedAt)) + ")" else "Pas encore mesurée"
+        col.addView(card(action("Tester ma connexion", speedLine + ". Sert à recommander la qualité qui démarre vite chez toi ; mesurée automatiquement de temps en temps.") { measureNow() }).apply { (layoutParams as LinearLayout.LayoutParams).topMargin = dp(10) })
 
         // --- Affichage
         col.addView(section("Affichage"))
@@ -146,6 +163,16 @@ class VodSettingsActivity : AppCompatActivity() {
                 startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, "Journal de Seeduction TV").putExtra(Intent.EXTRA_TEXT, log), "Envoyer le journal"))
             },
         ))
+    }
+
+    private fun measureNow() {
+        val token = prefs.vodToken ?: return
+        Toast.makeText(this, "Mesure en cours…", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            val v = ConnectionSpeed.ensure(prefs, token, force = true)
+            Toast.makeText(this@VodSettingsActivity, if (v > 0f) "Ta connexion : " + speedText(v) else "Mesure impossible pour l'instant.", Toast.LENGTH_LONG).show()
+            render()
+        }
     }
 
     private fun checkUpdate() {

@@ -89,6 +89,19 @@ class Prefs(ctx: Context) {
         get() = p.getBoolean("askQuality", true)
         set(v) { p.edit().putBoolean("askQuality", v).apply() }
 
+    /** Débit de la connexion mesuré par l'appareil (Mbit/s, 0 = jamais mesuré) et le moment de la mesure : sert à recommander la qualité qui démarre vite. */
+    var speedMbps: Float
+        get() = p.getFloat("speedMbps", 0f)
+        set(v) { p.edit().putFloat("speedMbps", v).apply() }
+    var speedAt: Long
+        get() = p.getLong("speedAt", 0L)
+        set(v) { p.edit().putLong("speedAt", v).apply() }
+
+    /** Langue préférée à la lecture : « auto » (la plus rapide), « vff » (Français France), « vfq » (Français Québec), « vfi » (Français International), « vo » (version originale). */
+    var audioPref: String
+        get() = p.getString("audioPref", "auto") ?: "auto"
+        set(v) { p.edit().putString("audioPref", v).apply() }
+
     var wifiOnlySeed: Boolean
         get() = p.getBoolean("wifiOnlySeed", true)
         set(v) { p.edit().putBoolean("wifiOnlySeed", v).apply() }

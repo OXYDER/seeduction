@@ -132,6 +132,12 @@ class TorrentEngine(private val saveDir: File) {
         val hash = ti.infoHash()
         val existing = sm.find(hash)
         if (existing != null && existing.isValid) {
+            // Un seul fichier à la fois : les autres fichiers du pack (l'épisode précédent...) ne sont plus téléchargés, sauf ce qui est déjà complet.
+            try {
+                val progress = existing.fileProgress()
+                val fs = ti.files()
+                for (i in 0 until ti.numFiles()) if (i != fileIndex && progress[i] < fs.fileSize(i)) existing.filePriority(i, Priority.IGNORE)
+            } catch (_: Throwable) { /* pas bloquant */ }
             existing.filePriority(fileIndex, Priority.TOP_PRIORITY)
             existing.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
             existing.resume()
@@ -147,6 +153,17 @@ class TorrentEngine(private val saveDir: File) {
             Thread.sleep(100)
         }
         throw IOException("Impossible de démarrer le téléchargement")
+    }
+
+    /** Arrête de télécharger ce fichier (ce qui est déjà arrivé reste sur l'appareil et reprendra si on le relit). */
+    fun stopFile(handle: TorrentHandle, map: FileMap) {
+        try { handle.clearPieceDeadlines() } catch (_: Throwable) { /* pas bloquant */ }
+        try { handle.filePriority(map.fileIndex, Priority.IGNORE) } catch (_: Throwable) { /* pas bloquant */ }
+    }
+
+    /** Reprend le téléchargement de ce fichier, dans l'ordre (après un arrêt avec stopFile). */
+    fun startFile(handle: TorrentHandle, map: FileMap) {
+        try { handle.filePriority(map.fileIndex, Priority.TOP_PRIORITY); handle.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD) } catch (_: Throwable) { /* pas bloquant */ }
     }
 
     fun find(infoHashHex: String): TorrentHandle? = try {

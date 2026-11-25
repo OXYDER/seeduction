@@ -6,6 +6,8 @@
  * l'envoi de ceux qui seedent compte, comme d'habitude. La disponibilité d'un titre ne repose que sur son nombre de seeders.
  */
 
+import { languageAtoms } from './language';
+
 export type VodReason = 'staff' | 'uploader' | 'founder' | 'donor';
 
 const STAFF = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'];
@@ -76,6 +78,8 @@ export interface EpisodeSource {
   resolution: string | null;
   language: string | null;
   label: string;
+  /** Détails qui distinguent deux releases de même qualité : source, codec, audio, team. */
+  tech?: string | null;
 }
 
 /** Hauteur d'image d'après le texte de qualité (« 4K/2160p », « 1080p », « 720p », « SD »…) ; 0 si inconnue. */
@@ -97,33 +101,87 @@ export function qualityLabel(res: string | null | undefined): string {
   return String(res ?? '').trim() || 'Qualité inconnue';
 }
 
-/** Nombre de seeders à partir duquel une qualité démarre et se lit sans coupure (une image plus lourde demande plus de partageurs). */
-export function seedersNeeded(height: number): number {
-  if (height >= 2160) return 8;
-  if (height >= 1080) return 3;
-  if (height >= 720) return 2;
-  return 1;
+/** Débit supposé d'un seeder, en Mbit/s (prudent : certains font bien plus, d'autres moins). */
+export const SEEDER_MBPS = 5;
+/** Débit de connexion supposé tant que l'appareil ne l'a pas mesuré, en Mbit/s. */
+export const DEFAULT_LINK_MBPS = 40;
+/** Un démarrage estimé sous ce délai est « rapide » : c'est le seuil pour recommander la plus belle qualité. */
+export const QUICK_START_SECONDS = 20;
+
+/** great : très fluide ; good : fluide ; weak : débit insuffisant pour cette release (attente ou coupures possibles) ; none : personne ne partage. */
+export type StreamFit = 'great' | 'good' | 'weak' | 'none';
+
+export interface StreamContext {
+  /** Débit de connexion mesuré par l'appareil, en Mbit/s. */
+  mbps?: number | null;
+  /** Durée du film ou de l'épisode, en minutes (sert à calculer le débit que la vidéo demande). */
+  minutes?: number | null;
+  /** Langue préférée du membre : « vff », « vfq », « vfi », « vo ». Les releases dans cette langue passent avant. */
+  lang?: string | null;
 }
 
-/** great : très fluide ; good : fluide ; weak : pas assez de partageurs pour cette qualité (attente ou coupures possibles) ; none : personne ne partage. */
-export type StreamFit = 'great' | 'good' | 'weak' | 'none';
-export function streamFit(seeders: number, res: string | null | undefined): StreamFit {
-  if (seeders < 1) return 'none';
-  const ratio = seeders / seedersNeeded(resolutionHeight(res));
-  return ratio >= 2 ? 'great' : ratio >= 1 ? 'good' : 'weak';
+export interface StreamEstimate {
+  /** Débit que demande la vidéo, en Mbit/s (taille du fichier / durée). */
+  bitrateMbps: number;
+  /** Débit qu'on peut espérer : les seeders, plafonnés par la connexion. */
+  rateMbps: number;
+  /** Délai estimé avant que la lecture démarre, en secondes ; null si personne ne partage. */
+  startSeconds: number | null;
+  /** Débit espéré / débit demandé : sous 1,25 la lecture risque de saccader. */
+  ratio: number;
+  fit: StreamFit;
+}
+
+/** Ce qu'on peut attendre d'une release pour cet appareil : délai de démarrage et fluidité, d'après sa taille, ses seeders et la connexion. */
+export function estimateStream(o: { size: number; seeders: number }, ctx: StreamContext = {}): StreamEstimate {
+  const minutes = ctx.minutes && ctx.minutes > 0 ? ctx.minutes : 100;
+  const bitrate = (Math.max(0, o.size) * 8) / (minutes * 60) / 1e6;
+  const link = (ctx.mbps && ctx.mbps > 0 ? ctx.mbps : DEFAULT_LINK_MBPS) * 0.85;
+  const rate = o.seeders >= 1 ? Math.min(o.seeders * SEEDER_MBPS, link) : 0;
+  const ratio = bitrate > 0 ? rate / bitrate : rate > 0 ? 99 : 0;
+  const bufferMbit = Math.max(64, bitrate * 8); // le début du fichier + l'index (une huitaine de Mo) et quelques secondes d'avance
+  const startSeconds = rate > 0 ? Math.round(4 + bufferMbit / rate) : null;
+  const fit: StreamFit = o.seeders < 1 ? 'none' : ratio >= 2.5 ? 'great' : ratio >= 1.25 ? 'good' : 'weak';
+  return { bitrateMbps: Math.round(bitrate * 10) / 10, rateMbps: Math.round(rate * 10) / 10, startSeconds, ratio, fit };
+}
+
+/** La langue de la release est-elle celle que le membre préfère ? (« vo » : version originale, avec ou sans sous-titres). */
+export function languageMatches(tag: string | null | undefined, pref: string | null | undefined): boolean {
+  const p = String(pref ?? '').trim().toUpperCase();
+  if (!p || !tag) return false;
+  const atoms = languageAtoms(tag);
+  if (p === 'VO') return atoms.includes('VO') || atoms.includes('VOSTFR');
+  if (p === 'VFF') return atoms.includes('VFF') || atoms.includes('TRUEFRENCH');
+  return atoms.includes(p);
 }
 
 /**
- * Le choix recommandé parmi plusieurs releases du même contenu : la plus belle qualité que la vitesse du torrent (nombre de seeders) permet de lire sans coupure ;
- * à qualité égale, le plus de seeders puis le plus petit fichier. Si aucune ne tient la route, celle qui a le plus de seeders. Rend null pour une liste vide.
+ * Le classement de plusieurs releases du même contenu pour cet appareil.
+ *  - recommandée : parmi les releases qui se lisent sans coupure et démarrent vite (moins de 20 s), la plus belle qualité ; sinon, celle qui démarre le plus vite
+ *    parmi celles qui se lisent bien ; sinon celle qui a le plus de chances de tenir. Si le membre a une langue préférée, les releases dans cette langue passent d'abord.
+ *  - la plus rapide : celle qui démarre le plus tôt, toutes qualités confondues.
  */
-export function pickRecommended<T extends { resolution: string | null; seeders: number; size: number }>(opts: T[]): T | null {
-  if (opts.length === 0) return null;
+export function rankOptions<T extends { resolution: string | null; seeders: number; size: number; language?: string | null }>(opts: T[], ctx: StreamContext = {}): { rec: T | null; fastest: T | null; est: Map<T, StreamEstimate> } {
+  const est = new Map<T, StreamEstimate>(opts.map((o) => [o, estimateStream(o, ctx)]));
+  if (opts.length === 0) return { rec: null, fastest: null, est };
   const h = (o: T) => resolutionHeight(o.resolution);
-  const fit = opts.filter((o) => o.seeders >= seedersNeeded(h(o)));
-  const order = (a: T, b: T) => h(b) - h(a) || b.seeders - a.seeders || a.size - b.size;
-  if (fit.length) return [...fit].sort(order)[0];
-  return [...opts].sort((a, b) => b.seeders - a.seeders || h(b) - h(a) || a.size - b.size)[0];
+  const start = (o: T) => est.get(o)!.startSeconds ?? Infinity;
+  const preferred = ctx.lang ? opts.filter((o) => languageMatches(o.language, ctx.lang)) : [];
+  const pool = preferred.length ? preferred : opts;
+  const smooth = pool.filter((o) => ['good', 'great'].includes(est.get(o)!.fit));
+  const quick = smooth.filter((o) => start(o) <= QUICK_START_SECONDS);
+  let rec: T;
+  if (quick.length) rec = [...quick].sort((a, b) => h(b) - h(a) || start(a) - start(b) || a.size - b.size)[0];
+  else if (smooth.length) rec = [...smooth].sort((a, b) => start(a) - start(b) || h(b) - h(a))[0];
+  else rec = [...pool].sort((a, b) => est.get(b)!.ratio - est.get(a)!.ratio || h(b) - h(a) || a.size - b.size)[0];
+  const playable = opts.filter((o) => o.seeders >= 1);
+  const fastest = playable.length ? [...playable].sort((a, b) => start(a) - start(b) || a.size - b.size)[0] : null;
+  return { rec, fastest, est };
+}
+
+/** La release recommandée (voir rankOptions) ; null pour une liste vide. */
+export function pickRecommended<T extends { resolution: string | null; seeders: number; size: number; language?: string | null }>(opts: T[], ctx: StreamContext = {}): T | null {
+  return rankOptions(opts, ctx).rec;
 }
 
 /** Toutes les releases de chaque épisode (clé « saison:épisode »), les plus belles qualités d'abord ; ce qui n'a ni saison ni épisode reconnus est ignoré ici. */
@@ -142,9 +200,9 @@ export function sourcesByEpisode(sources: EpisodeSource[]): Map<string, EpisodeS
  * Un seul choix par épisode : parmi toutes les releases qui le contiennent (épisode isolé ou fichier d'un pack de saison), la recommandée (voir pickRecommended).
  * Trié par saison puis épisode ; ce qui n'a ni saison ni épisode reconnus passe à la fin dans l'ordre d'arrivée.
  */
-export function bestPerEpisode(sources: EpisodeSource[]): EpisodeSource[] {
+export function bestPerEpisode(sources: EpisodeSource[], ctx: StreamContext = {}): EpisodeSource[] {
   const loose = sources.filter((s) => s.season == null || s.episode == null);
-  const best = [...sourcesByEpisode(sources).values()].map((g) => pickRecommended(g)!);
+  const best = [...sourcesByEpisode(sources).values()].map((g) => pickRecommended(g, ctx)!);
   best.sort((a, b) => (a.season! - b.season!) || (a.episode! - b.episode!));
   return [...best, ...loose];
 }

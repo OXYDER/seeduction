@@ -1,4 +1,4 @@
-import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, pickRecommended, qualityLabel, resolutionHeight, seedersNeeded, sourcesByEpisode, streamFit, videoFiles, vodAccess, vodHealth } from './vod';
+import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, estimateStream, languageMatches, pickRecommended, qualityLabel, rankOptions, resolutionHeight, sourcesByEpisode, videoFiles, vodAccess, vodHealth } from './vod';
 
 const now = new Date('2026-11-24T12:00:00Z');
 const day = 86_400_000;
@@ -123,23 +123,50 @@ describe('choix de la qualité', () => {
     expect(qualityLabel('1080p')).toBe('1080p');
     expect(qualityLabel(null)).toBe('Qualité inconnue');
   });
-  it('une image plus lourde demande plus de seeders', () => {
-    expect(seedersNeeded(2160)).toBeGreaterThan(seedersNeeded(1080));
-    expect(seedersNeeded(1080)).toBeGreaterThan(seedersNeeded(720));
-    expect(streamFit(0, '1080p')).toBe('none');
-    expect(streamFit(1, '1080p')).toBe('weak');
-    expect(streamFit(3, '1080p')).toBe('good');
-    expect(streamFit(6, '1080p')).toBe('great');
+  const GB = 1024 ** 3;
+  const rel = (resolution: string | null, seeders: number, sizeGb: number, language: string | null = null) => ({ resolution, seeders, size: Math.round(sizeGb * GB), language });
+  it("estime le débit demandé, le débit espéré et le délai de démarrage", () => {
+    const e = estimateStream({ size: 2 * GB, seeders: 3 }, { mbps: 100, minutes: 45 });
+    expect(e.bitrateMbps).toBeCloseTo(6.4, 0);
+    expect(e.rateMbps).toBe(15);
+    expect(e.fit).toBe('good');
+    expect(estimateStream({ size: 2 * GB, seeders: 8 }, { mbps: 200, minutes: 45 }).fit).toBe('great');
+    expect(e.startSeconds).toBeLessThan(20);
+    expect(estimateStream({ size: 2 * GB, seeders: 0 }).fit).toBe('none');
+    expect(estimateStream({ size: 2 * GB, seeders: 0 }).startSeconds).toBeNull();
   });
-  it('recommande la plus belle qualité que la vitesse permet', () => {
-    expect(pickRecommended([o('4K/2160p', 2), o('1080p', 6), o('720p', 9)])).toEqual(o('1080p', 6));
-    expect(pickRecommended([o('4K/2160p', 10), o('1080p', 6)])).toEqual(o('4K/2160p', 10));
+  it("la connexion plafonne le débit : plus de seeders n'accélère pas au-delà", () => {
+    expect(estimateStream({ size: 2 * GB, seeders: 40 }, { mbps: 20, minutes: 45 }).rateMbps).toBe(17);
+    expect(estimateStream({ size: 2 * GB, seeders: 1 }, { mbps: 100, minutes: 45 }).fit).toBe('weak');
   });
-  it("sans qualité suffisante, prend le plus de seeders ; à qualité égale, le plus de seeders puis le plus petit", () => {
-    expect(pickRecommended([o('2160p', 1), o('720p', 1, 500)])?.resolution).toBe('2160p');
-    expect(pickRecommended([o('1080p', 1), o('720p', 1)])?.resolution).toBe('1080p');
-    expect(pickRecommended([o('1080p', 4, 5000), o('1080p', 4, 3000)])?.size).toBe(3000);
-    expect(pickRecommended([])).toBeNull();
+  it('recommande la plus belle qualité qui démarre vite et se lit sans coupure', () => {
+    const opts = [rel('4K/2160p', 2, 12), rel('1080p', 6, 3), rel('720p', 9, 1.5)];
+    expect(rankOptions(opts, { mbps: 100, minutes: 110 }).rec).toBe(opts[1]);
+    const strong = [rel('4K/2160p', 12, 12), rel('1080p', 6, 3)];
+    expect(pickRecommended(strong, { mbps: 200, minutes: 110 })).toBe(strong[0]);
+  });
+  it('une petite connexion fait préférer une release plus légère', () => {
+    const opts = [rel('1080p', 8, 4), rel('720p', 8, 1.2)];
+    expect(pickRecommended(opts, { mbps: 8, minutes: 100 })).toBe(opts[1]);
+    expect(pickRecommended(opts, { mbps: 300, minutes: 100 })).toBe(opts[0]);
+  });
+  it("sans release fluide : la plus rapide à démarrer parmi les bonnes, sinon la plus sûre", () => {
+    const weak = [rel('2160p', 1, 14), rel('720p', 1, 1)];
+    expect(pickRecommended(weak, { mbps: 100, minutes: 110 })?.resolution).toBe('720p');
+    expect(pickRecommended([], {})).toBeNull();
+  });
+  it('désigne la release qui démarre le plus vite', () => {
+    const opts = [rel('1080p', 4, 3), rel('720p', 4, 1)];
+    expect(rankOptions(opts, { mbps: 100, minutes: 100 }).fastest).toBe(opts[1]);
+    expect(rankOptions([rel('1080p', 0, 3)], {}).fastest).toBeNull();
+  });
+  it('la langue préférée passe avant la qualité', () => {
+    const opts = [rel('1080p', 8, 3, 'MULTI.VFQ'), rel('720p', 8, 1.5, 'MULTI.VFF')];
+    expect(pickRecommended(opts, { mbps: 100, minutes: 100 })).toBe(opts[0]);
+    expect(pickRecommended(opts, { mbps: 100, minutes: 100, lang: 'vff' })).toBe(opts[1]);
+    expect(languageMatches('MULTI.VF2', 'vfq')).toBe(true);
+    expect(languageMatches('VOSTFR', 'vo')).toBe(true);
+    expect(languageMatches('VFF', 'vfq')).toBe(false);
   });
   it("regroupe les releases d'un épisode, plus belle qualité d'abord", () => {
     const src = (torrentId: string, resolution: string, seeders: number, episode = 1) => ({ torrentId, fileIndex: 0, season: 1, episode, size: 1000, seeders, resolution, language: null, label: '' });

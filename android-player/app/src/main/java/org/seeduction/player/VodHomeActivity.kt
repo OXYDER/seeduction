@@ -83,6 +83,7 @@ class VodHomeActivity : AppCompatActivity() {
         super.onResume()
         if (prefs.vodToken == null && screens.isNotEmpty()) render()
         if (prefs.vodToken != null && screens.isNotEmpty()) screens[current].onShow()
+        prefs.vodToken?.let { tk -> lifecycleScope.launch { ConnectionSpeed.ensure(prefs, tk) } }
     }
 
     private fun render() {

@@ -2869,3 +2869,24 @@ model WallComment {
 
   @@index([postId, createdAt])
 }
+
+// Fiche d'un épisode de série (image d'aperçu, titre, résumé, durée, date) lue chez un fournisseur (TMDB, puis TVmaze, puis TheTVDB). L'image est copiée sur Seeduction.
+// episode = 0 : repère « saison déjà interrogée » (rien trouvé chez aucun fournisseur), pour ne pas réinterroger à chaque ouverture.
+model EpisodeInfo {
+  id         String   @id @default(uuid())
+  source     String // fournisseur de la fiche de la série : tmdb | tvmaze
+  externalId String // identifiant de la série chez ce fournisseur (tel qu'enregistré sur le torrent)
+  season     Int
+  episode    Int
+  title      String?  @db.VarChar(200)
+  overview   String?  @db.Text
+  image      String? // sauvegardée sur Seeduction, jamais un lien externe
+  airDate    String?  @db.VarChar(10)
+  runtime    Int?
+  provider   String?  @db.VarChar(12) // d'où viennent l'image et le titre : tmdb | tvmaze | tvdb
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([source, externalId, season, episode])
+  @@index([source, externalId, season])
+}

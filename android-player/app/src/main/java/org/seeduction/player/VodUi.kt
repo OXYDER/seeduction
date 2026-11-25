@@ -213,7 +213,52 @@ class PosterAdapter(private val widthPx: Int, private val caption: Boolean, priv
     private fun VodItem.play() = playTorrentId != null
 }
 
-/** Rangée horizontale d'affiches avec son titre et « Tout voir ». */
+/**
+ * « Reprendre la lecture » : des cartes en largeur (image large du titre), barre de progression et, dessous, le repère d'épisode et le temps restant
+ * (« S1:E3 • 45 min restantes »), puis le titre.
+ */
+class ResumeAdapter(private val widthPx: Int, private val onClick: (VodItem) -> Unit) : RecyclerView.Adapter<ResumeAdapter.Holder>() {
+    var items: List<VodItem> = emptyList()
+        set(v) { field = v; notifyDataSetChanged() }
+
+    class Holder(val box: LinearLayout, val img: ImageView, val note: TextView, val bar: ProgressBar, val title: TextView) : RecyclerView.ViewHolder(box)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+        val c = parent.context
+        val h = (widthPx * 0.5625f).toInt()
+        val box = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT); tvFocus(10f) }
+        val frame = FrameLayout(c).apply {
+            outlineProvider = object : ViewOutlineProvider() { override fun getOutline(view: View, outline: Outline) { outline.setRoundRect(0, 0, view.width, view.height, c.dpf(10f)) } }
+            clipToOutline = true; setBackgroundColor(Ui.SURFACE2)
+        }
+        val img = ImageView(c).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+        frame.addView(img, FrameLayout.LayoutParams(widthPx, h))
+        frame.addView(View(c).apply { background = vGradient(Color.TRANSPARENT, Color.parseColor("#E606080F")) }, FrameLayout.LayoutParams(widthPx, (h * 0.55f).toInt(), Gravity.BOTTOM))
+        val note = c.label("", 11.5f, Ui.TEXT, Ui.bold).apply { gravity = Gravity.END; setShadowLayer(6f, 0f, 1f, Color.BLACK) }
+        frame.addView(note, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { setMargins(c.dp(10), 0, c.dp(10), c.dp(10)) })
+        val bar = ProgressBar(c, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100; progressTintList = android.content.res.ColorStateList.valueOf(Ui.GOLD) }
+        frame.addView(bar, FrameLayout.LayoutParams(widthPx - c.dp(20), c.dp(4), Gravity.BOTTOM).apply { setMargins(c.dp(10), 0, c.dp(10), c.dp(4)) })
+        box.addView(frame)
+        val title = c.label("", 13.5f, Ui.TEXT, Ui.bold).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(c.dp(2), c.dp(7), 0, 0) }
+        box.addView(title)
+        return Holder(box, img, note, bar, title)
+    }
+
+    override fun getItemCount() = items.size
+
+    override fun onBindViewHolder(h: Holder, position: Int) {
+        val it = items[position]
+        // image large du titre ; à défaut, l'affiche recadrée
+        Images.load(h.img, it.backdrop ?: it.cover, widthPx * 2)
+        h.bar.progress = it.percent ?: 0
+        h.bar.visibility = if (it.percent != null) View.VISIBLE else View.GONE
+        h.note.text = listOfNotNull(it.epLabel, it.remainingMin?.let { m -> if (m >= 60) "${m / 60} h ${String.format("%02d", m % 60)} restantes" else "$m min restantes" }).joinToString(" • ").ifEmpty { it.subtitle ?: "" }
+        h.title.text = it.title
+        h.box.setOnClickListener { _ -> onClick(it) }
+    }
+}
+
+/** Rangée horizontale d'affiches avec son titre et « Voir tout ». */
 fun AppCompatActivity.railView(rail: VodRail): View {
     val c = this
     val tv = c.isTv()
@@ -222,16 +267,19 @@ fun AppCompatActivity.railView(rail: VodRail): View {
     val head = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(side, 0, c.dp(10), c.dp(8)) }
     head.addView(c.label(rail.title, 17f, Ui.TEXT, Ui.black).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
     if (rail.more != null) {
-        val more = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; isClickable = true; setPadding(c.dp(8), c.dp(4), 0, c.dp(4)); setOnClickListener { openMore(rail.title, rail.more) }; tvFocus(6f) }
-        more.addView(c.label("Tout voir", 12.5f, Ui.GOLD, Ui.bold)); more.addView(c.icon(R.drawable.ic_chevron, 18, Ui.GOLD))
+        val more = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; isClickable = true; setPadding(c.dp(12), c.dp(6), c.dp(6), c.dp(6)); background = roundRect(Ui.SURFACE2, c.dpf(16f), Ui.LINE, 1); setOnClickListener { openMore(rail.title, rail.more) }; tvFocus(16f) }
+        more.addView(c.label("Voir tout", 12.5f, Ui.TEXT, Ui.bold)); more.addView(c.icon(R.drawable.ic_chevron, 18, Ui.GOLD))
         head.addView(more)
     }
     col.addView(head)
     val w = (c.screenW() * (if (c.wide()) 0.125f else 0.3f)).toInt()
+    val wideCard = (c.screenW() * (if (c.wide()) 0.27f else 0.62f)).toInt()
     col.addView(RecyclerView(c).apply {
         clipChildren = false
         layoutManager = LinearLayoutManager(c, LinearLayoutManager.HORIZONTAL, false)
-        adapter = if (rail.style == "top10") TopAdapter(w) { openItem(it) }.also { a -> a.items = rail.items } else PosterAdapter(w, rail.id == "continue") { openItem(it) }.also { a -> a.items = rail.items }
+        adapter = if (rail.style == "top10") TopAdapter(w) { openItem(it) }.also { a -> a.items = rail.items }
+            else if (rail.id == "continue") ResumeAdapter(wideCard) { openItem(it) }.also { a -> a.items = rail.items }
+            else PosterAdapter(w, false) { openItem(it) }.also { a -> a.items = rail.items }
         setPadding(side, c.dp(8), c.dp(8), c.dp(8)); clipToPadding = false
         addItemDecoration(object : RecyclerView.ItemDecoration() { override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) { outRect.right = c.dp(if (tv) 12 else 8) } })
         isNestedScrollingEnabled = false

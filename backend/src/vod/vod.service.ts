@@ -9,7 +9,9 @@ import { RecommendationsService } from '../torrents/recommendations.service';
 import { groupKeyOf, releaseTitle } from '../torrents/group-key';
 import { numOf, seriesTitleOf } from '../common/utils/watch-progress';
 import { VodLiveService } from './vod-live.service';
-import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, pickRecommended, qualityLabel, resolutionHeight, sourcesByEpisode, streamFit, videoFiles, vodAccess, vodHealth, VOD_REASON_LABELS, VOD_RULE_TEXT, type EpisodeSource, type VodReason } from '../common/utils/vod';
+import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, qualityLabel, rankOptions, resolutionHeight, sourcesByEpisode, videoFiles, vodAccess, vodHealth, VOD_REASON_LABELS, VOD_RULE_TEXT, type EpisodeSource, type StreamContext, type VodReason } from '../common/utils/vod';
+import { audioLanguageNames, subtitleNames } from '../common/utils/language-names';
+import { EpisodeInfoService } from './episode-info.service';
 
 /** Qui regarde : le profil actif (famille) et le compte (ratio, positions de lecture, droits). */
 export interface VodViewer { userId: string; accountId: string; username: string; role: string; fam: boolean }
@@ -29,7 +31,7 @@ const CARD_SELECT = {
   category: { select: { slug: true, contentKind: true, parent: { select: { contentKind: true } } } },
 } as const;
 
-const DETAIL_SELECT = { ...CARD_SELECT, fileList: true, subtitles: true, hdr: true, audio: true, containerFormat: true, genres: true, categoryId: true } as const;
+const DETAIL_SELECT = { ...CARD_SELECT, fileList: true, subtitles: true, hdr: true, audio: true, containerFormat: true, genres: true, categoryId: true, source: true, codec: true, releaseGroup: true, durationMinutes: true } as const;
 /** Les releases d'un contenu sans leurs métadonnées complètes (lourdes) : seul le titre affiché les porte. */
 const DETAIL_ROWS = { ...DETAIL_SELECT, metadata: false } as const;
 
@@ -79,6 +81,10 @@ export interface VodItem {
   percent?: number | null;
   /** Lecture directe (« Reprendre », « Épisode suivant ») : sinon, on ouvre la fiche. */
   play?: { torrentId: string; fileIndex: number };
+  /** « Reprendre la lecture » : image large, repère d'épisode (S1:E3) et minutes restantes. */
+  backdrop?: string | null;
+  epLabel?: string | null;
+  remainingMin?: number | null;
 }
 
 const kindOf = (row: any): 'film' | 'serie' => ((row.category?.contentKind ?? row.category?.parent?.contentKind) === 'SERIE' ? 'serie' : 'film');
@@ -108,6 +114,7 @@ export class VodService {
     private streams: StreamService,
     private recommendations: RecommendationsService,
     private live: VodLiveService,
+    private episodeInfo: EpisodeInfoService,
   ) {}
 
   /** Le compte a-t-il (encore) droit au catalogue ? Vérifié à chaque appel : un don qui expire coupe l'accès. */
@@ -356,10 +363,17 @@ export class VodService {
       this.live.topRated(14).catch(() => []),
     ]);
 
+    // « Reprendre la lecture » : image large du titre (la fiche) pour des cartes en largeur, avec ce qu'il reste à voir.
+    const resumeIds = (cont.resume ?? []).map((r: any) => r.torrentId);
+    const resumeMeta = resumeIds.length ? await this.prisma.torrent.findMany({ where: { id: { in: resumeIds } }, select: { id: true, metadata: true } }) : [];
+    const backdropOf = new Map(resumeMeta.map((r) => [r.id, typeof (r.metadata as any)?.backdrop === 'string' ? ((r.metadata as any).backdrop as string) : null]));
     const resumeItems: VodItem[] = [
       ...(cont.resume ?? []).map((r: any) => ({
         id: r.torrentId, title: r.title, subtitle: [r.season != null && r.episode != null ? episodeLabel(r.season, r.episode) : '', r.percent != null ? `${r.percent} %` : ''].filter(Boolean).join(' · ') || undefined,
         cover: r.cover ?? null, percent: r.percent ?? null, play: { torrentId: r.torrentId, fileIndex: r.fileIndex ?? 0 }, ...(r.season != null && r.episode != null ? { kind: 'serie' as const } : {}),
+        backdrop: backdropOf.get(r.torrentId) ?? null,
+        epLabel: r.season != null && r.episode != null ? `S${r.season}:E${r.episode}` : null,
+        remainingMin: r.durationSeconds && r.positionSeconds != null ? Math.max(1, Math.round((r.durationSeconds - r.positionSeconds) / 60)) : null,
       })),
       ...(cont.next ?? []).map((n: any) => ({
         id: n.torrentId, title: n.title, subtitle: `Suite · ${episodeLabel(n.season, n.episode)}`, cover: n.cover ?? null, percent: null, play: { torrentId: n.torrentId, fileIndex: 0 }, kind: 'serie' as const,
@@ -383,7 +397,7 @@ export class VodService {
     const genreRails = await Promise.all(pickedGenres.map(async (g) => ({ id: `genre-${g.name}`, title: g.name, items: (await get({ genre: g.name, sort: 'seeders', limit: 20 })).items, more: { genre: g.name, sort: 'seeders' } })));
 
     const rails: VodRail[] = [
-      { id: 'continue', title: 'Reprendre', items: resumeItems },
+      { id: 'continue', title: 'Reprendre la lecture', items: resumeItems },
       { id: 'foryou', title: 'Recommandé pour toi', items: await idsRail((foryou as any[]).map((x) => x.id).filter(Boolean)) },
       ...(because.based ? [{ id: 'because', title: `Parce que tu as aimé ${because.based.title}`, items: await idsRail((because.items as any[]).map((x) => x.id).filter(Boolean)) }] : []),
       { id: 'new', title: 'Nouveautés', items: fresh.items, more: { sort: 'new' } },
@@ -420,7 +434,7 @@ export class VodService {
   }
 
   /** Fiche d'un contenu : synopsis, versions (qualité, langue, seeders) ou, pour une série, un épisode par ligne avec la release la mieux seedée. */
-  async title(viewer: VodViewer, id: string) {
+  async title(viewer: VodViewer, id: string, prefs: { mbps?: number | null; lang?: string | null } = {}) {
     await this.assertAccess(viewer.accountId);
     const { hidden, t, key, rows } = await this.loadGroup(viewer, id);
 
@@ -436,20 +450,48 @@ export class VodService {
 
     const kind = kindOf(t);
     const m = metaOf(t);
+    // Ce qui arrive vraiment sur l'écran : langues en toutes lettres (le MediaInfo donne les autres pistes), détails qui distinguent deux releases, estimation pour CET appareil.
+    const nfoRows = await this.prisma.torrent.findMany({ where: { id: { in: rows.slice(0, 60).map((r) => r.id) } }, select: { id: true, nfo: true } });
+    const nfoOf = new Map(nfoRows.map((r) => [r.id, r.nfo]));
+    const detailOf = new Map(rows.map((r) => [r.id, {
+      audioLanguages: audioLanguageNames(r.language, nfoOf.get(r.id)),
+      subtitleNames: subtitleNames(r.subtitles),
+      tech: [r.source, r.codec, r.hdr ? 'HDR' : null, r.audio, r.releaseGroup].filter((x) => typeof x === 'string' ? x.trim() : x).join(' · ') || null,
+    }]));
+    const minutes = Number(t.durationMinutes) || Number(m.runtime) || (kind === 'serie' ? 45 : 110);
+    const ctx: StreamContext = { mbps: prefs.mbps ?? null, lang: prefs.lang ?? null, minutes };
+    /** Estimation d'une release dans son groupe : fluidité, délai de démarrage, recommandée, la plus rapide. */
+    const judge = <T extends { resolution: string | null; seeders: number; size: number; language?: string | null }>(list: T[]) => {
+      const rk = rankOptions(list, ctx);
+      const recStart = rk.rec ? rk.est.get(rk.rec)!.startSeconds ?? Infinity : Infinity;
+      return (o: T) => {
+        const e = rk.est.get(o)!;
+        return { fit: e.fit, startSeconds: e.startSeconds, bitrateMbps: e.bitrateMbps, recommended: o === rk.rec, fastest: o === rk.fastest && o !== rk.rec && (e.startSeconds ?? Infinity) < recStart };
+      };
+    };
+
     const versionList = rows.slice(0, 40).map((r) => {
       const files = videoFiles(r.fileList);
       const main = files.length ? files.reduce((a, b) => (b.size > a.size ? b : a)) : null;
       const fileIndex = main?.index ?? 0;
       return {
-        id: r.id, name: r.name, size: Number(r.size), seeders: r.seeders, health: vodHealth(r.seeders), resolution: r.resolution ?? null, language: r.language ?? null,
-        quality: qualityLabel(r.resolution), fit: streamFit(r.seeders, r.resolution), hdr: !!r.hdr,
+        id: r.id, name: r.name, size: Number(r.size), fileSize: main?.size ?? Number(r.size), seeders: r.seeders, health: vodHealth(r.seeders), resolution: r.resolution ?? null, language: r.language ?? null,
+        quality: qualityLabel(r.resolution), hdr: !!r.hdr,
         label: [r.resolution, r.language, r.hdr ? 'HDR' : null, r.containerFormat].filter(Boolean).join(' · ') || 'Version',
-        subtitles: r.subtitles ?? [], audio: r.audio ?? null, fileIndex, ...progressOf(r.id, fileIndex),
+        subtitles: r.subtitles ?? [], audio: r.audio ?? null, fileIndex, ...detailOf.get(r.id), ...progressOf(r.id, fileIndex),
       };
     });
-    // Les plus belles qualités d'abord ; « recommandé » : la meilleure que la vitesse du torrent (seeders) permet de lire sans coupure.
-    const recVersion = pickRecommended(versionList);
-    const versions = [...versionList].sort((a, b) => resolutionHeight(b.resolution) - resolutionHeight(a.resolution) || b.seeders - a.seeders).map((v) => ({ ...v, recommended: v === recVersion }));
+    // Les plus belles qualités d'abord ; « recommandée » : la plus belle qui démarre vite et se lit sans coupure pour cet appareil.
+    const rankInput = versionList.map((v) => ({ ...v, size: v.fileSize }));
+    const rkV = rankOptions(rankInput, ctx);
+    const recV = rkV.rec ? rkV.rec.id : null;
+    const fastV = rkV.fastest ? rkV.fastest.id : null;
+    const recStartV = rkV.rec ? rkV.est.get(rkV.rec)!.startSeconds ?? Infinity : Infinity;
+    const versionsOut = rankInput.map((o, i) => {
+      const e = rkV.est.get(o)!;
+      const v = versionList[i];
+      return { ...v, fit: e.fit, startSeconds: e.startSeconds, bitrateMbps: e.bitrateMbps, recommended: o.id === recV, fastest: o.id === fastV && o.id !== recV && (e.startSeconds ?? Infinity) < recStartV };
+    }).sort((a, b) => resolutionHeight(b.resolution) - resolutionHeight(a.resolution) || b.seeders - a.seeders);
 
     let episodes: any[] | undefined;
     if (kind === 'serie') {
@@ -463,23 +505,40 @@ export class VodService {
             const s = numOf(r.season), e = numOf(r.episode);
             ep = s != null && e != null ? { season: s, episode: e } : parseEpisode(r.name);
           }
-          sources.push({ torrentId: r.id, fileIndex: f.index, season: ep?.season ?? null, episode: ep?.episode ?? null, size: f.size, seeders: r.seeders, resolution: r.resolution ?? null, language: r.language ?? null, label: baseName(f.path) });
+          sources.push({ torrentId: r.id, fileIndex: f.index, season: ep?.season ?? null, episode: ep?.episode ?? null, size: f.size, seeders: r.seeders, resolution: r.resolution ?? null, language: r.language ?? null, label: baseName(f.path), tech: detailOf.get(r.id)?.tech ?? null });
         }
       }
       const groups = sourcesByEpisode(sources);
       // Toutes les releases d'un épisode sont proposées avant la lecture ; celle qui est lue par défaut est la recommandée.
       const optionsOf = (s: EpisodeSource) => {
-        const rec = pickRecommended(groups.get(`${s.season}:${s.episode}`) ?? [s]);
-        return (groups.get(`${s.season}:${s.episode}`) ?? [s]).slice(0, 8).map((o) => ({
+        const group = (groups.get(`${s.season}:${s.episode}`) ?? [s]).slice(0, 8);
+        const j = judge(group);
+        return group.map((o) => ({
           torrentId: o.torrentId, fileIndex: o.fileIndex, size: o.size, seeders: o.seeders, health: vodHealth(o.seeders), resolution: o.resolution, quality: qualityLabel(o.resolution),
-          language: o.language, fit: streamFit(o.seeders, o.resolution), recommended: o === rec, ...progressOf(o.torrentId, o.fileIndex),
+          language: o.language, audioLanguages: detailOf.get(o.torrentId)?.audioLanguages ?? [], subtitleNames: detailOf.get(o.torrentId)?.subtitleNames ?? [], tech: o.tech ?? null,
+          ...j(o), ...progressOf(o.torrentId, o.fileIndex),
         }));
       };
-      episodes = bestPerEpisode(sources).slice(0, 600).map((s) => ({
-        season: s.season, episode: s.episode, label: episodeLabel(s.season, s.episode) || 'Épisode', torrentId: s.torrentId, fileIndex: s.fileIndex,
-        size: s.size, seeders: s.seeders, health: vodHealth(s.seeders), resolution: s.resolution, language: s.language, ...progressOf(s.torrentId, s.fileIndex),
-        options: s.season != null && s.episode != null ? optionsOf(s) : [],
-      }));
+      episodes = bestPerEpisode(sources, ctx).slice(0, 600).map((s) => {
+        const options = s.season != null && s.episode != null ? optionsOf(s) : [];
+        const rec = options.find((o) => o.recommended) ?? options[0];
+        return {
+          season: s.season, episode: s.episode, label: episodeLabel(s.season, s.episode) || 'Épisode', torrentId: s.torrentId, fileIndex: s.fileIndex,
+          size: s.size, seeders: s.seeders, health: vodHealth(s.seeders), resolution: s.resolution, quality: qualityLabel(s.resolution), language: s.language,
+          audioLanguages: detailOf.get(s.torrentId)?.audioLanguages ?? [], fit: rec?.fit ?? null, startSeconds: rec?.startSeconds ?? null, ...progressOf(s.torrentId, s.fileIndex),
+          options,
+        };
+      });
+    }
+
+    // Image d'aperçu, titre et résumé de chaque épisode (TMDB, puis TVmaze, puis TheTVDB) : copiés sur Seeduction ; au plus 2,5 s d'attente à la première ouverture.
+    if (episodes && t.metaSource && t.metaExternalId) {
+      const seasons = [...new Set(episodes.map((e) => e.season).filter((n): n is number => typeof n === 'number'))].slice(0, 8);
+      const info = await this.episodeInfo.lookup({ source: t.metaSource, externalId: t.metaExternalId, imdbId: typeof m.imdbId === 'string' ? m.imdbId : null, title: titleOf(t), year: t.year ?? null }, seasons).catch(() => new Map());
+      episodes = episodes.map((e) => {
+        const i = info.get(`${e.season}:${e.episode}`);
+        return i ? { ...e, name: i.title, overview: i.overview, still: i.image, airDate: i.airDate, runtime: i.runtime } : e;
+      });
     }
 
     // Dans la même saga, et des titres du même genre (même catégorie de contenu).
@@ -522,7 +581,8 @@ export class VodService {
       rating: Number.isFinite(rating) && rating > 0 ? Math.round(rating * 10) / 10 : null,
       runtime: Number(m.runtime) || null,
       genres: Array.isArray(t.genres) ? t.genres.slice(0, 6) : [],
-      versions, ...(episodes ? { episodes } : {}), saga, similar,
+      versions: versionsOut, ...(episodes ? { episodes } : {}), saga, similar,
+      connection: { mbps: prefs.mbps ?? null, minutes },
     };
   }
 

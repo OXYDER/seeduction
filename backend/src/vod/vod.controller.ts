@@ -1,8 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { assertPerm } from '../common/utils/account';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { VodLiveService } from './vod-live.service';
 import { VodService, type VodViewer } from './vod.service';
+
+/** Octets aléatoires (non compressibles) servis pour mesurer la connexion de l'appareil. */
+const SPEEDTEST_BYTES = randomBytes(4 * 1024 * 1024);
 
 const viewerOf = (req: any): VodViewer => ({ userId: req.user.userId, accountId: req.user.accountId ?? req.user.userId, username: req.user.username, role: req.user.role, fam: !!req.user.fam });
 
@@ -99,8 +103,17 @@ export class VodController {
 
   @UseGuards(JwtAuthGuard)
   @Get('title/:id')
-  title(@Param('id') id: string, @Req() req: any) {
-    return this.vod.title(viewerOf(req), id);
+  title(@Param('id') id: string, @Query('mbps') mbps: string, @Query('lang') lang: string, @Req() req: any) {
+    const speed = Number(mbps);
+    return this.vod.title(viewerOf(req), id, { mbps: Number.isFinite(speed) && speed > 0 ? Math.min(speed, 10_000) : null, lang: /^(vff|vfq|vfi|vo)$/i.test(lang ?? '') ? lang.toLowerCase() : null });
+  }
+
+  /** Mesure de la connexion : l'appareil télécharge quelques Mo et calcule son débit (sert à recommander la qualité qui démarre vite). */
+  @UseGuards(JwtAuthGuard)
+  @Get('speedtest')
+  speedtest(@Res() res: any) {
+    res.set({ 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store', 'Content-Encoding': 'identity', 'Content-Length': String(SPEEDTEST_BYTES.length) });
+    res.end(SPEEDTEST_BYTES);
   }
 
   /** L'épisode suivant (sans en sauter un) ; dit s'il en manque un, et si une demande existe déjà. */

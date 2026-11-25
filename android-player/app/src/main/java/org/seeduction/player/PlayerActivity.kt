@@ -81,6 +81,18 @@ class PlayerActivity : AppCompatActivity() {
     private var tickJob: Job? = null
     private var hideJob: Job? = null
     private var lastEntryId: String? = null
+    /** Regardé jusqu'au bout (le fichier reste alors téléchargé et partagé) ; sinon, quitter la lecture arrête son téléchargement. */
+    private var watchedToEnd = false
+    /** La lecture est confiée à une autre application vidéo : elle lit encore le flux, on ne coupe rien. */
+    private var external = false
+
+    /** Fin de la lecture en cours (sortie, épisode suivant) : arrête le téléchargement de ce qui n'a pas été regardé en entier. */
+    private fun closeCurrent() {
+        val id = lastEntryId ?: return
+        if (!external) service?.endPlayback(id, watchedToEnd)
+        watchedToEnd = false
+        lastEntryId = null
+    }
     private var userSeeking = false
     private var lengthMs = 0L
     private var scaleIndex = 0
@@ -211,6 +223,7 @@ class PlayerActivity : AppCompatActivity() {
         if (token == null && existing == null) { showError("Aucune lecture à ouvrir : clique sur « Ouvrir dans le lecteur Seeduction » depuis le site."); return }
         loadJob?.cancel()
         releasePlayer()
+        closeCurrent()
         showLoading("Connexion à Seeduction…", "")
         loadJob = lifecycleScope.launch {
             try {
@@ -309,6 +322,7 @@ class PlayerActivity : AppCompatActivity() {
         }
         return try {
             startActivity(Intent.createChooser(view, "Lire avec…"))
+            external = true
             Journal.log("lecture confiée à une application externe")
             finish()
             true
@@ -352,6 +366,7 @@ class PlayerActivity : AppCompatActivity() {
             MediaPlayer.Event.Buffering -> bufferSpinner.visibility = if (ev.buffering < 100f && loading.visibility != View.VISIBLE) View.VISIBLE else View.GONE
             MediaPlayer.Event.LengthChanged -> lengthMs = ev.lengthChanged
             MediaPlayer.Event.EndReached -> {
+                watchedToEnd = true
                 info?.let { Prefs(this).savePosition(it.torrentId, it.fileIndex, 0) }
                 sendPing(finalPosition = true)
                 if (series) resolveNext(auto = true) else finish()
@@ -704,6 +719,7 @@ class PlayerActivity : AppCompatActivity() {
         if (i?.passkey != null) AppScope.scope.launch { SiteApi.stopWatching(i.passkey) }
         loadJob?.cancel()
         releasePlayer()
+        closeCurrent()
         connection?.let { try { unbindService(it) } catch (_: Exception) { /* déjà détaché */ } }
         super.onDestroy()
     }

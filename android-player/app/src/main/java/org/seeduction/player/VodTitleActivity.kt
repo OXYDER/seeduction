@@ -53,10 +53,14 @@ class VodTitleActivity : AppCompatActivity() {
 
     private fun load() {
         val id = intent.getStringExtra(EXTRA_ID) ?: run { finish(); return }
-        val token = Prefs(this).vodToken ?: run { finish(); return }
+        val prefs = Prefs(this)
+        val token = prefs.vodToken ?: run { finish(); return }
         lifecycleScope.launch {
             try {
-                val t = VodApi.title(token, id)
+                // La connexion se mesure en arrière-plan (la fiche s'affiche sans attendre) : la mesure sert à la prochaine ouverture.
+                val mbps = prefs.speedMbps
+                launch { ConnectionSpeed.ensure(prefs, token) }
+                val t = VodApi.title(token, id, mbps, prefs.audioPref)
                 data = t
                 community = t.community
                 if (season == null) season = (t.episodes.firstOrNull { it.percent != null && it.percent < 92 } ?: t.episodes.firstOrNull())?.season
@@ -89,7 +93,10 @@ class VodTitleActivity : AppCompatActivity() {
         chooseQuality(epSub(e), e.options) { o -> play(o?.torrentId ?: e.torrentId, o?.fileIndex ?: e.fileIndex, scope, epSub(e)) }
     }
 
-    private fun versionOptions(t: VodTitle) = t.versions.map { VodOption(it.id, it.fileIndex, it.size, it.seeders, it.health, it.quality.ifEmpty { it.label }, it.language, it.fit, it.recommended, it.percent, it.hdr) }
+    private fun versionOptions(t: VodTitle) = t.versions.map {
+        VodOption(it.id, it.fileIndex, it.size, it.seeders, it.health, it.quality.ifEmpty { it.label }, it.language, it.fit, it.recommended, it.percent, it.hdr,
+            it.audioLanguages, it.subtitleNames, it.tech, it.startSeconds, it.fastest)
+    }
 
     /** « Lecture » : le premier épisode à voir (série) ou le film, avec le choix de la qualité quand il y en a plusieurs. */
     private fun playMain(t: VodTitle) {
@@ -104,38 +111,62 @@ class VodTitleActivity : AppCompatActivity() {
         }
     }
 
+    /** Une petite étiquette arrondie (« ★ Recommandé », « ⚡ Le plus rapide », « HDR »). */
+    private fun badge(text: String, fg: Int, bg: Int, stroke: Int? = null) = label(text, 10.5f, fg, Ui.black).apply {
+        letterSpacing = 0.04f; setPadding(dp(8), dp(3), dp(8), dp(3)); background = roundRect(bg, dpf(5f), stroke, if (stroke != null) 1 else 0)
+    }
+
+    /** Ce qui décrit une release : langues en toutes lettres, taille et détails techniques, ce que permettent le torrent et la connexion, sous-titres. */
+    private fun releaseDetails(o: VodOption): LinearLayout {
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(label(languagesText(o.audioLanguages, o.language), 14f, Ui.TEXT, Ui.bold).apply { maxLines = 2 })
+        col.addView(label(listOfNotNull(formatSize(o.size), o.tech).joinToString("  ·  "), 12f, Ui.MUTED, Ui.medium).apply { setPadding(0, dp(2), 0, 0); maxLines = 2 })
+        col.addView(label(listOfNotNull(fitText(o.fit, o.seeders), startText(o.startSeconds)).joinToString("  ·  "), 12f, fitColor(o.fit), Ui.bold).apply { setPadding(0, dp(3), 0, 0); maxLines = 2 })
+        if (o.subtitleNames.isNotEmpty()) col.addView(label("Sous-titres : " + o.subtitleNames.joinToString(", "), 11.5f, Ui.MUTED).apply { setPadding(0, dp(2), 0, 0); maxLines = 2 })
+        return col
+    }
+
+    /** Les étiquettes d'une release : recommandée (dorée), la plus rapide (verte), HDR, déjà commencée. */
+    private fun releaseBadges(o: VodOption, many: Boolean): LinearLayout {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END }
+        fun add(v: View) { box.addView(v, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(4) }) }
+        if (o.recommended && many) add(badge("★ RECOMMANDÉ", Ui.INK, Ui.GOLD))
+        if (o.fastest) add(badge("⚡ LE PLUS RAPIDE", Color.parseColor("#34D399"), Color.parseColor("#0F2A22"), Color.parseColor("#34D399")))
+        if (o.hdr) add(badge("HDR", Ui.GOLD2, Color.parseColor("#2A2310")))
+        return box
+    }
+
     /**
-     * Écran de choix de la qualité : toutes les releases du même contenu, la plus belle d'abord, avec la langue, la taille et ce que la vitesse du torrent permet ;
-     * celle qui est recommandée est marquée. Une seule release, ou le réglage « Toujours la recommandée » : on lit tout de suite.
+     * Écran de choix de la qualité : toutes les releases du même contenu, la plus belle d'abord, avec les langues en toutes lettres, la taille, le détail technique et ce que permettent
+     * le torrent et ta connexion (délai de démarrage estimé). La recommandée (la plus belle qui démarre vite et se lit sans coupure) et la plus rapide sont marquées.
+     * Une seule release, ou le réglage « Toujours la recommandée » : on lit tout de suite.
      */
     private fun chooseQuality(sub: String, options: List<VodOption>, onPick: (VodOption?) -> Unit) {
         if (options.size <= 1) { onPick(options.firstOrNull()); return }
         val rec = options.firstOrNull { it.recommended } ?: options.first()
-        if (!Prefs(this).askQuality) { onPick(rec); return }
+        val prefs = Prefs(this)
+        if (!prefs.askQuality) { onPick(rec); return }
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(16), dp(18), dp(8)); setBackgroundColor(Ui.SURFACE) }
         lateinit var dialog: androidx.appcompat.app.AlertDialog
-        root.addView(label("Choisir la qualité", 18f, Ui.TEXT, Ui.black))
+        root.addView(label("Choisir la qualité", 19f, Ui.TEXT, Ui.black))
         root.addView(label(sub, 12.5f, Ui.MUTED).apply { setPadding(0, dp(2), 0, dp(10)) })
         val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         for (o in options) {
             val isRec = o === rec
             val rowBox = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; isClickable = true; isFocusable = true
-                background = roundRect(if (isRec) Color.parseColor("#1F1B0C") else Ui.SURFACE2, dpf(10f), if (isRec) Ui.GOLD else Ui.LINE, 1)
-                setPadding(dp(12), dp(11), dp(12), dp(11)); tvFocus(10f)
+                background = roundRect(if (isRec) Color.parseColor("#1F1B0C") else Ui.SURFACE2, dpf(12f), if (isRec) Ui.GOLD else Ui.LINE, if (isRec) 2 else 1)
+                setPadding(dp(14), dp(12), dp(12), dp(12)); tvFocus(12f)
                 setOnClickListener { dialog.dismiss(); onPick(o) }
             }
-            rowBox.addView(label(o.quality.ifEmpty { "?" }, 20f, if (isRec) Ui.GOLD else Ui.TEXT, Ui.black), LinearLayout.LayoutParams(dp(74), ViewGroup.LayoutParams.WRAP_CONTENT))
-            val mid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            val what = listOfNotNull(o.language, if (o.hdr) "HDR" else null, formatSize(o.size)).joinToString("  ·  ")
-            mid.addView(label(what, 13.5f, Ui.TEXT, Ui.bold))
-            mid.addView(label(fitText(o.fit, o.seeders), 12f, fitColor(o.fit), Ui.bold).apply { setPadding(0, dp(2), 0, 0) })
-            rowBox.addView(mid, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            if (isRec) rowBox.addView(label("★ Recommandé", 11.5f, Ui.GOLD, Ui.black).apply { setPadding(dp(8), 0, 0, 0) })
+            rowBox.addView(label(o.quality.ifEmpty { "?" }, 21f, if (isRec) Ui.GOLD else Ui.TEXT, Ui.black), LinearLayout.LayoutParams(dp(76), ViewGroup.LayoutParams.WRAP_CONTENT))
+            rowBox.addView(releaseDetails(o), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            rowBox.addView(releaseBadges(o, true), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(8) })
             list.addView(rowBox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
         }
         root.addView(android.widget.ScrollView(this).apply { addView(list) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        root.addView(label("Recommandé d'après la vitesse du torrent : plus l'image est lourde, plus il faut de partageurs pour lire sans coupure.", 11.5f, Ui.MUTED).apply { setPadding(0, dp(4), 0, dp(2)) })
+        val link = if (prefs.speedMbps > 0f) "Ta connexion : " + speedText(prefs.speedMbps) else "Ta connexion n'est pas encore mesurée"
+        root.addView(label("$link. Recommandé : la plus belle qualité qui démarre vite et se lit sans coupure, d'après la taille du fichier, les partageurs et ta connexion.", 11.5f, Ui.MUTED).apply { setPadding(0, dp(4), 0, dp(2)); setLineSpacing(0f, 1.15f) })
         dialog = androidx.appcompat.app.AlertDialog.Builder(this).setView(root).setNegativeButton("Annuler", null).create()
         dialog.show()
         // à la télécommande, le focus part sur le choix recommandé
@@ -358,11 +389,74 @@ class VodTitleActivity : AppCompatActivity() {
     private fun renderVersions(t: VodTitle) {
         if (t.versions.isEmpty()) { content.addView(label("Aucune version disponible pour l'instant.", 14f, Ui.MUTED).apply { setPadding(side(), dp(20), side(), 0) }); return }
         content.addView(section(if (t.versions.size > 1) "Versions" else "Version"))
-        for (v in t.versions) {
-            val subs = if (v.subtitles.isNotEmpty()) " · ST " + v.subtitles.joinToString("/") else ""
-            val title = v.label + if (v.recommended && t.versions.size > 1) "  ★ Recommandé" else ""
-            content.addView(row(title, fitText(v.fit, v.seeders) + " · " + formatSize(v.size) + subs, fitColor(v.fit), v.percent) { play(v.id, v.fileIndex) })
+        val many = t.versions.size > 1
+        for ((i, o) in versionOptions(t).withIndex()) {
+            val v = t.versions[i]
+            val box = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                background = roundRect(if (o.recommended && many) Color.parseColor("#1F1B0C") else Ui.SURFACE, dpf(12f), if (o.recommended && many) Ui.GOLD else Ui.LINE, 1)
+                setPadding(dp(14), dp(12), dp(12), dp(12))
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(side(), dp(4), side(), dp(4)) }
+                isClickable = true; isFocusable = true; setOnClickListener { play(v.id, v.fileIndex) }; tvFocus(12f)
+            }
+            box.addView(label(o.quality.ifEmpty { "?" }, 21f, if (o.recommended && many) Ui.GOLD else Ui.TEXT, Ui.black), LinearLayout.LayoutParams(dp(76), ViewGroup.LayoutParams.WRAP_CONTENT))
+            val mid = releaseDetails(o)
+            if (o.percent != null && o.percent > 0) mid.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100; progress = o.percent; progressTintList = android.content.res.ColorStateList.valueOf(Ui.GOLD) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)).apply { topMargin = dp(7) })
+            box.addView(mid, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            box.addView(releaseBadges(o, many), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(8) })
+            box.addView(playCircle(o.percent), LinearLayout.LayoutParams(dp(40), dp(40)).apply { leftMargin = dp(6) })
+            content.addView(box)
         }
+    }
+
+    /** Le bouton rond de lecture : or (à voir), blanc (commencé), discret (déjà vu). Pas d'icône de téléchargement : on lit directement. */
+    private fun playCircle(percent: Int?): View {
+        val seen = percent != null && percent >= 92
+        val started = percent != null && percent in 1..91
+        val bg = when { seen -> Ui.SURFACE2; started -> Color.parseColor("#F5F7FC"); else -> Ui.GOLD }
+        val fg = when { seen -> Ui.MUTED; started -> Ui.INK; else -> Ui.INK }
+        return FrameLayout(this).apply {
+            background = roundRect(bg, dpf(20f))
+            addView(icon(if (seen) R.drawable.ic_check else R.drawable.ic_play, 20, fg), FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER))
+        }
+    }
+
+    /** Une ligne d'épisode : numéro, titre, qualité · langues · taille, ce que permet la connexion, progression, et le rond de lecture. */
+    private fun episodeRow(e: VodEpisode): View {
+        val n = e.episode
+        val started = e.percent != null && e.percent in 1..91
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            background = roundRect(if (started) Color.parseColor("#14151C") else Ui.SURFACE, dpf(12f), if (started) Ui.GOLD else Ui.LINE, 1)
+            setPadding(dp(14), dp(12), dp(12), dp(12))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(side(), dp(4), side(), dp(4)) }
+            isClickable = true; isFocusable = true; setOnClickListener { playEpisode(e) }; tvFocus(12f)
+        }
+        if (n != null) box.addView(label(n.toString(), 22f, Ui.GOLD, Ui.black).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(34), ViewGroup.LayoutParams.WRAP_CONTENT))
+        // image d'aperçu de l'épisode (16:9), quand le fournisseur en a une
+        if (e.still != null) {
+            val tw = dp(if (isTv() || wide()) 170 else 118)
+            val thumb = FrameLayout(this).apply {
+                outlineProvider = object : ViewOutlineProvider() { override fun getOutline(view: View, outline: Outline) { outline.setRoundRect(0, 0, view.width, view.height, dpf(8f)) } }
+                clipToOutline = true; setBackgroundColor(Ui.SURFACE2)
+            }
+            val img = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+            Images.load(img, e.still, tw * 2)
+            thumb.addView(img, FrameLayout.LayoutParams(tw, (tw * 0.5625f).toInt()))
+            if (e.percent != null && e.percent > 0) thumb.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100; progress = e.percent; progressTintList = android.content.res.ColorStateList.valueOf(Ui.GOLD) }, FrameLayout.LayoutParams(tw, dp(3), Gravity.BOTTOM))
+            box.addView(thumb, LinearLayout.LayoutParams(tw, (tw * 0.5625f).toInt()).apply { rightMargin = dp(12) })
+        }
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(label(if (n != null) (e.name?.let { "$n. $it" } ?: "Épisode $n") else e.label, 15f, Ui.TEXT, Ui.bold).apply { maxLines = 2 })
+        if (e.runtime != null || e.overview != null) col.addView(label(listOfNotNull(e.runtime?.let { runtimeText(it) }, e.overview).joinToString("  ·  "), 12f, Color.parseColor("#C3C9DB")).apply { setPadding(0, dp(3), 0, 0); maxLines = if (isTv() || wide()) 3 else 2; ellipsize = android.text.TextUtils.TruncateAt.END; setLineSpacing(0f, 1.1f) })
+        val quality = e.quality.ifEmpty { e.resolution ?: "" }
+        col.addView(label(listOfNotNull(quality.ifEmpty { null }, languagesText(e.audioLanguages, e.language), formatSize(e.size)).joinToString("  ·  "), 12f, Ui.MUTED, Ui.medium).apply { setPadding(0, dp(2), 0, 0); maxLines = 2 })
+        val fit = e.fit ?: "good"
+        col.addView(label(listOfNotNull(fitText(fit, e.seeders), startText(e.startSeconds)).joinToString("  ·  ") + (if (e.options.size > 1) "  ·  ${e.options.size} versions" else ""), 12f, fitColor(fit), Ui.bold).apply { setPadding(0, dp(3), 0, 0); maxLines = 2 })
+        if (e.still == null && e.percent != null && e.percent > 0) col.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100; progress = e.percent; progressTintList = android.content.res.ColorStateList.valueOf(Ui.GOLD) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)).apply { topMargin = dp(7) })
+        box.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        box.addView(playCircle(e.percent), LinearLayout.LayoutParams(dp(40), dp(40)).apply { leftMargin = dp(8) })
+        return box
     }
 
     private fun missingRow(t: VodTitle, s: Int, ep: Int): View {
@@ -421,8 +515,7 @@ class VodTitleActivity : AppCompatActivity() {
                 if (n - prev in 2..13 && (prev > 0 || n <= 13)) for (m in (prev + 1) until n) if (m >= 1) content.addView(missingRow(t, s, m))
                 prev = n
             }
-            val info = healthText(e.health, e.seeders) + " · " + formatSize(e.size) + (e.resolution?.let { " · $it" } ?: "") + (e.language?.let { " · $it" } ?: "")
-            content.addView(row(if (n != null) "Épisode $n" else e.label, info, healthColor(e.health), e.percent, n?.toString()) { playEpisode(e) })
+            content.addView(episodeRow(e))
         }
     }
 
