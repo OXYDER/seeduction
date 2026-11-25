@@ -91,6 +91,14 @@ class VodSettingsActivity : AppCompatActivity() {
                 (if (externals.isEmpty()) "\nAucune application vidéo externe détectée : la lecture se fera dans l'application." else "\nDétectées : " + externals.take(4).joinToString(", ") + "."), prefs.playerMode == PlayerMode.EXTERNAL) { prefs.playerMode = PlayerMode.EXTERNAL; render() },
         ))
 
+        // --- Qualité
+        col.addView(section("Qualité"))
+        col.addView(card(
+            choice("Me demander la qualité", "Quand un film ou un épisode existe en plusieurs qualités (4K, 1080p, 720p…), tu choisis avant de lire. La qualité recommandée, d'après la vitesse du torrent, est en tête.", prefs.askQuality) { prefs.askQuality = true; render() },
+            divider(),
+            choice("Toujours la recommandée", "Lit tout de suite la plus belle qualité que la vitesse du torrent permet de lire sans coupure.", !prefs.askQuality) { prefs.askQuality = false; render() },
+        ))
+
         // --- Affichage
         col.addView(section("Affichage"))
         fun setTv(v: String) {

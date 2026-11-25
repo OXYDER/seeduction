@@ -84,6 +84,11 @@ class Prefs(ctx: Context) {
         get() = p.getString("tvMode", "auto") ?: "auto"
         set(v) { p.edit().putString("tvMode", v).apply() }
 
+    /** Plusieurs releases du même film ou épisode : demander laquelle lire (qualité recommandée en tête) ou lire directement la recommandée. */
+    var askQuality: Boolean
+        get() = p.getBoolean("askQuality", true)
+        set(v) { p.edit().putBoolean("askQuality", v).apply() }
+
     var wifiOnlySeed: Boolean
         get() = p.getBoolean("wifiOnlySeed", true)
         set(v) { p.edit().putBoolean("wifiOnlySeed", v).apply() }

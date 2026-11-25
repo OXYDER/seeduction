@@ -48,11 +48,19 @@ class VodSaga(val id: String, val name: String, val items: List<VodItem>)
 
 class VodVersion(
     val id: String, val label: String, val size: Long, val seeders: Int, val health: String, val fileIndex: Int, val percent: Int?, val subtitles: List<String>,
+    val quality: String = "", val fit: String = "good", val language: String? = null, val hdr: Boolean = false, val recommended: Boolean = false,
+)
+
+/** Une release proposée avant la lecture (même film ou même épisode) : qualité, langue, taille, et si elle est recommandée d'après la vitesse du torrent. */
+class VodOption(
+    val torrentId: String, val fileIndex: Int, val size: Long, val seeders: Int, val health: String, val quality: String, val language: String?,
+    val fit: String, val recommended: Boolean, val percent: Int?, val hdr: Boolean = false,
 )
 
 class VodEpisode(
     val season: Int?, val episode: Int?, val label: String, val torrentId: String, val fileIndex: Int,
     val size: Long, val seeders: Int, val health: String, val resolution: String?, val language: String?, val percent: Int?,
+    val options: List<VodOption> = emptyList(),
 )
 
 class VodPerson(val id: String, val name: String, val photo: String?, val character: String?)
@@ -226,11 +234,13 @@ object VodApi {
             versions = (0 until vs.length()).map {
                 val v = vs.getJSONObject(it)
                 val subs = v.optJSONArray("subtitles") ?: JSONArray()
-                VodVersion(v.getString("id"), v.optString("label"), v.optLong("size"), v.optInt("seeders"), v.optString("health"), v.optInt("fileIndex"), v.intOrNull("percent"), (0 until subs.length()).map { s -> subs.getString(s) })
+                VodVersion(v.getString("id"), v.optString("label"), v.optLong("size"), v.optInt("seeders"), v.optString("health"), v.optInt("fileIndex"), v.intOrNull("percent"), (0 until subs.length()).map { s -> subs.getString(s) },
+                    quality = v.optString("quality"), fit = v.optString("fit", "good"), language = v.str("language"), hdr = v.optBoolean("hdr"), recommended = v.optBoolean("recommended"))
             },
             episodes = (0 until es.length()).map {
                 val e = es.getJSONObject(it)
-                VodEpisode(e.intOrNull("season"), e.intOrNull("episode"), e.optString("label"), e.getString("torrentId"), e.optInt("fileIndex"), e.optLong("size"), e.optInt("seeders"), e.optString("health"), e.str("resolution"), e.str("language"), e.intOrNull("percent"))
+                VodEpisode(e.intOrNull("season"), e.intOrNull("episode"), e.optString("label"), e.getString("torrentId"), e.optInt("fileIndex"), e.optLong("size"), e.optInt("seeders"), e.optString("health"), e.str("resolution"), e.str("language"), e.intOrNull("percent"),
+                    options = optionsOf(e.optJSONArray("options")))
             },
             saga = sg?.let { VodSaga(it.optString("id"), it.optString("name"), itemsOf(it.optJSONArray("items"))) },
             similar = itemsOf(o.optJSONArray("similar")),
@@ -289,6 +299,26 @@ object VodApi {
 }
 
 /** Texte lisible du nombre de seeders : c'est la seule mesure de disponibilité du catalogue. */
+private fun optionsOf(a: JSONArray?): List<VodOption> = (0 until (a?.length() ?: 0)).map {
+    val o = a!!.getJSONObject(it)
+    VodOption(o.getString("torrentId"), o.optInt("fileIndex"), o.optLong("size"), o.optInt("seeders"), o.optString("health"), o.optString("quality"), o.str("language"),
+        o.optString("fit", "good"), o.optBoolean("recommended"), o.intOrNull("percent"))
+}
+
+/** Ce que la vitesse du torrent permet pour cette qualité (le serveur compte les seeders : plus l'image est lourde, plus il en faut). */
+fun fitText(fit: String?, seeders: Int): String = when (fit) {
+    "great" -> "⚡ Très fluide · $seeders seeders"
+    "good" -> "● Fluide · $seeders seeders"
+    "weak" -> "● Peut saccader ou attendre · $seeders seeder" + (if (seeders > 1) "s" else "")
+    else -> "Personne ne partage"
+}
+
+fun fitColor(fit: String?): Int = when (fit) {
+    "great" -> Color.parseColor("#34D399")
+    "good" -> Color.parseColor("#E0B84A")
+    else -> Color.parseColor("#FB923C")
+}
+
 fun healthText(health: String?, seeders: Int): String = when (health) {
     "instant" -> "⚡ Démarrage rapide · $seeders seeders"
     "ok" -> "● Démarrage correct · $seeders seeders"

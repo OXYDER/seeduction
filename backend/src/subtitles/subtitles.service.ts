@@ -20,7 +20,7 @@ export class SubtitlesService {
   private async visibleTorrent(torrentId: string, viewerId: string, role: string) {
     const t = await this.prisma.torrent.findUnique({ where: { id: torrentId }, select: { id: true, status: true, categoryId: true, fileList: true } });
     if (!t || (t.status !== 'APPROVED' && !STAFF.includes(role))) throw new NotFoundException('Torrent introuvable');
-    if (!STAFF.includes(role) && (await this.adult.hiddenFor(viewerId)).includes(t.categoryId)) throw new ForbiddenException('Ce contenu est réservé aux adultes : active-le dans ton profil.');
+    if ((t.status !== 'APPROVED' ? !STAFF.includes(role) : true) && (await this.adult.hiddenFor(viewerId)).includes(t.categoryId)) throw new ForbiddenException('Ce contenu est réservé aux adultes : active-le dans ton profil.');
     return t;
   }
 

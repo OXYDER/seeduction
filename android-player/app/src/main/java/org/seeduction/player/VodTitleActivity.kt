@@ -82,14 +82,64 @@ class VodTitleActivity : AppCompatActivity() {
         playVod(torrentId, fileIndex, series = t?.kind == "serie", scope = scope, title = t?.title ?: "", sub = sub) { busy = it }
     }
 
-    private fun playEpisode(e: VodEpisode, scope: String = "") = play(e.torrentId, e.fileIndex, scope, epSub(e))
+    /** Un épisode : si plusieurs releases existent (4K, 1080p, 720p…), on propose le choix avant de lire ; un épisode déjà commencé reprend là où il en était. */
+    private fun playEpisode(e: VodEpisode, scope: String = "") {
+        val started = e.options.firstOrNull { it.percent != null && it.percent in 1..91 }
+        if (started != null) { play(started.torrentId, started.fileIndex, scope, epSub(e)); return }
+        chooseQuality(epSub(e), e.options) { o -> play(o?.torrentId ?: e.torrentId, o?.fileIndex ?: e.fileIndex, scope, epSub(e)) }
+    }
 
-    /** « Lecture » : le premier épisode à voir (série) ou la version la mieux seedée (film). */
+    private fun versionOptions(t: VodTitle) = t.versions.map { VodOption(it.id, it.fileIndex, it.size, it.seeders, it.health, it.quality.ifEmpty { it.label }, it.language, it.fit, it.recommended, it.percent, it.hdr) }
+
+    /** « Lecture » : le premier épisode à voir (série) ou le film, avec le choix de la qualité quand il y en a plusieurs. */
     private fun playMain(t: VodTitle) {
         if (t.kind == "serie" && t.episodes.isNotEmpty()) {
             val e = t.episodes.firstOrNull { it.percent != null && it.percent in 1..91 } ?: t.episodes.firstOrNull { it.percent == null || it.percent == 0 } ?: t.episodes.first()
             playEpisode(e)
-        } else t.versions.firstOrNull()?.let { play(it.id, it.fileIndex) }
+        } else {
+            val opts = versionOptions(t)
+            val started = opts.firstOrNull { it.percent != null && it.percent in 1..91 }
+            if (started != null) { play(started.torrentId, started.fileIndex); return }
+            chooseQuality(t.title, opts) { o -> (o ?: opts.firstOrNull())?.let { play(it.torrentId, it.fileIndex) } }
+        }
+    }
+
+    /**
+     * Écran de choix de la qualité : toutes les releases du même contenu, la plus belle d'abord, avec la langue, la taille et ce que la vitesse du torrent permet ;
+     * celle qui est recommandée est marquée. Une seule release, ou le réglage « Toujours la recommandée » : on lit tout de suite.
+     */
+    private fun chooseQuality(sub: String, options: List<VodOption>, onPick: (VodOption?) -> Unit) {
+        if (options.size <= 1) { onPick(options.firstOrNull()); return }
+        val rec = options.firstOrNull { it.recommended } ?: options.first()
+        if (!Prefs(this).askQuality) { onPick(rec); return }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(16), dp(18), dp(8)); setBackgroundColor(Ui.SURFACE) }
+        lateinit var dialog: androidx.appcompat.app.AlertDialog
+        root.addView(label("Choisir la qualité", 18f, Ui.TEXT, Ui.black))
+        root.addView(label(sub, 12.5f, Ui.MUTED).apply { setPadding(0, dp(2), 0, dp(10)) })
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        for (o in options) {
+            val isRec = o === rec
+            val rowBox = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; isClickable = true; isFocusable = true
+                background = roundRect(if (isRec) Color.parseColor("#1F1B0C") else Ui.SURFACE2, dpf(10f), if (isRec) Ui.GOLD else Ui.LINE, 1)
+                setPadding(dp(12), dp(11), dp(12), dp(11)); tvFocus(10f)
+                setOnClickListener { dialog.dismiss(); onPick(o) }
+            }
+            rowBox.addView(label(o.quality.ifEmpty { "?" }, 20f, if (isRec) Ui.GOLD else Ui.TEXT, Ui.black), LinearLayout.LayoutParams(dp(74), ViewGroup.LayoutParams.WRAP_CONTENT))
+            val mid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val what = listOfNotNull(o.language, if (o.hdr) "HDR" else null, formatSize(o.size)).joinToString("  ·  ")
+            mid.addView(label(what, 13.5f, Ui.TEXT, Ui.bold))
+            mid.addView(label(fitText(o.fit, o.seeders), 12f, fitColor(o.fit), Ui.bold).apply { setPadding(0, dp(2), 0, 0) })
+            rowBox.addView(mid, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            if (isRec) rowBox.addView(label("★ Recommandé", 11.5f, Ui.GOLD, Ui.black).apply { setPadding(dp(8), 0, 0, 0) })
+            list.addView(rowBox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
+        }
+        root.addView(android.widget.ScrollView(this).apply { addView(list) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        root.addView(label("Recommandé d'après la vitesse du torrent : plus l'image est lourde, plus il faut de partageurs pour lire sans coupure.", 11.5f, Ui.MUTED).apply { setPadding(0, dp(4), 0, dp(2)) })
+        dialog = androidx.appcompat.app.AlertDialog.Builder(this).setView(root).setNegativeButton("Annuler", null).create()
+        dialog.show()
+        // à la télécommande, le focus part sur le choix recommandé
+        list.post { list.getChildAt(options.indexOf(rec))?.requestFocus() }
     }
 
     private fun side() = if (isTv()) dp(48) else dp(18)
@@ -310,7 +360,8 @@ class VodTitleActivity : AppCompatActivity() {
         content.addView(section(if (t.versions.size > 1) "Versions" else "Version"))
         for (v in t.versions) {
             val subs = if (v.subtitles.isNotEmpty()) " · ST " + v.subtitles.joinToString("/") else ""
-            content.addView(row(v.label, healthText(v.health, v.seeders) + " · " + formatSize(v.size) + subs, healthColor(v.health), v.percent) { play(v.id, v.fileIndex) })
+            val title = v.label + if (v.recommended && t.versions.size > 1) "  ★ Recommandé" else ""
+            content.addView(row(title, fitText(v.fit, v.seeders) + " · " + formatSize(v.size) + subs, fitColor(v.fit), v.percent) { play(v.id, v.fileIndex) })
         }
     }
 

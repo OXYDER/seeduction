@@ -240,7 +240,8 @@ export class TorrentsService implements OnModuleInit {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
-    if (!['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role) && (await this.adult.hiddenFor(opts?.viewerId ?? userId)).includes(torrent.categoryId)) {
+    // Le staff ne garde l'accès que pour modérer (torrent pas encore approuvé) : un torrent adulte publié reste fermé à qui n'a pas activé l'option, même par lien direct.
+    if ((torrent.status !== 'APPROVED' ? !['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(user.role) : true) && (await this.adult.hiddenFor(opts?.viewerId ?? userId)).includes(torrent.categoryId)) {
       throw new ForbiddenException('Ce contenu est réservé aux adultes : active-le dans ton profil.');
     }
 
@@ -604,9 +605,9 @@ export class TorrentsService implements OnModuleInit {
    * qualité, source, codec, taille, uploader... La version affichée est incluse et marquée.
    */
   async versions(id: string, viewer?: { userId: string; role: string }) {
-    const t = await this.prisma.torrent.findUnique({ where: { id }, select: { metaSource: true, metaExternalId: true, season: true, episode: true, categoryId: true } });
+    const t = await this.prisma.torrent.findUnique({ where: { id }, select: { metaSource: true, metaExternalId: true, season: true, episode: true, categoryId: true, status: true } });
     if (!t || !t.metaSource || !t.metaExternalId) return [];
-    if (!['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '') && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) return [];
+    if ((t.status !== 'APPROVED' ? !['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '') : true) && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) return [];
     const found = await this.prisma.torrent.findMany({
       where: { OR: [{ id }, { status: 'APPROVED', metaSource: t.metaSource, metaExternalId: t.metaExternalId }] },
       select: {
@@ -747,7 +748,7 @@ export class TorrentsService implements OnModuleInit {
     });
     const staff = ['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '');
     if (!t || (t.status !== 'APPROVED' && !staff)) throw new NotFoundException('Torrent introuvable');
-    if (!staff && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) throw new ForbiddenException('Contenu masqué');
+    if ((t.status !== 'APPROVED' ? !staff : true) && (await this.adult.hiddenFor(viewer?.userId)).includes(t.categoryId)) throw new ForbiddenException('Contenu masqué');
 
     const { metadata, categoryId, status, entities, ...rest } = t;
     const meta = (metadata as any) ?? {};
@@ -925,8 +926,8 @@ export class TorrentsService implements OnModuleInit {
       },
     });
     if (!torrent) throw new NotFoundException('Torrent introuvable');
-    // Le staff garde l'accès (modération) ; les autres doivent avoir activé le contenu adulte.
-    if (!['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '')) {
+    // Le staff ne garde l'accès que pour modérer (torrent pas encore approuvé) ; pour un torrent publié, tout le monde doit avoir activé le contenu adulte, même par lien direct.
+    if (torrent.status === 'APPROVED' || !['MODERATOR', 'SUPER_MODERATOR', 'ADMIN', 'OWNER'].includes(viewer?.role ?? '')) {
       const hidden = await this.adult.hiddenFor(viewer?.userId);
       if (hidden.includes(torrent.categoryId)) {
         throw new ForbiddenException('Ce contenu est réservé aux adultes : active l\'affichage du contenu pour adultes dans ton profil pour y accéder.');

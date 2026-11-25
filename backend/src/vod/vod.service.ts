@@ -9,7 +9,7 @@ import { RecommendationsService } from '../torrents/recommendations.service';
 import { groupKeyOf, releaseTitle } from '../torrents/group-key';
 import { numOf, seriesTitleOf } from '../common/utils/watch-progress';
 import { VodLiveService } from './vod-live.service';
-import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, videoFiles, vodAccess, vodHealth, VOD_REASON_LABELS, VOD_RULE_TEXT, type EpisodeSource, type VodReason } from '../common/utils/vod';
+import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, pickRecommended, qualityLabel, resolutionHeight, sourcesByEpisode, streamFit, videoFiles, vodAccess, vodHealth, VOD_REASON_LABELS, VOD_RULE_TEXT, type EpisodeSource, type VodReason } from '../common/utils/vod';
 
 /** Qui regarde : le profil actif (famille) et le compte (ratio, positions de lecture, droits). */
 export interface VodViewer { userId: string; accountId: string; username: string; role: string; fam: boolean }
@@ -436,16 +436,20 @@ export class VodService {
 
     const kind = kindOf(t);
     const m = metaOf(t);
-    const versions = rows.slice(0, 40).map((r) => {
+    const versionList = rows.slice(0, 40).map((r) => {
       const files = videoFiles(r.fileList);
       const main = files.length ? files.reduce((a, b) => (b.size > a.size ? b : a)) : null;
       const fileIndex = main?.index ?? 0;
       return {
         id: r.id, name: r.name, size: Number(r.size), seeders: r.seeders, health: vodHealth(r.seeders), resolution: r.resolution ?? null, language: r.language ?? null,
+        quality: qualityLabel(r.resolution), fit: streamFit(r.seeders, r.resolution), hdr: !!r.hdr,
         label: [r.resolution, r.language, r.hdr ? 'HDR' : null, r.containerFormat].filter(Boolean).join(' · ') || 'Version',
         subtitles: r.subtitles ?? [], audio: r.audio ?? null, fileIndex, ...progressOf(r.id, fileIndex),
       };
     });
+    // Les plus belles qualités d'abord ; « recommandé » : la meilleure que la vitesse du torrent (seeders) permet de lire sans coupure.
+    const recVersion = pickRecommended(versionList);
+    const versions = [...versionList].sort((a, b) => resolutionHeight(b.resolution) - resolutionHeight(a.resolution) || b.seeders - a.seeders).map((v) => ({ ...v, recommended: v === recVersion }));
 
     let episodes: any[] | undefined;
     if (kind === 'serie') {
@@ -462,9 +466,19 @@ export class VodService {
           sources.push({ torrentId: r.id, fileIndex: f.index, season: ep?.season ?? null, episode: ep?.episode ?? null, size: f.size, seeders: r.seeders, resolution: r.resolution ?? null, language: r.language ?? null, label: baseName(f.path) });
         }
       }
+      const groups = sourcesByEpisode(sources);
+      // Toutes les releases d'un épisode sont proposées avant la lecture ; celle qui est lue par défaut est la recommandée.
+      const optionsOf = (s: EpisodeSource) => {
+        const rec = pickRecommended(groups.get(`${s.season}:${s.episode}`) ?? [s]);
+        return (groups.get(`${s.season}:${s.episode}`) ?? [s]).slice(0, 8).map((o) => ({
+          torrentId: o.torrentId, fileIndex: o.fileIndex, size: o.size, seeders: o.seeders, health: vodHealth(o.seeders), resolution: o.resolution, quality: qualityLabel(o.resolution),
+          language: o.language, fit: streamFit(o.seeders, o.resolution), recommended: o === rec, ...progressOf(o.torrentId, o.fileIndex),
+        }));
+      };
       episodes = bestPerEpisode(sources).slice(0, 600).map((s) => ({
         season: s.season, episode: s.episode, label: episodeLabel(s.season, s.episode) || 'Épisode', torrentId: s.torrentId, fileIndex: s.fileIndex,
         size: s.size, seeders: s.seeders, health: vodHealth(s.seeders), resolution: s.resolution, language: s.language, ...progressOf(s.torrentId, s.fileIndex),
+        options: s.season != null && s.episode != null ? optionsOf(s) : [],
       }));
     }
 

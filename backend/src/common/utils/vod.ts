@@ -78,21 +78,75 @@ export interface EpisodeSource {
   label: string;
 }
 
+/** Hauteur d'image d'après le texte de qualité (« 4K/2160p », « 1080p », « 720p », « SD »…) ; 0 si inconnue. */
+export function resolutionHeight(res: string | null | undefined): number {
+  const t = String(res ?? '').toLowerCase();
+  if (!t) return 0;
+  if (/2160|4k|uhd/.test(t)) return 2160;
+  const m = /(\d{3,4})\s*p/.exec(t) ?? /(?:^|\D)(\d{3,4})(?:\D|$)/.exec(t);
+  if (m) return Number(m[1]);
+  if (/(^|[^a-z])sd([^a-z]|$)|dvd/.test(t)) return 480;
+  return 0;
+}
+
+/** Qualité courte et lisible pour l'écran de choix : « 4K », « 1080p »… (le texte d'origine si on ne la reconnaît pas). */
+export function qualityLabel(res: string | null | undefined): string {
+  const h = resolutionHeight(res);
+  if (h >= 2160) return '4K';
+  if (h >= 100) return `${h}p`;
+  return String(res ?? '').trim() || 'Qualité inconnue';
+}
+
+/** Nombre de seeders à partir duquel une qualité démarre et se lit sans coupure (une image plus lourde demande plus de partageurs). */
+export function seedersNeeded(height: number): number {
+  if (height >= 2160) return 8;
+  if (height >= 1080) return 3;
+  if (height >= 720) return 2;
+  return 1;
+}
+
+/** great : très fluide ; good : fluide ; weak : pas assez de partageurs pour cette qualité (attente ou coupures possibles) ; none : personne ne partage. */
+export type StreamFit = 'great' | 'good' | 'weak' | 'none';
+export function streamFit(seeders: number, res: string | null | undefined): StreamFit {
+  if (seeders < 1) return 'none';
+  const ratio = seeders / seedersNeeded(resolutionHeight(res));
+  return ratio >= 2 ? 'great' : ratio >= 1 ? 'good' : 'weak';
+}
+
 /**
- * Un seul choix par épisode : parmi toutes les releases qui le contiennent (épisode isolé ou fichier d'un pack de saison), celle qui a le plus de seeders
- * (à égalité, la plus petite). Trié par saison puis épisode ; ce qui n'a ni saison ni épisode reconnus passe à la fin dans l'ordre d'arrivée.
+ * Le choix recommandé parmi plusieurs releases du même contenu : la plus belle qualité que la vitesse du torrent (nombre de seeders) permet de lire sans coupure ;
+ * à qualité égale, le plus de seeders puis le plus petit fichier. Si aucune ne tient la route, celle qui a le plus de seeders. Rend null pour une liste vide.
+ */
+export function pickRecommended<T extends { resolution: string | null; seeders: number; size: number }>(opts: T[]): T | null {
+  if (opts.length === 0) return null;
+  const h = (o: T) => resolutionHeight(o.resolution);
+  const fit = opts.filter((o) => o.seeders >= seedersNeeded(h(o)));
+  const order = (a: T, b: T) => h(b) - h(a) || b.seeders - a.seeders || a.size - b.size;
+  if (fit.length) return [...fit].sort(order)[0];
+  return [...opts].sort((a, b) => b.seeders - a.seeders || h(b) - h(a) || a.size - b.size)[0];
+}
+
+/** Toutes les releases de chaque épisode (clé « saison:épisode »), les plus belles qualités d'abord ; ce qui n'a ni saison ni épisode reconnus est ignoré ici. */
+export function sourcesByEpisode(sources: EpisodeSource[]): Map<string, EpisodeSource[]> {
+  const groups = new Map<string, EpisodeSource[]>();
+  for (const s of sources) {
+    if (s.season == null || s.episode == null) continue;
+    const key = `${s.season}:${s.episode}`;
+    groups.set(key, [...(groups.get(key) ?? []), s]);
+  }
+  for (const [k, list] of groups) groups.set(k, list.sort((a, b) => resolutionHeight(b.resolution) - resolutionHeight(a.resolution) || b.seeders - a.seeders || a.size - b.size));
+  return groups;
+}
+
+/**
+ * Un seul choix par épisode : parmi toutes les releases qui le contiennent (épisode isolé ou fichier d'un pack de saison), la recommandée (voir pickRecommended).
+ * Trié par saison puis épisode ; ce qui n'a ni saison ni épisode reconnus passe à la fin dans l'ordre d'arrivée.
  */
 export function bestPerEpisode(sources: EpisodeSource[]): EpisodeSource[] {
-  const best = new Map<string, EpisodeSource>();
-  const loose: EpisodeSource[] = [];
-  for (const s of sources) {
-    if (s.season == null || s.episode == null) { loose.push(s); continue; }
-    const key = `${s.season}:${s.episode}`;
-    const cur = best.get(key);
-    if (!cur || s.seeders > cur.seeders || (s.seeders === cur.seeders && s.size < cur.size)) best.set(key, s);
-  }
-  const sorted = [...best.values()].sort((a, b) => (a.season! - b.season!) || (a.episode! - b.episode!));
-  return [...sorted, ...loose];
+  const loose = sources.filter((s) => s.season == null || s.episode == null);
+  const best = [...sourcesByEpisode(sources).values()].map((g) => pickRecommended(g)!);
+  best.sort((a, b) => (a.season! - b.season!) || (a.episode! - b.episode!));
+  return [...best, ...loose];
 }
 
 export interface EpRef { season: number; episode: number }

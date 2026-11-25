@@ -1,4 +1,4 @@
-import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, videoFiles, vodAccess, vodHealth } from './vod';
+import { bestPerEpisode, episodeLabel, nextEpisode, parseEpisode, pickRecommended, qualityLabel, resolutionHeight, seedersNeeded, sourcesByEpisode, streamFit, videoFiles, vodAccess, vodHealth } from './vod';
 
 const now = new Date('2026-11-24T12:00:00Z');
 const day = 86_400_000;
@@ -108,5 +108,43 @@ describe('nextEpisode', () => {
     expect(nextEpisode([...eps(1, [1, 2, 3]), ...eps(2, [1, 2])], { season: 1, episode: 3 }, { 1: 3 })).toEqual({ status: 'next', next: { season: 2, episode: 1 }, missing: [] });
     expect(nextEpisode([...eps(1, [1, 2, 3]), ...eps(2, [2, 3])], { season: 1, episode: 3 }, { 1: 3 })).toEqual({ status: 'gap', next: { season: 2, episode: 2 }, missing: [{ season: 2, episode: 1 }] });
     expect(nextEpisode(eps(1, [1, 2, 3]), { season: 1, episode: 3 }, { 1: 3 })).toEqual({ status: 'end', missing: [] });
+  });
+});
+
+describe('choix de la qualité', () => {
+  const o = (resolution: string | null, seeders: number, size = 1000) => ({ resolution, seeders, size });
+  it('lit la hauteur et le libellé de la qualité', () => {
+    expect(resolutionHeight('4K/2160p')).toBe(2160);
+    expect(resolutionHeight('1080p')).toBe(1080);
+    expect(resolutionHeight('720P')).toBe(720);
+    expect(resolutionHeight('SD')).toBe(480);
+    expect(resolutionHeight(null)).toBe(0);
+    expect(qualityLabel('4K/2160p')).toBe('4K');
+    expect(qualityLabel('1080p')).toBe('1080p');
+    expect(qualityLabel(null)).toBe('Qualité inconnue');
+  });
+  it('une image plus lourde demande plus de seeders', () => {
+    expect(seedersNeeded(2160)).toBeGreaterThan(seedersNeeded(1080));
+    expect(seedersNeeded(1080)).toBeGreaterThan(seedersNeeded(720));
+    expect(streamFit(0, '1080p')).toBe('none');
+    expect(streamFit(1, '1080p')).toBe('weak');
+    expect(streamFit(3, '1080p')).toBe('good');
+    expect(streamFit(6, '1080p')).toBe('great');
+  });
+  it('recommande la plus belle qualité que la vitesse permet', () => {
+    expect(pickRecommended([o('4K/2160p', 2), o('1080p', 6), o('720p', 9)])).toEqual(o('1080p', 6));
+    expect(pickRecommended([o('4K/2160p', 10), o('1080p', 6)])).toEqual(o('4K/2160p', 10));
+  });
+  it("sans qualité suffisante, prend le plus de seeders ; à qualité égale, le plus de seeders puis le plus petit", () => {
+    expect(pickRecommended([o('2160p', 1), o('720p', 1, 500)])?.resolution).toBe('2160p');
+    expect(pickRecommended([o('1080p', 1), o('720p', 1)])?.resolution).toBe('1080p');
+    expect(pickRecommended([o('1080p', 4, 5000), o('1080p', 4, 3000)])?.size).toBe(3000);
+    expect(pickRecommended([])).toBeNull();
+  });
+  it("regroupe les releases d'un épisode, plus belle qualité d'abord", () => {
+    const src = (torrentId: string, resolution: string, seeders: number, episode = 1) => ({ torrentId, fileIndex: 0, season: 1, episode, size: 1000, seeders, resolution, language: null, label: '' });
+    const g = sourcesByEpisode([src('a', '720p', 5), src('b', '1080p', 4), src('c', '1080p', 9), src('z', '1080p', 3, 2)]);
+    expect(g.get('1:1')!.map((s) => s.torrentId)).toEqual(['c', 'b', 'a']);
+    expect(bestPerEpisode([src('a', '720p', 5), src('c', '1080p', 9)]).map((s) => s.torrentId)).toEqual(['c']);
   });
 });
