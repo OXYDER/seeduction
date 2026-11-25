@@ -202,7 +202,7 @@ class VodTitleActivity : AppCompatActivity() {
         val t = data ?: return
         content.removeAllViews()
         val w = screenW()
-        val tv = isTv()
+        val tv = isTv() || wide()
         var rightCol: LinearLayout? = null
 
         if (tv) {

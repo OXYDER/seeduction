@@ -52,7 +52,8 @@ object Ui {
 fun Context.isTv(): Boolean {
     when (Prefs(this).tvMode) { "on" -> return true; "off" -> return false }
     val ui = (getSystemService(Context.UI_MODE_SERVICE) as? android.app.UiModeManager)?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
-    return ui || packageManager.hasSystemFeature("android.software.leanback") || !packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)
+    // Une box Android n'a presque jamais d'écran multitouch (au mieux un « faux tactile ») : téléphones et tablettes, toujours.
+    return ui || packageManager.hasSystemFeature("android.software.leanback") || !packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN) || !packageManager.hasSystemFeature("android.hardware.touchscreen.multitouch")
 }
 
 /** Sélection à la télécommande : anneau doré et léger agrandissement sur l'élément qui a le focus (sans effet au toucher). */
@@ -68,6 +69,9 @@ fun View.tvFocus(radiusDp: Float = 8f) {
 fun Context.dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 fun Context.dpf(v: Float): Float = v * resources.displayMetrics.density
 fun Context.screenW(): Int = resources.displayMetrics.widthPixels
+fun Context.screenH(): Int = resources.displayMetrics.heightPixels
+/** Écran en largeur (télé, box, tablette couchée) : affiches et grilles se dimensionnent comme sur une télé, jamais en tiers de la largeur. */
+fun Context.wide(): Boolean = isTv() || screenW() > screenH()
 
 fun roundRect(color: Int, radiusPx: Float, stroke: Int? = null, strokePx: Int = 0) = GradientDrawable().apply {
     setColor(color); cornerRadius = radiusPx; if (stroke != null) setStroke(strokePx, stroke)
@@ -223,7 +227,7 @@ fun AppCompatActivity.railView(rail: VodRail): View {
         head.addView(more)
     }
     col.addView(head)
-    val w = (c.screenW() * (if (tv) 0.125f else 0.3f)).toInt()
+    val w = (c.screenW() * (if (c.wide()) 0.125f else 0.3f)).toInt()
     col.addView(RecyclerView(c).apply {
         clipChildren = false
         layoutManager = LinearLayoutManager(c, LinearLayoutManager.HORIZONTAL, false)
@@ -238,7 +242,7 @@ fun AppCompatActivity.railView(rail: VodRail): View {
 /** Grille d'affiches à 3 colonnes qui charge la suite en défilant. `loader(page)` renvoie les titres de la page et s'il y en a une autre. */
 class PagedGrid(private val act: AppCompatActivity, private val loader: suspend (Int) -> Pair<List<VodItem>, Boolean>) {
     private val tv = act.isTv()
-    private val cols = if (tv) 6 else 3
+    private val cols = if (act.wide()) 6 else 3
     private val gap = act.dp(5)
     private val cell = (act.screenW() - act.dp(if (tv) 96 else 22)) / cols
     private val adapter = PosterAdapter(cell - gap * 2, true) { act.openItem(it) }
@@ -342,12 +346,12 @@ fun AppCompatActivity.avatar(sizeDp: Int = 34): View {
 fun AppCompatActivity.skeleton(): Pair<View, android.animation.ValueAnimator> {
     val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     val tv = isTv()
-    col.addView(View(this).apply { setBackgroundColor(Ui.SURFACE) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, if (tv) (screenW() * 0.36f).toInt() else (screenW() * 1.0f).toInt()))
+    col.addView(View(this).apply { setBackgroundColor(Ui.SURFACE) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, if (wide()) (screenW() * 0.36f).toInt() else (screenW() * 1.0f).toInt()))
     repeat(2) {
         col.addView(View(this).apply { background = roundRect(Ui.SURFACE, dpf(4f)) }, LinearLayout.LayoutParams(dp(120), dp(16)).apply { setMargins(dp(if (tv) 48 else 16), dp(22), 0, dp(10)) })
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(if (tv) 48 else 16), 0, 0, 0) }
-        val w = (screenW() * (if (tv) 0.125f else 0.3f)).toInt()
-        repeat(if (tv) 8 else 4) { row.addView(View(this).apply { background = roundRect(Ui.SURFACE, dpf(6f)) }, LinearLayout.LayoutParams(w, (w * 1.5f).toInt()).apply { rightMargin = dp(8) }) }
+        val w = (screenW() * (if (wide()) 0.125f else 0.3f)).toInt()
+        repeat(if (wide()) 8 else 4) { row.addView(View(this).apply { background = roundRect(Ui.SURFACE, dpf(6f)) }, LinearLayout.LayoutParams(w, (w * 1.5f).toInt()).apply { rightMargin = dp(8) }) }
         col.addView(row)
     }
     val anim = android.animation.ValueAnimator.ofFloat(0.45f, 1f).apply {

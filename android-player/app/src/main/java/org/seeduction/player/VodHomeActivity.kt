@@ -101,14 +101,14 @@ class VodHomeActivity : AppCompatActivity() {
         if (tv) nav.addView(label("SEEDUCTION", 17f, Ui.GOLD, Ui.black).apply { letterSpacing = 0.16f; setPadding(0, 0, dp(30), 0) })
         navItems = tabs.map { (name, ic, idx) ->
             val img = ImageView(this).apply { setImageResource(ic); setColorFilter(Ui.MUTED); layoutParams = LinearLayout.LayoutParams(dp(if (tv) 22 else 24), dp(if (tv) 22 else 24)) }
-            val txt = label(name, if (tv) 12f else 10.5f, Ui.MUTED, Ui.bold).apply { setPadding(if (tv) dp(8) else 0, if (tv) 0 else dp(2), 0, 0) }
+            val txt = label(name, if (tv) 12f else 10.5f, Ui.MUTED, Ui.bold).apply { setPadding(if (tv) dp(8) else 0, if (tv) 0 else dp(2), 0, 0); gravity = Gravity.CENTER_HORIZONTAL }
             val item = LinearLayout(this).apply {
                 orientation = if (tv) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL; gravity = Gravity.CENTER; isClickable = true
                 if (tv) setPadding(dp(16), dp(9), dp(18), dp(9)) else setPadding(0, dp(4), 0, dp(2))
                 setOnClickListener { select(idx) }
                 tvFocus(if (tv) 22f else 8f)
             }
-            item.addView(img); item.addView(txt)
+            item.addView(img); item.addView(txt, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             nav.addView(item, if (tv) LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(6) } else LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             img to txt
         }
@@ -334,6 +334,8 @@ class VodHomeActivity : AppCompatActivity() {
 class HeroCarousel(private val act: AppCompatActivity, private val heroes: List<VodItem>) {
     val view = FrameLayout(act)
     private val tv = act.isTv()
+    /** Écran en largeur (télé, box, tablette couchée) : affiche à droite et texte à gauche, jamais une affiche plein écran. */
+    private val wide = tv || act.screenW() > act.screenH()
     private val img = ImageView(act).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
     private val kind = act.label("", 11f, Ui.GOLD, Ui.bold).apply { letterSpacing = 0.4f }
     private val title = act.label("", 30f, Ui.TEXT, Ui.black).apply { maxLines = 2 }
@@ -345,9 +347,9 @@ class HeroCarousel(private val act: AppCompatActivity, private val heroes: List<
 
     init {
         val w = act.screenW()
-        val heroH = if (tv) (w * 0.36f).toInt() else (w * 1.2f).toInt()
+        val heroH = if (wide) minOf((w * 0.36f).toInt(), (act.screenH() * 0.62f).toInt()) else (w * 1.2f).toInt()
         val info = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL }
-        if (tv) {
+        if (wide) {
             val imgW = (w * 0.52f).toInt()
             view.addView(img, FrameLayout.LayoutParams(imgW, heroH, Gravity.END))
             view.addView(View(act).apply { background = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Ui.BG, Color.TRANSPARENT)) }, FrameLayout.LayoutParams(imgW, heroH, Gravity.END))
@@ -363,18 +365,18 @@ class HeroCarousel(private val act: AppCompatActivity, private val heroes: List<
         }
         title.setPadding(0, act.dp(2), 0, act.dp(4)); synopsis.setPadding(0, act.dp(8), 0, 0)
         info.addView(kind); info.addView(title); info.addView(genres); info.addView(synopsis)
-        val buttons = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; gravity = if (tv) Gravity.START else Gravity.CENTER; setPadding(0, act.dp(14), 0, 0) }
+        val buttons = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; gravity = if (wide) Gravity.START else Gravity.CENTER; setPadding(0, act.dp(14), 0, 0) }
         playButton = act.pillButton("Lecture", R.drawable.ic_play, true) { act.startActivity(Intent(act, VodTitleActivity::class.java).putExtra(VodTitleActivity.EXTRA_ID, heroes[index].id).putExtra(VodTitleActivity.EXTRA_AUTOPLAY, true)) }
         buttons.addView(playButton)
         buttons.addView(View(act), LinearLayout.LayoutParams(act.dp(12), 1))
         buttons.addView(act.pillButton("Infos", R.drawable.ic_info, false) { act.openItem(heroes[index]) })
         info.addView(buttons)
         if (heroes.size > 1) {
-            dots.gravity = if (tv) Gravity.START else Gravity.CENTER
+            dots.gravity = if (wide) Gravity.START else Gravity.CENTER
             dots.setPadding(0, act.dp(14), 0, 0)
             info.addView(dots)
         }
-        if (tv) view.addView(info, FrameLayout.LayoutParams((w * 0.55f).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL or Gravity.START))
+        if (wide) view.addView(info, FrameLayout.LayoutParams((w * 0.55f).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL or Gravity.START))
         else view.addView(info, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         if (!tv) {
             val top = LinearLayout(act).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(act.dp(16), act.dp(12), act.dp(14), 0) }
